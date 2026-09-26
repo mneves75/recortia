@@ -32,9 +32,7 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
             guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
                 throw CaptureError.targetUnavailable
             }
-            let excluded = Set(excludedIDs)
-            filter = SCContentFilter(
-                display: display, excludingWindows: content.windows.filter { excluded.contains($0.windowID) })
+            filter = Self.filter(display: display, excludingWindowIDs: Set(excludedIDs), content: content)
         case .window(let windowID):
             guard let window = content.windows.first(where: { $0.windowID == windowID }) else {
                 throw CaptureError.targetUnavailable
@@ -63,5 +61,23 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
 
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
         return BackendImage(image: image, pointPixelScale: scale)
+    }
+
+    /// Excludes Recortia itself as an application (so its windows created after this fetch, such as
+    /// a new pin or the drag chip, stay excluded too) whenever every requested ID is one of its own
+    /// windows; otherwise excludes the requested windows plus Recortia's windows in this fresh fetch.
+    static func filter(display: SCDisplay, excludingWindowIDs requested: Set<CGWindowID>, content: SCShareableContent)
+        -> SCContentFilter
+    {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let ownWindows = content.windows.filter { $0.owningApplication?.processID == ownPID }
+        let foreignRequested = requested.subtracting(ownWindows.map(\.windowID))
+        if foreignRequested.isEmpty, let own = content.applications.first(where: { $0.processID == ownPID }) {
+            return SCContentFilter(display: display, excludingApplications: [own], exceptingWindows: [])
+        }
+        let excluded = content.windows.filter {
+            requested.contains($0.windowID) || $0.owningApplication?.processID == ownPID
+        }
+        return SCContentFilter(display: display, excludingWindows: excluded)
     }
 }

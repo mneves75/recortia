@@ -88,11 +88,23 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
         guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
             throw CaptureError.targetUnavailable
         }
-        let filter = SCContentFilter(
-            display: display,
-            excludingWindows: content.windows.filter {
-                excludedWindowIDs.contains($0.windowID) || $0.owningApplication?.processID == ownProcessID
-            })
+        // Exclude Recortia as an application so its windows created after the stream starts (a pin,
+        // the drag chip) never enter scroll frames; fall back to a window list only when a foreign
+        // window must also be excluded.
+        let ownWindowIDs = Set(
+            content.windows.filter { $0.owningApplication?.processID == ownProcessID }.map(\.windowID))
+        let filter: SCContentFilter
+        if excludedWindowIDs.subtracting(ownWindowIDs).isEmpty,
+            let own = content.applications.first(where: { $0.processID == ownProcessID })
+        {
+            filter = SCContentFilter(display: display, excludingApplications: [own], exceptingWindows: [])
+        } else {
+            filter = SCContentFilter(
+                display: display,
+                excludingWindows: content.windows.filter {
+                    excludedWindowIDs.contains($0.windowID) || $0.owningApplication?.processID == ownProcessID
+                })
+        }
         let scale = Double(filter.pointPixelScale)
         guard abs(scale - expectedScale) <= 0.001 else { throw CaptureError.displayChanged }
 

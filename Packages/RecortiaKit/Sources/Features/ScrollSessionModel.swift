@@ -240,9 +240,16 @@ public final class ScrollSessionModel {
     // MARK: Collection
 
     private func collect(_ target: CaptureTarget, id: UUID) async {
+        // A cancel, stop, or interrupt can land before this task first runs; never start a stream
+        // for a session that already ended, and stop one whose session ended while it started.
+        guard isCurrent(id) else { return }
         do throws(CaptureError) {
             stitcher.reset()
             try await frames.start(target)
+            guard isCurrent(id) else {
+                frames.stop()
+                return
+            }
             streamStarted = true
         } catch {
             guard isCurrent(id) else { return }

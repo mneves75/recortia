@@ -144,6 +144,17 @@ struct ScrollSessionModelTests {
         h.model.cancel()
     }
 
+    @Test("Canceling before collection begins never starts a capture stream (security audit)")
+    func cancelBeforeCollectStartsNoStream() async {
+        let h = ScrollHarness(trusted: false, automaticPreference: false)
+        #expect(await h.model.begin())
+        h.model.chooseTarget(h.target)
+        h.model.start()
+        h.model.cancel()  // before the collect task first runs
+        for _ in 0..<50 { await Task.yield() }
+        #expect(h.frames.startCount == 0, "an orphaned stream would keep capturing with nothing consuming it")
+    }
+
     @Test("Revoked Accessibility falls back to manual mode instead of scrolling")
     func accessibilityRevokedFallsBackToManual() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)
