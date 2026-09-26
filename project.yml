@@ -56,11 +56,15 @@ targets:
         NSHumanReadableCopyright: Recortia contributors
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, pt-BR]
-    entitlements:
-      path: RecortiaApp/Recortia.entitlements
-      properties: {}
     settings:
+      configs:
+        # Release: the data-protection keychain holds the preferences seal secret, which needs an
+        # app keychain access group authorized by the "Recortia Developer ID" provisioning profile.
+        Release:
+          CODE_SIGN_ENTITLEMENTS: RecortiaApp/Recortia-Release.entitlements
+          PROVISIONING_PROFILE_SPECIFIER: Recortia Developer ID
       base:
+        CODE_SIGN_ENTITLEMENTS: RecortiaApp/Recortia.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia
         PRODUCT_NAME: Recortia
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor

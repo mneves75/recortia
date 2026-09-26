@@ -36,6 +36,8 @@ cat > "$out/ExportOptions.plist" <<'PLIST'
   <key>signingStyle</key><string>manual</string>
   <key>teamID</key><string>Q96FUTC5G8</string>
   <key>signingCertificate</key><string>Developer ID Application</string>
+  <key>provisioningProfiles</key>
+  <dict><key>dev.mvneves.Recortia</key><string>Recortia Developer ID</string></dict>
 </dict>
 </plist>
 PLIST
@@ -49,6 +51,10 @@ codesign --verify --deep --strict --verbose=2 "$app"
 entitlements=$(codesign -d --entitlements - --xml "$app" 2>/dev/null || true)
 if [[ "$entitlements" == *get-task-allow* ]]; then
   echo "release: get-task-allow is present; this is not a distribution build" >&2
+  exit 1
+fi
+if [[ "$entitlements" != *"Q96FUTC5G8.dev.mvneves.Recortia"* || ! -f "$app/Contents/embedded.provisionprofile" ]]; then
+  echo "release: the keychain access group entitlement or its provisioning profile is missing" >&2
   exit 1
 fi
 signature=$(codesign -dvv "$app" 2>&1)

@@ -131,6 +131,7 @@
 		32B60026CF0E1A7A617061C9 /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
 		38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagePresenter.swift; sourceTree = "<group>"; };
 		3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2E.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F28E2BD01C5C58B01ED7275 /* Recortia-Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Recortia-Release.entitlements"; sourceTree = "<group>"; };
 		414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shell.swift"; sourceTree = "<group>"; };
 		451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSidebarView.swift; sourceTree = "<group>"; };
 		4A850AFAB99113314CD6E841 /* RecortiaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RecortiaKit; path = Packages/RecortiaKit; sourceTree = SOURCE_ROOT; };
@@ -339,6 +340,7 @@
 			isa = PBXGroup;
 			children = (
 				30259CC2530DFC8E1D539757 /* Info.plist */,
+				3F28E2BD01C5C58B01ED7275 /* Recortia-Release.entitlements */,
 				5E4F6B9E7DA4239CD17642B8 /* Recortia.entitlements */,
 				272B94BFEB27CA41B8AE848D /* App */,
 				0C33FF200910F7C345CEA388 /* Capture */,
@@ -649,7 +651,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = RecortiaApp/Recortia.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "RecortiaApp/Recortia-Release.entitlements";
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RecortiaApp/Info.plist;
@@ -659,6 +661,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia;
 				PRODUCT_NAME = Recortia;
+				PROVISIONING_PROFILE_SPECIFIER = "Recortia Developer ID";
 				SDKROOT = macosx;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 			};
