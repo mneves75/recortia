@@ -19,8 +19,13 @@ xcrun swift format lint --strict --recursive --parallel Packages/FramepinKit/Sou
 
 if command -v xcodegen >/dev/null; then
   echo "== generated project is current"
+  before=$(find Framepin.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
   xcodegen generate --quiet
-  git diff --exit-code -- Framepin.xcodeproj
+  after=$(find Framepin.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
+  if [[ "$before" != "$after" ]]; then
+    echo "check: Framepin.xcodeproj was stale; it has been regenerated from project.yml, commit the result" >&2
+    exit 1
+  fi
 fi
 
 echo "== package tests"

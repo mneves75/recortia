@@ -71,6 +71,8 @@ targets:
         product: Imaging
       - package: FramepinKit
         product: MacPlatform
+      - package: FramepinKit
+        product: Features
       - package: KeyboardShortcuts
   FramepinUITests:
     type: bundle.ui-testing

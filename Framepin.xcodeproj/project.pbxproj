@@ -13,8 +13,9 @@
 		8D4EAC924688FBA7DCA1A603 /* FramepinFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 4E7409A83BED6E7934983D05 /* FramepinFixtures */; };
 		A337E98CDA4FFE652BF48A86 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = DFC0D0FAE180C85EB0EECA63 /* Domain */; };
 		AABC4F41E0F9DF4533ED5552 /* LaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65DC3A9900A592086344E96 /* LaunchTests.swift */; };
+		B27AE151C947ACCB2C0BC8F4 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = A6451FB759EF2982B26D7A50 /* KeyboardShortcuts */; };
 		B645E8DEB24925C18B05A32D /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = 924E68114639601F603AC231 /* Imaging */; };
-		BCE319C9855CCFD18B460138 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = A6451FB759EF2982B26D7A50 /* KeyboardShortcuts */; };
+		BCE319C9855CCFD18B460138 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 392DAE45FB5DFF2EADFCDB2C /* Features */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,7 +47,8 @@
 				A337E98CDA4FFE652BF48A86 /* Domain in Frameworks */,
 				B645E8DEB24925C18B05A32D /* Imaging in Frameworks */,
 				670C76AEFBE9DEC44D027731 /* MacPlatform in Frameworks */,
-				BCE319C9855CCFD18B460138 /* KeyboardShortcuts in Frameworks */,
+				BCE319C9855CCFD18B460138 /* Features in Frameworks */,
+				B27AE151C947ACCB2C0BC8F4 /* KeyboardShortcuts in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,6 +145,7 @@
 				DFC0D0FAE180C85EB0EECA63 /* Domain */,
 				924E68114639601F603AC231 /* Imaging */,
 				8834F2B9F5C58A5FA85987C1 /* MacPlatform */,
+				392DAE45FB5DFF2EADFCDB2C /* Features */,
 				A6451FB759EF2982B26D7A50 /* KeyboardShortcuts */,
 			);
 			productName = Framepin;
@@ -524,6 +527,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		392DAE45FB5DFF2EADFCDB2C /* Features */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Features;
+		};
 		4E7409A83BED6E7934983D05 /* FramepinFixtures */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FramepinFixtures;
