@@ -39,6 +39,9 @@ xcodebuild -project Recortia.xcodeproj -scheme Recortia -configuration Debug \
   -destination 'platform=macOS' -derivedDataPath .build/dd -onlyUsePackageVersionsFromResolvedFile \
   "${sign_args[@]}" build | tail -3
 
+echo "== pt-BR covers every extracted string"
+scripts/check-localization.py .build/dd Recortia
+
 echo "== E2E target build (the runner must keep compiling)"
 xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug \
   -destination 'platform=macOS' -derivedDataPath .build/dd -onlyUsePackageVersionsFromResolvedFile \

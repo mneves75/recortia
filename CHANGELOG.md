@@ -4,6 +4,21 @@ All notable changes to Recortia are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0-beta2] - 2026-09-26
+
+### Fixed
+
+- The drag-out chip's title, hint, and VoiceOver label are now in Brazilian Portuguese; the gate
+  fails when any extracted string lacks a pt-BR translation.
+- The delayed-capture countdown no longer truncates its text.
+
+### Changed
+
+- The end-to-end runner and its synthetic fixtures build only in a separate `RecortiaE2E` target,
+  so the shipped app contains neither.
+- CI skips Vision OCR recognition tests on hosted runners that cannot run them, with a control
+  test that fails if Vision starts working there; the local gate still runs them.
+
 ## [0.9.0-beta1] - 2026-09-26
 
 First public beta. The v1 scope (SPEC.md FR-01…FR-14) is implemented; hardware and manual

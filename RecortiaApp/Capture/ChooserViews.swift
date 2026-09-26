@@ -113,10 +113,16 @@ struct CountdownView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Text("Capturing in \(remaining) s")
-                .font(.title2.monospacedDigit())
-                .contentTransition(reduceMotion ? .identity : .numericText(countsDown: true))
-                .accessibilityAddTraits(.updatesFrequently)
+            // The panel is sized once to its fitting size: reserve the widest value (delays are
+            // clamped to 0…10 s) and never truncate the text as the number changes.
+            ZStack(alignment: .leading) {
+                Text("Capturing in \(10) s").hidden().accessibilityHidden(true)
+                Text("Capturing in \(remaining) s")
+                    .contentTransition(reduceMotion ? .identity : .numericText(countsDown: true))
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+            .font(.title2.monospacedDigit())
+            .fixedSize()
             Button("Cancel", action: onCancel)
         }
         .padding(.horizontal, 20)

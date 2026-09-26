@@ -1,8 +1,8 @@
 # Threat model — Recortia v1
 
-**Status:** Proposed security contract; not a completed security audit.  
+**Status:** Security contract for 0.9.0 beta. A pre-release source-review audit (2026-09-26) found no confirmed vulnerability; its leads are fixed and the accepted residuals are listed below.  
 **Owner:** Maintainer to assign in M0.  
-**Distribution assumption:** A direct-distribution, Hardened Runtime-enabled app that is not protected by App Sandbox. Record and review this tradeoff before release.
+**Distribution assumption:** A direct-distribution, Hardened Runtime-enabled app that is not protected by App Sandbox. The tradeoff is recorded in ADR-0002.
 
 ## Assets and trust boundaries
 
@@ -54,3 +54,21 @@ This is not a theorem that every possible application implementation is secure. 
 Signing/update key material must never be available to untrusted PR jobs, coding-agent prompts, or test fixtures. A named maintainer owns credential rotation, release approval, security reports, and removal of compromised published artifacts. Do not claim a public security-contact address exists until the maintainer sets it.
 
 Before v1, document how to stop a compromised update rollout, distribute a corrected signed build, notify users, and rotate the relevant credential without assuming all users can auto-update. Key recovery and updater trust continuity require an actual staging test. For privacy defects, document what kinds of exports may have been affected rather than promising retroactive deletion from recipients.
+
+## Accepted residuals (0.9.0 beta)
+
+From the 2026-09-26 audit and independent reviews; each is either availability-only, requires the
+user's own action, or needs a platform capability not yet adopted.
+
+| Residual | Why it is accepted now | Path to close |
+|---|---|---|
+| Preferences seal key can be planted in the file-based keychain before Recortia first launches | The file-based keychain cannot attest an item's creator | Data-protection keychain with a Developer ID provisioning profile |
+| Any process can post `com.apple.screenIsLocked` and cancel a capture or scroll | Fail-safe: it only cancels | Confirm with `CGSessionCopyCurrentDictionary` |
+| A file that appears or changes at the save destination after the save panel closes is replaced | Overwrite consent is inferred from existence at that moment | Record the destination identity at confirmation, or exclusive rename |
+| Automatic scrolling binds to the frontmost app at start, not to the chosen target's process | The user chose the target and started the session | Require frontmost PID == target owner |
+| Chooser and overlay commits do not carry their request ID | A replaced session's UI can only commit into a session the user started | Bind commits to the active request ID |
+| Auto-copy/auto-save is skipped silently while a drag chip is pending | Fails closed | Surface the skipped export |
+| JPEG decode cost for adversarial progressive scans is not capped | Own-process availability only; 64 MiB input cap applies | Cap scan count in the header walk |
+| Magnifier callouts can show pixels outside a crop | Visible in the preview; crop is not a privacy control (FR-04) | Clip magnifier sources to the content rect |
+| Stored `launchAtLogin`/`updateChecksEnabled` are unused | Never read; the system login-item status is authoritative | Remove the fields |
+
