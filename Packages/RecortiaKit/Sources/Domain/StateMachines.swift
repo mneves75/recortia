@@ -72,7 +72,7 @@ public enum CaptureEvent: Hashable, Sendable {
 
 // MARK: - Scroll
 
-public enum ScrollPauseReason: Hashable, Sendable {
+public enum ScrollPauseReason: Hashable, Sendable, Codable {
     case userPaused
     case ambiguousMatch
     case reversedDirection

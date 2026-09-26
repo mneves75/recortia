@@ -10,20 +10,6 @@ public enum ScrollMode: Hashable, Sendable {
     case automatic
 }
 
-/// Why an accepted scrolling capture is partial (SCR-02/04). Never labeled complete.
-public enum ScrollPartialReason: Hashable, Sendable {
-    case limit(ScrollLimit)
-    case ambiguous(ScrollPauseReason)
-
-    /// Stable, non-localized token stored in `AssetOrigin.scrollCapture(partialReason:)`.
-    public var token: String {
-        switch self {
-        case .limit(let limit): "limit.\(limit)"
-        case .ambiguous(let reason): "ambiguous.\(reason)"
-        }
-    }
-}
-
 /// Drives `ScrollState` over a frame source, a stitcher, and an optional auto scroller (FR-10).
 ///
 /// Manual scrolling always works. Automatic scrolling runs only when the user enabled it and the
@@ -183,7 +169,7 @@ public final class ScrollSessionModel {
         do {
             image = try await stitcher.assemble()
             guard sessionID == id, state == .reviewing else { return }
-            info = try await assets.registerStitched(image, partialReason: reason?.token)
+            info = try await assets.registerStitched(image, partialReason: reason)
         } catch {
             guard sessionID == id else { return }
             notice = .assemblyFailed

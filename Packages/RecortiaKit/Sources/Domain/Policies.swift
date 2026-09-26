@@ -23,12 +23,18 @@ public enum ImportLimits {
     }
 }
 
-public enum ScrollLimit: Hashable, Sendable {
+public enum ScrollLimit: Hashable, Sendable, Codable {
     case duration
     case frames
     case area
     case side
     case height
+}
+
+/// Why an accepted scrolling capture is partial (SCR-02/04). A partial result is never labeled complete.
+public enum ScrollPartialReason: Hashable, Sendable, Codable {
+    case limit(ScrollLimit)
+    case ambiguous(ScrollPauseReason)
 }
 
 /// Scrolling-capture budgets (FR-10). The first limit reached ends collection.

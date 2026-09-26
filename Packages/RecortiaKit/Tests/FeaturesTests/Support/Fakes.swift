@@ -252,7 +252,9 @@ final class FakeAssetService: ImageAssetService {
         return info
     }
 
-    func registerStitched(_ image: CGImage, partialReason: String?) async throws(ImportError) -> ImageAssetInfo {
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
+        -> ImageAssetInfo
+    {
         let info = ImageAssetInfo(
             id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height),
             origin: .scrollCapture(partialReason: partialReason))

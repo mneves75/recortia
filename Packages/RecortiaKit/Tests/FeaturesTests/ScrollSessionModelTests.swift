@@ -154,7 +154,7 @@ struct ScrollSessionModelTests {
         #expect(h.model.partialReason == .ambiguous(.ambiguousMatch))
         await h.model.accept()
         #expect(h.assets.registeredStitched.first?.isPartialScrollCapture == true)
-        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: "ambiguous.ambiguousMatch"))
+        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: .ambiguous(.ambiguousMatch)))
     }
 
     @Test("Resume after a pause continues collecting")

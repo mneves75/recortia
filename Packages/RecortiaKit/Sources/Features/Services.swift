@@ -48,7 +48,8 @@ public protocol ImageAssetService: AnyObject {
     /// Canonicalizes a captured image and registers it with its capture geometry.
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo
     /// Registers a stitched scrolling capture; `partialReason` is non-nil for an accepted partial result.
-    func registerStitched(_ image: CGImage, partialReason: String?) async throws(ImportError) -> ImageAssetInfo
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
+        -> ImageAssetInfo
     /// Releases an asset's pixels when no document references it any more.
     func release(_ id: AssetID)
 }

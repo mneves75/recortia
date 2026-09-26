@@ -33,7 +33,7 @@ public enum AssetOrigin: Hashable, Sendable, Codable {
     case imported
     case pasted
     /// A stitched scrolling capture; `partialReason` is non-nil when the user accepted a partial result.
-    case scrollCapture(partialReason: String?)
+    case scrollCapture(partialReason: ScrollPartialReason?)
 }
 
 /// Metadata for an immutable raster asset. The pixels themselves live in Imaging's asset store,
