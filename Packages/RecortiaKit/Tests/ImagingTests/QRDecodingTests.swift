@@ -97,6 +97,21 @@ struct QRDecodingTests {
         }
     }
 
+    @Test("Recovered bytes must match Vision's decoded string when Vision reports one")
+    func bitstreamAgreesWithVisionString() {
+        let helloWorld = Self.hex("40b68656c6c6f20776f726c640ec11ec")
+        #expect(
+            QRBitstream.messageBytes(fromDataCodewords: helloWorld, expectedString: "hello world")
+                == Data("hello world".utf8))
+        // A unique parse that differs from what other scanners show is dropped, not returned.
+        #expect(QRBitstream.messageBytes(fromDataCodewords: helloWorld, expectedString: "hello w0rld") == nil)
+        #expect(QRBitstream.messageBytes(fromDataCodewords: helloWorld, expectedString: "") == nil)
+        // Bytes that are not UTF-8 cannot equal a reported string.
+        let binary = Self.hex("405fffe0080410ec11ec11ec11ec11ec")
+        #expect(QRBitstream.messageBytes(fromDataCodewords: binary, expectedString: "ÿþ\u{0}\u{80}A") == nil)
+        #expect(QRBitstream.messageBytes(fromDataCodewords: binary, expectedString: nil) != nil)
+    }
+
     @Test("Bitstream parser rejects truncated or invalid segments")
     func bitstreamRejectsGarbage() {
         // Byte mode announcing 11 bytes with only 2 present.

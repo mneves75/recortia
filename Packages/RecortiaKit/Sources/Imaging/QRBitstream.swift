@@ -6,8 +6,9 @@ import Foundation
 /// character counts, segment data, terminator, padding), not the message. The symbol version,
 /// which sets the character-count widths, is not reported, so each of the three width classes is
 /// tried; a parse must consume the stream exactly and, when several classes parse, agree or be
-/// disambiguated by Vision's decoded string. Anything else yields nil: no payload is better than
-/// wrong bytes.
+/// disambiguated by Vision's decoded string. When Vision reports a string, the chosen bytes must
+/// decode as UTF-8 to exactly that string, so Recortia never shows a payload other scanners would
+/// not. Anything else yields nil: no payload is better than wrong bytes.
 package enum QRBitstream {
     private enum VersionClass: CaseIterable {
         case small  // versions 1-9
@@ -55,6 +56,12 @@ package enum QRBitstream {
     private static let alphanumericTable = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:".utf8)
 
     package static func messageBytes(fromDataCodewords codewords: Data, expectedString: String?) -> Data? {
+        guard let bytes = parsedBytes(codewords, expectedString: expectedString) else { return nil }
+        if let expectedString, String(validating: bytes, as: UTF8.self) != expectedString { return nil }
+        return bytes
+    }
+
+    private static func parsedBytes(_ codewords: Data, expectedString: String?) -> Data? {
         guard !codewords.isEmpty else { return nil }
         let parses = VersionClass.allCases.compactMap { parse(codewords, as: $0) }
         let standard = parses.filter(\.hasStandardPadding).map(\.bytes)
