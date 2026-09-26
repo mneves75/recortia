@@ -131,13 +131,36 @@ struct EditorRecognitionTests {
         let openable = Self.payloads.indices.filter { h.model.canOpenQRPayload(at: $0) }
         #expect(openable == [1])
         for index in Self.payloads.indices where index != 1 {
-            #expect(!h.model.openQRPayload(at: index))
+            #expect(!h.model.openQRPayload(Self.payloads[index], at: index))
             #expect(h.model.notice == .linkNotAllowed)
         }
         #expect(h.links.opened.isEmpty)
-        #expect(h.model.openQRPayload(at: 1))
+        #expect(h.model.openQRPayload(Self.payloads[1], at: 1))
         #expect(h.links.opened == [URL(string: "https://example.com/a")!])
-        #expect(!h.model.openQRPayload(at: 99))
+        #expect(!h.model.openQRPayload(Self.payloads[1], at: 99))
+    }
+
+    @Test("Open Link opens only the payload that was displayed; replaced or cleared payloads open nothing")
+    func qrOpenRequiresDisplayedPayload() async {
+        let h = EditorHarness()
+        h.qr.payloads = Self.payloads
+        await h.model.decodeQR()
+        let displayed = h.model.qrPayloads[1]
+
+        // A new decode replaces the payload at the clicked index before the click lands.
+        let replacement = QRPayload(
+            bytes: Data("https://evil.example/".utf8), string: "https://evil.example/",
+            kind: .webURL(URL(string: "https://evil.example/")!))
+        h.qr.payloads = [Self.payloads[0], replacement]
+        await h.model.decodeQR()
+        #expect(h.model.canOpenQRPayload(at: 1))
+        #expect(!h.model.openQRPayload(displayed, at: 1))
+        #expect(h.model.notice == .linkNotAllowed)
+
+        // Cleared results open nothing either.
+        h.model.clearQR()
+        #expect(!h.model.openQRPayload(displayed, at: 1))
+        #expect(h.links.opened.isEmpty)
     }
 
     @Test("Copying a payload copies its text; binary payloads are not copied")

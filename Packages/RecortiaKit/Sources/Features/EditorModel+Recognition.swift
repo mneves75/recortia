@@ -7,7 +7,7 @@ import MacPlatform
 // OCR and QR (FR-08, OCR-02). Both read a fresh sanitized base render, never raw assets. Results
 // are accepted only for the exact request identity; a later edit or redaction discards them. Text
 // reaches the clipboard only through the explicit copy calls, and a QR link opens only through
-// `openQRPayload`, which the view calls from a button click.
+// `openQRPayload`, which the view calls from a button click with the payload it displayed.
 extension EditorModel {
     /// Recognizes text in the sanitized base; within `region` (document space) when given, else
     /// within the crop when one is set, else the whole canvas.
@@ -153,10 +153,14 @@ extension EditorModel {
         return copyText(text, success: .payloadCopied)
     }
 
-    /// Opens an http(s) payload; call only from an explicit click. Everything else is refused.
+    /// Opens an http(s) payload; call only from an explicit click, passing the payload the view
+    /// displayed. If the payloads changed since (a new decode, a clear), nothing opens, so a click
+    /// can never follow a link the user did not see. Everything else is refused.
     @discardableResult
-    public func openQRPayload(at index: Int) -> Bool {
-        guard canOpenQRPayload(at: index), case .webURL(let url) = qrPayloads[index].kind else {
+    public func openQRPayload(_ displayed: QRPayload, at index: Int) -> Bool {
+        guard canOpenQRPayload(at: index), qrPayloads[index] == displayed,
+            case .webURL(let url) = qrPayloads[index].kind
+        else {
             post(.linkNotAllowed)
             return false
         }

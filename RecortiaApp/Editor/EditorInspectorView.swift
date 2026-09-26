@@ -518,7 +518,7 @@ private struct RecognitionSection: View {
                             }
                             if model.canOpenQRPayload(at: index) {
                                 Button(String(localized: "Open Link", table: "Editor")) {
-                                    model.openQRPayload(at: index)
+                                    model.openQRPayload(payload, at: index)
                                 }
                             }
                         }
