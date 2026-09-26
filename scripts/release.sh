@@ -70,7 +70,10 @@ codesign --sign "Developer ID Application: Marcus Neves (Q96FUTC5G8)" --timestam
 if (( notarize )); then
   echo "== notarize"
   asc notarization submit --file "$dmg" --wait --timeout 1h --output table
-  asc notarization staple --file "$dmg" --confirm --output table
+  # Apple's stapler, not `asc notarization staple`: stapling rewrites the file, which asc then
+  # reports as an unverified change and fails the run.
+  xcrun stapler staple "$dmg"
+  xcrun stapler validate "$dmg"
   spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
 fi
 
