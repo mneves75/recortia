@@ -209,6 +209,22 @@
         }
       }
     },
+    "The page stopped moving. If you reached the end, press Stop.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The page stopped moving. If you reached the end, press Stop."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A página parou de rolar. Se chegou ao fim, clique em Parar."
+          }
+        }
+      }
+    },
     "Allowed": {
       "localizations": {
         "en": {
