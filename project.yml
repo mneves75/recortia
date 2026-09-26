@@ -95,13 +95,16 @@ targets:
       path: RecortiaApp/Recortia.entitlements
       properties: {}
     settings:
+      configs:
+        # The runner is DEBUG-only code; a Release build of this target is a plain app.
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_E2E
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia.E2E
         PRODUCT_NAME: RecortiaE2E
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_E2E
     dependencies:
       - package: RecortiaKit
         product: Domain

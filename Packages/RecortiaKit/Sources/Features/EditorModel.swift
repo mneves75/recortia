@@ -208,9 +208,19 @@ public final class EditorModel {
         return true
     }
 
+    /// Releases pixels of assets that neither the document nor retained history can bring back
+    /// (an undone image whose redo step was discarded, or evicted history).
+    func releaseUnreachableAssets() {
+        let unreachable = knownAssets.subtracting(session.referencedAssetIDs)
+        guard !unreachable.isEmpty else { return }
+        for id in unreachable { environment.assets.release(id) }
+        knownAssets.subtract(unreachable)
+    }
+
     func didChange(from before: Document, epoch: UInt64) {
         noteUndoEvictionIfNeeded()
         guard session.document != before || session.privacyEpoch != epoch else { return }
+        releaseUnreachableAssets()
         // A drag offered for the previous state must not deliver it (RED-03, EXP-02).
         environment.export.invalidatePendingDrag(documentID: session.document.id)
         let existing = Set(allItemIDs)

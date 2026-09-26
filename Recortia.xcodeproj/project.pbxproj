@@ -24,6 +24,7 @@
 		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
 		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
 		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
+		2D8C368CE36FD821F3E7C2DC /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		2DD16A3919445D7FAA908F82 /* E2ERunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */; };
 		302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		30B346D5FCE3BE82877BD2A2 /* LiveScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B885E83C460249621067B7FB /* LiveScrolling.swift */; };
@@ -93,6 +94,7 @@
 		D4334677906AB4980AD4EE0D /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
 		D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
 		D8D1CC076F25EFF7A3DDE1D3 /* AppActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2F7298595658EBCA75FF77 /* AppActions.swift */; };
+		DFD6669E8BDD71353949837B /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		E11B8B8960E33C10DAF65BB2 /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
 		EA0DC2557F5BDA232FDEBA6F /* PinPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E65B31A931DA8F9BA987BB /* PinPanels.swift */; };
 		EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */; };
@@ -165,6 +167,7 @@
 		D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticServices.swift; sourceTree = "<group>"; };
 		D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Editor.swift"; sourceTree = "<group>"; };
 		D97C30D7091C2051638564FB /* GlobalShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcuts.swift; sourceTree = "<group>"; };
+		E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscapeHotKey.swift; sourceTree = "<group>"; };
 		E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEventMonitor.swift; sourceTree = "<group>"; };
 		E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureUIController.swift; sourceTree = "<group>"; };
 		E33BB654473B6F3033727605 /* E2EScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EScenarios.swift; sourceTree = "<group>"; };
@@ -223,6 +226,7 @@
 			children = (
 				E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */,
 				4E084E166124DB22614616F5 /* ChooserViews.swift */,
+				E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */,
 				2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */,
 				7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */,
 			);
@@ -559,6 +563,7 @@
 				FAE0B9FA6ACC12AFC7DF5B20 /* EditorStrings.swift in Sources */,
 				D4334677906AB4980AD4EE0D /* EditorSystemServices.swift in Sources */,
 				6B1BD24BE65C437E070D1839 /* EditorWindowManager.swift in Sources */,
+				2D8C368CE36FD821F3E7C2DC /* EscapeHotKey.swift in Sources */,
 				701F0314C45185A00CC56645 /* GlobalShortcuts.swift in Sources */,
 				B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */,
 				41302BAADF8304A81FE45EC9 /* LiveRecognition.swift in Sources */,
@@ -615,6 +620,7 @@
 				733D03C9AEA014A4825D62C1 /* EditorStrings.swift in Sources */,
 				7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */,
 				4D7C3D84B8C8BB582C432AC6 /* EditorWindowManager.swift in Sources */,
+				DFD6669E8BDD71353949837B /* EscapeHotKey.swift in Sources */,
 				A55745B240F288A4EE6CE160 /* GlobalShortcuts.swift in Sources */,
 				778801BF8774508093BCD36C /* HostingPanel.swift in Sources */,
 				4EC666D8B2EF6F97E6C3EFED /* LiveRecognition.swift in Sources */,
@@ -718,7 +724,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia.E2E;
 				PRODUCT_NAME = RecortiaE2E;
 				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) RECORTIA_E2E";
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 			};
 			name = Release;

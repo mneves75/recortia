@@ -46,7 +46,10 @@ final class PinPanel: NSPanel {
         hidesOnDeactivate = false
         isMovableByWindowBackground = true
         hasShadow = true
-        backgroundColor = .windowBackgroundColor
+        // Transparent window: the pin's opacity must reveal what is behind it (FR-09); only the
+        // control bar paints a background.
+        isOpaque = false
+        backgroundColor = .clear
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         title = String(localized: "Pin")
         setAccessibilityLabel(String(localized: "Pinned screenshot"))
@@ -173,6 +176,7 @@ struct PinView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .frame(minWidth: 240)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 

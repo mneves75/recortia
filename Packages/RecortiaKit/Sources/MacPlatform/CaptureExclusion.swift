@@ -17,27 +17,21 @@ enum CaptureExclusion {
     }
 
     /// Recortia is always excluded as an application, so its windows created later (pins, the
-    /// drag chip) never enter the capture. Requested windows of other apps are excluded too, by
-    /// including every other app except those windows. Only if Recortia cannot be found as an
-    /// application at all does this fall back to excluding the windows present right now.
+    /// drag chip, an editor) never enter the capture. Requested windows of other apps are excluded
+    /// too, by including every other app except those windows. If Recortia cannot be found as an
+    /// application, capture fails rather than fall back to a list of today's windows.
     static func filter(
         display: SCDisplay, excludingWindowIDs requested: Set<CGWindowID>, content: SCShareableContent, ownPID: pid_t
-    ) async -> SCContentFilter {
+    ) async throws(CaptureError) -> SCContentFilter {
         let present = content.windows.map { Window(id: $0.windowID, ownerPID: $0.owningApplication?.processID ?? 0) }
         let foreign = foreignWindowIDs(requested: requested, present: present, ownPID: ownPID)
-        if let own = await ownApplication(in: content, ownPID: ownPID) {
-            guard !foreign.isEmpty else {
-                return SCContentFilter(display: display, excludingApplications: [own], exceptingWindows: [])
-            }
-            return SCContentFilter(
-                display: display, including: content.applications.filter { $0.processID != ownPID },
-                exceptingWindows: content.windows.filter { foreign.contains($0.windowID) })
+        guard let own = await ownApplication(in: content, ownPID: ownPID) else { throw .targetUnavailable }
+        guard !foreign.isEmpty else {
+            return SCContentFilter(display: display, excludingApplications: [own], exceptingWindows: [])
         }
         return SCContentFilter(
-            display: display,
-            excludingWindows: content.windows.filter {
-                requested.contains($0.windowID) || $0.owningApplication?.processID == ownPID
-            })
+            display: display, including: content.applications.filter { $0.processID != ownPID },
+            exceptingWindows: content.windows.filter { foreign.contains($0.windowID) })
     }
 
     /// Recortia's running application. On-screen-only content omits an app with no visible

@@ -90,4 +90,28 @@ struct RenderLateLayerRedactionTests {
         let plainB = try await export(pair.b, masked: false, harness: harness)
         #expect(plainA != plainB, "control: without the mask the secret must be visible")
     }
+
+    // Failure mode (Codex review): callouts were drawn after the output-space mask fill, so a
+    // secure mask drawn over a magnifier's destination was painted over by the magnified source.
+    @Test("A secure mask over a magnifier's destination hides it in the export", arguments: [1, 7, 42] as [UInt64])
+    func maskOverMagnifierDestination(seed: UInt64) async throws {
+        let harness = ImagingHarness()
+        let pair = try RedactionFixtures.pair(seed: seed)
+        let secret = RedactionFixtures.secret
+        let fill = RGBA(r: 12, g: 34, b: 56)
+        let destination = Rect<DocumentSpace>(x: 4, y: 4, width: 24, height: 16)
+        let asset = try await harness.add(pair.a)
+        var session = DocumentSession(document: Document(asset: asset))
+        try session.perform("Magnify") { document in
+            document.callouts = [Callout(kind: .magnifier(source: secret.documentRect, destination: destination))]
+        }
+        try session.addSecureMask(covering: destination, fill: fill)
+        let pixels = try decoded(try await harness.export(session))
+        for y in Int(destination.minY)..<Int(destination.maxY) {
+            for x in Int(destination.minX)..<Int(destination.maxX) {
+                #expect(pixels.pixel(x: x, y: y) == ChartFixture.Color(12, 34, 56), "(\(x), \(y))")
+                if pixels.pixel(x: x, y: y) != ChartFixture.Color(12, 34, 56) { return }
+            }
+        }
+    }
 }

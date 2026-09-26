@@ -50,7 +50,7 @@ final class AppModel: AppActions {
     let shortcutStatus: ShortcutStatusModel
     let features: FeatureModels?
 
-    var openDocument: ((DocumentSession) -> Void)?
+    var openDocument: ((DocumentSession) -> EditorModel?)?
     var recognizeText: ((DocumentSession) -> Void)?
     /// Installed by the menu from SwiftUI's `openSettings` environment action.
     @ObservationIgnored var openSettingsWindow: (() -> Void)?
@@ -152,10 +152,10 @@ final class AppModel: AppActions {
             self?.handleCapture(completion)
         }
         features.importer.onImported = { [weak self] session in
-            self?.openDocument?(session)
+            _ = self?.openDocument?(session)
         }
         features.scroll.onAccepted = { [weak self] session in
-            self?.openDocument?(session)
+            _ = self?.openDocument?(session)
         }
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
@@ -188,20 +188,30 @@ final class AppModel: AppActions {
     private func handleCapture(_ completion: CaptureCompletion) {
         switch completion.purpose {
         case .edit:
-            openDocument?(completion.session)
-            runAutomaticExports(for: completion.session)
+            let editor = openDocument?(completion.session)
+            runAutomaticExports(for: completion.session, editor: editor)
         case .recognizeText:
             recognizeText?(completion.session)
         }
     }
 
     /// Auto-copy/auto-save run on the fresh capture, before any later edit, and only when enabled.
-    private func runAutomaticExports(for session: DocumentSession) {
+    /// Freshness is checked against the editor's live session: an edit or redaction made while the
+    /// export renders, or closing the editor, makes it stale, so the unedited capture is not sent.
+    private func runAutomaticExports(for session: DocumentSession, editor: EditorModel?) {
         guard let export = features?.export else { return }
         let preferences = settings.preferences
         guard preferences.autoCopy || preferences.autoSave else { return }
+        let opened = editor != nil
+        let live: () -> DocumentSession? = { [weak editor] in
+            // No editor wired: the capture itself is current. An editor that closed (or was
+            // released) makes the export stale.
+            guard opened else { return session }
+            guard let editor, !editor.isClosed else { return nil }
+            return editor.session
+        }
         Task {
-            let outcomes = await export.runAutomaticExports(for: session, currentSession: { session })
+            let outcomes = await export.runAutomaticExports(for: session, currentSession: live)
             for case .failed(let failure) in outcomes {
                 MessagePresenter.present(.export(failure))
             }

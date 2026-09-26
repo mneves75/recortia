@@ -16,6 +16,19 @@ data = sorted(derived.glob(f"Build/Intermediates.noindex/Recortia.build/*/{targe
 if not data:
     sys.exit(f"localization: no .stringsdata for {target} under {derived}; build the app first")
 
+def translated(node):
+    """True when every leaf of a localization (plain, or plural/device variations, nested) is a
+    translated, non-empty string unit. Xcode prefills variations with untranslated source text."""
+    if "stringUnit" in node:
+        unit = node["stringUnit"]
+        return unit.get("state") == "translated" and bool(unit.get("value"))
+    variations = node.get("variations")
+    if not variations:
+        return False
+    cases = [case for kind in variations.values() for case in kind.values()]
+    return bool(cases) and all(translated(case) for case in cases)
+
+
 catalogs = {}
 missing = []
 checked = 0
@@ -33,8 +46,7 @@ for path in data:
             if item is not None and item.get("shouldTranslate") is False:
                 continue
             pt = (item or {}).get("localizations", {}).get("pt-BR", {})
-            unit = pt.get("stringUnit", {})
-            if not ("variations" in pt or (unit.get("state") == "translated" and unit.get("value"))):
+            if not translated(pt):
                 line = entry.get("location", {}).get("startingLine", "?")
                 missing.append(f"{pathlib.Path(record['source']).relative_to(root)}:{line}: [{table}] {key!r}")
 

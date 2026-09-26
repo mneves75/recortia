@@ -41,6 +41,16 @@ public struct DocumentSession: Sendable {
 
     public var canUndo: Bool { !undoStack.isEmpty || openGroup != nil }
     public var canRedo: Bool { !redoStack.isEmpty }
+
+    /// Assets the current document or any retained undo or redo step still references; anything
+    /// else can no longer come back and its pixels can be released.
+    public var referencedAssetIDs: Set<AssetID> {
+        var ids = Set(document.assets.keys)
+        for entry in undoStack + redoStack + [openGroup].compactMap({ $0 }) {
+            ids.formUnion(entry.before.assets.keys)
+        }
+        return ids
+    }
     public var undoCount: Int { undoStack.count }
     public var undoLabel: String? { undoStack.last?.label }
     public var redoLabel: String? { redoStack.last?.label }
@@ -131,11 +141,21 @@ public struct DocumentSession: Sendable {
     /// Unique data an undo entry keeps alive: what the step added or removed, plus the element
     /// arrays copied into the snapshot.
     private static func cost(from before: Document, to after: Document) -> Int {
-        abs(before.estimatedByteCost - after.estimatedByteCost) + before.structuralByteCost
+        // Payloads the step replaced or removed stay alive in the undo entry even when the new
+        // ones are the same size (moving a stroke), so charge them, not just the net difference.
+        let kept = Dictionary(after.annotations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let replaced = before.annotations.reduce(0) { total, annotation in
+            kept[annotation.id] == annotation ? total : total + annotation.estimatedByteCost
+        }
+        return max(abs(before.estimatedByteCost - after.estimatedByteCost), replaced) + before.structuralByteCost
     }
 
     private mutating func replaceDocument(with updated: Document) {
-        if updated.masks != document.masks { privacyEpoch += 1 }
+        // Masks also cover whatever layer lies under them when rendered, so with a mask present a
+        // layer or asset change can change what is hidden: derived results must go stale too.
+        let coverageMayChange =
+            !updated.masks.isEmpty && (updated.layers != document.layers || updated.assets != document.assets)
+        if updated.masks != document.masks || coverageMayChange { privacyEpoch += 1 }
         document = updated
         revision += 1
     }

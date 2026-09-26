@@ -46,9 +46,43 @@ struct ScrollSessionModelEndingTests {
 
     // MARK: End of page
 
+    // Failure mode (Codex review): stationary frames are also what a stalled, lazy-loading page
+    // produces; without the target confirming its end the result must be partial.
+    @Test("Stationary frames end automatic capture as partial unless the target confirms its end")
+    func stationaryWithoutConfirmedEndIsPartial() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        h.stitcher.script = [.accepted(offset: 0), .accepted(offset: 40)] + Array(repeating: .stationary, count: 3)
+        await h.startCollecting()
+        await Self.deliverFrames(h, 4)
+        h.frames.deliver()
+        await waitFor("reviewing") { h.model.state == .reviewing }
+        #expect(h.model.partialReason == .stoppedMoving)
+    }
+
+    // Failure mode (Codex review): Pause while a frame was being stitched ended the collection
+    // loop for good; after Resume the stream ran but no frame was ever consumed again.
+    @Test("Pausing while a frame is being stitched keeps collection alive after Resume")
+    func pauseDuringAppendKeepsCollecting() async {
+        let h = ScrollHarness()
+        await h.startCollecting()
+        h.stitcher.holdAppends = true
+        h.frames.deliver()
+        await waitFor("append in progress") { h.stitcher.appends.waiterCount == 1 }
+        h.model.pause()
+        h.stitcher.appends.resolve(())
+        await waitFor("frame 1 counted") { h.model.acceptedFrames == 1 }
+        h.stitcher.holdAppends = false
+        h.model.resume()
+        await waitFor("waiting for the next frame") { h.frames.frames.waiterCount == 1 }
+        h.frames.deliver()
+        await waitFor("frame 2 accepted") { h.model.acceptedFrames == 2 }
+        #expect(h.model.state == .collecting)
+    }
+
     @Test("Automatic mode ends a page that stops moving as a complete result")
     func automaticEndOfPageFromStationaryFrames() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)
+        h.scroller.atEnd = true
         h.stitcher.script = [.accepted(offset: 0), .accepted(offset: 40)] + Array(repeating: .stationary, count: 3)
         await h.startCollecting()
         await Self.deliverFrames(h, 4)

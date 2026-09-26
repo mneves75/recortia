@@ -31,7 +31,9 @@ public enum EditorCanvasRenderer {
         AnnotationRenderer.draw(annotations, in: context)
         context.restoreGState()
 
-        // Output-space coverage over vectors and text, rounded outward like the export.
+        // Output-space coverage over vectors, text, and callouts (a mask over a magnifier's
+        // destination hides it), rounded outward like the export.
+        drawCallouts(document, base: calloutBase, in: context)
         context.saveGState()
         context.setShouldAntialias(false)
         for mask in document.masks where mask.fill.isOpaque {
@@ -39,8 +41,6 @@ public enum EditorCanvasRenderer {
             context.fill(EditorGeometry.outwardIntegral(mask.outputRect).cg.intersection(canvas))
         }
         context.restoreGState()
-
-        drawCallouts(document, base: calloutBase, in: context)
     }
 
     static func drawCallouts(_ document: Document, base: CGImage?, in context: CGContext) {

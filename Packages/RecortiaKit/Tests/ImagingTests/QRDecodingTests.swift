@@ -112,9 +112,11 @@ struct QRDecodingTests {
         // A unique parse that differs from what other scanners show is dropped, not returned.
         #expect(QRBitstream.messageBytes(fromDataCodewords: helloWorld, expectedString: "hello w0rld") == nil)
         #expect(QRBitstream.messageBytes(fromDataCodewords: helloWorld, expectedString: "") == nil)
-        // Bytes that are not UTF-8 cannot equal a reported string.
+        // Bytes that are not UTF-8 (Shift JIS from Kanji mode, an ECI charset) cannot be compared
+        // with Vision's string, and cannot become a link either: they are kept as binary payloads
+        // (Codex review: dropping them lost legitimate Kanji and ECI codes).
         let binary = Self.hex("405fffe0080410ec11ec11ec11ec11ec")
-        #expect(QRBitstream.messageBytes(fromDataCodewords: binary, expectedString: "ÿþ\u{0}\u{80}A") == nil)
+        #expect(QRBitstream.messageBytes(fromDataCodewords: binary, expectedString: "ÿþ\u{0}\u{80}A") != nil)
         #expect(QRBitstream.messageBytes(fromDataCodewords: binary, expectedString: nil) != nil)
     }
 

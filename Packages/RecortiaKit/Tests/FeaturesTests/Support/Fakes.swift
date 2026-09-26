@@ -475,7 +475,12 @@ final class FakeStitcher: ScrollStitchService {
         outputSize = PixelSize(width: 0, height: 0)
     }
 
+    /// When set, each `append` suspends until `appends.resolve(())`, like a slow stitch.
+    var holdAppends = false
+    let appends = Pending<Void>()
+
     func append(_ frame: CGImage, elapsed: Duration) async -> ScrollAppendResult {
+        if holdAppends { await appends.wait() }
         appendCount += 1
         lastElapsed = elapsed
         let result = script.isEmpty ? .accepted(offset: 40) : script.removeFirst()

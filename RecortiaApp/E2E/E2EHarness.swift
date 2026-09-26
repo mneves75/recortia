@@ -73,7 +73,7 @@
             }
             features.importer.onImported = { editors.open($0) }
             features.scroll.onAccepted = { editors.open($0) }
-            app.openDocument = { editors.open($0) }
+            app.openDocument = { editors.open($0).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
         }
 

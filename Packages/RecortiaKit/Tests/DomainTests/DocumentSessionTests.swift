@@ -101,6 +101,38 @@ struct DocumentSessionTests {
         #expect(session.document.annotations.count == session.evictedUndoCount, "evicted steps stay applied")
     }
 
+    // Failure mode (Codex review): masks also cover whatever layer lies under them at render
+    // time, so moving a layer under a mask changes what is hidden without changing the masks;
+    // recognized text, QR results, and pins keyed on the privacy epoch must still go stale.
+    @Test("With a mask present, layer changes advance the privacy epoch; without one they do not")
+    func layerChangesUnderMasksAdvanceEpoch() throws {
+        let (doc, _) = makeDocument()
+        var session = DocumentSession(document: doc)
+        try session.perform("Move") { $0.layers[0].placement.translation = Point(x: 3, y: 0) }
+        #expect(session.privacyEpoch == 0, "no mask, nothing hidden changes")
+        try session.addSecureMask(covering: Rect(x: 10, y: 10, width: 20, height: 5))
+        let masked = session.privacyEpoch
+        try session.perform("Move") { $0.layers[0].placement.translation = Point(x: 9, y: 2) }
+        #expect(session.privacyEpoch == masked + 1)
+        try session.perform("Annotate") { $0.annotations.append(arrow(1)) }
+        #expect(session.privacyEpoch == masked + 1, "annotations still do not change privacy state")
+    }
+
+    // Failure mode (Codex review): moving a large stroke replaces its payload with an equal-sized
+    // one, so the net size difference is zero while the undo entry keeps the old payload alive.
+    @Test("Replacing a payload with an equal-sized one is charged to the undo budget")
+    func equalSizedReplacementsAreCharged() throws {
+        let stroke = (0..<5_000).map { Point<DocumentSpace>(x: Double($0), y: 1) }
+        let strokeCost = Annotation(kind: .freehand(stroke), style: .default).estimatedByteCost
+        var session = DocumentSession(document: makeDocument().0, undoLimit: 200, undoByteBudget: strokeCost * 4)
+        try session.perform("Draw") { $0.annotations.append(Annotation(kind: .freehand(stroke), style: .default)) }
+        for step in 1...10 {
+            try session.perform("Move") { $0.annotations[0] = $0.annotations[0].translated(dx: Double(step), dy: 0) }
+        }
+        #expect(session.retainedUndoByteCost <= strokeCost * 4)
+        #expect(session.evictedUndoCount > 0, "ten retained copies of the stroke exceed the budget")
+    }
+
     @Test("The privacy epoch only increases, including when undo removes a mask")
     func privacyEpochIsMonotonic() throws {
         let (doc, _) = makeDocument()

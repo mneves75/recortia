@@ -124,6 +124,7 @@ struct CountdownView: View {
             .font(.title2.monospacedDigit())
             .fixedSize()
             Button("Cancel", action: onCancel)
+                .keyboardShortcut(.cancelAction)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)

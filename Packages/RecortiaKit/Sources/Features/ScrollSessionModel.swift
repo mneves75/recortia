@@ -22,9 +22,8 @@ public enum ScrollMode: Hashable, Sendable {
 /// counts from Start, paused time included, and in automatic mode a scroll step that exposes
 /// nothing new within `automaticSettleInterval` counts as the page not moving (the capture
 /// stream delivers no frame for unchanged content). After `ScrollStitcher.endOfPageStationaryFrames`
-/// consecutive stationary frames the page has ended (complete); after that many unanswered steps
-/// it is complete only if the target confirms it is at its end, and partial (`.stoppedMoving`)
-/// otherwise. Manual mode only raises `pageEndLikely`, since a reader may simply stop.
+/// consecutive stationary frames or unanswered steps the page stopped moving: complete only if the
+/// target confirms its scroll area is at its end, and partial (`.stoppedMoving`) otherwise. Manual mode only raises `pageEndLikely`, since a reader may simply stop.
 @MainActor
 @Observable
 public final class ScrollSessionModel {
@@ -281,7 +280,7 @@ public final class ScrollSessionModel {
             let elapsed = elapsedSinceStart()
             let heightBefore = stitcher.outputSize.height
             let result = await stitcher.append(frame, elapsed: elapsed)
-            guard isCurrent(id), state == .collecting else { return }
+            guard isCurrent(id) else { return }
 
             switch result {
             case .accepted:
@@ -292,16 +291,22 @@ public final class ScrollSessionModel {
             case .stationary:
                 break
             case .ambiguous(let reason):
-                apply(.pause(reason))
+                if state == .collecting { apply(.pause(reason)) }
                 continue
             case .limitReached(let limit):
                 finishCollecting(partial: .limit(limit), event: .limitReached(limit))
                 return
             }
+            // Paused while this frame was stitched: keep the loop (and the stream) for Resume.
+            guard state == .collecting else { continue }
 
             if stitcher.endOfPageDetected {
                 if mode == .automatic {
-                    finishCollecting(partial: nil)
+                    // Stationary frames are also what a stalled, lazy-loading page produces:
+                    // complete only when the target confirms its scroll area is at its end.
+                    let atEnd = await autoScroller?.isAtEnd(target)
+                    guard isCurrent(id), state == .collecting else { return }
+                    finishCollecting(partial: atEnd == true ? nil : .stoppedMoving)
                     return
                 }
                 pageEndLikely = true

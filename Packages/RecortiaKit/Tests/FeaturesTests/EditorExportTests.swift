@@ -135,6 +135,24 @@ struct EditorExportTests {
         #expect(h.pins.pins.isEmpty)
     }
 
+    // Failure mode (Codex review): an undone image whose redo step is discarded stayed in the
+    // image store until the editor closed (up to ~160 MB per 40 MP import).
+    @Test("An added image whose history became unreachable is released while the editor stays open")
+    func unreachableAssetReleased() async throws {
+        let h = EditorHarness()
+        let base = Set(h.model.document.assets.keys)
+        let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-read.png")
+        h.input.files[url] = .success(Data([1]))
+        #expect(await h.model.addImageLayer(from: .file(url)))
+        let added = Set(h.model.document.assets.keys).subtracting(base)
+        h.model.undo()
+        #expect(h.assets.released.isEmpty, "still reachable through redo")
+        let layer = try #require(h.model.document.layers.first?.id)
+        h.model.setLayerOpacity(0.5, for: layer)  // an unrelated edit discards the redo step
+        #expect(Set(h.assets.released) == added)
+        #expect(h.model.canRedo == false)
+    }
+
     @Test("Close releases every asset the editor added, including undone ones")
     func closeReleasesAddedAssets() async {
         let h = EditorHarness()

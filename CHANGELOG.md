@@ -22,6 +22,11 @@ review of the whole branch:
   to the first scan.
 - Capture keeps excluding Recortia as an application even when it has no window on screen.
 - QR links show the host they open in full, next to Open Link.
+- From an independent Codex review of the whole branch: a secure mask drawn over a magnifier now
+  hides it (masks are the topmost layer in the export and the editor); moving a layer under a mask
+  clears recognized text, QR results, and pins made before; automatic copy and save check the
+  live editor, so an edit or redaction made while they render stops them; capture fails instead of
+  running when Recortia cannot be excluded as an application.
 
 ### Fixed
 
@@ -29,6 +34,17 @@ review of the whole branch:
   page reports it reached its end (lazy-loading pages are no longer called complete).
 - Settings says when automatic copy, save, or scrolling was turned off because their saved settings
   could not be verified.
+- Pausing a scrolling capture while a frame was being stitched no longer stops collection for good;
+  stationary frames in automatic mode are also labeled partial unless the page confirms its end.
+- Scrolling capture stitches content that scrolls in a narrow column between static margins, and
+  its matching memory is bounded (768 KiB of scratch) regardless of frame size.
+- Undo memory counts replaced strokes and text, and an undone image whose redo step is gone is
+  released instead of kept until the editor closes.
+- QR codes in Kanji mode or another ECI character set are no longer dropped.
+- Escape cancels a delayed capture while its countdown shows, although the countdown never takes
+  focus from the app being captured.
+- Pin opacity now reveals what is behind the pin.
+- The localization gate also checks plural and device variants.
 
 ### Changed
 

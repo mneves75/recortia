@@ -13,6 +13,7 @@ final class CaptureUIController {
     private var chooser: HostingPanel?
     private var chooserKind: SelectionKind?
     private var countdown: HostingPanel?
+    private var escape: EscapeHotKey?
     private var lastState: CaptureState = .idle
     private var loop: ObservationLoop?
 
@@ -110,9 +111,14 @@ final class CaptureUIController {
         countdown = panel
         panel.setContent(LiveCountdownView(coordinator: coordinator), fixedToFittingSize: true)
         panel.present(activate: false)
+        // The panel never takes focus from the app being captured, so Escape is a temporary
+        // system-wide hot key for as long as the countdown shows.
+        escape = EscapeHotKey { [coordinator] in coordinator.cancel() }
     }
 
     private func closeCountdown() {
+        escape?.unregister()
+        escape = nil
         countdown?.orderOut(nil)
         countdown = nil
     }

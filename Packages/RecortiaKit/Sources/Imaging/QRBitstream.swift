@@ -57,7 +57,11 @@ package enum QRBitstream {
 
     package static func messageBytes(fromDataCodewords codewords: Data, expectedString: String?) -> Data? {
         guard let bytes = parsedBytes(codewords, expectedString: expectedString) else { return nil }
-        if let expectedString, String(validating: bytes, as: UTF8.self) != expectedString { return nil }
+        // UTF-8 bytes must match what Vision (and other scanners) show; only UTF-8 can become a
+        // link. Other bytes (Shift JIS, an ECI charset) cannot be compared and stay binary payloads.
+        if let expectedString, let text = String(validating: bytes, as: UTF8.self), text != expectedString {
+            return nil
+        }
         return bytes
     }
 

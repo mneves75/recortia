@@ -5,7 +5,7 @@ import Foundation
 
 /// The synchronous render core. Order (SPEC §8): validate and budget → fill source-bound masks
 /// on a copy of each source → crop/transform/resample → cosmetic effects sampled from the
-/// sanitized composite → annotations → output-space masks → callouts → presentation → alpha
+/// sanitized composite → annotations → output-space masks → callouts → output-space masks → presentation → alpha
 /// normalization. Nothing downstream of the sanitized copies can see an original source pixel.
 enum RenderEngine {
     static func isMainThread() -> Bool { pthread_main_np() != 0 }
@@ -47,6 +47,9 @@ enum RenderEngine {
         }
         applyOutputMasks(&raster, document, map: map, pixelClip: contentBounds)
         try drawCallouts(&raster, document, images: images, map: map, content: content, pixelClip: contentBounds)
+        // Secure masks are the topmost layer: a mask drawn over a callout (a magnifier's
+        // destination) must hide what the callout draws there.
+        applyOutputMasks(&raster, document, map: map, pixelClip: contentBounds)
 
         var final =
             presented

@@ -32,7 +32,7 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
             guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
                 throw CaptureError.targetUnavailable
             }
-            filter = await CaptureExclusion.filter(
+            filter = try await CaptureExclusion.filter(
                 display: display, excludingWindowIDs: Set(excludedIDs), content: content,
                 ownPID: ProcessInfo.processInfo.processIdentifier)
         case .window(let windowID):

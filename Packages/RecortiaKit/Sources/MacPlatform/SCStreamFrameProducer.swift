@@ -90,7 +90,7 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
         }
         // Recortia is excluded as an application so its windows created after the stream starts (a
         // pin, the drag chip) never enter scroll frames.
-        let filter = await CaptureExclusion.filter(
+        let filter = try await CaptureExclusion.filter(
             display: display, excludingWindowIDs: excludedWindowIDs, content: content, ownPID: ownProcessID)
         let scale = Double(filter.pointPixelScale)
         guard abs(scale - expectedScale) <= 0.001 else { throw CaptureError.displayChanged }
