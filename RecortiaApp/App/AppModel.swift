@@ -170,8 +170,12 @@ final class AppModel: AppActions {
         openDocument = { [editors] session in editors.open(session, environment: environment) }
         let monitor = SystemEventMonitor { event in
             switch event {
-            case .displaysChanged: features.capture.displayConfigurationChanged()
-            case .screenLocked: features.capture.interrupt(because: .screenLocked)
+            case .displaysChanged:
+                features.capture.displayConfigurationChanged()
+                features.scroll.interrupt(because: .displayChanged)
+            case .screenLocked:
+                features.capture.interrupt(because: .screenLocked)
+                features.scroll.interrupt(because: .screenLocked)
             }
         }
         monitor.start()
