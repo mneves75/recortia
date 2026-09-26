@@ -18,22 +18,50 @@ struct ExportLeaseTests {
         #expect(!ran)
     }
 
-    @Test("A revoke issued during a commit returns only after the commit finished")
-    func revokeWaitsForCommit() {
+    // Hardening (security run-2): the write must not hold the lease's lock, or a main-actor
+    // revoke during a slow write blocks the UI. A revoke during an in-flight write lands after it.
+    @Test("A revoke during an in-flight commit returns at once and leaves the commit standing")
+    func revokeDuringCommitDoesNotBlock() {
         let lease = ExportLease()
         let events = Mutex<[String]>([])
         let started = DispatchSemaphore(value: 0)
-        let commit = Thread {
+        let finish = DispatchSemaphore(value: 0)
+        let done = DispatchSemaphore(value: 0)
+        Thread {
             _ = lease.whileValid {
                 started.signal()
-                Thread.sleep(forTimeInterval: 0.2)
+                finish.wait()
                 events.withLock { $0.append("committed") }
             }
-        }
-        commit.start()
+            done.signal()
+        }.start()
         started.wait()
-        lease.revoke()
+        lease.revoke()  // must not wait for the write
         events.withLock { $0.append("revoked") }
-        #expect(events.withLock { $0 } == ["committed", "revoked"])
+        finish.signal()
+        done.wait()
+        #expect(events.withLock { $0 } == ["revoked", "committed"])
+        #expect(lease.isCommitted)
+        #expect(!lease.isRevoked)
+    }
+
+    @Test("A commit that fails after a revoke was requested ends revoked")
+    func failedCommitHonorsRevoke() {
+        struct WriteFailed: Error {}
+        let lease = ExportLease()
+        let result: Int?? = try? lease.whileValid {
+            lease.revoke()
+            throw WriteFailed()
+        }
+        #expect(result == nil)
+        #expect(lease.isRevoked)
+        #expect(lease.whileValid { 1 } == nil)
+    }
+
+    @Test("A committed lease accepts no second commit")
+    func singleCommit() {
+        let lease = ExportLease()
+        #expect(lease.whileValid { 1 } == 1)
+        #expect(lease.whileValid { 2 } == nil)
     }
 }

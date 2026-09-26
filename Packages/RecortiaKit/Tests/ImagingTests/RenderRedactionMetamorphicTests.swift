@@ -311,8 +311,11 @@ struct RenderRedactionControlTests {
         #expect(differs, "C3 control compared equal: the RED-01 comparison is vacuous")
     }
 
-    @Test("C4: an output-space-only mask does not protect a second reference to the same asset")
-    func controlOutputOnlyMaskOnDuplicateLayer() async throws {
+    // The renderer now also masks, in source pixels, any layer under a mask's output rectangle, so
+    // a second reference to the same asset is protected too; the leak planted here is a second
+    // asset that carries the same secret outside the mask, which no mask covers.
+    @Test("C4: a mask over one layer does not hide the same secret in another asset's layer")
+    func controlSecondAssetOutsideMask() async throws {
         var differs = false
         for seed in RedactionFixtures.seeds.prefix(3) {
             let pair = try RedactionFixtures.pair(seed: seed)
@@ -320,18 +323,19 @@ struct RenderRedactionControlTests {
             for image in [pair.a, pair.b] {
                 let harness = ImagingHarness()
                 let asset = try await harness.add(image)
+                let copy = try await harness.add(image)
                 var document = Document(
-                    assets: [asset.id: asset], canvasSize: Size(width: 200, height: 80),
+                    assets: [asset.id: asset, copy.id: copy], canvasSize: Size(width: 200, height: 80),
                     layers: [
                         ImageLayer(assetID: asset.id),
                         ImageLayer(
-                            assetID: asset.id, placement: LayerPlacement(translation: Point(x: 100, y: 4), scale: 0.9)),
+                            assetID: copy.id, placement: LayerPlacement(translation: Point(x: 100, y: 4), scale: 0.9)),
                     ])
                 document.masks = [SecureMask(outputRect: secret.documentRect, sourceRegions: [:], fill: .black)]
                 outputs.append(try await harness.export(DocumentSession(document: document)).bytes)
             }
             differs = differs || outputs[0] != outputs[1]
         }
-        #expect(differs, "C4 control compared equal: duplicate-reference coverage is untested")
+        #expect(differs, "C4 control compared equal: secrets in secondary layers are untested")
     }
 }

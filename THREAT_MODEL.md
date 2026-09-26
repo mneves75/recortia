@@ -12,7 +12,9 @@ Raw pixels may exist in bounded process memory for an explicit capture/edit sess
 
 The model covers malicious imported inputs, malicious screenshot/QR text, accidental privacy leaks, compromised dependencies/update paths, and erroneous coding-agent changes. It does not promise confidentiality against a compromised operating system, a malicious process with equivalent privileges, physical observation, or a recipient who already has an earlier unredacted export.
 
-A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal over a generation counter, keyed by a secret in the data-protection keychain under Recortia's provisioned keychain access group, which other processes cannot create, read, replace, or roll back. An unsealed, mismatched, or older-generation blob loads with that consent off.
+A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal over a generation counter, keyed by a secret in the data-protection keychain under Recortia's provisioned keychain access group, which other processes cannot create, read, replace, or roll back. An unsealed, mismatched, or older-generation blob loads with that consent off, and Settings says so. Another process can still delete the preferences or the seal, which only turns consent off (fail-safe). If Recortia cannot store a new generation, it deletes the secret so no older seal stays valid.
+
+Secure masks cover source pixels twice: the regions bound when the mask is drawn (they follow the content if a layer moves), and, at render time, whatever layer lies under the mask's output rectangle now (a layer added or moved there later), always before any resample or effect. Drag-out offers follow ADR-004: revocable until the receiver writes the file, never reported canceled once it has.
 
 ## Threat register
 
@@ -68,7 +70,7 @@ user's own action, or needs a platform capability not yet adopted.
 | Automatic scrolling binds to the frontmost app at start, not to the chosen target's process | The user chose the target and started the session | Require frontmost PID == target owner |
 | Chooser and overlay commits do not carry their request ID | A replaced session's UI can only commit into a session the user started | Bind commits to the active request ID |
 | Auto-copy/auto-save is skipped silently while a drag chip is pending | Fails closed | Surface the skipped export |
-| JPEG decode cost for adversarial progressive scans is not capped | Own-process availability only; 64 MiB input cap applies | Cap scan count in the header walk |
+| Paste and drop read the pasteboard item on the main thread before the 64 MiB check | Explicit user action; own-process availability only | Read off the main actor where AppKit allows |
 | Magnifier callouts can show pixels outside a crop | Visible in the preview; crop is not a privacy control (FR-04) | Clip magnifier sources to the content rect |
 | Stored `launchAtLogin`/`updateChecksEnabled` are unused | Never read; the system login-item status is authoritative | Remove the fields |
 | Screen Recording loss during region or window selection is found only when the capture call fails | TCC still blocks the capture; the failure is reported | Re-check permission at commit |

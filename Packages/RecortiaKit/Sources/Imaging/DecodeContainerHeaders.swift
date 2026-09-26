@@ -253,21 +253,31 @@ enum DecodePNGStructure {
 /// JPEG header parsing: dimensions come from the single SOFn segment, before any decode. The walk
 /// continues to SOS so a second frame header (which decoders resolve differently) is rejected.
 enum DecodeJPEGStructure {
+    /// Progressive encoders write about 10 scans; the cap bounds decode work for crafted files.
+    static let maxScans = 128
+
+    /// Walks every marker segment to EOI (skipping each scan's entropy-coded data), so dimensions
+    /// come from the only frame header: a second SOFn anywhere, a scan before any frame, or more
+    /// than `maxScans` scans is corrupt. A file that ends inside its last scan (no EOI) is accepted
+    /// if it had a frame and a scan, as decoders do.
     static func header(_ data: Data) throws(ImportError) -> DecodeHeader {
         let reader = DecodeByteReader(data: data)
         var offset = 2
         var frame: DecodeHeader?
-        while offset + 4 <= reader.count {
+        var scans = 0
+        while offset + 2 <= reader.count {
             guard reader.byte(offset) == 0xFF else { throw ImportError.corrupt }
             let marker = reader.byte(offset + 1)
             if marker == 0xFF {
                 offset += 1
                 continue
             }
+            if marker == 0xD9 { break }
             if (0xD0...0xD7).contains(marker) || marker == 0x01 {
                 offset += 2
                 continue
             }
+            guard offset + 4 <= reader.count else { throw ImportError.corrupt }
             let length = reader.uint16(offset + 2)
             guard length >= 2, offset + 2 + length <= reader.count else { throw ImportError.corrupt }
             if (0xC0...0xCF).contains(marker), ![0xC4, 0xC8, 0xCC].contains(marker) {
@@ -278,13 +288,31 @@ enum DecodeJPEGStructure {
                 try ImageDecoder.checkDimensions(size)
                 frame = DecodeHeader(pixelSize: size)
             }
-            if marker == 0xDA {
-                guard let frame else { throw ImportError.corrupt }
-                return frame
-            }
-            if marker == 0xD9 { break }
             offset += 2 + length
+            if marker == 0xDA {
+                scans += 1
+                guard frame != nil, scans <= maxScans else { throw ImportError.corrupt }
+                offset = nextMarker(reader, after: offset)
+            }
         }
-        throw ImportError.corrupt
+        guard let frame, scans > 0 else { throw ImportError.corrupt }
+        return frame
+    }
+
+    /// The offset of the first marker after entropy-coded data starting at `start`: an 0xFF not
+    /// followed by a stuffed 0x00 or a restart marker. `reader.count` when the data ends first.
+    private static func nextMarker(_ reader: DecodeByteReader, after start: Int) -> Int {
+        reader.data.withUnsafeBytes { raw -> Int in
+            let bytes = raw.bindMemory(to: UInt8.self)
+            var index = start
+            while index + 1 < bytes.count {
+                if bytes[index] == 0xFF {
+                    let next = bytes[index + 1]
+                    if next != 0x00, next != 0xFF, !(0xD0...0xD7).contains(next) { return index }
+                }
+                index += 1
+            }
+            return bytes.count
+        }
     }
 }

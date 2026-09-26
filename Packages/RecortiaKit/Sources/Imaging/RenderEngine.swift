@@ -222,6 +222,15 @@ enum RenderEngine {
     {
         var perAsset: [AssetID: CGImage] = [:]
         var result: [CGImage] = []
+        // A mask also covers, in source pixels, whatever layer lies under its output rectangle now
+        // (a layer added or moved there after the mask was drawn has no stored source regions), so
+        // those pixels are filled before any resampling can blend them into the mask's edge.
+        let underMasks: [(fill: RGBA, regions: [AssetID: [PixelRect]])]
+        do {
+            underMasks = try document.masks.map { ($0.fill, try document.sourceRegions(for: $0.outputRect)) }
+        } catch {
+            throw RenderError.invalidGeometry
+        }
         for layer in document.layers {
             if Task.isCancelled { throw RenderError.canceled }
             let sanitized: CGImage
@@ -232,6 +241,9 @@ enum RenderEngine {
                 var raster = try RenderRaster(image: raw)
                 for mask in document.masks {
                     for region in mask.sourceRegions[layer.assetID] ?? [] { raster.fill(region, with: mask.fill) }
+                }
+                for mask in underMasks {
+                    for region in mask.regions[layer.assetID] ?? [] { raster.fill(region, with: mask.fill) }
                 }
                 guard let image = raster.makeImage() else { throw RenderError.allocationFailed }
                 perAsset[layer.assetID] = image
@@ -256,8 +268,6 @@ enum RenderEngine {
         }
         return result
     }
-
-    /// Draws `image` upright into `rect` of a top-left (y-down) context.
 
     /// Sanitized layers, then cosmetic effects sampled from that composite.
     static func composeBase(

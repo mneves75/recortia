@@ -368,6 +368,8 @@ final class FakeDragSink: DragSinkService {
     private(set) var dismissCount = 0
     /// Bytes a receiver actually got: the live file promise writes only while the lease holds.
     private(set) var writtenSnapshots: [ShareSnapshot] = []
+    /// False models a receiver that accepted the drop but has not asked for the file yet.
+    var commitOnDelivery = true
 
     func deliver(_ snapshot: ShareSnapshot, lease: ExportLease) async throws(SinkError) -> DragDeliveryOutcome {
         deliveries.append(snapshot)
@@ -378,7 +380,8 @@ final class FakeDragSink: DragSinkService {
         } else {
             result = try outcome.get()
         }
-        if result == .delivered, !lease.isRevoked { writtenSnapshots.append(snapshot) }
+        // The live file promise writes under the lease, which commits it.
+        if result == .delivered, commitOnDelivery { _ = lease.whileValid { writtenSnapshots.append(snapshot) } }
         return result
     }
 
@@ -517,6 +520,10 @@ final class FakeAutoScroller: AutoScrollService {
     }
 
     func stop() { stopCount += 1 }
+
+    /// What the target reports about its scroll position; nil when it cannot tell.
+    var atEnd: Bool?
+    func isAtEnd(_ target: CaptureTarget) async -> Bool? { atEnd }
 }
 
 // MARK: - System

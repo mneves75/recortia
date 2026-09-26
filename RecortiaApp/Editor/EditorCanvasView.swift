@@ -2,6 +2,7 @@ import AppKit
 import Domain
 import Features
 import Imaging
+import UniformTypeIdentifiers
 
 /// The editor canvas (FR-04/05): draws the sanitized base and annotations in document space through
 /// `EditorCanvasRenderer` (the export's annotation code), then view-space chrome: crop shade,
@@ -42,10 +43,12 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     // MARK: Drop-in import (FR-03)
 
-    /// Local PNG/JPEG files, or PNG/JPEG data. Everything goes through the bounded import path.
-    static let droppableTypes: [NSPasteboard.PasteboardType] = [
-        .fileURL, .png, NSPasteboard.PasteboardType("public.jpeg"),
+    /// PNG/JPEG data types; with file URLs, the only drops accepted. Everything goes through the
+    /// bounded import path.
+    private static let imageDataTypes: [NSPasteboard.PasteboardType] = [
+        .png, NSPasteboard.PasteboardType(UTType.jpeg.identifier),
     ]
+    static let droppableTypes: [NSPasteboard.PasteboardType] = [.fileURL] + imageDataTypes
 
     private enum DroppedImage {
         case file(URL)
@@ -54,10 +57,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     private static let fileURLOptions: [NSPasteboard.ReadingOptionKey: Any] = [
         .urlReadingFileURLsOnly: true,
-        .urlReadingContentsConformToTypes: ["public.png", "public.jpeg"],
-    ]
-    private static let imageDataTypes: [NSPasteboard.PasteboardType] = [
-        .png, NSPasteboard.PasteboardType("public.jpeg"),
+        .urlReadingContentsConformToTypes: [UTType.png.identifier, UTType.jpeg.identifier],
     ]
 
     /// Reads the dropped URL or image bytes; called only once the drop is performed.

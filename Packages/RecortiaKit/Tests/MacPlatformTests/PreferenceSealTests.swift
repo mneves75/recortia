@@ -20,6 +20,7 @@ struct PreferenceSealTests {
             self.secret = secret
             return true
         }
+        func remove() { secret = nil }
     }
 
     let consentOn = Data(#"{"autoCopy":true}"#.utf8)
@@ -66,6 +67,17 @@ struct PreferenceSealTests {
         let store = MemoryStore()
         store.failSaves = true
         #expect(PreferenceSeal(store: store).seal(consentOn) == nil)
+    }
+
+    // Hardening (security run-2): if the next generation cannot be stored, an older sealed pair
+    // copied by another process must not stay valid at the unchanged generation.
+    @Test("A failed save invalidates the secret so older seals stop verifying")
+    func failedSaveInvalidatesOlderSeals() throws {
+        let store = MemoryStore()
+        let old = try #require(PreferenceSeal(store: store).seal(consentOn))
+        store.failSaves = true
+        #expect(PreferenceSeal(store: store).seal(consentOff) == nil)
+        #expect(!PreferenceSeal(store: store).verify(consentOn, seal: old))
     }
 
     @Test("prepare() creates a secret once and keeps it")

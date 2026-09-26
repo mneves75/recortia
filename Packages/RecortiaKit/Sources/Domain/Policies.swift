@@ -35,6 +35,9 @@ public enum ScrollLimit: Hashable, Sendable, Codable {
 public enum ScrollPartialReason: Hashable, Sendable, Codable {
     case limit(ScrollLimit)
     case ambiguous(ScrollPauseReason)
+    /// Automatic scrolling stopped because the page stopped moving, and the target did not
+    /// confirm it was at its end: content that loads later (lazy loading) may be missing.
+    case stoppedMoving
 }
 
 /// Scrolling-capture budgets (FR-10). The first limit reached ends collection.
@@ -221,5 +224,23 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var exportOptions: ExportOptions {
         let format: ExportFormat = defaultExportFormat == .png ? .png : .jpeg(quality: jpegQuality)
         return ExportOptions(format: format, scale: defaultExportScale)
+    }
+}
+
+extension Preferences {
+    /// Settings that let Recortia act on a capture without a further user action. Honored only
+    /// from preferences Recortia sealed itself (SettingsStore, THREAT_MODEL.md).
+    public var grantsSideEffects: Bool {
+        autoCopy || autoSave || automaticScrollingEnabled || preferredSaveFolderBookmark != nil
+    }
+
+    /// These preferences with every side-effect consent turned off.
+    public var withoutSideEffectConsent: Preferences {
+        var copy = self
+        copy.autoCopy = false
+        copy.autoSave = false
+        copy.automaticScrollingEnabled = false
+        copy.preferredSaveFolderBookmark = nil
+        return copy
     }
 }

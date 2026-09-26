@@ -78,8 +78,6 @@ public enum EditorCanvasRenderer {
         }
     }
 
-    /// Draws `image` upright into `rect` of a y-down context.
-
 }
 
 extension Rect {

@@ -136,7 +136,14 @@ public struct FileSink {
 public enum SinkError: Error, Equatable, Sendable {
     case clipboardWriteFailed, destinationExists, accessDenied, diskFull, volumeUnavailable, writeFailed(code: Int)
 }
-@MainActor public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate { public init(snapshot: ShareSnapshot) }
+@MainActor public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
+    // Writes only under the lease (Domain.ExportLease: active → committing → committed | revoked);
+    // reports the real write outcome, since AppKit ends the drag session before it asks for the file.
+    public init(snapshot: ShareSnapshot, lease: ExportLease = ExportLease(),
+                onWriteFinished: (@Sendable (WriteOutcome) -> Void)? = nil)
+}
+@MainActor public final class PendingOffer<Outcome> { … }  // one user-paced offer; stale completions ignored
+@MainActor public final class KeychainPreferenceIntegrity { … }  // PreferenceSeal over the data-protection keychain
 public enum ImageInput {
     public static func readFile(at url: URL) throws(ImportError) -> Data      // bounded by ImportLimits
     @MainActor public static func readPasteboard(_ pasteboard: NSPasteboard) -> Data?   // explicit Paste only

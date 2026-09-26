@@ -1,8 +1,10 @@
 import CoreGraphics
 import Domain
 import Foundation
+import ImageIO
 import RecortiaFixtures
 import Testing
+import UniformTypeIdentifiers
 
 @testable import Imaging
 
@@ -94,6 +96,68 @@ struct DecodeHardeningTests {
         #expect(twoFrames.count > jpeg.count)
         #expect(throws: ImportError.corrupt) { try DecodeJPEGStructure.header(twoFrames) }
         #expect(throws: ImportError.corrupt) { try ImageDecoder.decode(twoFrames) }
+    }
+
+    /// The first `marker` segment (marker through its declared length) of `jpeg`.
+    private static func firstSegment(_ jpeg: [UInt8], marker target: UInt8) throws -> [UInt8] {
+        var offset = 2
+        while offset + 4 <= jpeg.count, jpeg[offset] == 0xFF {
+            let marker = jpeg[offset + 1]
+            let end = offset + 2 + (Int(jpeg[offset + 2]) << 8 | Int(jpeg[offset + 3]))
+            if marker == target
+                || (target == 0xC0 && (0xC0...0xCF).contains(marker) && ![0xC4, 0xC8, 0xCC].contains(marker))
+            {
+                return Array(jpeg[offset..<end])
+            }
+            if marker == 0xDA { break }
+            offset = end
+        }
+        throw FixtureError.invalidArgument
+    }
+
+    /// `jpeg` with `segment` inserted `copies` times just before its EOI marker.
+    private static func insertingBeforeEOI(_ jpeg: Data, _ segment: [UInt8], copies: Int = 1) -> Data {
+        var bytes = [UInt8](jpeg)
+        precondition(bytes.suffix(2) == [0xFF, 0xD9])
+        bytes.insert(contentsOf: Array([[UInt8]](repeating: segment, count: copies).joined()), at: bytes.count - 2)
+        return Data(bytes)
+    }
+
+    // Hardening (security run-2): the walk stopped at the first scan, so a frame header after it
+    // went unseen, and scan count (progressive decode cost) was unbounded.
+    @Test("A JPEG with a frame header after its first scan is corrupt")
+    func sofAfterScanIsRejected() throws {
+        let jpeg = try ContainerCrafting.jpegData(try ChartFixture.geometryChart(width: 32, height: 16))
+        let sof = try Self.firstSegment([UInt8](jpeg), marker: 0xC0)
+        let late = Self.insertingBeforeEOI(jpeg, sof)
+        #expect(throws: ImportError.corrupt) { try DecodeJPEGStructure.header(late) }
+    }
+
+    @Test("The scan count is capped: the limit parses, one more scan is rejected")
+    func scanCountIsCapped() throws {
+        let jpeg = try ContainerCrafting.jpegData(try ChartFixture.geometryChart(width: 32, height: 16))
+        let sos = try Self.firstSegment([UInt8](jpeg), marker: 0xDA)
+        let limit = DecodeJPEGStructure.maxScans
+        let atLimit = Self.insertingBeforeEOI(jpeg, sos, copies: limit - 1)
+        #expect(try DecodeJPEGStructure.header(atLimit).pixelSize == PixelSize(width: 32, height: 16))
+        let overLimit = Self.insertingBeforeEOI(jpeg, sos, copies: limit)
+        #expect(throws: ImportError.corrupt) { try DecodeJPEGStructure.header(overLimit) }
+    }
+
+    @Test("Control: a progressive JPEG with many scans decodes")
+    func progressiveJPEGDecodes() throws {
+        let image = try ChartFixture.geometryChart(width: 64, height: 48)
+        let data = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(
+            destination, image,
+            [kCGImagePropertyJFIFDictionary: [kCGImagePropertyJFIFIsProgressive: true]] as CFDictionary)
+        #expect(CGImageDestinationFinalize(destination))
+        let bytes = [UInt8](data as Data)
+        let scans = zip(bytes, bytes.dropFirst()).filter { $0 == 0xFF && $1 == 0xDA }.count
+        #expect(scans > 1, "control must be progressive")
+        #expect(try ImageDecoder.decode(data as Data).pixelSize == PixelSize(width: 64, height: 48))
     }
 
     @Test("A JPEG that reaches SOS without any SOFn is corrupt")

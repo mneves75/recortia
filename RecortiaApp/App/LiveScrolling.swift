@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Domain
 import Features
 import MacPlatform
@@ -89,6 +90,39 @@ final class LiveAutoScroll: AutoScrollService {
     func stop() {
         scroller?.stop()
         scroller = nil
+    }
+
+    /// Reads the vertical scroll bar of the scroll area under the capture region's center through
+    /// Accessibility (granted for automatic mode). nil when there is none or it cannot be read.
+    func isAtEnd(_ target: CaptureTarget) async -> Bool? {
+        guard let (region, _) = LiveScrollFrames.region(for: target) else { return nil }
+        var hit: AXUIElement?
+        guard
+            AXUIElementCopyElementAtPosition(
+                AXUIElementCreateSystemWide(), Float(region.midX), Float(region.midY), &hit) == .success,
+            var element = hit
+        else { return nil }
+        for _ in 0..<24 {
+            if Self.attribute(kAXRoleAttribute, of: element) as? String == kAXScrollAreaRole as String {
+                guard let bar = Self.element(kAXVerticalScrollBarAttribute, of: element),
+                    let value = Self.attribute(kAXValueAttribute, of: bar) as? NSNumber
+                else { return nil }
+                return value.doubleValue >= 0.995
+            }
+            guard let parent = Self.element(kAXParentAttribute, of: element) else { return nil }
+            element = parent
+        }
+        return nil
+    }
+
+    private static func attribute(_ name: String, of element: AXUIElement) -> CFTypeRef? {
+        var value: CFTypeRef?
+        return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success ? value : nil
+    }
+
+    private static func element(_ name: String, of element: AXUIElement) -> AXUIElement? {
+        guard let value = attribute(name, of: element), CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return unsafeDowncast(value as AnyObject, to: AXUIElement.self)
     }
 
     private func makeScroller(for target: CaptureTarget) async -> AutoScroller? {

@@ -512,6 +512,12 @@ private struct RecognitionSection: View {
                         Text(payload.string ?? String(localized: "\(payload.bytes.count) bytes", table: "Editor"))
                             .lineLimit(3)
                             .textSelection(.enabled)
+                        // The full link can be truncated above; the host it opens never is.
+                        if case .webURL(let url) = payload.kind, let host = url.host(percentEncoded: false) {
+                            Text(String(localized: "Opens \(host)", table: "Editor"))
+                                .font(.callout.weight(.semibold))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         HStack {
                             if payload.string != nil {
                                 Button(String(localized: "Copy", table: "Editor")) { model.copyQRPayload(at: index) }

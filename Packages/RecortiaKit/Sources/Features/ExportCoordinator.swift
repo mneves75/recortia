@@ -151,27 +151,30 @@ public final class ExportCoordinator {
                 let lease = ExportLease()
                 operation?.awaitingDragReceiver = true
                 pendingDrag = PendingDrag(documentID: snapshot.documentID, lease: lease)
-                let delivery: DragDeliveryOutcome
-                do {
-                    delivery = try await drag.deliver(snapshot, lease: lease)
-                } catch {
+                // Whatever ends the offer (a write, the chip closing, cancel, failure), promises
+                // already handed to receivers must not write later: revoking is a no-op once the
+                // write has committed.
+                defer {
+                    lease.revoke()
                     pendingDrag = nil
-                    throw error
                 }
-                pendingDrag = nil
+                let delivery = try await drag.deliver(snapshot, lease: lease)
                 operation?.awaitingDragReceiver = false
-                if operation?.cancelRequested == true {
-                    apply(.cancel)
-                    return finish(.canceled)
-                }
-                if lease.isRevoked { return fail(.staleDocument) }
-                switch delivery {
-                case .canceledByUser:
-                    apply(.cancel)
-                    return finish(.canceled)
-                case .delivered:
+                // The lease, not the chip's report, says whether the receiver has the file: a
+                // cancel or edit that lands after the write must not call a finished export
+                // canceled or stale (it is reported as already completed below).
+                if lease.isCommitted {
                     apply(.commit)
                     completed = .dragged
+                } else if operation?.cancelRequested == true {
+                    apply(.cancel)
+                    return finish(.canceled)
+                } else if lease.isRevoked || delivery == .delivered {
+                    // Revoked before the write, or a sink that reported delivery without it.
+                    return fail(.staleDocument)
+                } else {
+                    apply(.cancel)
+                    return finish(.canceled)
                 }
             }
             if operation?.cancelRequested == true {

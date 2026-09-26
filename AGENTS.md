@@ -65,7 +65,8 @@ The repository gates (stable Xcode via `DEVELOPER_DIR=/Applications/Xcode.app/Co
 scripts/check.sh              # doctor, strict format lint, project freshness, package tests, signed Debug build
 scripts/check.sh --unsigned   # CI and machines without the signing identity
 scripts/e2e.sh --lang all     # DEBUG scenario runner through the real app: screenshots + report.json
-scripts/release.sh            # owner-only: Developer ID export, get-task-allow/runtime/DEBUG-code checks, DMG, notarize, manifest
+scripts/release.sh            # owner-only, on a v<version>[-betaN] tag: fresh checkout, gate, Developer ID export, checks, DMG, notarize, manifest
+scripts/release.sh --dry-run  # untagged local build of the same pipeline without gate or notarization
 swift test --package-path Packages/RecortiaKit --filter <Test>   # one test or suite
 ```
 

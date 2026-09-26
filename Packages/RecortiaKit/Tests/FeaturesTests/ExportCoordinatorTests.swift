@@ -204,6 +204,52 @@ struct ExportCoordinatorTests {
         #expect(h.drag.writtenSnapshots.isEmpty)
     }
 
+    // Failure mode (spec review): the receiver already has the file, then an edit or Cancel
+    // lands before the chip reports; the export must not be reported canceled or stale
+    // (SPEC.md: cancellation after a commit reports that the action already completed).
+    @Test("A drag whose file was written survives a later document change and reports success")
+    func committedDragSurvivesDocumentChange() async throws {
+        let h = ExportHarness()
+        h.drag.pending = Pending<DragDeliveryOutcome>()
+        async let outcome = h.export(.drag)
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        let lease = try #require(h.drag.leases.first)
+        #expect(lease.whileValid { true } == true, "the receiver's write commits the lease")
+        h.coordinator.invalidatePendingDrag(documentID: h.session.document.id)
+        #expect(!lease.isRevoked, "a committed lease cannot be revoked")
+        #expect(await outcome == .dragged)
+    }
+
+    @Test("Cancel after the drag's file was written reports that it already completed")
+    func cancelAfterCommittedDrag() async throws {
+        let h = ExportHarness()
+        h.drag.pending = Pending<DragDeliveryOutcome>()
+        async let outcome = h.export(.drag)
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        _ = h.drag.leases.first?.whileValid { true }
+        h.coordinator.cancel()
+        #expect(await outcome == .alreadyCompleted(.dragged))
+    }
+
+    // Failure mode (security run-2): a chip closed or delivered left its lease valid, so a file
+    // promise already handed to a receiver could write the old snapshot after a later redaction.
+    @Test(
+        "An offer that ends without a write revokes its lease",
+        arguments: [
+            DragDeliveryOutcome.canceledByUser, .delivered,
+        ])
+    func endedOfferRevokesLease(outcome: DragDeliveryOutcome) async throws {
+        let h = ExportHarness()
+        let pending = Pending<DragDeliveryOutcome>()
+        h.drag.pending = pending
+        h.drag.commitOnDelivery = false  // a receiver that never asked for the file
+        async let result = h.export(.drag)
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        pending.resolve(outcome)
+        _ = await result
+        #expect(h.drag.leases.first?.isRevoked == true, "an outstanding promise could still write")
+    }
+
     @Test("Only one export runs at a time")
     func oneExportAtATime() async {
         let h = ExportHarness()

@@ -65,9 +65,37 @@ struct ScrollSessionModelEndingTests {
         #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil))
     }
 
+    /// Runs automatic scrolling until the page stops answering scroll steps.
+    static func runUntilStepsGoUnanswered(_ h: ScrollHarness) async {
+        await h.startCollecting()
+        h.frames.deliver()
+        await waitFor("first step, settle timer armed") { Self.settleArmed(h, steps: 1) }
+        for retry in 1..<Self.endThreshold {
+            h.clock.advance(bySeconds: Self.settleSeconds)
+            await waitFor("retry step \(retry)") { Self.settleArmed(h, steps: 1 + retry) }
+        }
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await waitFor("reviewing") { h.model.state == .reviewing }
+    }
+
+    // Failure mode (spec review): the capture stream sends no frame for unchanged content, so a
+    // page that stalls (lazy loading) looks like a page that ended. Without the target
+    // confirming it is at its end, the result must not be labeled complete (SPEC.md: a partial
+    // result must never be labeled complete).
+    @Test(
+        "Steps that go unanswered end as partial unless the target confirms it is at its end",
+        arguments: [nil, false] as [Bool?])
+    func unconfirmedEndIsPartial(atEnd: Bool?) async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        h.scroller.atEnd = atEnd
+        await Self.runUntilStepsGoUnanswered(h)
+        #expect(h.model.partialReason == .stoppedMoving)
+    }
+
     @Test("Automatic mode ends the page when scroll steps expose nothing new (no frames arrive)")
     func automaticEndOfPageWithoutFrames() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)
+        h.scroller.atEnd = true
         await h.startCollecting()
         h.frames.deliver()
         // The 2-minute deadline plus the settle timer armed after the first scroll step.
@@ -89,6 +117,7 @@ struct ScrollSessionModelEndingTests {
     @Test("A frame that moves the page restarts the settle count")
     func movementResetsSettleCount() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)
+        h.scroller.atEnd = true
         await h.startCollecting()
         h.frames.deliver()
         await waitFor("first step") { Self.settleArmed(h, steps: 1) }

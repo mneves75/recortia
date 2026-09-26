@@ -177,6 +177,8 @@ public protocol AutoScrollService: AnyObject {
     /// Sends one minimal scroll action to the chosen target (Accessibility, automatic mode only).
     func step(_ target: CaptureTarget) async -> AutoScrollStep
     func stop()
+    /// Whether the target's scroll area reports that it is at its end; nil when it cannot tell.
+    func isAtEnd(_ target: CaptureTarget) async -> Bool?
 }
 
 // MARK: - System
@@ -211,7 +213,8 @@ extension UserDefaults: PreferenceStorage {
 
 /// Authenticates the preferences blob Recortia wrote itself. Recortia is not sandboxed, so any
 /// same-user process can rewrite its preferences domain; the secret behind the seal lives where
-/// such a process cannot read it silently (the login keychain in production).
+/// such a process cannot read, replace, or roll back (the data-protection keychain, under the
+/// app's provisioned keychain access group, in production).
 @MainActor
 public protocol PreferenceIntegrityService: AnyObject {
     /// A seal for `data`, or nil when the secret is unavailable.

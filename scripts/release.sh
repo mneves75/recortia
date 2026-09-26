@@ -1,15 +1,19 @@
 #!/bin/zsh
-# Builds, signs, notarizes, and staples the Developer ID disk image, and writes a manifest that
-# ties it to its source. Owner-only: needs the Developer ID identity and an `asc` notary profile.
-# Usage: scripts/release.sh [--skip-notarize]
+# Builds, signs, notarizes, and staples the Developer ID disk image from a reviewed tag, and writes
+# a manifest that ties it to its source, gate result, toolchain, and dependencies (SPEC.md §12).
+# Owner-only: needs the Developer ID identity, the "Recortia Developer ID" provisioning profile, and
+# an `asc` notary profile.
+# Usage: scripts/release.sh            release the tag at HEAD (v<MARKETING_VERSION>[-betaN])
+#        scripts/release.sh --dry-run  untagged local build: no gate, no notarization
 set -euo pipefail
 cd "${0:A:h}/.."
+root=$PWD
 
 : "${DEVELOPER_DIR:=/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 
-notarize=1
-[[ "${1:-}" == "--skip-notarize" ]] && notarize=0
+dry_run=0
+[[ "${1:-}" == "--dry-run" ]] && dry_run=1
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "release: the working tree is dirty; release only a committed state" >&2
@@ -18,13 +22,45 @@ fi
 
 version=$(sed -n 's/^ *MARKETING_VERSION: *//p' project.yml)
 build=$(sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p' project.yml)
-out=.build/release/$version
+if [[ ! "$version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' || ! "$build" =~ '^[0-9]+$' ]]; then
+  echo "release: unexpected version '$version' or build '$build' in project.yml" >&2
+  exit 1
+fi
+
+tag=$(git describe --exact-match --tags HEAD 2>/dev/null || true)
+if (( ! dry_run )); then
+  if [[ ! "$tag" =~ "^v${version//./\\.}(-beta[0-9]+)?$" ]]; then
+    echo "release: HEAD must carry a reviewed tag v$version or v$version-betaN (found '${tag:-none}')" >&2
+    exit 1
+  fi
+  label=${tag#v}
+else
+  label="$version-dev"
+fi
+
+out=$root/.build/release/$label
 rm -rf "$out"
+git worktree prune
 mkdir -p "$out"
 
+# Build from a fresh checkout of HEAD with its own derived data and package checkouts, so nothing
+# ignored or cached in the working tree can reach the signed binary.
+src=$out/src
+git worktree add --quiet --detach "$src" HEAD
+trap 'git -C "$root" worktree remove --force "$src" 2>/dev/null || true' EXIT
+
+gate="skipped (dry run)"
+if (( ! dry_run )); then
+  echo "== gate"
+  (cd "$src" && scripts/check.sh) > "$out/gate.log" 2>&1 ||
+    { tail -20 "$out/gate.log" >&2; echo "release: the gate failed; see $out/gate.log" >&2; exit 1; }
+  gate="passed (scripts/check.sh, log in gate.log)"
+fi
+
 echo "== archive $version ($build)"
-xcodebuild -project Recortia.xcodeproj -scheme Recortia -configuration Release \
+xcodebuild -project "$src/Recortia.xcodeproj" -scheme Recortia -configuration Release \
   -destination 'generic/platform=macOS' -archivePath "$out/Recortia.xcarchive" \
+  -derivedDataPath "$out/dd" -clonedSourcePackagesDirPath "$out/spm" \
   -onlyUsePackageVersionsFromResolvedFile archive | tail -2
 
 cat > "$out/ExportOptions.plist" <<'PLIST'
@@ -47,6 +83,12 @@ app="$out/export/Recortia.app"
 
 echo "== verify the app"
 codesign --verify --deep --strict --verbose=2 "$app"
+built_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
+built_build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")
+if [[ "$built_version" != "$version" || "$built_build" != "$build" ]]; then
+  echo "release: built $built_version ($built_build) does not match project.yml $version ($build)" >&2
+  exit 1
+fi
 # Capture before matching: under pipefail, `grep -q` exiting early would fail the pipeline.
 entitlements=$(codesign -d --entitlements - --xml "$app" 2>/dev/null || true)
 if [[ "$entitlements" == *get-task-allow* ]]; then
@@ -69,11 +111,11 @@ staging="$out/dmg"
 mkdir -p "$staging"
 ditto "$app" "$staging/Recortia.app"
 ln -s /Applications "$staging/Applications"
-dmg="$out/Recortia-$version.dmg"
-hdiutil create -volname "Recortia $version" -srcfolder "$staging" -fs HFS+ -format UDZO -ov "$dmg" >/dev/null
+dmg="$out/Recortia-$label.dmg"
+hdiutil create -volname "Recortia $label" -srcfolder "$staging" -fs HFS+ -format UDZO -ov "$dmg" >/dev/null
 codesign --sign "Developer ID Application: Marcus Neves (Q96FUTC5G8)" --timestamp "$dmg"
 
-if (( notarize )); then
+if (( ! dry_run )); then
   echo "== notarize"
   asc notarization submit --file "$dmg" --wait --timeout 1h --output table
   # Apple's stapler, not `asc notarization staple`: stapling rewrites the file, which asc then
@@ -84,12 +126,26 @@ if (( notarize )); then
 fi
 
 sha=$(shasum -a 256 "$dmg" | cut -d' ' -f1)
+resolved="$src/Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
 {
   echo "version: $version ($build)"
+  echo "tag: ${tag:-none}"
   echo "commit: $(git rev-parse HEAD)"
-  echo "package_resolved_sha256: $(shasum -a 256 Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved | cut -d' ' -f1)"
+  echo "gate: $gate"
+  echo "package_resolved_sha256: $(shasum -a 256 "$resolved" | cut -d' ' -f1)"
   echo "toolchain: $(xcodebuild -version | tr '\n' ' ')"
-  echo "notarized: $(( notarize ))"
+  echo "dependencies:"
+  python3 - "$resolved" "$out/spm/checkouts" <<'PY'
+import json, pathlib, sys
+pins = json.load(open(sys.argv[1]))["pins"]
+checkouts = pathlib.Path(sys.argv[2])
+for pin in pins:
+    state = pin["state"]
+    license_files = sorted(checkouts.glob(f"{pin['identity']}/LICENSE*")) + sorted(checkouts.glob(f"{pin['identity']}/license*"))
+    first = license_files[0].read_text(errors="replace").strip().splitlines()[0] if license_files else "unknown"
+    print(f"  - {pin['identity']} {state.get('version', '-')} {state['revision'][:12]} {pin['location']} ({first})")
+PY
+  echo "notarized: $(( ! dry_run ))"
   echo "dmg: $(basename "$dmg")"
   echo "sha256: $sha"
 } > "$out/manifest.txt"

@@ -4,6 +4,40 @@ All notable changes to Recortia are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0-beta4] - 2026-09-26
+
+### Security
+
+From a second, scoped security audit (run-2), a two-axis code review, and an independent Codex
+review of the whole branch:
+
+- A layer added or moved under an existing redaction is now masked in its source pixels before it
+  is scaled, so the edge around the black box can no longer carry blurred hints of what it hides.
+- A drag-out whose file the receiving app already wrote is reported as done, never canceled or
+  stale; any other ending of the offer (closing the chip, a delivery elsewhere) revokes it, so a
+  late request from another receiver gets nothing. Writing no longer blocks the interface.
+- If the preferences seal cannot advance, its secret is removed, so an older sealed settings file
+  can never turn automatic export back on.
+- JPEG imports are checked through every frame and scan header (at most 128 scans), not only up
+  to the first scan.
+- Capture keeps excluding Recortia as an application even when it has no window on screen.
+- QR links show the host they open in full, next to Open Link.
+
+### Fixed
+
+- Automatic scrolling that stops because the page stopped moving is labeled partial unless the
+  page reports it reached its end (lazy-loading pages are no longer called complete).
+- Settings says when automatic copy, save, or scrolling was turned off because their saved settings
+  could not be verified.
+
+### Changed
+
+- `scripts/release.sh` builds only a tagged commit, from a fresh checkout with its own build and
+  package caches, runs the full gate first, checks the built version, and records the dependency
+  inventory; `--dry-run` builds locally without the tag, gate, or notarization.
+- CI installs a pinned, checksum-verified XcodeGen.
+- ADR-004 records the drag-out lease semantics.
+
 ## [0.9.0-beta3] - 2026-09-26
 
 ### Security

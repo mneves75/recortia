@@ -76,19 +76,8 @@ public final class SettingsStore {
             return (Preferences(), .unsupportedSchema(decoded.schemaVersion))
         }
         let sealed = storage.preferenceData(forKey: sealKey).map { integrity.verify(data, seal: $0) } ?? false
-        guard !sealed, grantsSideEffects(decoded) else { return (sanitized(decoded), nil) }
-        var withoutConsent = decoded
-        withoutConsent.autoCopy = false
-        withoutConsent.autoSave = false
-        withoutConsent.automaticScrollingEnabled = false
-        withoutConsent.preferredSaveFolderBookmark = nil
-        return (sanitized(withoutConsent), .unverifiedConsent)
-    }
-
-    /// Settings that let Recortia act on a capture without a further user action.
-    private static func grantsSideEffects(_ preferences: Preferences) -> Bool {
-        preferences.autoCopy || preferences.autoSave || preferences.automaticScrollingEnabled
-            || preferences.preferredSaveFolderBookmark != nil
+        guard !sealed, decoded.grantsSideEffects else { return (sanitized(decoded), nil) }
+        return (sanitized(decoded.withoutSideEffectConsent), .unverifiedConsent)
     }
 
     /// Clamps every numeric preference into its documented range; invalid values become defaults.

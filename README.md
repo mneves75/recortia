@@ -3,9 +3,12 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, without accounts, uploads, or a screenshot archive.
 
-**Status:** beta (0.9.0). The v1 scope (FR-01…FR-14 in `SPEC.md`) is implemented and covered by
-automated tests; hardware and manual validation is still in progress (see
-[Validation status](#validation-status)). Recortia is an independent project and is not affiliated
+**Status:** beta (0.9.0). The v1 features (FR-01…FR-14 in `SPEC.md`) are built and covered by
+automated and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
+multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
+and the in-app updater are pending (see [Validation status](#validation-status)). Betas are published
+as regular GitHub releases so that Homebrew and the Releases "latest" link follow them; the version
+number says beta. Recortia is an independent project and is not affiliated
 with Shottr or any other screenshot tool.
 
 ## Install

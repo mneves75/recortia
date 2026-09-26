@@ -21,9 +21,10 @@ public enum ScrollMode: Hashable, Sendable {
 /// Endings that do not depend on a frame arriving run on the injected clock: the 2-minute limit
 /// counts from Start, paused time included, and in automatic mode a scroll step that exposes
 /// nothing new within `automaticSettleInterval` counts as the page not moving (the capture
-/// stream delivers no frame for unchanged content). The page has ended, complete rather than
-/// partial, after `ScrollStitcher.endOfPageStationaryFrames` consecutive stationary frames or
-/// unanswered steps. Manual mode only raises `pageEndLikely`, since a reader may simply stop.
+/// stream delivers no frame for unchanged content). After `ScrollStitcher.endOfPageStationaryFrames`
+/// consecutive stationary frames the page has ended (complete); after that many unanswered steps
+/// it is complete only if the target confirms it is at its end, and partial (`.stoppedMoving`)
+/// otherwise. Manual mode only raises `pageEndLikely`, since a reader may simply stop.
 @MainActor
 @Observable
 public final class ScrollSessionModel {
@@ -343,7 +344,11 @@ public final class ScrollSessionModel {
         guard sessionID == id, state == .collecting, mode == .automatic, !Task.isCancelled else { return }
         unansweredSteps += 1
         if unansweredSteps >= ScrollStitcher.endOfPageStationaryFrames, stitcher.acceptedFrameCount > 0 {
-            finishCollecting(partial: nil)
+            // No frame is also what a stalled, lazy-loading page looks like: complete only when
+            // the target confirms its scroll area is at its end.
+            let atEnd = await autoScroller?.isAtEnd(target)
+            guard sessionID == id, state == .collecting else { return }
+            finishCollecting(partial: atEnd == true ? nil : .stoppedMoving)
             return
         }
         await autoStep(target, id: id)

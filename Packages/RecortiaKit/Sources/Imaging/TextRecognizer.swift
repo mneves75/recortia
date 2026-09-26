@@ -57,24 +57,17 @@ public struct TextRecognizer: Sendable {
         guard unavailable.isEmpty else { throw TextRecognitionError.unsupportedLanguages(unavailable) }
         request.recognitionLanguages = resolved.compactMap { $0 }
 
+        // Vision can fail transiently while compiling its Neural Engine model; the CPU path needs
+        // no compilation, so one retry there turns that into a slower success.
         let observations: [RecognizedTextObservation]
-        do {
-            observations = try await request.perform(on: image)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            // Vision can fail transiently while compiling its Neural Engine model; the CPU path
-            // needs no compilation, so one retry there turns that into a slower success.
-            try Task.checkCancellation()
+        if let first = try await Self.perform(request, on: image) {
+            observations = first
+        } else {
             Self.useCPU(&request)
-            do {
-                observations = try await request.perform(on: image)
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                try Task.checkCancellation()
+            guard let retried = try await Self.perform(request, on: image) else {
                 throw TextRecognitionError.recognitionFailed
             }
+            observations = retried
         }
         try Task.checkCancellation()
 
@@ -90,6 +83,20 @@ public struct TextRecognizer: Sendable {
         return OCRResult(
             lines: lines, revision: Self.revisionNumber(request.revision),
             languages: request.recognitionLanguages.map(\.maximalIdentifier))
+    }
+
+    /// The request's observations, or nil when Vision failed; cancellation always propagates.
+    private static func perform(_ request: RecognizeTextRequest, on image: CGImage) async throws
+        -> [RecognizedTextObservation]?
+    {
+        do {
+            return try await request.perform(on: image)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return nil
+        }
     }
 
     static func useCPU(_ request: inout RecognizeTextRequest) {

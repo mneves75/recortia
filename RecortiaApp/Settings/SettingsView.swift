@@ -159,6 +159,13 @@ struct ExportSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
             Section {
+                if settings.loadIssue == .unverifiedConsent {
+                    Label(
+                        "Automatic copy, save, and scrolling were turned off because their saved settings could not be verified. Turn them on again if you want them.",
+                        systemImage: "exclamationmark.shield"
+                    )
+                    .font(.callout)
+                }
                 Toggle("Copy automatically after capture", isOn: settings.binding(\.autoCopy))
                 Toggle("Save automatically after capture", isOn: settings.binding(\.autoSave))
                 HStack {

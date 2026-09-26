@@ -32,7 +32,9 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
             guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
                 throw CaptureError.targetUnavailable
             }
-            filter = Self.filter(display: display, excludingWindowIDs: Set(excludedIDs), content: content)
+            filter = await CaptureExclusion.filter(
+                display: display, excludingWindowIDs: Set(excludedIDs), content: content,
+                ownPID: ProcessInfo.processInfo.processIdentifier)
         case .window(let windowID):
             guard let window = content.windows.first(where: { $0.windowID == windowID }) else {
                 throw CaptureError.targetUnavailable
@@ -61,16 +63,5 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
 
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
         return BackendImage(image: image, pointPixelScale: scale)
-    }
-
-    /// Excludes Recortia itself as an application (so its windows created after this fetch, such as
-    /// a new pin or the drag chip, stay excluded too) whenever every requested ID is one of its own
-    /// windows; otherwise excludes the requested windows plus Recortia's windows in this fresh fetch.
-    static func filter(display: SCDisplay, excludingWindowIDs requested: Set<CGWindowID>, content: SCShareableContent)
-        -> SCContentFilter
-    {
-        CaptureExclusion.filter(
-            display: display, excludingWindowIDs: requested, content: content,
-            ownPID: ProcessInfo.processInfo.processIdentifier)
     }
 }

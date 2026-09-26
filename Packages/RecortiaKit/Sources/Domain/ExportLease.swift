@@ -5,18 +5,56 @@ import Synchronization
 /// another thread; the lease lets the document revoke it the moment the document changes, the
 /// user cancels, or the editor closes, so a snapshot older than a new redaction is never written.
 public final class ExportLease: Sendable {
-    private let revoked = Mutex(false)
+    private enum State: Equatable {
+        case active
+        /// A commit is writing; a revoke now takes effect only if that commit fails.
+        case committing(revokeRequested: Bool)
+        case committed
+        case revoked
+    }
+
+    private let state = Mutex(State.active)
 
     public init() {}
 
-    public var isRevoked: Bool { revoked.withLock { $0 } }
+    public var isRevoked: Bool { state.withLock { $0 == .revoked } }
 
-    public func revoke() { revoked.withLock { $0 = true } }
+    /// The commit happened: the receiver has the file. Only a revocation before it can stop it.
+    public var isCommitted: Bool { state.withLock { $0 == .committed } }
 
-    /// Runs `commit` only if the lease is still valid, holding the lease for its duration, so a
-    /// concurrent `revoke()` lands either before the commit (nothing happens) or after it.
-    /// Returns nil when the lease was already revoked.
+    /// Revokes a lease that has not started committing. A commit already writing was decided
+    /// before the revoke, so it stands; the revoke applies only if that commit fails.
+    public func revoke() {
+        state.withLock { current in
+            switch current {
+            case .active: current = .revoked
+            case .committing: current = .committing(revokeRequested: true)
+            case .committed, .revoked: break
+            }
+        }
+    }
+
+    /// Runs `commit` once, only if the lease is still active, and marks the lease committed when
+    /// it returns. The lock is held only to claim and settle the commit, never during it, so a
+    /// revoke from the main actor never waits for disk I/O. Returns nil when the lease was
+    /// revoked or already used; a throwing commit leaves the lease active (or revoked, if a
+    /// revoke arrived meanwhile).
     public func whileValid<T>(_ commit: () throws -> T) rethrows -> T? {
-        try revoked.withLock { isRevoked in isRevoked ? nil : try commit() }
+        let claimed = state.withLock { current -> Bool in
+            guard current == .active else { return false }
+            current = .committing(revokeRequested: false)
+            return true
+        }
+        guard claimed else { return nil }
+        do {
+            let result = try commit()
+            state.withLock { $0 = .committed }
+            return result
+        } catch {
+            state.withLock { current in
+                if case .committing(let revokeRequested) = current { current = revokeRequested ? .revoked : .active }
+            }
+            throw error
+        }
     }
 }

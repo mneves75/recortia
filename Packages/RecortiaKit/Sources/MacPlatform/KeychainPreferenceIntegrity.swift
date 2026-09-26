@@ -20,6 +20,8 @@ public protocol SealSecretStore: AnyObject {
     func load() -> SealSecret?
     /// Returns false when the secret could not be stored.
     func save(_ secret: SealSecret) -> Bool
+    /// Deletes the secret, so every existing seal stops verifying.
+    func remove()
 }
 
 /// HMAC-SHA256 over the generation and the preferences blob. Each seal advances the generation
@@ -43,7 +45,12 @@ public final class PreferenceSeal {
     public func seal(_ data: Data) -> Data? {
         let current = store.load() ?? SealSecret(key: Self.newKey(), generation: 0)
         let next = SealSecret(key: current.key, generation: current.generation &+ 1)
-        guard store.save(next) else { return nil }
+        guard store.save(next) else {
+            // The generation could not advance: drop the secret so an older sealed blob another
+            // process copied cannot stay valid (consent then lasts only this session).
+            store.remove()
+            return nil
+        }
         return Self.mac(next, data)
     }
 
@@ -74,7 +81,10 @@ public final class PreferenceSeal {
 /// entitlement (Debug builds) every call fails, so consent then lasts only for the session.
 @MainActor
 public final class DataProtectionSealStore: SealSecretStore {
-    private static let service = "dev.mvneves.Recortia.preferences-seal"
+    static let service = "dev.mvneves.Recortia.preferences-seal"
+    /// A 32-byte HMAC key followed by the big-endian 64-bit generation.
+    private static let keyByteCount = 32
+    private static let storedByteCount = keyByteCount + MemoryLayout<UInt64>.size
     private static let account = "hmac-sha256+generation"
 
     public init() {}
@@ -92,14 +102,14 @@ public final class DataProtectionSealStore: SealSecretStore {
         query[kSecMatchLimit] = kSecMatchLimitOne
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let bytes = result as? Data,
-            bytes.count == 40
+            bytes.count == Self.storedByteCount
         else { return nil }
         let generation = bytes.suffix(8).reduce(UInt64(0)) { $0 << 8 | UInt64($1) }
-        return SealSecret(key: bytes.prefix(32), generation: generation)
+        return SealSecret(key: bytes.prefix(Self.keyByteCount), generation: generation)
     }
 
     public func save(_ secret: SealSecret) -> Bool {
-        guard secret.key.count == 32 else { return false }
+        guard secret.key.count == Self.keyByteCount else { return false }
         let bytes = secret.key + withUnsafeBytes(of: secret.generation.bigEndian) { Data($0) }
         let update = SecItemUpdate(base as CFDictionary, [kSecValueData: bytes] as CFDictionary)
         if update == errSecSuccess { return true }
@@ -121,6 +131,10 @@ public final class DataProtectionSealStore: SealSecretStore {
         return status == errSecSuccess
     }
 
+    public func remove() {
+        SecItemDelete(base as CFDictionary)
+    }
+
     private static let log = Logger(subsystem: "dev.mvneves.Recortia", category: "preferences")
 }
 
@@ -136,7 +150,7 @@ public final class KeychainPreferenceIntegrity {
     public func prepare() {
         preferenceSeal.prepare()
         let legacy: [CFString: Any] = [
-            kSecClass: kSecClassGenericPassword, kSecAttrService: "dev.mvneves.Recortia.preferences-seal",
+            kSecClass: kSecClassGenericPassword, kSecAttrService: DataProtectionSealStore.service,
             kSecAttrAccount: "hmac-sha256",
         ]
         SecItemDelete(legacy as CFDictionary)

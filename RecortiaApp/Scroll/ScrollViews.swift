@@ -224,6 +224,9 @@ struct ScrollReviewView: View {
         case .limit(.side): String(localized: "The 32,768-pixel side limit was reached.")
         case .limit(.height): String(localized: "The 20,000-pixel height limit was reached.")
         case .ambiguous: String(localized: "Capture stopped where content could not be matched reliably.")
+        case .stoppedMoving:
+            String(
+                localized: "Scrolling stopped when the page stopped moving; content that loads later may be missing.")
         }
     }
 }

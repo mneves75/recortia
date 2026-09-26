@@ -1,6 +1,22 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Automatic copy, save, and scrolling were turned off because their saved settings could not be verified. Turn them on again if you want them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic copy, save, and scrolling were turned off because their saved settings could not be verified. Turn them on again if you want them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A cópia, o salvamento e a rolagem automáticos foram desativados porque as configurações salvas não puderam ser verificadas. Ative-os de novo se quiser."
+          }
+        }
+      }
+    },
     "Drag the image into another app.": {
       "localizations": {
         "en": {
@@ -45,6 +61,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Imagem exportada, arrastável"
+          }
+        }
+      }
+    },
+    "Scrolling stopped when the page stopped moving; content that loads later may be missing.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrolling stopped when the page stopped moving; content that loads later may be missing."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A rolagem parou quando a página parou de se mover; conteúdo carregado depois pode estar faltando."
           }
         }
       }
