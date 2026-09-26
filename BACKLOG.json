@@ -1,0 +1,723 @@
+{
+  "schema_version": 1,
+  "document_version": "1.0",
+  "research_date": "2026-09-26",
+  "status": "proposed_not_implemented",
+  "policy": "Initial permission is read-only planning. No task is complete without recorded verification; publishing and live-data access require explicit authorization.",
+  "tasks": [
+    {
+      "id": "FP-001",
+      "milestone": "M0",
+      "title": "Inventory repository and freeze verified toolchain",
+      "status": "not_started",
+      "depends_on": [],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-01"
+      ],
+      "scope": "Read the real repository, preserve existing work, record the Mac/toolchain/SDK state, and identify proposed versus existing paths.",
+      "deliverables": [
+        "Repository audit",
+        "Observed TOOLCHAIN.json fields",
+        "ADR-001 native stack and deployment baseline"
+      ],
+      "completion_contract": "An owner-reviewed plan distinguishes verified facts, unsupported environment checks, and genuinely blocking decisions. No application edits before approval.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-002",
+      "milestone": "M0",
+      "title": "Prove capture, geometry, and permission feasibility",
+      "status": "not_started",
+      "depends_on": [
+        "FP-001"
+      ],
+      "requirement_ids": [
+        "FR-02",
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "PERM-01",
+        "CAP-01",
+        "GEO-01"
+      ],
+      "scope": "After approval and explicit live-test consent, build a minimal capture spike against a synthetic test desktop and investigate the selected permission/sandbox profile.",
+      "deliverables": [
+        "Disposable capture spike",
+        "Per-display geometry observations",
+        "ADR-002 permission and sandbox decision"
+      ],
+      "completion_contract": "Record real still-capture results, app-window exclusion, a mixed-DPI test or explicit hardware block, and a reasoned choice about non-sandboxed automatic scrolling.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-003",
+      "milestone": "M0",
+      "title": "Prove privacy rendering and scroll-matching risks",
+      "status": "not_started",
+      "depends_on": [
+        "FP-001"
+      ],
+      "requirement_ids": [
+        "FR-06",
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "RED-01",
+        "SCR-01",
+        "SCR-02"
+      ],
+      "scope": "Use synthetic images to prototype pre-filter opaque masking and a minimal overlap matcher before investing in UI polish.",
+      "deliverables": [
+        "Independent secret-region fixture generator",
+        "Scroll frame corpus seed",
+        "Risk/feasibility report"
+      ],
+      "completion_contract": "Demonstrate the intended redaction information-dependence test and show both a successful and an intentionally rejected ambiguous stitch; report any unrun code honestly.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-004",
+      "milestone": "M1",
+      "title": "Create the approved native project and test entrypoints",
+      "status": "not_started",
+      "depends_on": [
+        "FP-002",
+        "FP-003"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-01"
+      ],
+      "scope": "Create or adapt the approved app target, local package targets, shared schemes, formatting configuration, and unsigned CI entrypoints.",
+      "deliverables": [
+        "Framepin.xcodeproj or approved existing equivalent",
+        "Packages/FramepinKit",
+        "scripts/doctor.sh and scripts/check.sh",
+        "Read-only PR workflow"
+      ],
+      "completion_contract": "A clean Mac checkout builds the skeleton and runs a real domain test without release credentials. Dependency locks and exact script behavior are documented.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-005",
+      "milestone": "M1",
+      "title": "Implement typed geometry and domain contracts",
+      "status": "not_started",
+      "depends_on": [
+        "FP-004"
+      ],
+      "requirement_ids": [
+        "FR-02",
+        "FR-04",
+        "FR-06"
+      ],
+      "acceptance_test_ids": [
+        "GEO-02",
+        "EDIT-01"
+      ],
+      "scope": "Implement coordinate-space types, safe transforms, request/revision identity, limits, document values, and explicit state transitions.",
+      "deliverables": [
+        "Domain geometry/model/state files",
+        "Parameterized geometry and transition tests"
+      ],
+      "completion_contract": "Round-trip, outward mask rounding, invalid-input, overflow, and illegal-transition tests pass without UI dependencies.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-006",
+      "milestone": "M1",
+      "title": "Build the menu bar, settings foundation, and shortcuts",
+      "status": "not_started",
+      "depends_on": [
+        "FP-004"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "PERM-01",
+        "UX-01"
+      ],
+      "scope": "Create the native lifecycle, menu commands, onboarding, user-assigned shortcut recorder, localization foundation, and settings.",
+      "deliverables": [
+        "App composition root",
+        "Menu/settings/onboarding UI",
+        "String Catalog",
+        "Reviewed shortcut dependency resolution"
+      ],
+      "completion_contract": "The app launches without intrusive permission prompts, exposes keyboard-accessible commands, reports shortcut registration failure, and starts with no automatic side effects.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-007",
+      "milestone": "M1",
+      "title": "Implement the still-capture vertical slice",
+      "status": "not_started",
+      "depends_on": [
+        "FP-005",
+        "FP-006"
+      ],
+      "requirement_ids": [
+        "FR-02"
+      ],
+      "acceptance_test_ids": [
+        "CAP-01",
+        "CAP-02",
+        "PERM-02",
+        "GEO-01"
+      ],
+      "scope": "Implement ScreenCaptureKit still capture, source choice, overlays, delay/repeat, exclusion, and cancellation through to a simple image preview.",
+      "deliverables": [
+        "Capture adapter and permission state",
+        "Selection overlays/HUD",
+        "Capture coordinator tests"
+      ],
+      "completion_contract": "Real capture works for the declared modes and source geometry, with one active request, no idle stream, no self-overlay contamination, and safe late-callback handling.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-008",
+      "milestone": "M1",
+      "title": "Implement bounded local image import",
+      "status": "not_started",
+      "depends_on": [
+        "FP-005",
+        "FP-006"
+      ],
+      "requirement_ids": [
+        "FR-03"
+      ],
+      "acceptance_test_ids": [
+        "IO-01",
+        "PRIV-01"
+      ],
+      "scope": "Implement explicit PNG/JPEG file, paste, and drop-in actions using bounded decoding and canonical image orientation/color.",
+      "deliverables": [
+        "Image decoder/import adapter",
+        "Input budget enforcement",
+        "Corrupt/oversized fixtures"
+      ],
+      "completion_contract": "Valid imports render; unsafe/unsupported inputs fail before uncontrolled allocation. No clipboard polling, remote fetch, or original-file mutation occurs.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-009",
+      "milestone": "M2",
+      "title": "Build the document editor and command undo",
+      "status": "not_started",
+      "depends_on": [
+        "FP-007",
+        "FP-008"
+      ],
+      "requirement_ids": [
+        "FR-04"
+      ],
+      "acceptance_test_ids": [
+        "EDIT-01",
+        "EDIT-02",
+        "GEO-02"
+      ],
+      "scope": "Implement the native canvas, document/view transforms, crop/resize/zoom/pan, selection, and bounded command-based undo.",
+      "deliverables": [
+        "Editor canvas and controller",
+        "Command history",
+        "Deterministic editor replay tests"
+      ],
+      "completion_contract": "Undo/redo and geometry remain correct at all specified zooms, and one gesture produces one bounded undo group.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-010",
+      "milestone": "M2",
+      "title": "Add essential annotation tools",
+      "status": "not_started",
+      "depends_on": [
+        "FP-009"
+      ],
+      "requirement_ids": [
+        "FR-05"
+      ],
+      "acceptance_test_ids": [
+        "EDIT-01",
+        "EDIT-02",
+        "UX-01"
+      ],
+      "scope": "Implement text, arrow, rectangle, ellipse, freehand, highlighter, and numbered-step tools with accessible controls.",
+      "deliverables": [
+        "Typed annotation payloads and renderer",
+        "Tool inspector",
+        "Unicode and input-method tests"
+      ],
+      "completion_contract": "Each supported tool creates/edits/replays deterministically, honors focus/input composition, and has no stub or inaccessible essential action.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-011",
+      "milestone": "M2",
+      "title": "Implement secure rendering and redaction",
+      "status": "not_started",
+      "depends_on": [
+        "FP-009",
+        "FP-010"
+      ],
+      "requirement_ids": [
+        "FR-06"
+      ],
+      "acceptance_test_ids": [
+        "RED-01",
+        "RED-02",
+        "RED-03",
+        "RED-04"
+      ],
+      "scope": "Implement source-bound masks, output coverage, privacy epochs, effect ordering, and flattened render snapshots. Label cosmetic effects separately.",
+      "deliverables": [
+        "Privacy-aware render pipeline",
+        "Mask geometry and cache invalidation",
+        "Redaction regression suite"
+      ],
+      "completion_contract": "All available sink-independent redaction tests pass; changing only covered source pixels cannot alter sanitized rendered pixels. No superficial overlay qualifies.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-012",
+      "milestone": "M2",
+      "title": "Implement safe save, clipboard, and drag-out",
+      "status": "not_started",
+      "depends_on": [
+        "FP-011"
+      ],
+      "requirement_ids": [
+        "FR-07"
+      ],
+      "acceptance_test_ids": [
+        "EXP-01",
+        "EXP-02",
+        "RED-01",
+        "RED-02",
+        "PRIV-01"
+      ],
+      "scope": "Create ShareSnapshot encoding, metadata/type allowlists, explicit export commits, atomic file handling, and file-promise lifetime management.",
+      "deliverables": [
+        "PNG/JPEG encoder",
+        "Clipboard/file/drag adapters",
+        "Failure injection and metadata-inspection tests"
+      ],
+      "completion_contract": "Every sink accepts only sanitized snapshot bytes. Failed work preserves existing destinations/clipboard where applicable and never reports false success.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-013",
+      "milestone": "M2",
+      "title": "Implement bounded reference pins",
+      "status": "not_started",
+      "depends_on": [
+        "FP-012"
+      ],
+      "requirement_ids": [
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "PIN-01",
+        "RED-03"
+      ],
+      "scope": "Add visible floating references with lifecycle, opacity/zoom, budget enforcement, and privacy-epoch invalidation.",
+      "deliverables": [
+        "Pin panel/controller",
+        "Snapshot retention policy",
+        "Pin lifecycle tests"
+      ],
+      "completion_contract": "Five-pin and budget limits work; pins remain closeable and do not silently intercept unrelated interactions or leak stale exports.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-014",
+      "milestone": "M3",
+      "title": "Implement local OCR and QR",
+      "status": "not_started",
+      "depends_on": [
+        "FP-012"
+      ],
+      "requirement_ids": [
+        "FR-08"
+      ],
+      "acceptance_test_ids": [
+        "OCR-01",
+        "OCR-02",
+        "RED-03",
+        "PERM-01"
+      ],
+      "scope": "Integrate Vision behind the tested adapter, query supported languages, preserve raw-text semantics, and treat QR payloads as untrusted.",
+      "deliverables": [
+        "OCR/QR service and review UI",
+        "Versioned EN/PT corpus",
+        "Revision-aware result handling"
+      ],
+      "completion_contract": "Recognition works offline in the validated environment, aligns boxes correctly, respects masks/cancellation, and never performs a QR-triggered action automatically.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-015",
+      "milestone": "M3",
+      "title": "Qualify the useful 0.1 release candidate",
+      "status": "not_started",
+      "depends_on": [
+        "FP-013",
+        "FP-014"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-02",
+        "FR-03",
+        "FR-04",
+        "FR-05",
+        "FR-06",
+        "FR-07",
+        "FR-08",
+        "FR-09",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-01",
+        "PRIV-01",
+        "PERF-01",
+        "REL-01",
+        "REL-02"
+      ],
+      "scope": "Review the 0.1 scope, perform baseline accessibility/privacy/performance checks, establish licensing/build docs, and prepare a signed candidate only with the required consent.",
+      "deliverables": [
+        "0.1 requirement/evidence matrix",
+        "Initial OSS policy files",
+        "Protected signing/notarization procedure",
+        "Known limitations"
+      ],
+      "completion_contract": "All 0.1 gates pass or the scope is visibly reduced through review. Signing checks are real or marked blocked; public publishing remains a separate action.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-016",
+      "milestone": "M4",
+      "title": "Implement manual scrolling capture",
+      "status": "not_started",
+      "depends_on": [
+        "FP-015"
+      ],
+      "requirement_ids": [
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "SCR-01",
+        "SCR-02",
+        "SCR-04",
+        "CAP-02"
+      ],
+      "scope": "Integrate a bounded user-visible capture stream, frame stability, overlap estimation, confidence gating, seam preview, and partial-result review.",
+      "deliverables": [
+        "Manual scroll session/coordinator",
+        "Bounded matching/assembly pipeline",
+        "Fixture-driven stitch diagnostics"
+      ],
+      "completion_contract": "Known sequences reconstruct correctly; ambiguous matches pause/reject instead of fabricating success. Stop and resource limits remain responsive.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-017",
+      "milestone": "M4",
+      "title": "Add separately consented automatic scrolling",
+      "status": "not_started",
+      "depends_on": [
+        "FP-016"
+      ],
+      "requirement_ids": [
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "PERM-01",
+        "PERM-02",
+        "SCR-03"
+      ],
+      "scope": "Implement minimal targeted scrolling only within the approved permission/sandbox design, preserving manual fallback.",
+      "deliverables": [
+        "Automatic-scroll adapter",
+        "Accessibility explanation and denial flow",
+        "Target/focus safety checks"
+      ],
+      "completion_contract": "No Accessibility request occurs before choosing automatic mode. Target changes stop control; denial keeps manual mode usable. No typing/global event logging is added.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-018",
+      "milestone": "M4",
+      "title": "Qualify scrolling compatibility and failure behavior",
+      "status": "not_started",
+      "depends_on": [
+        "FP-017"
+      ],
+      "requirement_ids": [
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "SCR-01",
+        "SCR-02",
+        "SCR-03",
+        "SCR-04",
+        "PERF-01"
+      ],
+      "scope": "Validate supported browsers/native fixtures, fixed bands, lazy reflow, duplicate rows, direction changes, and scroll-modifier failure cases.",
+      "deliverables": [
+        "Versioned real-app compatibility matrix",
+        "Held-out matching evaluation",
+        "Documented manual recovery flow"
+      ],
+      "completion_contract": "Publish only evidence-backed supported targets. Every corrupted/uncertain case is rejected, paused, or explicitly marked partial; resource tests include final encoding.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-019",
+      "milestone": "M5",
+      "title": "Implement loupe, measurements, and sRGB inspection",
+      "status": "not_started",
+      "depends_on": [
+        "FP-015"
+      ],
+      "requirement_ids": [
+        "FR-11"
+      ],
+      "acceptance_test_ids": [
+        "PIX-01",
+        "GEO-01",
+        "GEO-02"
+      ],
+      "scope": "Add a nearest-neighbor loupe, labeled pixel/point dimensions, ruler anchors, and canonical sRGB HEX/RGB copy.",
+      "deliverables": [
+        "Pixel inspector/ruler UI",
+        "Known-color/geometry fixtures",
+        "Source-space sampling tests"
+      ],
+      "completion_contract": "Measurements and colors match declared fixture values independently of editor zoom; imported images never get fabricated screen scaling.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-020",
+      "milestone": "M5",
+      "title": "Implement multiple-image composition",
+      "status": "not_started",
+      "depends_on": [
+        "FP-015"
+      ],
+      "requirement_ids": [
+        "FR-12"
+      ],
+      "acceptance_test_ids": [
+        "COMP-01",
+        "RED-01",
+        "RED-03",
+        "EDIT-01"
+      ],
+      "scope": "Add image layers, stable transforms, z-order, transparency, side-by-side layout, and source-mask propagation across duplicate asset references.",
+      "deliverables": [
+        "Image-layer commands and composite renderer",
+        "Transform mapping tests",
+        "Composite privacy regressions"
+      ],
+      "completion_contract": "Composites preserve aspect ratio, geometry, undo, and masks. Unsupported mappings fail safely before any export.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-021",
+      "milestone": "M5",
+      "title": "Add presentation effects and safe magnifiers",
+      "status": "not_started",
+      "depends_on": [
+        "FP-020"
+      ],
+      "requirement_ids": [
+        "FR-13"
+      ],
+      "acceptance_test_ids": [
+        "COMP-01",
+        "RED-01",
+        "RED-02",
+        "RED-03",
+        "PERF-01"
+      ],
+      "scope": "Implement backgrounds/padding/corners/shadows and then spotlight/magnifier, reusing the approved sanitized render graph.",
+      "deliverables": [
+        "Effect models and native inspectors",
+        "Cycle checks and cache rules",
+        "Per-effect export/privacy fixtures"
+      ],
+      "completion_contract": "Every derived effect samples sanitized sources, rejects cycles, matches the preview, and stays within the resource budget.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-022",
+      "milestone": "M6",
+      "title": "Finish accessibility, localization, and native interaction",
+      "status": "not_started",
+      "depends_on": [
+        "FP-018",
+        "FP-019",
+        "FP-021"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-01",
+        "EDIT-02",
+        "PIN-01"
+      ],
+      "scope": "Audit all completed surfaces for keyboard/VoiceOver use, input methods, adaptive appearance, multi-window focus, and EN/PT-BR strings.",
+      "deliverables": [
+        "Accessibility audit with actual evidence",
+        "Complete String Catalog translations",
+        "Native interaction regression list"
+      ],
+      "completion_contract": "Essential workflows are usable through the stated accessibility paths. Remaining limitations are disclosed rather than labeled fully accessible.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-023",
+      "milestone": "M6",
+      "title": "Qualify resource, lifecycle, and privacy budgets",
+      "status": "not_started",
+      "depends_on": [
+        "FP-022"
+      ],
+      "requirement_ids": [
+        "FR-02",
+        "FR-06",
+        "FR-07",
+        "FR-10",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "PERF-01",
+        "PRIV-01",
+        "PERM-02",
+        "RED-01",
+        "RED-02",
+        "SCR-04"
+      ],
+      "scope": "Run physical-Mac performance/soak tests and inspect egress, app-controlled persistence, retained objects, diagnostics, and failure boundaries.",
+      "deliverables": [
+        "Performance and memory report",
+        "Privacy evidence",
+        "Resolved or reviewed release-blocking defects"
+      ],
+      "completion_contract": "Record p50/p95/sample counts and exact environments. No fabricated hardware results, silent budget changes, live capture archive, or content-bearing logs.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-024",
+      "milestone": "M6",
+      "title": "Implement and stage the signed updater",
+      "status": "not_started",
+      "depends_on": [
+        "FP-022"
+      ],
+      "requirement_ids": [
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-02",
+        "PRIV-01"
+      ],
+      "scope": "Integrate a reviewed stable Sparkle build, opt-in update checks, signed archives, compatibility filtering, and an actual staging recovery procedure.",
+      "deliverables": [
+        "Updater adapter/settings",
+        "Protected update signing procedure",
+        "Tamper/interruption/compatibility evidence"
+      ],
+      "completion_contract": "Invalid updates are rejected, default installs remain offline, and the working app survives failure. No release/update key is exposed to untrusted jobs.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    },
+    {
+      "id": "FP-025",
+      "milestone": "M6",
+      "title": "Complete open-source handoff and 1.0 release qualification",
+      "status": "not_started",
+      "depends_on": [
+        "FP-023",
+        "FP-024"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-02",
+        "FR-03",
+        "FR-04",
+        "FR-05",
+        "FR-06",
+        "FR-07",
+        "FR-08",
+        "FR-09",
+        "FR-10",
+        "FR-11",
+        "FR-12",
+        "FR-13",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-01",
+        "REL-02",
+        "UX-01",
+        "PRIV-01"
+      ],
+      "scope": "Assemble the reviewed source tag, license/notice inventory, reproducible inputs, SBOM, contributor/security docs, final compatibility matrix, and clean-install evidence.",
+      "deliverables": [
+        "1.0 traceability and evidence matrix",
+        "OSS documentation",
+        "Signed/notarized candidate and artifact hashes when authorized",
+        "Release checklist"
+      ],
+      "completion_contract": "The release candidate meets its named scope without fake parity/security claims. The maintainer approves any publish action separately; unrun gates remain visibly unrun.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone"
+    }
+  ],
+  "deferred_scope": [
+    {
+      "requirement_id": "FR-15",
+      "title": "User-controlled S3-compatible upload",
+      "status": "requires_separate_design_and_approval"
+    },
+    {
+      "requirement_id": "FR-16",
+      "title": "Local automation and optional on-device writing assistance",
+      "status": "requires_separate_design_and_approval"
+    }
+  ]
+}

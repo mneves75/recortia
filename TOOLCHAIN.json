@@ -1,0 +1,21 @@
+{
+  "status": "proposed_pending_local_verification",
+  "research_date": "2026-09-26",
+  "platform": "macOS",
+  "release_architectures": ["arm64"],
+  "minimum_deployment_target": "15.0",
+  "required_stable_xcode_major": 27,
+  "expected_bundled_swift_compiler_major_minor": "6.4",
+  "swift_language_mode": "6",
+  "documented_build_host_minimum": "macOS 26.6",
+  "allow_beta_toolchains_for_release": false,
+  "actual_xcode_version": null,
+  "actual_xcode_build": null,
+  "actual_swift_version_output": null,
+  "actual_macos_sdk_version": null,
+  "actual_macos_sdk_build": null,
+  "actual_build_host_os": null,
+  "package_resolution_verified": false,
+  "source": "S05 in SOURCES.md",
+  "instructions": "Replace only observed fields after an actual Mac preflight. Record toolchain updates through review; never fill null values with guesses."
+}

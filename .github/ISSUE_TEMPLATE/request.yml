@@ -1,0 +1,26 @@
+name: Feature or scope request
+description: Propose a capability or a change to planned scope.
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Planned milestone work lives in `BACKLOG.json` (FP-001…FP-025). Deferred scope (SPEC.md §3,
+        FR-15, FR-16) needs a separate design and approval before implementation.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior, including failure and cancellation behavior
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy or permission impact
+      description: New permissions, network access, persistence, or export paths?
