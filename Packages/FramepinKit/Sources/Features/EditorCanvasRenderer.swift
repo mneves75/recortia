@@ -14,12 +14,13 @@ public enum EditorCanvasRenderer {
     /// from `calloutBase`, which the caller passes only when it was rendered for the current
     /// privacy epoch, so a magnifier can never enlarge pixels a newer redaction covers.
     public static func draw(
-        _ document: Document, base: CGImage?, calloutBase: CGImage?, draft: Annotation? = nil, in context: CGContext
+        _ document: Document, base: CGImage?, calloutBase: CGImage?, draft: Annotation? = nil,
+        baseInterpolation: CGInterpolationQuality = .none, in context: CGContext
     ) {
         let canvas = document.canvasRect.cg
         if let base {
             context.saveGState()
-            context.interpolationQuality = .none
+            context.interpolationQuality = baseInterpolation
             drawUpright(base, in: canvas, context)
             context.restoreGState()
         }

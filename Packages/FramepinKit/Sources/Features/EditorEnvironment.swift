@@ -8,7 +8,7 @@ import Foundation
 @MainActor
 public protocol TextClipboardService: AnyObject {
     /// Replaces the clipboard with `text` as plain text only. Called only from an explicit Copy
-    /// action; returns false when the write failed (the previous content is then unchanged).
+    /// action; returns false when the write failed.
     func writePlainText(_ text: String) -> Bool
 }
 

@@ -48,7 +48,7 @@ public final class EditorModel {
     public internal(set) var pickedColor: EditorColorSample?
     public internal(set) var ruler: EditorMeasurement?
 
-    @ObservationIgnored let environment: EditorEnvironment
+    @ObservationIgnored public let environment: EditorEnvironment
     @ObservationIgnored var gesture: Gesture = .idle
     @ObservationIgnored var knownAssets: Set<AssetID>
     @ObservationIgnored var hasFittedViewport = false
@@ -353,6 +353,12 @@ public final class EditorModel {
         } else {
             selection = [item]
         }
+    }
+
+    /// Replaces the selection (object list); unknown items are ignored.
+    public func setSelection(_ items: Set<EditorItemID>) {
+        let existing = Set(allItemIDs)
+        selection = items.filter(existing.contains)
     }
 
     public func selectAll() { selection = Set(allItemIDs) }
