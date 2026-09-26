@@ -111,8 +111,11 @@ public enum DragDeliveryOutcome: Hashable, Sendable {
 
 @MainActor
 public protocol DragSinkService: AnyObject {
-    /// Offers the snapshot as a file promise and returns once the drag session ends.
-    func deliver(_ snapshot: ShareSnapshot) async throws(SinkError) -> DragDeliveryOutcome
+    /// Offers the snapshot as a file promise and returns once the drag session ends. The sink
+    /// must not start a drag, or write the promised file, after `lease` is revoked.
+    func deliver(_ snapshot: ShareSnapshot, lease: ExportLease) async throws(SinkError) -> DragDeliveryOutcome
+    /// Withdraws a pending offer (its lease was revoked); `deliver` then returns `.canceledByUser`.
+    func dismiss()
 }
 
 @MainActor

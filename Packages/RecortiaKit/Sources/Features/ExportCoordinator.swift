@@ -56,6 +56,12 @@ public final class ExportCoordinator {
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private var snapshotTask: Task<ShareSnapshot, any Error>?
+    @ObservationIgnored private var pendingDrag: PendingDrag?
+
+    private struct PendingDrag {
+        let documentID: DocumentID
+        let lease: ExportLease
+    }
 
     private struct Operation {
         let id: UUID
@@ -140,9 +146,25 @@ public final class ExportCoordinator {
                 apply(.commit)
                 completed = .saved(try await files.saveUnique(snapshot, in: folder))
             case .drag:
+                // The receiver writes the file later, after an unbounded wait; the lease lets a
+                // document change, cancel, or close revoke the offer before that write (RED-03).
+                let lease = ExportLease()
                 operation?.awaitingDragReceiver = true
-                let delivery = try await drag.deliver(snapshot)
+                pendingDrag = PendingDrag(documentID: snapshot.documentID, lease: lease)
+                let delivery: DragDeliveryOutcome
+                do {
+                    delivery = try await drag.deliver(snapshot, lease: lease)
+                } catch {
+                    pendingDrag = nil
+                    throw error
+                }
+                pendingDrag = nil
                 operation?.awaitingDragReceiver = false
+                if operation?.cancelRequested == true {
+                    apply(.cancel)
+                    return finish(.canceled)
+                }
+                if lease.isRevoked { return fail(.staleDocument) }
                 switch delivery {
                 case .canceledByUser:
                     apply(.cancel)
@@ -169,7 +191,10 @@ public final class ExportCoordinator {
         guard var current = operation else { return }
         current.cancelRequested = true
         operation = current
-        guard !current.awaitingDragReceiver else { return }
+        if current.awaitingDragReceiver {
+            revokePendingDrag()
+            return
+        }
         switch state {
         case .requested, .snapshotting, .sanitizing, .rendering, .encoding:
             snapshotTask?.cancel()
@@ -177,6 +202,18 @@ public final class ExportCoordinator {
         default:
             break
         }
+    }
+
+    /// The document changed or its editor closed: a drag offered for it can no longer commit.
+    public func invalidatePendingDrag(documentID: DocumentID) {
+        guard pendingDrag?.documentID == documentID else { return }
+        revokePendingDrag()
+    }
+
+    private func revokePendingDrag() {
+        guard let pending = pendingDrag else { return }
+        pending.lease.revoke()
+        drag.dismiss()
     }
 
     /// Automatic copy/save after a capture, only when the user enabled them (off by default).

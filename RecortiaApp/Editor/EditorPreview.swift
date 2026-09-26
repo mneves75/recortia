@@ -105,7 +105,10 @@
         func saveUnique(_ snapshot: ShareSnapshot, in folder: URL) async throws(SinkError) -> URL {
             throw .accessDenied
         }
-        func deliver(_ snapshot: ShareSnapshot) async throws(SinkError) -> DragDeliveryOutcome { .canceledByUser }
+        func deliver(_ snapshot: ShareSnapshot, lease: ExportLease) async throws(SinkError) -> DragDeliveryOutcome {
+            .canceledByUser
+        }
+        func dismiss() {}
         func resolveFolder(bookmark: Data) -> URL? { nil }
         func writePlainText(_ text: String) -> Bool { false }
         func open(_ url: URL) -> Bool { false }

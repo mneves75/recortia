@@ -360,11 +360,30 @@ final class FakeFileSink: FileSinkService {
 @MainActor
 final class FakeDragSink: DragSinkService {
     var outcome: Result<DragDeliveryOutcome, SinkError> = .success(.delivered)
+    /// When set, `deliver` waits here, like the live chip waiting for the user to drag.
+    var pending: Pending<DragDeliveryOutcome>?
     private(set) var deliveries: [ShareSnapshot] = []
+    private(set) var leases: [ExportLease] = []
+    private(set) var dismissCount = 0
+    /// Bytes a receiver actually got: the live file promise writes only while the lease holds.
+    private(set) var writtenSnapshots: [ShareSnapshot] = []
 
-    func deliver(_ snapshot: ShareSnapshot) async throws(SinkError) -> DragDeliveryOutcome {
+    func deliver(_ snapshot: ShareSnapshot, lease: ExportLease) async throws(SinkError) -> DragDeliveryOutcome {
         deliveries.append(snapshot)
-        return try outcome.get()
+        leases.append(lease)
+        let result: DragDeliveryOutcome
+        if let pending {
+            result = await pending.wait()
+        } else {
+            result = try outcome.get()
+        }
+        if result == .delivered, !lease.isRevoked { writtenSnapshots.append(snapshot) }
+        return result
+    }
+
+    func dismiss() {
+        dismissCount += 1
+        pending?.resolve(.canceledByUser)
     }
 }
 

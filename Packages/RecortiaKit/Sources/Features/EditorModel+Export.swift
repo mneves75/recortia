@@ -75,6 +75,7 @@ extension EditorModel {
         endContinuousChange()
         textEditing = nil
         isClosed = true
+        environment.export.invalidatePendingDrag(documentID: session.document.id)
         baseTask?.cancel()
         outputTask?.cancel()
         baseTask = nil

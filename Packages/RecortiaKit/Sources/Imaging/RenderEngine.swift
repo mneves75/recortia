@@ -281,6 +281,10 @@ enum RenderEngine {
                     image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height), context)
             }
         }
+        // Output-space coverage before any neighborhood effect: a layer added or moved under an
+        // existing mask has no source-bound region for it, and blur/pixelate must never sample the
+        // pixels that mask hides (FR-06). Masks are filled again after annotations.
+        applyOutputMasks(&raster, document, map: map, pixelClip: pixelClip)
         let factor = abs(map.a * map.d - map.b * map.c).squareRoot()
         for obfuscation in document.obfuscations {
             guard let area = PixelRect.outward(obfuscation.rect.cg.applying(map), within: pixelClip) else { continue }

@@ -211,6 +211,8 @@ public final class EditorModel {
     func didChange(from before: Document, epoch: UInt64) {
         noteUndoEvictionIfNeeded()
         guard session.document != before || session.privacyEpoch != epoch else { return }
+        // A drag offered for the previous state must not deliver it (RED-03, EXP-02).
+        environment.export.invalidatePendingDrag(documentID: session.document.id)
         let existing = Set(allItemIDs)
         selection = selection.filter(existing.contains)
         if session.privacyEpoch != epoch { privacyEpochChanged() }

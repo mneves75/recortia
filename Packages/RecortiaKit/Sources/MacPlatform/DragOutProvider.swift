@@ -6,14 +6,23 @@ import Domain
 /// Use `makeFilePromiseProvider()` as the dragging item. The returned provider holds this object in
 /// its `userInfo`, so the snapshot bytes live exactly as long as AppKit keeps the promise for the
 /// transfer, and are released when the drag ends or is canceled. Only the snapshot's encoded bytes
-/// are written; nothing is deleted after the write.
+/// are written; nothing is deleted after the write. The receiver asks for the file later, on a
+/// background queue, so the write re-checks `lease`: a document change, cancel, or editor close
+/// revokes it and the stale snapshot is never written.
 @MainActor
 public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
+    public enum WriteError: Error, Equatable, Sendable {
+        /// The export was invalidated before the receiver requested the file.
+        case revoked
+    }
+
     public nonisolated let snapshot: ShareSnapshot
+    public nonisolated let lease: ExportLease
     private let writeQueue: OperationQueue
 
-    public init(snapshot: ShareSnapshot) {
+    public init(snapshot: ShareSnapshot, lease: ExportLease = ExportLease()) {
         self.snapshot = snapshot
+        self.lease = lease
         writeQueue = OperationQueue()
         writeQueue.name = "recortia.drag-out"
         writeQueue.maxConcurrentOperationCount = 1
@@ -39,8 +48,13 @@ public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
         _ filePromiseProvider: NSFilePromiseProvider, writePromiseTo url: URL,
         completionHandler: @escaping ((any Error)?) -> Void
     ) {
+        guard !lease.isRevoked else {
+            completionHandler(WriteError.revoked)
+            return
+        }
         do {
-            try snapshot.bytes.write(to: url, options: [.atomic])
+            // Never replace a file the receiver already has at this URL.
+            try snapshot.bytes.write(to: url, options: [.withoutOverwriting])
             completionHandler(nil)
         } catch {
             completionHandler(error)

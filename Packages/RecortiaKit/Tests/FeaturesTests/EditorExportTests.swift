@@ -61,6 +61,35 @@ struct EditorExportTests {
         #expect(h.model.notice == nil)
     }
 
+    @Test("Redacting while a drag is offered revokes it: the pre-redaction pixels are never written (RED-03)")
+    func redactionRevokesPendingDrag() async throws {
+        let h = EditorHarness()
+        let pending = Pending<DragDeliveryOutcome>()
+        h.drag.pending = pending
+        let export = Task { await h.model.export(.drag) }
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        let lease = try #require(h.drag.leases.first)
+        h.model.selectTool(.redact)
+        h.drag((10, 10), (40, 30))
+        #expect(!h.model.document.masks.isEmpty)
+        #expect(lease.isRevoked)
+        #expect(h.drag.dismissCount == 1)
+        await export.value
+        #expect(h.drag.writtenSnapshots.isEmpty)
+    }
+
+    @Test("Closing the editor revokes a pending drag")
+    func closeRevokesPendingDrag() async throws {
+        let h = EditorHarness()
+        h.drag.pending = Pending<DragDeliveryOutcome>()
+        let export = Task { await h.model.export(.drag) }
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        h.model.close()
+        #expect(h.drag.leases.first?.isRevoked == true)
+        await export.value
+        #expect(h.drag.writtenSnapshots.isEmpty)
+    }
+
     @Test("An edit during the export keeps the document dirty")
     func editDuringExportStaysDirty() async {
         let h = EditorHarness()

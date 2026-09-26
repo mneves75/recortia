@@ -41,6 +41,30 @@ struct DragOutProviderTests {
         #expect(TestSupport.directoryEntries(folder).isEmpty)
     }
 
+    @Test("A revoked lease writes nothing, even when the receiver asks for the file later")
+    func revokedLeaseWritesNothing() async throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let lease = ExportLease()
+        let provider = DragOutProvider(snapshot: TestSupport.snapshot(), lease: lease)
+        lease.revoke()
+        let error = await write(provider, to: folder.appendingPathComponent("stale.png"))
+        #expect(error as? DragOutProvider.WriteError == .revoked)
+        #expect(TestSupport.directoryEntries(folder).isEmpty)
+    }
+
+    @Test("An existing file at the receiver's URL is never replaced")
+    func neverReplacesExistingFile() async throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("taken.png")
+        let original = Data("keep me".utf8)
+        try original.write(to: url)
+        let error = await write(DragOutProvider(snapshot: TestSupport.snapshot()), to: url)
+        #expect(error != nil)
+        #expect(try Data(contentsOf: url) == original)
+    }
+
     @Test("The promised name and type come from the snapshot, sanitized")
     func nameAndType() throws {
         let snapshot = TestSupport.snapshot(suggestedFilename: "../evil/shot:1.png")

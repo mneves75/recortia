@@ -148,6 +148,62 @@ struct ExportCoordinatorTests {
         #expect(await h.export(.drag) == .failed(.system(code: 9)))
     }
 
+    @Test("A document change during a pending drag revokes it, dismisses the chip, and writes nothing")
+    func pendingDragInvalidatedByDocumentChange() async throws {
+        let h = ExportHarness()
+        let pending = Pending<DragDeliveryOutcome>()
+        h.drag.pending = pending
+        async let outcome = h.export(.drag)
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        let lease = try #require(h.drag.leases.first)
+        #expect(!lease.isRevoked)
+        h.coordinator.invalidatePendingDrag(documentID: h.session.document.id)
+        #expect(lease.isRevoked)
+        #expect(h.drag.dismissCount == 1)
+        #expect(await outcome == .failed(.staleDocument))
+        #expect(h.drag.writtenSnapshots.isEmpty)
+    }
+
+    @Test("Invalidating another document's drag leaves this drag alone")
+    func pendingDragOtherDocumentUntouched() async throws {
+        let h = ExportHarness()
+        let pending = Pending<DragDeliveryOutcome>()
+        h.drag.pending = pending
+        async let outcome = h.export(.drag)
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        h.coordinator.invalidatePendingDrag(documentID: DocumentID())
+        #expect(!(h.drag.leases.first?.isRevoked ?? true))
+        pending.resolve(.delivered)
+        #expect(await outcome == .dragged)
+        #expect(h.drag.writtenSnapshots.count == 1)
+    }
+
+    @Test("Cancel during a pending drag revokes the lease and dismisses the chip")
+    func cancelPendingDrag() async throws {
+        let h = ExportHarness()
+        h.drag.pending = Pending<DragDeliveryOutcome>()
+        async let outcome = h.export(.drag)
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        h.coordinator.cancel()
+        #expect(h.drag.leases.first?.isRevoked == true)
+        #expect(h.drag.dismissCount == 1)
+        #expect(await outcome == .canceled)
+        #expect(h.drag.writtenSnapshots.isEmpty)
+    }
+
+    @Test("A delivery reported after the lease was revoked is not committed as a success")
+    func deliveryAfterRevocationIsStale() async throws {
+        let h = ExportHarness()
+        let pending = Pending<DragDeliveryOutcome>()
+        h.drag.pending = pending
+        async let outcome = h.export(.drag)
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        h.drag.leases.first?.revoke()
+        pending.resolve(.delivered)
+        #expect(await outcome == .failed(.staleDocument))
+        #expect(h.drag.writtenSnapshots.isEmpty)
+    }
+
     @Test("Only one export runs at a time")
     func oneExportAtATime() async {
         let h = ExportHarness()

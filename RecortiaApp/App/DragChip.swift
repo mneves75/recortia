@@ -11,17 +11,22 @@ final class LiveDragSink: DragSinkService {
     private var panel: DragChipPanel?
     private var continuation: CheckedContinuation<DragDeliveryOutcome, Never>?
 
-    func deliver(_ snapshot: ShareSnapshot) async throws(SinkError) -> DragDeliveryOutcome {
+    func deliver(_ snapshot: ShareSnapshot, lease: ExportLease) async throws(SinkError) -> DragDeliveryOutcome {
         finish(.canceledByUser)
+        guard !lease.isRevoked else { return .canceledByUser }
         guard let image = NSImage(data: snapshot.bytes) else { throw .writeFailed(code: Int(EINVAL)) }
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
-            let panel = DragChipPanel(snapshot: snapshot, image: image) { [weak self] outcome in
+            let panel = DragChipPanel(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
                 self?.finish(outcome)
             }
             self.panel = panel
             panel.presentNearPointer()
         }
+    }
+
+    func dismiss() {
+        finish(.canceledByUser)
     }
 
     private func finish(_ outcome: DragDeliveryOutcome) {
@@ -35,7 +40,7 @@ final class LiveDragSink: DragSinkService {
 final class DragChipPanel: NSPanel {
     private let onEnd: (DragDeliveryOutcome) -> Void
 
-    init(snapshot: ShareSnapshot, image: NSImage, onEnd: @escaping (DragDeliveryOutcome) -> Void) {
+    init(snapshot: ShareSnapshot, lease: ExportLease, image: NSImage, onEnd: @escaping (DragDeliveryOutcome) -> Void) {
         self.onEnd = onEnd
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 220, height: 190), styleMask: [.titled, .closable, .utilityWindow],
@@ -46,7 +51,9 @@ final class DragChipPanel: NSPanel {
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        let chip = DragChipView(snapshot: snapshot, image: image) { [weak self] in self?.onEnd(.delivered) }
+        let chip = DragChipView(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
+            self?.onEnd(outcome)
+        }
         let label = NSTextField(labelWithString: String(localized: "Drag the image into another app."))
         label.alignment = .center
         label.font = .preferredFont(forTextStyle: .callout)
@@ -87,11 +94,11 @@ final class DragChipPanel: NSPanel {
 /// The draggable thumbnail. Accessible as a button whose action explains how to drag.
 final class DragChipView: NSImageView, NSDraggingSource {
     private let provider: DragOutProvider
-    private let onDelivered: () -> Void
+    private let onEnd: (DragDeliveryOutcome) -> Void
 
-    init(snapshot: ShareSnapshot, image: NSImage, onDelivered: @escaping () -> Void) {
-        provider = DragOutProvider(snapshot: snapshot)
-        self.onDelivered = onDelivered
+    init(snapshot: ShareSnapshot, lease: ExportLease, image: NSImage, onEnd: @escaping (DragDeliveryOutcome) -> Void) {
+        provider = DragOutProvider(snapshot: snapshot, lease: lease)
+        self.onEnd = onEnd
         super.init(frame: NSRect(x: 0, y: 0, width: 196, height: 140))
         self.image = image
         imageScaling = .scaleProportionallyDown
@@ -108,6 +115,11 @@ final class DragChipView: NSImageView, NSDraggingSource {
     override func mouseDown(with event: NSEvent) {}
 
     override func mouseDragged(with event: NSEvent) {
+        // The document changed since this offer was made: never start a drag of stale pixels.
+        guard !provider.lease.isRevoked else {
+            onEnd(.canceledByUser)
+            return
+        }
         let item = NSDraggingItem(pasteboardWriter: provider.makeFilePromiseProvider())
         item.setDraggingFrame(bounds, contents: image)
         beginDraggingSession(with: [item], event: event, source: self)
@@ -121,6 +133,6 @@ final class DragChipView: NSImageView, NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         // An abandoned drag keeps the chip so the user can try again or close it.
-        if !operation.isEmpty { onDelivered() }
+        if !operation.isEmpty { onEnd(.delivered) }
     }
 }
