@@ -49,9 +49,9 @@ public final class ExportCoordinator {
     private var operation: Operation?
 
     @ObservationIgnored private let exporter: any ExportService
-    @ObservationIgnored private let clipboard: any ClipboardSink
-    @ObservationIgnored private let files: any FileSink
-    @ObservationIgnored private let drag: any DragSink
+    @ObservationIgnored private let clipboard: any ClipboardSinkService
+    @ObservationIgnored private let files: any FileSinkService
+    @ObservationIgnored private let drag: any DragSinkService
     @ObservationIgnored private let folders: any SaveFolderService
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
@@ -65,7 +65,8 @@ public final class ExportCoordinator {
     }
 
     public init(
-        exporter: any ExportService, clipboard: any ClipboardSink, files: any FileSink, drag: any DragSink,
+        exporter: any ExportService, clipboard: any ClipboardSinkService, files: any FileSinkService,
+        drag: any DragSinkService,
         folders: any SaveFolderService, clock: any FeatureClock, settings: SettingsStore
     ) {
         self.exporter = exporter

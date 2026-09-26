@@ -88,13 +88,13 @@ public protocol ExportService: AnyObject {
 }
 
 @MainActor
-public protocol ClipboardSink: AnyObject {
+public protocol ClipboardSinkService: AnyObject {
     /// Replaces the clipboard with the snapshot's sanitized PNG only after encoding succeeded.
     func write(_ snapshot: ShareSnapshot) throws(SinkError)
 }
 
 @MainActor
-public protocol FileSink: AnyObject {
+public protocol FileSinkService: AnyObject {
     /// Atomic save to a user-chosen URL. `overwrite` is true only after the user confirmed it.
     func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL
     /// Atomic save with a collision-free name inside a previously authorized folder.
@@ -109,7 +109,7 @@ public enum DragDeliveryOutcome: Hashable, Sendable {
 }
 
 @MainActor
-public protocol DragSink: AnyObject {
+public protocol DragSinkService: AnyObject {
     /// Offers the snapshot as a file promise and returns once the drag session ends.
     func deliver(_ snapshot: ShareSnapshot) async throws(SinkError) -> DragDeliveryOutcome
 }
@@ -136,7 +136,7 @@ public protocol QRDecodingService: AnyObject {
 // MARK: - Scrolling capture
 
 @MainActor
-public protocol ScrollFrameSource: AnyObject {
+public protocol ScrollFrameSourceService: AnyObject {
     /// Starts one bounded stream for `target`. Only called during an explicit scrolling session.
     func start(_ target: CaptureTarget) async throws(CaptureError)
     /// The next stable viewport frame. Throws `.canceled` after `stop()`, `.targetUnavailable` when

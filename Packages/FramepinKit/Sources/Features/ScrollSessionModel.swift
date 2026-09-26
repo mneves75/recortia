@@ -59,7 +59,7 @@ public final class ScrollSessionModel {
 
     @ObservationIgnored public var onAccepted: ((DocumentSession) -> Void)?
 
-    @ObservationIgnored private let frames: any ScrollFrameSource
+    @ObservationIgnored private let frames: any ScrollFrameSourceService
     @ObservationIgnored private let stitcher: any ScrollStitchService
     @ObservationIgnored private let autoScroller: (any AutoScrollService)?
     @ObservationIgnored private let accessibility: any AccessibilityPermissionService
@@ -73,7 +73,7 @@ public final class ScrollSessionModel {
     @ObservationIgnored private var task: Task<Void, Never>?
 
     public init(
-        frames: any ScrollFrameSource, stitcher: any ScrollStitchService, autoScroller: (any AutoScrollService)?,
+        frames: any ScrollFrameSourceService, stitcher: any ScrollStitchService, autoScroller: (any AutoScrollService)?,
         accessibility: any AccessibilityPermissionService, screenPermission: any ScreenPermissionService,
         assets: any ImageAssetService, clock: any FeatureClock, settings: SettingsStore
     ) {

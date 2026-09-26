@@ -12,13 +12,13 @@ struct AppServices {
     let input: any ImageInputService
     let renderer: any RenderService
     let exporter: any ExportService
-    let clipboard: any ClipboardSink
-    let files: any FileSink
-    let drag: any DragSink
+    let clipboard: any ClipboardSinkService
+    let files: any FileSinkService
+    let drag: any DragSinkService
     let folders: any SaveFolderService
     let textRecognition: any TextRecognitionService
     let qrDecoder: any QRDecodingService
-    let scrollFrames: any ScrollFrameSource
+    let scrollFrames: any ScrollFrameSourceService
     let stitcher: any ScrollStitchService
     /// Nil when automatic scrolling is not built; manual scrolling still works.
     let autoScroller: (any AutoScrollService)?

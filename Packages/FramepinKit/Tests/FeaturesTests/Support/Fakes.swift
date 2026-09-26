@@ -323,7 +323,7 @@ final class FakeExportService: ExportService {
 }
 
 @MainActor
-final class FakeClipboard: ClipboardSink {
+final class FakeClipboard: ClipboardSinkService {
     var error: SinkError?
     private(set) var writes: [ShareSnapshot] = []
 
@@ -334,7 +334,7 @@ final class FakeClipboard: ClipboardSink {
 }
 
 @MainActor
-final class FakeFileSink: FileSink {
+final class FakeFileSink: FileSinkService {
     var error: SinkError?
     var pending: Pending<Void>?
     private(set) var saves: [(snapshot: ShareSnapshot, url: URL, overwrite: Bool)] = []
@@ -356,7 +356,7 @@ final class FakeFileSink: FileSink {
 }
 
 @MainActor
-final class FakeDragSink: DragSink {
+final class FakeDragSink: DragSinkService {
     var outcome: Result<DragDeliveryOutcome, SinkError> = .success(.delivered)
     private(set) var deliveries: [ShareSnapshot] = []
 
@@ -388,7 +388,7 @@ final class FakeTextRecognition: TextRecognitionService {
 // MARK: - Scrolling
 
 @MainActor
-final class FakeFrameSource: ScrollFrameSource {
+final class FakeFrameSource: ScrollFrameSourceService {
     var startError: CaptureError?
     let frames = Pending<Result<CGImage, CaptureError>>()
     private(set) var startCount = 0
