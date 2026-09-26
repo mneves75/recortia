@@ -26,6 +26,9 @@ if command -v xcodegen >/dev/null; then
     echo "check: Recortia.xcodeproj was stale; it has been regenerated from project.yml, commit the result" >&2
     exit 1
   fi
+elif [[ -n "${CI:-}" ]]; then
+  echo "check: xcodegen is missing, so the generated-project freshness gate cannot run in CI" >&2
+  exit 1
 fi
 
 echo "== package tests"
@@ -33,6 +36,7 @@ swift test --package-path Packages/RecortiaKit --parallel
 
 echo "== app build"
 xcodebuild -project Recortia.xcodeproj -scheme Recortia -configuration Debug \
-  -destination 'platform=macOS' -derivedDataPath .build/dd "${sign_args[@]}" build | tail -3
+  -destination 'platform=macOS' -derivedDataPath .build/dd -onlyUsePackageVersionsFromResolvedFile \
+  "${sign_args[@]}" build | tail -3
 
 echo "check: all gates passed"

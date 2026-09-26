@@ -29,6 +29,8 @@ build/
 *.keychain-db
 *.pem
 *.key
+*.p8
+*.certSigningRequest
 .env
 .env.*
 
