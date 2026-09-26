@@ -71,4 +71,9 @@ user's own action, or needs a platform capability not yet adopted.
 | JPEG decode cost for adversarial progressive scans is not capped | Own-process availability only; 64 MiB input cap applies | Cap scan count in the header walk |
 | Magnifier callouts can show pixels outside a crop | Visible in the preview; crop is not a privacy control (FR-04) | Clip magnifier sources to the content rect |
 | Stored `launchAtLogin`/`updateChecksEnabled` are unused | Never read; the system login-item status is authoritative | Remove the fields |
-
+| Screen Recording loss during region or window selection is found only when the capture call fails | TCC still blocks the capture; the failure is reported | Re-check permission at commit |
+| One shared export operation: a pending drag chip makes other editors' exports return busy, and the chip does not name its document | Fails closed | Scope busy state per document; title the chip with the document |
+| Each automatic-scroll step checks focus and target, not session or lock state | Lock and session-resign notifications stop the session | Check `CGSessionCopyCurrentDictionary` per step |
+| A hand-edited `defaultExportScale` may use the whole 0.1…8 range, beyond the UI's 0.5/1/2 | Render and export budgets still bound the cost | Snap to the offered scales |
+| Scrolling-capture assembly makes transient full copies of the stitched image | Own-process memory, not attacker-amplified | Assemble directly into the final buffer |
+| Reopening from the Dock before the menu was ever opened shows nothing | Functional only | Open Settings without the menu's hook |
