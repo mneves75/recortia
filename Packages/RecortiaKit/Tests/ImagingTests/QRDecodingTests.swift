@@ -57,6 +57,12 @@ struct QRDecodingTests {
             kind("x-apple.systempreferences:com.apple.preference.security") == .otherScheme("x-apple.systempreferences")
         )
         #expect(kind("tel:+5511999999999") == .otherScheme("tel"))
+        // User info disguises the real host: never a web URL.
+        #expect(kind("https://trusted@evil.example") == .otherScheme("https"))
+        #expect(kind("https://trusted.example@evil.example/login") == .otherScheme("https"))
+        #expect(kind("http://user:pass@example.com/") == .otherScheme("http"))
+        #expect(kind("https://:pw@example.com") == .otherScheme("https"))
+        #expect(kind("https://@example.com") == .otherScheme("https"))
         #expect(kind("WIFI:S:net;T:WPA;P:pw;;") == .wifi)
         #expect(kind("wifi:S:net;;") == .wifi)
         #expect(kind("bitcoin:bc1qxyz?amount=1") == .payment)

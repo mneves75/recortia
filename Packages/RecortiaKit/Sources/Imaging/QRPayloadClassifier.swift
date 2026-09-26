@@ -26,15 +26,17 @@ package enum QRPayloadClassifier {
         return .otherScheme(scheme)
     }
 
-    /// A web URL only when the exact payload is an absolute http(s) URL with a host, with no
-    /// whitespace or control characters and no normalization by `URL`.
+    /// A web URL only when the exact payload is an absolute http(s) URL with a host and no user
+    /// info (which disguises the real host), with no whitespace or control characters and no
+    /// normalization by `URL`.
     private static func webURL(_ string: String) -> URL? {
         guard
             !string.unicodeScalars.contains(where: {
                 CharacterSet.whitespacesAndNewlines.contains($0) || CharacterSet.controlCharacters.contains($0)
             }),
             let url = URL(string: string), let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
-            let host = url.host(percentEncoded: true), !host.isEmpty, url.absoluteString == string
+            let host = url.host(percentEncoded: true), !host.isEmpty, url.absoluteString == string,
+            url.user(percentEncoded: true) == nil, url.password(percentEncoded: true) == nil
         else { return nil }
         return url
     }

@@ -35,6 +35,8 @@ public enum ExternalLinkPolicy {
     public static func canOpen(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return false }
         guard let host = url.host(percentEncoded: false), !host.isEmpty else { return false }
+        // `https://trusted@evil.example` goes to evil.example; refuse any user info, even empty.
+        guard url.user(percentEncoded: true) == nil, url.password(percentEncoded: true) == nil else { return false }
         return true
     }
 }

@@ -130,4 +130,14 @@ struct ExternalLinkPolicyTests {
     func refusesOthers(string: String) throws {
         #expect(!ExternalLinkPolicy.canOpen(try #require(URL(string: string))))
     }
+
+    @Test(
+        "Web URLs with a user or password component are refused (the host is not what it looks like)",
+        arguments: [
+            "https://trusted@evil.example", "https://trusted.example@evil.example/login",
+            "http://user:pass@example.com/", "https://:pw@example.com", "https://@example.com",
+        ])
+    func refusesUserInfo(string: String) throws {
+        #expect(!ExternalLinkPolicy.canOpen(try #require(URL(string: string))))
+    }
 }
