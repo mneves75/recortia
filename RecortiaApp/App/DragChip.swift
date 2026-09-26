@@ -8,20 +8,20 @@ import MacPlatform
 /// a small floating chip at the pointer; dragging the chip hands receivers a file promise that
 /// keeps the sanitized bytes alive until the transfer completes.
 final class LiveDragSink: DragSinkService {
-    private var panel: DragChipPanel?
-    private var continuation: CheckedContinuation<DragChipResult, Never>?
+    private var panel: (offer: UUID, window: DragChipPanel)?
+    private let offers = PendingOffer<DragChipResult>()
 
     func deliver(_ snapshot: ShareSnapshot, lease: ExportLease) async throws(SinkError) -> DragDeliveryOutcome {
-        finish(.canceled)
+        dismiss()
         guard !lease.isRevoked else { return .canceledByUser }
         guard let image = NSImage(data: snapshot.bytes) else { throw .writeFailed(code: Int(EINVAL)) }
-        let result = await withCheckedContinuation { continuation in
-            self.continuation = continuation
-            let panel = DragChipPanel(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
-                self?.finish(outcome)
+        let result = await offers.wait { offer in
+            // Completions carry their offer: a late write from an earlier chip cannot end this one.
+            let window = DragChipPanel(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
+                self?.finish(offer, outcome)
             }
-            self.panel = panel
-            panel.presentNearPointer()
+            panel = (offer, window)
+            window.presentNearPointer()
         }
         switch result {
         case .delivered: return .delivered
@@ -31,14 +31,16 @@ final class LiveDragSink: DragSinkService {
     }
 
     func dismiss() {
-        finish(.canceled)
+        guard let offer = offers.currentID else { return }
+        finish(offer, .canceled)
     }
 
-    private func finish(_ outcome: DragChipResult) {
-        panel?.orderOut(nil)
-        panel = nil
-        continuation?.resume(returning: outcome)
-        continuation = nil
+    private func finish(_ offer: UUID, _ outcome: DragChipResult) {
+        guard offers.resolve(offer, with: outcome) else { return }
+        if let panel, panel.offer == offer {
+            panel.window.orderOut(nil)
+            self.panel = nil
+        }
     }
 }
 
