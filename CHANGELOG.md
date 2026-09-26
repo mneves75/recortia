@@ -4,6 +4,25 @@ All notable changes to Recortia are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0-beta3] - 2026-09-26
+
+### Security
+
+Fixes from an independent Codex (gpt-6-astra) review of the hardening:
+
+- The preferences seal secret moved to the data-protection keychain under Recortia's keychain
+  access group (Developer ID provisioning profile), so another process can no longer delete and
+  replace it; each save advances a generation, so an older sealed preferences file restored by
+  another process no longer re-enables automatic copy or save. Automatic export settings from
+  earlier betas must be turned on again once.
+- A drag-out counts as delivered only once the receiving app has written the file; until then
+  a new redaction, Cancel, or closing the editor still revokes it, and a revoke never interleaves
+  with the write.
+- Capture keeps excluding Recortia as an application even when one of its panels closes while
+  the capture starts.
+- A canceled scrolling capture whose stream finishes starting late no longer stops the next
+  session's stream.
+
 ## [0.9.0-beta2] - 2026-09-26
 
 ### Fixed

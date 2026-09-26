@@ -46,7 +46,8 @@ Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Devel
 - GitHub `mneves75/recortia`, default branch `main`, squash-only PRs; push over SSH.
 - Test fixtures are synthetic; never commit real screenshots or content-bearing logs.
 - Owner-only steps: Screen Recording/Accessibility grants, Automation Mode for XCUITest,
-  notarization credentials (`asc notarization`), and publishing.
+  notarization credentials (`asc notarization`), the "Recortia Developer ID" provisioning
+  profile that Release signing needs for the keychain access group, and publishing.
 - `docs/handoff/` is the frozen original handoff; do not update it.
 
 ## Agent skills

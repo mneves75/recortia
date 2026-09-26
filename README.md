@@ -82,9 +82,8 @@ the end-to-end scenario runner (17 scenarios in English and Brazilian Portuguese
 
 Security: a source-review audit of the pre-release tree (three hunting waves, independent
 verification) found no confirmed vulnerability; its two leads and the independent review's
-findings are fixed and listed under Security in `CHANGELOG.md`. Accepted residuals, such as the
-preferences seal key living in the file-based keychain until Recortia adopts the data-protection
-keychain, are listed in `THREAT_MODEL.md`.
+findings, including an independent Codex review, are fixed and listed under Security in
+`CHANGELOG.md`. Accepted residuals are listed in `THREAT_MODEL.md`.
 
 Not yet validated: live capture on 1× and mixed-DPI multi-display setups (GEO-01), macOS 15 and
 26 hosts, the real-app scrolling compatibility matrix (SCR-03), VoiceOver and input-method passes

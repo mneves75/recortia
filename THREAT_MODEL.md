@@ -12,7 +12,7 @@ Raw pixels may exist in bounded process memory for an explicit capture/edit sess
 
 The model covers malicious imported inputs, malicious screenshot/QR text, accidental privacy leaks, compromised dependencies/update paths, and erroneous coding-agent changes. It does not promise confidentiality against a compromised operating system, a malicious process with equivalent privileges, physical observation, or a recipient who already has an earlier unredacted export.
 
-A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal keyed by a secret in the login keychain; an unsealed or mismatched blob loads with that consent off. Residual: the file-based keychain cannot attest who created the key item, so a process that plants that item before Recortia first launches can still forge a seal; closing it needs the data-protection keychain and a Developer ID provisioning profile.
+A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal over a generation counter, keyed by a secret in the data-protection keychain under Recortia's provisioned keychain access group, which other processes cannot create, read, replace, or roll back. An unsealed, mismatched, or older-generation blob loads with that consent off.
 
 ## Threat register
 
@@ -23,7 +23,7 @@ A same-user process that lacks Recortia's Screen Recording or Accessibility gran
 | Wrong-source capture | Display/focus/target changes during selection or scrolling | Stable source token, shared geometry mapping, lifecycle cancellation, app-window exclusion | CAP-01, GEO-01, SCR-03 |
 | Resource exhaustion | Huge image, overflow, excessive scroll frames, unbounded undo/cache | Predecode checks, checked arithmetic, explicit area/frame/time budgets, bounded queues | IO-01, SCR-04, PERF-01 |
 | Accidental external action | Escape autosaves, QR opens itself, clipboard copied before privacy edits | Side effects only after user action; defaults off; QR review; commit-aware cancellation | OCR-02, EXP-02, RED-04 |
-| Forged consent | Another process rewrites preferences to turn on auto-export to a folder it reads | Keychain-keyed HMAC seal over the preferences blob; unsealed consent dropped; bookmarks resolved without mounting | SettingsIntegrityTests |
+| Forged consent | Another process rewrites preferences to turn on auto-export to a folder it reads | HMAC seal over a generation, secret in the data-protection keychain; unsealed or replayed consent dropped; bookmarks resolved without mounting | SettingsIntegrityTests, PreferenceSealTests |
 | Malicious data as instructions | Screenshot/issue text persuades an agent or future LLM to run commands | Data has no tool authority; strict action allowlists; human side-effect approval | AGENTS.md review; future AUTO/AI suite |
 | Unwanted recording/control | Idle stream, hidden screen archive, global event tap, broad permissions | Capture only during explicit session; no Input Monitoring; no broad keylogging; separate auto-scroll consent | CAP-02, PERM-01/02, PRIV-01 |
 | Disclosure through diagnostics | Image/OCR/path/QR appears in logs, CI artifacts, crash uploads | Content-free logs; synthetic fixtures; previewable diagnostics; no automatic upload | PRIV-01 |
@@ -62,7 +62,7 @@ user's own action, or needs a platform capability not yet adopted.
 
 | Residual | Why it is accepted now | Path to close |
 |---|---|---|
-| Preferences seal key can be planted in the file-based keychain before Recortia first launches | The file-based keychain cannot attest an item's creator | Data-protection keychain with a Developer ID provisioning profile |
+| Debug builds have no keychain access group, so automatic export consent lasts only for the session | Fails closed; Release builds are provisioned | None needed |
 | Any process can post `com.apple.screenIsLocked` and cancel a capture or scroll | Fail-safe: it only cancels | Confirm with `CGSessionCopyCurrentDictionary` |
 | A file that appears or changes at the save destination after the save panel closes is replaced | Overwrite consent is inferred from existence at that moment | Record the destination identity at confirmation, or exclusive rename |
 | Automatic scrolling binds to the frontmost app at start, not to the chosen target's process | The user chose the target and started the session | Require frontmost PID == target owner |
@@ -72,7 +72,7 @@ user's own action, or needs a platform capability not yet adopted.
 | Magnifier callouts can show pixels outside a crop | Visible in the preview; crop is not a privacy control (FR-04) | Clip magnifier sources to the content rect |
 | Stored `launchAtLogin`/`updateChecksEnabled` are unused | Never read; the system login-item status is authoritative | Remove the fields |
 | Screen Recording loss during region or window selection is found only when the capture call fails | TCC still blocks the capture; the failure is reported | Re-check permission at commit |
-| One shared export operation: a pending drag chip makes other editors' exports return busy, and the chip does not name its document | Fails closed | Scope busy state per document; title the chip with the document |
+| One shared export operation: a pending drag chip (until the receiver writes the file) makes other editors' exports return busy, and the chip does not name its document | Fails closed | Scope busy state per document; title the chip with the document |
 | Each automatic-scroll step checks focus and target, not session or lock state | Lock and session-resign notifications stop the session | Check `CGSessionCopyCurrentDictionary` per step |
 | A hand-edited `defaultExportScale` may use the whole 0.1…8 range, beyond the UI's 0.5/1/2 | Render and export budgets still bound the cost | Snap to the offered scales |
 | Scrolling-capture assembly makes transient full copies of the stitched image | Own-process memory, not attacker-amplified | Assemble directly into the final buffer |
