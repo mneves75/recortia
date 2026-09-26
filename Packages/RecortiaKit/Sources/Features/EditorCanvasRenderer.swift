@@ -21,7 +21,7 @@ public enum EditorCanvasRenderer {
         if let base {
             context.saveGState()
             context.interpolationQuality = baseInterpolation
-            drawUpright(base, in: canvas, context)
+            DrawingPrimitives.drawUpright(base, in: canvas, context)
             context.restoreGState()
         }
         var annotations = document.annotations
@@ -35,7 +35,7 @@ public enum EditorCanvasRenderer {
         context.saveGState()
         context.setShouldAntialias(false)
         for mask in document.masks where mask.fill.isOpaque {
-            context.setFillColor(cgColor(mask.fill))
+            context.setFillColor(mask.fill.cgColor)
             context.fill(EditorGeometry.outwardIntegral(mask.outputRect).cg.intersection(canvas))
         }
         context.restoreGState()
@@ -65,7 +65,7 @@ public enum EditorCanvasRenderer {
                     context.scaleBy(x: destination.width / source.width, y: destination.height / source.height)
                     context.translateBy(x: -source.minX, y: -source.minY)
                     context.interpolationQuality = .none
-                    drawUpright(base, in: document.canvasRect.cg, context)
+                    DrawingPrimitives.drawUpright(base, in: document.canvasRect.cg, context)
                     context.restoreGState()
                 }
                 context.saveGState()
@@ -79,19 +79,7 @@ public enum EditorCanvasRenderer {
     }
 
     /// Draws `image` upright into `rect` of a y-down context.
-    static func drawUpright(_ image: CGImage, in rect: CGRect, _ context: CGContext) {
-        context.saveGState()
-        context.translateBy(x: rect.minX, y: rect.maxY)
-        context.scaleBy(x: 1, y: -1)
-        context.draw(image, in: CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
-        context.restoreGState()
-    }
 
-    static func cgColor(_ color: RGBA) -> CGColor {
-        CGColor(
-            srgbRed: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255, blue: CGFloat(color.b) / 255,
-            alpha: CGFloat(color.a) / 255)
-    }
 }
 
 extension Rect {

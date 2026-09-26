@@ -55,7 +55,7 @@ public enum AnnotationRenderer {
             context.setAlpha(opacity)
             context.beginTransparencyLayer(auxiliaryInfo: nil)
         }
-        let stroke = cgColor(style.stroke)
+        let stroke = style.stroke.cgColor
         context.setStrokeColor(stroke)
         context.setFillColor(stroke)
         context.setLineWidth(style.lineWidth)
@@ -80,15 +80,9 @@ public enum AnnotationRenderer {
         if layered { context.endTransparencyLayer() }
     }
 
-    static func cgColor(_ color: RGBA) -> CGColor {
-        CGColor(
-            srgbRed: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255, blue: CGFloat(color.b) / 255,
-            alpha: CGFloat(color.a) / 255)
-    }
-
     private static func drawShape(_ path: CGPath, style: Annotation.Style, in context: CGContext) {
         if let fill = style.fill {
-            context.setFillColor(cgColor(fill))
+            context.setFillColor(fill.cgColor)
             context.addPath(path)
             context.fillPath()
         }
@@ -135,7 +129,7 @@ public enum AnnotationRenderer {
         center: CGPoint, number: Int, radius: Double, style: Annotation.Style, in context: CGContext
     ) {
         let fill = style.fill ?? style.stroke
-        context.setFillColor(cgColor(fill))
+        context.setFillColor(fill.cgColor)
         context.fillEllipse(
             in: CGRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius))
         let luminance = 0.2126 * Double(fill.r) + 0.7152 * Double(fill.g) + 0.0722 * Double(fill.b)
@@ -156,7 +150,7 @@ public enum AnnotationRenderer {
     }
 
     private static func makeLine(_ string: String, font: CTFont, color: RGBA) -> CTLine? {
-        let attributes: [CFString: Any] = [kCTFontAttributeName: font, kCTForegroundColorAttributeName: cgColor(color)]
+        let attributes: [CFString: Any] = [kCTFontAttributeName: font, kCTForegroundColorAttributeName: color.cgColor]
         guard let attributed = CFAttributedStringCreate(nil, string as CFString, attributes as CFDictionary) else {
             return nil
         }
@@ -171,7 +165,7 @@ public enum AnnotationRenderer {
             CTFontCreateUIFontForLanguage(.system, text.fontSize, nil)
             ?? CTFontCreateWithName("Helvetica" as CFString, text.fontSize, nil)
         let attributes: [CFString: Any] = [
-            kCTFontAttributeName: font, kCTForegroundColorAttributeName: cgColor(style.stroke),
+            kCTFontAttributeName: font, kCTForegroundColorAttributeName: style.stroke.cgColor,
         ]
         guard let attributed = CFAttributedStringCreate(nil, text.string as CFString, attributes as CFDictionary)
         else { return }
@@ -185,7 +179,7 @@ public enum AnnotationRenderer {
         guard width.isFinite, height.isFinite, width > 0, height > 0 else { return }
 
         if let fill = style.fill {
-            context.setFillColor(cgColor(fill))
+            context.setFillColor(fill.cgColor)
             context.fill(CGRect(x: text.origin.x, y: text.origin.y, width: width, height: height))
         }
         let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: height), transform: nil)

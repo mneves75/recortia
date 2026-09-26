@@ -201,8 +201,17 @@ struct ExportSettingsTab: View {
         panel.allowsMultipleSelection = false
         panel.prompt = String(localized: "Choose")
         panel.message = String(localized: "Choose where automatic saves go.")
-        guard panel.runModal() == .OK, let url = panel.url, let bookmark = try? url.bookmarkData() else { return }
-        settings.update { $0.preferredSaveFolderBookmark = bookmark }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let bookmark = try url.bookmarkData()
+            settings.update { $0.preferredSaveFolderBookmark = bookmark }
+        } catch {
+            MessagePresenter.present(
+                UserMessage(
+                    title: String(localized: "The folder could not be saved"),
+                    detail: String(
+                        localized: "Recortia could not remember access to that folder. Choose another folder.")))
+        }
     }
 }
 

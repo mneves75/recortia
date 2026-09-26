@@ -1,6 +1,38 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "The folder could not be saved": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folder could not be saved"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível guardar a pasta"
+          }
+        }
+      }
+    },
+    "Recortia could not remember access to that folder. Choose another folder.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia could not remember access to that folder. Choose another folder."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia não conseguiu guardar o acesso a essa pasta. Escolha outra pasta."
+          }
+        }
+      }
+    },
     "%lld frames · %lld pixels tall": {
       "localizations": {
         "en": {

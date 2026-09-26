@@ -56,23 +56,6 @@ final class ChangeCoalescer {
     }
 }
 
-extension RGBA {
-    var cgColor: CGColor {
-        CGColor(
-            srgbRed: CGFloat(r) / 255, green: CGFloat(g) / 255, blue: CGFloat(b) / 255, alpha: CGFloat(a) / 255)
-    }
-
-    /// The color converted to 8-bit sRGB, or nil when it cannot be converted.
-    init?(cgColor: CGColor) {
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-            let converted = cgColor.converted(to: space, intent: .defaultIntent, options: nil),
-            let c = converted.components, c.count >= 4
-        else { return nil }
-        func byte(_ v: CGFloat) -> UInt8 { UInt8((min(max(v, 0), 1) * 255).rounded()) }
-        self.init(r: byte(c[0]), g: byte(c[1]), b: byte(c[2]), a: byte(c[3]))
-    }
-}
-
 private func colorBinding(
     _ get: @escaping @MainActor @Sendable () -> RGBA, _ set: @escaping @MainActor @Sendable (RGBA) -> Void
 ) -> Binding<CGColor> {

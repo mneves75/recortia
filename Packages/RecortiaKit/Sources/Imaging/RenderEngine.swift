@@ -247,7 +247,7 @@ enum RenderEngine {
             try cropped.withTopLeftContext { context in
                 context.setBlendMode(.copy)
                 context.interpolationQuality = .none
-                drawUpright(
+                DrawingPrimitives.drawUpright(
                     sanitized,
                     in: CGRect(x: -crop.x, y: -crop.y, width: sanitized.width, height: sanitized.height), context)
             }
@@ -258,13 +258,6 @@ enum RenderEngine {
     }
 
     /// Draws `image` upright into `rect` of a top-left (y-down) context.
-    static func drawUpright(_ image: CGImage, in rect: CGRect, _ context: CGContext) {
-        context.saveGState()
-        context.translateBy(x: rect.minX, y: rect.maxY)
-        context.scaleBy(x: 1, y: -1)
-        context.draw(image, in: CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
-        context.restoreGState()
-    }
 
     /// Sanitized layers, then cosmetic effects sampled from that composite.
     static func composeBase(
@@ -284,7 +277,8 @@ enum RenderEngine {
                 context.concatenate(imageToDocument.cg)
                 context.setAlpha(layer.opacity)
                 context.interpolationQuality = .high
-                drawUpright(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height), context)
+                DrawingPrimitives.drawUpright(
+                    image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height), context)
             }
         }
         let factor = abs(map.a * map.d - map.b * map.c).squareRoot()
@@ -364,7 +358,8 @@ enum RenderEngine {
             context.clip(to: destinationPixels.intersection(contentPixels))
             context.setBlendMode(.copy)
             context.interpolationQuality = .none
-            drawUpright(image, in: CGRect(x: area.x, y: area.y, width: area.width, height: area.height), context)
+            DrawingPrimitives.drawUpright(
+                image, in: CGRect(x: area.x, y: area.y, width: area.width, height: area.height), context)
         }
         try raster.withTopLeftContext { context in
             context.concatenate(map)
@@ -411,7 +406,7 @@ enum RenderEngine {
             context.addPath(card)
             context.clip()
             context.interpolationQuality = .none
-            drawUpright(contentImage, in: full, context)
+            DrawingPrimitives.drawUpright(contentImage, in: full, context)
             context.restoreGState()
         }
         return output
@@ -422,13 +417,13 @@ enum RenderEngine {
         case .none:
             context.clear(rect)
         case .solid(let color):
-            context.setFillColor(AnnotationRenderer.cgColor(color))
+            context.setFillColor(color.cgColor)
             context.fill(rect)
         case .linearGradient(let from, let to, let angleDegrees):
             guard let space = RenderRaster.colorSpace,
                 let gradient = CGGradient(
                     colorsSpace: space,
-                    colors: [AnnotationRenderer.cgColor(from), AnnotationRenderer.cgColor(to)] as CFArray,
+                    colors: [from.cgColor, to.cgColor] as CFArray,
                     locations: [0, 1])
             else { return }
             let radians = angleDegrees * .pi / 180

@@ -1,6 +1,7 @@
 import AppKit
 import Domain
 import Features
+import Imaging
 
 /// The editor canvas (FR-04/05): draws the sanitized base and annotations in document space through
 /// `EditorCanvasRenderer` (the export's annotation code), then view-space chrome: crop shade,
@@ -128,7 +129,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         if model.showsOutputPreview {
             if let output = model.outputPreview {
                 context.interpolationQuality = model.zoomPercent >= 100 ? .none : .high
-                Self.drawUpright(output, in: shownRect.cg, context)
+                DrawingPrimitives.drawUpright(output, in: shownRect.cg, context)
             }
         } else {
             var drawn = document
@@ -176,14 +177,6 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             }
             y += size
         }
-        context.restoreGState()
-    }
-
-    static func drawUpright(_ image: CGImage, in rect: CGRect, _ context: CGContext) {
-        context.saveGState()
-        context.translateBy(x: rect.minX, y: rect.maxY)
-        context.scaleBy(x: 1, y: -1)
-        context.draw(image, in: CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
         context.restoreGState()
     }
 
@@ -295,7 +288,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         context.saveGState()
         context.clip(to: frame)
         context.interpolationQuality = .none
-        Self.drawUpright(loupe.image, in: imageRect, context)
+        DrawingPrimitives.drawUpright(loupe.image, in: imageRect, context)
         context.restoreGState()
         NSColor.black.withAlphaComponent(0.15).setStroke()
         for i in 0...15 {
