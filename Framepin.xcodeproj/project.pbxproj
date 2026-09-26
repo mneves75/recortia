@@ -34,6 +34,7 @@
 		BCE319C9855CCFD18B460138 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 392DAE45FB5DFF2EADFCDB2C /* Features */; };
 		BE25CB1B001373367CDE66B7 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC21FB6B75B0D7646A69046E /* OnboardingView.swift */; };
 		C7779BB51AB9B5A79BB58FD4 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = C162C8CEAE251D4F01500FC4 /* GlobalShortcuts.swift */; };
+		C8234AA7892B6E71ACB11311 /* LiveRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199C5FADB73122212B9219A1 /* LiveRecognition.swift */; };
 		C8F7A49DDF491D238224AE9A /* CaptureUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8512943A46712428AB2CAB4D /* CaptureUIController.swift */; };
 		C96F771D890FD5158B7DA3B2 /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670AFF66910D0373570C9470 /* DragChip.swift */; };
 		DF2E81DE5F84AF71AC6643EA /* AppActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05178B1BE88384FF99D6BC6C /* AppActions.swift */; };
@@ -54,6 +55,7 @@
 		05178B1BE88384FF99D6BC6C /* AppActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActions.swift; sourceTree = "<group>"; };
 		0551D1A5E15CBAF4DF09AA2C /* LiveScrolling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveScrolling.swift; sourceTree = "<group>"; };
 		18402C3A0B196E8DC30E2E7A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		199C5FADB73122212B9219A1 /* LiveRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRecognition.swift; sourceTree = "<group>"; };
 		19B823FE3202A63E5C2633AD /* LiveServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveServices.swift; sourceTree = "<group>"; };
 		268234BB14A3E1483FCC2E4C /* FramepinUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FramepinUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		453E80E2314A13D5772F10FC /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
@@ -204,6 +206,7 @@
 				670AFF66910D0373570C9470 /* DragChip.swift */,
 				A81D532B1B41FF65A099761B /* FramepinApp.swift */,
 				C162C8CEAE251D4F01500FC4 /* GlobalShortcuts.swift */,
+				199C5FADB73122212B9219A1 /* LiveRecognition.swift */,
 				0551D1A5E15CBAF4DF09AA2C /* LiveScrolling.swift */,
 				19B823FE3202A63E5C2633AD /* LiveServices.swift */,
 				453E80E2314A13D5772F10FC /* MenuContent.swift */,
@@ -357,6 +360,7 @@
 				284A6DFA98EF7B2E1843A835 /* FramepinApp.swift in Sources */,
 				C7779BB51AB9B5A79BB58FD4 /* GlobalShortcuts.swift in Sources */,
 				ACEF5C22C688E7FD65F7B60B /* HostingPanel.swift in Sources */,
+				C8234AA7892B6E71ACB11311 /* LiveRecognition.swift in Sources */,
 				499CA5573B0B87BF0F249878 /* LiveScrolling.swift in Sources */,
 				4BB3D5EF0E5F775C096F82B4 /* LiveServices.swift in Sources */,
 				ACD84213B7DBE3579D6CBA10 /* MenuContent.swift in Sources */,

@@ -26,7 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Integration: pass the live `AppServices` built from Imaging and MacPlatform here. With nil,
     // commands needing a backend are disabled and nothing is faked.
     let model = AppModel(
-        settings: SettingsStore(storage: UserDefaults.standard), services: nil, shortcutProbe: CarbonShortcutProbe())
+        settings: SettingsStore(storage: UserDefaults.standard), services: .live(), shortcutProbe: CarbonShortcutProbe()
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.launch()
