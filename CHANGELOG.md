@@ -45,12 +45,14 @@ Fixes from the pre-release security audit (source review of `f26b6d2`, three hun
 - Automatic copy, automatic save, the save folder, and automatic scrolling are honored only from
   preferences Recortia sealed itself (HMAC keyed by a login-keychain secret); another process that
   rewrites the preferences domain cannot turn them on. Save-folder bookmarks resolve without
-  mounting volumes.
+  mounting volumes. The key is created at first launch; a process that plants it before then is a
+  documented residual until the data-protection keychain is adopted.
 - Screenshots and scrolling capture exclude Recortia as an application, so pins and the drag chip
   created mid-capture never appear in frames; a scroll session canceled before it started no longer
   leaves a capture stream running.
-- Imports open non-blocking without following a final symlink; PNGs with `iDOT` or excessive `IDAT`
-  chunks and JPEGs with two frame headers are rejected.
+- Imports open non-blocking without following a final symlink; Apple's `iDOT` chunk is withheld
+  from ImageIO so it decodes only the validated `IDAT` stream; PNGs with excessive `IDAT` chunks and
+  JPEGs with two frame headers are rejected.
 - QR payloads whose bytes disagree with Vision's string are dropped; web links carrying a user or
   password are refused; a QR link opens only if it is still the payload that was displayed.
 - CI resolves packages only from `Package.resolved` and fails when XcodeGen is missing.

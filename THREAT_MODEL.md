@@ -12,7 +12,7 @@ Raw pixels may exist in bounded process memory for an explicit capture/edit sess
 
 The model covers malicious imported inputs, malicious screenshot/QR text, accidental privacy leaks, compromised dependencies/update paths, and erroneous coding-agent changes. It does not promise confidentiality against a compromised operating system, a malicious process with equivalent privileges, physical observation, or a recipient who already has an earlier unredacted export.
 
-A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal keyed by a secret in the login keychain; an unsealed or mismatched blob loads with that consent off.
+A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal keyed by a secret in the login keychain; an unsealed or mismatched blob loads with that consent off. Residual: the file-based keychain cannot attest who created the key item, so a process that plants that item before Recortia first launches can still forge a seal; closing it needs the data-protection keychain and a Developer ID provisioning profile.
 
 ## Threat register
 

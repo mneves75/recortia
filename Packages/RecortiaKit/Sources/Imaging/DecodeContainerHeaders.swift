@@ -73,6 +73,22 @@ enum DecodePNGStructure {
         var interlaced: Bool
         /// Payload ranges of the IDAT chunks, in order.
         var imageData: [Range<Int>]
+        /// Whole-chunk ranges (length through CRC) that must never reach ImageIO.
+        var withheldChunks: [Range<Int>] = []
+    }
+
+    /// `data` without the withheld chunks. Other chunks keep their bytes and CRCs, so ImageIO
+    /// decodes exactly the IDAT stream `verifyImageData` checked.
+    static func decodableBytes(_ data: Data, layout: Layout) -> Data {
+        guard !layout.withheldChunks.isEmpty else { return data }
+        var output = Data(capacity: data.count)
+        var cursor = data.startIndex
+        for range in layout.withheldChunks {
+            output.append(data[cursor..<(data.startIndex + range.lowerBound)])
+            cursor = data.startIndex + range.upperBound
+        }
+        output.append(data[cursor...])
+        return output
     }
 
     private static let validDepths: [Int: Set<Int>] = [
@@ -126,9 +142,10 @@ enum DecodePNGStructure {
             case "IHDR":
                 throw ImportError.corrupt
             case "iDOT":
-                // Apple's private chunk lets ImageIO inflate IDAT segments in parallel from stored
-                // offsets, bypassing the single-stream validation in `verifyImageData`.
-                throw ImportError.corrupt
+                // Apple's private chunk (macOS screenshots carry it) lets ImageIO inflate IDAT
+                // segments in parallel from stored offsets, bypassing the single-stream validation
+                // in `verifyImageData`; ImageIO gets the file without it.
+                layout.withheldChunks.append(offset..<end)
             default:
                 break
             }

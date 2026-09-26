@@ -29,20 +29,29 @@ struct DecodeHardeningTests {
         return Data(bytes)
     }
 
-    @Test("A PNG carrying Apple's private iDOT chunk is rejected; the same PNG without it decodes")
-    func iDOTIsRejected() throws {
+    @Test("A PNG carrying Apple's private iDOT chunk decodes only from the validated IDAT stream")
+    func iDOTIsStrippedBeforeDecode() throws {
         let stream = try ContainerCrafting.zlibStream(Self.rawRows())
         let half = stream.count / 2
         let halves = [Array(stream[..<half]), Array(stream[half...])]
-        let control = Self.png(idat: halves)
-        #expect(try ImageDecoder.decode(control).pixelSize == PixelSize(width: 4, height: 4))
+        let control = try ImageDecoder.decode(Self.png(idat: halves))
+        #expect(control.pixelSize == PixelSize(width: 4, height: 4))
 
-        // iDOT: segment count, reserved, first segment height, chunk size, heights, second IDAT offset.
+        // macOS screenshots carry iDOT, so it must not make an ordinary PNG unreadable. It lets
+        // ImageIO inflate IDAT segments in parallel from stored offsets; the offset here points at
+        // the second IDAT, and a hostile one could point anywhere, so ImageIO never sees the chunk.
         let big = ContainerCrafting.bigEndian32
         let payload = big(2) + big(0) + big(2) + big(0x28) + big(2) + big(2) + big(40 + 12 + UInt32(half))
         let withIDOT = Self.png(extra: [ContainerCrafting.pngChunk("iDOT", payload)], idat: halves)
-        #expect(throws: ImportError.corrupt) { try DecodePNGStructure.layout(withIDOT) }
-        #expect(throws: ImportError.corrupt) { try ImageDecoder.decode(withIDOT) }
+        let layout = try DecodePNGStructure.layout(withIDOT)
+        let decodable = DecodePNGStructure.decodableBytes(withIDOT, layout: layout)
+        #expect(decodable.range(of: Data("iDOT".utf8)) == nil)
+        #expect(decodable.count == withIDOT.count - (12 + payload.count))
+        let decoded = try ImageDecoder.decode(withIDOT)
+        #expect(decoded.pixelSize == control.pixelSize)
+        let decodedBytes = decoded.image.dataProvider?.data as Data?
+        let controlBytes = control.image.dataProvider?.data as Data?
+        #expect(decodedBytes != nil && decodedBytes == controlBytes, "pixels come from the validated stream")
     }
 
     @Test("The IDAT chunk count is capped: the limit parses, one more chunk is rejected")

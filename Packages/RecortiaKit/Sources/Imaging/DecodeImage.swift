@@ -13,18 +13,21 @@ public enum ImageDecoder {
         guard let format = DecodeFormat.sniff(data) else { throw ImportError.unsupportedFormat }
 
         let header: DecodeHeader
+        let decodable: Data
         switch format {
         case .png:
             let layout = try DecodePNGStructure.layout(data)
             if layout.header.isAnimated { throw ImportError.multiFrame }
             try DecodePNGStructure.verifyImageData(data, layout: layout)
             header = layout.header
+            decodable = DecodePNGStructure.decodableBytes(data, layout: layout)
         case .jpeg:
             header = try DecodeJPEGStructure.header(data)
+            decodable = data
         }
 
         let noCache = [kCGImageSourceShouldCache: false] as CFDictionary
-        guard let source = CGImageSourceCreateWithData(data as CFData, noCache) else { throw ImportError.corrupt }
+        guard let source = CGImageSourceCreateWithData(decodable as CFData, noCache) else { throw ImportError.corrupt }
         guard (CGImageSourceGetType(source) as String?) == format.typeIdentifier else {
             throw ImportError.unsupportedFormat
         }
