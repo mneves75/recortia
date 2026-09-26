@@ -105,8 +105,10 @@ struct RenderRaster {
         }
     }
 
-    /// Copies the pixels of `rect` (which must lie inside the raster), row-major.
-    func pixels(in rect: PixelRect) -> [UInt8] {
+    /// Copies the pixels of `rect` clipped to the raster bounds, row-major; empty when they do
+    /// not intersect. The copy is `clipped.width × clipped.height × 4` bytes.
+    func pixels(in requested: PixelRect) -> [UInt8] {
+        guard let rect = requested.clipped(to: bounds) else { return [] }
         var out = [UInt8](repeating: 0, count: rect.width * rect.height * 4)
         let rowBytes = width * 4, outRow = rect.width * 4
         bytes.withUnsafeBytes { buffer in
