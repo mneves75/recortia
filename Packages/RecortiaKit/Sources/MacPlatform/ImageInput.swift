@@ -9,22 +9,25 @@ public enum ImageInput {
     /// Reads a regular file of at most `ImportLimits.maxCompressedBytes`. The size is checked on
     /// the open descriptor before reading, and the read itself stops one byte past the limit, so a
     /// file that grows in between is still rejected without an unbounded allocation. The source is
-    /// opened read-only and never modified.
+    /// opened read-only and never modified. The open is non-blocking and does not follow a final
+    /// symbolic link, so a FIFO or device is refused at once instead of blocking the caller.
     public static func readFile(at url: URL) throws(ImportError) -> Data {
         guard url.isFileURL else { throw .unreadable }
-        let handle: FileHandle
-        do {
-            handle = try FileHandle(forReadingFrom: url)
-        } catch {
-            throw .unreadable
+        let descriptor = url.withUnsafeFileSystemRepresentation { path in
+            path.map { open($0, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC) } ?? -1
         }
+        guard descriptor >= 0 else { throw .unreadable }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer {
             // Closing a read-only descriptor has no data to lose; a close error cannot change the result.
             try? handle.close()
         }
 
         var info = stat()
-        guard fstat(handle.fileDescriptor, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw .unreadable }
+        guard fstat(descriptor, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw .unreadable }
+        // A regular file never blocks; clear O_NONBLOCK so reads behave normally.
+        let flags = fcntl(descriptor, F_GETFL)
+        guard flags >= 0, fcntl(descriptor, F_SETFL, flags & ~O_NONBLOCK) == 0 else { throw .unreadable }
         let limit = ImportLimits.maxCompressedBytes
         guard info.st_size >= 0, info.st_size <= off_t(limit) else { throw .tooManyBytes }
 

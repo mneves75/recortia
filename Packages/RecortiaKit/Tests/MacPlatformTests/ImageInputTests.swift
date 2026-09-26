@@ -2,6 +2,7 @@ import AppKit
 import Domain
 import Foundation
 import Imaging
+import Synchronization
 import Testing
 
 @testable import MacPlatform
@@ -65,6 +66,59 @@ struct ImageInputFileTests {
             try ImageInput.readFile(at: folder.appendingPathComponent("none.png"))
         }
         #expect(throws: ImportError.unreadable) { try ImageInput.readFile(at: folder) }
+    }
+
+    /// Resumes a continuation at most once; the read and the deadline race for it.
+    private final class Once: Sendable {
+        private let claimed = Mutex(false)
+        func claim() -> Bool {
+            claimed.withLock { taken in
+                defer { taken = true }
+                return !taken
+            }
+        }
+    }
+
+    /// `readFile` on a GCD thread, or nil when it has not returned within `seconds`.
+    private func readFile(at url: URL, deadline seconds: Double) async -> Result<Data, ImportError>? {
+        await withCheckedContinuation { continuation in
+            let once = Once()
+            DispatchQueue.global().async {
+                let result = Result<Data, ImportError> { () throws(ImportError) in try ImageInput.readFile(at: url) }
+                if once.claim() { continuation.resume(returning: result) }
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + seconds) {
+                if once.claim() { continuation.resume(returning: nil) }
+            }
+        }
+    }
+
+    @Test("A FIFO is refused at once instead of blocking the open until a writer appears")
+    func fifoIsRefusedWithoutBlocking() async throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let fifo = folder.appendingPathComponent("pipe.png")
+        try #require(Darwin.mkfifo(fifo.path, 0o600) == 0)
+        let outcome = await readFile(at: fifo, deadline: 2)
+        if outcome == nil {
+            // Regression: the reader is stuck in open(2). Open the write end so it returns.
+            let writer = Darwin.open(fifo.path, O_WRONLY | O_NONBLOCK)
+            if writer >= 0 { Darwin.close(writer) }
+        }
+        #expect(outcome != nil, "readFile blocked on a FIFO")
+        #expect(outcome.map { if case .failure(.unreadable) = $0 { true } else { false } } == true)
+    }
+
+    @Test("A symbolic link, even to a regular file, is not followed")
+    func symlinkIsRefused() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let target = folder.appendingPathComponent("real.png")
+        try (TestSupport.pngSignature + Data([1, 2, 3])).write(to: target)
+        #expect(try ImageInput.readFile(at: target).count == 11)  // control: the target itself reads
+        let link = folder.appendingPathComponent("link.png")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        #expect(throws: ImportError.unreadable) { try ImageInput.readFile(at: link) }
     }
 }
 
