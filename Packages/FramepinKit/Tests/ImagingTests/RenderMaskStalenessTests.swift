@@ -71,10 +71,12 @@ struct RenderMaskStalenessTests {
         let layer = ImageLayer(assetID: asset.id, placement: LayerPlacement(scale: 0))
         var session = DocumentSession(
             document: Document(assets: [asset.id: asset], canvasSize: Size(width: 20, height: 20), layers: [layer]))
-        // Domain skips the degenerate layer (its zero-size bounds never intersect the mask), so
-        // the mask carries no source region for it; the renderer must refuse the layer instead.
-        try session.addSecureMask(covering: Rect(x: 0, y: 0, width: 5, height: 5))
-        #expect(session.document.masks.first?.sourceRegions[asset.id] == nil)
+        // Domain refuses a mask it cannot map into the degenerate layer, and the renderer
+        // independently refuses to draw the layer at all (defense in depth).
+        #expect(throws: DocumentError.unmappableTransform) {
+            try session.addSecureMask(covering: Rect(x: 0, y: 0, width: 5, height: 5))
+        }
+        #expect(session.document.masks.isEmpty)
         await #expect(throws: ExportError.render(.invalidGeometry)) {
             try await harness.export(session)
         }
