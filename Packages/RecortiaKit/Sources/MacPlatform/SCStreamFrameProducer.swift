@@ -147,8 +147,9 @@ private final class StreamOutput: NSObject, SCStreamOutput, SCStreamDelegate, Se
         guard type == .screen, sampleBuffer.isValid, Self.isComplete(sampleBuffer),
             let pixelBuffer = sampleBuffer.imageBuffer, let image = Self.copyImage(from: pixelBuffer)
         else { return }
-        let deliver = handlers.withLock { $0.deliver }
-        deliver?(image)
+        // Delivered under the lock so no frame follows `detach()`; the handler only yields to a
+        // buffered stream and never re-enters this output.
+        handlers.withLock { $0.deliver?(image) }
     }
 
     func stream(_ stream: SCStream, didStopWithError error: any Error) {

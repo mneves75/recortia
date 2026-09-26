@@ -73,7 +73,10 @@ package struct ScrollFrame: Sendable {
         context.interpolationQuality = .none
         context.setBlendMode(.copy)
         context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        guard let copy = context.makeImage(), let data = copy.dataProvider?.data as Data? else { return nil }
+        // Padding in the made image's rows would shift every row index; fail closed instead.
+        guard let copy = context.makeImage(), let data = copy.dataProvider?.data as Data?,
+            data.count == image.width * image.height * 4
+        else { return nil }
         return [UInt8](data)
     }
 }

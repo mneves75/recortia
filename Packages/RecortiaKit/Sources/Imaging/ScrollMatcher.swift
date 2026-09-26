@@ -112,6 +112,10 @@ package enum ScrollMatcher {
         previous: ScrollFrame, current: ScrollFrame, region: Range<Int>, allowStationary: Bool = true,
         thresholds: Thresholds = .calibrated
     ) -> Decision {
+        // Every helper below indexes both frames with `current`'s geometry and `region`'s rows.
+        guard previous.width == current.width, previous.height == current.height, region.lowerBound >= 0,
+            region.upperBound <= current.height
+        else { return .pause(.lowConfidence) }
         let minimumRegion = minimumRegionHeight(regionHeight: region.count, width: current.width)
         guard region.count >= minimumRegion else { return .pause(.lowConfidence) }
         let global = coarseCandidates(previous: previous, current: current, rows: region, region: region)
