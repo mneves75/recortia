@@ -30,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+            // `-RecortiaE2E <dir>` runs the scenario runner (RecortiaApp/E2E) instead of the normal
+            // launch: no onboarding, no global shortcuts; the process exits with the run's result.
+            if E2ERunner.startIfRequested() { return }
+        #endif
         model.launch()
     }
 
