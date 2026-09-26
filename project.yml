@@ -1,0 +1,153 @@
+# XcodeGen spec. Regenerate the committed project with `xcodegen generate` after editing.
+name: Recortia
+options:
+  bundleIdPrefix: dev.mvneves
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    ARCHS: arm64
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    DEVELOPMENT_TEAM: Q96FUTC5G8
+    CODE_SIGN_STYLE: Manual
+    MARKETING_VERSION: 0.9.0
+    CURRENT_PROJECT_VERSION: 4
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    ENABLE_HARDENED_RUNTIME: YES
+  configs:
+    Debug:
+      CODE_SIGN_IDENTITY: Apple Development
+    Release:
+      CODE_SIGN_IDENTITY: Developer ID Application
+packages:
+  RecortiaKit:
+    path: Packages/RecortiaKit
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    exactVersion: 3.1.0
+targets:
+  Recortia:
+    type: application
+    platform: macOS
+    sources:
+      - path: RecortiaApp
+        excludes:
+          - "E2E/**"
+    info:
+      path: RecortiaApp/Info.plist
+      properties: &appInfo
+        CFBundleDisplayName: Recortia
+        CFBundleName: Recortia
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: Recortia contributors
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, pt-BR]
+    settings:
+      configs:
+        # Release: the data-protection keychain holds the preferences seal secret, which needs an
+        # app keychain access group authorized by the "Recortia Developer ID" provisioning profile.
+        Release:
+          CODE_SIGN_ENTITLEMENTS: RecortiaApp/Recortia-Release.entitlements
+          PROVISIONING_PROFILE_SPECIFIER: Recortia Developer ID
+      base:
+        CODE_SIGN_ENTITLEMENTS: RecortiaApp/Recortia.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia
+        PRODUCT_NAME: Recortia
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: RecortiaKit
+        product: Domain
+      - package: RecortiaKit
+        product: Imaging
+      - package: RecortiaKit
+        product: MacPlatform
+      - package: RecortiaKit
+        product: Features
+      - package: KeyboardShortcuts
+  # The same app plus the scenario runner (RecortiaApp/E2E) and the synthetic fixture generators,
+  # behind RECORTIA_E2E. A separate target, because a package product cannot be linked per
+  # configuration: the shipping Recortia target never contains the runner or the fixtures.
+  RecortiaE2E:
+    type: application
+    platform: macOS
+    sources:
+      - path: RecortiaApp
+    info:
+      path: RecortiaApp/Info.plist
+      properties: *appInfo
+    entitlements:
+      path: RecortiaApp/Recortia.entitlements
+      properties: {}
+    settings:
+      configs:
+        # The runner is DEBUG-only code; a Release build of this target is a plain app.
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_E2E
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia.E2E
+        PRODUCT_NAME: RecortiaE2E
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: RecortiaKit
+        product: Domain
+      - package: RecortiaKit
+        product: Imaging
+      - package: RecortiaKit
+        product: MacPlatform
+      - package: RecortiaKit
+        product: Features
+      - package: KeyboardShortcuts
+      - package: RecortiaKit
+        product: RecortiaFixtures
+  RecortiaUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: RecortiaUITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.RecortiaUITests
+        TEST_TARGET_NAME: Recortia
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Recortia
+      - package: RecortiaKit
+        product: RecortiaFixtures
+schemes:
+  Recortia:
+    build:
+      targets:
+        Recortia: all
+        RecortiaUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - RecortiaUITests
+    archive:
+      config: Release
+  RecortiaE2E:
+    build:
+      targets:
+        RecortiaE2E: all
+    run:
+      config: Debug

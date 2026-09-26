@@ -1,9 +1,9 @@
-# Framepin — Agent-Ready Software Specification
+# Recortia — Agent-Ready Software Specification
 
 **Document version:** 1.0  
 **Research date:** 2026-09-26  
 **Status:** Proposed implementation contract; no application has been implemented or tested.  
-**Product name:** Framepin is an internal working codename. Trademark, repository, and domain availability have not been checked.  
+**Product name:** Recortia is an internal working codename. Trademark, repository, and domain availability have not been checked.  
 **Intent:** Independently implement an open-source, native macOS alternative to Shottr. “AI agent” means the coding agent building the product; an LLM is not required inside the application.
 
 ## 1. Scope and evidence
@@ -155,7 +155,7 @@ Pins referencing a live document MUST be refreshed or invalidated on privacy-epo
 
 Manual scrolling is the mandatory first implementation and fallback. Automatic scrolling is opt-in, asks for Accessibility only when selected, and directs minimal scroll actions at the chosen target. No typing, clicking unrelated controls, clipboard reading, AppleScript automation, Input Monitoring, or global key-event recording is allowed.
 
-The session MUST show its source, capture status, stop control, and progress. A user-assigned Stop/Toggle shortcut works while another app is focused; Escape cancels when Framepin owns focus. Do not install a broad keyboard hook just to observe Escape everywhere.
+The session MUST show its source, capture status, stop control, and progress. A user-assigned Stop/Toggle shortcut works while another app is focused; Escape cancels when Recortia owns focus. Do not install a broad keyboard hook just to observe Escape everywhere.
 
 Pipeline: capture stable viewport frames; normalize orientation/scale; mask known fixed bands; estimate coarse vertical displacement; refine matches in multiple independent overlap regions; require displacement consensus and calibrated confidence; choose a seam without blending text; append only newly exposed content; update preview. Use fixtures and profiling to choose the implementation; do not invent a universal magic confidence threshold.
 
@@ -190,15 +190,15 @@ Externalize all UI strings in a String Catalog from the first milestone; ship En
 Use one app plus one local Swift package with three meaningful targets. Avoid a generic plugin bus, global service locator, event-sourced backend, or dozens of micro-packages.
 
 ```text
-Framepin.xcodeproj                 # proposed app project and shared schemes
-FramepinApp/
+Recortia.xcodeproj                 # proposed app project and shared schemes
+RecortiaApp/
   App/                            # composition root, lifecycle, menu bar
   CaptureUI/                      # selection overlays and capture HUD
   EditorUI/                       # AppKit canvas, SwiftUI toolbar/inspector
   Pins/
   Settings/
   Resources/                      # original assets and String Catalog
-Packages/FramepinKit/
+Packages/RecortiaKit/
   Package.swift
   Sources/Domain/                 # values, geometry, commands, states, policies
   Sources/Imaging/                # render, masks, OCR, matching, bounded decode
@@ -206,7 +206,7 @@ Packages/FramepinKit/
   Tests/DomainTests/
   Tests/ImagingTests/
   Tests/MacPlatformTests/
-FramepinUITests/
+RecortiaUITests/
 Fixtures/                         # synthetic/licensed inputs + expected outputs
 Configuration/                    # xcconfig, actual toolchain record
 scripts/                          # build/check entrypoints created in M0/M1

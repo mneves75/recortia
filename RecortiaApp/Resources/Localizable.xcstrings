@@ -1,0 +1,2998 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Automatic copy, save, and scrolling were turned off because their saved settings could not be verified. Turn them on again if you want them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic copy, save, and scrolling were turned off because their saved settings could not be verified. Turn them on again if you want them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A cópia, o salvamento e a rolagem automáticos foram desativados porque as configurações salvas não puderam ser verificadas. Ative-os de novo se quiser."
+          }
+        }
+      }
+    },
+    "Drag the image into another app.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag the image into another app."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arraste a imagem para outro app."
+          }
+        }
+      }
+    },
+    "Drag to Export": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag to Export"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arraste para exportar"
+          }
+        }
+      }
+    },
+    "Exported image, draggable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exported image, draggable"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagem exportada, arrastável"
+          }
+        }
+      }
+    },
+    "Scrolling stopped when the page stopped moving; content that loads later may be missing.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrolling stopped when the page stopped moving; content that loads later may be missing."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A rolagem parou quando a página parou de se mover; conteúdo carregado depois pode estar faltando."
+          }
+        }
+      }
+    },
+    "The folder could not be saved": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folder could not be saved"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível guardar a pasta"
+          }
+        }
+      }
+    },
+    "Recortia could not remember access to that folder. Choose another folder.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia could not remember access to that folder. Choose another folder."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia não conseguiu guardar o acesso a essa pasta. Escolha outra pasta."
+          }
+        }
+      }
+    },
+    "%lld frames · %lld pixels tall": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld frames · %lld pixels tall"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld quadros · %lld pixels de altura"
+          }
+        }
+      }
+    },
+    "%lld × %lld pixels": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld pixels"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld pixels"
+          }
+        }
+      }
+    },
+    "%lld × %lld points": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld points"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld pontos"
+          }
+        }
+      }
+    },
+    "%lld × %lld px": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld px"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld px"
+          }
+        }
+      }
+    },
+    "A file with that name already exists.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A file with that name already exists."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Já existe um arquivo com esse nome."
+          }
+        }
+      }
+    },
+    "A selection stays on the display where it started.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A selection stays on the display where it started."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A seleção fica na tela em que começou."
+          }
+        }
+      }
+    },
+    "About Recortia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About Recortia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sobre o Recortia"
+          }
+        }
+      }
+    },
+    "Accept": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aceitar"
+          }
+        }
+      }
+    },
+    "Accept Partial Result": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept Partial Result"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aceitar resultado parcial"
+          }
+        }
+      }
+    },
+    "Accessibility": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acessibilidade"
+          }
+        }
+      }
+    },
+    "Accessibility permission was turned off. Continue scrolling manually.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility permission was turned off. Continue scrolling manually."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A permissão de Acessibilidade foi desativada. Continue rolando manualmente."
+          }
+        }
+      }
+    },
+    "The page stopped moving. If you reached the end, press Stop.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The page stopped moving. If you reached the end, press Stop."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A página parou de rolar. Se chegou ao fim, clique em Parar."
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitido"
+          }
+        }
+      }
+    },
+    "Animated or multi-page images are not supported.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Animated or multi-page images are not supported."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagens animadas ou com várias páginas não são compatíveis."
+          }
+        }
+      }
+    },
+    "Area of %lld × %lld points on %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Area of %lld × %lld points on %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Área de %lld × %lld pontos em %@"
+          }
+        }
+      }
+    },
+    "Assign shortcuts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assign shortcuts"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atribuir atalhos"
+          }
+        }
+      }
+    },
+    "Automatic export": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic export"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportação automática"
+          }
+        }
+      }
+    },
+    "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A rolagem automática precisa da permissão de Acessibilidade para que o Recortia role a área escolhida. Ele envia apenas ações de rolagem para essa área, nunca teclas nem cliques. A rolagem manual sempre funciona sem essa permissão."
+          }
+        }
+      }
+    },
+    "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Scrolling.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Scrolling."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A rolagem automática precisa da permissão de Acessibilidade. Role manualmente ou permita em Ajustes › Rolagem."
+          }
+        }
+      }
+    },
+    "Available languages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available languages"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idiomas disponíveis"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voltar"
+          }
+        }
+      }
+    },
+    "Better": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Better"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melhor"
+          }
+        }
+      }
+    },
+    "Blur and pixelation are cosmetic. They can leave text recoverable, so do not use them to hide secrets.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blur and pixelation are cosmetic. They can leave text recoverable, so do not use them to hide secrets."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desfoque e pixelização são apenas estéticos. O texto pode continuar recuperável, então não os use para esconder informações sigilosas."
+          }
+        }
+      }
+    },
+    "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ambos vêm desativados. A cópia e o salvamento automáticos acontecem logo após a captura, antes de qualquer edição ou tarja que você fizer depois, e não podem ser desfeitos em outros apps."
+          }
+        }
+      }
+    },
+    "Bring Pins Forward": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring Pins Forward"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trazer fixações para a frente"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        }
+      }
+    },
+    "Capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar"
+          }
+        }
+      }
+    },
+    "Capture Display": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture Display"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar tela inteira"
+          }
+        }
+      }
+    },
+    "Capture Region": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture Region"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar região"
+          }
+        }
+      }
+    },
+    "Capture Text (OCR)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture Text (OCR)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar texto (OCR)"
+          }
+        }
+      }
+    },
+    "Capture Window": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture Window"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar janela"
+          }
+        }
+      }
+    },
+    "Capture stopped where content could not be matched reliably.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture stopped where content could not be matched reliably."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A captura parou onde o conteúdo não pôde ser alinhado com segurança."
+          }
+        }
+      }
+    },
+    "Capture with Delay…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture with Delay…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar com atraso…"
+          }
+        }
+      }
+    },
+    "Capture, mark up, redact, and share screenshots from the menu bar.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture, mark up, redact, and share screenshots from the menu bar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture, anote, oculte informações e compartilhe capturas de tela pela barra de menus."
+          }
+        }
+      }
+    },
+    "Capturing in %lld s": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturing in %lld s"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturando em %lld s"
+          }
+        }
+      }
+    },
+    "Capturing. Recortia is scrolling the area.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturing. Recortia is scrolling the area."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturando. O Recortia está rolando a área."
+          }
+        }
+      }
+    },
+    "Capturing. Scroll the area slowly.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturing. Scroll the area slowly."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturando. Role a área devagar."
+          }
+        }
+      }
+    },
+    "Check Again": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Again"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar novamente"
+          }
+        }
+      }
+    },
+    "Choose": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolher"
+          }
+        }
+      }
+    },
+    "Choose a PNG or JPEG image to open.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a PNG or JPEG image to open."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha uma imagem PNG ou JPEG para abrir."
+          }
+        }
+      }
+    },
+    "Choose a display to capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a display to capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha uma tela para capturar"
+          }
+        }
+      }
+    },
+    "Choose a window to capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a window to capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha uma janela para capturar"
+          }
+        }
+      }
+    },
+    "Choose where automatic saves go.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose where automatic saves go."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha onde os salvamentos automáticos serão gravados."
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolher…"
+          }
+        }
+      }
+    },
+    "Chosen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chosen"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolhida"
+          }
+        }
+      }
+    },
+    "Close All Pins": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close All Pins"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar todas as fixações"
+          }
+        }
+      }
+    },
+    "Close Pin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Pin"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar fixação"
+          }
+        }
+      }
+    },
+    "Complete capture.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete capture."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura completa."
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar"
+          }
+        }
+      }
+    },
+    "Copied text": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied text"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto copiado"
+          }
+        }
+      }
+    },
+    "Copy Image always places a PNG on the clipboard.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Image always places a PNG on the clipboard."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar imagem sempre coloca um PNG na área de transferência."
+          }
+        }
+      }
+    },
+    "Copy automatically after capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy automatically after capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar automaticamente após a captura"
+          }
+        }
+      }
+    },
+    "Dashed lines mark where frames were joined. Check them for missing or repeated content.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dashed lines mark where frames were joined. Check them for missing or repeated content."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As linhas tracejadas marcam onde os quadros foram unidos. Confira se há conteúdo faltando ou repetido."
+          }
+        }
+      }
+    },
+    "Default opacity": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default opacity"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opacidade padrão"
+          }
+        }
+      }
+    },
+    "Delay: %lld s": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delay: %lld s"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atraso: %lld s"
+          }
+        }
+      }
+    },
+    "Delayed Capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delayed Capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura com atraso"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar"
+          }
+        }
+      }
+    },
+    "Display %u": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display %u"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tela %u"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concluir"
+          }
+        }
+      }
+    },
+    "Drag to select an area. Press Return to capture the whole display or Escape to cancel.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag to select an area. Press Return to capture the whole display or Escape to cancel."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arraste para selecionar uma área. Pressione Return para capturar a tela inteira ou Esc para cancelar."
+          }
+        }
+      }
+    },
+    "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tudo acontece neste Mac. Capturas e textos reconhecidos ficam na memória e nunca são enviados."
+          }
+        }
+      }
+    },
+    "Exactly as recognized": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exactly as recognized"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exatamente como reconhecido"
+          }
+        }
+      }
+    },
+    "Export": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportação"
+          }
+        }
+      }
+    },
+    "Finding windows…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding windows…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procurando janelas…"
+          }
+        }
+      }
+    },
+    "Format": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato"
+          }
+        }
+      }
+    },
+    "Recortia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia"
+          }
+        }
+      }
+    },
+    "Recortia asks for Screen Recording permission the first time you capture, not now. Opening and editing images never needs it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia asks for Screen Recording permission the first time you capture, not now. Opening and editing images never needs it."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia pede a permissão de Gravação de Tela na primeira captura, não agora. Abrir e editar imagens nunca precisa dela."
+          }
+        }
+      }
+    },
+    "Recortia can capture your screen only with Screen Recording permission. Opening, pasting, editing, and exporting images keep working without it. To allow capture, turn on Recortia in System Settings › Privacy & Security › Screen & System Audio Recording.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia can capture your screen only with Screen Recording permission. Opening, pasting, editing, and exporting images keep working without it. To allow capture, turn on Recortia in System Settings › Privacy & Security › Screen & System Audio Recording."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia só consegue capturar a tela com a permissão de Gravação de Tela. Abrir, colar, editar e exportar imagens continuam funcionando sem ela. Para permitir a captura, ative o Recortia em Ajustes do Sistema › Privacidade e Segurança › Gravação de Tela e Áudio do Sistema."
+          }
+        }
+      }
+    },
+    "Recortia cannot write to that folder. Choose a folder in Settings › Export.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia cannot write to that folder. Choose a folder in Settings › Export."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia não consegue gravar nessa pasta. Escolha uma pasta em Ajustes › Exportação."
+          }
+        }
+      }
+    },
+    "Recortia saves only these settings. It writes an image to disk or the clipboard only when you choose Copy, Save, drag an image out, or turn on automatic export.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia saves only these settings. It writes an image to disk or the clipboard only when you choose Copy, Save, drag an image out, or turn on automatic export."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia salva apenas estes ajustes. Ele só grava uma imagem no disco ou na área de transferência quando você escolhe Copiar, Salvar, arrasta uma imagem para fora ou ativa a exportação automática."
+          }
+        }
+      }
+    },
+    "General": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geral"
+          }
+        }
+      }
+    },
+    "Include window shadow": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include window shadow"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluir sombra da janela"
+          }
+        }
+      }
+    },
+    "JPEG": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG"
+          }
+        }
+      }
+    },
+    "JPEG quality": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG quality"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qualidade do JPEG"
+          }
+        }
+      }
+    },
+    "Join into one line": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join into one line"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Juntar em uma linha"
+          }
+        }
+      }
+    },
+    "Keep line breaks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep line breaks"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manter quebras de linha"
+          }
+        }
+      }
+    },
+    "Language information is not available.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language information is not available."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As informações de idioma não estão disponíveis."
+          }
+        }
+      }
+    },
+    "Loading languages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading languages"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carregando idiomas"
+          }
+        }
+      }
+    },
+    "No content was collected. Scroll the area while capturing.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No content was collected. Scroll the area while capturing."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum conteúdo foi coletado. Role a área durante a captura."
+          }
+        }
+      }
+    },
+    "No shortcut is assigned until you record one. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No shortcut is assigned until you record one. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum atalho é atribuído até você gravar um. O Recortia avisa sobre conflitos com atalhos do macOS e de menus que consegue detectar, mas não tem como conhecer todos os atalhos usados por outros apps."
+          }
+        }
+      }
+    },
+    "No windows are available to capture.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No windows are available to capture."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não há janelas disponíveis para capturar."
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma"
+          }
+        }
+      }
+    },
+    "Not Now": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Now"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agora não"
+          }
+        }
+      }
+    },
+    "Not allowed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not allowed"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não permitido"
+          }
+        }
+      }
+    },
+    "Not available in this build.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not available in this build."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indisponível nesta versão."
+          }
+        }
+      }
+    },
+    "Nothing is saved or copied until you choose Copy, Save, or drag an image out.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing is saved or copied until you choose Copy, Save, or drag an image out."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada é salvo ou copiado até você escolher Copiar, Salvar ou arrastar uma imagem para fora."
+          }
+        }
+      }
+    },
+    "Nothing was captured": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was captured"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada foi capturado"
+          }
+        }
+      }
+    },
+    "Nothing was exported": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was exported"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada foi exportado"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Only PNG and JPEG images are supported.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only PNG and JPEG images are supported."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apenas imagens PNG e JPEG são compatíveis."
+          }
+        }
+      }
+    },
+    "Opacity": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opacity"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opacidade"
+          }
+        }
+      }
+    },
+    "Open Recortia at login": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Recortia at login"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir o Recortia ao iniciar sessão"
+          }
+        }
+      }
+    },
+    "Open Image…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Image…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir imagem…"
+          }
+        }
+      }
+    },
+    "Open System Settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Ajustes do Sistema"
+          }
+        }
+      }
+    },
+    "Optional. Recortia sets no shortcuts for you and never replaces the macOS screenshot shortcuts. You can change them later in Settings.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional. Recortia sets no shortcuts for you and never replaces the macOS screenshot shortcuts. You can change them later in Settings."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional. O Recortia não define atalhos por você e nunca substitui os atalhos de captura de tela do macOS. Você pode alterá-los depois em Ajustes."
+          }
+        }
+      }
+    },
+    "PNG": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PNG"
+          }
+        }
+      }
+    },
+    "Partial result. %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partial result. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resultado parcial. %@"
+          }
+        }
+      }
+    },
+    "Paste Image": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste Image"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colar imagem"
+          }
+        }
+      }
+    },
+    "Pause": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar"
+          }
+        }
+      }
+    },
+    "Paused.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausado."
+          }
+        }
+      }
+    },
+    "Paused: scrolling changed direction. Scroll down again, then resume.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused: scrolling changed direction. Scroll down again, then resume."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausado: a rolagem mudou de direção. Role para baixo novamente e depois retome."
+          }
+        }
+      }
+    },
+    "Paused: the match is uncertain. Resume to keep going or stop to review.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused: the match is uncertain. Resume to keep going or stop to review."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausado: o alinhamento está incerto. Retome para continuar ou pare para revisar."
+          }
+        }
+      }
+    },
+    "Paused: the new content could not be matched reliably. Scroll back a little, then resume, or stop to review.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused: the new content could not be matched reliably. Scroll back a little, then resume, or stop to review."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausado: o novo conteúdo não pôde ser alinhado com segurança. Role um pouco para trás e retome, ou pare para revisar."
+          }
+        }
+      }
+    },
+    "Permissions": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissions"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissões"
+          }
+        }
+      }
+    },
+    "Pin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixação"
+          }
+        }
+      }
+    },
+    "Pinned screenshot": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pinned screenshot"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura fixada"
+          }
+        }
+      }
+    },
+    "Pins": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pins"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixações"
+          }
+        }
+      }
+    },
+    "Pins stay until you close them and are not restored after Recortia quits.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pins stay until you close them and are not restored after Recortia quits."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As fixações ficam até você fechá-las e não são restauradas depois que o Recortia é encerrado."
+          }
+        }
+      }
+    },
+    "Preparing preview": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing preview"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando a pré-visualização"
+          }
+        }
+      }
+    },
+    "Privacy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacidade"
+          }
+        }
+      }
+    },
+    "Quit Recortia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit Recortia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encerrar o Recortia"
+          }
+        }
+      }
+    },
+    "Ready. Press Start and Recortia scrolls the area for you.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready. Press Start and Recortia scrolls the area for you."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pronto. Clique em Iniciar e o Recortia rola a área para você."
+          }
+        }
+      }
+    },
+    "Ready. Press Start, then scroll the area slowly.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready. Press Start, then scroll the area slowly."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pronto. Clique em Iniciar e role a área devagar."
+          }
+        }
+      }
+    },
+    "Redaction": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redaction"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultação"
+          }
+        }
+      }
+    },
+    "Redaction applies to the image you export from Recortia. It cannot find every secret, and it cannot remove copies you exported or shared earlier.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redaction applies to the image you export from Recortia. It cannot find every secret, and it cannot remove copies you exported or shared earlier."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A ocultação vale para a imagem que você exporta do Recortia. Ela não encontra todas as informações sigilosas e não remove cópias exportadas ou compartilhadas antes."
+          }
+        }
+      }
+    },
+    "Repeat Last Region": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repeat Last Region"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir última região"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retomar"
+          }
+        }
+      }
+    },
+    "Review Scrolling Capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review Scrolling Capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar captura com rolagem"
+          }
+        }
+      }
+    },
+    "Save automatically after capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save automatically after capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar automaticamente após a captura"
+          }
+        }
+      }
+    },
+    "Save folder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save folder"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasta de salvamento"
+          }
+        }
+      }
+    },
+    "Scale": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scale"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escala"
+          }
+        }
+      }
+    },
+    "Screen Recording is off for Recortia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screen Recording is off for Recortia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Gravação de Tela está desativada para o Recortia"
+          }
+        }
+      }
+    },
+    "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on automatic scrolling.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on automatic scrolling."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Gravação de Tela é solicitada na primeira captura. A Acessibilidade só é solicitada se você ativar a rolagem automática."
+          }
+        }
+      }
+    },
+    "Screen Recording permission was turned off, so capture stopped.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screen Recording permission was turned off, so capture stopped."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A permissão de Gravação de Tela foi desativada, então a captura parou."
+          }
+        }
+      }
+    },
+    "Screen area selection": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screen area selection"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleção de área da tela"
+          }
+        }
+      }
+    },
+    "Screenshots, edits, and recognized text exist only in memory while you work. Recortia keeps no screenshot history and uploads nothing.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots, edits, and recognized text exist only in memory while you work. Recortia keeps no screenshot history and uploads nothing."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturas, edições e textos reconhecidos existem apenas na memória enquanto você trabalha. O Recortia não guarda histórico de capturas e não envia nada."
+          }
+        }
+      }
+    },
+    "Scroll automatically": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scroll automatically"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rolar automaticamente"
+          }
+        }
+      }
+    },
+    "Scrolling": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrolling"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rolagem"
+          }
+        }
+      }
+    },
+    "Scrolling Capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrolling Capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura com rolagem"
+          }
+        }
+      }
+    },
+    "Scrolling capture stopped": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrolling capture stopped"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A captura com rolagem parou"
+          }
+        }
+      }
+    },
+    "Select the area that scrolls. Leave out fixed headers if you can.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select the area that scrolls. Leave out fixed headers if you can."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione a área que rola. Se possível, deixe de fora cabeçalhos fixos."
+          }
+        }
+      }
+    },
+    "Settings…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes…"
+          }
+        }
+      }
+    },
+    "Shortcuts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcuts"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atalhos"
+          }
+        }
+      }
+    },
+    "Show the pointer in captures": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the pointer in captures"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar o ponteiro nas capturas"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pular"
+          }
+        }
+      }
+    },
+    "Smaller": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smaller"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menor"
+          }
+        }
+      }
+    },
+    "Solid redaction replaces the covered pixels with an opaque color in the exported image. It is the secure tool.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solid redaction replaces the covered pixels with an opaque color in the exported image. It is the secure tool."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tarja sólida substitui os pixels cobertos por uma cor opaca na imagem exportada. Ela é a ferramenta segura."
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar"
+          }
+        }
+      }
+    },
+    "Stitched preview with %lld joins": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stitched preview with %lld joins"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pré-visualização unida com %lld junções"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parar"
+          }
+        }
+      }
+    },
+    "Stop Scrolling Capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Scrolling Capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parar captura com rolagem"
+          }
+        }
+      }
+    },
+    "Text Recognition": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text Recognition"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconhecimento de texto"
+          }
+        }
+      }
+    },
+    "Text is recognized on this Mac and never corrected automatically.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text is recognized on this Mac and never corrected automatically."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O texto é reconhecido neste Mac e nunca é corrigido automaticamente."
+          }
+        }
+      }
+    },
+    "The 2-minute time limit was reached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The 2-minute time limit was reached."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O limite de 2 minutos foi atingido."
+          }
+        }
+      }
+    },
+    "The 20,000-pixel height limit was reached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The 20,000-pixel height limit was reached."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O limite de 20.000 pixels de altura foi atingido."
+          }
+        }
+      }
+    },
+    "The 200-frame limit was reached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The 200-frame limit was reached."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O limite de 200 quadros foi atingido."
+          }
+        }
+      }
+    },
+    "The 32,768-pixel side limit was reached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The 32,768-pixel side limit was reached."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O limite de 32.768 pixels por lado foi atingido."
+          }
+        }
+      }
+    },
+    "The 40-megapixel size limit was reached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The 40-megapixel size limit was reached."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O limite de 40 megapixels foi atingido."
+          }
+        }
+      }
+    },
+    "The clipboard could not be updated. Its previous content is unchanged.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The clipboard could not be updated. Its previous content is unchanged."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível atualizar a área de transferência. O conteúdo anterior não mudou."
+          }
+        }
+      }
+    },
+    "The clipboard does not contain a PNG or JPEG image.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The clipboard does not contain a PNG or JPEG image."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A área de transferência não contém uma imagem PNG ou JPEG."
+          }
+        }
+      }
+    },
+    "The destination volume is not available.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The destination volume is not available."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O volume de destino não está disponível."
+          }
+        }
+      }
+    },
+    "The disk is full.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The disk is full."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O disco está cheio."
+          }
+        }
+      }
+    },
+    "The display of your last region changed. Select an area again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The display of your last region changed. Select an area again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tela da sua última região mudou. Selecione uma área novamente."
+          }
+        }
+      }
+    },
+    "The file could not be read.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file could not be read."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível ler o arquivo."
+          }
+        }
+      }
+    },
+    "The file is larger than 64 MB.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file is larger than 64 MB."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo tem mais de 64 MB."
+          }
+        }
+      }
+    },
+    "The image changed while exporting. Try again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image changed while exporting. Try again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A imagem mudou durante a exportação. Tente novamente."
+          }
+        }
+      }
+    },
+    "The image could not be opened": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image could not be opened"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível abrir a imagem"
+          }
+        }
+      }
+    },
+    "The image could not be rendered.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image could not be rendered."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível gerar a imagem."
+          }
+        }
+      }
+    },
+    "The image data is damaged.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image data is damaged."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os dados da imagem estão danificados."
+          }
+        }
+      }
+    },
+    "The image has invalid dimensions.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image has invalid dimensions."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A imagem tem dimensões inválidas."
+          }
+        }
+      }
+    },
+    "The image is larger than 40 megapixels.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image is larger than 40 megapixels."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A imagem tem mais de 40 megapixels."
+          }
+        }
+      }
+    },
+    "The image is too large to assemble. Discard it and capture a shorter area.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image is too large to assemble. Discard it and capture a shorter area."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A imagem é grande demais para ser montada. Descarte-a e capture uma área menor."
+          }
+        }
+      }
+    },
+    "The image is too large to export.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image is too large to export."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A imagem é grande demais para exportar."
+          }
+        }
+      }
+    },
+    "The screen locked during the capture.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The screen locked during the capture."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tela foi bloqueada durante a captura."
+          }
+        }
+      }
+    },
+    "The screen locked, so capture stopped.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The screen locked, so capture stopped."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tela foi bloqueada, então a captura parou."
+          }
+        }
+      }
+    },
+    "The scrolling area is no longer available, so capture stopped.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The scrolling area is no longer available, so capture stopped."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A área com rolagem não está mais disponível, então a captura parou."
+          }
+        }
+      }
+    },
+    "The selected content is protected and cannot be captured.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected content is protected and cannot be captured."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O conteúdo selecionado é protegido e não pode ser capturado."
+          }
+        }
+      }
+    },
+    "The system reported an error (%lld).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The system reported an error (%lld)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O sistema informou um erro (%lld)."
+          }
+        }
+      }
+    },
+    "The window or display you chose is no longer available.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The window or display you chose is no longer available."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A janela ou tela escolhida não está mais disponível."
+          }
+        }
+      }
+    },
+    "Unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unavailable"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indisponível"
+          }
+        }
+      }
+    },
+    "Used by Capture with Delay. When set to 0, Capture with Delay waits %lld seconds.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used by Capture with Delay. When set to 0, Capture with Delay waits %lld seconds."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usado por Capturar com atraso. Com 0, Capturar com atraso espera %lld segundos."
+          }
+        }
+      }
+    },
+    "Welcome to Recortia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome to Recortia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boas-vindas ao Recortia"
+          }
+        }
+      }
+    },
+    "What stays on this Mac": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What stays on this Mac"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O que fica neste Mac"
+          }
+        }
+      }
+    },
+    "Your display arrangement changed, so capture stopped.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your display arrangement changed, so capture stopped."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A disposição das telas mudou, então a captura parou."
+          }
+        }
+      }
+    },
+    "Your display arrangement changed. Select the area again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your display arrangement changed. Select the area again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A disposição das telas mudou. Selecione a área novamente."
+          }
+        }
+      }
+    },
+    "Zoom %lld percent": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom %lld percent"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom de %lld por cento"
+          }
+        }
+      }
+    },
+    "Zoom In": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom In"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ampliar"
+          }
+        }
+      }
+    },
+    "Zoom Out": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom Out"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduzir"
+          }
+        }
+      }
+    },
+    "macOS did not accept this shortcut. Another app may be using it. Choose a different one.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS did not accept this shortcut. Another app may be using it. Choose a different one."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS não aceitou este atalho. Outro app pode estar usando-o. Escolha outro."
+          }
+        }
+      }
+    },
+    "macOS did not change the login item. Check System Settings › General › Login Items & Extensions.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS did not change the login item. Check System Settings › General › Login Items & Extensions."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS não alterou o item de início de sessão. Confira em Ajustes do Sistema › Geral › Itens de Início e Extensões."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

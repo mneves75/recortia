@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: PR builds read the repository and nothing else (SPEC.md §12, REL-01).
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Preview image with Xcode 27.0 (27A266a) as default, matching TOOLCHAIN.json.
+    runs-on: xcode-27
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
+      # The hosted VM cannot run Vision text recognition; OCR recognition tests run in the local
+      # gate, and a control test here fails if Vision starts working (OCRRecognitionTests.swift).
+      RECORTIA_VISION_UNAVAILABLE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install XcodeGen (pinned)
+        # The version that generated the committed project, verified by checksum, so the
+        # project-freshness evidence is reproducible.
+        env:
+          XCODEGEN_VERSION: 2.46.0
+          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
+          echo "$XCODEGEN_SHA256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Gate
+        run: scripts/check.sh --unsigned

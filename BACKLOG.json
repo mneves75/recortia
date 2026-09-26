@@ -2,14 +2,14 @@
   "schema_version": 1,
   "document_version": "1.0",
   "research_date": "2026-09-26",
-  "status": "proposed_not_implemented",
+  "status": "beta_implemented_awaiting_manual_validation",
   "policy": "Initial permission is read-only planning. No task is complete without recorded verification; publishing and live-data access require explicit authorization.",
   "tasks": [
     {
       "id": "FP-001",
       "milestone": "M0",
       "title": "Inventory repository and freeze verified toolchain",
-      "status": "awaiting_manual_validation",
+      "status": "implemented",
       "depends_on": [],
       "requirement_ids": [
         "FR-01",
@@ -31,13 +31,14 @@
         "docs/adr/0001-native-stack-and-toolchain-baseline.md (Proposed; API availability typecheck with negative control)",
         "Awaiting owner review of the M0 plan; FP-001 completion contract requires it"
       ],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-002",
       "milestone": "M0",
       "title": "Prove capture, geometry, and permission feasibility",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-001"
       ],
@@ -58,13 +59,14 @@
       ],
       "completion_contract": "Record real still-capture results, app-window exclusion, a mixed-DPI test or explicit hardware block, and a reasoned choice about non-sandboxed automatic scrolling.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented; live capture on 1×/mixed-DPI displays and macOS 15/26 hosts (GEO-01) still needs hardware validation."
     },
     {
       "id": "FP-003",
       "milestone": "M0",
       "title": "Prove privacy rendering and scroll-matching risks",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-001"
       ],
@@ -85,13 +87,14 @@
       ],
       "completion_contract": "Demonstrate the intended redaction information-dependence test and show both a successful and an intentionally rejected ambiguous stitch; report any unrun code honestly.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-004",
       "milestone": "M1",
       "title": "Create the approved native project and test entrypoints",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-002",
         "FP-003"
@@ -105,20 +108,21 @@
       ],
       "scope": "Create or adapt the approved app target, local package targets, shared schemes, formatting configuration, and unsigned CI entrypoints.",
       "deliverables": [
-        "Framepin.xcodeproj or approved existing equivalent",
-        "Packages/FramepinKit",
+        "Recortia.xcodeproj or approved existing equivalent",
+        "Packages/RecortiaKit",
         "scripts/doctor.sh and scripts/check.sh",
         "Read-only PR workflow"
       ],
       "completion_contract": "A clean Mac checkout builds the skeleton and runs a real domain test without release credentials. Dependency locks and exact script behavior are documented.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-005",
       "milestone": "M1",
       "title": "Implement typed geometry and domain contracts",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-004"
       ],
@@ -138,13 +142,14 @@
       ],
       "completion_contract": "Round-trip, outward mask rounding, invalid-input, overflow, and illegal-transition tests pass without UI dependencies.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-006",
       "milestone": "M1",
       "title": "Build the menu bar, settings foundation, and shortcuts",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-004"
       ],
@@ -165,13 +170,14 @@
       ],
       "completion_contract": "The app launches without intrusive permission prompts, exposes keyboard-accessible commands, reports shortcut registration failure, and starts with no automatic side effects.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-007",
       "milestone": "M1",
       "title": "Implement the still-capture vertical slice",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-005",
         "FP-006"
@@ -193,13 +199,14 @@
       ],
       "completion_contract": "Real capture works for the declared modes and source geometry, with one active request, no idle stream, no self-overlay contamination, and safe late-callback handling.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented and E2E-verified with synthetic capture; live ScreenCaptureKit capture on hardware still needs owner validation (TCC grant)."
     },
     {
       "id": "FP-008",
       "milestone": "M1",
       "title": "Implement bounded local image import",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-005",
         "FP-006"
@@ -219,13 +226,14 @@
       ],
       "completion_contract": "Valid imports render; unsafe/unsupported inputs fail before uncontrolled allocation. No clipboard polling, remote fetch, or original-file mutation occurs.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-009",
       "milestone": "M2",
       "title": "Build the document editor and command undo",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-007",
         "FP-008"
@@ -246,13 +254,14 @@
       ],
       "completion_contract": "Undo/redo and geometry remain correct at all specified zooms, and one gesture produces one bounded undo group.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-010",
       "milestone": "M2",
       "title": "Add essential annotation tools",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-009"
       ],
@@ -272,13 +281,14 @@
       ],
       "completion_contract": "Each supported tool creates/edits/replays deterministically, honors focus/input composition, and has no stub or inaccessible essential action.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-011",
       "milestone": "M2",
       "title": "Implement secure rendering and redaction",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-009",
         "FP-010"
@@ -300,13 +310,14 @@
       ],
       "completion_contract": "All available sink-independent redaction tests pass; changing only covered source pixels cannot alter sanitized rendered pixels. No superficial overlay qualifies.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-012",
       "milestone": "M2",
       "title": "Implement safe save, clipboard, and drag-out",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-011"
       ],
@@ -328,13 +339,14 @@
       ],
       "completion_contract": "Every sink accepts only sanitized snapshot bytes. Failed work preserves existing destinations/clipboard where applicable and never reports false success.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-013",
       "milestone": "M2",
       "title": "Implement bounded reference pins",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-012"
       ],
@@ -353,13 +365,14 @@
       ],
       "completion_contract": "Five-pin and budget limits work; pins remain closeable and do not silently intercept unrelated interactions or leak stale exports.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-014",
       "milestone": "M3",
       "title": "Implement local OCR and QR",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-012"
       ],
@@ -380,13 +393,14 @@
       ],
       "completion_contract": "Recognition works offline in the validated environment, aligns boxes correctly, respects masks/cancellation, and never performs a QR-triggered action automatically.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-015",
       "milestone": "M3",
       "title": "Qualify the useful 0.1 release candidate",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-013",
         "FP-014"
@@ -419,13 +433,14 @@
       ],
       "completion_contract": "All 0.1 gates pass or the scope is visibly reduced through review. Signing checks are real or marked blocked; public publishing remains a separate action.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "0.9.0-beta1 candidate built; qualification on stable macOS and hardware is pending."
     },
     {
       "id": "FP-016",
       "milestone": "M4",
       "title": "Implement manual scrolling capture",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-015"
       ],
@@ -446,13 +461,14 @@
       ],
       "completion_contract": "Known sequences reconstruct correctly; ambiguous matches pause/reject instead of fabricating success. Stop and resource limits remain responsive.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-017",
       "milestone": "M4",
       "title": "Add separately consented automatic scrolling",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-016"
       ],
@@ -472,13 +488,14 @@
       ],
       "completion_contract": "No Accessibility request occurs before choosing automatic mode. Target changes stop control; denial keeps manual mode usable. No typing/global event logging is added.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented with separate consent; real-app runs need the owner's Accessibility grant."
     },
     {
       "id": "FP-018",
       "milestone": "M4",
       "title": "Qualify scrolling compatibility and failure behavior",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-017"
       ],
@@ -500,13 +517,14 @@
       ],
       "completion_contract": "Publish only evidence-backed supported targets. Every corrupted/uncertain case is rejected, paused, or explicitly marked partial; resource tests include final encoding.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Stitcher calibration and failure behavior are automated; the real-app compatibility matrix (SCR-03) is pending."
     },
     {
       "id": "FP-019",
       "milestone": "M5",
       "title": "Implement loupe, measurements, and sRGB inspection",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-015"
       ],
@@ -526,13 +544,14 @@
       ],
       "completion_contract": "Measurements and colors match declared fixture values independently of editor zoom; imported images never get fabricated screen scaling.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-020",
       "milestone": "M5",
       "title": "Implement multiple-image composition",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-015"
       ],
@@ -553,13 +572,14 @@
       ],
       "completion_contract": "Composites preserve aspect ratio, geometry, undo, and masks. Unsupported mappings fail safely before any export.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-021",
       "milestone": "M5",
       "title": "Add presentation effects and safe magnifiers",
-      "status": "not_started",
+      "status": "implemented",
       "depends_on": [
         "FP-020"
       ],
@@ -581,13 +601,14 @@
       ],
       "completion_contract": "Every derived effect samples sanitized sources, rejects cycles, matches the preview, and stays within the resource budget.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
     },
     {
       "id": "FP-022",
       "milestone": "M6",
       "title": "Finish accessibility, localization, and native interaction",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-018",
         "FP-019",
@@ -610,13 +631,14 @@
       ],
       "completion_contract": "Essential workflows are usable through the stated accessibility paths. Remaining limitations are disclosed rather than labeled fully accessible.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "English and pt-BR localization done; VoiceOver and input-method passes on hardware pending."
     },
     {
       "id": "FP-023",
       "milestone": "M6",
       "title": "Qualify resource, lifecycle, and privacy budgets",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-022"
       ],
@@ -643,7 +665,8 @@
       ],
       "completion_contract": "Record p50/p95/sample counts and exact environments. No fabricated hardware results, silent budget changes, live capture archive, or content-bearing logs.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "Budgets enforced in code and tests; measurement on a stable-OS Mac (PERF-01) pending."
     },
     {
       "id": "FP-024",
@@ -668,13 +691,14 @@
       ],
       "completion_contract": "Invalid updates are rejected, default installs remain offline, and the working app survives failure. No release/update key is exposed to untrusted jobs.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "In-app updater not built; updates ship through Homebrew."
     },
     {
       "id": "FP-025",
       "milestone": "M6",
       "title": "Complete open-source handoff and 1.0 release qualification",
-      "status": "not_started",
+      "status": "in_progress",
       "depends_on": [
         "FP-023",
         "FP-024"
@@ -710,7 +734,8 @@
       ],
       "completion_contract": "The release candidate meets its named scope without fake parity/security claims. The maintainer approves any publish action separately; unrun gates remain visibly unrun.",
       "evidence": [],
-      "authorization": "requires_approved_milestone"
+      "authorization": "requires_approved_milestone",
+      "status_note": "MIT license, contribution and security policies, public repository, and security audit done; 1.0 qualification pending."
     }
   ],
   "deferred_scope": [

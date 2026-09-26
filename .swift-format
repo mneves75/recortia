@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "lineLength": 120,
+  "indentation": { "spaces": 4 },
+  "maximumBlankLines": 1,
+  "respectsExistingLineBreaks": true,
+  "lineBreakBeforeEachArgument": false,
+  "rules": {
+    "AlwaysUseLowerCamelCase": false,
+    "OrderedImports": true,
+    "NoAccessLevelOnExtensionDeclaration": false,
+    "UseLetInEveryBoundCaseVariable": false,
+    "ReplaceForEachWithForLoop": false,
+    "AllPublicDeclarationsHaveDocumentation": false,
+    "ValidateDocumentationComments": false,
+    "NeverForceUnwrap": false,
+    "NeverUseImplicitlyUnwrappedOptionals": false,
+    "NoLeadingUnderscores": false,
+    "UseSynthesizedInitializer": false,
+    "TypeNamesShouldBeCapitalized": true
+  }
+}

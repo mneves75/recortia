@@ -1,4 +1,4 @@
-# AGENTS.md — Framepin coding-agent contract
+# AGENTS.md — Recortia coding-agent contract
 
 ## Mission and authority
 
@@ -6,7 +6,7 @@ Build the approved milestone of the native macOS screenshot utility defined in S
 
 Read, in order: this file, SPEC.md, IMPLEMENTATION_PLAN.md, the selected task in BACKLOG.json, the relevant ACCEPTANCE_TESTS.md cases, and existing repository instructions/ADRs. Consult SOURCES.md when an API or external assumption matters. Read actual implementation before proposing edits.
 
-**Initial authority is planning only.** Delivery of these documents does not authorize application-code changes. First inspect the repository/toolchain and propose M0; wait for explicit owner approval before implementation. Once a milestone is approved, complete its scoped changes without repeatedly asking for the same approval. New permissions, external transfers, paid services, license changes, credential access, architecture replacement, release publishing, and scope expansion require fresh approval.
+**Authority.** The owner approved implementation of the v1 milestones (FR-01…FR-14) on 2026-09-26; FR-15/FR-16 still need a separate design and approval. For new work, propose the change first when it is not already a planned task. Once work is approved, complete its scoped changes without repeatedly asking for the same approval. New permissions, external transfers, paid services, license changes, credential access, architecture replacement, release publishing, and scope expansion require fresh approval.
 
 ## First-session preflight
 
@@ -59,16 +59,18 @@ No credentials or real screenshots in source control, logs, prompts, issues, or 
 
 ## Verification commands and evidence
 
-M0/M1 must establish actual shared schemes and reproducible script entrypoints. The following are intended command shapes, **not commands claimed to work in the documentation-only bundle**:
+The repository gates (stable Xcode via `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`):
 
 ```sh
-swift test --package-path Packages/FramepinKit
-xcodebuild -project Framepin.xcodeproj -scheme Framepin \
-  -configuration Debug -destination 'platform=macOS' \
-  CODE_SIGNING_ALLOWED=NO build
+scripts/check.sh              # doctor, strict format lint, project freshness, package tests, signed Debug build
+scripts/check.sh --unsigned   # CI and machines without the signing identity
+scripts/e2e.sh --lang all     # DEBUG scenario runner through the real app: screenshots + report.json
+scripts/release.sh            # owner-only, on a v<version>[-betaN] tag: fresh checkout, gate, Developer ID export, checks, DMG, notarize, manifest
+scripts/release.sh --dry-run  # untagged local build of the same pipeline without gate or notarization
+swift test --package-path Packages/RecortiaKit --filter <Test>   # one test or suite
 ```
 
-Adapt only to the discovered/approved project layout and record the exact commands used. UI tests need a suitable GUI session and test configuration; a successful unsigned compilation is not a signing, TCC, UI, or release test. Use separate unsigned PR checks and protected signed release checks.
+Record the exact commands used. UI tests need a suitable GUI session and test configuration; a successful unsigned compilation is not a signing, TCC, UI, or release test. Use separate unsigned PR checks and protected signed release checks.
 
 Run the task's unit/regression tests, compile the affected app, and check formatting and warnings. For imaging changes, compare actual exported files at the pixel/metadata level. For security-sensitive changes, exercise denial, cancellation, malformed input, stale callbacks, and memory-limit paths. Do not remove or weaken a failing test without explaining why its contract is wrong and obtaining review.
 

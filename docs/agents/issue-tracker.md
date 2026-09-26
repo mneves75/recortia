@@ -2,7 +2,7 @@
 
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
-Repository: private `mneves75/framepin-app` (remote `origin`). Planned milestone work stays in
+Repository: `mneves75/recortia` (remote `origin`). Planned milestone work stays in
 `BACKLOG.json` (FP-001…FP-025); GitHub issues hold bugs, triage, and new requests, not copies of
 those tasks. Issue forms in `.github/ISSUE_TEMPLATE/` apply `needs-triage` automatically.
 Screenshots attached to issues must be synthetic (AGENTS.md: no real captures).
