@@ -13,8 +13,15 @@ and `ACCEPTANCE_TESTS.md`. This file does not authorize implementation or change
   Do not scaffold a project to make a command succeed; FP-004 creates it after M0 approval.
 - Initial authority is planning only (FP-001 inventory → M0 plan → owner approval).
 - Git: own repository, default branch `main`, remote `origin` = private GitHub
-  `mneves75/framepin-app` over SSH. `main` rejects force-pushes, deletion, and merge commits.
-- `TOOLCHAIN.json` null fields are filled only from an observed Mac preflight, never guessed.
+  `mneves75/framepin-app` over SSH. PRs are squash-only. GitHub Free gives this private repo no
+  rulesets, branch protection, or secret scanning (API 403/422), so nothing server-side stops a
+  force-push or a committed secret: never force-push `main`, and check diffs for secrets yourself.
+- `TOOLCHAIN.json` holds the observed toolchain (FP-001). `xcode-select` on this Mac points to
+  Xcode-beta, so every build/test command sets
+  `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (stable Xcode 27.0, 27A266a); a bare
+  `xcodebuild` produces evidence that doesn't count. The host OS is a seed build: compile and test
+  evidence counts, performance evidence does not (ADR-001).
+- M0 status, owner decisions D1–D7, and spike designs: `docs/plans/M0-plan.md`.
 
 ## Handoff copy
 

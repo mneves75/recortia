@@ -1232,7 +1232,7 @@ No claim is made about a cleared product name/domain, a published repository, co
 
 ```json
 {
-  "status": "proposed_pending_local_verification",
+  "status": "observed_pending_owner_review",
   "research_date": "2026-09-26",
   "platform": "macOS",
   "release_architectures": ["arm64"],
@@ -1242,14 +1242,21 @@ No claim is made about a cleared product name/domain, a published repository, co
   "swift_language_mode": "6",
   "documented_build_host_minimum": "macOS 26.6",
   "allow_beta_toolchains_for_release": false,
-  "actual_xcode_version": null,
-  "actual_xcode_build": null,
-  "actual_swift_version_output": null,
-  "actual_macos_sdk_version": null,
-  "actual_macos_sdk_build": null,
-  "actual_build_host_os": null,
+  "actual_xcode_version": "27.0",
+  "actual_xcode_build": "27A266a",
+  "actual_swift_version_output": "swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+  "actual_macos_sdk_version": "27.0",
+  "actual_macos_sdk_build": "26A425",
+  "actual_build_host_os": "macOS 27.2 (26B5091g), seed build: software-update catalog is index-27seed",
   "package_resolution_verified": false,
-  "source": "S05 in SOURCES.md",
+  "actual_developer_dir": "/Applications/Xcode.app/Contents/Developer",
+  "observation_date": "2026-09-26",
+  "observation_notes": [
+    "xcode-select points to /Applications/Xcode-beta.app (Xcode 27.2, 27B5019j, macOS SDK 27.2 26B5086k). Every build/test command must export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; see docs/adr/0001-native-stack-and-toolchain-baseline.md.",
+    "Build host is a seed OS. Compilation evidence is valid; performance and release evidence from this host is not (SPEC.md section 10 requires a stable OS).",
+    "Host hardware: Mac17,9, Apple M5 Pro, 64 GB, one built-in 3024x1964 Retina display, no external display."
+  ],
+  "source": "S05 in SOURCES.md; observed values from FP-001 preflight commands recorded in docs/plans/M0-plan.md",
   "instructions": "Replace only observed fields after an actual Mac preflight. Record toolchain updates through review; never fill null values with guesses."
 }
 ```
@@ -1271,7 +1278,7 @@ No claim is made about a cleared product name/domain, a published repository, co
       "id": "FP-001",
       "milestone": "M0",
       "title": "Inventory repository and freeze verified toolchain",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [],
       "requirement_ids": [
         "FR-01",
@@ -1287,7 +1294,12 @@ No claim is made about a cleared product name/domain, a published repository, co
         "ADR-001 native stack and deployment baseline"
       ],
       "completion_contract": "An owner-reviewed plan distinguishes verified facts, unsupported environment checks, and genuinely blocking decisions. No application edits before approval.",
-      "evidence": [],
+      "evidence": [
+        "docs/plans/M0-plan.md (repository audit, verified facts vs assumptions, blocked checks, owner decisions D1-D7)",
+        "TOOLCHAIN.json observed fields (Xcode 27.0 27A266a, Swift 6.4, macOS SDK 27.0 26A425, seed host macOS 27.2 26B5091g)",
+        "docs/adr/0001-native-stack-and-toolchain-baseline.md (Proposed; API availability typecheck with negative control)",
+        "Awaiting owner review of the M0 plan; FP-001 completion contract requires it"
+      ],
       "authorization": "requires_approved_milestone"
     },
     {

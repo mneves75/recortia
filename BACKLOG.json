@@ -9,7 +9,7 @@
       "id": "FP-001",
       "milestone": "M0",
       "title": "Inventory repository and freeze verified toolchain",
-      "status": "not_started",
+      "status": "awaiting_manual_validation",
       "depends_on": [],
       "requirement_ids": [
         "FR-01",
@@ -25,7 +25,12 @@
         "ADR-001 native stack and deployment baseline"
       ],
       "completion_contract": "An owner-reviewed plan distinguishes verified facts, unsupported environment checks, and genuinely blocking decisions. No application edits before approval.",
-      "evidence": [],
+      "evidence": [
+        "docs/plans/M0-plan.md (repository audit, verified facts vs assumptions, blocked checks, owner decisions D1-D7)",
+        "TOOLCHAIN.json observed fields (Xcode 27.0 27A266a, Swift 6.4, macOS SDK 27.0 26A425, seed host macOS 27.2 26B5091g)",
+        "docs/adr/0001-native-stack-and-toolchain-baseline.md (Proposed; API availability typecheck with negative control)",
+        "Awaiting owner review of the M0 plan; FP-001 completion contract requires it"
+      ],
       "authorization": "requires_approved_milestone"
     },
     {
