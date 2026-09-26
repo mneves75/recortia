@@ -177,22 +177,6 @@
         }
       }
     },
-    "Allow update checks": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Allow update checks"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Permitir verificação de atualizações"
-          }
-        }
-      }
-    },
     "Allowed": {
       "localizations": {
         "en": {
@@ -1421,22 +1405,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "OK"
-          }
-        }
-      }
-    },
-    "Off by default. While it is off, Recortia makes no network requests.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Off by default. While it is off, Recortia makes no network requests."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desativado por padrão. Enquanto estiver desativado, o Recortia não faz nenhuma solicitação de rede."
           }
         }
       }

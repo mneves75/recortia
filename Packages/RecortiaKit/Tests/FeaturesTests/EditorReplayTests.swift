@@ -229,6 +229,23 @@ struct EditorReplayTests {
         #expect(!m.canUndo)
     }
 
+    @Test("Evicting undo history is visible to the user (SPEC FR-04)")
+    func undoEvictionIsVisible() {
+        let h = EditorHarness(session: EditorFixtures.session(undoLimit: 2))
+        let m = h.model
+        m.selectTool(.rectangle)
+        h.drag((10, 10), (60, 60))
+        m.nudgeSelection(dx: 1, dy: 0)
+        #expect(m.notice != .undoHistoryTrimmed, "no step evicted yet")
+        m.nudgeSelection(dx: 1, dy: 0)
+        #expect(m.notice == .undoHistoryTrimmed)
+
+        m.dismissNotice()
+        m.selectTool(.rectangle)
+        h.drag((100, 10), (140, 60))
+        #expect(m.notice == .undoHistoryTrimmed, "a gesture commit that evicts also tells the user")
+    }
+
     @Test("Z-order commands move the selection within its layer")
     func zOrder() throws {
         let h = EditorHarness()

@@ -52,6 +52,7 @@ public final class EditorModel {
     @ObservationIgnored var gesture: Gesture = .idle
     @ObservationIgnored var knownAssets: Set<AssetID>
     @ObservationIgnored var hasFittedViewport = false
+    @ObservationIgnored private var reportedEvictedUndoCount = 0
     @ObservationIgnored var continuousChangeOpen = false
 
     @ObservationIgnored var baseTask: Task<Void, Never>?
@@ -169,6 +170,7 @@ public final class EditorModel {
         guard continuousChangeOpen else { return }
         continuousChangeOpen = false
         session.endGroup()
+        noteUndoEvictionIfNeeded()
     }
 
     private var selectedAnnotationIDs: Set<AnnotationID> {
@@ -205,12 +207,20 @@ public final class EditorModel {
     }
 
     func didChange(from before: Document, epoch: UInt64) {
+        noteUndoEvictionIfNeeded()
         guard session.document != before || session.privacyEpoch != epoch else { return }
         let existing = Set(allItemIDs)
         selection = selection.filter(existing.contains)
         if session.privacyEpoch != epoch { privacyEpochChanged() }
         scheduleBaseRender()
         if showsOutputPreview { scheduleOutputRender() }
+    }
+
+    /// Undo history is bounded; when the oldest steps are evicted the user is told (SPEC FR-04).
+    func noteUndoEvictionIfNeeded() {
+        guard session.evictedUndoCount > reportedEvictedUndoCount else { return }
+        reportedEvictedUndoCount = session.evictedUndoCount
+        post(.undoHistoryTrimmed)
     }
 
     public func undo() {

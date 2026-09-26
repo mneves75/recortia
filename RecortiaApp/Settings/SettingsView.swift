@@ -68,12 +68,6 @@ struct GeneralSettingsTab: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Section {
-                Toggle("Allow update checks", isOn: settings.binding(\.updateChecksEnabled))
-                Text("Off by default. While it is off, Recortia makes no network requests.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
         .onAppear { loginItem?.refresh() }

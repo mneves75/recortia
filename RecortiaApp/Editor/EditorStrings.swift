@@ -184,6 +184,8 @@ enum EditorStrings {
         case .exported(let outcome): exportMessage(outcome)
         case .noPreferredFolder:
             String(localized: "No save folder is set. Choose one in Settings › Export.", table: "Editor")
+        case .undoHistoryTrimmed:
+            String(localized: "The oldest undo steps were discarded to limit memory use.", table: "Editor")
         }
     }
 

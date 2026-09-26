@@ -34,6 +34,7 @@ extension EditorModel {
                 gesture = .move(items: [.annotation(step.id)], start: p, original: session.document)
             } else {
                 session.endGroup()
+                noteUndoEvictionIfNeeded()
             }
         case .loupe:
             inspect(at: p)
@@ -108,6 +109,7 @@ extension EditorModel {
             commitCreation(tool: tool, start: start, points: points, end: p.isFinite ? p : start, modifiers: modifiers)
         case .move, .resize:
             session.endGroup()
+            noteUndoEvictionIfNeeded()
         case .idle, .marquee, .ruler, .sample:
             break
         }
@@ -131,6 +133,7 @@ extension EditorModel {
             if before != original { try? session.perform("Cancel") { $0 = original } }
             // The group now ends where it began, so it records no undo step.
             session.endGroup()
+            noteUndoEvictionIfNeeded()
             didChange(from: before, epoch: epoch)
         default:
             break

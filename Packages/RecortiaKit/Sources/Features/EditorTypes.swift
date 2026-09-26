@@ -312,4 +312,6 @@ public enum EditorNotice: Hashable, Sendable {
     case pinsInvalidated(Int)
     case exported(ExportOutcome)
     case noPreferredFolder
+    /// The oldest undo steps were discarded to stay within the undo budget (FR-04).
+    case undoHistoryTrimmed
 }

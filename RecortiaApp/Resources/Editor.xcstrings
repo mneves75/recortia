@@ -1,6 +1,22 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "The oldest undo steps were discarded to limit memory use.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The oldest undo steps were discarded to limit memory use."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As etapas mais antigas de desfazer foram descartadas para limitar o uso de memória."
+          }
+        }
+      }
+    },
     "%@ %lld": {
       "localizations": {
         "en": {
