@@ -59,6 +59,7 @@ final class AppModel: AppActions {
     @ObservationIgnored private var scrollUI: ScrollUIController?
     @ObservationIgnored private var pinsUI: PinsUIController?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
+    @ObservationIgnored private let editors = EditorWindowManager()
     @ObservationIgnored private var didLaunch = false
 
     init(settings: SettingsStore, services: AppServices?, shortcutProbe: any ShortcutRegistrationProbe) {
@@ -158,6 +159,17 @@ final class AppModel: AppActions {
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
         pinsUI = PinsUIController(model: features.pins)
+
+        let services = features.services
+        let environment = EditorEnvironment(
+            renderer: services.renderer, export: features.export, folders: services.folders,
+            textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
+            input: services.input, pins: features.pins, textClipboard: PasteboardTextClipboard(),
+            links: WorkspaceLinkOpener(), settings: settings)
+        openDocument = { [editors] session in editors.open(session, environment: environment) }
+        recognizeText = { [editors] session in
+            editors.open(session, environment: environment, initialAction: .recognizeText)
+        }
     }
 
     private func handleCapture(_ completion: CaptureCompletion) {
