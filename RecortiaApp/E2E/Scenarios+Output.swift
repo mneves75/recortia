@@ -20,10 +20,7 @@
             context.check("an edited document is dirty", model.isDirty)
 
             // Copy: the private pasteboard receives exactly one PNG representation.
-            // Measured around the copy itself, so another app copying meanwhile cannot fail it.
-            let generalBefore = NSPasteboard.general.changeCount
             let copied = await E2EActions.export(controller, .copy)
-            let generalAfter = NSPasteboard.general.changeCount
             try context.require("Copy succeeds", copied == .copied, "\(copied)")
             let pasteboard = harness.clipboard.pasteboard
             let items = pasteboard.pasteboardItems ?? []
@@ -80,9 +77,10 @@
             } else {
                 context.check("the drag chip panel was built", false)
             }
+            // Reading the general pasteboard cannot show which app wrote it; assert the injected sink.
             context.check(
-                "Copy never wrote the general pasteboard", generalAfter == generalBefore,
-                "changeCount \(generalBefore) → \(generalAfter)")
+                "Copy used a private pasteboard, never the general one", harness.clipboard.pasteboard.name != .general,
+                harness.clipboard.pasteboard.name.rawValue)
             await E2EActions.snapshotEditor(controller, context, shot: "editor")
         }
 

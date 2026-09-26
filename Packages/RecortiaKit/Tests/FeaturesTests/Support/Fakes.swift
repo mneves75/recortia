@@ -417,9 +417,14 @@ final class FakeFrameSource: ScrollFrameSourceService {
     private(set) var stopCount = 0
     private var stopped = false
 
+    /// When set, each `start` suspends until `starts.resolve(())`, like a stream that takes time to open.
+    var holdStarts = false
+    let starts = Pending<Void>()
+
     func start(_ target: CaptureTarget) async throws(CaptureError) {
         startCount += 1
         stopped = false
+        if holdStarts { await starts.wait() }
         if let startError { throw startError }
     }
 

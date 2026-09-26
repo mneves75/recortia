@@ -12,4 +12,11 @@ public final class ExportLease: Sendable {
     public var isRevoked: Bool { revoked.withLock { $0 } }
 
     public func revoke() { revoked.withLock { $0 = true } }
+
+    /// Runs `commit` only if the lease is still valid, holding the lease for its duration, so a
+    /// concurrent `revoke()` lands either before the commit (nothing happens) or after it.
+    /// Returns nil when the lease was already revoked.
+    public func whileValid<T>(_ commit: () throws -> T) rethrows -> T? {
+        try revoked.withLock { isRevoked in isRevoked ? nil : try commit() }
+    }
 }

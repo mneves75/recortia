@@ -69,6 +69,8 @@ public final class ScrollSessionModel {
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private var sessionID: UUID?
     @ObservationIgnored private var streamStarted = false
+    /// The session that last started the frame source; a stale session stops only its own stream.
+    @ObservationIgnored private var streamOwner: UUID?
     @ObservationIgnored private var startedAt: Date?
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var deadlineTask: Task<Void, Never>?
@@ -245,9 +247,14 @@ public final class ScrollSessionModel {
         guard isCurrent(id) else { return }
         do throws(CaptureError) {
             stitcher.reset()
+            streamOwner = id
             try await frames.start(target)
             guard isCurrent(id) else {
-                frames.stop()
+                // A newer session's start replaced this stream; stopping now would stop that one.
+                if streamOwner == id {
+                    frames.stop()
+                    streamOwner = nil
+                }
                 return
             }
             streamStarted = true

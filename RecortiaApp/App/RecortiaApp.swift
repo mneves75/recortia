@@ -30,9 +30,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model: AppModel
 
     override init() {
-        model = AppModel(
-            settings: SettingsStore(storage: UserDefaults.standard, integrity: integrity),
-            services: .live(), shortcutProbe: CarbonShortcutProbe())
+        #if RECORTIA_E2E
+            // The E2E binary exists only for the scenario runner and its probe processes: it never
+            // reads or writes the user's preferences or keychain, whatever it was launched with.
+            let settings = SettingsStore.e2eInMemory()
+        #else
+            let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)
+        #endif
+        model = AppModel(settings: settings, services: .live(), shortcutProbe: CarbonShortcutProbe())
         super.init()
     }
 
@@ -41,8 +46,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Only in the RecortiaE2E target: `-RecortiaE2E <dir>` runs the scenario runner
             // (RecortiaApp/E2E) instead of the normal launch; the process exits with its result.
             if E2ERunner.startIfRequested() { return }
+        #else
+            integrity.prepare()
         #endif
-        integrity.prepare()
         model.launch()
     }
 

@@ -155,6 +155,30 @@ struct ScrollSessionModelTests {
         #expect(h.frames.startCount == 0, "an orphaned stream would keep capturing with nothing consuming it")
     }
 
+    // Failure mode (Codex review): session A is canceled while its stream is still starting and
+    // session B starts; when A's start resumes, A's cleanup must not stop B's stream.
+    @Test("A canceled session's late stream start never stops the next session's stream")
+    func lateStartOfCanceledSessionSparesNextSession() async {
+        let h = ScrollHarness(trusted: false, automaticPreference: false)
+        h.frames.holdStarts = true
+        #expect(await h.model.begin())
+        h.model.chooseTarget(h.target)
+        h.model.start()
+        await waitFor("A starting") { h.frames.starts.waiterCount == 1 }
+        h.model.cancel()
+        #expect(await h.model.begin())
+        h.model.chooseTarget(h.target)
+        h.model.start()
+        await waitFor("B starting") { h.frames.starts.waiterCount == 2 }
+        let stopsBefore = h.frames.stopCount
+        h.frames.starts.resolve(())  // A's start finishes after B took over the frame source
+        for _ in 0..<50 { await Task.yield() }
+        #expect(h.frames.stopCount == stopsBefore, "A stopped the stream B now owns")
+        h.frames.starts.resolve(())
+        await waitFor("B waiting for frames") { h.frames.frames.waiterCount == 1 }
+        #expect(h.model.state == .collecting)
+    }
+
     @Test("Revoked Accessibility falls back to manual mode instead of scrolling")
     func accessibilityRevokedFallsBackToManual() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)

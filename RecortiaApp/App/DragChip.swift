@@ -9,13 +9,13 @@ import MacPlatform
 /// keeps the sanitized bytes alive until the transfer completes.
 final class LiveDragSink: DragSinkService {
     private var panel: DragChipPanel?
-    private var continuation: CheckedContinuation<DragDeliveryOutcome, Never>?
+    private var continuation: CheckedContinuation<DragChipResult, Never>?
 
     func deliver(_ snapshot: ShareSnapshot, lease: ExportLease) async throws(SinkError) -> DragDeliveryOutcome {
-        finish(.canceledByUser)
+        finish(.canceled)
         guard !lease.isRevoked else { return .canceledByUser }
         guard let image = NSImage(data: snapshot.bytes) else { throw .writeFailed(code: Int(EINVAL)) }
-        return await withCheckedContinuation { continuation in
+        let result = await withCheckedContinuation { continuation in
             self.continuation = continuation
             let panel = DragChipPanel(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
                 self?.finish(outcome)
@@ -23,13 +23,18 @@ final class LiveDragSink: DragSinkService {
             self.panel = panel
             panel.presentNearPointer()
         }
+        switch result {
+        case .delivered: return .delivered
+        case .canceled: return .canceledByUser
+        case .failed: throw .writeFailed(code: Int(EIO))
+        }
     }
 
     func dismiss() {
-        finish(.canceledByUser)
+        finish(.canceled)
     }
 
-    private func finish(_ outcome: DragDeliveryOutcome) {
+    private func finish(_ outcome: DragChipResult) {
         panel?.orderOut(nil)
         panel = nil
         continuation?.resume(returning: outcome)
@@ -37,10 +42,19 @@ final class LiveDragSink: DragSinkService {
     }
 }
 
-final class DragChipPanel: NSPanel {
-    private let onEnd: (DragDeliveryOutcome) -> Void
+/// How a chip's offer ended. Delivery means the receiver's promised file was written, not merely
+/// dropped: AppKit ends the drag session before it asks for the file.
+enum DragChipResult: Sendable {
+    case delivered, canceled, failed
+}
 
-    init(snapshot: ShareSnapshot, lease: ExportLease, image: NSImage, onEnd: @escaping (DragDeliveryOutcome) -> Void) {
+final class DragChipPanel: NSPanel {
+    private let onEnd: @MainActor @Sendable (DragChipResult) -> Void
+
+    init(
+        snapshot: ShareSnapshot, lease: ExportLease, image: NSImage,
+        onEnd: @escaping @MainActor @Sendable (DragChipResult) -> Void
+    ) {
         self.onEnd = onEnd
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 220, height: 190), styleMask: [.titled, .closable, .utilityWindow],
@@ -78,26 +92,38 @@ final class DragChipPanel: NSPanel {
     }
 
     override func cancelOperation(_ sender: Any?) {
-        onEnd(.canceledByUser)
+        onEnd(.canceled)
     }
 
     override func performClose(_ sender: Any?) {
-        onEnd(.canceledByUser)
+        onEnd(.canceled)
     }
 
     override func close() {
         super.close()
-        onEnd(.canceledByUser)
+        onEnd(.canceled)
     }
 }
 
 /// The draggable thumbnail. Accessible as a button whose action explains how to drag.
 final class DragChipView: NSImageView, NSDraggingSource {
     private let provider: DragOutProvider
-    private let onEnd: (DragDeliveryOutcome) -> Void
+    private let onEnd: @MainActor @Sendable (DragChipResult) -> Void
 
-    init(snapshot: ShareSnapshot, lease: ExportLease, image: NSImage, onEnd: @escaping (DragDeliveryOutcome) -> Void) {
-        provider = DragOutProvider(snapshot: snapshot, lease: lease)
+    init(
+        snapshot: ShareSnapshot, lease: ExportLease, image: NSImage,
+        onEnd: @escaping @MainActor @Sendable (DragChipResult) -> Void
+    ) {
+        // The offer stays pending (and revocable) until the receiver's write finishes.
+        provider = DragOutProvider(snapshot: snapshot, lease: lease) { outcome in
+            Task { @MainActor in
+                switch outcome {
+                case .written: onEnd(.delivered)
+                case .revoked: onEnd(.canceled)
+                case .failed: onEnd(.failed)
+                }
+            }
+        }
         self.onEnd = onEnd
         super.init(frame: NSRect(x: 0, y: 0, width: 196, height: 140))
         self.image = image
@@ -117,7 +143,7 @@ final class DragChipView: NSImageView, NSDraggingSource {
     override func mouseDragged(with event: NSEvent) {
         // The document changed since this offer was made: never start a drag of stale pixels.
         guard !provider.lease.isRevoked else {
-            onEnd(.canceledByUser)
+            onEnd(.canceled)
             return
         }
         let item = NSDraggingItem(pasteboardWriter: provider.makeFilePromiseProvider())
@@ -131,8 +157,8 @@ final class DragChipView: NSImageView, NSDraggingSource {
         context == .outsideApplication ? .copy : []
     }
 
-    func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
-        // An abandoned drag keeps the chip so the user can try again or close it.
-        if !operation.isEmpty { onEnd(.delivered) }
-    }
+    // Delivery is reported by the promise write, not here: the session ends before the receiver
+    // asks for the file. An abandoned drag, or a receiver that never asks, keeps the chip so the
+    // user can try again or close it.
+    func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {}
 }

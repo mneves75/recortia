@@ -16,13 +16,24 @@ public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
         case revoked
     }
 
+    /// How a promised write ended. AppKit ends the drag session before it asks for the file, so
+    /// only this says whether the export actually happened.
+    public enum WriteOutcome: Sendable, Equatable {
+        case written, failed, revoked
+    }
+
     public nonisolated let snapshot: ShareSnapshot
     public nonisolated let lease: ExportLease
+    private nonisolated let onWriteFinished: (@Sendable (WriteOutcome) -> Void)?
     private let writeQueue: OperationQueue
 
-    public init(snapshot: ShareSnapshot, lease: ExportLease = ExportLease()) {
+    public init(
+        snapshot: ShareSnapshot, lease: ExportLease = ExportLease(),
+        onWriteFinished: (@Sendable (WriteOutcome) -> Void)? = nil
+    ) {
         self.snapshot = snapshot
         self.lease = lease
+        self.onWriteFinished = onWriteFinished
         writeQueue = OperationQueue()
         writeQueue.name = "recortia.drag-out"
         writeQueue.maxConcurrentOperationCount = 1
@@ -48,15 +59,19 @@ public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
         _ filePromiseProvider: NSFilePromiseProvider, writePromiseTo url: URL,
         completionHandler: @escaping ((any Error)?) -> Void
     ) {
-        guard !lease.isRevoked else {
-            completionHandler(WriteError.revoked)
-            return
-        }
         do {
-            // Never replace a file the receiver already has at this URL.
-            try snapshot.bytes.write(to: url, options: [.withoutOverwriting])
+            // Never replace a file the receiver already has at this URL. The lease is held during
+            // the write, so a redaction or close either prevents it or waits for it to finish.
+            let wrote = try lease.whileValid { try snapshot.bytes.write(to: url, options: [.withoutOverwriting]) }
+            guard wrote != nil else {
+                onWriteFinished?(.revoked)
+                completionHandler(WriteError.revoked)
+                return
+            }
+            onWriteFinished?(.written)
             completionHandler(nil)
         } catch {
+            onWriteFinished?(.failed)
             completionHandler(error)
         }
     }

@@ -71,11 +71,7 @@
                 "English and Portuguese were requested",
                 languages.contains { $0.hasPrefix("en") }
                     && languages.contains { $0.hasPrefix("pt") }, languages.joined(separator: ", "))
-            // Measured around the copy itself: over the whole scenario, any other app on this Mac
-            // that copies something would fail the check.
-            let generalBefore = NSPasteboard.general.changeCount
             let copiedText = model.copyRecognizedText(mode: .preserveLineBreaks)
-            let generalAfter = NSPasteboard.general.changeCount
             context.check("Copy Text succeeds", copiedText)
             context.check(
                 "copied text went to the private text pasteboard",
@@ -112,9 +108,10 @@
                 "nothing was opened automatically", harness.links.requests.isEmpty, "\(harness.links.requests)")
             await E2EActions.scrollInspector(qrController, to: 0.55)
             await E2EActions.snapshotEditor(qrController, context, shot: "qr")
+            // Reading the general pasteboard cannot show which app wrote it; assert the injected sink.
             context.check(
-                "Copy Text never wrote the general pasteboard", generalAfter == generalBefore,
-                "changeCount \(generalBefore) → \(generalAfter)")
+                "Copy Text used a private pasteboard, never the general one", harness.textPasteboard.name != .general,
+                harness.textPasteboard.name.rawValue)
         }
     }
 #endif

@@ -69,15 +69,8 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
     static func filter(display: SCDisplay, excludingWindowIDs requested: Set<CGWindowID>, content: SCShareableContent)
         -> SCContentFilter
     {
-        let ownPID = ProcessInfo.processInfo.processIdentifier
-        let ownWindows = content.windows.filter { $0.owningApplication?.processID == ownPID }
-        let foreignRequested = requested.subtracting(ownWindows.map(\.windowID))
-        if foreignRequested.isEmpty, let own = content.applications.first(where: { $0.processID == ownPID }) {
-            return SCContentFilter(display: display, excludingApplications: [own], exceptingWindows: [])
-        }
-        let excluded = content.windows.filter {
-            requested.contains($0.windowID) || $0.owningApplication?.processID == ownPID
-        }
-        return SCContentFilter(display: display, excludingWindows: excluded)
+        CaptureExclusion.filter(
+            display: display, excludingWindowIDs: requested, content: content,
+            ownPID: ProcessInfo.processInfo.processIdentifier)
     }
 }
