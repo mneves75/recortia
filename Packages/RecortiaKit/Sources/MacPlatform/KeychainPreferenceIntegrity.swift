@@ -5,13 +5,21 @@ import Security
 /// HMAC-SHA256 seal for the preferences blob, keyed by a random secret in the login keychain.
 /// The item's access list names the app that created it, so another process cannot read the
 /// secret without a user prompt; deleting the item only turns automatic export off again.
+///
+/// Residual (THREAT_MODEL.md): the file-based keychain cannot say who created an item, so a
+/// process that plants an item under this service before Recortia creates its own can seal
+/// forged consent. The secret is therefore created at the first launch, not at the first
+/// settings change. Closing the gap needs the data-protection keychain, whose access groups
+/// require a Developer ID provisioning profile (TN3137).
 @MainActor
 public final class KeychainPreferenceIntegrity {
     private static let service = "dev.mvneves.Recortia.preferences-seal"
     private static let account = "hmac-sha256"
     private var cachedKey: SymmetricKey?
 
-    public init() {}
+    public init() {
+        _ = key(createIfMissing: true)
+    }
 
     public func seal(_ data: Data) -> Data? {
         guard let key = key(createIfMissing: true) else { return nil }

@@ -45,15 +45,18 @@ app="$out/export/Recortia.app"
 
 echo "== verify the app"
 codesign --verify --deep --strict --verbose=2 "$app"
-codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q 'get-task-allow' &&
-  { echo "release: get-task-allow is present; this is not a distribution build" >&2; exit 1; }
-codesign -dvv "$app" 2>&1 | grep -q 'flags=0x10000(runtime)' ||
-  { echo "release: Hardened Runtime is not enabled" >&2; exit 1; }
-# The DEBUG-only E2E scenario runner and previews must be compiled out.
-if strings -a "$app/Contents/MacOS/Recortia" | grep -Eq 'RecortiaE2E|PreviewPreferenceIntegrity'; then
-  echo "release: DEBUG-only code is present in the Release binary" >&2
+# Capture before matching: under pipefail, `grep -q` exiting early would fail the pipeline.
+entitlements=$(codesign -d --entitlements - --xml "$app" 2>/dev/null || true)
+if [[ "$entitlements" == *get-task-allow* ]]; then
+  echo "release: get-task-allow is present; this is not a distribution build" >&2
   exit 1
 fi
+signature=$(codesign -dvv "$app" 2>&1)
+if [[ "$signature" != *"flags=0x10000(runtime)"* ]]; then
+  echo "release: Hardened Runtime is not enabled" >&2
+  exit 1
+fi
+scripts/check-release-binary.sh "$app/Contents/MacOS/Recortia"
 
 echo "== disk image"
 staging="$out/dmg"
