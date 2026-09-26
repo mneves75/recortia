@@ -63,6 +63,7 @@ If `xcode-select` points to a beta, prefix commands with
 ```sh
 scripts/check.sh --unsigned    # toolchain doctor, format lint, project freshness, tests, app build
 scripts/e2e.sh --lang all      # end-to-end scenarios through the real app; writes screenshots + report
+scripts/release.sh             # maintainer only: Developer ID archive, checks, DMG, notarize, staple, manifest
 ```
 
 Run one test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
@@ -77,7 +78,13 @@ geometry, state machines), `Imaging` (decode, privacy renderer, export, OCR, QR,
 Automated: Swift Testing suites for every module, including the redaction metamorphic tests
 (RED-01…RED-04) with planted-leak controls, import hardening (IO-01), export container inspection,
 OCR accuracy on a 104-sample EN/PT-BR corpus, and scroll stitching with held-out calibration, plus
-the end-to-end scenario runner.
+the end-to-end scenario runner (17 scenarios in English and Brazilian Portuguese).
+
+Security: a source-review audit of the pre-release tree (three hunting waves, independent
+verification) found no confirmed vulnerability; its two leads and the independent review's
+findings are fixed and listed under Security in `CHANGELOG.md`. One residual is documented in
+`THREAT_MODEL.md`: the preferences seal key lives in the file-based keychain until Recortia adopts
+the data-protection keychain.
 
 Not yet validated: live capture on 1× and mixed-DPI multi-display setups (GEO-01), macOS 15 and
 26 hosts, the real-app scrolling compatibility matrix (SCR-03), VoiceOver and input-method passes

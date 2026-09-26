@@ -15,7 +15,11 @@ Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Devel
   all package tests, signed Debug build); `--unsigned` without the signing identity.
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
 - End-to-end: `scripts/e2e.sh --lang all` runs the DEBUG scenario runner (`-RecortiaE2E <dir>`)
-  through the real app and writes screenshots + `report.json` under `.scratch/e2e/`.
+  through the real app and writes screenshots + `report.json` under `.scratch/e2e/`. The runner
+  never touches the real screen, general pasteboard, user defaults, or keychain (in-memory settings
+  and integrity key); keep it that way.
+- Release (owner): `scripts/release.sh` → `.build/release/<version>/` (notarized DMG + manifest);
+  `scripts/check-release-binary.sh` fails if the DEBUG-only E2E hook reached a binary.
 - After adding or moving source files, or editing `project.yml`: `xcodegen generate` and commit
   the regenerated `Recortia.xcodeproj` (never hand-edit the pbxproj).
 - Format: `xcrun swift format --in-place --recursive <paths>` (config in `.swift-format`).
