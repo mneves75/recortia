@@ -284,9 +284,11 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
         for layer in layers {
             guard let asset = assets[layer.assetID] else { throw DocumentError.unknownAsset }
             let toDocument = layer.sourceToDocument(assetSize: asset.pixelSize)
-            guard layer.documentBounds(assetSize: asset.pixelSize).intersects(rect) else { continue }
+            // Invert before the intersection test: a degenerate layer has empty bounds and would
+            // otherwise be skipped silently instead of refusing the mask (FR-06).
             let toSource: AffineMap<DocumentSpace, SourcePixelSpace>
             do { toSource = try toDocument.inverted() } catch { throw DocumentError.unmappableTransform }
+            guard layer.documentBounds(assetSize: asset.pixelSize).intersects(rect) else { continue }
             let sourceRect = toSource.apply(rect)
             let visible = layer.visibleSourceRect(assetSize: asset.pixelSize)
             guard let clipped = sourceRect.intersection(visible.asRect),

@@ -183,4 +183,15 @@ struct SecureMaskTests {
         }
         #expect(session.document.masks.isEmpty)
     }
+
+    @Test("A degenerate layer transform refuses the mask instead of silently skipping the layer")
+    func degenerateLayerRefusesMask() {
+        var (doc, _) = makeDocument()
+        doc.layers[0].placement.scale = 0
+        var session = DocumentSession(document: doc)
+        #expect(throws: DocumentError.unmappableTransform) {
+            try session.addSecureMask(covering: Rect(x: 0, y: 0, width: 5, height: 5))
+        }
+        #expect(session.document.masks.isEmpty)
+    }
 }
