@@ -73,6 +73,10 @@ targets:
         product: MacPlatform
       - package: RecortiaKit
         product: Features
+      # Synthetic fixture generators for the DEBUG-only E2E runner (RecortiaApp/E2E). Every use
+      # is inside `#if DEBUG`, so Release links none of its code.
+      - package: RecortiaKit
+        product: RecortiaFixtures
       - package: KeyboardShortcuts
   RecortiaUITests:
     type: bundle.ui-testing
