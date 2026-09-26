@@ -1,4 +1,4 @@
-# XcodeGen spec. Regenerate the committed project with `scripts/generate.sh` after editing.
+# XcodeGen spec. Regenerate the committed project with `xcodegen generate` after editing.
 name: Recortia
 options:
   bundleIdPrefix: dev.mvneves
