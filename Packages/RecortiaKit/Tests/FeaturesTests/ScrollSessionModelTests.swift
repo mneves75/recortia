@@ -126,6 +126,24 @@ struct ScrollSessionModelTests {
         #expect(h.model.acceptedFrames == 0)
     }
 
+    @Test("A new session stops any auto scroller left over from the previous one before scrolling")
+    func newSessionStopsPreviousScroller() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        await h.startCollecting()
+        h.model.cancel()
+        // A step still in flight at cancel time may leave a scroller behind for the old target.
+        let afterCancel = h.scroller.stopCount
+        #expect(await h.model.begin())
+        #expect(h.scroller.stopCount > afterCancel)
+        h.model.chooseTarget(h.target)
+        let beforeStart = h.scroller.stopCount
+        let stepsBefore = h.scroller.stepCount
+        h.model.start()
+        #expect(h.scroller.stopCount > beforeStart)
+        #expect(h.scroller.stepCount == stepsBefore)
+        h.model.cancel()
+    }
+
     @Test("Revoked Accessibility falls back to manual mode instead of scrolling")
     func accessibilityRevokedFallsBackToManual() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)

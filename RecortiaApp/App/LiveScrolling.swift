@@ -73,6 +73,8 @@ final class LiveAutoScroll: AutoScrollService {
     func step(_ target: CaptureTarget) async -> AutoScrollStep {
         if scroller == nil {
             guard let created = await makeScroller(for: target) else { return .targetLost }
+            // The session may have ended while the window list loaded; never keep a scroller then.
+            guard !Task.isCancelled else { return .targetLost }
             do { try created.start() } catch { return .targetLost }
             scroller = created
         }

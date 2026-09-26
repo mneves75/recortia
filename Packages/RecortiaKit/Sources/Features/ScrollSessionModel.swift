@@ -100,6 +100,8 @@ public final class ScrollSessionModel {
     public func begin() async -> Bool {
         guard state == .idle || !state.isActive else { return false }
         if state != .idle { apply(.reset) }
+        // A step in flight when the last session ended may have left a scroller for its target.
+        autoScroller?.stop()
         resetProgress()
         notice = nil
         if !screenPermission.isGranted {
@@ -131,6 +133,7 @@ public final class ScrollSessionModel {
 
     public func start() {
         guard state == .armed, let target, let id = sessionID else { return }
+        autoScroller?.stop()  // every session scrolls with a scroller made for its own target
         apply(.start)
         startedAt = clock.now()
         task = Task { [weak self] in await self?.collect(target, id: id) }
