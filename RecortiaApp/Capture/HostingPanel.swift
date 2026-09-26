@@ -5,9 +5,13 @@ import SwiftUI
 final class HostingPanel: NSPanel {
     private let allowsKey: Bool
 
-    /// - Parameter activating: false for HUDs that must not take focus from the app being captured.
-    init(title: String, activating: Bool) {
-        allowsKey = activating
+    /// - Parameters:
+    ///   - activating: false for HUDs that must not take focus from the app being captured.
+    ///   - keyOnClick: lets a non-activating HUD become key when the user clicks it, without
+    ///     activating Recortia or changing the frontmost app, so its keyboard shortcuts (Escape
+    ///     for Cancel) work then. It never becomes key by being shown.
+    init(title: String, activating: Bool, keyOnClick: Bool = false) {
+        allowsKey = activating || keyOnClick
         var style: NSWindow.StyleMask = [.titled, .fullSizeContentView]
         if !activating { style.insert(.nonactivatingPanel) }
         super.init(contentRect: .zero, styleMask: style, backing: .buffered, defer: false)

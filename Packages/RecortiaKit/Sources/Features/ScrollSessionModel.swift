@@ -17,6 +17,13 @@ public enum ScrollMode: Hashable, Sendable {
 /// Ambiguous matches pause instead of appending, a reached limit ends collection into review
 /// with a partial reason, and target loss, display change, or permission revocation stop the
 /// stream immediately. Frames that arrive after Stop or Cancel are dropped.
+///
+/// Endings that do not depend on a frame arriving run on the injected clock: the 2-minute limit
+/// counts from Start, paused time included, and in automatic mode a scroll step that exposes
+/// nothing new within `automaticSettleInterval` counts as the page not moving (the capture
+/// stream delivers no frame for unchanged content). The page has ended, complete rather than
+/// partial, after `ScrollStitcher.endOfPageStationaryFrames` consecutive stationary frames or
+/// unanswered steps. Manual mode only raises `pageEndLikely`, since a reader may simply stop.
 @MainActor
 @Observable
 public final class ScrollSessionModel {
@@ -42,6 +49,13 @@ public final class ScrollSessionModel {
     public private(set) var seams: [Int] = []
     public private(set) var partialReason: ScrollPartialReason?
     public private(set) var preview: CGImage?
+    /// Manual mode: the page stopped moving, so it may have ended. A hint only; the user stops.
+    public private(set) var pageEndLikely = false
+
+    /// Automatic mode: how long after a scroll step a new frame must arrive before the step
+    /// counts as exposing nothing new.
+    public static let automaticSettleInterval: Duration = .milliseconds(1_500)
+    static let maxDuration = ScrollLimits.default.maxDuration
 
     @ObservationIgnored public var onAccepted: ((DocumentSession) -> Void)?
 
@@ -57,6 +71,10 @@ public final class ScrollSessionModel {
     @ObservationIgnored private var streamStarted = false
     @ObservationIgnored private var startedAt: Date?
     @ObservationIgnored private var task: Task<Void, Never>?
+    @ObservationIgnored private var deadlineTask: Task<Void, Never>?
+    @ObservationIgnored private var settleTask: Task<Void, Never>?
+    @ObservationIgnored private var unansweredSteps = 0
+    @ObservationIgnored private var autoStepInFlight = false
 
     public init(
         frames: any ScrollFrameSourceService, stitcher: any ScrollStitchService, autoScroller: (any AutoScrollService)?,
@@ -116,17 +134,28 @@ public final class ScrollSessionModel {
         apply(.start)
         startedAt = clock.now()
         task = Task { [weak self] in await self?.collect(target, id: id) }
+        deadlineTask = Task { [weak self, clock] in
+            do { try await clock.sleep(for: Self.maxDuration) } catch { return }
+            self?.deadlineReached(id: id)
+        }
     }
 
     /// Pauses appending. The stream keeps running; frames that arrive while paused are dropped.
     public func pause() {
         guard state == .collecting else { return }
+        settleTask?.cancel()
         apply(.pause(.userPaused))
     }
 
+    /// Resumes appending; in automatic mode Recortia scrolls again rather than waiting for the
+    /// page to change by itself.
     public func resume() {
         guard isPausedState else { return }
         apply(.resume)
+        guard mode == .automatic, let target, let id = sessionID else { return }
+        unansweredSteps = 0
+        settleTask?.cancel()
+        settleTask = Task { [weak self] in await self?.autoStep(target, id: id) }
     }
 
     /// Ends collection and opens the review. Stopping while paused on an ambiguous match keeps
@@ -149,6 +178,23 @@ public final class ScrollSessionModel {
     }
 
     public func discard() { cancel() }
+
+    /// Stops a session that is selecting or capturing at once, for events the app observes:
+    /// screen lock, display reconfiguration, permission revocation, or target loss (FR-10, PERM-02).
+    ///
+    /// The stream and the auto scroller stop, every timer is released, the stitch is discarded,
+    /// and the session fails with `failure`. Nothing captured is kept: the interruption was not
+    /// the user's choice, the domain has no partial reason for it, and after a lock or a
+    /// revocation the frames should not outlive the capture. A session already in review has
+    /// nothing running and keeps its result for the user to accept or discard.
+    public func interrupt(because failure: ScrollFailure) {
+        switch state {
+        case .selecting, .armed, .collecting, .paused:
+            fail(failure)
+        default:
+            break
+        }
+    }
 
     /// Reported by the app when the target window or display went away.
     public func targetLost() {
@@ -212,6 +258,8 @@ public final class ScrollSessionModel {
             guard isCurrent(id) else { return }
             guard state == .collecting else { continue }  // paused: drop the frame, keep the stream
 
+            settleTask?.cancel()  // a frame answered the last scroll step
+
             let elapsed = elapsedSinceStart()
             let heightBefore = stitcher.outputSize.height
             let result = await stitcher.append(frame, elapsed: elapsed)
@@ -222,6 +270,7 @@ public final class ScrollSessionModel {
                 if heightBefore > 0 { seams.append(heightBefore) }
                 acceptedFrames = stitcher.acceptedFrameCount
                 outputSize = stitcher.outputSize
+                unansweredSteps = 0
             case .stationary:
                 break
             case .ambiguous(let reason):
@@ -232,32 +281,76 @@ public final class ScrollSessionModel {
                 return
             }
 
-            if mode == .automatic {
-                guard accessibility.isTrusted, let autoScroller else {
-                    mode = .manual
-                    notice = .accessibilityRevoked
-                    continue
-                }
-                let step = await autoScroller.step(target)
-                guard isCurrent(id), state == .collecting else { return }
-                switch step {
-                case .scrolled:
-                    break
-                case .reachedEnd:
+            if stitcher.endOfPageDetected {
+                if mode == .automatic {
                     finishCollecting(partial: nil)
                     return
-                case .targetLost:
-                    targetLost()
-                    return
                 }
+                pageEndLikely = true
+            } else {
+                pageEndLikely = false
             }
+            if mode == .automatic { await autoStep(target, id: id) }
+        }
+    }
+
+    /// Sends one scroll step and, once it was sent, waits `automaticSettleInterval` for a frame.
+    /// Runs from the collection loop, the settle timer, or Resume; one step at a time.
+    private func autoStep(_ target: CaptureTarget, id: UUID) async {
+        guard sessionID == id, state == .collecting, mode == .automatic, !autoStepInFlight else { return }
+        guard accessibility.isTrusted, let autoScroller else {
+            mode = .manual
+            notice = .accessibilityRevoked
+            return
+        }
+        autoStepInFlight = true
+        let step = await autoScroller.step(target)
+        autoStepInFlight = false
+        guard sessionID == id, state == .collecting else { return }
+        switch step {
+        case .scrolled:
+            settleTask?.cancel()
+            settleTask = Task { [weak self, clock] in
+                do { try await clock.sleep(for: Self.automaticSettleInterval) } catch { return }
+                await self?.settleElapsed(target, id: id)
+            }
+        case .reachedEnd:
+            finishCollecting(partial: nil)
+        case .targetLost:
+            targetLost()
+        }
+    }
+
+    /// No frame answered the last scroll step: the page did not move.
+    private func settleElapsed(_ target: CaptureTarget, id: UUID) async {
+        guard sessionID == id, state == .collecting, mode == .automatic, !Task.isCancelled else { return }
+        unansweredSteps += 1
+        if unansweredSteps >= ScrollStitcher.endOfPageStationaryFrames, stitcher.acceptedFrameCount > 0 {
+            finishCollecting(partial: nil)
+            return
+        }
+        await autoStep(target, id: id)
+    }
+
+    /// The 2-minute limit, independent of frame arrival; paused time counts.
+    private func deadlineReached(id: UUID) {
+        guard sessionID == id else { return }
+        switch state {
+        case .collecting:
+            finishCollecting(partial: .limit(.duration), event: .limitReached(.duration))
+        case .paused:
+            finishCollecting(partial: .limit(.duration))
+        default:
+            break
         }
     }
 
     private func finishCollecting(partial: ScrollPartialReason?, event: ScrollEvent = .stop) {
         stopStream()
+        cancelTimers()
         task?.cancel()
         task = nil
+        pageEndLikely = false
         partialReason = partial
         apply(event)
         guard stitcher.acceptedFrameCount > 0 else {
@@ -300,12 +393,21 @@ public final class ScrollSessionModel {
     // MARK: Bookkeeping
 
     private func tearDown() {
+        cancelTimers()
         task?.cancel()
         task = nil
         stopStream()
         stitcher.reset()
         resetProgress()
         sessionID = nil
+    }
+
+    private func cancelTimers() {
+        deadlineTask?.cancel()
+        deadlineTask = nil
+        settleTask?.cancel()
+        settleTask = nil
+        unansweredSteps = 0
     }
 
     private func stopStream() {
@@ -327,6 +429,7 @@ public final class ScrollSessionModel {
         seams = []
         partialReason = nil
         preview = nil
+        pageEndLikely = false
         startedAt = nil
     }
 

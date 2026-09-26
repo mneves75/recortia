@@ -57,7 +57,9 @@ final class ScrollUIController {
 
     private func showHUD() {
         guard hud == nil else { return }
-        let panel = HostingPanel(title: String(localized: "Scrolling Capture"), activating: false)
+        // Shown without taking focus from the page being scrolled; a click makes it key so
+        // Escape cancels (FR-10) without a global key monitor.
+        let panel = HostingPanel(title: String(localized: "Scrolling Capture"), activating: false, keyOnClick: true)
         panel.setContent(LiveScrollHUD(model: model))
         hud = panel
         panel.present(activate: false)
@@ -93,7 +95,8 @@ private struct LiveScrollHUD: View {
         ScrollHUDView(
             hud: ScrollHUDState(
                 source: sourceDescription, state: model.state, mode: model.mode, notice: model.notice,
-                acceptedFrames: model.acceptedFrames, outputHeight: model.outputSize.height),
+                pageEndLikely: model.pageEndLikely, acceptedFrames: model.acceptedFrames,
+                outputHeight: model.outputSize.height),
             onStart: { model.start() }, onPause: { model.pause() }, onResume: { model.resume() },
             onStop: { model.stop() }, onCancel: { model.cancel() })
     }

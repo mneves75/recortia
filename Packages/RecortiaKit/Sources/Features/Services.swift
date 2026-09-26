@@ -155,6 +155,9 @@ public protocol ScrollStitchService: AnyObject {
     func append(_ frame: CGImage, elapsed: Duration) async -> ScrollAppendResult
     var acceptedFrameCount: Int { get }
     var outputSize: PixelSize { get }
+    /// True once content was accepted and the latest frames kept arriving unchanged: the page
+    /// stopped moving, which in automatic mode means it ended.
+    var endOfPageDetected: Bool { get }
     func preview(maxHeight: Int) async -> CGImage?
     func assemble() async throws -> CGImage
 }

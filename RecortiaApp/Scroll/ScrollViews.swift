@@ -10,6 +10,8 @@ struct ScrollHUDState: Equatable {
     var state: ScrollState
     var mode: ScrollMode
     var notice: ScrollSessionModel.Notice?
+    /// Manual mode: the page stopped moving and may have ended.
+    var pageEndLikely = false
     var acceptedFrames: Int
     var outputHeight: Int
 }
@@ -34,6 +36,15 @@ struct ScrollHUDView: View {
             Text(statusText)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.updatesFrequently)
+            if hud.pageEndLikely, hud.state == .collecting {
+                Label {
+                    Text("The page stopped moving. If you reached the end, press Stop.")
+                } icon: {
+                    Image(systemName: "arrow.down.to.line").accessibilityHidden(true)
+                }
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            }
             if let noticeText {
                 Label {
                     Text(noticeText)
@@ -48,6 +59,7 @@ struct ScrollHUDView: View {
                 .foregroundStyle(.secondary)
             HStack {
                 Button("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
                 Spacer()
                 switch hud.state {
                 case .armed:
@@ -222,6 +234,14 @@ struct ScrollReviewView: View {
             hud: ScrollHUDState(
                 source: "Area on Built-in Display", state: .collecting, mode: .manual, notice: nil, acceptedFrames: 12,
                 outputHeight: 5_400),
+            onStart: {}, onPause: {}, onResume: {}, onStop: {}, onCancel: {})
+    }
+
+    #Preview("HUD, page end likely") {
+        ScrollHUDView(
+            hud: ScrollHUDState(
+                source: "Area on Built-in Display", state: .collecting, mode: .manual, notice: nil,
+                pageEndLikely: true, acceptedFrames: 18, outputHeight: 7_800),
             onStart: {}, onPause: {}, onResume: {}, onStop: {}, onCancel: {})
     }
 

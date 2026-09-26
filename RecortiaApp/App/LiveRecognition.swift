@@ -32,9 +32,9 @@ private actor StitchEngine {
 
     func reset() { stitcher = ScrollStitcher() }
 
-    func append(_ frame: CGImage, elapsed: Duration) -> (ScrollAppendResult, Int, PixelSize) {
+    func append(_ frame: CGImage, elapsed: Duration) -> (ScrollAppendResult, Int, PixelSize, Bool) {
         let result = stitcher.append(frame, elapsed: elapsed)
-        return (result, stitcher.acceptedFrameCount, stitcher.outputSize)
+        return (result, stitcher.acceptedFrameCount, stitcher.outputSize, stitcher.endOfPageDetected)
     }
 
     func preview(maxHeight: Int) -> CGImage? { stitcher.preview(maxHeight: maxHeight) }
@@ -46,20 +46,23 @@ final class LiveStitcher: ScrollStitchService {
     private var engine = StitchEngine()
     private(set) var acceptedFrameCount = 0
     private(set) var outputSize = PixelSize(width: 0, height: 0)
+    private(set) var endOfPageDetected = false
 
     func reset() {
         engine = StitchEngine()
         acceptedFrameCount = 0
         outputSize = PixelSize(width: 0, height: 0)
+        endOfPageDetected = false
     }
 
     func append(_ frame: CGImage, elapsed: Duration) async -> ScrollAppendResult {
         let current = engine
-        let (result, count, size) = await current.append(frame, elapsed: elapsed)
+        let (result, count, size, ended) = await current.append(frame, elapsed: elapsed)
         // A reset during the await replaced the engine; its counters no longer apply.
         guard current === engine else { return result }
         acceptedFrameCount = count
         outputSize = size
+        endOfPageDetected = ended
         return result
     }
 
