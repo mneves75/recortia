@@ -52,22 +52,33 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         case data(Data)
     }
 
+    private static let fileURLOptions: [NSPasteboard.ReadingOptionKey: Any] = [
+        .urlReadingFileURLsOnly: true,
+        .urlReadingContentsConformToTypes: ["public.png", "public.jpeg"],
+    ]
+    private static let imageDataTypes: [NSPasteboard.PasteboardType] = [
+        .png, NSPasteboard.PasteboardType("public.jpeg"),
+    ]
+
+    /// Reads the dropped URL or image bytes; called only once the drop is performed.
     private func droppedImage(from pasteboard: NSPasteboard) -> DroppedImage? {
-        let options: [NSPasteboard.ReadingOptionKey: Any] = [
-            .urlReadingFileURLsOnly: true,
-            .urlReadingContentsConformToTypes: ["public.png", "public.jpeg"],
-        ]
-        if let url = (pasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL])?.first {
+        if let url = (pasteboard.readObjects(forClasses: [NSURL.self], options: Self.fileURLOptions) as? [URL])?.first {
             return .file(url)
         }
-        for type in [NSPasteboard.PasteboardType.png, NSPasteboard.PasteboardType("public.jpeg")] {
+        for type in Self.imageDataTypes {
             if let data = pasteboard.data(forType: type) { return .data(data) }
         }
         return nil
     }
 
+    /// Hovering inspects only the offered types and file URLs; image bytes are never loaded
+    /// until `performDragOperation`.
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        droppedImage(from: sender.draggingPasteboard) == nil ? [] : .copy
+        let pasteboard = sender.draggingPasteboard
+        let acceptable =
+            pasteboard.canReadObject(forClasses: [NSURL.self], options: Self.fileURLOptions)
+            || pasteboard.availableType(from: Self.imageDataTypes) != nil
+        return acceptable ? .copy : []
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
