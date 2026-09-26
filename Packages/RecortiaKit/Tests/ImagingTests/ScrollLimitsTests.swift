@@ -30,6 +30,14 @@ struct ScrollLimitsTests {
         #expect(limits.defaultMaxHeight == 20_000)
     }
 
+    @Test("Scroll, render, and import pixel bounds stay coupled so none can drift silently")
+    func limitsAreCoupled() {
+        #expect(ScrollLimits.default.maxOutputArea == RenderLimits.maxOutputPixels)
+        #expect(ScrollLimits.default.maxOutputArea == ImportLimits.maxPixelArea)
+        #expect(RenderLimits.maxOutputPixels == ImportLimits.maxPixelArea)
+        #expect(ScrollLimits.default.maxSide == RenderLimits.maxOutputSide)
+    }
+
     @Test("120 s: a frame after the duration budget ends collection, and the limit is sticky")
     func duration() throws {
         let fixture = ScrollPageFixture(seed: 51, pageHeight: 900)
