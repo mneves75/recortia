@@ -79,6 +79,10 @@ enum DecodePNGStructure {
         0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8], 4: [8, 16], 6: [8, 16],
     ]
     private static let channels: [Int: Int] = [0: 1, 2: 3, 3: 1, 4: 2, 6: 4]
+    /// Real encoders split image data into chunks of 8 KiB or more, so even a 64 MiB file stays
+    /// far below this; the cap stops millions of tiny chunks from multiplying the per-chunk work
+    /// (CRC walk, range bookkeeping, the logical-byte lookup) of a single import.
+    static let maxImageDataChunks = 65_536
 
     /// Parses IHDR and enforces the dimension limits before walking the remaining chunks.
     static func layout(_ data: Data) throws(ImportError) -> Layout {
@@ -113,13 +117,17 @@ enum DecodePNGStructure {
             let type = String(decoding: reader.slice((offset + 4)..<(offset + 8)), as: UTF8.self)
             switch type {
             case "IDAT":
-                guard !idatClosed else { throw ImportError.corrupt }
+                guard !idatClosed, layout.imageData.count < maxImageDataChunks else { throw ImportError.corrupt }
                 layout.imageData.append((offset + 8)..<(offset + 8 + length))
             case "acTL", "fcTL", "fdAT":
                 layout.header.isAnimated = true
             case "PLTE":
                 sawPalette = true
             case "IHDR":
+                throw ImportError.corrupt
+            case "iDOT":
+                // Apple's private chunk lets ImageIO inflate IDAT segments in parallel from stored
+                // offsets, bypassing the single-stream validation in `verifyImageData`.
                 throw ImportError.corrupt
             default:
                 break
@@ -225,11 +233,13 @@ enum DecodePNGStructure {
     }
 }
 
-/// JPEG header parsing: dimensions come from the first SOFn segment, before any decode.
+/// JPEG header parsing: dimensions come from the single SOFn segment, before any decode. The walk
+/// continues to SOS so a second frame header (which decoders resolve differently) is rejected.
 enum DecodeJPEGStructure {
     static func header(_ data: Data) throws(ImportError) -> DecodeHeader {
         let reader = DecodeByteReader(data: data)
         var offset = 2
+        var frame: DecodeHeader?
         while offset + 4 <= reader.count {
             guard reader.byte(offset) == 0xFF else { throw ImportError.corrupt }
             let marker = reader.byte(offset + 1)
@@ -244,14 +254,18 @@ enum DecodeJPEGStructure {
             let length = reader.uint16(offset + 2)
             guard length >= 2, offset + 2 + length <= reader.count else { throw ImportError.corrupt }
             if (0xC0...0xCF).contains(marker), ![0xC4, 0xC8, 0xCC].contains(marker) {
-                guard length >= 8 else { throw ImportError.corrupt }
+                guard length >= 8, frame == nil else { throw ImportError.corrupt }
                 let height = reader.uint16(offset + 5), width = reader.uint16(offset + 7)
                 guard width > 0, height > 0 else { throw ImportError.invalidDimensions }
                 let size = PixelSize(width: width, height: height)
                 try ImageDecoder.checkDimensions(size)
-                return DecodeHeader(pixelSize: size)
+                frame = DecodeHeader(pixelSize: size)
             }
-            if marker == 0xDA || marker == 0xD9 { break }
+            if marker == 0xDA {
+                guard let frame else { throw ImportError.corrupt }
+                return frame
+            }
+            if marker == 0xD9 { break }
             offset += 2 + length
         }
         throw ImportError.corrupt
