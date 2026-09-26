@@ -8,6 +8,8 @@ public enum PinTag {}
 
 public enum PinError: Error, Hashable, Sendable {
     case limitReached
+    /// Adding the pin would exceed `PinLimits.maxTotalPixels`.
+    case memoryBudgetExceeded
     case renderFailed
     /// The document changed (revision or privacy epoch) while its pin was rendering.
     case staleDocument
@@ -50,6 +52,9 @@ public final class PinsModel {
 
     public var canAddPin: Bool { pins.count < PinLimits.maxPins }
 
+    /// Rendered pixels currently retained by all pins.
+    public var retainedPixelCount: Int { pins.reduce(0) { $0 + $1.image.width * $1.image.height } }
+
     /// Renders `session` through the sanitizing renderer and pins the result, unless the live
     /// session moved on while rendering.
     @discardableResult
@@ -72,6 +77,10 @@ public final class PinsModel {
     @discardableResult
     public func add(_ image: CGImage, source: RequestIdentity?, displayScale: Double) throws(PinError) -> PinID {
         guard canAddPin else { throw .limitReached }
+        let (pixels, overflow) = image.width.multipliedReportingOverflow(by: image.height)
+        guard !overflow, retainedPixelCount + pixels <= PinLimits.maxTotalPixels else {
+            throw .memoryBudgetExceeded
+        }
         let pin = Pin(
             id: PinID(), image: image, sourceDocumentID: source?.documentID, privacyEpoch: source?.privacyEpoch ?? 0,
             displayScale: displayScale.isFinite && displayScale > 0 ? displayScale : 1,

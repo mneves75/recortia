@@ -60,6 +60,7 @@ final class AppModel: AppActions {
     @ObservationIgnored private var pinsUI: PinsUIController?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
     @ObservationIgnored private let editors = EditorWindowManager()
+    @ObservationIgnored private var systemEvents: SystemEventMonitor?
     @ObservationIgnored private var didLaunch = false
 
     init(settings: SettingsStore, services: AppServices?, shortcutProbe: any ShortcutRegistrationProbe) {
@@ -167,6 +168,14 @@ final class AppModel: AppActions {
             input: services.input, pins: features.pins, textClipboard: PasteboardTextClipboard(),
             links: WorkspaceLinkOpener(), settings: settings)
         openDocument = { [editors] session in editors.open(session, environment: environment) }
+        let monitor = SystemEventMonitor { event in
+            switch event {
+            case .displaysChanged: features.capture.displayConfigurationChanged()
+            case .screenLocked: features.capture.interrupt(because: .screenLocked)
+            }
+        }
+        monitor.start()
+        systemEvents = monitor
         recognizeText = { [editors] session in
             editors.open(session, environment: environment, initialAction: .recognizeText)
         }

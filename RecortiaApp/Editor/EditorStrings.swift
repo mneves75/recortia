@@ -154,6 +154,11 @@ enum EditorStrings {
     static func message(_ notice: EditorNotice) -> String {
         switch notice {
         case .noTextFound: String(localized: "No text found. The clipboard was not changed.", table: "Editor")
+        case .recognitionLanguagesUnavailable:
+            String(
+                localized:
+                    "Text recognition for English or Portuguese is not available on this Mac, so other languages were used.",
+                table: "Editor")
         case .textCopied: String(localized: "Text copied.", table: "Editor")
         case .copyFailed: String(localized: "Could not copy the text.", table: "Editor")
         case .recognitionFailed: String(localized: "Recognition failed.", table: "Editor")
@@ -176,6 +181,8 @@ enum EditorStrings {
         case .pinFailed(let error):
             switch error {
             case .limitReached: String(localized: "You can keep up to 5 pins. Close one first.", table: "Editor")
+            case .memoryBudgetExceeded:
+                String(localized: "The pins already use their memory budget. Close a pin first.", table: "Editor")
             case .renderFailed: String(localized: "The pin could not be rendered.", table: "Editor")
             case .staleDocument: String(localized: "The image changed while pinning. Try again.", table: "Editor")
             }
@@ -187,6 +194,13 @@ enum EditorStrings {
         case .undoHistoryTrimmed:
             String(localized: "The oldest undo steps were discarded to limit memory use.", table: "Editor")
         }
+    }
+
+    /// "Not available on this Mac: English, Portuguese" with language names in the user's locale.
+    static func unavailableLanguages(_ codes: [String]) -> String {
+        let names = codes.map { Locale.current.localizedString(forLanguageCode: $0) ?? $0 }
+        let list = ListFormatter.localizedString(byJoining: names)
+        return String(localized: "Not available on this Mac: \(list)", table: "Editor")
     }
 
     static func importMessage(_ failure: ImportFailure) -> String {

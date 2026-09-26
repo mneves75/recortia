@@ -1,6 +1,54 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Text recognition for English or Portuguese is not available on this Mac, so other languages were used.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text recognition for English or Portuguese is not available on this Mac, so other languages were used."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O reconhecimento de texto em inglês ou português não está disponível neste Mac, então outros idiomas foram usados."
+          }
+        }
+      }
+    },
+    "Not available on this Mac: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not available on this Mac: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indisponível neste Mac: %@"
+          }
+        }
+      }
+    },
+    "The pins already use their memory budget. Close a pin first.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The pins already use their memory budget. Close a pin first."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As fixações já usam todo o orçamento de memória. Feche uma fixação primeiro."
+          }
+        }
+      }
+    },
     "The oldest undo steps were discarded to limit memory use.": {
       "localizations": {
         "en": {

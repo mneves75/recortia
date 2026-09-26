@@ -34,10 +34,52 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
                     "Use the object list to select objects. Arrow keys move the selection; Shift moves it 10 pixels.",
                 table: "Editor"))
         loop = ObservationLoop { [weak self] in self?.modelChanged() }
+        registerForDraggedTypes(Self.droppableTypes)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
+
+    // MARK: Drop-in import (FR-03)
+
+    /// Local PNG/JPEG files, or PNG/JPEG data. Everything goes through the bounded import path.
+    static let droppableTypes: [NSPasteboard.PasteboardType] = [
+        .fileURL, .png, NSPasteboard.PasteboardType("public.jpeg"),
+    ]
+
+    private enum DroppedImage {
+        case file(URL)
+        case data(Data)
+    }
+
+    private func droppedImage(from pasteboard: NSPasteboard) -> DroppedImage? {
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [
+            .urlReadingFileURLsOnly: true,
+            .urlReadingContentsConformToTypes: ["public.png", "public.jpeg"],
+        ]
+        if let url = (pasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL])?.first {
+            return .file(url)
+        }
+        for type in [NSPasteboard.PasteboardType.png, NSPasteboard.PasteboardType("public.jpeg")] {
+            if let data = pasteboard.data(forType: type) { return .data(data) }
+        }
+        return nil
+    }
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        droppedImage(from: sender.draggingPasteboard) == nil ? [] : .copy
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        guard let dropped = droppedImage(from: sender.draggingPasteboard) else { return false }
+        let source: ImportSource =
+            switch dropped {
+            case .file(let url): .droppedFile(url)
+            case .data(let data): .droppedData(data)
+            }
+        Task { await model.addImageLayer(from: source) }
+        return true
+    }
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }

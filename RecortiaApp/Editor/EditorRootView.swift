@@ -14,6 +14,16 @@ struct EditorRootView: View {
             EditorToolbarView(model: model, actions: actions)
                 .background(Color(nsColor: .windowBackgroundColor))
             Divider()
+            if let reason = model.partialScrollCaptureReason {
+                Label("Partial result. \(ScrollReviewView.describe(reason))", systemImage: "exclamationmark.triangle")
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .accessibilityElement(children: .combine)
+                Divider()
+            }
             HStack(spacing: 0) {
                 EditorSidebarView(model: model)
                     .frame(width: 220)

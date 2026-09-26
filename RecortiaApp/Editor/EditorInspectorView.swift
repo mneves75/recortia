@@ -466,6 +466,11 @@ private struct RecognitionSection: View {
                 }
             }
             .disabled(model.recognition == .running || model.qr == .running)
+            if !model.unavailableRecognitionLanguages.isEmpty {
+                Text(EditorStrings.unavailableLanguages(model.unavailableRecognitionLanguages))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
             if model.recognition == .running || model.qr == .running {
                 ProgressView().controlSize(.small)
             }

@@ -71,6 +71,9 @@ public struct ScrollLimits: Hashable, Sendable {
 
 public enum PinLimits {
     public static let maxPins = 5
+    /// Total rendered pixels all pins may hold (≈192 MiB as 8-bit RGBA), part of the common memory
+    /// budget (FR-09): five 40 MP pins would otherwise retain about 800 MB.
+    public static let maxTotalPixels = 48_000_000
 }
 
 // MARK: - Capture request

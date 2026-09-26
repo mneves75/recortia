@@ -9,6 +9,8 @@ public struct DocumentSession: Sendable {
     private struct Entry: Sendable {
         let label: String
         let before: Document
+        /// Estimated unique bytes this entry retains (see `cost(from:to:)`).
+        var cost = 0
     }
 
     public private(set) var document: Document
@@ -19,15 +21,21 @@ public struct DocumentSession: Sendable {
     public private(set) var privacyEpoch: UInt64 = 0
     public private(set) var evictedUndoCount = 0
     public let undoLimit: Int
+    /// Upper bound on the estimated bytes retained by undo history (FR-04: budget undo memory).
+    public let undoByteBudget: Int
+    public private(set) var retainedUndoByteCost = 0
 
     private var undoStack: [Entry] = []
     private var redoStack: [Entry] = []
     private var openGroup: Entry?
     private var savedDocument: Document?
 
-    public init(document: Document, undoLimit: Int = 200) {
+    public static let defaultUndoByteBudget = 32 * 1024 * 1024
+
+    public init(document: Document, undoLimit: Int = 200, undoByteBudget: Int = DocumentSession.defaultUndoByteBudget) {
         self.document = document
         self.undoLimit = max(1, undoLimit)
+        self.undoByteBudget = max(0, undoByteBudget)
         self.savedDocument = document
     }
 
@@ -45,11 +53,12 @@ public struct DocumentSession: Sendable {
         var updated = document
         try change(&updated)
         guard updated != document else { return }
+        let before = document
+        replaceDocument(with: updated)
         if openGroup == nil {
-            push(Entry(label: label, before: document))
+            push(Entry(label: label, before: before, cost: Self.cost(from: before, to: updated)))
             redoStack.removeAll()
         }
-        replaceDocument(with: updated)
     }
 
     /// Starts a gesture: every `perform` until `endGroup` becomes one undo step.
@@ -62,21 +71,24 @@ public struct DocumentSession: Sendable {
         guard let group = openGroup else { return }
         openGroup = nil
         guard group.before != document else { return }
-        push(group)
+        var entry = group
+        entry.cost = Self.cost(from: group.before, to: document)
+        push(entry)
         redoStack.removeAll()
     }
 
     public mutating func undo() {
         endGroup()
         guard let entry = undoStack.popLast() else { return }
-        redoStack.append(Entry(label: entry.label, before: document))
+        retainedUndoByteCost -= entry.cost
+        redoStack.append(Entry(label: entry.label, before: document, cost: entry.cost))
         replaceDocument(with: entry.before)
     }
 
     public mutating func redo() {
         endGroup()
         guard let entry = redoStack.popLast() else { return }
-        undoStack.append(Entry(label: entry.label, before: document))
+        push(Entry(label: entry.label, before: document, cost: entry.cost))
         replaceDocument(with: entry.before)
     }
 
@@ -108,11 +120,18 @@ public struct DocumentSession: Sendable {
 
     private mutating func push(_ entry: Entry) {
         undoStack.append(entry)
-        if undoStack.count > undoLimit {
-            let overflow = undoStack.count - undoLimit
-            undoStack.removeFirst(overflow)
-            evictedUndoCount += overflow
+        retainedUndoByteCost += entry.cost
+        // Evict the oldest complete entries until both the step and memory budgets hold.
+        while !undoStack.isEmpty, undoStack.count > undoLimit || retainedUndoByteCost > undoByteBudget {
+            retainedUndoByteCost -= undoStack.removeFirst().cost
+            evictedUndoCount += 1
         }
+    }
+
+    /// Unique data an undo entry keeps alive: what the step added or removed, plus the element
+    /// arrays copied into the snapshot.
+    private static func cost(from before: Document, to after: Document) -> Int {
+        abs(before.estimatedByteCost - after.estimatedByteCost) + before.structuralByteCost
     }
 
     private mutating func replaceDocument(with updated: Document) {

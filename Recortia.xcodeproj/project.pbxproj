@@ -40,6 +40,7 @@
 		B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
 		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		BE76CF85696B2F1702597E5C /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = CB78FDBEC0994FB58607CBEA /* Imaging */; };
+		C4B185E0117961F2B3801409 /* SystemEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */; };
 		C5AC5B580637289E9DC07F54 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
 		D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
 		D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
@@ -94,6 +95,7 @@
 		B885E83C460249621067B7FB /* LiveScrolling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveScrolling.swift; sourceTree = "<group>"; };
 		BFAA916D5D458FADC7481398 /* RecortiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecortiaApp.swift; sourceTree = "<group>"; };
 		D97C30D7091C2051638564FB /* GlobalShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcuts.swift; sourceTree = "<group>"; };
+		E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEventMonitor.swift; sourceTree = "<group>"; };
 		E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureUIController.swift; sourceTree = "<group>"; };
 		E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		E8D31CC0BCFF030833F67F96 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 				637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */,
 				AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */,
 				BFAA916D5D458FADC7481398 /* RecortiaApp.swift */,
+				E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -422,6 +425,7 @@
 				BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */,
 				D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */,
 				B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */,
+				C4B185E0117961F2B3801409 /* SystemEventMonitor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

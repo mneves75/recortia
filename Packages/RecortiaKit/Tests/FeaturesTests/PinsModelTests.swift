@@ -37,6 +37,23 @@ struct PinsModelTests {
         #expect(h.renderer.renderCount == 5)  // the refused pin never rendered
     }
 
+    @Test("Pins share a pixel budget; a pin that would exceed it is refused and nothing is added")
+    func pinPixelBudget() throws {
+        let h = PinsHarness()
+        let side = Int(Double(PinLimits.maxTotalPixels / 2).squareRoot())
+        let big = try #require(makeImage(width: side, height: side))
+        try h.model.add(big, source: nil, displayScale: 1)
+        #expect(throws: PinError.memoryBudgetExceeded) {
+            try h.model.add(big, source: nil, displayScale: 1)
+            try h.model.add(big, source: nil, displayScale: 1)
+        }
+        #expect(h.model.pins.count == 2, "the pin that would cross the budget is not added")
+        #expect(h.model.retainedPixelCount <= PinLimits.maxTotalPixels)
+        h.model.close(h.model.pins[0].id)
+        try h.model.add(big, source: nil, displayScale: 1)
+        #expect(h.model.pins.count == 2, "closing a pin releases its share of the budget")
+    }
+
     @Test("A pin records the source document and privacy epoch and uses the default opacity")
     func pinRecordsIdentity() async throws {
         let h = PinsHarness()

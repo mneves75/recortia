@@ -84,6 +84,23 @@ struct DocumentSessionTests {
         #expect(!session.canUndo)
     }
 
+    @Test("The undo budget is bounded by memory, not only by step count (FR-04)")
+    func undoBudgetIsBoundedByMemory() throws {
+        let stroke = (0..<5_000).map { Point<DocumentSpace>(x: Double($0), y: 1) }
+        let strokeCost = Annotation(kind: .freehand(stroke), style: .default).estimatedByteCost
+        #expect(strokeCost >= 5_000 * 16, "cost must grow with the stored points")
+
+        var session = DocumentSession(document: makeDocument().0, undoLimit: 200, undoByteBudget: strokeCost * 4)
+        for _ in 0..<10 {
+            try session.perform("Draw") { $0.annotations.append(Annotation(kind: .freehand(stroke), style: .default)) }
+        }
+        #expect(session.undoCount < 10, "large strokes must evict history before the step limit")
+        #expect(session.evictedUndoCount == 10 - session.undoCount)
+        #expect(session.retainedUndoByteCost <= strokeCost * 4)
+        while session.canUndo { session.undo() }
+        #expect(session.document.annotations.count == session.evictedUndoCount, "evicted steps stay applied")
+    }
+
     @Test("The privacy epoch only increases, including when undo removes a mask")
     func privacyEpochIsMonotonic() throws {
         let (doc, _) = makeDocument()

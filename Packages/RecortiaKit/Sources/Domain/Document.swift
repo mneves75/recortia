@@ -301,6 +301,20 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
         return regions
     }
 
+    /// Approximate bytes of unique data held by the document model (no pixels). Used with
+    /// `structuralByteCost` to budget undo memory (FR-04).
+    public var estimatedByteCost: Int {
+        annotations.reduce(0) { $0 + $1.estimatedByteCost }
+            + masks.reduce(0) { $0 + 64 + $1.sourceRegions.values.reduce(0) { $0 + $1.count * 32 } }
+            + (obfuscations.count + layers.count + callouts.count + assets.count) * 128
+    }
+
+    /// Bytes copied per undo snapshot for the document's element arrays. Element payloads such as
+    /// stroke points are shared between snapshots (copy-on-write) and are not counted here.
+    public var structuralByteCost: Int {
+        (annotations.count + masks.count + obfuscations.count + layers.count + callouts.count + assets.count) * 64
+    }
+
     /// Every source-pixel region masked for `assetID`, across all masks.
     public func maskedRegions(for assetID: AssetID) -> [PixelRect] {
         masks.flatMap { $0.sourceRegions[assetID] ?? [] }

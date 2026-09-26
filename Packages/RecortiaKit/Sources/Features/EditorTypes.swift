@@ -289,6 +289,8 @@ public struct EditorLoupe: Sendable {
 /// Nonblocking, content-free status the window shows as text (UX-01, PRIV-01).
 public enum EditorNotice: Hashable, Sendable {
     case noTextFound
+    /// English or Portuguese recognition is not available on this Mac; other languages were used.
+    case recognitionLanguagesUnavailable
     case textCopied
     case copyFailed
     case recognitionFailed

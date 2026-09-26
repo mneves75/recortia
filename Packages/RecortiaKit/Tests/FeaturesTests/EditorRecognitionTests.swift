@@ -37,9 +37,13 @@ struct EditorRecognitionTests {
         h.recognizer.lines = [OCRResult.Line(text: "x", confidence: 1, box: Rect(x: 0, y: 0, width: 1, height: 1))]
         await h.model.recognizeText()
         #expect(h.recognizer.requestedLanguages.last?.map(\.minimalIdentifier) == ["en", "pt"])
+        #expect(h.model.unavailableRecognitionLanguages.isEmpty)
         h.recognizer.languages = [Locale.Language(identifier: "ja-JP")]
         await h.model.recognizeText()
         #expect(h.recognizer.requestedLanguages.last?.map(\.minimalIdentifier) == ["ja"])
+        // FR-08: report unavailable language support instead of assuming it.
+        #expect(h.model.unavailableRecognitionLanguages == ["en", "pt"])
+        #expect(h.model.notice == .recognitionLanguagesUnavailable)
     }
 
     @Test("Region OCR crops the sanitized base and maps boxes back to document space")

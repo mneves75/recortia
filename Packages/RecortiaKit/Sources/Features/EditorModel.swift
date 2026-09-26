@@ -30,6 +30,8 @@ public final class EditorModel {
     public internal(set) var notice: EditorNotice?
     /// Increments with every notice so the view can show a repeated identical notice again.
     public internal(set) var noticeSerial = 0
+    /// Preferred OCR languages (English, Portuguese) the system does not offer; reported, never assumed (FR-08).
+    public internal(set) var unavailableRecognitionLanguages: [String] = []
     public internal(set) var isClosed = false
 
     // Preview (EditorModel+Preview.swift)
@@ -214,6 +216,15 @@ public final class EditorModel {
         if session.privacyEpoch != epoch { privacyEpochChanged() }
         scheduleBaseRender()
         if showsOutputPreview { scheduleOutputRender() }
+    }
+
+    /// Why the document's scrolling capture is partial, when it is one; the editor keeps showing it
+    /// so a partial result is never presented as complete (FR-10).
+    public var partialScrollCaptureReason: ScrollPartialReason? {
+        for asset in session.document.assets.values {
+            if case .scrollCapture(let reason?) = asset.origin { return reason }
+        }
+        return nil
     }
 
     /// Undo history is bounded; when the oldest steps are evicted the user is told (SPEC FR-04).

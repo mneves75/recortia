@@ -82,9 +82,16 @@ extension EditorModel {
     /// English and Portuguese when the system offers them, else whatever it supports (FR-08).
     func preferredLanguages() async -> [Locale.Language] {
         let supported = await environment.textRecognition.supportedLanguages()
-        let preferred = supported.filter { ["en", "pt"].contains($0.languageCode?.identifier ?? "") }
+        let codes = Set(supported.compactMap { $0.languageCode?.identifier })
+        unavailableRecognitionLanguages = Self.preferredRecognitionLanguages.filter { !codes.contains($0) }
+        if !unavailableRecognitionLanguages.isEmpty { post(.recognitionLanguagesUnavailable) }
+        let preferred = supported.filter {
+            Self.preferredRecognitionLanguages.contains($0.languageCode?.identifier ?? "")
+        }
         return preferred.isEmpty ? supported : preferred
     }
+
+    static let preferredRecognitionLanguages = ["en", "pt"]
 
     // MARK: QR
 

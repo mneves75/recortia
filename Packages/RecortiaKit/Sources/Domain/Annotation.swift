@@ -55,6 +55,18 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         self.style = style
     }
 
+    /// Approximate bytes of unique data this annotation stores (points and text dominate). Used to
+    /// budget undo memory (FR-04); not an exact allocation size.
+    public var estimatedByteCost: Int {
+        let base = 128
+        switch kind {
+        case .text(let text): return base + text.string.utf8.count * 2
+        case .freehand(let points), .highlighter(let points):
+            return base + points.count * MemoryLayout<Point<DocumentSpace>>.stride
+        case .arrow, .rectangle, .ellipse, .step: return base
+        }
+    }
+
     /// Radius of a numbered step marker, derived from line width so it scales with style.
     public var stepRadius: Double { max(14, style.lineWidth * 4) }
 
