@@ -73,7 +73,7 @@ struct ScrollLimitsTests {
             let outputBytes = stitcher.outputSize.width * stitcher.outputSize.height * 4
             #expect(
                 stitcher.retainedByteCount
-                    <= outputBytes + 2 * frameBytes + ScrollStitcher.workingBudgetBytes(forFrameWidth: fixture.width))
+                    <= outputBytes + 2 * frameBytes + ScrollStitcher.workingBudgetBytes)
             previous = offset
             offset += Int.random(in: 8...30, using: &rng)
         }

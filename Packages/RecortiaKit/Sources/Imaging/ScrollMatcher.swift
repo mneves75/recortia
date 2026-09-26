@@ -1,6 +1,7 @@
 import Accelerate
 import Domain
 import Foundation
+import Synchronization
 
 /// Vertical displacement matching between two viewport frames (FR-10).
 ///
@@ -349,6 +350,57 @@ package enum ScrollMatcher {
 
     // MARK: Pixel measures
 
+    /// Largest number of luma values any single comparison processes at once (256 KiB of Float).
+    package static let scratchElements = 1 << 16
+    /// Float temporaries a comparison chunk holds at the same time: difference, magnitude, sign.
+    package static let scratchTemporaries = 3
+
+    /// Observes the comparison chunks while bound with `$scratchProbe.withValue`, so tests can
+    /// check the scratch bound on real matching paths.
+    package final class ScratchProbe: Sendable {
+        private let state = Mutex((largest: 0, chunks: 0))
+
+        package init() {}
+
+        package var largestChunk: Int { state.withLock { $0.largest } }
+        package var chunkCount: Int { state.withLock { $0.chunks } }
+
+        func record(_ elements: Int) {
+            state.withLock {
+                $0.largest = max($0.largest, elements)
+                $0.chunks += 1
+            }
+        }
+    }
+
+    @TaskLocal package static var scratchProbe: ScratchProbe?
+
+    /// Number of positions (over the shorter of `a` and `b`; callers pass equal lengths) whose
+    /// values differ by at least `tolerance`, compared in chunks of at most `chunkElements` so a
+    /// whole region or overlap never materializes plane-sized temporaries. `signedConstant(1)`
+    /// maps |x| >= tolerance to +1 and the rest to -1; a chunk's sign sum is an integer below
+    /// 2^24 and so exact in Float, which makes the count, and any fraction formed from it, equal
+    /// to the unchunked computation.
+    package static func changedCount(
+        _ a: ArraySlice<Float>, _ b: ArraySlice<Float>, tolerance: Float, chunkElements: Int = scratchElements
+    ) -> Int {
+        let count = min(a.count, b.count)
+        let chunk = min(max(1, chunkElements), 1 << 23)
+        let probe = scratchProbe
+        var changed = 0
+        var offset = 0
+        while offset < count {
+            let n = min(chunk, count - offset)
+            probe?.record(n)
+            let x = a[(a.startIndex + offset)..<(a.startIndex + offset + n)]
+            let y = b[(b.startIndex + offset)..<(b.startIndex + offset + n)]
+            let signs = vDSP.threshold(vDSP.absolute(vDSP.subtract(x, y)), to: tolerance, with: .signedConstant(1))
+            changed += (Int(vDSP.sum(signs)) + n) / 2
+            offset += n
+        }
+        return changed
+    }
+
     /// Fraction of pixels in current `rows` whose luma differs from previous `rows + d` by at
     /// least `tolerance`.
     package static func error(
@@ -357,23 +409,15 @@ package enum ScrollMatcher {
         guard !rows.isEmpty, rows.lowerBound + d >= 0, rows.upperBound + d <= previous.height else { return 1 }
         let a = current.lumaRows(rows)
         let b = previous.lumaRows((rows.lowerBound + d)..<(rows.upperBound + d))
-        return changedFraction(vDSP.subtract(a, b), tolerance: tolerance)
+        return Double(changedCount(a, b, tolerance: tolerance)) / Double(a.count)
     }
 
     /// Fraction of horizontally or vertically adjacent pixel pairs that differ by the tolerance.
     static func texture(_ frame: ScrollFrame, rows: Range<Int>, tolerance: Float) -> Double {
         let plane = frame.lumaRows(rows)
         guard plane.count > frame.width else { return 0 }
-        let horizontal = vDSP.subtract(plane.dropFirst(), plane.dropLast())
-        let vertical = vDSP.subtract(plane.dropFirst(frame.width), plane.dropLast(frame.width))
-        return (changedFraction(horizontal, tolerance: tolerance) + changedFraction(vertical, tolerance: tolerance)) / 2
-    }
-
-    /// `signedConstant(1)` maps |x| >= tolerance to +1 and the rest to -1.
-    static func changedFraction(_ differences: [Float], tolerance: Float) -> Double {
-        guard !differences.isEmpty else { return 0 }
-        let signs = vDSP.threshold(vDSP.absolute(differences), to: tolerance, with: .signedConstant(1))
-        let n = Double(differences.count)
-        return (Double(vDSP.sum(signs)) + n) / (2 * n)
+        let horizontal = changedCount(plane.dropFirst(), plane.dropLast(), tolerance: tolerance)
+        let vertical = changedCount(plane.dropFirst(frame.width), plane.dropLast(frame.width), tolerance: tolerance)
+        return (Double(horizontal) / Double(plane.count - 1) + Double(vertical) / Double(plane.count - frame.width)) / 2
     }
 }

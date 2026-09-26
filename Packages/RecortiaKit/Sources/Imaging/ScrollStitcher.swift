@@ -17,7 +17,7 @@ public enum ScrollStitchError: Error, Equatable, Sendable {
 ///
 /// Memory: the appended output rows, one footer band, and the matching planes of the previous
 /// frame; during `append` the incoming frame is the second full frame. Matching temporaries are
-/// strip-sized. The value is synchronous: run it off the main actor.
+/// chunk-sized (`workingBudgetBytes`). The value is synchronous: run it off the main actor.
 public struct ScrollStitcher: Sendable {
     public let limits: ScrollLimits
     /// Consecutive stationary frames after which the page is taken to have ended.
@@ -162,10 +162,12 @@ public struct ScrollStitcher: Sendable {
 
     package var retainedByteCount: Int { rows.count + footer.count + (previous?.byteCount ?? 0) }
 
-    /// Upper bound on transient matching memory per append: strip-sized luma differences.
-    package static func workingBudgetBytes(forFrameWidth width: Int) -> Int {
-        ScrollMatcher.maximumStripCount * ScrollMatcher.maximumStripHeight * width * MemoryLayout<Float>.stride * 4
-    }
+    /// Upper bound on transient Float scratch per append, whatever the frame size: every pixel
+    /// comparison runs over chunks of at most `ScrollMatcher.scratchElements` luma values, each
+    /// holding `ScrollMatcher.scratchTemporaries` temporaries. Per-row and per-column bookkeeping
+    /// (a few words each) comes on top.
+    package static let workingBudgetBytes =
+        ScrollMatcher.scratchTemporaries * ScrollMatcher.scratchElements * MemoryLayout<Float>.stride
 
     // MARK: Private
 
@@ -192,14 +194,32 @@ public struct ScrollStitcher: Sendable {
     /// Leading and trailing rows that are unchanged at the same position. Blank content rows can
     /// be mistaken for a band; that is harmless because header rows come from the first frame and
     /// footer rows from the latest one, so every page row is still emitted exactly once.
+    ///
+    /// A row's change is measured over the moving columns only, not the whole width: content
+    /// scrolling in a narrow column between static margins changes a small share of each full
+    /// row, which would otherwise pass for a fixed band everywhere. A column moves when it
+    /// changed in at least a quarter as many rows as the most-changed column; a localized
+    /// animation (spinner, badge) changes in few rows, so beside scrolled content its columns
+    /// drop out and its rows stay in the band. Alone, it is the only motion and its rows stay
+    /// unfixed, which leaves too small a region to match and falls to the stationarity check.
     static func detectBands(previous: ScrollFrame, current: ScrollFrame, tolerance: Float) -> (top: Int, bottom: Int) {
-        let height = current.height
+        let height = current.height, width = current.width
+        var changedRows = [Int](repeating: 0, count: width)
+        for y in 0..<height {
+            let base = y * width
+            for x in 0..<width where abs(current.luma[base + x] - previous.luma[base + x]) >= tolerance {
+                changedRows[x] += 1
+            }
+        }
+        let mostChanged = changedRows.max() ?? 0
+        guard mostChanged > 0 else { return (height, 0) }
+        let moving = changedRows.indices.filter { changedRows[$0] * 4 >= mostChanged }
         // A small animated element (spinner, clock) may change part of a fixed row.
         let maximumChangedFraction = 0.25
         func isFixed(_ y: Int) -> Bool {
-            ScrollMatcher.error(
-                previous: previous, current: current, rows: y..<(y + 1), displacement: 0, tolerance: tolerance)
-                <= maximumChangedFraction
+            let base = y * width
+            let changed = moving.count { abs(current.luma[base + $0] - previous.luma[base + $0]) >= tolerance }
+            return Double(changed) <= maximumChangedFraction * Double(moving.count)
         }
         var top = 0
         while top < height, isFixed(top) { top += 1 }
