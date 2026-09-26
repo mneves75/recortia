@@ -34,10 +34,11 @@ case "$lang" in
 esac
 
 derived=.build/dd
-app="$derived/Build/Products/Debug/Recortia.app/Contents/MacOS/Recortia"
+app="$derived/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
+mkdir -p .build
 if (( build )); then
   echo "== build Debug"
-  if ! xcodebuild -project Recortia.xcodeproj -scheme Recortia -configuration Debug \
+  if ! xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug \
     -destination 'platform=macOS' -derivedDataPath "$derived" "${sign_args[@]}" build >"$derived-e2e-build.log" 2>&1; then
     tail -30 "$derived-e2e-build.log" >&2
     echo "e2e: build failed (full log: $derived-e2e-build.log)" >&2

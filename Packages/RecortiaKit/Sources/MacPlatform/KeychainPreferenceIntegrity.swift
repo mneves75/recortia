@@ -8,7 +8,7 @@ import Security
 ///
 /// Residual (THREAT_MODEL.md): the file-based keychain cannot say who created an item, so a
 /// process that plants an item under this service before Recortia creates its own can seal
-/// forged consent. The secret is therefore created at the first launch, not at the first
+/// forged consent. The app therefore calls `prepare()` at the first launch, not at the first
 /// settings change. Closing the gap needs the data-protection keychain, whose access groups
 /// require a Developer ID provisioning profile (TN3137).
 @MainActor
@@ -17,7 +17,11 @@ public final class KeychainPreferenceIntegrity {
     private static let account = "hmac-sha256"
     private var cachedKey: SymmetricKey?
 
-    public init() {
+    public init() {}
+
+    /// Creates the secret if it does not exist yet. Call it at a normal launch, not in `init`:
+    /// the DEBUG-only E2E run builds the live model too and must never create keychain items.
+    public func prepare() {
         _ = key(createIfMissing: true)
     }
 

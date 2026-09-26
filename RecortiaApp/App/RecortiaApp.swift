@@ -26,17 +26,23 @@ struct RecortiaApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     // Integration: pass the live `AppServices` built from Imaging and MacPlatform here. With nil,
     // commands needing a backend are disabled and nothing is faked.
-    let model = AppModel(
-        settings: SettingsStore(storage: UserDefaults.standard, integrity: KeychainPreferenceIntegrity()),
-        services: .live(), shortcutProbe: CarbonShortcutProbe()
-    )
+    private let integrity = KeychainPreferenceIntegrity()
+    let model: AppModel
+
+    override init() {
+        model = AppModel(
+            settings: SettingsStore(storage: UserDefaults.standard, integrity: integrity),
+            services: .live(), shortcutProbe: CarbonShortcutProbe())
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        #if DEBUG
-            // `-RecortiaE2E <dir>` runs the scenario runner (RecortiaApp/E2E) instead of the normal
-            // launch: no onboarding, no global shortcuts; the process exits with the run's result.
+        #if RECORTIA_E2E
+            // Only in the RecortiaE2E target: `-RecortiaE2E <dir>` runs the scenario runner
+            // (RecortiaApp/E2E) instead of the normal launch; the process exits with its result.
             if E2ERunner.startIfRequested() { return }
         #endif
+        integrity.prepare()
         model.launch()
     }
 

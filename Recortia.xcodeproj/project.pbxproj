@@ -7,65 +7,106 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0D123D89A9C4AB0EA0E2F66A /* SyntheticImages.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */; };
+		0157A19E6F03E20435EB72DD /* E2EHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E0B4F72D48030816743075C /* E2EHarness.swift */; };
+		01DD6F970229DB8FA2B2DA21 /* Scenarios+Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */; };
+		047BE41C254E51245516E371 /* RecortiaFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 252C5CAB42D41B5EC1759BE7 /* RecortiaFixtures */; };
+		06650EB2D93E1F2271D9AF96 /* AppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8122F2A3706BEFC20DE3331B /* AppServices.swift */; };
+		09F8AA7FCD99E9FB0EB48D00 /* EditorCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15116A7454558F3FA0807632 /* EditorCanvasView.swift */; };
 		0EAF61DA2A9566FBFC619339 /* AppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8122F2A3706BEFC20DE3331B /* AppServices.swift */; };
+		0F8A047AFF5175B2658E32DA /* EditorRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D5324EB9E2AA47D945093A /* EditorRootView.swift */; };
+		0F90D2EFEC42BB978F9DF91A /* E2EActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A00D2B63EC9352383E5AA0C /* E2EActions.swift */; };
+		12E92A833C0B2A919DCCF406 /* MessagePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */; };
+		147B112BD770EFE925854414 /* SyntheticServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */; };
 		16D05BE522E6D46802FC2C34 /* LaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2991DDE3A9E798D014496FC6 /* LaunchTests.swift */; };
-		178A447E059ADF682998DBA7 /* Scenarios+Scroll.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07F8A23F06F222D5CAD4B07 /* Scenarios+Scroll.swift */; };
+		1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
+		182984EEB477BE03386FF93A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */; };
+		18A45AB75723F8BFA3916DBD /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
-		19CABB383DCE2AAFC339FD05 /* Scenarios+Recognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */; };
-		1DC922DA995AA5D7779D0859 /* RecortiaFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = AE77D85B332A5B979134296E /* RecortiaFixtures */; };
+		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
+		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
+		2DD16A3919445D7FAA908F82 /* E2ERunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */; };
 		302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		30B346D5FCE3BE82877BD2A2 /* LiveScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B885E83C460249621067B7FB /* LiveScrolling.swift */; };
+		30D34F21A538DECAD6DDA000 /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
+		31466BF58D7D74EC4FE5A57F /* E2EScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33BB654473B6F3033727605 /* E2EScenarios.swift */; };
 		31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15116A7454558F3FA0807632 /* EditorCanvasView.swift */; };
 		33579819E3C0DC24D79F49B2 /* ScrollUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */; };
 		3367D3E7A76BC8AE1494A1F8 /* LiveServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A32821DBE9F97E4B468E29 /* LiveServices.swift */; };
+		35207593563862BE445A53FE /* Scenarios+Scroll.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07F8A23F06F222D5CAD4B07 /* Scenarios+Scroll.swift */; };
 		352F5AF31DB3F2F8A4F44CBC /* AppActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2F7298595658EBCA75FF77 /* AppActions.swift */; };
+		354B7ADF59F0A07242ACB8EE /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 1E12B4DAC03A0F93B121FA6F /* Domain */; };
 		356E67D7EF867A549346181D /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
+		360BD2DFBE7E71404474262C /* MacPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 86143654D0A8A588376DF659 /* MacPlatform */; };
 		38F97E15732CA80EEE0746B3 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */; };
+		3AC080957ABB8147960886B8 /* Scenarios+Editor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */; };
+		3B6F7CBFE641BB0D4D133B24 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
 		3BEF040F1072DF3D8A1DBE98 /* RecortiaFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 411B40D8A69F69633A9FDF64 /* RecortiaFixtures */; };
 		3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
+		41302BAADF8304A81FE45EC9 /* LiveRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */; };
 		4A11132EA0C0DEB59B529A97 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */; };
+		4BDF947C072D9CDA91F7771D /* SystemEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */; };
 		4D7C3D84B8C8BB582C432AC6 /* EditorWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */; };
 		4EC666D8B2EF6F97E6C3EFED /* LiveRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */; };
 		5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
-		569F86C26372CF4AAD458594 /* Scenarios+Output.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */; };
-		58F42127E85C101C53D78A39 /* E2EScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33BB654473B6F3033727605 /* E2EScenarios.swift */; };
-		5969C3239C0F05F3FADE33DE /* Scenarios+Capture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */; };
+		56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
+		6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
+		6470C535C3CBC2B70DF471A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
+		652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */; };
 		65345782C7EBA8CF8EE27F85 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
 		694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
-		6A037A9AFE69305CB7792823 /* E2ESnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293033569B29300AB2B89925 /* E2ESnapshot.swift */; };
+		6A80F91BFD6A48E08DA8DBB8 /* E2ESnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293033569B29300AB2B89925 /* E2ESnapshot.swift */; };
+		6B1BD24BE65C437E070D1839 /* EditorWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */; };
 		6EBBCD64B42B976D604BCA47 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F902EF52885BED5F7982DA2C /* OnboardingView.swift */; };
-		721F3A451049AA7BDB7EE14F /* Scenarios+Editor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */; };
+		701F0314C45185A00CC56645 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97C30D7091C2051638564FB /* GlobalShortcuts.swift */; };
+		73160FC98EB39270DC7C59F0 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F902EF52885BED5F7982DA2C /* OnboardingView.swift */; };
 		733D03C9AEA014A4825D62C1 /* EditorStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */; };
 		735069F09C1DEBDBB2449990 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 2B3B384261E6DD8F0B8F0303 /* Features */; };
-		7441186A5C84A02D8111F726 /* E2EPanelProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 813F933C20216A19D93FA9D7 /* E2EPanelProbe.swift */; };
 		778801BF8774508093BCD36C /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
+		78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
 		7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
 		80CDF8847AC39BD8B97FCD94 /* ObservationLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */; };
+		82EBC1096E7479ECFD0E39E1 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 7E46F8A5AF01477393049017 /* Features */; };
+		86A1C1B0D1C683EBB2C8CB6D /* SyntheticImages.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */; };
 		86C00E2E2FFA0E88047FA20A /* MessagePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */; };
-		9E431B3C1BB3A06AAA01ECDA /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
+		8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
 		A30DD234D2E1308C1916965D /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
 		A55745B240F288A4EE6CE160 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97C30D7091C2051638564FB /* GlobalShortcuts.swift */; };
+		A676779ABA0EA316566E2589 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
 		A88E581773148D9E9762B36A /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 7DC7FE9A68C4351CD90EA55B /* Domain */; };
-		B71D52AE70DE10D26B1111BB /* Scenarios+Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */; };
+		A8A476C5D3007B4823361E64 /* LiveScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B885E83C460249621067B7FB /* LiveScrolling.swift */; };
+		AC4AFBDA384BF5B9EAE8BAC8 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
+		AF3F7784F944B8399EA0F17E /* E2EReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DF83ABF11B31DAAABA963C /* E2EReport.swift */; };
+		B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
 		B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
-		BC80E53BAF055D58F0B4DB66 /* E2ERunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */; };
 		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		BE76CF85696B2F1702597E5C /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = CB78FDBEC0994FB58607CBEA /* Imaging */; };
+		C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */; };
+		C2A57D9C43AF679DD4D6E079 /* E2EPanelProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 813F933C20216A19D93FA9D7 /* E2EPanelProbe.swift */; };
+		C3548A1EA9AE3031E2C9F1CE /* PinPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E65B31A931DA8F9BA987BB /* PinPanels.swift */; };
 		C4B185E0117961F2B3801409 /* SystemEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */; };
 		C5AC5B580637289E9DC07F54 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
-		C65E800062AE7D82D0CA685C /* SyntheticServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */; };
+		CB3160AA629F25ECBB8B6DBA /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */; };
+		CF14A9DD112EE6655C40C9E9 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
+		D06F657E1ACE66C9015FA699 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8692E975D9E5A251D35D00 /* KeyboardShortcuts */; };
+		D24EE0E8714F0274DE8B1AEC /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
+		D4334677906AB4980AD4EE0D /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
 		D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
-		D8D7E760EF627FF14BC6B7D5 /* E2EReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DF83ABF11B31DAAABA963C /* E2EReport.swift */; };
-		DF4183D8DF944E92BC48C394 /* E2EHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E0B4F72D48030816743075C /* E2EHarness.swift */; };
+		D8D1CC076F25EFF7A3DDE1D3 /* AppActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2F7298595658EBCA75FF77 /* AppActions.swift */; };
 		E11B8B8960E33C10DAF65BB2 /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
-		E93EFC83E5B8C7AA65E207C4 /* E2EActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A00D2B63EC9352383E5AA0C /* E2EActions.swift */; };
 		EA0DC2557F5BDA232FDEBA6F /* PinPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E65B31A931DA8F9BA987BB /* PinPanels.swift */; };
+		EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */; };
 		EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */; };
+		F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */; };
+		F19CF04F5B64D1385390483B /* ObservationLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */; };
 		F42EBFAC336DDBFD742F2784 /* EditorRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D5324EB9E2AA47D945093A /* EditorRootView.swift */; };
+		F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
+		F54C69AE574623D0E81BCF97 /* CaptureUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */; };
 		F58461558AAE86DB9A5FCF13 /* MacPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 136F37C6FC004EFC4C721BAC /* MacPlatform */; };
 		F59A68B8DB8BC381B7A2E988 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
+		F719870225B18848414BD58A /* LiveServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A32821DBE9F97E4B468E29 /* LiveServices.swift */; };
+		FAE0B9FA6ACC12AFC7DF5B20 /* EditorStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */; };
+		FE2480051AAABD8F447CE848 /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = 2644079D7FD5B30329793F53 /* Imaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,6 +130,7 @@
 		30259CC2530DFC8E1D539757 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		32B60026CF0E1A7A617061C9 /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
 		38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagePresenter.swift; sourceTree = "<group>"; };
+		3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2E.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shell.swift"; sourceTree = "<group>"; };
 		451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSidebarView.swift; sourceTree = "<group>"; };
 		4A850AFAB99113314CD6E841 /* RecortiaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RecortiaKit; path = Packages/RecortiaKit; sourceTree = SOURCE_ROOT; };
@@ -147,8 +189,7 @@
 				BE76CF85696B2F1702597E5C /* Imaging in Frameworks */,
 				F58461558AAE86DB9A5FCF13 /* MacPlatform in Frameworks */,
 				735069F09C1DEBDBB2449990 /* Features in Frameworks */,
-				1DC922DA995AA5D7779D0859 /* RecortiaFixtures in Frameworks */,
-				9E431B3C1BB3A06AAA01ECDA /* KeyboardShortcuts in Frameworks */,
+				1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -157,6 +198,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				3BEF040F1072DF3D8A1DBE98 /* RecortiaFixtures in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DFF099E9684704C19EF19463 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				354B7ADF59F0A07242ACB8EE /* Domain in Frameworks */,
+				FE2480051AAABD8F447CE848 /* Imaging in Frameworks */,
+				360BD2DFBE7E71404474262C /* MacPlatform in Frameworks */,
+				82EBC1096E7479ECFD0E39E1 /* Features in Frameworks */,
+				D06F657E1ACE66C9015FA699 /* KeyboardShortcuts in Frameworks */,
+				047BE41C254E51245516E371 /* RecortiaFixtures in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -209,6 +263,7 @@
 			isa = PBXGroup;
 			children = (
 				1A4B3763DE55CA83F21962CF /* Recortia.app */,
+				3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */,
 				9C6AABCCCF1691C1818B8DB7 /* RecortiaUITests.xctest */,
 			);
 			name = Products;
@@ -333,6 +388,31 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		8EEE5AB1272098105E9C9370 /* RecortiaE2E */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 162E4D2B3A25E112380DFEBF /* Build configuration list for PBXNativeTarget "RecortiaE2E" */;
+			buildPhases = (
+				AB95C0653BB8A75A7B389897 /* Sources */,
+				5F29996B2721B3C70152EAF1 /* Resources */,
+				DFF099E9684704C19EF19463 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RecortiaE2E;
+			packageProductDependencies = (
+				1E12B4DAC03A0F93B121FA6F /* Domain */,
+				2644079D7FD5B30329793F53 /* Imaging */,
+				86143654D0A8A588376DF659 /* MacPlatform */,
+				7E46F8A5AF01477393049017 /* Features */,
+				7E8692E975D9E5A251D35D00 /* KeyboardShortcuts */,
+				252C5CAB42D41B5EC1759BE7 /* RecortiaFixtures */,
+			);
+			productName = RecortiaE2E;
+			productReference = 3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */;
+			productType = "com.apple.product-type.application";
+		};
 		D5C5C8B1F81388A8A495314D /* RecortiaUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CD0D1B51C83FD2AD7D93FCA4 /* Build configuration list for PBXNativeTarget "RecortiaUITests" */;
@@ -371,7 +451,6 @@
 				CB78FDBEC0994FB58607CBEA /* Imaging */,
 				136F37C6FC004EFC4C721BAC /* MacPlatform */,
 				2B3B384261E6DD8F0B8F0303 /* Features */,
-				AE77D85B332A5B979134296E /* RecortiaFixtures */,
 				8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */,
 			);
 			productName = Recortia;
@@ -387,6 +466,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					8EEE5AB1272098105E9C9370 = {
+						DevelopmentTeam = Q96FUTC5G8;
+						ProvisioningStyle = Manual;
+					};
 					D5C5C8B1F81388A8A495314D = {
 						DevelopmentTeam = Q96FUTC5G8;
 						ProvisioningStyle = Manual;
@@ -418,12 +501,23 @@
 			projectRoot = "";
 			targets = (
 				F269FDB9D9FEBE500AD8219F /* Recortia */,
+				8EEE5AB1272098105E9C9370 /* RecortiaE2E */,
 				D5C5C8B1F81388A8A495314D /* RecortiaUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		5F29996B2721B3C70152EAF1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6470C535C3CBC2B70DF471A2 /* Assets.xcassets in Resources */,
+				18A45AB75723F8BFA3916DBD /* Editor.xcstrings in Resources */,
+				182984EEB477BE03386FF93A /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B89215C32C1B07BEF13770C1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -437,6 +531,61 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		AB95C0653BB8A75A7B389897 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D8D1CC076F25EFF7A3DDE1D3 /* AppActions.swift in Sources */,
+				CB3160AA629F25ECBB8B6DBA /* AppModel.swift in Sources */,
+				06650EB2D93E1F2271D9AF96 /* AppServices.swift in Sources */,
+				F54C69AE574623D0E81BCF97 /* CaptureUIController.swift in Sources */,
+				78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */,
+				1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */,
+				0F90D2EFEC42BB978F9DF91A /* E2EActions.swift in Sources */,
+				0157A19E6F03E20435EB72DD /* E2EHarness.swift in Sources */,
+				C2A57D9C43AF679DD4D6E079 /* E2EPanelProbe.swift in Sources */,
+				AF3F7784F944B8399EA0F17E /* E2EReport.swift in Sources */,
+				2DD16A3919445D7FAA908F82 /* E2ERunner.swift in Sources */,
+				31466BF58D7D74EC4FE5A57F /* E2EScenarios.swift in Sources */,
+				6A80F91BFD6A48E08DA8DBB8 /* E2ESnapshot.swift in Sources */,
+				09F8AA7FCD99E9FB0EB48D00 /* EditorCanvasView.swift in Sources */,
+				AC4AFBDA384BF5B9EAE8BAC8 /* EditorFormat.swift in Sources */,
+				6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */,
+				8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */,
+				0F8A047AFF5175B2658E32DA /* EditorRootView.swift in Sources */,
+				1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */,
+				FAE0B9FA6ACC12AFC7DF5B20 /* EditorStrings.swift in Sources */,
+				D4334677906AB4980AD4EE0D /* EditorSystemServices.swift in Sources */,
+				6B1BD24BE65C437E070D1839 /* EditorWindowManager.swift in Sources */,
+				701F0314C45185A00CC56645 /* GlobalShortcuts.swift in Sources */,
+				B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */,
+				41302BAADF8304A81FE45EC9 /* LiveRecognition.swift in Sources */,
+				A8A476C5D3007B4823361E64 /* LiveScrolling.swift in Sources */,
+				F719870225B18848414BD58A /* LiveServices.swift in Sources */,
+				CF14A9DD112EE6655C40C9E9 /* MenuContent.swift in Sources */,
+				12E92A833C0B2A919DCCF406 /* MessagePresenter.swift in Sources */,
+				F19CF04F5B64D1385390483B /* ObservationLoop.swift in Sources */,
+				73160FC98EB39270DC7C59F0 /* OnboardingView.swift in Sources */,
+				C3548A1EA9AE3031E2C9F1CE /* PinPanels.swift in Sources */,
+				3B6F7CBFE641BB0D4D133B24 /* PreviewSupport.swift in Sources */,
+				56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */,
+				F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */,
+				C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */,
+				3AC080957ABB8147960886B8 /* Scenarios+Editor.swift in Sources */,
+				F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */,
+				EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */,
+				35207593563862BE445A53FE /* Scenarios+Scroll.swift in Sources */,
+				01DD6F970229DB8FA2B2DA21 /* Scenarios+Shell.swift in Sources */,
+				652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */,
+				D24EE0E8714F0274DE8B1AEC /* ScrollViews.swift in Sources */,
+				A676779ABA0EA316566E2589 /* SettingsView.swift in Sources */,
+				30D34F21A538DECAD6DDA000 /* ShortcutRecorderRow.swift in Sources */,
+				86A1C1B0D1C683EBB2C8CB6D /* SyntheticImages.swift in Sources */,
+				147B112BD770EFE925854414 /* SyntheticServices.swift in Sources */,
+				4BDF947C072D9CDA91F7771D /* SystemEventMonitor.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BC16C93052CC5C7437666AFD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -455,13 +604,6 @@
 				EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */,
 				D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */,
 				A30DD234D2E1308C1916965D /* DragChip.swift in Sources */,
-				E93EFC83E5B8C7AA65E207C4 /* E2EActions.swift in Sources */,
-				DF4183D8DF944E92BC48C394 /* E2EHarness.swift in Sources */,
-				7441186A5C84A02D8111F726 /* E2EPanelProbe.swift in Sources */,
-				D8D7E760EF627FF14BC6B7D5 /* E2EReport.swift in Sources */,
-				BC80E53BAF055D58F0B4DB66 /* E2ERunner.swift in Sources */,
-				58F42127E85C101C53D78A39 /* E2EScenarios.swift in Sources */,
-				6A037A9AFE69305CB7792823 /* E2ESnapshot.swift in Sources */,
 				31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */,
 				3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */,
 				694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */,
@@ -484,18 +626,10 @@
 				5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */,
 				E11B8B8960E33C10DAF65BB2 /* RecortiaApp.swift in Sources */,
 				199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */,
-				5969C3239C0F05F3FADE33DE /* Scenarios+Capture.swift in Sources */,
-				721F3A451049AA7BDB7EE14F /* Scenarios+Editor.swift in Sources */,
-				569F86C26372CF4AAD458594 /* Scenarios+Output.swift in Sources */,
-				19CABB383DCE2AAFC339FD05 /* Scenarios+Recognition.swift in Sources */,
-				178A447E059ADF682998DBA7 /* Scenarios+Scroll.swift in Sources */,
-				B71D52AE70DE10D26B1111BB /* Scenarios+Shell.swift in Sources */,
 				33579819E3C0DC24D79F49B2 /* ScrollUIController.swift in Sources */,
 				BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */,
 				D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */,
 				B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */,
-				0D123D89A9C4AB0EA0E2F66A /* SyntheticImages.swift in Sources */,
-				C65E800062AE7D82D0CA685C /* SyntheticServices.swift in Sources */,
 				C4B185E0117961F2B3801409 /* SystemEventMonitor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -565,6 +699,26 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 			};
 			name = Debug;
+		};
+		735504CEE6668A4E5B04CFED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = RecortiaApp/Recortia.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RecortiaApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia.E2E;
+				PRODUCT_NAME = RecortiaE2E;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) RECORTIA_E2E";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+			};
+			name = Release;
 		};
 		7CB15FDDB05D9D02C8D9E102 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -732,9 +886,38 @@
 			};
 			name = Debug;
 		};
+		D9B4687AF9B69154E071BD6D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = RecortiaApp/Recortia.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RecortiaApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia.E2E;
+				PRODUCT_NAME = RecortiaE2E;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) RECORTIA_E2E";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		162E4D2B3A25E112380DFEBF /* Build configuration list for PBXNativeTarget "RecortiaE2E" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D9B4687AF9B69154E071BD6D /* Debug */,
+				735504CEE6668A4E5B04CFED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		CD0D1B51C83FD2AD7D93FCA4 /* Build configuration list for PBXNativeTarget "RecortiaUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -787,6 +970,18 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = MacPlatform;
 		};
+		1E12B4DAC03A0F93B121FA6F /* Domain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Domain;
+		};
+		252C5CAB42D41B5EC1759BE7 /* RecortiaFixtures */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RecortiaFixtures;
+		};
+		2644079D7FD5B30329793F53 /* Imaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Imaging;
+		};
 		2B3B384261E6DD8F0B8F0303 /* Features */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Features;
@@ -799,14 +994,23 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Domain;
 		};
-		8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */ = {
+		7E46F8A5AF01477393049017 /* Features */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Features;
+		};
+		7E8692E975D9E5A251D35D00 /* KeyboardShortcuts */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 093AF27D3CCEC7413585D2A0 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
 		};
-		AE77D85B332A5B979134296E /* RecortiaFixtures */ = {
+		86143654D0A8A588376DF659 /* MacPlatform */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = RecortiaFixtures;
+			productName = MacPlatform;
+		};
+		8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 093AF27D3CCEC7413585D2A0 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
 		};
 		CB78FDBEC0994FB58607CBEA /* Imaging */ = {
 			isa = XCSwiftPackageProductDependency;
