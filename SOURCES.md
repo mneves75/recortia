@@ -20,19 +20,19 @@ Supports the existence of manual scrolling fallback and acknowledged compatibili
 
 URL: `https://shottr.cc/kb/upload/`
 
-Supports the documented distinction between Shottr Cloud and a user-supplied S3 destination. Framepin does not reuse either service and defers its own optional sharing integration.
+Supports the documented distinction between Shottr Cloud and a user-supplied S3 destination. Recortia does not reuse either service and defers its own optional sharing integration.
 
 ## S04 — Shottr URL scheme documentation
 
 URL: `https://shottr.cc/kb/urlschemes`
 
-Supports the existence of external workflow integration as a reference capability. Framepin does not adopt the proprietary scheme name or presume that externally invoked side effects are safe.
+Supports the existence of external workflow integration as a reference capability. Recortia does not adopt the proprietary scheme name or presume that externally invoked side effects are safe.
 
 ## S05 — Apple Xcode SDK and system requirements
 
 URL: `https://developer.apple.com/xcode/system-requirements`
 
-Apple's current table lists Xcode 27 with Swift 6.4, Swift 6 language mode, and a macOS 26.6-or-later build host. The table also distinguishes beta versions. The exact installed Xcode/SDK build is not known from this research and must be recorded locally. Support claims concern Apple's table, not a tested Framepin build.
+Apple's current table lists Xcode 27 with Swift 6.4, Swift 6 language mode, and a macOS 26.6-or-later build host. The table also distinguishes beta versions. The exact installed Xcode/SDK build is not known from this research and must be recorded locally. Support claims concern Apple's table, not a tested Recortia build.
 
 ## S06 — Apple: What's new in ScreenCaptureKit, WWDC23
 
@@ -62,7 +62,7 @@ Supports the candidate dependency's user-customizable global shortcut interface 
 
 URL: `https://github.com/BishopFox/unredacter`
 
-Primary research implementation demonstrating why pixelation is unsuitable as a secure-redaction guarantee. Framepin does not need to import this code or its dependencies. Its own opaque-mask and export tests are independently specified.
+Primary research implementation demonstrating why pixelation is unsuitable as a secure-redaction guarantee. Recortia does not need to import this code or its dependencies. Its own opaque-mask and export tests are independently specified.
 
 ## S11 — Apple: Signing your apps for Gatekeeper
 
@@ -80,7 +80,7 @@ Supports using the project's supported update integration and EdDSA signing proc
 
 URL: `https://docs.github.com/en/actions/reference/security/secure-use`
 
-Primary guidance for CI trust separation and dependency/workflow security. The proposed Framepin release process is not an existing workflow and must be validated independently.
+Primary guidance for CI trust separation and dependency/workflow security. The proposed Recortia release process is not an existing workflow and must be validated independently.
 
 ## S14 — Open Source Initiative: MIT license
 

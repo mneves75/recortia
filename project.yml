@@ -1,5 +1,5 @@
 # XcodeGen spec. Regenerate the committed project with `scripts/generate.sh` after editing.
-name: Framepin
+name: Recortia
 options:
   bundleIdPrefix: dev.mvneves
   deploymentTarget:
@@ -30,75 +30,75 @@ settings:
     Release:
       CODE_SIGN_IDENTITY: Developer ID Application
 packages:
-  FramepinKit:
-    path: Packages/FramepinKit
+  RecortiaKit:
+    path: Packages/RecortiaKit
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     exactVersion: 3.1.0
 targets:
-  Framepin:
+  Recortia:
     type: application
     platform: macOS
     sources:
-      - path: FramepinApp
+      - path: RecortiaApp
     info:
-      path: FramepinApp/Info.plist
+      path: RecortiaApp/Info.plist
       properties:
-        CFBundleDisplayName: Framepin
-        CFBundleName: Framepin
+        CFBundleDisplayName: Recortia
+        CFBundleName: Recortia
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.productivity
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
-        NSHumanReadableCopyright: Framepin contributors
+        NSHumanReadableCopyright: Recortia contributors
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, pt-BR]
     entitlements:
-      path: FramepinApp/Framepin.entitlements
+      path: RecortiaApp/Recortia.entitlements
       properties: {}
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Framepin
-        PRODUCT_NAME: Framepin
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia
+        PRODUCT_NAME: Recortia
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
     dependencies:
-      - package: FramepinKit
+      - package: RecortiaKit
         product: Domain
-      - package: FramepinKit
+      - package: RecortiaKit
         product: Imaging
-      - package: FramepinKit
+      - package: RecortiaKit
         product: MacPlatform
-      - package: FramepinKit
+      - package: RecortiaKit
         product: Features
       - package: KeyboardShortcuts
-  FramepinUITests:
+  RecortiaUITests:
     type: bundle.ui-testing
     platform: macOS
     sources:
-      - path: FramepinUITests
+      - path: RecortiaUITests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.FramepinUITests
-        TEST_TARGET_NAME: Framepin
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.RecortiaUITests
+        TEST_TARGET_NAME: Recortia
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
-      - target: Framepin
-      - package: FramepinKit
-        product: FramepinFixtures
+      - target: Recortia
+      - package: RecortiaKit
+        product: RecortiaFixtures
 schemes:
-  Framepin:
+  Recortia:
     build:
       targets:
-        Framepin: all
-        FramepinUITests: [test]
+        Recortia: all
+        RecortiaUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - FramepinUITests
+        - RecortiaUITests
     archive:
       config: Release

@@ -1,0 +1,739 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0EAF61DA2A9566FBFC619339 /* AppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8122F2A3706BEFC20DE3331B /* AppServices.swift */; };
+		16D05BE522E6D46802FC2C34 /* LaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2991DDE3A9E798D014496FC6 /* LaunchTests.swift */; };
+		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
+		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
+		302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
+		30B346D5FCE3BE82877BD2A2 /* LiveScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B885E83C460249621067B7FB /* LiveScrolling.swift */; };
+		31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15116A7454558F3FA0807632 /* EditorCanvasView.swift */; };
+		33579819E3C0DC24D79F49B2 /* ScrollUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */; };
+		3367D3E7A76BC8AE1494A1F8 /* LiveServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A32821DBE9F97E4B468E29 /* LiveServices.swift */; };
+		352F5AF31DB3F2F8A4F44CBC /* AppActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2F7298595658EBCA75FF77 /* AppActions.swift */; };
+		356E67D7EF867A549346181D /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
+		38F97E15732CA80EEE0746B3 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */; };
+		3BEF040F1072DF3D8A1DBE98 /* RecortiaFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 411B40D8A69F69633A9FDF64 /* RecortiaFixtures */; };
+		3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
+		4A11132EA0C0DEB59B529A97 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */; };
+		4D7C3D84B8C8BB582C432AC6 /* EditorWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */; };
+		4EC666D8B2EF6F97E6C3EFED /* LiveRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */; };
+		5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
+		65345782C7EBA8CF8EE27F85 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
+		694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
+		6EBBCD64B42B976D604BCA47 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F902EF52885BED5F7982DA2C /* OnboardingView.swift */; };
+		733D03C9AEA014A4825D62C1 /* EditorStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */; };
+		735069F09C1DEBDBB2449990 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 2B3B384261E6DD8F0B8F0303 /* Features */; };
+		778801BF8774508093BCD36C /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
+		7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
+		80CDF8847AC39BD8B97FCD94 /* ObservationLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */; };
+		86C00E2E2FFA0E88047FA20A /* MessagePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */; };
+		A30DD234D2E1308C1916965D /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
+		A55745B240F288A4EE6CE160 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97C30D7091C2051638564FB /* GlobalShortcuts.swift */; };
+		A88E581773148D9E9762B36A /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 7DC7FE9A68C4351CD90EA55B /* Domain */; };
+		B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
+		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
+		BE76CF85696B2F1702597E5C /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = CB78FDBEC0994FB58607CBEA /* Imaging */; };
+		C5AC5B580637289E9DC07F54 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
+		D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
+		D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
+		E11B8B8960E33C10DAF65BB2 /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
+		EA0DC2557F5BDA232FDEBA6F /* PinPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E65B31A931DA8F9BA987BB /* PinPanels.swift */; };
+		EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */; };
+		F42EBFAC336DDBFD742F2784 /* EditorRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D5324EB9E2AA47D945093A /* EditorRootView.swift */; };
+		F58461558AAE86DB9A5FCF13 /* MacPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 136F37C6FC004EFC4C721BAC /* MacPlatform */; };
+		F59A68B8DB8BC381B7A2E988 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		ECA87F9C57348C7DA0E5EDF2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 77236CF3D202B5857BE97F0A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F269FDB9D9FEBE500AD8219F;
+			remoteInfo = Recortia;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		15116A7454558F3FA0807632 /* EditorCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCanvasView.swift; sourceTree = "<group>"; };
+		1A4B3763DE55CA83F21962CF /* Recortia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Recortia.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1FCF94E91512C394BD839071 /* EditorPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPreview.swift; sourceTree = "<group>"; };
+		2991DDE3A9E798D014496FC6 /* LaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchTests.swift; sourceTree = "<group>"; };
+		2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostingPanel.swift; sourceTree = "<group>"; };
+		30259CC2530DFC8E1D539757 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		32B60026CF0E1A7A617061C9 /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
+		38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagePresenter.swift; sourceTree = "<group>"; };
+		451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSidebarView.swift; sourceTree = "<group>"; };
+		4A850AFAB99113314CD6E841 /* RecortiaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RecortiaKit; path = Packages/RecortiaKit; sourceTree = SOURCE_ROOT; };
+		4A87968B857C53E0F4335F82 /* ScrollViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollViews.swift; sourceTree = "<group>"; };
+		4E084E166124DB22614616F5 /* ChooserViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChooserViews.swift; sourceTree = "<group>"; };
+		5E4F6B9E7DA4239CD17642B8 /* Recortia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Recortia.entitlements; sourceTree = "<group>"; };
+		61D5324EB9E2AA47D945093A /* EditorRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorRootView.swift; sourceTree = "<group>"; };
+		637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationLoop.swift; sourceTree = "<group>"; };
+		6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorWindowManager.swift; sourceTree = "<group>"; };
+		64983A912E3CFA1502563B16 /* EditorInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorInspectorView.swift; sourceTree = "<group>"; };
+		68A32821DBE9F97E4B468E29 /* LiveServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveServices.swift; sourceTree = "<group>"; };
+		6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollUIController.swift; sourceTree = "<group>"; };
+		78E65B31A931DA8F9BA987BB /* PinPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinPanels.swift; sourceTree = "<group>"; };
+		7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionOverlay.swift; sourceTree = "<group>"; };
+		8122F2A3706BEFC20DE3331B /* AppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServices.swift; sourceTree = "<group>"; };
+		8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSystemServices.swift; sourceTree = "<group>"; };
+		962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorFormat.swift; sourceTree = "<group>"; };
+		977B7B2D3F02E7F78030DFEE /* DragChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragChip.swift; sourceTree = "<group>"; };
+		988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderRow.swift; sourceTree = "<group>"; };
+		9C6AABCCCF1691C1818B8DB7 /* RecortiaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RecortiaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorStrings.swift; sourceTree = "<group>"; };
+		AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSupport.swift; sourceTree = "<group>"; };
+		B885E83C460249621067B7FB /* LiveScrolling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveScrolling.swift; sourceTree = "<group>"; };
+		BFAA916D5D458FADC7481398 /* RecortiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecortiaApp.swift; sourceTree = "<group>"; };
+		D97C30D7091C2051638564FB /* GlobalShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcuts.swift; sourceTree = "<group>"; };
+		E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureUIController.swift; sourceTree = "<group>"; };
+		E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		E8D31CC0BCFF030833F67F96 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EA2F7298595658EBCA75FF77 /* AppActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActions.swift; sourceTree = "<group>"; };
+		EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRecognition.swift; sourceTree = "<group>"; };
+		F902EF52885BED5F7982DA2C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		FBEF619B471E0C3284F9AED2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Editor.xcstrings; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4C5B8E2F228A699DB569485F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A88E581773148D9E9762B36A /* Domain in Frameworks */,
+				BE76CF85696B2F1702597E5C /* Imaging in Frameworks */,
+				F58461558AAE86DB9A5FCF13 /* MacPlatform in Frameworks */,
+				735069F09C1DEBDBB2449990 /* Features in Frameworks */,
+				1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A412D69CEEC437AC126054C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3BEF040F1072DF3D8A1DBE98 /* RecortiaFixtures in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0C33FF200910F7C345CEA388 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */,
+				4E084E166124DB22614616F5 /* ChooserViews.swift */,
+				2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */,
+				7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
+		272B94BFEB27CA41B8AE848D /* App */ = {
+			isa = PBXGroup;
+			children = (
+				EA2F7298595658EBCA75FF77 /* AppActions.swift */,
+				E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */,
+				8122F2A3706BEFC20DE3331B /* AppServices.swift */,
+				977B7B2D3F02E7F78030DFEE /* DragChip.swift */,
+				D97C30D7091C2051638564FB /* GlobalShortcuts.swift */,
+				F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */,
+				B885E83C460249621067B7FB /* LiveScrolling.swift */,
+				68A32821DBE9F97E4B468E29 /* LiveServices.swift */,
+				32B60026CF0E1A7A617061C9 /* MenuContent.swift */,
+				38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */,
+				637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */,
+				AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */,
+				BFAA916D5D458FADC7481398 /* RecortiaApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		36BBC0B83B17B6E5EAAAD4B2 = {
+			isa = PBXGroup;
+			children = (
+				7D425967F29789FACF469C77 /* Packages */,
+				B0744308343673C13CB74D86 /* RecortiaApp */,
+				B577ADAC9E6DB9E7EC448411 /* RecortiaUITests */,
+				55B5CF83840F754ABD31E024 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		55B5CF83840F754ABD31E024 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1A4B3763DE55CA83F21962CF /* Recortia.app */,
+				9C6AABCCCF1691C1818B8DB7 /* RecortiaUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5869762932088B3A11961816 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				FBEF619B471E0C3284F9AED2 /* SettingsView.swift */,
+				988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		6256B94BB389467237136315 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				F902EF52885BED5F7982DA2C /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		6A70FFDDB93759924E2D19B0 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E8D31CC0BCFF030833F67F96 /* Assets.xcassets */,
+				FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */,
+				EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		7D425967F29789FACF469C77 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				4A850AFAB99113314CD6E841 /* RecortiaKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		866C0DCA150A4B6C50F611A9 /* Scroll */ = {
+			isa = PBXGroup;
+			children = (
+				6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */,
+				4A87968B857C53E0F4335F82 /* ScrollViews.swift */,
+			);
+			path = Scroll;
+			sourceTree = "<group>";
+		};
+		B0744308343673C13CB74D86 /* RecortiaApp */ = {
+			isa = PBXGroup;
+			children = (
+				30259CC2530DFC8E1D539757 /* Info.plist */,
+				5E4F6B9E7DA4239CD17642B8 /* Recortia.entitlements */,
+				272B94BFEB27CA41B8AE848D /* App */,
+				0C33FF200910F7C345CEA388 /* Capture */,
+				EBC7B4F41486C0A54D43051E /* Editor */,
+				6256B94BB389467237136315 /* Onboarding */,
+				E70B2C6B17C7BBEEEE2B5577 /* Pins */,
+				6A70FFDDB93759924E2D19B0 /* Resources */,
+				866C0DCA150A4B6C50F611A9 /* Scroll */,
+				5869762932088B3A11961816 /* Settings */,
+			);
+			path = RecortiaApp;
+			sourceTree = "<group>";
+		};
+		B577ADAC9E6DB9E7EC448411 /* RecortiaUITests */ = {
+			isa = PBXGroup;
+			children = (
+				2991DDE3A9E798D014496FC6 /* LaunchTests.swift */,
+			);
+			path = RecortiaUITests;
+			sourceTree = "<group>";
+		};
+		E70B2C6B17C7BBEEEE2B5577 /* Pins */ = {
+			isa = PBXGroup;
+			children = (
+				78E65B31A931DA8F9BA987BB /* PinPanels.swift */,
+			);
+			path = Pins;
+			sourceTree = "<group>";
+		};
+		EBC7B4F41486C0A54D43051E /* Editor */ = {
+			isa = PBXGroup;
+			children = (
+				15116A7454558F3FA0807632 /* EditorCanvasView.swift */,
+				962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */,
+				64983A912E3CFA1502563B16 /* EditorInspectorView.swift */,
+				1FCF94E91512C394BD839071 /* EditorPreview.swift */,
+				61D5324EB9E2AA47D945093A /* EditorRootView.swift */,
+				451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */,
+				AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */,
+				8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */,
+				6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */,
+			);
+			path = Editor;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D5C5C8B1F81388A8A495314D /* RecortiaUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CD0D1B51C83FD2AD7D93FCA4 /* Build configuration list for PBXNativeTarget "RecortiaUITests" */;
+			buildPhases = (
+				BC16C93052CC5C7437666AFD /* Sources */,
+				5A412D69CEEC437AC126054C /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BF6B1F0C4F61D2100D389B67 /* PBXTargetDependency */,
+			);
+			name = RecortiaUITests;
+			packageProductDependencies = (
+				411B40D8A69F69633A9FDF64 /* RecortiaFixtures */,
+			);
+			productName = RecortiaUITests;
+			productReference = 9C6AABCCCF1691C1818B8DB7 /* RecortiaUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		F269FDB9D9FEBE500AD8219F /* Recortia */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF3D8D8B3BCC2871D0A60ADE /* Build configuration list for PBXNativeTarget "Recortia" */;
+			buildPhases = (
+				EDC9958A74E7052EB6D6E403 /* Sources */,
+				B89215C32C1B07BEF13770C1 /* Resources */,
+				4C5B8E2F228A699DB569485F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Recortia;
+			packageProductDependencies = (
+				7DC7FE9A68C4351CD90EA55B /* Domain */,
+				CB78FDBEC0994FB58607CBEA /* Imaging */,
+				136F37C6FC004EFC4C721BAC /* MacPlatform */,
+				2B3B384261E6DD8F0B8F0303 /* Features */,
+				8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */,
+			);
+			productName = Recortia;
+			productReference = 1A4B3763DE55CA83F21962CF /* Recortia.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		77236CF3D202B5857BE97F0A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					D5C5C8B1F81388A8A495314D = {
+						DevelopmentTeam = Q96FUTC5G8;
+						ProvisioningStyle = Manual;
+						TestTargetID = F269FDB9D9FEBE500AD8219F;
+					};
+					F269FDB9D9FEBE500AD8219F = {
+						DevelopmentTeam = Q96FUTC5G8;
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = D4085DC8660CD22ED4FE1764 /* Build configuration list for PBXProject "Recortia" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+				"pt-BR",
+			);
+			mainGroup = 36BBC0B83B17B6E5EAAAD4B2;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				093AF27D3CCEC7413585D2A0 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				269A03AFB5E82F3EC484131E /* XCLocalSwiftPackageReference "Packages/RecortiaKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 55B5CF83840F754ABD31E024 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F269FDB9D9FEBE500AD8219F /* Recortia */,
+				D5C5C8B1F81388A8A495314D /* RecortiaUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B89215C32C1B07BEF13770C1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F59A68B8DB8BC381B7A2E988 /* Assets.xcassets in Resources */,
+				302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */,
+				4A11132EA0C0DEB59B529A97 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BC16C93052CC5C7437666AFD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				16D05BE522E6D46802FC2C34 /* LaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EDC9958A74E7052EB6D6E403 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				352F5AF31DB3F2F8A4F44CBC /* AppActions.swift in Sources */,
+				38F97E15732CA80EEE0746B3 /* AppModel.swift in Sources */,
+				0EAF61DA2A9566FBFC619339 /* AppServices.swift in Sources */,
+				EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */,
+				D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */,
+				A30DD234D2E1308C1916965D /* DragChip.swift in Sources */,
+				31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */,
+				3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */,
+				694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */,
+				356E67D7EF867A549346181D /* EditorPreview.swift in Sources */,
+				F42EBFAC336DDBFD742F2784 /* EditorRootView.swift in Sources */,
+				C5AC5B580637289E9DC07F54 /* EditorSidebarView.swift in Sources */,
+				733D03C9AEA014A4825D62C1 /* EditorStrings.swift in Sources */,
+				7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */,
+				4D7C3D84B8C8BB582C432AC6 /* EditorWindowManager.swift in Sources */,
+				A55745B240F288A4EE6CE160 /* GlobalShortcuts.swift in Sources */,
+				778801BF8774508093BCD36C /* HostingPanel.swift in Sources */,
+				4EC666D8B2EF6F97E6C3EFED /* LiveRecognition.swift in Sources */,
+				30B346D5FCE3BE82877BD2A2 /* LiveScrolling.swift in Sources */,
+				3367D3E7A76BC8AE1494A1F8 /* LiveServices.swift in Sources */,
+				65345782C7EBA8CF8EE27F85 /* MenuContent.swift in Sources */,
+				86C00E2E2FFA0E88047FA20A /* MessagePresenter.swift in Sources */,
+				80CDF8847AC39BD8B97FCD94 /* ObservationLoop.swift in Sources */,
+				6EBBCD64B42B976D604BCA47 /* OnboardingView.swift in Sources */,
+				EA0DC2557F5BDA232FDEBA6F /* PinPanels.swift in Sources */,
+				5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */,
+				E11B8B8960E33C10DAF65BB2 /* RecortiaApp.swift in Sources */,
+				199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */,
+				33579819E3C0DC24D79F49B2 /* ScrollUIController.swift in Sources */,
+				BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */,
+				D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */,
+				B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BF6B1F0C4F61D2100D389B67 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F269FDB9D9FEBE500AD8219F /* Recortia */;
+			targetProxy = ECA87F9C57348C7DA0E5EDF2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0A61EA98340BF5784CCA98B3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = RecortiaApp/Recortia.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RecortiaApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia;
+				PRODUCT_NAME = Recortia;
+				SDKROOT = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+			};
+			name = Release;
+		};
+		0B6B65BE3DF4437B8E521914 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.RecortiaUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = Recortia;
+			};
+			name = Release;
+		};
+		72FD4E0EB90FEBD41353AC59 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = RecortiaApp/Recortia.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RecortiaApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia;
+				PRODUCT_NAME = Recortia;
+				SDKROOT = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+			};
+			name = Debug;
+		};
+		7CB15FDDB05D9D02C8D9E102 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = Q96FUTC5G8;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		8AF7390742F982FFCDF3D0D5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = Q96FUTC5G8;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		990CD039570B85836D0480D4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.RecortiaUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = Recortia;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CD0D1B51C83FD2AD7D93FCA4 /* Build configuration list for PBXNativeTarget "RecortiaUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				990CD039570B85836D0480D4 /* Debug */,
+				0B6B65BE3DF4437B8E521914 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D4085DC8660CD22ED4FE1764 /* Build configuration list for PBXProject "Recortia" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8AF7390742F982FFCDF3D0D5 /* Debug */,
+				7CB15FDDB05D9D02C8D9E102 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FF3D8D8B3BCC2871D0A60ADE /* Build configuration list for PBXNativeTarget "Recortia" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				72FD4E0EB90FEBD41353AC59 /* Debug */,
+				0A61EA98340BF5784CCA98B3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		269A03AFB5E82F3EC484131E /* XCLocalSwiftPackageReference "Packages/RecortiaKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/RecortiaKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		093AF27D3CCEC7413585D2A0 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = exactVersion;
+				version = 3.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		136F37C6FC004EFC4C721BAC /* MacPlatform */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MacPlatform;
+		};
+		2B3B384261E6DD8F0B8F0303 /* Features */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Features;
+		};
+		411B40D8A69F69633A9FDF64 /* RecortiaFixtures */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RecortiaFixtures;
+		};
+		7DC7FE9A68C4351CD90EA55B /* Domain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Domain;
+		};
+		8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 093AF27D3CCEC7413585D2A0 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+		CB78FDBEC0994FB58607CBEA /* Imaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Imaging;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 77236CF3D202B5857BE97F0A /* Project object */;
+}

@@ -1,12 +1,12 @@
 # Module contracts
 
-The public surface each FramepinKit target exposes to the app. Workers implement these shapes;
-the app composition root (`FramepinApp/App/`) adapts them to the service protocols in
-`FramepinApp/App/Services.swift`. Names below are binding; parameter details may grow, but a
+The public surface each RecortiaKit target exposes to the app. Workers implement these shapes;
+the app composition root (`RecortiaApp/App/`) adapts them to the service protocols in
+`RecortiaApp/App/Services.swift`. Names below are binding; parameter details may grow, but a
 change to a listed signature needs the integrator's agreement.
 
 Spaces, IDs, `Document`, `DocumentSession`, limits, and `ShareSnapshot` are in `Domain` and are
-already implemented (see `Packages/FramepinKit/Sources/Domain`). Shared value types
+already implemented (see `Packages/RecortiaKit/Sources/Domain`). Shared value types
 (`DecodedImage`, `ImportError`, `OCRResult`, `QRPayload`, `ScrollAppendResult`, `DisplayInfo`,
 `WindowInfo`, `CaptureTarget`, `CaptureError`, `SinkError`) are implemented in the integrator-owned
 `ContractTypes.swift` of Imaging and MacPlatform; the listings below repeat them for reference.

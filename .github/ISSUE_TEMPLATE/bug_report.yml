@@ -1,5 +1,5 @@
 name: Bug report
-description: Report incorrect behavior in Framepin.
+description: Report incorrect behavior in Recortia.
 labels: ["bug", "needs-triage"]
 body:
   - type: markdown
@@ -29,6 +29,6 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: macOS version and build, Framepin version or commit, display configuration.
+      description: macOS version and build, Recortia version or commit, display configuration.
     validations:
       required: true

@@ -15,9 +15,9 @@ Anything else is labeled an assumption or a hypothesis for a spike to test.
 | Fact | Evidence |
 |---|---|
 | Documentation-only bundle: no Xcode project, Swift package, scripts, tests, or CI | `git ls-files` at `451f734` |
-| Own git repository on `main`; private remote `mneves75/framepin-app`, pushed over SSH | `gh repo view --json visibility` → `PRIVATE` |
+| Own git repository on `main`; private remote `mneves75/recortia`, pushed over SSH | `gh repo view --json visibility` → `PRIVATE` |
 | `MANIFEST.sha256` was removed outside the agent session before import | Its 12 hashes all passed with `shasum -a 256 -c` before removal |
-| PRs are squash-only; head branches are deleted after merge; Dependabot alerts and security fixes are on | `gh api repos/mneves75/framepin-app` read back |
+| PRs are squash-only; head branches are deleted after merge; Dependabot alerts and security fixes are on | `gh api repos/mneves75/recortia` read back |
 | Rulesets, branch protection, and secret scanning are unavailable for this private repo | API returned 403 "Upgrade to GitHub Pro…" and 422 "Secret scanning is not available" |
 | Five triage labels exist | `gh label list` |
 
@@ -56,16 +56,16 @@ Anything else is labeled an assumption or a hypothesis for a spike to test.
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | Approve M0 execution: FP-002 and FP-003 code spikes in this repo | Approve. The spikes are disposable and synthetic-only. |
-| D2 | Live-capture consent for FP-002: a dedicated macOS test user, where only the spike's synthetic fixture window is on screen and you grant or deny Screen Recording yourself | Create a `framepin-test` standard user. The agent never touches the TCC database or your own session's screen. |
+| D2 | Live-capture consent for FP-002: a dedicated macOS test user, where only the spike's synthetic fixture window is on screen and you grant or deny Screen Recording yourself | Create a `recortia-test` standard user. The agent never touches the TCC database or your own session's screen. |
 | D3 | Stable-OS and legacy-OS test hosts | Plan macOS VMs (15, 26, stable 27) before FP-007. The seed host is fine for compiling and unit tests. |
 | D4 | External display for GEO-01 | Borrow or buy any 1080p (1x) monitor before FP-007 closes, or record GEO-01 as blocked. |
 | D5 | GitHub plan | Stay on Free until FP-004 adds CI. Then choose between GitHub Pro (branch protection and required checks on a private repo) and making the repo public, which the SPEC's open-source goal points to. |
-| D6 | Bundle identifier and final name | Needed at FP-004. "Framepin" is unverified as a brand (SPEC header). |
+| D6 | Bundle identifier and final name | Needed at FP-004. "Recortia" is unverified as a brand (SPEC header). |
 | D7 | License | MIT is proposed (SPEC §2). No LICENSE file is committed while the repo is private and unapproved. |
 
 ## 4. Proposed files
 
-M0 adds only spikes, fixtures, reports, and ADRs. No FramepinApp code is written before FP-004.
+M0 adds only spikes, fixtures, reports, and ADRs. No RecortiaApp code is written before FP-004.
 
 ```text
 Spikes/CaptureSpike/                 FP-002, disposable (deleted or archived after FP-007)

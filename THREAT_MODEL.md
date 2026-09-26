@@ -1,4 +1,4 @@
-# Threat model — Framepin v1
+# Threat model — Recortia v1
 
 **Status:** Proposed security contract; not a completed security audit.  
 **Owner:** Maintainer to assign in M0.  

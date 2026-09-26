@@ -29,7 +29,7 @@ that needs either Accessibility APIs (`AXUIElement`) or posting events to anothe
 - ScreenCaptureKit still capture, Vision, ImageIO, and user-selected file access all work without
   the Accessibility privilege; basic capture only needs Screen Recording.
 
-Not tested locally: a sandboxed Framepin build. The Accessibility conclusion rests on Apple's own
+Not tested locally: a sandboxed Recortia build. The Accessibility conclusion rests on Apple's own
 statements above, not on a spike.
 
 ## Decision

@@ -74,7 +74,7 @@ FP-004 through FP-008. Deliver a native menu command -> capture/import -> previe
 
 Create or adapt the approved app target, local package targets, shared schemes, formatting configuration, and unsigned CI entrypoints.
 
-**Deliver:** Framepin.xcodeproj or approved existing equivalent; Packages/FramepinKit; scripts/doctor.sh and scripts/check.sh; Read-only PR workflow.
+**Deliver:** Recortia.xcodeproj or approved existing equivalent; Packages/RecortiaKit; scripts/doctor.sh and scripts/check.sh; Read-only PR workflow.
 
 **Complete when:** A clean Mac checkout builds the skeleton and runs a real domain test without release credentials. Dependency locks and exact script behavior are documented.
 

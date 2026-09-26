@@ -1,11 +1,11 @@
-// Renders Framepin's original app icon into the AppIcon asset catalog.
+// Renders Recortia's original app icon into the AppIcon asset catalog.
 // Usage: xcrun swift scripts/make-icon.swift
 import AppKit
 import CoreGraphics
 import Foundation
 
 let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-let iconSet = root.appendingPathComponent("FramepinApp/Resources/Assets.xcassets/AppIcon.appiconset")
+let iconSet = root.appendingPathComponent("RecortiaApp/Resources/Assets.xcassets/AppIcon.appiconset")
 
 func render(size: Int) -> Data? {
     let s = CGFloat(size)

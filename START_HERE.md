@@ -6,8 +6,8 @@ Copy this prompt into the coding agent with the full bundle available in its wor
 Read AGENTS.md, SPEC.md, IMPLEMENTATION_PLAN.md, BACKLOG.json,
 ACCEPTANCE_TESTS.md, THREAT_MODEL.md, TOOLCHAIN.json, and SOURCES.md.
 
-We are building Framepin, a native, local-first macOS screenshot utility
-and independent open-source alternative to Shottr. Framepin is only a
+We are building Recortia, a native, local-first macOS screenshot utility
+and independent open-source alternative to Shottr. Recortia is only a
 working codename. The application does not require an embedded AI agent.
 
 Your first assignment is planning and read-only inspection, not application

@@ -105,8 +105,8 @@
       ],
       "scope": "Create or adapt the approved app target, local package targets, shared schemes, formatting configuration, and unsigned CI entrypoints.",
       "deliverables": [
-        "Framepin.xcodeproj or approved existing equivalent",
-        "Packages/FramepinKit",
+        "Recortia.xcodeproj or approved existing equivalent",
+        "Packages/RecortiaKit",
         "scripts/doctor.sh and scripts/check.sh",
         "Read-only PR workflow"
       ],

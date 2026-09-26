@@ -1,8 +1,8 @@
-# Framepin — Open-source Shottr-alternative handoff
+# Recortia — Open-source Shottr-alternative handoff
 
 **Prepared:** September 26, 2026.  
 **State:** Documentation-only specification. No macOS app, Xcode project, compiled binary, benchmark run, security audit, or executed test suite is included.  
-**Name:** Framepin is a provisional internal codename, not a verified available brand.
+**Name:** Recortia is a provisional internal codename, not a verified available brand.
 
 ## Start
 

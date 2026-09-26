@@ -13,7 +13,7 @@ and `ACCEPTANCE_TESTS.md`. This file does not authorize implementation or change
   Do not scaffold a project to make a command succeed; FP-004 creates it after M0 approval.
 - Initial authority is planning only (FP-001 inventory → M0 plan → owner approval).
 - Git: own repository, default branch `main`, remote `origin` = private GitHub
-  `mneves75/framepin-app` over SSH. PRs are squash-only. GitHub Free gives this private repo no
+  `mneves75/recortia` over SSH. PRs are squash-only. GitHub Free gives this private repo no
   rulesets, branch protection, or secret scanning (API 403/422), so nothing server-side stops a
   force-push or a committed secret: never force-push `main`, and check diffs for secrets yourself.
 - `TOOLCHAIN.json` holds the observed toolchain (FP-001). `xcode-select` on this Mac points to
@@ -30,7 +30,7 @@ and `ACCEPTANCE_TESTS.md`. This file does not authorize implementation or change
 
 ## Architecture (SPEC §6–8)
 
-- One app (`FramepinApp/`) plus one local package `Packages/FramepinKit` with targets
+- One app (`RecortiaApp/`) plus one local package `Packages/RecortiaKit` with targets
   `Domain` → `Imaging` → `MacPlatform`; Domain imports no AppKit/SwiftUI/ScreenCaptureKit.
   All paths are proposed, not existing.
 - Every save, clipboard write, and drag-out consumes an immutable `ShareSnapshot` from the
@@ -45,7 +45,7 @@ and `ACCEPTANCE_TESTS.md`. This file does not authorize implementation or change
 
 ### Issue tracker
 
-GitHub Issues in private `mneves75/framepin-app` via `gh`; planned FP-xxx tasks stay in `BACKLOG.json`. See `docs/agents/issue-tracker.md`.
+GitHub Issues in private `mneves75/recortia` via `gh`; planned FP-xxx tasks stay in `BACKLOG.json`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

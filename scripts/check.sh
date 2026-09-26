@@ -15,24 +15,24 @@ fi
 scripts/doctor.sh
 
 echo "== format lint"
-xcrun swift format lint --strict --recursive --parallel Packages/FramepinKit/Sources Packages/FramepinKit/Tests FramepinApp FramepinUITests
+xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests RecortiaApp RecortiaUITests
 
 if command -v xcodegen >/dev/null; then
   echo "== generated project is current"
-  before=$(find Framepin.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
+  before=$(find Recortia.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
   xcodegen generate --quiet
-  after=$(find Framepin.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
+  after=$(find Recortia.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
   if [[ "$before" != "$after" ]]; then
-    echo "check: Framepin.xcodeproj was stale; it has been regenerated from project.yml, commit the result" >&2
+    echo "check: Recortia.xcodeproj was stale; it has been regenerated from project.yml, commit the result" >&2
     exit 1
   fi
 fi
 
 echo "== package tests"
-swift test --package-path Packages/FramepinKit --parallel
+swift test --package-path Packages/RecortiaKit --parallel
 
 echo "== app build"
-xcodebuild -project Framepin.xcodeproj -scheme Framepin -configuration Debug \
+xcodebuild -project Recortia.xcodeproj -scheme Recortia -configuration Debug \
   -destination 'platform=macOS' -derivedDataPath .build/dd "${sign_args[@]}" build | tail -3
 
 echo "check: all gates passed"

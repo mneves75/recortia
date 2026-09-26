@@ -1,4 +1,4 @@
-# Framepin — Complete AI Coding-Agent Handoff
+# Recortia — Complete AI Coding-Agent Handoff
 
 Prepared 2026-09-26. Documentation only; no implementation or executed validation.
 
@@ -7,11 +7,11 @@ Prepared 2026-09-26. Documentation only; no implementation or executed validatio
 
 # File: README.md
 
-# Framepin — Open-source Shottr-alternative handoff
+# Recortia — Open-source Shottr-alternative handoff
 
 **Prepared:** September 26, 2026.  
 **State:** Documentation-only specification. No macOS app, Xcode project, compiled binary, benchmark run, security audit, or executed test suite is included.  
-**Name:** Framepin is a provisional internal codename, not a verified available brand.
+**Name:** Recortia is a provisional internal codename, not a verified available brand.
 
 ## Start
 
@@ -59,8 +59,8 @@ Copy this prompt into the coding agent with the full bundle available in its wor
 Read AGENTS.md, SPEC.md, IMPLEMENTATION_PLAN.md, BACKLOG.json,
 ACCEPTANCE_TESTS.md, THREAT_MODEL.md, TOOLCHAIN.json, and SOURCES.md.
 
-We are building Framepin, a native, local-first macOS screenshot utility
-and independent open-source alternative to Shottr. Framepin is only a
+We are building Recortia, a native, local-first macOS screenshot utility
+and independent open-source alternative to Shottr. Recortia is only a
 working codename. The application does not require an embedded AI agent.
 
 Your first assignment is planning and read-only inspection, not application
@@ -88,7 +88,7 @@ After reviewing that plan, the owner can explicitly authorize the selected miles
 
 # File: AGENTS.md
 
-# AGENTS.md — Framepin coding-agent contract
+# AGENTS.md — Recortia coding-agent contract
 
 ## Mission and authority
 
@@ -152,8 +152,8 @@ No credentials or real screenshots in source control, logs, prompts, issues, or 
 M0/M1 must establish actual shared schemes and reproducible script entrypoints. The following are intended command shapes, **not commands claimed to work in the documentation-only bundle**:
 
 ```sh
-swift test --package-path Packages/FramepinKit
-xcodebuild -project Framepin.xcodeproj -scheme Framepin \
+swift test --package-path Packages/RecortiaKit
+xcodebuild -project Recortia.xcodeproj -scheme Recortia \
   -configuration Debug -destination 'platform=macOS' \
   CODE_SIGNING_ALLOWED=NO build
 ```
@@ -182,12 +182,12 @@ If blocked, preserve safe partial progress and report the precise missing capabi
 
 # File: SPEC.md
 
-# Framepin — Agent-Ready Software Specification
+# Recortia — Agent-Ready Software Specification
 
 **Document version:** 1.0  
 **Research date:** 2026-09-26  
 **Status:** Proposed implementation contract; no application has been implemented or tested.  
-**Product name:** Framepin is an internal working codename. Trademark, repository, and domain availability have not been checked.  
+**Product name:** Recortia is an internal working codename. Trademark, repository, and domain availability have not been checked.  
 **Intent:** Independently implement an open-source, native macOS alternative to Shottr. “AI agent” means the coding agent building the product; an LLM is not required inside the application.
 
 ## 1. Scope and evidence
@@ -339,7 +339,7 @@ Pins referencing a live document MUST be refreshed or invalidated on privacy-epo
 
 Manual scrolling is the mandatory first implementation and fallback. Automatic scrolling is opt-in, asks for Accessibility only when selected, and directs minimal scroll actions at the chosen target. No typing, clicking unrelated controls, clipboard reading, AppleScript automation, Input Monitoring, or global key-event recording is allowed.
 
-The session MUST show its source, capture status, stop control, and progress. A user-assigned Stop/Toggle shortcut works while another app is focused; Escape cancels when Framepin owns focus. Do not install a broad keyboard hook just to observe Escape everywhere.
+The session MUST show its source, capture status, stop control, and progress. A user-assigned Stop/Toggle shortcut works while another app is focused; Escape cancels when Recortia owns focus. Do not install a broad keyboard hook just to observe Escape everywhere.
 
 Pipeline: capture stable viewport frames; normalize orientation/scale; mask known fixed bands; estimate coarse vertical displacement; refine matches in multiple independent overlap regions; require displacement consensus and calibrated confidence; choose a seam without blending text; append only newly exposed content; update preview. Use fixtures and profiling to choose the implementation; do not invent a universal magic confidence threshold.
 
@@ -374,15 +374,15 @@ Externalize all UI strings in a String Catalog from the first milestone; ship En
 Use one app plus one local Swift package with three meaningful targets. Avoid a generic plugin bus, global service locator, event-sourced backend, or dozens of micro-packages.
 
 ```text
-Framepin.xcodeproj                 # proposed app project and shared schemes
-FramepinApp/
+Recortia.xcodeproj                 # proposed app project and shared schemes
+RecortiaApp/
   App/                            # composition root, lifecycle, menu bar
   CaptureUI/                      # selection overlays and capture HUD
   EditorUI/                       # AppKit canvas, SwiftUI toolbar/inspector
   Pins/
   Settings/
   Resources/                      # original assets and String Catalog
-Packages/FramepinKit/
+Packages/RecortiaKit/
   Package.swift
   Sources/Domain/                 # values, geometry, commands, states, policies
   Sources/Imaging/                # render, masks, OCR, matching, bounded decode
@@ -390,7 +390,7 @@ Packages/FramepinKit/
   Tests/DomainTests/
   Tests/ImagingTests/
   Tests/MacPlatformTests/
-FramepinUITests/
+RecortiaUITests/
 Fixtures/                         # synthetic/licensed inputs + expected outputs
 Configuration/                    # xcconfig, actual toolchain record
 scripts/                          # build/check entrypoints created in M0/M1
@@ -612,7 +612,7 @@ FP-004 through FP-008. Deliver a native menu command -> capture/import -> previe
 
 Create or adapt the approved app target, local package targets, shared schemes, formatting configuration, and unsigned CI entrypoints.
 
-**Deliver:** Framepin.xcodeproj or approved existing equivalent; Packages/FramepinKit; scripts/doctor.sh and scripts/check.sh; Read-only PR workflow.
+**Deliver:** Recortia.xcodeproj or approved existing equivalent; Packages/RecortiaKit; scripts/doctor.sh and scripts/check.sh; Read-only PR workflow.
 
 **Complete when:** A clean Mac checkout builds the skeleton and runs a real domain test without release credentials. Dependency locks and exact script behavior are documented.
 
@@ -923,7 +923,7 @@ FR-15 (S3 sharing) and FR-16 (automation/on-device assistance) require separate 
 
 # Acceptance tests and release gates
 
-**Status:** Test specifications only. None of these tests has been executed for a Framepin implementation.
+**Status:** Test specifications only. None of these tests has been executed for a Recortia implementation.
 
 Every automated test must produce machine-readable results. Image fixtures must declare their generator/source, license, scale, color space, dimensions, and expected output. Use fixed seeds for generated noise/geometry. Use golden outputs only where their provenance and expected meaning are documented; never bless a broken output just to make CI green.
 
@@ -1072,7 +1072,7 @@ All unexecuted or hardware-dependent cases remain explicitly `unrun`/`awaiting_m
 
 # File: THREAT_MODEL.md
 
-# Threat model — Framepin v1
+# Threat model — Recortia v1
 
 **Status:** Proposed security contract; not a completed security audit.  
 **Owner:** Maintainer to assign in M0.  
@@ -1153,19 +1153,19 @@ Supports the existence of manual scrolling fallback and acknowledged compatibili
 
 URL: `https://shottr.cc/kb/upload/`
 
-Supports the documented distinction between Shottr Cloud and a user-supplied S3 destination. Framepin does not reuse either service and defers its own optional sharing integration.
+Supports the documented distinction between Shottr Cloud and a user-supplied S3 destination. Recortia does not reuse either service and defers its own optional sharing integration.
 
 ## S04 — Shottr URL scheme documentation
 
 URL: `https://shottr.cc/kb/urlschemes`
 
-Supports the existence of external workflow integration as a reference capability. Framepin does not adopt the proprietary scheme name or presume that externally invoked side effects are safe.
+Supports the existence of external workflow integration as a reference capability. Recortia does not adopt the proprietary scheme name or presume that externally invoked side effects are safe.
 
 ## S05 — Apple Xcode SDK and system requirements
 
 URL: `https://developer.apple.com/xcode/system-requirements`
 
-Apple's current table lists Xcode 27 with Swift 6.4, Swift 6 language mode, and a macOS 26.6-or-later build host. The table also distinguishes beta versions. The exact installed Xcode/SDK build is not known from this research and must be recorded locally. Support claims concern Apple's table, not a tested Framepin build.
+Apple's current table lists Xcode 27 with Swift 6.4, Swift 6 language mode, and a macOS 26.6-or-later build host. The table also distinguishes beta versions. The exact installed Xcode/SDK build is not known from this research and must be recorded locally. Support claims concern Apple's table, not a tested Recortia build.
 
 ## S06 — Apple: What's new in ScreenCaptureKit, WWDC23
 
@@ -1195,7 +1195,7 @@ Supports the candidate dependency's user-customizable global shortcut interface 
 
 URL: `https://github.com/BishopFox/unredacter`
 
-Primary research implementation demonstrating why pixelation is unsuitable as a secure-redaction guarantee. Framepin does not need to import this code or its dependencies. Its own opaque-mask and export tests are independently specified.
+Primary research implementation demonstrating why pixelation is unsuitable as a secure-redaction guarantee. Recortia does not need to import this code or its dependencies. Its own opaque-mask and export tests are independently specified.
 
 ## S11 — Apple: Signing your apps for Gatekeeper
 
@@ -1213,7 +1213,7 @@ Supports using the project's supported update integration and EdDSA signing proc
 
 URL: `https://docs.github.com/en/actions/reference/security/secure-use`
 
-Primary guidance for CI trust separation and dependency/workflow security. The proposed Framepin release process is not an existing workflow and must be validated independently.
+Primary guidance for CI trust separation and dependency/workflow security. The proposed Recortia release process is not an existing workflow and must be validated independently.
 
 ## S14 — Open Source Initiative: MIT license
 
@@ -1374,8 +1374,8 @@ No claim is made about a cleared product name/domain, a published repository, co
       ],
       "scope": "Create or adapt the approved app target, local package targets, shared schemes, formatting configuration, and unsigned CI entrypoints.",
       "deliverables": [
-        "Framepin.xcodeproj or approved existing equivalent",
-        "Packages/FramepinKit",
+        "Recortia.xcodeproj or approved existing equivalent",
+        "Packages/RecortiaKit",
         "scripts/doctor.sh and scripts/check.sh",
         "Read-only PR workflow"
       ],

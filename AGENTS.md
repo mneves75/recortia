@@ -1,4 +1,4 @@
-# AGENTS.md — Framepin coding-agent contract
+# AGENTS.md — Recortia coding-agent contract
 
 ## Mission and authority
 
@@ -62,8 +62,8 @@ No credentials or real screenshots in source control, logs, prompts, issues, or 
 M0/M1 must establish actual shared schemes and reproducible script entrypoints. The following are intended command shapes, **not commands claimed to work in the documentation-only bundle**:
 
 ```sh
-swift test --package-path Packages/FramepinKit
-xcodebuild -project Framepin.xcodeproj -scheme Framepin \
+swift test --package-path Packages/RecortiaKit
+xcodebuild -project Recortia.xcodeproj -scheme Recortia \
   -configuration Debug -destination 'platform=macOS' \
   CODE_SIGNING_ALLOWED=NO build
 ```
