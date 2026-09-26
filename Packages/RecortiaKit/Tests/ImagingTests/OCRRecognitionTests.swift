@@ -6,6 +6,29 @@ import Testing
 
 @testable import Imaging
 
+/// Hosted CI macOS VMs have no working Vision text-recognition runtime (both the Neural Engine and
+/// the CPU path fail), so CI declares `RECORTIA_VISION_UNAVAILABLE=1`. Recognition tests are then
+/// skipped, and the control below requires Vision to really fail there, so the declaration cannot
+/// hide a regression on a runner where Vision works. The local gate always runs them.
+enum VisionRuntime {
+    static let declaredUnavailable = ProcessInfo.processInfo.environment["RECORTIA_VISION_UNAVAILABLE"] == "1"
+    static let required = ConditionTrait.enabled(
+        if: !declaredUnavailable, "Vision text recognition is declared unavailable on this runner")
+}
+
+@Suite("OCR-01 control: a runner that declares Vision unavailable really is")
+struct VisionUnavailableControlTests {
+    @Test(
+        "Declared-unavailable Vision fails to recognize text",
+        .enabled(if: VisionRuntime.declaredUnavailable, "only where the runner declares Vision unavailable"))
+    func declaredUnavailableReallyFails() async throws {
+        let sample = try #require(try TextCorpus.samples().first { $0.language == .english })
+        await #expect(throws: (any Error).self, "Vision works here: remove RECORTIA_VISION_UNAVAILABLE") {
+            _ = try await TextRecognizer().recognize(sample.image, languages: [OCRRecognitionTests.english])
+        }
+    }
+}
+
 @Suite("OCR-01: local Vision recognition corpus")
 struct OCRRecognitionTests {
     let recognizer = TextRecognizer()
@@ -33,7 +56,7 @@ struct OCRRecognitionTests {
         }
     }
 
-    @Test("CER on the clean typed-text subset is at most 1%; full-corpus CER is reported")
+    @Test("CER on the clean typed-text subset is at most 1%; full-corpus CER is reported", VisionRuntime.required)
     func characterErrorRate() async throws {
         let samples = try TextCorpus.samples()
         let recognizer = self.recognizer
@@ -95,7 +118,7 @@ struct OCRRecognitionTests {
         #expect(clean.rate <= 0.01, "clean-subset CER \(clean.rate) exceeds the 1% gate")
     }
 
-    @Test("Line boxes land on the rendered lines in top-left source-pixel space")
+    @Test("Line boxes land on the rendered lines in top-left source-pixel space", VisionRuntime.required)
     func boundingBoxAlignment() async throws {
         let samples = try TextCorpus.samples().filter(\.isCleanTypedText)
         for sample in samples.prefix(16) {
@@ -115,7 +138,7 @@ struct OCRRecognitionTests {
         }
     }
 
-    @Test("Boxes follow text placed off-center: no vertical flip, no scale error")
+    @Test("Boxes follow text placed off-center: no vertical flip, no scale error", VisionRuntime.required)
     func boxesTrackPlacement() async throws {
         let sample = try TextCorpus.render(
             id: "placement", language: .english, category: .prose, theme: .light, pointSize: 16, scale: 2,
@@ -143,7 +166,9 @@ struct OCRRecognitionTests {
         #expect(line.text == "Placed near the lower right corner.")
     }
 
-    @Test("Raw, normalized, and preserve-line-breaks output differ only in whitespace; no autocorrection")
+    @Test(
+        "Raw, normalized, and preserve-line-breaks output differ only in whitespace; no autocorrection",
+        VisionRuntime.required)
     func outputModes() async throws {
         let sample = try TextCorpus.render(
             id: "modes", language: .english, category: .prose, theme: .light, pointSize: 18, scale: 2,
@@ -199,7 +224,7 @@ struct OCRRecognitionTests {
         await #expect(throws: CancellationError.self) { _ = try await task.value }
     }
 
-    @Test("An image with no text yields an empty result")
+    @Test("An image with no text yields an empty result", VisionRuntime.required)
     func emptyImage() async throws {
         for theme in TextCorpus.Theme.allCases {
             let result = try await recognizer.recognize(
