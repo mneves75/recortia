@@ -71,6 +71,7 @@ user's own action, or needs a platform capability not yet adopted.
 | Chooser and overlay commits do not carry their request ID | A replaced session's UI can only commit into a session the user started | Bind commits to the active request ID |
 | Auto-copy/auto-save is skipped silently while a drag chip is pending | Fails closed | Surface the skipped export |
 | Paste and drop read the pasteboard item on the main thread before the 64 MiB check | Explicit user action; own-process availability only | Read off the main actor where AppKit allows |
+| A TIFF-only clipboard is read and then refused as unsupported | By design: the bounded importer decodes only PNG and JPEG (FR-03); reading it lets the message say why | Add a bounded TIFF path only with its own validation and review |
 | Magnifier callouts can show pixels outside a crop | Visible in the preview; crop is not a privacy control (FR-04) | Clip magnifier sources to the content rect |
 | Stored `launchAtLogin`/`updateChecksEnabled` are unused | Never read; the system login-item status is authoritative | Remove the fields |
 | Screen Recording loss during region or window selection is found only when the capture call fails | TCC still blocks the capture; the failure is reported | Re-check permission at commit |

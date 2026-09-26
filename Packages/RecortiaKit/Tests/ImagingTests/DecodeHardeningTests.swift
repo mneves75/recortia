@@ -160,6 +160,19 @@ struct DecodeHardeningTests {
         #expect(try ImageDecoder.decode(data as Data).pixelSize == PixelSize(width: 64, height: 48))
     }
 
+    // By design (FR-03, verify round 4): Paste reads a TIFF-only clipboard so that the importer can
+    // refuse it with an explicit reason; TIFF is never decoded.
+    @Test("TIFF data, as a TIFF-only clipboard supplies it, is refused as an unsupported format")
+    func tiffIsUnsupported() throws {
+        let image = try ChartFixture.geometryChart(width: 32, height: 16)
+        let data = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(data, UTType.tiff.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        #expect(throws: ImportError.unsupportedFormat) { try ImageDecoder.decode(data as Data) }
+    }
+
     @Test("A JPEG that reaches SOS without any SOFn is corrupt")
     func sosWithoutSOFIsRejected() {
         // SOI, then SOS straight away.

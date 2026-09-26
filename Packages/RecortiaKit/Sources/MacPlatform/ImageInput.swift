@@ -44,6 +44,10 @@ public enum ImageInput {
     /// Image data from `pasteboard`, preferring PNG, then JPEG, then TIFF. Called only for an
     /// explicit Paste or Open from Clipboard; nothing polls the pasteboard. Text, URLs, and file
     /// references are ignored: no file or network content is fetched.
+    ///
+    /// TIFF is read on purpose but never decoded: the bounded importer accepts only PNG and JPEG
+    /// (FR-03), so a TIFF-only clipboard reaches the decoder and is refused as an unsupported
+    /// format, which tells the user why, instead of "no image on the clipboard".
     @MainActor
     public static func readPasteboard(_ pasteboard: NSPasteboard) -> Data? {
         let accepted: [NSPasteboard.PasteboardType] = [.png, NSPasteboard.PasteboardType("public.jpeg"), .tiff]
