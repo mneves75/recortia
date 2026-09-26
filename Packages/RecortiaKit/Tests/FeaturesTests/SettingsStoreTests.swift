@@ -29,7 +29,9 @@ struct SettingsStoreTests {
             $0.captureDelaySeconds = 4
             $0.ocrTextMode = .raw
         }
-        #expect(storage.values.keys.sorted() == [SettingsStore.storageKey])
+        // The blob plus its 32-byte seal; no other key and no content.
+        #expect(storage.values.keys.sorted() == [SettingsStore.storageKey, SettingsStore.sealKey].sorted())
+        #expect(storage.values[SettingsStore.sealKey]?.count == 32)
         let reloaded = SettingsStore(storage: storage)
         #expect(reloaded.preferences.captureDelaySeconds == 4)
         #expect(reloaded.preferences.ocrTextMode == .raw)
@@ -55,6 +57,20 @@ struct SettingsStoreTests {
         let store = SettingsStore(storage: storage)
         #expect(store.preferences == Preferences())
         #expect(store.loadIssue == .unsupportedSchema(Preferences.currentSchemaVersion + 1))
+    }
+
+    @Test("Changes made while a newer blob is loaded never overwrite it (downgrade keeps its settings)")
+    func newerSchemaIsNotOverwritten() throws {
+        let storage = MemoryPreferenceStorage()
+        var future = Preferences()
+        future.schemaVersion = Preferences.currentSchemaVersion + 1
+        let stored = try JSONEncoder().encode(future)
+        storage.values[SettingsStore.storageKey] = stored
+        let store = SettingsStore(storage: storage)
+        store.update { $0.hasCompletedOnboarding = true }
+        #expect(store.preferences.hasCompletedOnboarding, "this session still uses the change")
+        #expect(storage.values[SettingsStore.storageKey] == stored)
+        #expect(storage.writeCount == 0)
     }
 
     @Test("Out-of-range values are clamped on load and on update")

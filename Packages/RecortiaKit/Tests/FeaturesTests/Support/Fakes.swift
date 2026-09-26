@@ -1,4 +1,5 @@
 import CoreGraphics
+import CryptoKit
 import Domain
 import Foundation
 import Imaging
@@ -527,6 +528,32 @@ final class FakeLoginItem: LoginItemService {
 }
 
 @MainActor
+/// HMAC-SHA256 under a fixed test key, so stores reloaded in one test verify each other's seals.
+final class FixedKeyPreferenceIntegrity: PreferenceIntegrityService {
+    private let key: SymmetricKey
+    private let available: Bool
+
+    init(key: Data = Data(repeating: 7, count: 32), available: Bool = true) {
+        self.key = SymmetricKey(data: key)
+        self.available = available
+    }
+
+    func seal(_ data: Data) -> Data? {
+        guard available else { return nil }
+        return Data(HMAC<SHA256>.authenticationCode(for: data, using: key))
+    }
+
+    func verify(_ data: Data, seal: Data) -> Bool {
+        available && HMAC<SHA256>.isValidAuthenticationCode(seal, authenticating: data, using: key)
+    }
+}
+
+extension SettingsStore {
+    convenience init(storage: any PreferenceStorage) {
+        self.init(storage: storage, integrity: FixedKeyPreferenceIntegrity())
+    }
+}
+
 final class MemoryPreferenceStorage: PreferenceStorage {
     var values: [String: Data] = [:]
     private(set) var writeCount = 0

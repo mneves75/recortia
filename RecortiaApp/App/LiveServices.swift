@@ -168,7 +168,8 @@ final class LiveSaveFolders: SaveFolderService {
         var stale = false
         guard
             let url = try? URL(
-                resolvingBookmarkData: bookmark, options: [.withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale),
+                resolvingBookmarkData: bookmark, options: [.withoutUI, .withoutMounting], relativeTo: nil,
+                bookmarkDataIsStale: &stale),
             !stale
         else { return nil }
         var isDirectory: ObjCBool = false
@@ -186,3 +187,5 @@ final class LiveLoginItem: LoginItemService {
 
     func setEnabled(_ enabled: Bool) throws { try LoginItem.set(enabled) }
 }
+
+extension KeychainPreferenceIntegrity: PreferenceIntegrityService {}

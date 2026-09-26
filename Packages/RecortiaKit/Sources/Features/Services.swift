@@ -209,6 +209,16 @@ extension UserDefaults: PreferenceStorage {
     }
 }
 
+/// Authenticates the preferences blob Recortia wrote itself. Recortia is not sandboxed, so any
+/// same-user process can rewrite its preferences domain; the secret behind the seal lives where
+/// such a process cannot read it silently (the login keychain in production).
+@MainActor
+public protocol PreferenceIntegrityService: AnyObject {
+    /// A seal for `data`, or nil when the secret is unavailable.
+    func seal(_ data: Data) -> Data?
+    func verify(_ data: Data, seal: Data) -> Bool
+}
+
 /// Best-effort check whether a global shortcut can be registered with the system.
 @MainActor
 public protocol ShortcutRegistrationProbe: AnyObject {

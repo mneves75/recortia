@@ -1,5 +1,6 @@
 import AppKit
 import Features
+import MacPlatform
 import SwiftUI
 
 /// Menu-bar-only app (LSUIElement). Relaunching reuses this process; Settings stays reachable
@@ -26,7 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Integration: pass the live `AppServices` built from Imaging and MacPlatform here. With nil,
     // commands needing a backend are disabled and nothing is faked.
     let model = AppModel(
-        settings: SettingsStore(storage: UserDefaults.standard), services: .live(), shortcutProbe: CarbonShortcutProbe()
+        settings: SettingsStore(storage: UserDefaults.standard, integrity: KeychainPreferenceIntegrity()),
+        services: .live(), shortcutProbe: CarbonShortcutProbe()
     )
 
     func applicationDidFinishLaunching(_ notification: Notification) {

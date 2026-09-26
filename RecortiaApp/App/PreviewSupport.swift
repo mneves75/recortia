@@ -8,7 +8,7 @@
     /// UserDefaults, and they are compiled out of Release builds.
     enum PreviewSupport {
         static func settings() -> SettingsStore {
-            SettingsStore(storage: PreviewPreferenceStorage())
+            SettingsStore(storage: PreviewPreferenceStorage(), integrity: PreviewPreferenceIntegrity())
         }
 
         static func appModel() -> AppModel {
@@ -46,6 +46,12 @@
             }
             return context.makeImage()
         }
+    }
+
+    /// Seals nothing, so previews never create a keychain item.
+    final class PreviewPreferenceIntegrity: PreferenceIntegrityService {
+        func seal(_ data: Data) -> Data? { nil }
+        func verify(_ data: Data, seal: Data) -> Bool { false }
     }
 
     final class PreviewPreferenceStorage: PreferenceStorage {

@@ -12,6 +12,8 @@ Raw pixels may exist in bounded process memory for an explicit capture/edit sess
 
 The model covers malicious imported inputs, malicious screenshot/QR text, accidental privacy leaks, compromised dependencies/update paths, and erroneous coding-agent changes. It does not promise confidentiality against a compromised operating system, a malicious process with equivalent privileges, physical observation, or a recipient who already has an earlier unredacted export.
 
+A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal keyed by a secret in the login keychain; an unsealed or mismatched blob loads with that consent off.
+
 ## Threat register
 
 | Threat | Failure path | Required mitigation | Evidence |
@@ -21,6 +23,7 @@ The model covers malicious imported inputs, malicious screenshot/QR text, accide
 | Wrong-source capture | Display/focus/target changes during selection or scrolling | Stable source token, shared geometry mapping, lifecycle cancellation, app-window exclusion | CAP-01, GEO-01, SCR-03 |
 | Resource exhaustion | Huge image, overflow, excessive scroll frames, unbounded undo/cache | Predecode checks, checked arithmetic, explicit area/frame/time budgets, bounded queues | IO-01, SCR-04, PERF-01 |
 | Accidental external action | Escape autosaves, QR opens itself, clipboard copied before privacy edits | Side effects only after user action; defaults off; QR review; commit-aware cancellation | OCR-02, EXP-02, RED-04 |
+| Forged consent | Another process rewrites preferences to turn on auto-export to a folder it reads | Keychain-keyed HMAC seal over the preferences blob; unsealed consent dropped; bookmarks resolved without mounting | SettingsIntegrityTests |
 | Malicious data as instructions | Screenshot/issue text persuades an agent or future LLM to run commands | Data has no tool authority; strict action allowlists; human side-effect approval | AGENTS.md review; future AUTO/AI suite |
 | Unwanted recording/control | Idle stream, hidden screen archive, global event tap, broad permissions | Capture only during explicit session; no Input Monitoring; no broad keylogging; separate auto-scroll consent | CAP-02, PERM-01/02, PRIV-01 |
 | Disclosure through diagnostics | Image/OCR/path/QR appears in logs, CI artifacts, crash uploads | Content-free logs; synthetic fixtures; previewable diagnostics; no automatic upload | PRIV-01 |

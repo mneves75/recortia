@@ -12,19 +12,25 @@ public final class SettingsStore {
         case corrupted
         /// Written by a newer Recortia; defaults are used rather than misreading it.
         case unsupportedSchema(Int)
+        /// The blob grants side-effect consent but Recortia did not seal it; that consent was
+        /// dropped and every other setting loaded.
+        case unverifiedConsent
     }
 
     public static let storageKey = "RecortiaPreferences"
+    public static let sealKey = "RecortiaPreferencesSeal"
     public static let opacityRange: ClosedRange<Double> = 0.2...1
 
     public private(set) var preferences: Preferences
     public private(set) var loadIssue: LoadIssue?
 
     @ObservationIgnored private let storage: any PreferenceStorage
+    @ObservationIgnored private let integrity: any PreferenceIntegrityService
 
-    public init(storage: any PreferenceStorage) {
+    public init(storage: any PreferenceStorage, integrity: any PreferenceIntegrityService) {
         self.storage = storage
-        let (loaded, issue) = Self.load(from: storage)
+        self.integrity = integrity
+        let (loaded, issue) = Self.load(from: storage, integrity: integrity)
         preferences = loaded
         loadIssue = issue
     }
@@ -39,21 +45,29 @@ public final class SettingsStore {
         persist()
     }
 
+    /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
         preferences = Preferences()
+        loadIssue = nil
         persist()
     }
 
     private func persist() {
+        // A blob from a newer Recortia stays untouched, so a downgrade never erases its settings.
+        if case .unsupportedSchema = loadIssue { return }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         // Sanitized preferences contain only finite numbers, so encoding cannot fail on floats;
         // should it fail anyway, the in-memory value stays authoritative for this session.
         guard let data = try? encoder.encode(preferences) else { return }
         storage.setPreferenceData(data, forKey: Self.storageKey)
+        // Without the secret the blob stays unsealed: consent then lasts only this session.
+        storage.setPreferenceData(integrity.seal(data), forKey: Self.sealKey)
     }
 
-    private static func load(from storage: any PreferenceStorage) -> (Preferences, LoadIssue?) {
+    private static func load(
+        from storage: any PreferenceStorage, integrity: any PreferenceIntegrityService
+    ) -> (Preferences, LoadIssue?) {
         guard let data = storage.preferenceData(forKey: storageKey) else { return (Preferences(), nil) }
         guard let decoded = try? JSONDecoder().decode(Preferences.self, from: data) else {
             return (Preferences(), .corrupted)
@@ -61,7 +75,20 @@ public final class SettingsStore {
         guard decoded.schemaVersion <= Preferences.currentSchemaVersion else {
             return (Preferences(), .unsupportedSchema(decoded.schemaVersion))
         }
-        return (sanitized(decoded), nil)
+        let sealed = storage.preferenceData(forKey: sealKey).map { integrity.verify(data, seal: $0) } ?? false
+        guard !sealed, grantsSideEffects(decoded) else { return (sanitized(decoded), nil) }
+        var withoutConsent = decoded
+        withoutConsent.autoCopy = false
+        withoutConsent.autoSave = false
+        withoutConsent.automaticScrollingEnabled = false
+        withoutConsent.preferredSaveFolderBookmark = nil
+        return (sanitized(withoutConsent), .unverifiedConsent)
+    }
+
+    /// Settings that let Recortia act on a capture without a further user action.
+    private static func grantsSideEffects(_ preferences: Preferences) -> Bool {
+        preferences.autoCopy || preferences.autoSave || preferences.automaticScrollingEnabled
+            || preferences.preferredSaveFolderBookmark != nil
     }
 
     /// Clamps every numeric preference into its documented range; invalid values become defaults.
