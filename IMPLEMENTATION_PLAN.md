@@ -4,7 +4,7 @@
 
 ## Execution policy
 
-Start with START_HERE.md. The owner approves the M0 plan before code changes. Later milestones are approved by identifier and scope; publishing, live screen access, credentials, and external side effects require their own explicit authority. Do not schedule all tasks as concurrent agent jobs. A single coherent vertical slice must remain buildable.
+Start with docs/handoff/START_HERE.md (historical). The owner approves the M0 plan before code changes. Later milestones are approved by identifier and scope; publishing, live screen access, credentials, and external side effects require their own explicit authority. Do not schedule all tasks as concurrent agent jobs. A single coherent vertical slice must remain buildable.
 
 The baseline critical path is M0 -> M1 -> M2 -> M3 -> M4/M5 -> M6. M4 and M5 may use isolated worktrees after 0.1, but renderer/geometry changes need a single integrator. FP-023 and FP-024 may proceed independently after FP-022 with separate ownership.
 

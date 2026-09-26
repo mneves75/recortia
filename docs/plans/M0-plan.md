@@ -5,7 +5,7 @@ FP-003 have not started.
 **Date:** 2026-09-26 · **Tasks:** FP-001, FP-002, FP-003 · **Requirements:** FR-01, FR-02, FR-06,
 FR-10, FR-14
 
-This plan answers START_HERE.md. Everything under "Verified" was observed with the command shown.
+This plan answers docs/handoff/START_HERE.md. Everything under "Verified" was observed with the command shown.
 Anything else is labeled an assumption or a hypothesis for a spike to test.
 
 ## 1. Verified facts (FP-001)

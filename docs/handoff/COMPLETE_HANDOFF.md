@@ -1,3 +1,8 @@
+> **Historical snapshot.** This is the original documentation-only handoff bundle (2026-09-26),
+> concatenated for agent context. It is frozen and not maintained; the live documents are at the
+> repository root (SPEC.md, AGENTS.md, IMPLEMENTATION_PLAN.md, BACKLOG.json, ACCEPTANCE_TESTS.md,
+> THREAT_MODEL.md, SOURCES.md, TOOLCHAIN.json). The product was renamed from its codename (ADR-003).
+
 # Recortia — Complete AI Coding-Agent Handoff
 
 Prepared 2026-09-26. Documentation only; no implementation or executed validation.

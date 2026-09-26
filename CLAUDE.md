@@ -2,50 +2,54 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-`AGENTS.md` is the canonical agent contract; read it first, then the selected milestone/task in
-`IMPLEMENTATION_PLAN.md` and `BACKLOG.json`, and the matching requirements and cases in `SPEC.md`
-and `ACCEPTANCE_TESTS.md`. This file does not authorize implementation or change approval boundaries.
+`AGENTS.md` is the canonical agent contract; read it first, then the task in `IMPLEMENTATION_PLAN.md`
+and `BACKLOG.json`, and the matching requirements and cases in `SPEC.md` and `ACCEPTANCE_TESTS.md`.
 
-## Current state
+## Commands
 
-- Documentation-only bundle: no Xcode project, Swift package, scripts, or tests exist yet.
-  The `swift test` / `xcodebuild` lines in `AGENTS.md` are intended shapes, not working commands.
-  Do not scaffold a project to make a command succeed; FP-004 creates it after M0 approval.
-- Initial authority is planning only (FP-001 inventory → M0 plan → owner approval).
-- Git: own repository, default branch `main`, remote `origin` = private GitHub
-  `mneves75/recortia` over SSH. PRs are squash-only. GitHub Free gives this private repo no
-  rulesets, branch protection, or secret scanning (API 403/422), so nothing server-side stops a
-  force-push or a committed secret: never force-push `main`, and check diffs for secrets yourself.
-- `TOOLCHAIN.json` holds the observed toolchain (FP-001). `xcode-select` on this Mac points to
-  Xcode-beta, so every build/test command sets
-  `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (stable Xcode 27.0, 27A266a); a bare
-  `xcodebuild` produces evidence that doesn't count. The host OS is a seed build: compile and test
-  evidence counts, performance evidence does not (ADR-001).
-- M0 status, owner decisions D1–D7, and spike designs: `docs/plans/M0-plan.md`.
+Every command needs the stable toolchain: `xcode-select` on the maintainer's Mac points to
+Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`
+(`scripts/*.sh` default to it). A bare `xcodebuild` builds with the beta and its evidence doesn't count.
 
-## Handoff copy
+- Full gate: `scripts/check.sh` (doctor, strict `swift format lint`, generated-project freshness,
+  all package tests, signed Debug build); `--unsigned` without the signing identity.
+- One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
+- End-to-end: `scripts/e2e.sh --lang all` runs the DEBUG scenario runner (`-RecortiaE2E <dir>`)
+  through the real app and writes screenshots + `report.json` under `.scratch/e2e/`.
+- After adding or moving source files, or editing `project.yml`: `xcodegen generate` and commit
+  the regenerated `Recortia.xcodeproj` (never hand-edit the pbxproj).
+- Format: `xcrun swift format --in-place --recursive <paths>` (config in `.swift-format`).
 
-- `COMPLETE_HANDOFF.md` concatenates every bundle document except `CLAUDE.md`. Mirror edits to
-  those documents there, or it goes stale.
+## Architecture
 
-## Architecture (SPEC §6–8)
+- `RecortiaApp/` (MainActor default isolation): composition root in `App/` (`AppServices.live()`
+  adapts Features protocols to Imaging/MacPlatform; `AppModel` owns feature models and windows),
+  plus `Editor/`, `Capture/`, `Pins/`, `Scroll/`, `Settings/`, `Onboarding/`, and DEBUG-only `E2E/`.
+- `Packages/RecortiaKit`: `Domain` (typed geometry spaces, `Document`, `DocumentSession` undo and
+  privacy epoch, state machines, `ShareSnapshot` with a `package` init) → `Imaging` (bounded
+  decode, `ImageStore` — the only holder of raw pixels — `PrivacyRenderer`, `ExportPipeline`, OCR,
+  QR, `ScrollStitcher`) → `MacPlatform` (ScreenCaptureKit, permissions, sinks, input) → `Features`
+  (main-actor models + service protocols). `RecortiaFixtures` generates synthetic test inputs and
+  must never import Imaging.
+- Invariants: every save/copy/drag/pin goes through `ExportPipeline` → `ShareSnapshot`
+  (`ShareSnapshotConstructionTests` enforces it); secure masks fill source pixels before any
+  resample or effect (RED suite with planted controls); async results are accepted only while
+  request identity, revision, and privacy epoch still match.
+- Contracts between modules: `docs/architecture/module-contracts.md`. Decisions: `docs/adr/`.
 
-- One app (`RecortiaApp/`) plus one local package `Packages/RecortiaKit` with targets
-  `Domain` → `Imaging` → `MacPlatform`; Domain imports no AppKit/SwiftUI/ScreenCaptureKit.
-  All paths are proposed, not existing.
-- Every save, clipboard write, and drag-out consumes an immutable `ShareSnapshot` from the
-  sanitizing export pipeline; nothing outside it touches a raw `ImageAsset`. Redaction replaces
-  source pixels before any neighbor-sampling filter, resample, or magnifier.
-- Async results carry request ID, document revision, and privacy epoch; the UI discards any
-  result whose values no longer match.
-- Capture, scroll, and export are explicit state machines (SPEC §6); performance numbers in
-  SPEC §10 are targets, not measurements.
+## Repository facts
+
+- GitHub `mneves75/recortia`, default branch `main`, squash-only PRs; push over SSH.
+- Test fixtures are synthetic; never commit real screenshots or content-bearing logs.
+- Owner-only steps: Screen Recording/Accessibility grants, Automation Mode for XCUITest,
+  notarization credentials (`asc notarization`), and publishing.
+- `docs/handoff/` is the frozen original handoff; do not update it.
 
 ## Agent skills
 
 ### Issue tracker
 
-GitHub Issues in private `mneves75/recortia` via `gh`; planned FP-xxx tasks stay in `BACKLOG.json`. See `docs/agents/issue-tracker.md`.
+GitHub Issues in `mneves75/recortia` via `gh`; planned FP-xxx tasks stay in `BACKLOG.json`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
