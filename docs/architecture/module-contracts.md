@@ -6,7 +6,10 @@ the app composition root (`FramepinApp/App/`) adapts them to the service protoco
 change to a listed signature needs the integrator's agreement.
 
 Spaces, IDs, `Document`, `DocumentSession`, limits, and `ShareSnapshot` are in `Domain` and are
-already implemented (see `Packages/FramepinKit/Sources/Domain`).
+already implemented (see `Packages/FramepinKit/Sources/Domain`). Shared value types
+(`DecodedImage`, `ImportError`, `OCRResult`, `QRPayload`, `ScrollAppendResult`, `DisplayInfo`,
+`WindowInfo`, `CaptureTarget`, `CaptureError`, `SinkError`) are implemented in the integrator-owned
+`ContractTypes.swift` of Imaging and MacPlatform; the listings below repeat them for reference.
 
 ## Imaging (T1: decode, render, export)
 
@@ -72,10 +75,7 @@ public struct QRDecoder: Sendable {
 }
 public struct ScrollStitcher: Sendable {
     public init(limits: ScrollLimits = .default)
-    public enum AppendResult: Sendable, Equatable {
-        case accepted(offset: Int), stationary, ambiguous(ScrollPauseReason), limitReached(ScrollLimit)
-    }
-    public mutating func append(_ frame: CGImage, elapsed: Duration) -> AppendResult
+    public mutating func append(_ frame: CGImage, elapsed: Duration) -> ScrollAppendResult
     public var acceptedFrameCount: Int { get }
     public var outputSize: PixelSize { get }
     public func preview(maxHeight: Int) -> CGImage?
