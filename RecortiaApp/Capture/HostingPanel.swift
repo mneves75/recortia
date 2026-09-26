@@ -28,10 +28,19 @@ final class HostingPanel: NSPanel {
 
     override var canBecomeKey: Bool { allowsKey }
 
-    func setContent<Content: View>(_ view: Content) {
+    /// - Parameter fixedToFittingSize: sizes the panel once to the content's fitting size instead
+    ///   of tracking it. Content without a fixed width (the countdown) makes size tracking loop
+    ///   through constraint passes until AppKit throws, so such content must use this.
+    func setContent<Content: View>(_ view: Content, fixedToFittingSize: Bool = false) {
         let controller = NSHostingController(rootView: view)
-        controller.sizingOptions = [.preferredContentSize]
-        contentViewController = controller
+        if fixedToFittingSize {
+            controller.sizingOptions = []
+            contentViewController = controller
+            setContentSize(NSHostingView(rootView: view).fittingSize)
+        } else {
+            controller.sizingOptions = [.preferredContentSize]
+            contentViewController = controller
+        }
     }
 
     /// Shows the panel near the top center of the screen with the pointer.

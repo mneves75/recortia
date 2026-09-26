@@ -14,14 +14,16 @@
         ]
 
         static func exportSinks(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
-            let generalBefore = NSPasteboard.general.changeCount
             let controller = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             let model = controller.model
             E2EActions.drag(model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
             context.check("an edited document is dirty", model.isDirty)
 
             // Copy: the private pasteboard receives exactly one PNG representation.
+            // Measured around the copy itself, so another app copying meanwhile cannot fail it.
+            let generalBefore = NSPasteboard.general.changeCount
             let copied = await E2EActions.export(controller, .copy)
+            let generalAfter = NSPasteboard.general.changeCount
             try context.require("Copy succeeds", copied == .copied, "\(copied)")
             let pasteboard = harness.clipboard.pasteboard
             let items = pasteboard.pasteboardItems ?? []
@@ -79,8 +81,8 @@
                 context.check("the drag chip panel was built", false)
             }
             context.check(
-                "the general pasteboard was never written", NSPasteboard.general.changeCount == generalBefore,
-                "changeCount \(generalBefore) → \(NSPasteboard.general.changeCount)")
+                "Copy never wrote the general pasteboard", generalAfter == generalBefore,
+                "changeCount \(generalBefore) → \(generalAfter)")
             await E2EActions.snapshotEditor(controller, context, shot: "editor")
         }
 

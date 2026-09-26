@@ -282,6 +282,10 @@ struct OCRSettingsTab: View {
             ForEach(list, id: \.maximalIdentifier) { language in
                 Text(
                     Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
+                        // Vision reports some identifiers (such as "vi-VT") that name no region.
+                        ?? language.languageCode.flatMap {
+                            Locale.current.localizedString(forLanguageCode: $0.identifier)
+                        }
                         ?? language.minimalIdentifier)
             }
         case .loading, .notLoaded:

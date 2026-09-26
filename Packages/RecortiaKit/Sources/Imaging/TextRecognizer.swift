@@ -63,8 +63,18 @@ public struct TextRecognizer: Sendable {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
+            // Vision can fail transiently while compiling its Neural Engine model; the CPU path
+            // needs no compilation, so one retry there turns that into a slower success.
             try Task.checkCancellation()
-            throw TextRecognitionError.recognitionFailed
+            Self.useCPU(&request)
+            do {
+                observations = try await request.perform(on: image)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                try Task.checkCancellation()
+                throw TextRecognitionError.recognitionFailed
+            }
         }
         try Task.checkCancellation()
 
@@ -80,6 +90,13 @@ public struct TextRecognizer: Sendable {
         return OCRResult(
             lines: lines, revision: Self.revisionNumber(request.revision),
             languages: request.recognitionLanguages.map(\.maximalIdentifier))
+    }
+
+    static func useCPU(_ request: inout RecognizeTextRequest) {
+        for (stage, devices) in request.supportedComputeStageDevices {
+            guard let cpu = devices.first(where: { if case .cpu = $0 { true } else { false } }) else { continue }
+            request.setComputeDevice(cpu, for: stage)
+        }
     }
 
     static func makeRequest() -> RecognizeTextRequest {

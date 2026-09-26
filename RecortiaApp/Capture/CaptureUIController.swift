@@ -108,7 +108,7 @@ final class CaptureUIController {
         guard countdown == nil else { return }  // the hosted view follows the coordinator itself
         let panel = HostingPanel(title: String(localized: "Delayed Capture"), activating: false)
         countdown = panel
-        panel.setContent(LiveCountdownView(coordinator: coordinator))
+        panel.setContent(LiveCountdownView(coordinator: coordinator), fixedToFittingSize: true)
         panel.present(activate: false)
     }
 

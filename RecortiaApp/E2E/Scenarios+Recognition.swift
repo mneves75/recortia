@@ -32,7 +32,6 @@
         ]
 
         static func ocrAndQR(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
-            let generalBefore = NSPasteboard.general.changeCount
             let sample: TextCorpus.Sample
             do {
                 sample = try TextCorpus.render(
@@ -72,7 +71,12 @@
                 "English and Portuguese were requested",
                 languages.contains { $0.hasPrefix("en") }
                     && languages.contains { $0.hasPrefix("pt") }, languages.joined(separator: ", "))
-            context.check("Copy Text succeeds", model.copyRecognizedText(mode: .preserveLineBreaks))
+            // Measured around the copy itself: over the whole scenario, any other app on this Mac
+            // that copies something would fail the check.
+            let generalBefore = NSPasteboard.general.changeCount
+            let copiedText = model.copyRecognizedText(mode: .preserveLineBreaks)
+            let generalAfter = NSPasteboard.general.changeCount
+            context.check("Copy Text succeeds", copiedText)
             context.check(
                 "copied text went to the private text pasteboard",
                 harness.textPasteboard.string(forType: .string)?.contains("Relatório") == true)
@@ -109,8 +113,8 @@
             await E2EActions.scrollInspector(qrController, to: 0.55)
             await E2EActions.snapshotEditor(qrController, context, shot: "qr")
             context.check(
-                "the general pasteboard was never written", NSPasteboard.general.changeCount == generalBefore,
-                "changeCount \(generalBefore) → \(NSPasteboard.general.changeCount)")
+                "Copy Text never wrote the general pasteboard", generalAfter == generalBefore,
+                "changeCount \(generalBefore) → \(generalAfter)")
         }
     }
 #endif

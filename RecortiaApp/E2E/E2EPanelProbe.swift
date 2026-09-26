@@ -75,7 +75,7 @@
             switch kind {
             case .countdown:
                 let hosting = HostingPanel(title: String(localized: "Delayed Capture"), activating: false)
-                hosting.setContent(CountdownView(remaining: 3, onCancel: {}))
+                hosting.setContent(CountdownView(remaining: 3, onCancel: {}), fixedToFittingSize: true)
                 panel = hosting
             case .pin:
                 let pins = PinsModel(
