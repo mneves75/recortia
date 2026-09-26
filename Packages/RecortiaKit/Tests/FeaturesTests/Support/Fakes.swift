@@ -434,10 +434,16 @@ final class FakeStitcher: ScrollStitchService {
     private(set) var resetCount = 0
     private(set) var acceptedFrameCount = 0
     private(set) var outputSize = PixelSize(width: 0, height: 0)
+    /// Mirrors `ScrollStitcher`: the page ends after this many consecutive stationary frames.
+    var stationaryFramesForEnd = ScrollStitcher.endOfPageStationaryFrames
+    private(set) var consecutiveStationary = 0
+
+    var endOfPageDetected: Bool { acceptedFrameCount > 0 && consecutiveStationary >= stationaryFramesForEnd }
 
     func reset() {
         resetCount += 1
         acceptedFrameCount = 0
+        consecutiveStationary = 0
         outputSize = PixelSize(width: 0, height: 0)
     }
 
@@ -445,10 +451,18 @@ final class FakeStitcher: ScrollStitchService {
         appendCount += 1
         lastElapsed = elapsed
         let result = script.isEmpty ? .accepted(offset: 40) : script.removeFirst()
-        if case .accepted(let offset) = result {
+        switch result {
+        case .accepted(let offset):
             acceptedFrameCount += 1
+            consecutiveStationary = 0
             let added = outputSize.height == 0 ? frameHeight : offset
             outputSize = PixelSize(width: frame.width, height: outputSize.height + added)
+        case .stationary:
+            consecutiveStationary += 1
+        case .ambiguous:
+            consecutiveStationary = 0
+        case .limitReached:
+            break
         }
         return result
     }
