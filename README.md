@@ -3,8 +3,9 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, without accounts, uploads, or a screenshot archive.
 
-**Status:** beta (0.9.0). The v1 features (FR-01…FR-14 in `SPEC.md`) are built and covered by
-automated and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
+**Status:** beta (0.9.0). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
+in-app update flow (updates come through Homebrew or a new download); they are covered by automated
+and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
 multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
 and the in-app updater are pending (see [Validation status](#validation-status)). Betas are published
 as regular GitHub releases so that Homebrew and the Releases "latest" link follow them; the version
