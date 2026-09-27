@@ -49,6 +49,8 @@ Check API availability against the installed SDK and minimum deployment target. 
 
 No always-on recording, audio/microphone capture, clipboard polling, background screenshot archive, telemetry SDK, hidden network request, private framework, privileged helper, broad keylogging, arbitrary script execution, or automatic cloud fallback.
 
+Never change another app's or the system's settings, including the macOS screenshot shortcuts (`com.apple.symbolichotkeys`): a default shortcut macOS still uses stays held and Settings says how to free it (ADR-005).
+
 Do not change TCC databases, disable SIP/Gatekeeper, request Full Disk Access, or grant broad keyboard permissions to make a test pass. Live screen capture and Accessibility interaction require explicit user involvement on a dedicated test desktop, not an agent's assumption that source-edit approval also authorizes reading personal screen content.
 
 All external exports go through ShareSnapshot. Never write a raw ImageAsset to NSPasteboard, a drag file, disk, a network request, or a diagnostic attachment. Secure redaction means source-pixel replacement and clean re-encoding, not a blur effect or a removable overlay. Changes involving masks, geometry, magnifier caches, export formats, or clipboard representations require the RED test family.

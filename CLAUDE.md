@@ -16,8 +16,9 @@ Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Devel
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
 - End-to-end: `scripts/e2e.sh --lang all` runs the DEBUG scenario runner (`-RecortiaE2E <dir>`)
   through the real app and writes screenshots + `report.json` under `.scratch/e2e/`. The runner
-  never touches the real screen, general pasteboard, user defaults, or keychain (in-memory settings
-  and integrity key); keep it that way.
+  never touches the real screen, general pasteboard, the app's user defaults, or keychain (in-memory
+  settings and integrity key; shortcut assignments only in its own `dev.mvneves.Recortia.E2E` domain,
+  cleared at start, with a fake list of macOS shortcuts) and registers no global shortcut; keep it that way.
 - Release (owner): tag `v<version>[-betaN]`, then `scripts/release.sh` → `.build/release/<tag>/`
   (fresh checkout, gate, notarized DMG, manifest with dependencies); `--dry-run` skips tag/gate/notary;
   `scripts/check-release-binary.sh` fails if the DEBUG-only E2E hook reached a binary.

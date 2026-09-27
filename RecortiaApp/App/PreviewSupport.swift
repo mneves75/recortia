@@ -15,11 +15,12 @@
             AppModel(settings: settings(), services: nil, shortcutProbe: PreviewShortcutProbe())
         }
 
-        static func shortcutStatus(failing: Set<String> = []) -> ShortcutStatusModel {
+        static func shortcutStatus(failing: Set<String> = [], held: Set<String> = []) -> ShortcutStatusModel {
             let probe = PreviewShortcutProbe()
             probe.failing = failing
-            let model = ShortcutStatusModel(probe: probe)
-            for name in failing { model.shortcutChanged(named: name, isAssigned: true) }
+            probe.held = held
+            let model = ShortcutStatusModel(probe: probe, names: ShortcutBinding.names)
+            model.refreshAll()
             return model
         }
 
@@ -62,7 +63,11 @@
 
     final class PreviewShortcutProbe: ShortcutRegistrationProbe {
         var failing: Set<String> = []
+        var held: Set<String> = []
+        func isAssigned(shortcutNamed name: String) -> Bool { failing.contains(name) || held.contains(name) }
+        func isTakenBySystem(shortcutNamed name: String) -> Bool { held.contains(name) }
         func canRegister(shortcutNamed name: String) -> Bool { !failing.contains(name) }
+        func setRegistered(_ registered: Bool, shortcutNamed name: String) {}
     }
 
     final class PreviewLoginItem: LoginItemService {

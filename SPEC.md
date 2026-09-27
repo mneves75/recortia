@@ -82,7 +82,7 @@ The primary users are developers reporting bugs, designers checking pixels, and 
 
 **Story:** As a Mac user, I want a keyboard-first utility that stays out of my way.
 
-The app MUST expose capture commands, Open Image, Settings, About, and Quit from its menu-bar menu. First launch MUST explain local processing and let the user assign shortcuts; do not register surprising defaults or replace Apple's screenshot shortcuts automatically. A shortcut recorder MUST report detected system/menu conflicts and registration failures without claiming exhaustive knowledge of all other apps. KeyboardShortcuts documents user-configurable registration without permission prompts. [S09]
+The app MUST expose capture commands, Open Image, Settings, About, and Quit from its menu-bar menu. First launch MUST explain local processing and let the user assign shortcuts. Default shortcuts mirror the macOS Screenshot app (⇧⌘3 display, ⇧⌘4 region with Space for a window, ⇧⌘5 capture menu; ADR-005): Recortia never turns Apple's screenshot shortcuts off, holds a default while macOS still uses it, and says how to free it. A shortcut recorder MUST report detected system/menu conflicts and registration failures without claiming exhaustive knowledge of all other apps. KeyboardShortcuts documents user-configurable registration without permission prompts. [S09]
 
 Launch at login is off until selected. The editor follows the active Space and capture display when possible, without repeatedly stealing focus. App reactivation MUST reuse the existing process. Settings MUST remain reachable when all image windows are closed. Capture cancellation MUST never imply copy, save, or upload.
 

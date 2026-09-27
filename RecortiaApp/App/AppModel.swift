@@ -62,11 +62,15 @@ final class AppModel: AppActions {
     @ObservationIgnored private let editors = EditorWindowManager()
     @ObservationIgnored private var systemEvents: SystemEventMonitor?
     @ObservationIgnored private var didLaunch = false
+    @ObservationIgnored private lazy var captureMenu = CaptureMenuPresenter(actions: self)
+    /// Re-checks held shortcuts until macOS lets their keys go (ADR-005).
+    @ObservationIgnored private var heldShortcutWatch: Task<Void, Never>?
+    @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
 
     init(settings: SettingsStore, services: AppServices?, shortcutProbe: any ShortcutRegistrationProbe) {
         self.settings = settings
         onboarding = OnboardingModel(settings: settings)
-        shortcutStatus = ShortcutStatusModel(probe: shortcutProbe)
+        shortcutStatus = ShortcutStatusModel(probe: shortcutProbe, names: ShortcutBinding.names)
         features = services.map { FeatureModels(services: $0, settings: settings) }
     }
 
@@ -98,6 +102,8 @@ final class AppModel: AppActions {
             return features?.capture.hasRepeatRegion == true && openDocument != nil
         case .captureText:
             return features != nil && recognizeText != nil
+        case .captureMenu:
+            return AppCommand.captureModes.contains { isEnabled($0) }
         case .bringPinsForward, .closeAllPins:
             return features?.pins.pins.isEmpty == false
         case .settings, .about, .quit:
@@ -118,6 +124,7 @@ final class AppModel: AppActions {
         case .repeatLastRegion: features?.capture.start(.repeatRegion)
         case .scrollingCapture: startScrollingCapture()
         case .captureText: features?.capture.start(.region, purpose: .recognizeText)
+        case .captureMenu: captureMenu.present()
         case .openImage: chooseImageFile()
         case .pasteImage: importImage(from: .pasteboard)
         case .bringPinsForward: features?.pins.bringForward()
@@ -251,13 +258,58 @@ final class AppModel: AppActions {
     private func registerShortcutHandlers() {
         for binding in ShortcutBinding.all {
             let name = binding.name
-            if let command = binding.command {
-                KeyboardShortcuts.onKeyUp(for: name) { [weak self] in self?.perform(command) }
-            } else if name == .scrollingToggle {
-                KeyboardShortcuts.onKeyUp(for: name) { [weak self] in self?.toggleScrollingCapture() }
+            KeyboardShortcuts.onKeyUp(for: name) { [weak self] in
+                // A press macOS also claims (its shortcut was turned back on) is left to macOS.
+                guard let self else { return }
+                guard self.shortcutStatus.shouldPerform(named: name.rawValue) else {
+                    self.watchHeldShortcuts()
+                    return
+                }
+                if let command = binding.command {
+                    self.perform(command)
+                } else if name == .scrollingToggle {
+                    self.toggleScrollingCapture()
+                }
             }
-            shortcutStatus.shortcutChanged(
-                named: name.rawValue, isAssigned: KeyboardShortcuts.getShortcut(for: name) != nil)
+        }
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshShortcuts() }
+        }
+        refreshShortcuts()
+    }
+
+    /// Registers or holds every shortcut, and keeps checking the held ones every two seconds so a
+    /// default starts working soon after the user turns the macOS shortcut off (ADR-005).
+    func refreshShortcuts() {
+        shortcutStatus.refreshAll()
+        watchHeldShortcuts()
+    }
+
+    /// Restore Defaults in Settings: the macOS-style table, every other command cleared.
+    func restoreDefaultShortcuts() {
+        ShortcutDefaults.restore()
+        refreshShortcuts()
+    }
+
+    private func watchHeldShortcuts() {
+        guard shortcutStatus.isHoldingAny else {
+            heldShortcutWatch?.cancel()
+            heldShortcutWatch = nil
+            return
+        }
+        guard heldShortcutWatch == nil else { return }
+        heldShortcutWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, !Task.isCancelled else { return }
+                self.shortcutStatus.refreshHeld()
+                if !self.shortcutStatus.isHoldingAny {
+                    self.heldShortcutWatch = nil
+                    return
+                }
+            }
         }
     }
 }

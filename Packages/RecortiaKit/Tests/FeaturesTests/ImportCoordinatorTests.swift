@@ -129,17 +129,4 @@ struct SupportModelTests {
         await model.load()
         #expect(model.state == .unavailable)
     }
-
-    @Test("Shortcut registration failures are tracked per name")
-    func shortcutStatus() {
-        let probe = FakeShortcutProbe()
-        let model = ShortcutStatusModel(probe: probe)
-        probe.failing = ["captureRegion"]
-        model.shortcutChanged(named: "captureRegion", isAssigned: true)
-        model.shortcutChanged(named: "captureWindow", isAssigned: true)
-        #expect(model.failedNames == ["captureRegion"])
-
-        model.shortcutChanged(named: "captureRegion", isAssigned: false)
-        #expect(model.failedNames.isEmpty)
-    }
 }

@@ -1,6 +1,134 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Show Capture Menu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Capture Menu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar menu de captura"
+          }
+        }
+      }
+    },
+    "Drag to select an area, or press Space to choose a window. Press Return to capture the whole display or Escape to cancel.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag to select an area, or press Space to choose a window. Press Return to capture the whole display or Escape to cancel."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arraste para selecionar uma área ou pressione Espaço para escolher uma janela. Pressione Return para capturar a tela inteira ou Esc para cancelar."
+          }
+        }
+      }
+    },
+    "Recortia uses the macOS Screenshot shortcuts: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. You can change them now or later in Settings.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia uses the macOS Screenshot shortcuts: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. You can change them now or later in Settings."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia usa os atalhos do app Captura de Tela do macOS: ⇧⌘3 para a tela inteira, ⇧⌘4 para uma região (pressione Espaço para uma janela) e ⇧⌘5 para todos os modos de captura. Você pode alterá-los agora ou depois em Ajustes."
+          }
+        }
+      }
+    },
+    "Restore Defaults": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Defaults"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar padrões"
+          }
+        }
+      }
+    },
+    "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os padrões são os do app Captura de Tela do macOS: ⇧⌘3 captura a tela inteira, ⇧⌘4 uma região (pressione Espaço para uma janela) e ⇧⌘5 mostra todos os modos de captura. O Recortia avisa sobre conflitos com atalhos do macOS e de menus que consegue detectar, mas não tem como conhecer todos os atalhos usados por outros apps."
+          }
+        }
+      }
+    },
+    "macOS is using this shortcut.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS is using this shortcut."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS está usando este atalho."
+          }
+        }
+      }
+    },
+    "macOS is still using some of these shortcuts. Turn them off in System Settings › Keyboard › Keyboard Shortcuts › Screenshots, and Recortia starts using them. Recortia never changes them itself.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS is still using some of these shortcuts. Turn them off in System Settings › Keyboard › Keyboard Shortcuts › Screenshots, and Recortia starts using them. Recortia never changes them itself."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS ainda está usando alguns destes atalhos. Desative-os em Ajustes do Sistema › Teclado › Atalhos de Teclado › Capturas de Tela e o Recortia passa a usá-los. O Recortia nunca os altera por conta própria."
+          }
+        }
+      }
+    },
+    "Open Keyboard Settings…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Keyboard Settings…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Ajustes de Teclado…"
+          }
+        }
+      }
+    },
     "Automatic copy, save, and scrolling were turned off because their saved settings could not be verified. Turn them on again if you want them.": {
       "localizations": {
         "en": {
@@ -1377,22 +1505,6 @@
         }
       }
     },
-    "No shortcut is assigned until you record one. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No shortcut is assigned until you record one. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum atalho é atribuído até você gravar um. O Recortia avisa sobre conflitos com atalhos do macOS e de menus que consegue detectar, mas não tem como conhecer todos os atalhos usados por outros apps."
-          }
-        }
-      }
-    },
     "No windows are available to capture.": {
       "localizations": {
         "en": {
@@ -1613,22 +1725,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abrir Ajustes do Sistema"
-          }
-        }
-      }
-    },
-    "Optional. Recortia sets no shortcuts for you and never replaces the macOS screenshot shortcuts. You can change them later in Settings.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Optional. Recortia sets no shortcuts for you and never replaces the macOS screenshot shortcuts. You can change them later in Settings."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Opcional. O Recortia não define atalhos por você e nunca substitui os atalhos de captura de tela do macOS. Você pode alterá-los depois em Ajustes."
           }
         }
       }

@@ -365,6 +365,49 @@ struct CaptureCoordinatorTests {
         #expect(h.capture.captureCalls == [.window(TestFixtures.window)])
     }
 
+    @Test("Space during a region selection switches the same request to a window, keeping its delay")
+    func switchRegionToWindow() async {
+        let h = CaptureHarness()
+        h.coordinator.start(.region, delaySeconds: 2)
+        #expect(h.coordinator.switchToWindowSelection())
+        #expect(h.coordinator.mode == .window)
+        #expect(h.coordinator.state == .selecting)
+        await waitFor("windows listed") { h.coordinator.selectionContext == .window([TestFixtures.window]) }
+        #expect(h.completions.isEmpty)
+
+        h.coordinator.commitSelection(.window(TestFixtures.window))
+        #expect(h.coordinator.state == .countdown(remaining: 2))
+        for second in 1...2 {
+            await waitFor("sleep \(second)") { h.clock.pendingSleepCount == 1 }
+            h.clock.advance(bySeconds: 1)
+        }
+        await waitFor("editing") { h.coordinator.state == .editing }
+        #expect(h.capture.captureCalls == [.window(TestFixtures.window)])
+        #expect(h.completions.count == 1)
+    }
+
+    @Test("Only a plain region selection switches to a window")
+    func switchToWindowOnlyFromRegion() async {
+        let idle = CaptureHarness()
+        #expect(!idle.coordinator.switchToWindowSelection())
+        #expect(idle.coordinator.state == .idle)
+
+        let text = CaptureHarness()
+        text.coordinator.start(.region, purpose: .recognizeText)
+        #expect(!text.coordinator.switchToWindowSelection())
+        #expect(text.coordinator.mode == .region)
+
+        let display = CaptureHarness()
+        display.capture.displayList = [TestFixtures.primaryDisplay, TestFixtures.leftDisplay]
+        display.coordinator.start(.display)
+        #expect(!display.coordinator.switchToWindowSelection())
+        #expect(display.coordinator.mode == .display)
+
+        let window = CaptureHarness()
+        window.coordinator.start(.window)
+        #expect(!window.coordinator.switchToWindowSelection())
+    }
+
     @Test("A window list failure is reported as a typed capture failure")
     func windowListFailure() async {
         let h = CaptureHarness()

@@ -225,6 +225,11 @@ public protocol PreferenceIntegrityService: AnyObject {
 /// Best-effort check whether a global shortcut can be registered with the system.
 @MainActor
 public protocol ShortcutRegistrationProbe: AnyObject {
+    func isAssigned(shortcutNamed name: String) -> Bool
+    /// True when an enabled macOS shortcut (System Settings › Keyboard) uses the same keys.
+    func isTakenBySystem(shortcutNamed name: String) -> Bool
     /// Returns false when registration failed (for example, another app holds the combination).
     func canRegister(shortcutNamed name: String) -> Bool
+    /// Registers (true) or holds (false) the shortcut without changing its assignment.
+    func setRegistered(_ registered: Bool, shortcutNamed name: String)
 }

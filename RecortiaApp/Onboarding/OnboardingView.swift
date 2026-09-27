@@ -2,7 +2,7 @@ import AppKit
 import Features
 import SwiftUI
 
-/// First-launch window (FR-01): local processing, optional shortcut assignment, done.
+/// First-launch window (FR-01): local processing, the default shortcuts, done.
 /// It requests no permission; Screen Recording is asked for on the first capture.
 struct OnboardingView: View {
     let onboarding: OnboardingModel
@@ -42,7 +42,7 @@ struct OnboardingView: View {
             }
         }
         .padding(24)
-        .frame(width: 520, height: 460)
+        .frame(width: 520, height: 600)
     }
 }
 
@@ -87,12 +87,19 @@ private struct ShortcutsStep: View {
                 .font(.title)
                 .accessibilityAddTraits(.isHeader)
             Text(
-                "Optional. Recortia sets no shortcuts for you and never replaces the macOS screenshot shortcuts. You can change them later in Settings."
+                "Recortia uses the macOS Screenshot shortcuts: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. You can change them now or later in Settings."
             )
             .fixedSize(horizontal: false, vertical: true)
             Form {
-                ForEach(ShortcutBinding.all.prefix(4)) { binding in
-                    ShortcutRecorderRow(binding: binding, status: shortcutStatus)
+                if shortcutStatus.isHoldingAny {
+                    Section {
+                        MacOSShortcutsNotice(status: shortcutStatus)
+                    }
+                }
+                Section {
+                    ForEach(ShortcutBinding.all.prefix(4)) { binding in
+                        ShortcutRecorderRow(binding: binding, status: shortcutStatus)
+                    }
                 }
             }
             .formStyle(.grouped)

@@ -20,7 +20,7 @@ struct SettingsView: View {
         TabView {
             GeneralSettingsTab(settings: model.settings, loginItem: model.features?.loginItem)
                 .tabItem { Label("General", systemImage: "gearshape") }
-            ShortcutsSettingsTab(status: model.shortcutStatus)
+            ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)
                 .tabItem { Label("Shortcuts", systemImage: "keyboard") }
             CaptureSettingsTab(settings: model.settings)
                 .tabItem { Label("Capture", systemImage: "camera.viewfinder") }
@@ -78,21 +78,30 @@ struct GeneralSettingsTab: View {
 
 struct ShortcutsSettingsTab: View {
     let status: ShortcutStatusModel
+    let onRestoreDefaults: () -> Void
 
     var body: some View {
         Form {
+            if status.isHoldingAny {
+                Section {
+                    MacOSShortcutsNotice(status: status)
+                }
+            }
             Section {
                 ForEach(ShortcutBinding.all) { binding in
                     ShortcutRecorderRow(binding: binding, status: status)
                 }
             } footer: {
-                Text(
-                    "No shortcut is assigned until you record one. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(
+                        "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Restore Defaults", action: onRestoreDefaults)
+                }
             }
         }
         .formStyle(.grouped)

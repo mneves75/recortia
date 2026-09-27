@@ -9,6 +9,9 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
     case repeatLastRegion
     case scrollingCapture
     case captureText
+    /// Every capture mode in a menu at the pointer (the default ⇧⌘5, like the macOS Screenshot
+    /// options). Reached by its shortcut; the menu-bar menu already lists the modes.
+    case captureMenu
     case openImage
     case pasteImage
     case bringPinsForward
@@ -19,8 +22,8 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    /// Commands a user may bind to a global shortcut. None has a default key combination.
-    static let shortcutAssignable: [AppCommand] = [
+    /// The capture modes, in menu order: the menu-bar menu and the capture menu list these.
+    static let captureModes: [AppCommand] = [
         .captureRegion, .captureDisplay, .captureWindow, .captureWithDelay, .repeatLastRegion, .scrollingCapture,
         .captureText,
     ]
@@ -34,6 +37,7 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
         case .repeatLastRegion: String(localized: "Repeat Last Region")
         case .scrollingCapture: String(localized: "Scrolling Capture")
         case .captureText: String(localized: "Capture Text (OCR)")
+        case .captureMenu: String(localized: "Show Capture Menu")
         case .openImage: String(localized: "Open Image…")
         case .pasteImage: String(localized: "Paste Image")
         case .bringPinsForward: String(localized: "Bring Pins Forward")

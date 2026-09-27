@@ -4,6 +4,25 @@ All notable changes to Recortia are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0-beta5] - 2026-09-27
+
+### Added
+
+- Default shortcuts that match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region,
+  and ⇧⌘5 shows every capture mode in a menu at the pointer (Show Capture Menu). While selecting a
+  region, Space switches to choosing a window, as in macOS.
+- Recortia never changes the macOS shortcuts. While macOS still uses one of these keys, Recortia
+  holds its own shortcut instead of registering it, marks it in Settings and onboarding, and opens
+  System Settings › Keyboard for you; it starts using the keys within two seconds of the macOS
+  shortcut being turned off. If a macOS shortcut is turned back on, a press is left to macOS.
+- Restore Defaults in Settings › Shortcuts.
+
+### Changed
+
+- Upgrading gives commands without a shortcut the new defaults once, never onto keys another
+  command already uses; a shortcut you clear afterwards stays cleared.
+- SPEC FR-01 and ADR-005 record the decision (it replaces "no default shortcuts").
+
 ## [0.9.0-beta4] - 2026-09-26
 
 ### Security
