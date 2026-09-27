@@ -27,8 +27,12 @@
                     "\(String(describing: KeyboardShortcuts.getShortcut(for: name)))")
             }
             context.check(
-                "the defaults version is recorded",
-                UserDefaults.standard.integer(forKey: ShortcutDefaults.versionKey) == ShortcutDefaultsPlan.version)
+                "the offered defaults are recorded",
+                Set(UserDefaults.standard.stringArray(forKey: ShortcutDefaults.offeredKey) ?? [])
+                    == ["captureRegion", "captureDisplay", "captureMenu"])
+            let unused = KeyboardShortcuts.Shortcut(.f13, modifiers: [.command, .control, .option, .shift])
+            context.check(
+                "this Mac lists its shortcuts (the check is not failing closed)", !SystemShortcuts.isTaken(unused))
 
             // A fresh Mac: macOS still owns ⇧⌘3/4/5, so Recortia holds them and says so.
             for name in ["captureRegion", "captureDisplay", "captureMenu"] {
@@ -38,7 +42,7 @@
             }
             context.check("unassigned commands stay unassigned", status.state(of: "captureWindow") == .unassigned)
             context.check(
-                "a press macOS also claims does nothing", !status.shouldPerform(named: "captureRegion"))
+                "a press macOS also claims does nothing", !status.admitPress(named: "captureRegion"))
             let tab = ShortcutsSettingsTab(status: status, onRestoreDefaults: app.restoreDefaultShortcuts)
             let window = E2ESnapshot.host(tab.frame(width: 560, height: 760))
             defer { window.close() }
@@ -46,8 +50,7 @@
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "held-by-macos")
 
-            // The user turns the macOS shortcuts off; the watch picks it up within seconds.
-            app.refreshShortcuts()
+            // The user turns the macOS shortcuts off; the watch that holding started picks it up.
             harness.systemShortcuts.enabled = []
             let freed = await E2EWait.until(timeout: .seconds(6)) {
                 ["captureRegion", "captureDisplay", "captureMenu"].allSatisfy { status.state(of: $0) == .active }
@@ -56,13 +59,13 @@
                 "the defaults start working once macOS lets the keys go", freed,
                 "\(status.state(of: "captureRegion")) / \(status.state(of: "captureDisplay"))")
             context.check("nothing is held any more", !status.isHoldingAny)
-            context.check("a press now runs the command", status.shouldPerform(named: "captureRegion"))
+            context.check("a press now runs the command", status.admitPress(named: "captureRegion"))
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "active")
 
             // A shortcut the user clears stays cleared; Restore Defaults brings the table back.
             KeyboardShortcuts.setShortcut(nil, for: .captureRegion)
-            ShortcutDefaults.seedIfNeeded()
+            ShortcutDefaults.seedIfNeeded(isNewInstall: true)
             context.check(
                 "a cleared default is not seeded again", KeyboardShortcuts.getShortcut(for: .captureRegion) == nil)
             KeyboardShortcuts.setShortcut(.init(.t, modifiers: [.command, .option]), for: .captureText)
@@ -77,8 +80,23 @@
             // The user turns a macOS shortcut back on: the next press is left to macOS.
             harness.systemShortcuts.enabled = [region]
             context.check(
-                "a press after macOS reclaimed ⇧⌘4 does nothing", !status.shouldPerform(named: "captureRegion"))
+                "a press after macOS reclaimed ⇧⌘4 does nothing", !status.admitPress(named: "captureRegion"))
             context.check("and the shortcut is held again", status.state(of: "captureRegion") == .heldBySystem)
+
+            // An upgrade: defaults are only marked offered, never assigned; Restore Defaults applies them.
+            for binding in ShortcutBinding.all { KeyboardShortcuts.setShortcut(nil, for: binding.name) }
+            UserDefaults.standard.removeObject(forKey: ShortcutDefaults.offeredKey)
+            ShortcutDefaults.seedIfNeeded(isNewInstall: false)
+            context.check(
+                "an upgrade gets no shortcut it was not offered",
+                ShortcutBinding.all.allSatisfy { KeyboardShortcuts.getShortcut(for: $0.name) == nil })
+            context.check(
+                "an upgrade records the defaults as offered",
+                (UserDefaults.standard.stringArray(forKey: ShortcutDefaults.offeredKey) ?? []).count == 3)
+            app.restoreDefaultShortcuts()
+            context.check(
+                "Restore Defaults gives an upgrade the macOS shortcuts",
+                KeyboardShortcuts.getShortcut(for: .captureDisplay) == display)
 
             harness.systemShortcuts.enabled = E2ESystemShortcuts.screenshotDefaults
             status.refreshAll()

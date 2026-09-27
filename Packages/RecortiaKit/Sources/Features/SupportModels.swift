@@ -73,11 +73,14 @@ public enum ShortcutState: Hashable, Sendable {
 @Observable
 public final class ShortcutStatusModel {
     public private(set) var states: [String: ShortcutState] = [:]
-    @ObservationIgnored private let probe: any ShortcutRegistrationProbe
+    @ObservationIgnored private let registry: any ShortcutRegistry
     @ObservationIgnored private let names: [String]
+    /// Called whenever a refresh holds a shortcut (a launch, a recording forced onto macOS's keys, a
+    /// press macOS reclaimed), so the caller can watch for macOS to let the keys go.
+    @ObservationIgnored public var onHold: (() -> Void)?
 
-    public init(probe: any ShortcutRegistrationProbe, names: [String]) {
-        self.probe = probe
+    public init(registry: any ShortcutRegistry, names: [String]) {
+        self.registry = registry
         self.names = names
     }
 
@@ -100,55 +103,66 @@ public final class ShortcutStatusModel {
     /// registers or holds it.
     public func refresh(named name: String) {
         let state: ShortcutState
-        if !probe.isAssigned(shortcutNamed: name) {
-            probe.setRegistered(true, shortcutNamed: name)
+        if !registry.isAssigned(shortcutNamed: name) {
+            registry.setRegistered(true, shortcutNamed: name)
             state = .unassigned
-        } else if probe.isTakenBySystem(shortcutNamed: name) {
-            probe.setRegistered(false, shortcutNamed: name)
+        } else if registry.isTakenBySystem(shortcutNamed: name) {
+            registry.setRegistered(false, shortcutNamed: name)
             state = .heldBySystem
         } else {
-            probe.setRegistered(true, shortcutNamed: name)
-            state = probe.canRegister(shortcutNamed: name) ? .active : .failed
+            registry.setRegistered(true, shortcutNamed: name)
+            state = registry.canRegister(shortcutNamed: name) ? .active : .failed
         }
         if states[name] != state { states[name] = state }
+        if state == .heldBySystem { onHold?() }
     }
 
     /// Called when the shortcut fires. A press that arrives while macOS also claims the keys (the
     /// user turned its shortcut back on) does nothing, and the shortcut is held from then on.
-    public func shouldPerform(named name: String) -> Bool {
-        guard probe.isTakenBySystem(shortcutNamed: name) else { return true }
+    public func admitPress(named name: String) -> Bool {
+        guard registry.isTakenBySystem(shortcutNamed: name) else { return true }
         refresh(named: name)
         return false
     }
 }
 
-/// Default global shortcuts (ADR-005): which commands receive them, and what Restore Defaults
-/// sets. Generic over the key combination so it stays free of the shortcut library.
-public enum ShortcutDefaultsPlan {
-    /// Raised when the default table changes, so the new defaults are offered once more.
-    public static let version = 1
+/// One command's default key combination (ADR-005), generic over the combination type so the
+/// plan stays free of the shortcut library.
+public struct DefaultShortcut<Shortcut: Hashable>: Hashable {
+    public let name: String
+    public let shortcut: Shortcut
 
-    /// Commands that receive their default: only when this version was never seeded, only
-    /// commands without a shortcut, and never keys another command already uses.
-    public static func namesToSeed<Shortcut: Hashable>(
-        defaults: [(name: String, shortcut: Shortcut)], assigned: [String: Shortcut], seededVersion: Int
-    ) -> [String] {
-        guard seededVersion < version else { return [] }
+    public init(name: String, shortcut: Shortcut) {
+        self.name = name
+        self.shortcut = shortcut
+    }
+}
+
+/// Default global shortcuts (ADR-005): which commands receive them, and what Restore Defaults sets.
+public enum ShortcutDefaultsPlan {
+    /// The defaults to apply: each default is offered once (a later version's new default is
+    /// offered on its first launch), only to a command without a shortcut, and never onto keys
+    /// another command already uses. A default the user cleared is never offered again.
+    public static func defaultsToSeed<Shortcut: Hashable>(
+        _ defaults: [DefaultShortcut<Shortcut>], assigned: [String: Shortcut], alreadyOffered: Set<String>
+    ) -> [DefaultShortcut<Shortcut>] {
         var inUse = Set(assigned.values)
-        var seeded: [String] = []
-        for entry in defaults where assigned[entry.name] == nil && !inUse.contains(entry.shortcut) {
+        var seeded: [DefaultShortcut<Shortcut>] = []
+        for entry in defaults
+        where !alreadyOffered.contains(entry.name) && assigned[entry.name] == nil && !inUse.contains(entry.shortcut) {
             inUse.insert(entry.shortcut)
-            seeded.append(entry.name)
+            seeded.append(entry)
         }
         return seeded
     }
 
     /// Every command back to the table: its default, or no shortcut.
     public static func restored<Shortcut: Hashable>(
-        names: [String], defaults: [(name: String, shortcut: Shortcut)]
+        names: [String], defaults: [DefaultShortcut<Shortcut>]
     ) -> [String: Shortcut?] {
         var result: [String: Shortcut?] = [:]
         for name in names {
+            // `updateValue`, not subscript assignment: assigning nil would drop the key.
             result.updateValue(defaults.first { $0.name == name }?.shortcut, forKey: name)
         }
         return result

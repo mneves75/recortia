@@ -87,13 +87,13 @@ private struct ShortcutsStep: View {
                 .font(.title)
                 .accessibilityAddTraits(.isHeader)
             Text(
-                "Recortia uses the macOS Screenshot shortcuts: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. You can change them now or later in Settings."
+                "Recortia's default shortcuts are the macOS Screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. If another screenshot app already uses them, clear them here; you can change them later in Settings."
             )
             .fixedSize(horizontal: false, vertical: true)
             Form {
                 if shortcutStatus.isHoldingAny {
                     Section {
-                        MacOSShortcutsNotice(status: shortcutStatus)
+                        MacOSShortcutsNotice()
                     }
                 }
                 Section {

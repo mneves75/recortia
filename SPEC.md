@@ -44,7 +44,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 
 | ID | Capability | Release | Verification family |
 |---|---|---|---|
-| FR-01 | Menu-bar operation, onboarding, user-assigned global shortcuts | 0.1 | UX / PERM |
+| FR-01 | Menu-bar operation, onboarding, global shortcuts with macOS-style defaults (ADR-005) | 0.1 | UX / PERM |
 | FR-02 | Region, display, selectable-window, delayed, and repeat-region capture | 0.1 | CAP / GEO |
 | FR-03 | Open PNG/JPEG, paste an image, and drop an image into the editor | 0.1 | IO / PRIV |
 | FR-04 | Crop, zoom, pan, resize; select, move, delete, duplicate; undo/redo | 0.1 | EDIT / GEO |

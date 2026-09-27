@@ -584,7 +584,7 @@ final class MemoryPreferenceStorage: PreferenceStorage {
 }
 
 @MainActor
-final class FakeShortcutProbe: ShortcutRegistrationProbe {
+final class FakeShortcutRegistry: ShortcutRegistry {
     var assigned: Set<String>
     var failing: Set<String> = []
     var takenBySystem: Set<String> = []

@@ -2,7 +2,8 @@ import KeyboardShortcuts
 import SwiftUI
 
 /// The menu-bar menu (FR-01). Every item calls `AppActions`; items whose backend is not wired are
-/// disabled. Global shortcut hints appear next to items once the user assigned one.
+/// disabled. A global shortcut hint appears next to an item only while that shortcut works: not
+/// while macOS still uses its keys (ADR-005).
 struct MenuContent: View {
     let model: AppModel
     @Environment(\.openSettings) private var openSettings
@@ -44,12 +45,12 @@ struct MenuContent: View {
     private func item(_ command: AppCommand, shortcut: KeyboardShortcuts.Name? = nil) -> some View {
         Button(command.title) { model.perform(command) }
             .disabled(!model.isEnabled(command))
-            .globalShortcut(shortcut)
+            .globalShortcut(shortcut.flatMap { model.shortcutStatus.state(of: $0.rawValue) == .active ? $0 : nil })
     }
 }
 
 extension View {
-    /// Shows a user-assigned global shortcut as the menu item's key equivalent hint.
+    /// Shows an active global shortcut as the menu item's key equivalent hint.
     @ViewBuilder
     fileprivate func globalShortcut(_ name: KeyboardShortcuts.Name?) -> some View {
         if let name, let shortcut = KeyboardShortcuts.getShortcut(for: name)?.toSwiftUI {

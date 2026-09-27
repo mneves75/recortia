@@ -84,7 +84,7 @@ struct ShortcutsSettingsTab: View {
         Form {
             if status.isHoldingAny {
                 Section {
-                    MacOSShortcutsNotice(status: status)
+                    MacOSShortcutsNotice()
                 }
             }
             Section {

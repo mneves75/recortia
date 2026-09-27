@@ -12,14 +12,14 @@
         }
 
         static func appModel() -> AppModel {
-            AppModel(settings: settings(), services: nil, shortcutProbe: PreviewShortcutProbe())
+            AppModel(settings: settings(), services: nil, shortcutRegistry: PreviewShortcutRegistry())
         }
 
         static func shortcutStatus(failing: Set<String> = [], held: Set<String> = []) -> ShortcutStatusModel {
-            let probe = PreviewShortcutProbe()
+            let probe = PreviewShortcutRegistry()
             probe.failing = failing
             probe.held = held
-            let model = ShortcutStatusModel(probe: probe, names: ShortcutBinding.names)
+            let model = ShortcutStatusModel(registry: probe, names: ShortcutBinding.names)
             model.refreshAll()
             return model
         }
@@ -61,7 +61,7 @@
         func setPreferenceData(_ data: Data?, forKey key: String) { values[key] = data }
     }
 
-    final class PreviewShortcutProbe: ShortcutRegistrationProbe {
+    final class PreviewShortcutRegistry: ShortcutRegistry {
         var failing: Set<String> = []
         var held: Set<String> = []
         func isAssigned(shortcutNamed name: String) -> Bool { failing.contains(name) || held.contains(name) }

@@ -96,11 +96,11 @@ Implement coordinate-space types, safe transforms, request/revision identity, li
 **Requirements:** FR-01, FR-14  
 **Verification:** PERM-01, UX-01
 
-Create the native lifecycle, menu commands, onboarding, user-assigned shortcut recorder, localization foundation, and settings.
+Create the native lifecycle, menu commands, onboarding, shortcut recorder with macOS-style defaults (ADR-005), localization foundation, and settings.
 
 **Deliver:** App composition root; Menu/settings/onboarding UI; String Catalog; Reviewed shortcut dependency resolution.
 
-**Complete when:** The app launches without intrusive permission prompts, exposes keyboard-accessible commands, reports shortcut registration failure, and starts with no automatic side effects.
+**Complete when:** The app launches without intrusive permission prompts, exposes keyboard-accessible commands, reports shortcut registration failure and shortcuts macOS still uses, and starts with no automatic side effects beyond writing the default shortcuts once.
 
 ### FP-007 — Implement the still-capture vertical slice
 

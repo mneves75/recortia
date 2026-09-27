@@ -47,46 +47,40 @@ struct ShortcutBinding: Identifiable {
 
     static var names: [String] { all.map(\.name.rawValue) }
 
-    var command: AppCommand? {
-        switch name {
-        case .captureRegion: .captureRegion
-        case .captureDisplay: .captureDisplay
-        case .captureWindow: .captureWindow
-        case .captureMenu: .captureMenu
-        case .captureWithDelay: .captureWithDelay
-        case .repeatLastRegion: .repeatLastRegion
-        case .scrollingCapture: .scrollingCapture
-        case .captureText: .captureText
-        default: nil
-        }
-    }
+    /// The command a shortcut performs; names match `AppCommand` raw values. Stop Scrolling
+    /// Capture has no command of its own.
+    var command: AppCommand? { AppCommand(rawValue: name.rawValue) }
 }
 
-/// The macOS-style default shortcuts (ADR-005): seeded once per table version, and restorable.
+/// The macOS-style default shortcuts (ADR-005): each offered once, and restorable.
 enum ShortcutDefaults {
-    /// The table version already offered, kept beside the shortcuts in the same defaults domain.
-    static let versionKey = "RecortiaShortcutDefaultsVersion"
+    /// Names whose default was already offered, kept beside the shortcuts in the same defaults
+    /// domain. KeyboardShortcuts stores a cleared shortcut as no value, so this is what keeps a
+    /// cleared default cleared.
+    static let offeredKey = "RecortiaShortcutDefaultsOffered"
 
-    private static var table: [(name: String, shortcut: KeyboardShortcuts.Shortcut)] {
+    private static var table: [DefaultShortcut<KeyboardShortcuts.Shortcut>] {
         ShortcutBinding.all.compactMap { binding in
-            binding.defaultShortcut.map { (name: binding.name.rawValue, shortcut: $0) }
+            binding.defaultShortcut.map { DefaultShortcut(name: binding.name.rawValue, shortcut: $0) }
         }
     }
 
-    /// Gives unassigned commands their default, once, never onto keys another command uses.
-    /// Runs on a normal launch only; the E2E runner calls it against its own cleared domain.
-    static func seedIfNeeded(in defaults: UserDefaults = .standard) {
+    /// Gives unassigned commands their not-yet-offered default, never onto keys another command
+    /// uses, on a new install only: someone upgrading may have given these keys to another app,
+    /// so they are marked offered and left to Restore Defaults. Runs on a normal launch; the E2E
+    /// runner calls it against its own cleared domain.
+    static func seedIfNeeded(isNewInstall: Bool, in defaults: UserDefaults = .standard) {
         var assigned: [String: KeyboardShortcuts.Shortcut] = [:]
         for binding in ShortcutBinding.all {
             assigned[binding.name.rawValue] = KeyboardShortcuts.getShortcut(for: binding.name)
         }
-        let names = ShortcutDefaultsPlan.namesToSeed(
-            defaults: table, assigned: assigned, seededVersion: defaults.integer(forKey: versionKey))
-        for name in names {
-            let shortcut = table.first { $0.name == name }?.shortcut
-            KeyboardShortcuts.setShortcut(shortcut, for: KeyboardShortcuts.Name(name))
+        let offered = Set(defaults.stringArray(forKey: offeredKey) ?? [])
+        let seeds =
+            isNewInstall ? ShortcutDefaultsPlan.defaultsToSeed(table, assigned: assigned, alreadyOffered: offered) : []
+        for seed in seeds {
+            KeyboardShortcuts.setShortcut(seed.shortcut, for: KeyboardShortcuts.Name(seed.name))
         }
-        defaults.set(ShortcutDefaultsPlan.version, forKey: versionKey)
+        defaults.set(offered.union(table.map(\.name)).sorted(), forKey: offeredKey)
     }
 
     /// Restore Defaults: every command back to the table, the rest cleared.
@@ -104,15 +98,20 @@ enum ShortcutDefaults {
 
 /// Registers, holds, and probes global shortcuts through KeyboardShortcuts. A shortcut an enabled
 /// macOS shortcut also uses is held (disabled) rather than registered, so one key press never
-/// drives both apps. The Carbon probe cannot report every shortcut other apps observe, so a
-/// passing probe is not a guarantee; the Settings copy says so.
-final class KeyboardShortcutsRegistry: ShortcutRegistrationProbe {
-    private let takenBySystem: (KeyboardShortcuts.Shortcut) -> Bool
+/// drives both apps. Carbon reports neither macOS's shortcuts nor another app's ordinary hot keys
+/// as a registration failure, so a passing probe is not a guarantee; the Settings copy says so.
+final class KeyboardShortcutsRegistry: ShortcutRegistry {
+    private let takenBySystem: @MainActor (KeyboardShortcuts.Shortcut) -> Bool
+    private let probe: @MainActor (KeyboardShortcuts.Shortcut) -> Bool
 
-    /// `takenBySystem` defaults to the enabled shortcuts macOS reports (`CopySymbolicHotKeys`);
-    /// the E2E runner passes a fixed list so its results do not depend on the host's settings.
-    init(takenBySystem: @escaping (KeyboardShortcuts.Shortcut) -> Bool = { $0.isTakenBySystem }) {
+    /// The E2E runner passes a fixed macOS list and a probe that never touches Carbon, so its
+    /// results do not depend on the host and it never takes the host's keys.
+    init(
+        takenBySystem: @escaping @MainActor (KeyboardShortcuts.Shortcut) -> Bool = SystemShortcuts.isTaken,
+        probe: @escaping @MainActor (KeyboardShortcuts.Shortcut) -> Bool = SystemShortcuts.canRegisterExclusively
+    ) {
         self.takenBySystem = takenBySystem
+        self.probe = probe
     }
 
     func isAssigned(shortcutNamed name: String) -> Bool {
@@ -132,14 +131,50 @@ final class KeyboardShortcutsRegistry: ShortcutRegistrationProbe {
         }
     }
 
-    /// Temporarily releases Recortia's own registration, asks Carbon for an exclusive hot key, and
-    /// restores the registration.
+    /// Temporarily releases Recortia's own registration, probes, and restores the registration.
     func canRegister(shortcutNamed name: String) -> Bool {
         let shortcutName = KeyboardShortcuts.Name(name)
         guard let shortcut = KeyboardShortcuts.getShortcut(for: shortcutName) else { return true }
         KeyboardShortcuts.disable(shortcutName)
         defer { KeyboardShortcuts.enable(shortcutName) }
+        return probe(shortcut)
+    }
+}
 
+/// The enabled macOS keyboard shortcuts (System Settings › Keyboard), read with Carbon's public
+/// `CopySymbolicHotKeys`, which asks the window server each time.
+enum SystemShortcuts {
+    private struct Keys: Hashable {
+        let code: Int
+        let modifiers: Int
+
+        /// The Fn bit is dropped: macOS adds it to arrow and function keys on its own.
+        init(code: Int, modifiers: Int) {
+            self.code = code
+            self.modifiers = modifiers & ~Int(kEventKeyModifierFnMask)
+        }
+    }
+
+    /// Fails closed: when macOS cannot list its shortcuts, every shortcut counts as taken, so a
+    /// default is held rather than risk both apps reacting to one press.
+    static func isTaken(_ shortcut: KeyboardShortcuts.Shortcut) -> Bool {
+        var list: Unmanaged<CFArray>?
+        guard CopySymbolicHotKeys(&list) == noErr, let entries = list?.takeRetainedValue() as? [[String: Any]] else {
+            return true
+        }
+        let wanted = Keys(code: shortcut.carbonKeyCode, modifiers: shortcut.carbonModifiers)
+        return entries.contains { entry in
+            guard (entry[kHISymbolicHotKeyEnabled] as? Bool) == true,
+                let code = entry[kHISymbolicHotKeyCode] as? Int,
+                let modifiers = entry[kHISymbolicHotKeyModifiers] as? Int
+            else { return false }
+            return Keys(code: code, modifiers: modifiers) == wanted
+        }
+    }
+
+    /// Asks Carbon for an exclusive hot key and releases it at once. It fails only when another app
+    /// registered the keys exclusively.
+    static func canRegisterExclusively(_ shortcut: KeyboardShortcuts.Shortcut) -> Bool {
         var reference: EventHotKeyRef?
         let hotKeyID = EventHotKeyID(signature: OSType(0x4650_5042), id: 1)  // 'FPPB'
         let status = RegisterEventHotKey(

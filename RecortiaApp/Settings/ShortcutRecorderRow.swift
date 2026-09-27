@@ -44,24 +44,21 @@ struct ShortcutRecorderRow: View {
     }
 }
 
-/// Shown while macOS still uses some default shortcuts: Recortia never turns Apple's shortcuts
-/// off itself, so it says where to do it and opens System Settings › Keyboard (ADR-005).
+/// For callers to show while macOS still uses some default shortcuts: Recortia never turns
+/// Apple's shortcuts off itself, so it says where to do it and opens System Settings › Keyboard
+/// (ADR-005).
 struct MacOSShortcutsNotice: View {
-    let status: ShortcutStatusModel
-
     /// System Settings › Keyboard; the Keyboard Shortcuts sheet has no public URL of its own.
     static let keyboardSettingsURL = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
 
     var body: some View {
-        if status.isHoldingAny {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(
-                    "macOS is still using some of these shortcuts. Turn them off in System Settings › Keyboard › Keyboard Shortcuts › Screenshots, and Recortia starts using them. Recortia never changes them itself."
-                )
-                .fixedSize(horizontal: false, vertical: true)
-                Button("Open Keyboard Settings…") {
-                    if let url = Self.keyboardSettingsURL { NSWorkspace.shared.open(url) }
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(
+                "macOS is still using some of these shortcuts. Turn them off in System Settings › Keyboard › Keyboard Shortcuts › Screenshots, and Recortia starts using them. Recortia never changes them itself."
+            )
+            .fixedSize(horizontal: false, vertical: true)
+            Button("Open Keyboard Settings…") {
+                if let url = Self.keyboardSettingsURL { NSWorkspace.shared.open(url) }
             }
         }
     }

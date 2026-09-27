@@ -67,11 +67,13 @@ final class AppModel: AppActions {
     @ObservationIgnored private var heldShortcutWatch: Task<Void, Never>?
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
 
-    init(settings: SettingsStore, services: AppServices?, shortcutProbe: any ShortcutRegistrationProbe) {
+    init(settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry) {
         self.settings = settings
         onboarding = OnboardingModel(settings: settings)
-        shortcutStatus = ShortcutStatusModel(probe: shortcutProbe, names: ShortcutBinding.names)
+        shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = services.map { FeatureModels(services: $0, settings: settings) }
+        // Every path that holds a shortcut starts the watch, including a recording in Settings.
+        shortcutStatus.onHold = { [weak self] in self?.watchHeldShortcuts() }
     }
 
     /// Called once from `applicationDidFinishLaunching`. Requests no permission.
@@ -256,15 +258,15 @@ final class AppModel: AppActions {
     }
 
     private func registerShortcutHandlers() {
+        // Hold what macOS claims before any handler exists, so KeyboardShortcuts never registers
+        // those keys, even briefly.
+        refreshShortcuts()
         for binding in ShortcutBinding.all {
             let name = binding.name
             KeyboardShortcuts.onKeyUp(for: name) { [weak self] in
                 // A press macOS also claims (its shortcut was turned back on) is left to macOS.
                 guard let self else { return }
-                guard self.shortcutStatus.shouldPerform(named: name.rawValue) else {
-                    self.watchHeldShortcuts()
-                    return
-                }
+                guard self.shortcutStatus.admitPress(named: name.rawValue) else { return }
                 if let command = binding.command {
                     self.perform(command)
                 } else if name == .scrollingToggle {
@@ -277,10 +279,9 @@ final class AppModel: AppActions {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshShortcuts() }
         }
-        refreshShortcuts()
     }
 
-    /// Registers or holds every shortcut, and keeps checking the held ones every two seconds so a
+    /// Registers or holds every shortcut. Holding one starts a two-second watch (`onHold`), so a
     /// default starts working soon after the user turns the macOS shortcut off (ADR-005).
     func refreshShortcuts() {
         shortcutStatus.refreshAll()

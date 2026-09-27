@@ -63,7 +63,8 @@
             let system = systemShortcuts
             app = AppModel(
                 settings: settings, services: services,
-                shortcutProbe: KeyboardShortcutsRegistry(takenBySystem: { system.enabled.contains($0) }))
+                shortcutRegistry: KeyboardShortcutsRegistry(
+                    takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }))
             guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
             self.features = features
             environment = EditorEnvironment(
@@ -74,7 +75,7 @@
             editors = E2EEditorHost(environment: environment)
             wire()
             // What a normal launch does (ADR-005), without registering any handler.
-            ShortcutDefaults.seedIfNeeded()
+            ShortcutDefaults.seedIfNeeded(isNewInstall: !settings.preferences.hasCompletedOnboarding)
             app.shortcutStatus.refreshAll()
         }
 

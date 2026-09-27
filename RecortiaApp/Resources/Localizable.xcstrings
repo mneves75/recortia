@@ -33,18 +33,18 @@
         }
       }
     },
-    "Recortia uses the macOS Screenshot shortcuts: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. You can change them now or later in Settings.": {
+    "Recortia's default shortcuts are the macOS Screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. If another screenshot app already uses them, clear them here; you can change them later in Settings.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recortia uses the macOS Screenshot shortcuts: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. You can change them now or later in Settings."
+            "value": "Recortia's default shortcuts are the macOS Screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. If another screenshot app already uses them, clear them here; you can change them later in Settings."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Recortia usa os atalhos do app Captura de Tela do macOS: ⇧⌘3 para a tela inteira, ⇧⌘4 para uma região (pressione Espaço para uma janela) e ⇧⌘5 para todos os modos de captura. Você pode alterá-los agora ou depois em Ajustes."
+            "value": "Os atalhos padrão do Recortia são os do app Captura de Tela do macOS: ⇧⌘3 para a tela inteira, ⇧⌘4 para uma região (pressione Espaço para uma janela) e ⇧⌘5 para todos os modos de captura. Se outro app de captura já usa esses atalhos, limpe-os aqui; você pode alterá-los depois em Ajustes."
           }
         }
       }

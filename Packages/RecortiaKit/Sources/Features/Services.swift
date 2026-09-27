@@ -224,7 +224,7 @@ public protocol PreferenceIntegrityService: AnyObject {
 
 /// Best-effort check whether a global shortcut can be registered with the system.
 @MainActor
-public protocol ShortcutRegistrationProbe: AnyObject {
+public protocol ShortcutRegistry: AnyObject {
     func isAssigned(shortcutNamed name: String) -> Bool
     /// True when an enabled macOS shortcut (System Settings › Keyboard) uses the same keys.
     func isTakenBySystem(shortcutNamed name: String) -> Bool

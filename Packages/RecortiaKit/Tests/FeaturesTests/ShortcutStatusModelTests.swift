@@ -17,16 +17,16 @@ struct ShortcutStatusModelTests {
 
     @Test("Registration failures are tracked per name")
     func registrationFailure() {
-        let probe = FakeShortcutProbe(assigned: ["captureRegion", "captureWindow"])
-        probe.failing = ["captureRegion"]
-        let model = ShortcutStatusModel(probe: probe, names: names)
+        let registry = FakeShortcutRegistry(assigned: ["captureRegion", "captureWindow"])
+        registry.failing = ["captureRegion"]
+        let model = ShortcutStatusModel(registry: registry, names: names)
         model.refreshAll()
         #expect(model.state(of: "captureRegion") == .failed)
         #expect(model.hasFailed("captureRegion"))
         #expect(model.state(of: "captureWindow") == .active)
         #expect(model.state(of: "captureDisplay") == .unassigned)
 
-        probe.assigned.remove("captureRegion")
+        registry.assigned.remove("captureRegion")
         model.refresh(named: "captureRegion")
         #expect(model.state(of: "captureRegion") == .unassigned)
         #expect(!model.hasFailed("captureRegion"))
@@ -34,90 +34,105 @@ struct ShortcutStatusModelTests {
 
     @Test("A shortcut macOS claims is held, never registered, until macOS lets it go")
     func heldWhileMacOSClaimsIt() {
-        let probe = FakeShortcutProbe(assigned: ["captureRegion", "captureDisplay"])
-        probe.takenBySystem = ["captureRegion"]
-        let model = ShortcutStatusModel(probe: probe, names: names)
+        let registry = FakeShortcutRegistry(assigned: ["captureRegion", "captureDisplay"])
+        registry.takenBySystem = ["captureRegion"]
+        let model = ShortcutStatusModel(registry: registry, names: names)
         model.refreshAll()
         #expect(model.state(of: "captureRegion") == .heldBySystem)
-        #expect(probe.registered["captureRegion"] == false)
-        #expect(probe.probed.contains("captureRegion") == false)
+        #expect(registry.registered["captureRegion"] == false)
+        #expect(registry.probed.contains("captureRegion") == false)
         #expect(model.state(of: "captureDisplay") == .active)
-        #expect(probe.registered["captureDisplay"] == true)
+        #expect(registry.registered["captureDisplay"] == true)
         #expect(model.isHoldingAny)
 
-        probe.takenBySystem = []
+        registry.takenBySystem = []
         model.refreshAll()
         #expect(model.state(of: "captureRegion") == .active)
-        #expect(probe.registered["captureRegion"] == true)
+        #expect(registry.registered["captureRegion"] == true)
         #expect(!model.isHoldingAny)
+    }
+
+    @Test("Every path that holds a shortcut reports it, so the caller starts watching")
+    func holdingIsReported() {
+        let registry = FakeShortcutRegistry(assigned: ["captureRegion"])
+        let model = ShortcutStatusModel(registry: registry, names: names)
+        var reports = 0
+        model.onHold = { reports += 1 }
+        model.refreshAll()
+        #expect(reports == 0)
+
+        registry.takenBySystem = ["captureRegion"]  // e.g. a recording forced onto macOS's keys
+        model.refresh(named: "captureRegion")
+        #expect(reports == 1)
+        #expect(!model.admitPress(named: "captureRegion"))
+        #expect(reports == 2)
     }
 
     @Test("Watching a held shortcut re-checks only held ones, never re-probing active registrations")
     func refreshHeldTouchesOnlyHeld() {
-        let probe = FakeShortcutProbe(assigned: ["captureRegion", "captureDisplay"])
-        probe.takenBySystem = ["captureRegion"]
-        let model = ShortcutStatusModel(probe: probe, names: names)
+        let registry = FakeShortcutRegistry(assigned: ["captureRegion", "captureDisplay"])
+        registry.takenBySystem = ["captureRegion"]
+        let model = ShortcutStatusModel(registry: registry, names: names)
         model.refreshAll()
-        let probesBefore = probe.probed
+        let probesBefore = registry.probed
 
         model.refreshHeld()
-        #expect(probe.probed == probesBefore)
+        #expect(registry.probed == probesBefore)
         #expect(model.state(of: "captureRegion") == .heldBySystem)
 
-        probe.takenBySystem = []
+        registry.takenBySystem = []
         model.refreshHeld()
         #expect(model.state(of: "captureRegion") == .active)
-        #expect(probe.probed == probesBefore + ["captureRegion"])
+        #expect(registry.probed == probesBefore + ["captureRegion"])
         #expect(!model.isHoldingAny)
     }
 
     @Test("A press while macOS claims the keys does nothing and holds the shortcut")
     func pressWhileClaimedIsIgnored() {
-        let probe = FakeShortcutProbe(assigned: ["captureRegion"])
-        let model = ShortcutStatusModel(probe: probe, names: names)
+        let registry = FakeShortcutRegistry(assigned: ["captureRegion"])
+        let model = ShortcutStatusModel(registry: registry, names: names)
         model.refreshAll()
-        #expect(model.shouldPerform(named: "captureRegion"))
+        #expect(model.admitPress(named: "captureRegion"))
 
-        probe.takenBySystem = ["captureRegion"]  // the user turned the macOS shortcut back on
-        #expect(!model.shouldPerform(named: "captureRegion"))
+        registry.takenBySystem = ["captureRegion"]  // the user turned the macOS shortcut back on
+        #expect(!model.admitPress(named: "captureRegion"))
         #expect(model.state(of: "captureRegion") == .heldBySystem)
-        #expect(probe.registered["captureRegion"] == false)
+        #expect(registry.registered["captureRegion"] == false)
     }
 
     @Test("An unassigned shortcut is left registrable so a new recording works at once")
     func unassignedStaysRegistrable() {
-        let probe = FakeShortcutProbe(assigned: [])
-        let model = ShortcutStatusModel(probe: probe, names: names)
+        let registry = FakeShortcutRegistry(assigned: [])
+        let model = ShortcutStatusModel(registry: registry, names: names)
         model.refreshAll()
         #expect(names.allSatisfy { model.state(of: $0) == .unassigned })
-        #expect(names.allSatisfy { probe.registered[$0] == true })
+        #expect(names.allSatisfy { registry.registered[$0] == true })
     }
 
     @Test("Defaults go only to unassigned commands, once, never onto keys already in use")
     func seedingPlan() {
-        let defaults: [(name: String, shortcut: String)] = [
-            ("captureDisplay", "⇧⌘3"), ("captureRegion", "⇧⌘4"), ("captureMenu", "⇧⌘5"),
+        let defaults = [
+            DefaultShortcut(name: "captureDisplay", shortcut: "⇧⌘3"),
+            DefaultShortcut(name: "captureRegion", shortcut: "⇧⌘4"),
+            DefaultShortcut(name: "captureMenu", shortcut: "⇧⌘5"),
         ]
-        #expect(
-            ShortcutDefaultsPlan.namesToSeed(defaults: defaults, assigned: [:], seededVersion: 0)
-                == ["captureDisplay", "captureRegion", "captureMenu"])
-        #expect(
-            ShortcutDefaultsPlan.namesToSeed(
-                defaults: defaults, assigned: [:], seededVersion: ShortcutDefaultsPlan.version
-            ).isEmpty)
-        #expect(
-            ShortcutDefaultsPlan.namesToSeed(
-                defaults: defaults, assigned: ["captureRegion": "⌥⌘R"], seededVersion: 0)
-                == ["captureDisplay", "captureMenu"])
-        #expect(
-            ShortcutDefaultsPlan.namesToSeed(
-                defaults: defaults, assigned: ["captureWindow": "⇧⌘4"], seededVersion: 0)
-                == ["captureDisplay", "captureMenu"])
+        func seed(_ assigned: [String: String], offered: Set<String> = []) -> [String] {
+            ShortcutDefaultsPlan.defaultsToSeed(defaults, assigned: assigned, alreadyOffered: offered).map(\.name)
+        }
+        #expect(seed([:]) == ["captureDisplay", "captureRegion", "captureMenu"])
+        #expect(seed([:], offered: ["captureDisplay", "captureRegion", "captureMenu"]).isEmpty)
+        #expect(seed(["captureRegion": "⌥⌘R"]) == ["captureDisplay", "captureMenu"])
+        #expect(seed(["captureWindow": "⇧⌘4"]) == ["captureDisplay", "captureMenu"])
+        // A default added in a later version is offered once; ones the user cleared never return.
+        #expect(seed([:], offered: ["captureDisplay", "captureRegion"]) == ["captureMenu"])
     }
 
     @Test("Restore Defaults returns every command to the table and clears the rest")
     func restorePlan() {
-        let defaults: [(name: String, shortcut: String)] = [("captureDisplay", "⇧⌘3"), ("captureRegion", "⇧⌘4")]
+        let defaults = [
+            DefaultShortcut(name: "captureDisplay", shortcut: "⇧⌘3"),
+            DefaultShortcut(name: "captureRegion", shortcut: "⇧⌘4"),
+        ]
         let restored = ShortcutDefaultsPlan.restored(
             names: ["captureRegion", "captureDisplay", "captureText"], defaults: defaults)
         #expect(restored == ["captureRegion": "⇧⌘4", "captureDisplay": "⇧⌘3", "captureText": nil])
