@@ -1,0 +1,2 @@
+Icons in _src/icons/ (inlined into the pages) come from Phosphor Icons, @phosphor-icons/core 2.1.1.
+MIT License. Copyright (c) 2023 Phosphor Icons. https://github.com/phosphor-icons/core

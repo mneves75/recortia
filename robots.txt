@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://mneves75.github.io/recortia/sitemap.xml
