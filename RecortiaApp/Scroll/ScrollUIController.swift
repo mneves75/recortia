@@ -32,7 +32,8 @@ final class ScrollUIController {
             if !overlay.isPresented {
                 overlay.present(
                     displays: displays(),
-                    notice: String(localized: "Select the area that scrolls. Leave out fixed headers if you can."))
+                    notice: String(localized: "Select the area that scrolls. Leave out fixed headers if you can."),
+                    allowsWindowSwitch: false)
             }
             closeHUD()
             closeReview()

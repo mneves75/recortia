@@ -26,6 +26,10 @@ Or download the notarized DMG from [Releases](https://github.com/mneves75/recort
 
 - **Capture** a region, a display, or a chosen window; delayed capture; repeat the last region.
   Recortia's own windows are excluded; regions stay on one display.
+- **The macOS shortcuts**: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and
+  ⇧⌘5 shows every capture mode at the pointer. They start working once you turn the macOS ones off
+  in System Settings › Keyboard › Keyboard Shortcuts › Screenshots; Recortia never changes them
+  itself and says which ones macOS still uses ([ADR-005](docs/adr/0005-macos-default-shortcuts.md)).
 - **Annotate** with text, arrows, rectangles, ellipses, freehand, highlighter, and numbered steps;
   select, move, resize, duplicate, reorder, crop, resize, zoom, and pan with grouped undo.
 - **Redact securely.** The solid redaction tool replaces source pixels before any resampling or
@@ -82,7 +86,7 @@ geometry, state machines), `Imaging` (decode, privacy renderer, export, OCR, QR,
 Automated: Swift Testing suites for every module, including the redaction metamorphic tests
 (RED-01…RED-04) with planted-leak controls, import hardening (IO-01), export container inspection,
 OCR accuracy on a 104-sample EN/PT-BR corpus, and scroll stitching with held-out calibration, plus
-the end-to-end scenario runner (17 scenarios in English and Brazilian Portuguese).
+the end-to-end scenario runner (20 scenarios in English and Brazilian Portuguese).
 
 Security: a source-review audit of the pre-release tree (three hunting waves, independent
 verification) found no confirmed vulnerability; its two leads and the independent review's

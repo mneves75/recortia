@@ -161,14 +161,14 @@
         "PERM-01",
         "UX-01"
       ],
-      "scope": "Create the native lifecycle, menu commands, onboarding, user-assigned shortcut recorder, localization foundation, and settings.",
+      "scope": "Create the native lifecycle, menu commands, onboarding, shortcut recorder with macOS-style defaults (ADR-005), localization foundation, and settings.",
       "deliverables": [
         "App composition root",
         "Menu/settings/onboarding UI",
         "String Catalog",
         "Reviewed shortcut dependency resolution"
       ],
-      "completion_contract": "The app launches without intrusive permission prompts, exposes keyboard-accessible commands, reports shortcut registration failure, and starts with no automatic side effects.",
+      "completion_contract": "The app launches without intrusive permission prompts, exposes keyboard-accessible commands, reports shortcut registration failure and shortcuts macOS still uses, and starts with no automatic side effects beyond writing the default shortcuts once.",
       "evidence": [],
       "authorization": "requires_approved_milestone",
       "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."

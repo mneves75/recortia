@@ -181,6 +181,19 @@ public final class CaptureCoordinator {
         return true
     }
 
+    /// Space during a region selection, as in the macOS Screenshot app: the same request (and its
+    /// delay) continues as a window selection. Only a plain region selection switches; Capture
+    /// Text and other modes return false and keep selecting.
+    @discardableResult
+    public func switchToWindowSelection() -> Bool {
+        guard state == .selecting, mode == .region, purpose == .edit, let active else { return false }
+        mode = .window
+        selectionContext = .loadingWindows
+        let id = active.id
+        task = Task { [weak self] in await self?.loadWindows(id) }
+        return true
+    }
+
     /// Escape or Cancel. Has no effect when nothing is active; never implies copy or save.
     public func cancel() {
         guard state.isActive else { return }

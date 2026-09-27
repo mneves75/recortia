@@ -40,7 +40,8 @@
             let app = harness.app
             let expected: [AppCommand: Bool] = [
                 .captureRegion: true, .captureDisplay: true, .captureWindow: true, .captureWithDelay: true,
-                .repeatLastRegion: false, .scrollingCapture: true, .captureText: true, .openImage: true,
+                .repeatLastRegion: false, .scrollingCapture: true, .captureText: true, .captureMenu: true,
+                .openImage: true,
                 .pasteImage: true, .bringPinsForward: false, .closeAllPins: false, .settings: true, .about: true,
                 .quit: true,
             ]

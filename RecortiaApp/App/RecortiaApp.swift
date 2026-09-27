@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #else
             let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)
         #endif
-        model = AppModel(settings: settings, services: .live(), shortcutProbe: CarbonShortcutProbe())
+        model = AppModel(settings: settings, services: .live(), shortcutRegistry: KeyboardShortcutsRegistry())
         super.init()
     }
 
@@ -48,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if E2ERunner.startIfRequested() { return }
         #else
             integrity.prepare()
+            ShortcutDefaults.seedIfNeeded(isNewInstall: !model.settings.preferences.hasCompletedOnboarding)
         #endif
         model.launch()
     }

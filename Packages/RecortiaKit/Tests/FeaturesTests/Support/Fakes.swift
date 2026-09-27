@@ -584,9 +584,22 @@ final class MemoryPreferenceStorage: PreferenceStorage {
 }
 
 @MainActor
-final class FakeShortcutProbe: ShortcutRegistrationProbe {
+final class FakeShortcutRegistry: ShortcutRegistry {
+    var assigned: Set<String>
     var failing: Set<String> = []
-    func canRegister(shortcutNamed name: String) -> Bool { !failing.contains(name) }
+    var takenBySystem: Set<String> = []
+    private(set) var registered: [String: Bool] = [:]
+    private(set) var probed: [String] = []
+
+    init(assigned: Set<String>) { self.assigned = assigned }
+
+    func isAssigned(shortcutNamed name: String) -> Bool { assigned.contains(name) }
+    func isTakenBySystem(shortcutNamed name: String) -> Bool { assigned.contains(name) && takenBySystem.contains(name) }
+    func canRegister(shortcutNamed name: String) -> Bool {
+        probed.append(name)
+        return !failing.contains(name)
+    }
+    func setRegistered(_ registered: Bool, shortcutNamed name: String) { self.registered[name] = registered }
 }
 
 struct TestError: Error {}

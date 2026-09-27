@@ -44,7 +44,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 
 | ID | Capability | Release | Verification family |
 |---|---|---|---|
-| FR-01 | Menu-bar operation, onboarding, user-assigned global shortcuts | 0.1 | UX / PERM |
+| FR-01 | Menu-bar operation, onboarding, global shortcuts with macOS-style defaults (ADR-005) | 0.1 | UX / PERM |
 | FR-02 | Region, display, selectable-window, delayed, and repeat-region capture | 0.1 | CAP / GEO |
 | FR-03 | Open PNG/JPEG, paste an image, and drop an image into the editor | 0.1 | IO / PRIV |
 | FR-04 | Crop, zoom, pan, resize; select, move, delete, duplicate; undo/redo | 0.1 | EDIT / GEO |
@@ -82,7 +82,7 @@ The primary users are developers reporting bugs, designers checking pixels, and 
 
 **Story:** As a Mac user, I want a keyboard-first utility that stays out of my way.
 
-The app MUST expose capture commands, Open Image, Settings, About, and Quit from its menu-bar menu. First launch MUST explain local processing and let the user assign shortcuts; do not register surprising defaults or replace Apple's screenshot shortcuts automatically. A shortcut recorder MUST report detected system/menu conflicts and registration failures without claiming exhaustive knowledge of all other apps. KeyboardShortcuts documents user-configurable registration without permission prompts. [S09]
+The app MUST expose capture commands, Open Image, Settings, About, and Quit from its menu-bar menu. First launch MUST explain local processing and let the user assign shortcuts. Default shortcuts mirror the macOS Screenshot app (⇧⌘3 display, ⇧⌘4 region with Space for a window, ⇧⌘5 capture menu; ADR-005): Recortia never turns Apple's screenshot shortcuts off, holds a default while macOS still uses it, and says how to free it. A shortcut recorder MUST report detected system/menu conflicts and registration failures without claiming exhaustive knowledge of all other apps. KeyboardShortcuts documents user-configurable registration without permission prompts. [S09]
 
 Launch at login is off until selected. The editor follows the active Space and capture display when possible, without repeatedly stealing focus. App reactivation MUST reuse the existing process. Settings MUST remain reachable when all image windows are closed. Capture cancellation MUST never imply copy, save, or upload.
 

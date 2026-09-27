@@ -2,10 +2,11 @@
     import AppKit
     import Domain
     import Features
+    import KeyboardShortcuts
     import MacPlatform
 
     /// The real composition root for the run: `AppServices.live()` with the synthetic replacements,
-    /// a real `AppModel` (never launched, so no onboarding and no global shortcuts), and the same
+    /// a real `AppModel` (never launched, so no onboarding and no global shortcut handlers), and the same
     /// wiring `AppModel.wire` performs, except that editor windows are parked offscreen instead
     /// of being presented.
     @MainActor
@@ -25,9 +26,18 @@
         let features: FeatureModels
         let editors: E2EEditorHost
         let environment: EditorEnvironment
+        /// The macOS shortcuts the runner treats as enabled, so shortcut states never depend on the
+        /// host's System Settings. It starts like a fresh Mac: ⇧⌘3, ⇧⌘4, and ⇧⌘5 belong to macOS.
+        let systemShortcuts = E2ESystemShortcuts()
 
         init(output: E2EOutput) throws {
             self.output = output
+            // Shortcut assignments live in UserDefaults (KeyboardShortcuts). The runner uses only its
+            // own domain, cleared first, never the app's.
+            guard let domain = Bundle.main.bundleIdentifier, domain == E2ESystemShortcuts.runnerDomain else {
+                throw E2EAbort("the E2E runner must run as \(E2ESystemShortcuts.runnerDomain)")
+            }
+            UserDefaults.standard.removePersistentDomain(forName: domain)
             let work = output.workDirectory
             let dropFolder = work.appending(path: "drops", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: dropFolder, withIntermediateDirectories: true)
@@ -50,7 +60,11 @@
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: live.autoScroller, loginItem: live.loginItem, clock: live.clock)
-            app = AppModel(settings: settings, services: services, shortcutProbe: CarbonShortcutProbe())
+            let system = systemShortcuts
+            app = AppModel(
+                settings: settings, services: services,
+                shortcutRegistry: KeyboardShortcutsRegistry(
+                    takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }))
             guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
             self.features = features
             environment = EditorEnvironment(
@@ -60,6 +74,9 @@
                 textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links, settings: settings)
             editors = E2EEditorHost(environment: environment)
             wire()
+            // What a normal launch does (ADR-005), without registering any handler.
+            ShortcutDefaults.seedIfNeeded(isNewInstall: !settings.preferences.hasCompletedOnboarding)
+            app.shortcutStatus.refreshAll()
         }
 
         /// Mirrors `AppModel.wire`: every new document opens an editor.
@@ -182,5 +199,16 @@
             for subview in view.subviews { found += all(type, in: subview) }
             return found
         }
+    }
+
+    /// A mutable stand-in for the enabled macOS shortcuts (`CopySymbolicHotKeys`).
+    @MainActor
+    final class E2ESystemShortcuts {
+        static let runnerDomain = "dev.mvneves.Recortia.E2E"
+        static let screenshotDefaults: Set<KeyboardShortcuts.Shortcut> = [
+            .init(.three, modifiers: [.command, .shift]), .init(.four, modifiers: [.command, .shift]),
+            .init(.five, modifiers: [.command, .shift]),
+        ]
+        var enabled = screenshotDefaults
     }
 #endif

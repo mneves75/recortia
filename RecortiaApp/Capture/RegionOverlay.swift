@@ -22,12 +22,14 @@ extension DisplayInfo {
 final class RegionOverlayController {
     var onCommit: ((Rect<DesktopSpace>, DisplayInfo) -> Void)?
     var onCancel: (() -> Void)?
+    /// Space, as in the macOS Screenshot app: continue as a window selection.
+    var onSwitchToWindow: (() -> Void)?
 
     private var windows: [CGDirectDisplayID: OverlayWindow] = [:]
 
     var isPresented: Bool { !windows.isEmpty }
 
-    func present(displays: [DisplayInfo], notice: String?) {
+    func present(displays: [DisplayInfo], notice: String?, allowsWindowSwitch: Bool) {
         let wanted = Set(displays.map(\.id))
         for (id, window) in windows where !wanted.contains(id) {
             window.orderOut(nil)
@@ -36,11 +38,14 @@ final class RegionOverlayController {
         for display in displays {
             if let existing = windows[display.id] {
                 existing.selectionView.notice = notice
+                existing.selectionView.allowsWindowSwitch = allowsWindowSwitch
                 continue
             }
             guard let screen = display.screen else { continue }
             let window = OverlayWindow(display: display, screen: screen)
             window.selectionView.notice = notice
+            window.selectionView.allowsWindowSwitch = allowsWindowSwitch
+            window.selectionView.onSwitchToWindow = { [weak self] in self?.onSwitchToWindow?() }
             window.selectionView.onCommit = { [weak self] rect, display in self?.onCommit?(rect, display) }
             window.selectionView.onCancel = { [weak self] in self?.onCancel?() }
             windows[display.id] = window
@@ -87,8 +92,16 @@ final class OverlayWindow: NSWindow {
 final class RegionSelectionView: NSView {
     var onCommit: ((Rect<DesktopSpace>, DisplayInfo) -> Void)?
     var onCancel: (() -> Void)?
+    var onSwitchToWindow: (() -> Void)?
     var notice: String? {
         didSet { needsDisplay = true }
+    }
+    /// Whether Space switches to a window selection (a plain region capture, not Capture Text).
+    var allowsWindowSwitch = false {
+        didSet {
+            setAccessibilityHelp(instructions)
+            needsDisplay = true
+        }
     }
 
     private let display: DisplayInfo
@@ -102,7 +115,7 @@ final class RegionSelectionView: NSView {
         setAccessibilityElement(true)
         setAccessibilityRole(.layoutArea)
         setAccessibilityLabel(String(localized: "Screen area selection"))
-        setAccessibilityHelp(Self.instructions)
+        setAccessibilityHelp(instructions)
     }
 
     @available(*, unavailable)
@@ -151,6 +164,8 @@ final class RegionSelectionView: NSView {
             onCancel?()
         case 36, 76:  // Return, keypad Enter: capture the whole display
             onCommit?(display.frame, display)
+        case 49:  // Space: choose a window instead, unless a drag is in progress
+            if allowsWindowSwitch, anchor == nil { onSwitchToWindow?() }
         default:
             super.keyDown(with: event)
         }
@@ -183,7 +198,7 @@ final class RegionSelectionView: NSView {
             drawSizeLabel(for: rect)
         }
 
-        var lines = [Self.instructions]
+        var lines = [instructions]
         if let notice { lines.insert(notice, at: 0) }
         if pointerLeftDisplay {
             lines.append(String(localized: "A selection stays on the display where it started."))
@@ -248,9 +263,14 @@ final class RegionSelectionView: NSView {
             height: rect.height * sy)
     }
 
-    private static var instructions: String {
-        String(
-            localized:
-                "Drag to select an area. Press Return to capture the whole display or Escape to cancel.")
+    private var instructions: String {
+        allowsWindowSwitch
+            ? String(
+                localized:
+                    "Drag to select an area, or press Space to choose a window. Press Return to capture the whole display or Escape to cancel."
+            )
+            : String(
+                localized:
+                    "Drag to select an area. Press Return to capture the whole display or Escape to cancel.")
     }
 }
