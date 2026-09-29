@@ -74,7 +74,7 @@ struct EditorExportTests {
         #expect(!h.model.document.masks.isEmpty)
         #expect(lease.isRevoked)
         #expect(h.drag.dismissCount == 1)
-        await export.value
+        _ = await export.value
         #expect(h.drag.writtenSnapshots.isEmpty)
     }
 
@@ -86,7 +86,7 @@ struct EditorExportTests {
         await waitFor("drag offered") { h.drag.leases.count == 1 }
         h.model.close()
         #expect(h.drag.leases.first?.isRevoked == true)
-        await export.value
+        _ = await export.value
         #expect(h.drag.writtenSnapshots.isEmpty)
     }
 

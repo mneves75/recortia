@@ -52,11 +52,14 @@ final class FakeScrollPoster: ScrollEventPosting {
 
 @Suite("Automatic scrolling stop policy (FR-10, SCR-03)")
 struct AutoScrollStopPolicyTests {
-    let policy = AutoScrollStopPolicy(frontmostPIDAtStart: targetPID, displayFingerprint: display.fingerprint)
+    let policy = AutoScrollStopPolicy(
+        targetPID: targetPID, controllerPID: ProcessInfo.processInfo.processIdentifier,
+        displayFingerprint: display.fingerprint)
 
     @Test("An unchanged environment continues")
     func unchangedContinues() {
         #expect(policy.stopReason(for: observation()) == nil)
+        #expect(policy.stopReason(for: observation(frontmost: ProcessInfo.processInfo.processIdentifier)) == nil)
     }
 
     @Test(
@@ -159,14 +162,25 @@ struct AutoScrollerTests {
         #expect(poster.posts.isEmpty)
     }
 
-    @Test("The frontmost app is compared with the one at start, whichever it was")
-    func frontmostBaselineIsStart() throws {
-        let (scroller, environment, poster) = try make(observation(frontmost: 555))
+    @Test("A chosen window in a background app cannot receive automatic scroll events")
+    func frontmostMustOwnTargetAtStart() throws {
+        let (scroller, _, poster) = try make(observation(frontmost: 555))
+        #expect(throws: AutoScrollError.targetUnavailable) { try scroller.start() }
+        #expect(scroller.scrollDown(byPixels: 10) == .notRunning)
+        #expect(poster.posts.isEmpty)
+    }
+
+    @Test("The scrolling HUD may have focus when its target is started")
+    func controllerMayOwnFocusAtStart() throws {
+        let (scroller, environment, poster) = try make(
+            observation(frontmost: ProcessInfo.processInfo.processIdentifier))
         try scroller.start()
         #expect(scroller.scrollDown(byPixels: 10) == .scrolled)
         environment.current = observation(frontmost: targetPID)
+        #expect(scroller.scrollDown(byPixels: 10) == .scrolled)
+        environment.current = observation(frontmost: 555)
         #expect(scroller.scrollDown(byPixels: 10) == .stopped(.frontmostAppChanged))
-        #expect(poster.posts.count == 1)
+        #expect(poster.posts.count == 2)
     }
 
     @Test("A failed event post stops scrolling")

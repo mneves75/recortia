@@ -23,8 +23,9 @@ final class LiveScrollFrames: ScrollFrameSourceService {
         guard let source, var iterator else { throw .canceled }
         let frame = await iterator.next(isolation: #isolation)
         // A stop and a new start may have run during the await; never overwrite the new iterator.
-        if self.source === source { self.iterator = iterator }
-        if let frame { return frame }
+        guard self.source === source else { throw .canceled }
+        self.iterator = iterator
+        if let frame, await source.ensureTargetCurrent() { return frame }
         switch source.state {
         case .stopped(.failed(let error)): throw error
         case .stopped(.displayChanged): throw .displayChanged

@@ -188,4 +188,4 @@ final class LiveLoginItem: LoginItemService {
     func setEnabled(_ enabled: Bool) throws { try LoginItem.set(enabled) }
 }
 
-extension KeychainPreferenceIntegrity: PreferenceIntegrityService {}
+extension KeychainPreferenceIntegrity: @retroactive PreferenceIntegrityService {}

@@ -20,14 +20,15 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-version=$(sed -n 's/^ *MARKETING_VERSION: *//p' project.yml)
-build=$(sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p' project.yml)
+source_commit=$(git rev-parse HEAD)
+version=$(git show "${source_commit}:project.yml" | sed -n 's/^ *MARKETING_VERSION: *//p')
+build=$(git show "${source_commit}:project.yml" | sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p')
 if [[ ! "$version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' || ! "$build" =~ '^[0-9]+$' ]]; then
   echo "release: unexpected version '$version' or build '$build' in project.yml" >&2
   exit 1
 fi
 
-tag=$(git describe --exact-match --tags HEAD 2>/dev/null || true)
+tag=$(git describe --exact-match --tags "$source_commit" 2>/dev/null || true)
 if (( ! dry_run )); then
   if [[ ! "$tag" =~ "^v${version//./\\.}(-beta[0-9]+)?$" ]]; then
     echo "release: HEAD must carry a reviewed tag v$version or v$version-betaN (found '${tag:-none}')" >&2
@@ -43,10 +44,10 @@ rm -rf "$out"
 git worktree prune
 mkdir -p "$out"
 
-# Build from a fresh checkout of HEAD with its own derived data and package checkouts, so nothing
+# Build from a fresh checkout of the selected commit with its own derived data and package checkouts, so nothing
 # ignored or cached in the working tree can reach the signed binary.
 src=$out/src
-git worktree add --quiet --detach "$src" HEAD
+git worktree add --quiet --detach "$src" "$source_commit"
 trap 'git -C "$root" worktree remove --force "$src" 2>/dev/null || true' EXIT
 
 gate="skipped (dry run)"
@@ -105,6 +106,17 @@ if [[ "$signature" != *"flags=0x10000(runtime)"* ]]; then
   exit 1
 fi
 scripts/check-release-binary.sh "$app/Contents/MacOS/Recortia"
+notice="$src/RecortiaApp/Resources/KeyboardShortcuts-LICENSE.txt"
+upstream_notice="$out/spm/checkouts/KeyboardShortcuts/license"
+bundled_notice="$app/Contents/Resources/KeyboardShortcuts-LICENSE.txt"
+if ! cmp -s "$notice" "$upstream_notice" || ! cmp -s "$notice" "$bundled_notice"; then
+  echo "release: the bundled KeyboardShortcuts notice is missing or differs from the pinned package license" >&2
+  exit 1
+fi
+if ! cmp -s "$src/LICENSE" "$app/Contents/Resources/Recortia-LICENSE.txt"; then
+  echo "release: the bundled Recortia license is missing or differs from the reviewed source" >&2
+  exit 1
+fi
 
 echo "== disk image"
 staging="$out/dmg"
@@ -130,7 +142,7 @@ resolved="$src/Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Packa
 {
   echo "version: $version ($build)"
   echo "tag: ${tag:-none}"
-  echo "commit: $(git rev-parse HEAD)"
+  echo "commit: $source_commit"
   echo "gate: $gate"
   echo "package_resolved_sha256: $(shasum -a 256 "$resolved" | cut -d' ' -f1)"
   echo "toolchain: $(xcodebuild -version | tr '\n' ' ')"

@@ -40,6 +40,9 @@ changes without a relaunch.
   macOS shortcut off, Recortia starts using it.
 - A shortcut that fires while macOS also claims it does nothing, so a macOS shortcut turned back on
   later never makes both apps react.
+- Changing one assignment or restoring defaults first unregisters all Recortia shortcuts, then
+  writes the new assignment and checks which combinations macOS still owns before registering.
+  This also covers the shortcut recorder's synchronous write path.
 - Defaults are assigned on a new install only (onboarding not completed), each default once
   (recorded by name, so a later version's new default is offered once and a cleared one never
   returns), only to commands without a shortcut, and never onto keys another Recortia command

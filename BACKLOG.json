@@ -733,9 +733,11 @@
         "Release checklist"
       ],
       "completion_contract": "The release candidate meets its named scope without fake parity/security claims. The maintainer approves any publish action separately; unrun gates remain visibly unrun.",
-      "evidence": [],
+      "evidence": [
+        "scripts/test-release-contract.py verifies source commit binding and bundled MIT notices in an unsigned Release app"
+      ],
       "authorization": "requires_approved_milestone",
-      "status_note": "MIT license, contribution and security policies, public repository, and security audit done; 1.0 qualification pending."
+      "status_note": "Local unsigned release-contract checks pass; signed/notarized artifacts, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
     }
   ],
   "deferred_scope": [

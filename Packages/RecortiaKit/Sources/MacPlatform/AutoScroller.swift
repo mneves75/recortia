@@ -38,15 +38,21 @@ public struct AutoScrollObservation: Sendable, Equatable {
     }
 }
 
-/// Pure stop rules for automatic scrolling (FR-10, SCR-03): any change of the frontmost app, the
-/// target window, the display configuration, or the Accessibility grant stops scrolling.
+/// Pure stop rules for automatic scrolling (FR-10, SCR-03): focus outside Recortia and the bound
+/// target, target-window loss, display changes, or Accessibility revocation stop scrolling.
 public struct AutoScrollStopPolicy: Sendable, Equatable {
-    public let frontmostPIDAtStart: pid_t?
+    public let targetPID: pid_t
+    public let controllerPID: pid_t
     public let displayFingerprint: String
 
-    public init(frontmostPIDAtStart: pid_t?, displayFingerprint: String) {
-        self.frontmostPIDAtStart = frontmostPIDAtStart
+    public init(targetPID: pid_t, controllerPID: pid_t, displayFingerprint: String) {
+        self.targetPID = targetPID
+        self.controllerPID = controllerPID
         self.displayFingerprint = displayFingerprint
+    }
+
+    public func permitsFocus(_ pid: pid_t?) -> Bool {
+        pid == targetPID || pid == controllerPID
     }
 
     /// Nil to continue; otherwise the most fundamental reason to stop.
@@ -54,7 +60,7 @@ public struct AutoScrollStopPolicy: Sendable, Equatable {
         if !observation.accessibilityTrusted { return .accessibilityRevoked }
         if !observation.targetWindowOnScreen { return .targetWindowGone }
         if observation.displayFingerprint != displayFingerprint { return .displayChanged }
-        if observation.frontmostPID != frontmostPIDAtStart { return .frontmostAppChanged }
+        if !permitsFocus(observation.frontmostPID) { return .frontmostAppChanged }
         return nil
     }
 }
@@ -131,8 +137,11 @@ public final class AutoScroller {
         guard observation.accessibilityTrusted else { throw .accessibilityNotTrusted }
         guard observation.targetWindowOnScreen else { throw .targetUnavailable }
         guard observation.displayFingerprint == display.fingerprint else { throw .displayChanged }
-        policy = AutoScrollStopPolicy(
-            frontmostPIDAtStart: observation.frontmostPID, displayFingerprint: display.fingerprint)
+        let policy = AutoScrollStopPolicy(
+            targetPID: target.ownerPID, controllerPID: ProcessInfo.processInfo.processIdentifier,
+            displayFingerprint: display.fingerprint)
+        guard policy.permitsFocus(observation.frontmostPID) else { throw .targetUnavailable }
+        self.policy = policy
         state = .running
         if observesActivations { observeActivations() }
     }
@@ -174,7 +183,7 @@ public final class AutoScroller {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.state == .running, let policy = self.policy else { return }
-                if NSWorkspace.shared.frontmostApplication?.processIdentifier != policy.frontmostPIDAtStart {
+                if !policy.permitsFocus(NSWorkspace.shared.frontmostApplication?.processIdentifier) {
                     self.stop(reason: .frontmostAppChanged)
                 }
             }

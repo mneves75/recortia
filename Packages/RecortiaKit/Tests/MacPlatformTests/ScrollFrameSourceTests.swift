@@ -55,6 +55,15 @@ final class FakeFrameProducer: ScrollFrameProducer {
 }
 
 @MainActor
+private final class FakeScrollTargetChecker: ScrollTargetChecking {
+    var canBind = true
+    var current = true
+
+    func bind() -> Bool { canBind }
+    func isCurrent() -> Bool { current }
+}
+
+@MainActor
 private func frame(width: Int) throws -> CGImage {
     try #require(TestSupport.image(width: width, height: 2))
 }
@@ -69,6 +78,30 @@ private func drain(_ source: ScrollFrameSource) async -> [Int] {
 @MainActor
 @Suite("Scroll frame source: bounded newest-wins buffering and explicit stop (FR-10, PERM-02, SCR-04)")
 struct ScrollFrameSourceTests {
+    @Test("A missing scroll target refuses to start any screen stream")
+    func missingTargetNeverStarts() async {
+        let producer = FakeFrameProducer()
+        let checker = FakeScrollTargetChecker()
+        checker.canBind = false
+        let source = ScrollFrameSource(producer: producer, targetChecker: checker)
+        await #expect(throws: CaptureError.targetUnavailable) { try await source.start() }
+        #expect(producer.state.withLock { $0.startCount } == 0)
+        #expect(source.state == .stopped(.targetChanged))
+    }
+
+    @Test("A changed target stops capture and releases handlers, including while no frames arrive")
+    func changedTargetStopsWithoutFrame() async throws {
+        let producer = FakeFrameProducer()
+        let checker = FakeScrollTargetChecker()
+        let source = ScrollFrameSource(producer: producer, targetChecker: checker)
+        try await source.start()
+        checker.current = false
+        #expect(await source.ensureTargetCurrent() == false)
+        #expect(source.state == .stopped(.targetChanged))
+        #expect(producer.stopCount == 1)
+        #expect(!producer.hasHandlers)
+    }
+
     @Test("The buffer holds at most two frames and keeps the newest")
     func boundedNewestWins() async throws {
         #expect(ScrollFrameSource.bufferDepth == 2)

@@ -163,7 +163,7 @@ Handle stationary frames, smooth scrolling, repeated text, lazy-loaded assets, f
 
 Choose an initial vertical direction. Unexpected reversal pauses rather than duplicating content. Limit duration to 120 seconds, input to 200 accepted frames, output to 40 megapixels, any side to 32,768 pixels, and default output height to 20,000 pixels; the first reached limit wins. Output limits include final encoding buffers, not just matching thumbnails.
 
-Keep at most two full-resolution viewport buffers plus bounded working tiles and previews. Do not assume ImageIO can encode an arbitrarily large output without materializing it. Refuse operations that exceed the declared allocation plan. A user-confirmed partial result may be exported, but must never be labeled complete. Stop immediately on target/focus/display change, lock, permission revocation, or canceled control.
+Keep at most two full-resolution viewport buffers plus bounded working tiles and previews. Do not assume ImageIO can encode an arbitrarily large output without materializing it. Refuse operations that exceed the declared allocation plan. A user-confirmed partial result may be exported, but must never be labeled complete. Stop immediately on target/focus/display change, lock, permission revocation, or canceled control. Focus may move between the bound target and Recortia's own UI; another app taking focus ends the session.
 
 ### FR-11 — Pixel tools
 

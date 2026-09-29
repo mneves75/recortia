@@ -42,7 +42,8 @@ Or download the notarized DMG from [Releases](https://github.com/mneves75/recort
   untrusted data; only http/https links open, and only when you click.
 - **Pin** up to five floating references with adjustable opacity and zoom.
 - **Scrolling capture**, manual by default; automatic scrolling is opt-in and asks for Accessibility
-  only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch.
+  only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch. A live
+  session stops if its source window, an unrelated foreground app, or its display changes.
 - **Pixel tools**: nearest-neighbor loupe, ruler, and sRGB color picker (HEX/RGB).
 - **Compose and present**: multiple images on one canvas, side-by-side, background, padding,
   rounded corners, shadow, spotlight, and magnifier callouts.
@@ -107,4 +108,4 @@ preserved in `docs/handoff/`.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE). The app bundle includes this license and the pinned KeyboardShortcuts MIT notice.
