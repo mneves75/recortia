@@ -189,6 +189,20 @@ struct ScreenCaptureServiceTests {
         #expect(plan.includesShadow == includesShadow)
     }
 
+    @Test("Oversized captures are rejected before capture surfaces are allocated")
+    func oversizedCaptureNeverReachesBackend() async throws {
+        let huge = TestSupport.display(id: 1, x: 0, y: 0, width: 8000, height: 6000, scale: 1)
+        let (service, backend) = makeService(displays: [huge])
+        backend.update { $0.reportedScale = 1 }
+        for request in [CaptureTarget.display(huge), .region(huge.frame, display: huge)] {
+            await #expect(throws: CaptureError.targetUnavailable) {
+                _ = try await service.capture(
+                    request, showsCursor: false, includesShadow: false, excludingWindowNumbers: [])
+            }
+        }
+        #expect(backend.plans.isEmpty)
+    }
+
     @Test("A display capture covers the whole display at its scale")
     func displayCapture() async throws {
         let (service, backend) = makeService()

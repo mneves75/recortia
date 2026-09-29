@@ -195,12 +195,32 @@ struct EditorPreviewTests {
         h.renderer.pending = pending
         h.model.selectTool(.redact)
         h.drag((100, 100), (150, 150))
-        #expect(h.model.baseImage != nil)
+        #expect(h.model.baseImage == nil)
         #expect(h.model.calloutBaseImage == nil)
         await waitFor("re-render") { pending.waiterCount == 1 }
         if let image = makeImage(width: 400, height: 300) { pending.resolve(.success(image)) }
         await h.settle()
         #expect(h.model.calloutBaseImage != nil)
+    }
+
+    @Test("A privacy change clears duplicated source previews even when rendering fails")
+    func privacyChangeDropsDuplicateBaseEvenWhenRenderingFails() async throws {
+        let h = EditorHarness()
+        let layer = try #require(h.model.document.layers.first)
+        h.model.select(.layer(layer.id))
+        h.model.duplicateSelection()
+        await h.settle()
+        #expect(h.model.baseImage != nil)
+        let pending = Pending<Result<CGImage, TestError>>()
+        h.renderer.pending = pending
+        h.model.selectTool(.redact)
+        h.drag((10, 10), (50, 50))
+        #expect(h.model.baseImage == nil, "the old base exposes the duplicate's covered source pixels")
+        await waitFor("masked base render") { pending.waiterCount == 1 }
+        pending.resolve(.failure(TestError()))
+        await h.settle()
+        #expect(h.model.baseImage == nil, "a failed render must not restore an older privacy epoch")
+        #expect(h.model.calloutBaseImage == nil)
     }
 
     @Test("The output preview renders the full document and drops stale results")

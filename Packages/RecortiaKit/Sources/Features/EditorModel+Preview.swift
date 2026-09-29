@@ -147,23 +147,12 @@ extension EditorModel {
         let removed = before - pins.pins.count
         inspection = nil
         pickedColor = nil
+        // Output masks alone cannot hide every duplicate of a source-bound mask in an old base.
+        baseImage = nil
+        installedBaseKey = nil
+        failedBaseKey = nil
         if outputPreview != nil, installedOutputKey != currentOutputKey { outputPreview = nil }
-        var cleared = false
-        switch recognition {
-        case .recognized, .noText:
-            recognition = .idle
-            recognizedResult = nil
-            cleared = true
-        case .running:
-            // The in-flight result will be rejected on arrival by its identity.
-            break
-        case .idle, .failed:
-            break
-        }
-        if case .decoded = qr {
-            qr = .idle
-            cleared = true
-        }
+        let cleared = invalidateCompletedRecognition()
         if removed > 0 {
             post(.pinsInvalidated(removed))
         } else if cleared {

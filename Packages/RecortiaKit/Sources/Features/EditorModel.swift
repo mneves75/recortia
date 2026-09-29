@@ -172,6 +172,7 @@ public final class EditorModel {
         guard continuousChangeOpen else { return }
         continuousChangeOpen = false
         session.endGroup()
+        releaseUnreachableAssets()
         noteUndoEvictionIfNeeded()
     }
 
@@ -225,7 +226,11 @@ public final class EditorModel {
         environment.export.invalidatePendingDrag(documentID: session.document.id)
         let existing = Set(allItemIDs)
         selection = selection.filter(existing.contains)
-        if session.privacyEpoch != epoch { privacyEpochChanged() }
+        if session.privacyEpoch != epoch {
+            privacyEpochChanged()
+        } else if invalidateCompletedRecognition() {
+            post(.recognitionInvalidated)
+        }
         scheduleBaseRender()
         if showsOutputPreview { scheduleOutputRender() }
     }
@@ -404,6 +409,8 @@ public final class EditorModel {
         edit("Delete") { document in
             document.annotations.removeAll { items.contains(.annotation($0.id)) }
             document.layers.removeAll { items.contains(.layer($0.id)) }
+            let usedAssets = Set(document.layers.map(\.assetID))
+            document.assets = document.assets.filter { usedAssets.contains($0.key) }
             document.masks.removeAll { items.contains(.mask($0.id)) }
             document.obfuscations.removeAll { items.contains(.obfuscation($0.id)) }
             document.callouts.removeAll { items.contains(.callout($0.id)) }
@@ -605,16 +612,14 @@ public final class EditorModel {
 
     // MARK: - Crop and resize
 
-    /// Reversible crop (FR-04), snapped to whole document pixels and clipped to the canvas.
+    /// Reversible crop (FR-04), rounded outward to cover selected pixels and clipped to the canvas.
     public func setCrop(_ rect: Rect<DocumentSpace>?) {
         guard let rect else {
             edit("Reset Crop") { $0.crop = nil }
             return
         }
         guard EditorGeometry.isFinite(rect) else { return }
-        let snapped = Rect<DocumentSpace>(
-            spanning: Point(x: rect.minX.rounded(), y: rect.minY.rounded()),
-            Point(x: rect.maxX.rounded(), y: rect.maxY.rounded()))
+        let snapped = EditorGeometry.outwardIntegral(rect)
         guard let clipped = snapped.intersection(session.document.canvasRect), clipped.width >= 1, clipped.height >= 1
         else { return }
         edit("Crop") { $0.crop = clipped == $0.canvasRect ? nil : clipped }

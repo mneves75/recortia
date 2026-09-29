@@ -182,9 +182,36 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         panel.isExtensionHidden = false
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = panel.url, let self else { return }
-            // The save panel already asked before replacing an existing file.
-            let confirmed = FileManager.default.fileExists(atPath: url.path)
-            Task { await self.model.export(.save(url, overwriteConfirmed: confirmed)) }
+            Task { await self.saveImage(to: url) }
+        }
+    }
+
+    /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent.
+    @discardableResult
+    func saveImage(to url: URL, confirmReplacement: (() async -> Bool)? = nil) async -> ExportOutcome {
+        let outcome = await model.export(.save(url, overwriteConfirmed: false))
+        guard outcome == .failed(.destinationExists) else { return outcome }
+        model.dismissNotice()
+        let confirmed: Bool
+        if let confirmReplacement {
+            confirmed = await confirmReplacement()
+        } else {
+            confirmed = await self.confirmReplacement()
+        }
+        guard confirmed else { return .canceled }
+        return await model.export(.save(url, overwriteConfirmed: true))
+    }
+
+    private func confirmReplacement() async -> Bool {
+        guard let window else { return false }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Replace Existing File?", table: "Editor")
+        alert.informativeText = String(localized: "A file exists at this destination. Replace it?", table: "Editor")
+        alert.addButton(withTitle: String(localized: "Replace", table: "Editor")).hasDestructiveAction = true
+        alert.addButton(withTitle: String(localized: "Cancel", table: "Editor"))
+        return await withCheckedContinuation { continuation in
+            alert.beginSheetModal(for: window) { continuation.resume(returning: $0 == .alertFirstButtonReturn) }
         }
     }
 

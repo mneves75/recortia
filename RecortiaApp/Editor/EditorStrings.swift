@@ -165,7 +165,7 @@ enum EditorStrings {
         case .recognitionDiscarded:
             String(localized: "The image changed during recognition. Run it again.", table: "Editor")
         case .recognitionInvalidated:
-            String(localized: "Redactions changed, so earlier results were cleared.", table: "Editor")
+            String(localized: "The image changed, so earlier results were cleared.", table: "Editor")
         case .noQRCodeFound: String(localized: "No QR code found.", table: "Editor")
         case .payloadCopied: String(localized: "QR content copied.", table: "Editor")
         case .linkNotAllowed: String(localized: "Only web links (http or https) can be opened.", table: "Editor")
@@ -235,7 +235,7 @@ enum EditorStrings {
             String(localized: "Nothing was exported: the image could not be rendered.", table: "Editor")
         case .budgetExceeded: String(localized: "Nothing was exported: the image is too large.", table: "Editor")
         case .clipboardFailed:
-            String(localized: "Nothing was copied. The clipboard's previous content is unchanged.", table: "Editor")
+            String(localized: "The image could not be copied.", table: "Editor")
         case .accessDenied:
             String(localized: "Nothing was saved: Recortia cannot write to that folder.", table: "Editor")
         case .destinationExists: String(localized: "Nothing was saved: a file with that name exists.", table: "Editor")

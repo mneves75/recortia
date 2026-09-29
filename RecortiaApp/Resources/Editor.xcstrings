@@ -1,6 +1,24 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Replace Existing File?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Replace Existing File?" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Substituir arquivo existente?" } }
+      }
+    },
+    "A file exists at this destination. Replace it?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "A file exists at this destination. Replace it?" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Já existe um arquivo neste destino. Deseja substituí-lo?" } }
+      }
+    },
+    "Replace": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Replace" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Substituir" } }
+      }
+    },
     "Opens %@": {
       "localizations": {
         "en": {
@@ -1729,18 +1747,18 @@
         }
       }
     },
-    "Nothing was copied. The clipboard's previous content is unchanged.": {
+    "The image could not be copied.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing was copied. The clipboard's previous content is unchanged."
+            "value": "The image could not be copied."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nada foi copiado. O conteúdo anterior da área de transferência não mudou."
+            "value": "Não foi possível copiar a imagem."
           }
         }
       }
@@ -2489,18 +2507,18 @@
         }
       }
     },
-    "Redactions changed, so earlier results were cleared.": {
+    "The image changed, so earlier results were cleared.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Redactions changed, so earlier results were cleared."
+            "value": "The image changed, so earlier results were cleared."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "As ocultações mudaram, então os resultados anteriores foram apagados."
+            "value": "A imagem mudou, então os resultados anteriores foram apagados."
           }
         }
       }

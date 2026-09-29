@@ -114,7 +114,9 @@ public final class AutoScroller {
         throws(AutoScrollError)
     {
         try self.init(
-            target: target, display: display, scrollPoint: scrollPoint, environment: LiveAutoScrollEnvironment(),
+            target: target, display: display, scrollPoint: scrollPoint,
+            environment: LiveAutoScrollEnvironment(
+                target: target, scrollPoint: CGPoint(x: scrollPoint.x, y: scrollPoint.y)),
             poster: TargetedScrollEventPoster())
         observesActivations = true
     }
@@ -195,21 +197,42 @@ public final class AutoScroller {
 
 @MainActor
 struct LiveAutoScrollEnvironment: AutoScrollEnvironment {
+    let target: WindowInfo
+    let scrollPoint: CGPoint
+
     func observe(windowID: CGWindowID, displayID: CGDirectDisplayID) -> AutoScrollObservation {
         AutoScrollObservation(
             frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier,
-            targetWindowOnScreen: Self.isOnScreen(windowID),
+            targetWindowOnScreen: windowID == target.id
+                && Self.targetIsCurrent(
+                    target, at: scrollPoint,
+                    in: CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                        as? [[String: Any]] ?? []),
             displayFingerprint: DesktopGeometry.displays().first { $0.id == displayID }?.fingerprint,
             accessibilityTrusted: AccessibilityPermission.isTrusted)
     }
 
-    /// Reads only the on-screen flag of one window; no titles or pixels.
-    private static func isOnScreen(_ windowID: CGWindowID) -> Bool {
-        guard
-            let list = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [[String: Any]],
-            let entry = list.first(where: { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value == windowID })
-        else { return false }
-        return (entry[kCGWindowIsOnscreen as String] as? Bool) ?? false
+    /// Window metadata only: the target must still own the same bounds and be the first other-app
+    /// window under the event point. Recortia's HUD does not block its own explicit scroll action.
+    static func targetIsCurrent(_ target: WindowInfo, at point: CGPoint, in list: [[String: Any]]) -> Bool {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        for entry in list {
+            guard let pid = entry[kCGWindowOwnerPID as String] as? NSNumber else { return false }
+            if pid.int32Value == ownPID { continue }
+            guard let bounds = entry[kCGWindowBounds as String] as? [String: Any],
+                let frame = CGRect(dictionaryRepresentation: bounds as CFDictionary),
+                frame.minX.isFinite, frame.minY.isFinite, frame.width.isFinite, frame.height.isFinite
+            else { return false }
+            guard frame.contains(point) else { continue }
+            return (entry[kCGWindowNumber as String] as? NSNumber)?.uint32Value == target.id
+                && pid.int32Value == target.ownerPID
+                && (entry[kCGWindowIsOnscreen as String] as? Bool) == true
+                && frame
+                    == CGRect(
+                        x: target.frame.minX, y: target.frame.minY, width: target.frame.width,
+                        height: target.frame.height)
+        }
+        return false
     }
 }
 

@@ -3,7 +3,21 @@
   "document_version": "1.0",
   "research_date": "2026-09-26",
   "status": "beta_implemented_awaiting_manual_validation",
-  "policy": "Initial permission is read-only planning. No task is complete without recorded verification; publishing and live-data access require explicit authorization.",
+  "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26. No task is complete without recorded verification; FR-15/FR-16, publishing and live-data access require separate authorization.",
+  "corrective_candidate": {
+    "version": "0.9.1-beta1",
+    "build": 7,
+    "date": "2026-09-29",
+    "scope": "Source/security review corrections within approved FR-01 through FR-14; manual qualification remains pending.",
+    "verification": "Stable Xcode 27.0: scripts/check.sh --unsigned passed (486 package tests); scripts/e2e.sh --lang all --unsigned --no-build passed 20/20 scenarios per language. Unsigned Release build, binary isolation, localization and license/provenance checks passed. Fresh independent GPT-6 Astra source/security reverify: PASS, no remaining P0-P2 finding. Manual qualification unchanged.",
+    "evidence_paths": [
+      ".scratch/full-review/final-check.log",
+      ".scratch/full-review/final-e2e.log",
+      ".scratch/full-review/release-build.log",
+      ".scratch/e2e/20260929-175152/en/report.json",
+      ".scratch/e2e/20260929-175152/pt-BR/report.json"
+    ]
+  },
   "tasks": [
     {
       "id": "FP-001",

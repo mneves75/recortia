@@ -88,6 +88,32 @@ struct AutoScrollStopPolicyTests {
 @MainActor
 @Suite("Automatic scroller: targeted scroll events only while the policy allows (FR-10, PERM-01)")
 struct AutoScrollerTests {
+    @Test("Live target validation rejects moved, replaced, malformed, and covered windows")
+    func targetIdentityBeforeEvents() {
+        func entry(id: UInt32 = 42, pid: pid_t = targetPID, x: Double = 100) -> [String: Any] {
+            [
+                kCGWindowNumber as String: NSNumber(value: id), kCGWindowOwnerPID as String: NSNumber(value: pid),
+                kCGWindowIsOnscreen as String: true, kCGWindowLayer as String: 0,
+                kCGWindowBounds as String: ["X": x, "Y": 100.0, "Width": 800.0, "Height": 600.0],
+            ]
+        }
+        let point = CGPoint(x: 500, y: 400)
+        #expect(LiveAutoScrollEnvironment.targetIsCurrent(target, at: point, in: [entry()]))
+        for list in [
+            [entry(x: 101)], [entry(pid: 778)], [[kCGWindowNumber as String: 42]],
+            [entry(id: 43), entry()], [],
+        ] {
+            #expect(!LiveAutoScrollEnvironment.targetIsCurrent(target, at: point, in: list))
+        }
+        // The controller's HUD is excluded; other windows of the target app are not.
+        #expect(
+            LiveAutoScrollEnvironment.targetIsCurrent(
+                target, at: point,
+                in: [
+                    entry(id: 99, pid: ProcessInfo.processInfo.processIdentifier), entry(),
+                ]))
+    }
+
     private func make(_ observation: AutoScrollObservation = observation()) throws -> (
         AutoScroller, FakeScrollEnvironment, FakeScrollPoster
     ) {

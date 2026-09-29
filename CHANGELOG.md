@@ -6,7 +6,31 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1-beta1] - 2026-09-29
+
+### Security
+
+- Ordinary document edits invalidate completed OCR and QR results; stale text and links can no
+  longer be copied or opened. Closing an editor releases these results.
+- Privacy changes immediately discard the old base preview, including duplicated source layers,
+  even when the replacement render fails.
+- Capture dimensions are bounded before ScreenCaptureKit allocates still or scrolling surfaces.
+- Automatic scrolling checks target ownership, unchanged bounds, and the window under the event
+  point before posting each event. Synthetic E2E no longer registers a global Escape key.
+- Saving first attempts exclusive creation; a collision requires explicit replacement consent.
+
 ### Fixed
+
+- Deleted image assets are released after their last undo-history reference is evicted; remaining
+  duplicate layers continue to retain their shared source.
+- Escape cancels move, resize, and numbered-step gestures without retaining a partial edit.
+- Crop bounds round outward to preserve every selected source pixel.
+- A suspended automatic-scroll step no longer blocks a replacement session.
+- Clipboard failure messages no longer promise preservation that AppKit cannot guarantee.
+- Toolchain detection drains Swift's output without an intermittent SIGPIPE gate failure. The
+  repository gate includes toolchain and E2E-isolation regression controls.
+- Localization validation scans the selected build configuration and rejects missing artifacts;
+  stale Release strings no longer contaminate Debug verification.
 
 - Scrolling capture now binds the window under the selected region and stops when that window,
   an unrelated foreground app, or the display changes, including while paused or when a frame was

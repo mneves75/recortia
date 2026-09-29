@@ -516,11 +516,14 @@ final class FakeStitcher: ScrollStitchService {
 @MainActor
 final class FakeAutoScroller: AutoScrollService {
     var steps: [AutoScrollStep] = []
+    var holdSteps = false
+    let pendingSteps = Pending<Void>()
     private(set) var stepCount = 0
     private(set) var stopCount = 0
 
     func step(_ target: CaptureTarget) async -> AutoScrollStep {
         stepCount += 1
+        if holdSteps { await pendingSteps.wait() }
         return steps.isEmpty ? .scrolled : steps.removeFirst()
     }
 

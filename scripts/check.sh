@@ -14,6 +14,11 @@ fi
 
 scripts/doctor.sh
 
+echo "== toolchain and E2E isolation regressions"
+python3 scripts/test-doctor.py
+python3 scripts/test-e2e-isolation.py
+python3 scripts/test-localization.py
+
 echo "== format lint"
 xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests RecortiaApp RecortiaUITests
 

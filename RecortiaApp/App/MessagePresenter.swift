@@ -92,7 +92,7 @@ extension UserMessage {
             case .renderFailed, .encodeFailed: String(localized: "The image could not be rendered.")
             case .budgetExceeded: String(localized: "The image is too large to export.")
             case .clipboardFailed:
-                String(localized: "The clipboard could not be updated. Its previous content is unchanged.")
+                String(localized: "The clipboard could not be updated.")
             case .accessDenied:
                 String(localized: "Recortia cannot write to that folder. Choose a folder in Settings › Export.")
             case .destinationExists: String(localized: "A file with that name already exists.")

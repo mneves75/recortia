@@ -80,8 +80,8 @@ extension EditorModel {
         outputTask?.cancel()
         baseTask = nil
         outputTask = nil
-        recognitionRequest = nil
-        qrRequest = nil
+        clearRecognition()
+        clearQR()
         baseImage = nil
         outputPreview = nil
         for id in knownAssets { environment.assets.release(id) }

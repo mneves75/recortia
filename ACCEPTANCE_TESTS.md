@@ -1,6 +1,8 @@
 # Acceptance tests and release gates
 
-**Status:** Test specifications only. None of these tests has been executed for a Recortia implementation.
+**Status:** Acceptance contracts with partial automated verification. Package regressions and
+synthetic native E2E have executed; live hardware, permissions, accessibility, performance, and
+signed distribution qualification remain pending. See README.md and BACKLOG.json for current evidence.
 
 Every automated test must produce machine-readable results. Image fixtures must declare their generator/source, license, scale, color space, dimensions, and expected output. Use fixed seeds for generated noise/geometry. Use golden outputs only where their provenance and expected meaning are documented; never bless a broken output just to make CI green.
 

@@ -536,7 +536,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             model.nudgeSelection(dx: dx, dy: dy)
             return
         case 53:  // Escape
-            if model.draft != nil {
+            if model.draft != nil || model.session.isGrouping {
                 model.cancelGesture()
             } else if !model.selection.isEmpty {
                 model.clearSelection()

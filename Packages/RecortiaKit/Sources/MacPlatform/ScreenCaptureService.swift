@@ -42,6 +42,19 @@ struct CapturePlan: Sendable, Equatable {
     var sourceRect: CGRect?
     var showsCursor: Bool
     var includesShadow: Bool
+
+    /// Bound dimensions before ScreenCaptureKit allocates capture surfaces or converts to Int.
+    static func pixelSize(for rect: CGRect, scale: Double) throws(CaptureError) -> PixelSize {
+        guard scale.isFinite, scale > 0 else { throw .displayChanged }
+        let width = (rect.width * scale).rounded()
+        let height = (rect.height * scale).rounded()
+        guard rect.origin.x.isFinite, rect.origin.y.isFinite, width.isFinite, height.isFinite,
+            width >= 1, height >= 1, width <= 32_768, height <= 32_768
+        else { throw .targetUnavailable }
+        let size = PixelSize(width: Int(width), height: Int(height))
+        guard ImportLimits.check(pixelSize: size) == nil else { throw .targetUnavailable }
+        return size
+    }
 }
 
 struct BackendImage: Sendable {
@@ -160,6 +173,9 @@ public actor ScreenCaptureService {
             guard let local = DesktopGeometry.pixelAlignedLocalRect(rect, on: display) else {
                 throw .targetUnavailable
             }
+            _ = try CapturePlan.pixelSize(
+                for: CGRect(x: local.minX, y: local.minY, width: local.width, height: local.height),
+                scale: display.pointPixelScale)
             let plan = CapturePlan(
                 source: .display(display.id, excludedWindowIDs: excludedWindowIDs(excludingWindowNumbers, content)),
                 sourceRect: CGRect(x: local.minX, y: local.minY, width: local.width, height: local.height),
@@ -171,6 +187,9 @@ public actor ScreenCaptureService {
 
         case .display(let display):
             try Self.verify(display, in: content)
+            _ = try CapturePlan.pixelSize(
+                for: CGRect(x: 0, y: 0, width: display.frame.width, height: display.frame.height),
+                scale: display.pointPixelScale)
             let plan = CapturePlan(
                 source: .display(display.id, excludedWindowIDs: excludedWindowIDs(excludingWindowNumbers, content)),
                 sourceRect: nil, showsCursor: showsCursor, includesShadow: includesShadow)

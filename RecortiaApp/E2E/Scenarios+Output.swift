@@ -62,6 +62,52 @@
                 context.check("PNG chunks parse with valid CRCs", false, "\(error)")
             }
             let savedPixels = try E2EActions.decode(savedData, "saved PNG", context)
+            let collision = folder.appending(path: "consent.png")
+            let original = Data("existing owner file".utf8)
+            try original.write(to: collision)
+            var confirmations = 0
+            let declined = await controller.saveImage(to: collision) {
+                confirmations += 1
+                return false
+            }
+            context.check("replacement decline cancels the save", declined == .canceled)
+            context.check("a collision asks before overwriting", confirmations == 1)
+            context.check("declining preserves the existing bytes", try Data(contentsOf: collision) == original)
+            let replaced = await controller.saveImage(to: collision) {
+                confirmations += 1
+                return true
+            }
+            context.check("explicit replacement saves", replaced == .saved(collision) && confirmations == 2)
+            context.check(
+                "replacement uses sanitized export pixels",
+                try E2EActions.decode(Data(contentsOf: collision), "replacement", context) == savedPixels)
+            let fresh = folder.appending(path: "no-collision.png")
+            let created = await controller.saveImage(to: fresh) {
+                confirmations += 1
+                return false
+            }
+            context.check(
+                "exclusive new save needs no replacement consent", created == .saved(fresh) && confirmations == 2)
+            let beforeNative = try Data(contentsOf: collision)
+            let nativeSave = Task { await controller.saveImage(to: collision) }
+            let sheetAppeared = await E2EWait.until { controller.window?.attachedSheet != nil }
+            try context.require("collision presents the native replacement sheet", sheetAppeared)
+            let sheet = try context.unwrap("replacement sheet", controller.window?.attachedSheet)
+            let content = try context.unwrap("replacement sheet content", sheet.contentView)
+            await E2ESnapshot.settle(content)
+            context.snapshot(content, shot: "replacement-consent")
+            let buttons = EditorWindowController.all(NSButton.self, in: content)
+            let cancel = try context.unwrap(
+                "replacement Cancel button",
+                buttons.first {
+                    $0.title == String(localized: "Cancel", table: "Editor")
+                })
+            cancel.performClick(nil)
+            let nativeOutcome = await nativeSave.value
+            let afterNative = try Data(contentsOf: collision)
+            context.check(
+                "native Cancel leaves the saved file unchanged",
+                nativeOutcome == .canceled && afterNative == beforeNative)
 
             // Drag out: the real chip panel, and the real file promise fulfilled into a folder.
             let dragged = await E2EActions.export(controller, .drag)

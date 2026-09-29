@@ -2577,18 +2577,18 @@
         }
       }
     },
-    "The clipboard could not be updated. Its previous content is unchanged.": {
+    "The clipboard could not be updated.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The clipboard could not be updated. Its previous content is unchanged."
+            "value": "The clipboard could not be updated."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível atualizar a área de transferência. O conteúdo anterior não mudou."
+            "value": "Não foi possível atualizar a área de transferência."
           }
         }
       }

@@ -179,6 +179,19 @@ struct EditorReplayTests {
         #expect(m.session.undoCount == 1)
     }
 
+    @Test("Canceling numbered-step placement restores the document without adding history")
+    func cancelStepCreation() {
+        let h = EditorHarness()
+        let original = h.model.document
+        h.model.selectTool(.step)
+        h.model.pointerDown(at: Point(x: 20, y: 30))
+        h.model.pointerDragged(to: Point(x: 80, y: 90))
+        h.model.cancelGesture()
+        #expect(h.model.document == original)
+        #expect(!h.model.canUndo)
+        #expect(h.model.selection.isEmpty)
+    }
+
     @Test("Emptying a text deletes it; a blank new text adds nothing")
     func textCommitRules() throws {
         let h = EditorHarness()

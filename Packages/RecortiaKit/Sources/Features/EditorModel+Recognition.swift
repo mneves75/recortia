@@ -172,6 +172,26 @@ extension EditorModel {
         qr = .idle
     }
 
+    /// Completed results belong to one revision; in-flight requests reject edits on arrival.
+    func invalidateCompletedRecognition() -> Bool {
+        var cleared = false
+        switch recognition {
+        case .recognized, .noText:
+            clearRecognition()
+            cleared = true
+        case .idle, .running, .failed:
+            break
+        }
+        switch qr {
+        case .decoded, .noCode:
+            clearQR()
+            cleared = true
+        case .idle, .running, .failed:
+            break
+        }
+        return cleared
+    }
+
     // MARK: Helpers
 
     func copyText(_ text: String, success: EditorNotice) -> Bool {

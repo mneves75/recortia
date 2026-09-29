@@ -87,6 +87,13 @@ public struct DocumentSession: Sendable {
         redoStack.removeAll()
     }
 
+    /// Abandons a gesture without adding history or discarding an existing redo path.
+    public mutating func cancelGroup() {
+        guard let group = openGroup else { return }
+        openGroup = nil
+        if document != group.before { replaceDocument(with: group.before) }
+    }
+
     public mutating func undo() {
         endGroup()
         guard let entry = undoStack.popLast() else { return }

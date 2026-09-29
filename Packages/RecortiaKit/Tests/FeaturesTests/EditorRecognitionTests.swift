@@ -88,6 +88,45 @@ struct EditorRecognitionTests {
         #expect(h.model.notice == .copyFailed)
     }
 
+    @Test(
+        "Completed OCR and QR results expire on edits, undo, and redo",
+        arguments: ["crop", "annotation", "blur", "undo", "redo"])
+    func completedResultsRequireCurrentRevision(change: String) async {
+        let h = EditorHarness()
+        if change == "undo" || change == "redo" {
+            h.model.setCrop(Rect(x: 20, y: 20, width: 100, height: 100))
+            if change == "redo" { h.model.undo() }
+        }
+        h.recognizer.lines = [
+            OCRResult.Line(text: "old text", confidence: 1, box: Rect(x: 0, y: 0, width: 4, height: 4))
+        ]
+        h.qr.payloads = [Self.payloads[1]]
+        await h.model.recognizeText()
+        await h.model.decodeQR()
+        #expect(h.model.recognizedText(mode: .raw) == "old text")
+        #expect(h.model.canOpenQRPayload(at: 0))
+        let epoch = h.model.session.privacyEpoch
+        switch change {
+        case "crop": h.model.setCrop(Rect(x: 20, y: 20, width: 100, height: 100))
+        case "annotation":
+            h.model.selectTool(.arrow)
+            h.drag((10, 10), (90, 90))
+        case "blur":
+            h.model.selectTool(.blur)
+            h.drag((10, 10), (90, 90))
+        case "undo": h.model.undo()
+        default: h.model.redo()
+        }
+        #expect(h.model.session.privacyEpoch == epoch, "ordinary edits must not pretend to change secure masks")
+        #expect(h.model.recognition == .idle)
+        #expect(h.model.qrPayloads.isEmpty)
+        #expect(!h.model.copyRecognizedText(mode: .raw))
+        #expect(!h.model.copyQRPayload(at: 0))
+        #expect(!h.model.openQRPayload(Self.payloads[1], at: 0))
+        #expect(h.textClipboard.writes.isEmpty)
+        #expect(h.links.opened.isEmpty)
+    }
+
     @Test("Recognition failure is reported without touching the clipboard")
     func recognitionFailure() async {
         let h = EditorHarness()
