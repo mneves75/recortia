@@ -137,6 +137,15 @@ URLs: `https://martinfowler.com/articles/preparatory-refactoring-example.html`,
 Reviewed on 2026-09-29: small test-backed corrections and reversible workflows informed the
 implementation. This is published guidance, not a personal consultation with either author.
 
+## S20 — Apple: Inside Code Signing, provisioning profiles (TN3125)
+
+URL: `https://developer.apple.com/documentation/technotes/tn3125-inside-code-signing-provisioning-profiles`
+
+Consulted on 2026-09-30 for the local Developer ID export. A profile's Keychain group wildcard
+allows an app to claim a specific group with that prefix. The exported Recortia bundle claims
+the exact `Q96FUTC5G8.dev.mvneves.Recortia` group; the profile's `Q96FUTC5G8.*` allowlist is not
+an entitlement claimed by the app. Actual bundle entitlements still undergo the parsed gate.
+
 ## External assertions not made
 
 No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

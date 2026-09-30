@@ -27,7 +27,10 @@ The current source candidate has not been published as a DMG. A local Developer 
 The beta3 source/build-number update does not replace that installed build. Its final stable gate
 and synthetic E2E passed; independent source/security reverification found no remaining confirmed
 defect. A fully independent final UI rerun was unavailable because the agent server reached its
-thread limit. No beta3 installation or public distribution is claimed here.
+thread limit. A Developer ID-signed beta3 archive/export is prepared from commit `49047c7`;
+independent verification of its signature, distribution entitlements and bundled licenses passed.
+Both unsigned and signed local gates passed. It is not installed or
+notarized. [PR #5](https://github.com/mneves75/recortia/pull/5) carries the source changes.
 
 ## What it does
 
