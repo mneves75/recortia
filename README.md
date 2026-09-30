@@ -30,8 +30,8 @@ The previous build 7 was preserved. The app was not launched by the installation
 has not been notarized. [PR #5](https://github.com/mneves75/recortia/pull/5) merged the source changes.
 
 Both unsigned and signed local gates and the final synthetic E2E passed; independent
-source/security reverification found no remaining confirmed defect. A fully independent final
-UI rerun was unavailable because the agent server reached its thread limit.
+source/security reverification found no remaining confirmed defect. Live capture and production
+qualification remain pending; see [Validation status](#validation-status).
 
 ## What it does
 
@@ -117,6 +117,7 @@ capture-admission correction and isolated message presentation, the final synthe
 independent source/security verifier also passed 266 focused tests. The final UI execution was
 performed by the integrator; real permission alerts, TCC and live capture remain outside that
 synthetic proof. `BACKLOG.json` records the exact evidence and independence limit.
+A fully independent final UI rerun was unavailable because the agent server reached its thread limit.
 
 Security: source reviews and synthetic regressions cover redaction, export boundaries, input
 limits, asynchronous freshness, and cancellation. The beta1 and beta3 corrections are listed in
