@@ -74,6 +74,22 @@ swift test --package-path Packages/RecortiaKit --filter <Test>   # one test or s
 
 Record the exact commands used. UI tests need a suitable GUI session and test configuration; a successful unsigned compilation is not a signing, TCC, UI, or release test. Use separate unsigned PR checks and protected signed release checks.
 
+Requested Xcode-beta MCP diagnostics supplement source review; stable Xcode gates remain binding.
+Release entitlements must be parsed as a plist: verify the Keychain access-group array itself and
+reject debug entitlements rather than searching for matching text elsewhere in the plist.
+
+For owner-authorized local Developer ID installation, use `xcodebuild archive` followed by
+`xcodebuild -exportArchive` with the export settings in `scripts/release.sh`. Before installing,
+verify the exported bundle with `codesign --verify --deep --strict`, confirm its version/build,
+Hardened Runtime, embedded provisioning profile and Keychain access group, and reject
+`get-task-allow`. A Release `build` action may still include debug entitlements. Preserve the
+previous bundle and the running session unless restarting is authorized. Record signed local
+installation separately from notarization, clean-user launch, TCC, and production qualification.
+
+Version metadata belongs in `project.yml`; regenerate the Xcode project after changes. Keep the
+candidate label in README, CHANGELOG and BACKLOG consistent, but preserve older artifact versions
+and evidence. Do not mark a previously installed app as upgraded by a source-only version bump.
+
 Run the task's unit/regression tests, compile the affected app, and check formatting and warnings. For imaging changes, compare actual exported files at the pixel/metadata level. For security-sensitive changes, exercise denial, cancellation, malformed input, stale callbacks, and memory-limit paths. Do not remove or weaken a failing test without explaining why its contract is wrong and obtaining review.
 
 End every implementation report with:

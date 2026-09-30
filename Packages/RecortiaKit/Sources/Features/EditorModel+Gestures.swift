@@ -10,6 +10,7 @@ extension EditorModel {
 
     public func pointerDown(at p: Point<DocumentSpace>, modifiers: EditorModifiers = []) {
         guard !isClosed, textEditing == nil, p.isFinite else { return }
+        endContinuousChange()
         cancelGesture()
         switch tool {
         case .hand:

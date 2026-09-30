@@ -37,3 +37,6 @@ build/
 # Agent working notes and bulky local evidence
 agent_planning/
 .scratch/
+
+# Python gate caches
+__pycache__/

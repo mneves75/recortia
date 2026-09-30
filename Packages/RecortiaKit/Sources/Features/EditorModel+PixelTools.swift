@@ -33,8 +33,10 @@ extension EditorModel {
     /// The document pixel containing `p`, when it lies on the canvas.
     func pixel(at p: Point<DocumentSpace>) -> (x: Int, y: Int)? {
         let canvas = session.document.canvasRect
-        guard p.isFinite, canvas.contains(p) else { return nil }
-        return (Int(p.x.rounded(.down)), Int(p.y.rounded(.down)))
+        guard p.isFinite, canvas.contains(p),
+            let x = Int(exactly: p.x.rounded(.down)), let y = Int(exactly: p.y.rounded(.down))
+        else { return nil }
+        return (x, y)
     }
 
     /// Samples the current sanitized base at document pixel (x, y).
@@ -46,8 +48,10 @@ extension EditorModel {
         let canvas = session.document.canvasSize
         let sx = canvas.width > 0 ? Double(base.width) / canvas.width : 1
         let sy = canvas.height > 0 ? Double(base.height) / canvas.height : 1
-        let px = Int((Double(x) * sx).rounded(.down)), py = Int((Double(y) * sy).rounded(.down))
-        guard let color = PixelSampler.color(atX: px, y: py, in: base) else { return nil }
+        guard let px = Int(exactly: (Double(x) * sx).rounded(.down)),
+            let py = Int(exactly: (Double(y) * sy).rounded(.down)),
+            let color = PixelSampler.color(atX: px, y: py, in: base)
+        else { return nil }
         return EditorColorSample(x: x, y: y, color: color)
     }
 
@@ -80,9 +84,13 @@ extension EditorModel {
         let canvas = session.document.canvasSize
         guard canvas.width > 0, canvas.height > 0 else { return nil }
         // The base is rendered at scale 1, so base pixels are document pixels.
-        guard base.width == Int(canvas.width.rounded()), base.height == Int(canvas.height.rounded()) else { return nil }
-        let x0 = max(0, inspection.x - radius), y0 = max(0, inspection.y - radius)
-        let x1 = min(base.width, inspection.x + radius + 1), y1 = min(base.height, inspection.y + radius + 1)
+        guard base.width == Int(exactly: canvas.width.rounded()),
+            base.height == Int(exactly: canvas.height.rounded()),
+            inspection.x >= 0, inspection.x < base.width, inspection.y >= 0, inspection.y < base.height
+        else { return nil }
+        let x0 = inspection.x - min(radius, inspection.x), y0 = inspection.y - min(radius, inspection.y)
+        let x1 = inspection.x + min(radius, base.width - inspection.x - 1) + 1
+        let y1 = inspection.y + min(radius, base.height - inspection.y - 1) + 1
         guard x1 > x0, y1 > y0,
             let image = base.cropping(to: CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0))
         else { return nil }

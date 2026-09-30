@@ -47,6 +47,7 @@
 		3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
 		41302BAADF8304A81FE45EC9 /* LiveRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */; };
 		4234F4D2B14EDC9B3CC7D889 /* CaptureMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */; };
+		431E9CB9AF92D4539FFE3FBF /* CaptureWindowVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */; };
 		4A11132EA0C0DEB59B529A97 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */; };
 		4BDF947C072D9CDA91F7771D /* SystemEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */; };
 		4D7C3D84B8C8BB582C432AC6 /* EditorWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */; };
@@ -100,6 +101,8 @@
 		D46AF12425F8AA5FB4735AA2 /* KeyboardShortcuts-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 37E3B5628385CE0D560B7AC3 /* KeyboardShortcuts-LICENSE.txt */; };
 		D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
 		D8D1CC076F25EFF7A3DDE1D3 /* AppActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2F7298595658EBCA75FF77 /* AppActions.swift */; };
+		DA848AED2EE99F81FCDFF4D4 /* Scenarios+CaptureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */; };
+		DC503AD5774349C919DCEB51 /* CaptureWindowVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */; };
 		DEACB06F1D447813DD7A6E36 /* Recortia-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */; };
 		DFD6669E8BDD71353949837B /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		E11B8B8960E33C10DAF65BB2 /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
@@ -146,10 +149,12 @@
 		3F28E2BD01C5C58B01ED7275 /* Recortia-Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Recortia-Release.entitlements"; sourceTree = "<group>"; };
 		414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shell.swift"; sourceTree = "<group>"; };
 		451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSidebarView.swift; sourceTree = "<group>"; };
+		4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+CaptureVisibility.swift"; sourceTree = "<group>"; };
 		4A850AFAB99113314CD6E841 /* RecortiaKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RecortiaKit; path = Packages/RecortiaKit; sourceTree = SOURCE_ROOT; };
 		4A87968B857C53E0F4335F82 /* ScrollViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollViews.swift; sourceTree = "<group>"; };
 		4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMenu.swift; sourceTree = "<group>"; };
 		4E084E166124DB22614616F5 /* ChooserViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChooserViews.swift; sourceTree = "<group>"; };
+		4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWindowVisibility.swift; sourceTree = "<group>"; };
 		5E4F6B9E7DA4239CD17642B8 /* Recortia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Recortia.entitlements; sourceTree = "<group>"; };
 		61D5324EB9E2AA47D945093A /* EditorRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorRootView.swift; sourceTree = "<group>"; };
 		637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationLoop.swift; sourceTree = "<group>"; };
@@ -236,6 +241,7 @@
 			isa = PBXGroup;
 			children = (
 				E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */,
+				4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */,
 				4E084E166124DB22614616F5 /* ChooserViews.swift */,
 				E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */,
 				2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */,
@@ -343,6 +349,7 @@
 				E33BB654473B6F3033727605 /* E2EScenarios.swift */,
 				293033569B29300AB2B89925 /* E2ESnapshot.swift */,
 				7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */,
+				4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */,
 				D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */,
 				AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */,
 				2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */,
@@ -565,6 +572,7 @@
 				06650EB2D93E1F2271D9AF96 /* AppServices.swift in Sources */,
 				655F1843CB07BF76DB75B64D /* CaptureMenu.swift in Sources */,
 				F54C69AE574623D0E81BCF97 /* CaptureUIController.swift in Sources */,
+				DC503AD5774349C919DCEB51 /* CaptureWindowVisibility.swift in Sources */,
 				78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */,
 				1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */,
 				0F90D2EFEC42BB978F9DF91A /* E2EActions.swift in Sources */,
@@ -598,6 +606,7 @@
 				56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */,
 				F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */,
 				C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */,
+				DA848AED2EE99F81FCDFF4D4 /* Scenarios+CaptureVisibility.swift in Sources */,
 				3AC080957ABB8147960886B8 /* Scenarios+Editor.swift in Sources */,
 				F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */,
 				EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */,
@@ -631,6 +640,7 @@
 				0EAF61DA2A9566FBFC619339 /* AppServices.swift in Sources */,
 				4234F4D2B14EDC9B3CC7D889 /* CaptureMenu.swift in Sources */,
 				EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */,
+				431E9CB9AF92D4539FFE3FBF /* CaptureWindowVisibility.swift in Sources */,
 				D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */,
 				A30DD234D2E1308C1916965D /* DragChip.swift in Sources */,
 				31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */,
@@ -787,7 +797,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -858,7 +868,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = Q96FUTC5G8;

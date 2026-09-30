@@ -90,14 +90,13 @@ if [[ "$built_version" != "$version" || "$built_build" != "$build" ]]; then
   echo "release: built $built_version ($built_build) does not match project.yml $version ($build)" >&2
   exit 1
 fi
-# Capture before matching: under pipefail, `grep -q` exiting early would fail the pipeline.
-entitlements=$(codesign -d --entitlements - --xml "$app" 2>/dev/null || true)
-if [[ "$entitlements" == *get-task-allow* ]]; then
-  echo "release: get-task-allow is present; this is not a distribution build" >&2
-  exit 1
-fi
-if [[ "$entitlements" != *"Q96FUTC5G8.dev.mvneves.Recortia"* || ! -f "$app/Contents/embedded.provisionprofile" ]]; then
-  echo "release: the keychain access group entitlement or its provisioning profile is missing" >&2
+# Parse the entitlement key itself; another matching string does not grant Keychain access.
+entitlements="$out/entitlements.plist"
+codesign -d --entitlements - --xml "$app" > "$entitlements" 2>/dev/null
+python3 "$src/scripts/check-release-entitlements.py" "$entitlements" \
+  --access-group Q96FUTC5G8.dev.mvneves.Recortia
+if [[ ! -f "$app/Contents/embedded.provisionprofile" ]]; then
+  echo "release: the provisioning profile is missing" >&2
   exit 1
 fi
 signature=$(codesign -dvv "$app" 2>&1)

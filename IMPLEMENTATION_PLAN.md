@@ -1,7 +1,9 @@
 # Implementation plan and task contracts
 
 **Status:** The approved v1 milestones have a beta implementation. BACKLOG.json records current
-task status and outstanding manual qualification; this file defines task contracts rather than a build log.
+task status, signed local-install evidence, and outstanding manual qualification; this file defines
+task contracts rather than a build log. Local installation does not complete notarized distribution
+or the 1.0 release contract.
 
 ## Execution policy
 

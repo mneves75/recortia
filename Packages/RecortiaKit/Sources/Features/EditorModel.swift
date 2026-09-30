@@ -55,7 +55,7 @@ public final class EditorModel {
     @ObservationIgnored var knownAssets: Set<AssetID>
     @ObservationIgnored var hasFittedViewport = false
     @ObservationIgnored private var reportedEvictedUndoCount = 0
-    @ObservationIgnored var continuousChangeOpen = false
+    @ObservationIgnored var continuousChangeID: UUID?
 
     @ObservationIgnored var baseTask: Task<Void, Never>?
     @ObservationIgnored var installedBaseKey: BaseKey?
@@ -162,15 +162,23 @@ public final class EditorModel {
     }
 
     /// Groups a run of changes (a slider drag, a color well session) into one undo step.
-    public func beginContinuousChange() {
-        guard !continuousChangeOpen else { return }
-        continuousChangeOpen = true
+    @discardableResult
+    public func beginContinuousChange() -> UUID {
+        if let continuousChangeID { return continuousChangeID }
+        let id = UUID()
+        continuousChangeID = id
         session.beginGroup("Adjust")
+        return id
     }
 
     public func endContinuousChange() {
-        guard continuousChangeOpen else { return }
-        continuousChangeOpen = false
+        guard let id = continuousChangeID else { return }
+        endContinuousChange(id)
+    }
+
+    public func endContinuousChange(_ id: UUID) {
+        guard continuousChangeID == id else { return }
+        continuousChangeID = nil
         session.endGroup()
         releaseUnreachableAssets()
         noteUndoEvictionIfNeeded()

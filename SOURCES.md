@@ -109,6 +109,43 @@ cancellation. Consulted on 2026-09-29: cancellation does not replace request/ses
 checks when asynchronous work resumes. The scrolling regression suspends an old step and verifies
 that it cannot block or clear ownership belonging to a replacement session.
 
+## S17 — Apple: NSWindow ordering
+
+URLs: `https://developer.apple.com/documentation/appkit/nswindow/orderout(_:)`,
+`https://developer.apple.com/documentation/appkit/nswindow/orderback(_:)`
+
+Consulted through Xcode-beta MCP DocumentationSearch on 2026-09-29. `orderOut` preserves the
+window's resources but separately ordering out a child detaches it from its parent. `orderBack`
+restores visibility without changing the key/main window. Recortia hides top-level windows and
+lets AppKit preserve their child relationships; the recapture E2E checks that relationship.
+
+## S18 — Screenshot workflows from product maintainers
+
+URLs: `https://shottr.cc/kb/customareacapture`, `https://shottr.cc/kb/faq`,
+`https://cleanshot.com/features`
+
+Reviewed on 2026-09-29. These workflows informed the comparison of hiding, minimizing, closing,
+transparent windows, and app-wide hiding. Temporary top-level window ordering preserves the
+existing editing session with the smallest behavioral change. No parity or benchmark claim
+follows from documentation research.
+
+## S19 — Review and user-control guidance
+
+URLs: `https://martinfowler.com/articles/preparatory-refactoring-example.html`,
+`https://www.nngroup.com/articles/user-control-and-freedom/`
+
+Reviewed on 2026-09-29: small test-backed corrections and reversible workflows informed the
+implementation. This is published guidance, not a personal consultation with either author.
+
+## S20 — Apple: Inside Code Signing, provisioning profiles (TN3125)
+
+URL: `https://developer.apple.com/documentation/technotes/tn3125-inside-code-signing-provisioning-profiles`
+
+Consulted on 2026-09-30 for the local Developer ID export. A profile's Keychain group wildcard
+allows an app to claim a specific group with that prefix. The exported Recortia bundle claims
+the exact `Q96FUTC5G8.dev.mvneves.Recortia` group; the profile's `Q96FUTC5G8.*` allowlist is not
+an entitlement claimed by the app. Actual bundle entitlements still undergo the parsed gate.
+
 ## External assertions not made
 
 No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

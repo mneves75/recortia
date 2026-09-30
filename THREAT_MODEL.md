@@ -1,8 +1,9 @@
 # Threat model — Recortia v1
 
 **Status:** Security contract for 0.9.1 beta. Source review and synthetic regressions cover the
-boundaries below; live capture, platform qualification, and signed distribution remain separate checks.
-**Owner:** Maintainer to assign in M0.  
+boundaries below; live capture, platform qualification, and notarized distribution remain separate
+checks. Signed local-install evidence and its limits are recorded in README.md and BACKLOG.json.
+**Owner:** Repository maintainer.
 **Distribution assumption:** A direct-distribution, Hardened Runtime-enabled app that is not protected by App Sandbox. The tradeoff is recorded in ADR-0002.
 
 ## Assets and trust boundaries
@@ -13,7 +14,7 @@ Raw pixels may exist in bounded process memory for an explicit capture/edit sess
 
 The model covers malicious imported inputs, malicious screenshot/QR text, accidental privacy leaks, compromised dependencies/update paths, and erroneous coding-agent changes. It does not promise confidentiality against a compromised operating system, a malicious process with equivalent privileges, physical observation, or a recipient who already has an earlier unredacted export.
 
-A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal over a generation counter, keyed by a secret in the data-protection keychain under Recortia's provisioned keychain access group, which other processes cannot create, read, replace, or roll back. An unsealed, mismatched, or older-generation blob loads with that consent off, and Settings says so. Another process can still delete the preferences or the seal, which only turns consent off (fail-safe). If Recortia cannot store a new generation, it deletes the secret so no older seal stays valid.
+A same-user process that lacks Recortia's Screen Recording or Accessibility grant is *not* treated as equivalent: it must not use Recortia as a confused deputy. Because a non-sandboxed app's preferences domain is writable by such a process, side-effect consent (automatic copy/save, the save folder, automatic scrolling) is honored only when the stored blob carries an HMAC seal over a generation counter, keyed by a secret in the data-protection keychain under Recortia's provisioned keychain access group, which other processes cannot create, read, replace, or roll back. An unsealed, mismatched, or older-generation blob loads with that consent off, and Settings says so. Another process can still delete the preferences or the seal, which only turns consent off (fail-safe). If Recortia cannot store a new generation, it attempts to delete the secret to invalidate older seals. Persistent update-and-delete failure remains a platform validation gap described below.
 
 Secure masks cover source pixels twice: the regions bound when the mask is drawn (they follow the content if a layer moves), and, at render time, whatever layer lies under the mask's output rectangle now (a layer added or moved there later), always before any resample or effect. Secure masks are also the topmost output layer, over annotations and callouts. Any layer change while a mask exists advances the privacy epoch, so derived text, QR results, and pins go stale. Automatic export checks freshness against the live editor session. Capture requires Recortia to be excluded as an application and fails otherwise. Drag-out offers follow ADR-004: revocable until the receiver writes the file, never reported canceled once it has.
 
@@ -59,6 +60,26 @@ Signing/update key material must never be available to untrusted PR jobs, coding
 Before v1, document how to stop a compromised update rollout, distribute a corrected signed build, notify users, and rotate the relevant credential without assuming all users can auto-update. Key recovery and updater trust continuity require an actual staging test. For privacy defects, document what kinds of exports may have been affected rather than promising retroactive deletion from recipients.
 
 ## Accepted residuals (0.9.1 beta)
+
+### Additional validation gaps from the 2026-09-29 source review
+
+These hypotheses have not been reproduced and are not confirmed vulnerabilities. Production
+qualification retains their uncertainty rather than treating source review as proof:
+
+- Keychain update and deletion can both fail. The deletion fallback described above guarantees
+  revocation only when deletion succeeds; persistent failure and restart/replay need an injected
+  platform test.
+- PNG IDAT expansion has an explicit budget; compressed ancillary metadata also needs adversarial
+  fixtures to establish ImageIO's allocation behavior.
+- Window identity can change between enumeration and capture. A dedicated desktop test must
+  establish the behavior if the OS reuses a window ID across owners.
+
+Confirmed corrections in beta3: macOS sharing Stop tears down scrolling and its timers; floating
+foreign windows count as target occluders; Release validates the actual Keychain entitlement;
+pixel-tool coordinates and loupe bounds use checked integer arithmetic. Synthetic evidence is
+recorded in BACKLOG.json and does not substitute for the platform tests above.
+
+### Previously accepted residuals
 
 From the 2026-09-26 audit and independent reviews; each is either availability-only, requires the
 user's own action, or needs a platform capability not yet adopted.

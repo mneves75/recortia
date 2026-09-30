@@ -151,3 +151,15 @@ public enum ImageInput {
 public enum LoginItem { @MainActor public static var isEnabled: Bool; @MainActor public static func set(_ on: Bool) throws }
 public enum ExternalLinkPolicy { public static func canOpen(_ url: URL) -> Bool }   // http/https only, after user action
 ```
+
+## Features: editor adjustment ownership
+
+`EditorModel` runs on MainActor. `beginContinuousChange() -> UUID` returns the current
+adjustment's identity; `endContinuousChange(_ id: UUID)` closes only that adjustment. Delayed
+color callbacks retain the identity they began with. A slider first ends the preceding adjustment,
+then begins its own; a canvas gesture also ends the preceding adjustment before opening its group.
+The parameterless `endContinuousChange()` explicitly finishes the currently open adjustment.
+
+Preview cancellation retains ownership of an in-flight render until it completes. Re-enabling the
+preview queues the latest document rather than starting a second concurrent render. Canceled or
+stale results cannot publish output or failure notices for a replacement request.

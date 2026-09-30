@@ -96,7 +96,6 @@ extension EditorModel {
             scheduleOutputRender()
         } else {
             outputTask?.cancel()
-            outputTask = nil
             outputPreview = nil
             installedOutputKey = nil
             failedOutputKey = nil
@@ -123,6 +122,10 @@ extension EditorModel {
     private func finishOutputRender(_ result: Result<CGImage, any Error>, identity: RequestIdentity, key: OutputKey) {
         outputTask = nil
         guard !isClosed, showsOutputPreview else { return }
+        guard !Task.isCancelled else {
+            scheduleOutputRender()
+            return
+        }
         if session.accepts(identity) || key == currentOutputKey {
             switch result {
             case .success(let image):

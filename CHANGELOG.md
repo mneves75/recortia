@@ -6,6 +6,35 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1-beta3] - 2026-09-30
+
+### Fixed
+
+- Starting another capture temporarily hides Recortia's existing windows so the editor does not cover the region being selected. Documents remain open; success, cancellation and failure restore the previously visible windows without taking focus. Replacement selections keep them hidden, and closed windows stay closed.
+- Still and scrolling capture commands cannot start overlapping sessions. Finish or cancel the current workflow before switching capture types.
+- Queued scrolling starts reserve admission synchronously, including while Screen Recording permission is being requested.
+- Scrolling target checks include foreign floating windows, so a panel covering the selected target is no longer silently ignored.
+- Editing an image's Height in the inspector now resizes it proportionally and refreshes the size fields.
+- A delayed color adjustment cannot split a subsequent move into multiple undo steps. Rapid output-preview toggles keep one render in flight and ignore canceled results.
+
+### Security
+
+- Stopping screen sharing through macOS cancels the active scrolling session, stops automatic scrolling and its timers, and discards the retained stitch. Current-session cancellation during stream startup follows the same teardown.
+- Distribution checks parse the actual `keychain-access-groups` entitlement. An application identifier elsewhere in the plist cannot substitute for the required group; missing, incorrectly typed and debug entitlements fail the gate.
+- Pixel tools reject finite coordinates outside the integer range and safely clamp extreme loupe radii, avoiding arithmetic crashes.
+
+### Changed
+
+- Increment the source candidate to beta3, build 9; the base app version remains 0.9.1. Live capture and production qualification remain separate from synthetic and compiler evidence.
+
+## [0.9.1-beta2] - 2026-09-29
+
+### Changed
+
+- Increment the source candidate to beta2, build 8; the base app version remains 0.9.1.
+- Clarify signed local installation versus notarized public distribution, document archive/export checks, and record the verified beta1 installation and CI evidence. The installed build remains 7; launch and live qualification are pending.
+- Align contributor, agent, specification, and backlog documentation with the current release state. Application behavior is unchanged from beta1.
+
 ## [0.9.1-beta1] - 2026-09-29
 
 ### Security

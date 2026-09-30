@@ -85,11 +85,24 @@
     /// Screen Recording reported as granted; counts requests so scenarios can assert none happened.
     final class SyntheticScreenPermission: ScreenPermissionService {
         private(set) var requestCount = 0
-        var isGranted: Bool { true }
+        var isGranted = true
+        var holdRequest = false
+        private var waiter: CheckedContinuation<Bool, Never>?
 
         func request() async -> Bool {
             requestCount += 1
-            return true
+            if holdRequest {
+                return await withCheckedContinuation { waiter = $0 }
+            }
+            return isGranted
+        }
+
+        func finishRequest(granted: Bool) {
+            isGranted = granted
+            holdRequest = false
+            let continuation = waiter
+            waiter = nil
+            continuation?.resume(returning: granted)
         }
     }
 

@@ -6,7 +6,7 @@ import Domain
 /// Only window IDs, process IDs, and bounds are read; titles and pixels are never inspected here.
 @MainActor
 final class LiveScrollTargetChecker: ScrollTargetChecking {
-    private struct Window: Equatable {
+    struct Window: Equatable {
         let id: CGWindowID
         let ownerPID: pid_t
         let bounds: CGRect
@@ -53,10 +53,12 @@ final class LiveScrollTargetChecker: ScrollTargetChecking {
             let entries = CGWindowListCopyWindowInfo(
                 [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
         else { return nil }
-        let ownPID = ProcessInfo.processInfo.processIdentifier
+        return Self.frontmostWindow(in: entries, at: point, excluding: ProcessInfo.processInfo.processIdentifier)
+    }
+
+    static func frontmostWindow(in entries: [[String: Any]], at point: CGPoint, excluding ownPID: pid_t) -> Window? {
         for entry in entries {
-            guard let layer = entry[kCGWindowLayer as String] as? Int, layer == 0,
-                let pid = entry[kCGWindowOwnerPID as String] as? pid_t, pid != ownPID,
+            guard let pid = entry[kCGWindowOwnerPID as String] as? pid_t, pid != ownPID,
                 let id = entry[kCGWindowNumber as String] as? CGWindowID,
                 let boundsDictionary = entry[kCGWindowBounds as String] as? NSDictionary,
                 let bounds = CGRect(dictionaryRepresentation: boundsDictionary), bounds.contains(point)

@@ -13,7 +13,16 @@
             E2EScenario(id: "window-chooser", title: "Window chooser", run: CaptureScenarios.windowChooser),
             E2EScenario(id: "countdown", title: "Delayed capture countdown", run: CaptureScenarios.countdown),
             E2EScenario(id: "capture-editor", title: "Capture to editor", run: CaptureScenarios.captureToEditor),
+            E2EScenario(
+                id: "recapture", title: "Hide existing windows during recapture",
+                run: CaptureVisibilityScenarios.recapture),
+            E2EScenario(
+                id: "capture-admission", title: "One capture session across modes",
+                run: CaptureVisibilityScenarios.admission),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
+            E2EScenario(
+                id: "inspector-height", title: "Resize an image by its inspector height",
+                run: EditorScenarios.inspectorHeight),
             E2EScenario(id: "redaction", title: "Redaction and RED-01", run: EditorScenarios.redaction),
             E2EScenario(id: "crop-resize", title: "Crop and resize", run: EditorScenarios.cropResize),
             E2EScenario(id: "ocr-qr", title: "Text recognition and QR", run: RecognitionScenarios.ocrAndQR),
