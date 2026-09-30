@@ -843,10 +843,10 @@
       "completion_contract": "The release candidate meets its named scope without fake parity/security claims. The maintainer approves any publish action separately; unrun gates remain visibly unrun.",
       "evidence": [
         "scripts/test-release-contract.py verifies source commit binding and bundled MIT notices in an unsigned Release app",
-        "BACKLOG.json local_installation records signed 0.9.1 build 7 archive/export, installed-bundle equality, profile and entitlement verification, with retained local logs"
+        "BACKLOG.json local_installation records signed 0.9.1 build 9 archive/export and independently verified installed-bundle equality, profile and entitlements; previous_local_installation preserves the build 7 evidence"
       ],
       "authorization": "requires_approved_milestone",
-      "status_note": "Unsigned release-contract and signed local-install checks pass for 0.9.1 build 7. Notarized/public distribution, clean-user launch, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
+      "status_note": "Release-contract and signed local-install checks pass for 0.9.1 build 9; independent verification confirms the installed files and preserved build 7. PR #5 and post-merge CI passed. Notarized/public distribution, clean-user launch, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
     }
   ],
   "deferred_scope": [

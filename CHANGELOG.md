@@ -26,6 +26,7 @@ All notable changes to Recortia are documented here. The format follows
 ### Changed
 
 - Increment the source candidate to beta3, build 9; the base app version remains 0.9.1. Live capture and production qualification remain separate from synthetic and compiler evidence.
+- Record the independently verified local Developer ID installation of build 9 and preserve the prior build 7 evidence. Local installation does not establish notarization, launch or production qualification.
 
 ## [0.9.1-beta2] - 2026-09-29
 
