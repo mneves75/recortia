@@ -18,6 +18,17 @@ scripts/check.sh --unsigned # same, without the maintainer's signing identity
 
 Run one package test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
 
+## Version and distribution
+
+Update version/build metadata in `project.yml`, regenerate with `xcodegen generate`, and keep
+the candidate label in README, CHANGELOG and BACKLOG consistent. Preserve the version attached
+to earlier test and installation evidence. Generated app `Info.plist` values must match the
+new metadata before committing; run the repository gate after regeneration.
+
+Signed local installs use the archive/export and artifact checks in `AGENTS.md`. Public
+distribution uses the tagged `scripts/release.sh` pipeline. A local install, a notarized DMG,
+and a clean-user launch are separate verification steps; see README for the current status.
+
 ## Rules that reviews enforce
 
 - Tests first (Swift Testing). A bug fix starts with a test that fails on the bug.

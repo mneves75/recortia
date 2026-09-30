@@ -20,9 +20,11 @@ Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Devel
   settings and integrity key; shortcut assignments only in its own `dev.mvneves.Recortia.E2E` domain,
   cleared at start, with a fake list of macOS shortcuts and a Carbon-free probe) and installs no
   global shortcut handler; keep it that way.
-- Release (owner): tag `v<version>[-betaN]`, then `scripts/release.sh` → `.build/release/<tag>/`
+- Release (owner): tag `v<version>[-betaN]`, then `scripts/release.sh` → `.build/release/<version[-betaN]>/`
   (fresh checkout, gate, notarized DMG, manifest with dependencies); `--dry-run` skips tag/gate/notary;
   `scripts/check-release-binary.sh` fails if the DEBUG-only E2E hook reached a binary.
+- Local signed installation and version updates: follow `AGENTS.md`'s artifact checks and
+  version-ownership rules. Current candidate and installation evidence live in README and BACKLOG.
 - After adding or moving source files, or editing `project.yml`: `xcodegen generate` and commit
   the regenerated `Recortia.xcodeproj` (never hand-edit the pbxproj).
 - Format: `xcrun swift format --in-place --recursive <paths>` (config in `.swift-format`).
@@ -65,4 +67,5 @@ Default five roles: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 
 ### Domain docs
 
-Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+Read `docs/adr/` and `docs/architecture/module-contracts.md`; consult root `CONTEXT.md` if it
+exists. See `docs/agents/domain.md`.

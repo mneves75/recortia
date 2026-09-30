@@ -1,8 +1,9 @@
 # Threat model — Recortia v1
 
 **Status:** Security contract for 0.9.1 beta. Source review and synthetic regressions cover the
-boundaries below; live capture, platform qualification, and signed distribution remain separate checks.
-**Owner:** Maintainer to assign in M0.  
+boundaries below; live capture, platform qualification, and notarized distribution remain separate
+checks. Signed local-install evidence and its limits are recorded in README.md and BACKLOG.json.
+**Owner:** Repository maintainer.
 **Distribution assumption:** A direct-distribution, Hardened Runtime-enabled app that is not protected by App Sandbox. The tradeoff is recorded in ADR-0002.
 
 ## Assets and trust boundaries

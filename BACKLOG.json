@@ -4,6 +4,35 @@
   "research_date": "2026-09-26",
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26. No task is complete without recorded verification; FR-15/FR-16, publishing and live-data access require separate authorization.",
+  "current_candidate": {
+    "version": "0.9.1-beta2",
+    "build": 8,
+    "date": "2026-09-29",
+    "scope": "Documentation and build-number follow-up; application behavior unchanged from beta1.",
+    "verification": "Stable Xcode 27.0 scripts/check.sh --unsigned passed: generated project current, 486 package tests, seven Python gate regressions, both Debug targets and 477 translated strings. Both built Info.plists resolve to 0.9.1 build 8 with macOS 15.0 minimum. Earlier native E2E and independent source/security evidence remain attached to beta1; E2E scenarios were not rerun for this metadata/docs-only follow-up.",
+    "evidence_paths": [
+      ".scratch/full-review/beta2-docs-check.log"
+    ]
+  },
+  "local_installation": {
+    "candidate": "0.9.1-beta1",
+    "app_version": "0.9.1",
+    "build": 7,
+    "date": "2026-09-29",
+    "source_commit": "ce385b36381a2e1d3865c7778f06ae25ca01d2ff",
+    "merged_commit_with_identical_source_tree": "014c86eb1da1ba3ea6d1bab13c117deb337d1a89",
+    "executable_sha256": "5d183a1eaf02a8bef2e55fb7504c174e741be7870421237d34fd37a13642205e",
+    "verification": "Stable Xcode 27.0 archive and Developer ID export succeeded. Installed bundle equals the export; strict signature, Hardened Runtime, embedded profile and Keychain group verified; get-task-allow absent. Existing running session preserved.",
+    "distribution_status": "Signed local build; not notarized or published. Relaunch, clean-user/offline behavior, TCC and live qualification unrun.",
+    "ci_evidence": [
+      "https://github.com/mneves75/recortia/actions/runs/36648693031",
+      "https://github.com/mneves75/recortia/actions/runs/36652083895"
+    ],
+    "evidence_paths": [
+      ".scratch/local-install/archive.log",
+      ".scratch/local-install/export.log"
+    ]
+  },
   "corrective_candidate": {
     "version": "0.9.1-beta1",
     "build": 7,
@@ -748,10 +777,11 @@
       ],
       "completion_contract": "The release candidate meets its named scope without fake parity/security claims. The maintainer approves any publish action separately; unrun gates remain visibly unrun.",
       "evidence": [
-        "scripts/test-release-contract.py verifies source commit binding and bundled MIT notices in an unsigned Release app"
+        "scripts/test-release-contract.py verifies source commit binding and bundled MIT notices in an unsigned Release app",
+        "BACKLOG.json local_installation records signed 0.9.1 build 7 archive/export, installed-bundle equality, profile and entitlement verification, with retained local logs"
       ],
       "authorization": "requires_approved_milestone",
-      "status_note": "Local unsigned release-contract checks pass; signed/notarized artifacts, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
+      "status_note": "Unsigned release-contract and signed local-install checks pass for 0.9.1 build 7. Notarized/public distribution, clean-user launch, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
     }
   ],
   "deferred_scope": [

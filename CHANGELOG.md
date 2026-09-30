@@ -6,6 +6,14 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1-beta2] - 2026-09-29
+
+### Changed
+
+- Increment the source candidate to beta2, build 8; the base app version remains 0.9.1.
+- Clarify signed local installation versus notarized public distribution, document archive/export checks, and record the verified beta1 installation and CI evidence. The installed build remains 7; launch and live qualification are pending.
+- Align contributor, agent, specification, and backlog documentation with the current release state. Application behavior is unchanged from beta1.
+
 ## [0.9.1-beta1] - 2026-09-29
 
 ### Security

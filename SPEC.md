@@ -4,7 +4,7 @@
 **Research date:** 2026-09-26  
 **Status:** Approved FR-01…FR-14 implementation contract; beta implementation and automated tests exist.
 Manual qualification and the in-app updater remain pending; see README.md and BACKLOG.json.
-**Product name:** Recortia is an internal working codename. Trademark, repository, and domain availability have not been checked.  
+**Product name:** Recortia is the approved public name (ADR-003). The recorded name search is not legal trademark clearance.
 **Intent:** Independently implement an open-source, native macOS alternative to Shottr. “AI agent” means the coding agent building the product; an LLM is not required inside the application.
 
 ## 1. Scope and evidence
@@ -34,7 +34,7 @@ Only public behavior and documentation were inspected. No binary was executed, d
 | Distribution | One directly distributed, Developer ID-signed, notarized app with Hardened Runtime | The proposed build is **not App Sandbox-restricted**, to accommodate optional cross-app scrolling control without a separate helper architecture. This is an explicit security tradeoff, not an assertion that sandboxing and Hardened Runtime are equivalent. [S11] |
 | Permissions | Screen Recording just in time; Accessibility only for separately enabled automatic scrolling | Basic capture, editing, imported-image OCR, export, and manual scrolling must not require Accessibility or Input Monitoring. |
 | Dependencies | Native frameworks first; KeyboardShortcuts as the initial approved third-party candidate; Sparkle in the release milestone | Resolve reviewed stable versions and commit Package.resolved; do not invent dependency hashes. [S09, S12] |
-| License | Proposed MIT license for original project code | Preserve third-party notices and obtain maintainer approval of final copyright ownership. MIT is an OSI-listed license. [S14] |
+| License | MIT license for original project code, recorded in LICENSE | Preserve third-party notices. MIT is an OSI-listed license. [S14] |
 | Network | No app-initiated network requests on a fresh installation | Update checks require opt-in or a manual action. Upload and cloud AI are absent from the v1 core. |
 
 No backend, webview shell, Electron, Tauri, React, authentication server, telemetry SDK, plugin runtime, or LLM orchestration framework is needed for this scope. These are product choices, not claims that those technologies are generally unsuitable.
