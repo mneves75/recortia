@@ -401,7 +401,9 @@ public final class ScrollSessionModel {
     private func handle(_ error: CaptureError) {
         switch error {
         case .canceled:
-            return  // our own stop/cancel; the state already moved
+            // Our own cancellation is filtered by isCurrent before this handler. A current
+            // stream can also be stopped through macOS's screen-sharing controls.
+            cancel()
         case .targetUnavailable, .system:
             targetLost()
         case .permissionDenied:

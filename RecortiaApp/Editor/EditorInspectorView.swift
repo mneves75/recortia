@@ -42,7 +42,7 @@ final class ChangeCoalescer {
     private var pending: Task<Void, Never>?
 
     func run(_ model: EditorModel, _ apply: () -> Void) {
-        model.beginContinuousChange()
+        let changeID = model.beginContinuousChange()
         apply()
         pending?.cancel()
         pending = Task { [weak model] in
@@ -51,7 +51,7 @@ final class ChangeCoalescer {
             } catch {
                 return
             }
-            model?.endContinuousChange()
+            model?.endContinuousChange(changeID)
         }
     }
 }
@@ -82,6 +82,7 @@ private struct UndoableSlider: View {
     let model: EditorModel
     var format: (Double) -> String = { EditorFormat.number($0) }
     let onChange: @MainActor @Sendable (Double) -> Void
+    @State private var changeID: UUID?
 
     var body: some View {
         LabeledContent(title) {
@@ -89,7 +90,13 @@ private struct UndoableSlider: View {
                 Slider(
                     value: Binding(get: { value }, set: onChange), in: range,
                     onEditingChanged: { editing in
-                        if editing { model.beginContinuousChange() } else { model.endContinuousChange() }
+                        if editing {
+                            model.endContinuousChange()
+                            changeID = model.beginContinuousChange()
+                        } else if let changeID {
+                            model.endContinuousChange(changeID)
+                            self.changeID = nil
+                        }
                     }
                 ) {
                     Text(title)
@@ -108,6 +115,7 @@ private struct UndoableSlider: View {
 /// X, Y, width, and height fields, committed on Return.
 private struct FrameFields: View {
     let frame: Rect<DocumentSpace>
+    var preservesAspectRatio = false
     let onCommit: (Rect<DocumentSpace>) -> Void
     @State private var x = 0.0
     @State private var y = 0.0
@@ -140,7 +148,17 @@ private struct FrameFields: View {
     }
 
     private func commit() {
-        onCommit(Rect(x: x, y: y, width: width, height: height))
+        var committedWidth = width
+        var committedHeight = height
+        if preservesAspectRatio, frame.width > 0, frame.height > 0 {
+            if height != frame.height, width == frame.width {
+                committedWidth = height * frame.width / frame.height
+            } else {
+                committedHeight = width * frame.height / frame.width
+            }
+        }
+        onCommit(Rect(x: x, y: y, width: committedWidth, height: committedHeight))
+        load()
     }
 }
 
@@ -155,7 +173,9 @@ private struct SelectionSection: View {
             if model.selection.count == 1, let id = model.selection.first,
                 let item = model.listItems.first(where: { $0.id == id })
             {
-                FrameFields(frame: item.frame) { model.setFrame($0, for: id) }
+                FrameFields(frame: item.frame, preservesAspectRatio: item.kind == .image) {
+                    model.setFrame($0, for: id)
+                }
                 details(for: item)
             } else {
                 Text(String(localized: "\(model.selection.count) objects selected", table: "Editor"))

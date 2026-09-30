@@ -15,13 +15,15 @@
   "actual_macos_sdk_version": "27.0",
   "actual_macos_sdk_build": "26A425",
   "actual_build_host_os": "macOS 27.2 (26B5091g), seed build: software-update catalog is index-27seed",
-  "package_resolution_verified": false,
+  "package_resolution_verified": true,
   "actual_developer_dir": "/Applications/Xcode.app/Contents/Developer",
-  "observation_date": "2026-09-26",
+  "observation_date": "2026-09-30",
   "observation_notes": [
     "xcode-select points to /Applications/Xcode-beta.app (Xcode 27.2, 27B5019j, macOS SDK 27.2 26B5086k). Every build/test command must export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; see docs/adr/0001-native-stack-and-toolchain-baseline.md.",
     "Build host is a seed OS. Compilation evidence is valid; performance and release evidence from this host is not (SPEC.md section 10 requires a stable OS).",
-    "Host hardware: Mac17,9, Apple M5 Pro, 64 GB, one built-in 3024x1964 Retina display, no external display."
+    "Host hardware: Mac17,9, Apple M5 Pro, 64 GB, one built-in 3024x1964 Retina display, no external display (observed 2026-09-26).",
+    "2026-09-30: stable Xcode 27.0 and Swift 6.4 rechecked; the gate passed 494 package tests and both Debug builds. KeyboardShortcuts checkout HEAD matches Package.resolved revision 772133d9dbe800fdac0473226822994c5c162c58 (3.1.0); its MIT notice matches the repository notice byte for byte.",
+    "Supplemental owner-requested Xcode-beta MCP BuildProject succeeded on 2026-09-30. Beta diagnostics are not distribution or stable-host qualification."
   ],
   "source": "S05 in SOURCES.md; observed values from FP-001 preflight commands recorded in docs/plans/M0-plan.md",
   "instructions": "Replace only observed fields after an actual Mac preflight. Record toolchain updates through review; never fill null values with guesses."

@@ -13,6 +13,7 @@
     enum ScrollScenarios {
         static func scrolling(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let model = harness.features.scroll
+            let permissionRequestsBefore = harness.permission.requestCount
             let fixture = ScrollPageFixture(
                 seed: 0xE2E5, kind: .text, width: 480, viewportHeight: 360, pageHeight: 2400)
             let offsets = fixture.forwardOffsets(steps: 90...170)
@@ -21,7 +22,10 @@
             harness.scrollFrames.load(frames, holdAfter: frames.count / 2)
 
             try context.require("the session begins", await model.begin(), "\(model.state)")
-            context.check("no permission prompt with access granted", harness.permission.requestCount == 0)
+            context.check(
+                "no permission prompt with access granted", harness.permission.requestCount == permissionRequestsBefore,
+                "before=\(permissionRequestsBefore), after=\(harness.permission.requestCount), delta=\(harness.permission.requestCount - permissionRequestsBefore)"
+            )
             let display = harness.capture.display
             let region = Rect<DesktopSpace>(x: 300, y: 160, width: 240, height: 180)
             model.chooseTarget(.region(region, display: display))

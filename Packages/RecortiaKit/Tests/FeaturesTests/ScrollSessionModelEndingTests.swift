@@ -303,6 +303,43 @@ struct ScrollSessionModelEndingTests {
 
     // MARK: Interrupts
 
+    // The system screen-sharing Stop action also reports .canceled. Treating it as our
+    // already-completed cancellation leaves the settle timer posting scroll events.
+    @Test("System capture cancellation stops scrolling and releases pending timers")
+    func systemCaptureCancellation() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        await waitFor("deadline and settle armed") { Self.settleArmed(h, steps: 1) }
+        let resetsBefore = h.stitcher.resetCount
+        #expect(h.frames.frames.resolve(.failure(.canceled)))
+        await drain()
+        #expect(h.model.state == .canceled)
+        #expect(h.frames.stopCount >= 1)
+        #expect(h.scroller.stopCount >= 1)
+        #expect(h.stitcher.resetCount > resetsBefore)
+        #expect(h.model.acceptedFrames == 0)
+        #expect(h.model.preview == nil)
+        #expect(h.clock.pendingSleepCount == 0)
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await drain()
+        #expect(h.scroller.stepCount == 1)
+        #expect(h.accepted.isEmpty)
+    }
+
+    @Test("System capture cancellation during stream startup ends the session")
+    func systemCancellationDuringStartup() async {
+        let h = ScrollHarness()
+        h.frames.startError = .canceled
+        _ = await h.model.begin()
+        h.model.chooseTarget(h.target)
+        h.model.start()
+        await drain()
+        #expect(h.model.state == .canceled)
+        #expect(h.frames.stopCount >= 1)
+        #expect(h.clock.pendingSleepCount == 0)
+    }
+
     @Test(
         "An interrupt stops an active session at once and discards the stitch",
         arguments: [ScrollFailure.targetLost, .permissionRevoked, .displayChanged, .screenLocked, .noFrames])

@@ -12,6 +12,25 @@ import Testing
 @Suite("Editor deterministic replay (EDIT-01)")
 @MainActor
 struct EditorReplayTests {
+    @Test("A delayed adjustment completion cannot split the following move")
+    func adjustmentBeforeMove() throws {
+        let h = EditorHarness()
+        let m = h.model
+        let layer = try #require(m.document.layers.first)
+        m.beginContinuousChange()
+        m.setLayerOpacity(0.5, for: layer.id)
+        m.pointerDown(at: Point(x: 100, y: 100))
+        m.pointerDragged(to: Point(x: 110, y: 100))
+        m.endContinuousChange()
+        m.pointerDragged(to: Point(x: 120, y: 100))
+        m.pointerUp(at: Point(x: 130, y: 100))
+        m.undo()
+        #expect(m.document.layers.first?.placement.translation == layer.placement.translation)
+        #expect(m.document.layers.first?.opacity == 0.5)
+        m.undo()
+        #expect(m.document.layers.first?.opacity == layer.opacity)
+    }
+
     /// Runs one fixed script covering every annotation kind and editing operation; returns the
     /// document after each undoable step, starting with the initial document.
     private func runScript(_ h: EditorHarness) throws -> [Document] {

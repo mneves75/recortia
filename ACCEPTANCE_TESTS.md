@@ -26,6 +26,11 @@ On each supported OS, capture a region, each display, a chosen window, a delayed
 
 Rapidly invoke capture 20 times. Assert the declared replacement/cancellation policy, maximum one active session, and no queued background captures. After completion/cancel, instrument zero active SCStreams and no new screenshot buffers while idle. A second process invocation reuses the existing application.
 
+Include transitions between still and scrolling modes: a collecting/armed scrolling session cannot
+start a still capture, and an active still capture cannot start scrolling. Existing visible windows
+hide synchronously before selection and restore after success, denial, cancellation, or interruption;
+already hidden windows stay hidden, child-window ownership survives, and closed windows stay closed.
+
 ### GEO-01 — Mixed-DPI desktop matrix
 
 Use displays at 1x and 2x, a display to the left/above the primary, different resolutions, and a rotated display where hardware allows. Test all four selection directions, one-pixel edges, fractional logical coordinates, and display unplug/replug. Exported pixel bounds agree with the geometry contract; there are no inverted crops, seams, or silent cross-display resampling.
@@ -43,6 +48,10 @@ Test valid PNG/JPEG; truncated headers; corrupt payloads; oversized declared dim
 ### EDIT-01 — Deterministic editor replay
 
 Replay a fixed script creating each annotation, editing text, dragging/resizing/duplicating, changing z-order, cropping, and resizing the document. Undo every operation, redo it, and verify model equality and expected render. A complete pointer gesture is one undo group. Exercise the undo-budget boundary without breaking remaining commands.
+
+Start an image move immediately after a color/opacity adjustment. The adjustment's delayed completion
+cannot split the move's undo group or revert the adjustment when the move is canceled. Editing only
+an image's inspector Height preserves its aspect ratio and refreshes both size fields.
 
 ### EDIT-02 — Zoom, focus, and text composition
 
@@ -95,6 +104,9 @@ Decode fixtures for ordinary text, HTTPS, unsupported schemes, payment/Wi-Fi-lik
 ### PIX-01 — Measurements and colors
 
 Use an sRGB chart with known encoded RGB values and exact geometry. HEX/RGB output matches the defined pixel sampling method, ruler distances remain invariant under editor zoom, and point/pixel labels are unambiguous. A nearest-neighbor loupe does not interpolate. Imported images do not acquire a fictitious Retina scale.
+
+Oversized finite document coordinates yield no sample; extreme loupe radii clamp to the image without
+integer overflow. Rapid output-preview toggles retain one in-flight render and discard canceled results.
 
 ## Scrolling and composition
 

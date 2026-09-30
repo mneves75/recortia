@@ -49,6 +49,7 @@ final class AppModel: AppActions {
     let onboarding: OnboardingModel
     let shortcutStatus: ShortcutStatusModel
     let features: FeatureModels?
+    private var isStartingScrollingCapture = false
 
     var openDocument: ((DocumentSession) -> EditorModel?)?
     var recognizeText: ((DocumentSession) -> Void)?
@@ -58,6 +59,7 @@ final class AppModel: AppActions {
     @ObservationIgnored private var captureUI: CaptureUIController?
     @ObservationIgnored private var scrollUI: ScrollUIController?
     @ObservationIgnored private var pinsUI: PinsUIController?
+    @ObservationIgnored private var captureWindowVisibility: CaptureWindowVisibility?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
     @ObservationIgnored private let editors = EditorWindowManager()
     @ObservationIgnored private var systemEvents: SystemEventMonitor?
@@ -66,12 +68,22 @@ final class AppModel: AppActions {
     /// Re-checks held shortcuts until macOS lets their keys go (ADR-005).
     @ObservationIgnored private var heldShortcutWatch: Task<Void, Never>?
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
 
-    init(settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry) {
+    init(
+        settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry,
+        showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) }
+    ) {
         self.settings = settings
+        self.showMessage = showMessage
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = services.map { FeatureModels(services: $0, settings: settings) }
+        captureWindowVisibility = features.map {
+            CaptureWindowVisibility(capture: $0.capture, scroll: $0.scroll) { [weak self] in
+                self?.isStartingScrollingCapture == true
+            }
+        }
         // Every path that holds a shortcut starts the watch, including a recording in Settings.
         shortcutStatus.onHold = { [weak self] in self?.watchHeldShortcuts() }
     }
@@ -96,14 +108,19 @@ final class AppModel: AppActions {
     // MARK: AppActions
 
     func isEnabled(_ command: AppCommand) -> Bool {
+        if AppCommand.captureModes.contains(command), isStartingScrollingCapture { return false }
         switch command {
-        case .captureRegion, .captureDisplay, .captureWindow, .captureWithDelay, .scrollingCapture, .openImage,
-            .pasteImage:
+        case .captureRegion, .captureDisplay, .captureWindow, .captureWithDelay:
+            return features != nil && openDocument != nil && features?.scroll.state.isActive == false
+        case .scrollingCapture:
+            return features != nil && openDocument != nil && features?.capture.state.isActive == false
+        case .openImage, .pasteImage:
             return features != nil && openDocument != nil
         case .repeatLastRegion:
             return features?.capture.hasRepeatRegion == true && openDocument != nil
+                && features?.scroll.state.isActive == false
         case .captureText:
-            return features != nil && recognizeText != nil
+            return features != nil && recognizeText != nil && features?.scroll.state.isActive == false
         case .captureMenu:
             return AppCommand.captureModes.contains { isEnabled($0) }
         case .bringPinsForward, .closeAllPins:
@@ -115,6 +132,9 @@ final class AppModel: AppActions {
 
     func perform(_ command: AppCommand) {
         guard isEnabled(command) else { return }
+        if AppCommand.captureModes.contains(command) {
+            captureWindowVisibility?.suspend()
+        }
         switch command {
         case .captureRegion: features?.capture.start(.region)
         case .captureDisplay: features?.capture.start(.display)
@@ -149,7 +169,7 @@ final class AppModel: AppActions {
         guard let importer = features?.importer else { return }
         Task {
             if case .failure(let failure) = await importer.importImage(from: source) {
-                MessagePresenter.present(.importFailure(failure))
+                showMessage(.importFailure(failure))
             }
         }
     }
@@ -222,16 +242,22 @@ final class AppModel: AppActions {
         Task {
             let outcomes = await export.runAutomaticExports(for: session, currentSession: live)
             for case .failed(let failure) in outcomes {
-                MessagePresenter.present(.export(failure))
+                showMessage(.export(failure))
             }
         }
     }
 
     private func startScrollingCapture() {
         guard let scroll = features?.scroll else { return }
+        isStartingScrollingCapture = true
         Task {
+            // Permission denial can leave the scroll model idle without an observed transition.
+            defer {
+                isStartingScrollingCapture = false
+                captureWindowVisibility?.restoreIfFinished()
+            }
             if !(await scroll.begin()), scroll.notice == .screenPermissionDenied {
-                MessagePresenter.present(.capture(.permissionDenied))
+                showMessage(.capture(.permissionDenied))
             }
         }
     }

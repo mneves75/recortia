@@ -11,6 +11,43 @@
     enum EditorScenarios {
         static let accentedText = "Revisão: ação, coração ✅ 👋🏽\nSegunda linha — café"
 
+        static func inspectorHeight(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let controller = try await E2EActions.captureRegion(
+                harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)
+            let model = controller.model
+            let layer = try context.unwrap("image layer", model.document.layers.first)
+            model.select(.layer(layer.id))
+            let root = try context.unwrap("editor content", controller.contentRoot)
+            await E2ESnapshot.settle(root)
+            context.snapshot(root, shot: "before")
+            let fields = EditorWindowController.all(NSTextField.self, in: root)
+            let field = try context.unwrap(
+                "height field",
+                fields.first {
+                    $0.doubleValue == 300
+                }
+            )
+            let window = try context.unwrap("editor window", controller.window)
+            try context.require("height field accepts focus", window.makeFirstResponder(field))
+            let editor = try context.unwrap("height field editor", field.currentEditor() as? NSTextView)
+            editor.selectAll(nil)
+            editor.insertText("600", replacementRange: editor.selectedRange())
+            let enter = try context.unwrap(
+                "Return event",
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: window.windowNumber, context: nil, characters: "\r",
+                    charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36)
+            )
+            editor.keyDown(with: enter)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "height changes the image proportionally",
+                model.frame(of: .layer(layer.id)) == Rect(x: 0, y: 0, width: 800, height: 600))
+            context.check("height field agrees with the document", field.doubleValue == 600)
+            await E2EActions.snapshotEditor(controller, context)
+        }
+
         static func annotations(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let controller = try await E2EActions.captureRegion(
                 harness, CGRect(x: 180, y: 120, width: 700, height: 460), context)
@@ -98,6 +135,45 @@
             }
             context.check("redo-all restores every annotation", model.document == final, "\(redos) redos")
             context.check("undo and redo counts match", undos == redos && undos == 8, "\(undos)/\(redos)")
+
+            let layer = try context.unwrap("image layer", model.document.layers.first)
+            let coalescer = ChangeCoalescer()
+            coalescer.run(model) { model.setLayerOpacity(0.8, for: layer.id) }
+            model.select(.layer(layer.id))
+            model.pointerDown(at: p(20, 20))
+            model.pointerDragged(to: p(40, 20))
+            try await Task.sleep(for: .milliseconds(800))
+            model.pointerDragged(to: p(60, 20))
+            model.pointerUp(at: p(60, 20))
+            model.undo()
+            context.check(
+                "the color timer cannot split the following canvas move",
+                model.document.layers.first?.placement == layer.placement
+                    && model.document.layers.first?.opacity == 0.8)
+            coalescer.run(model) { model.setLayerOpacity(0.6, for: layer.id) }
+            let beforeCanceledMove = model.document
+            model.pointerDown(at: p(20, 20))
+            model.pointerDragged(to: p(40, 20))
+            try await Task.sleep(for: .milliseconds(800))
+            model.cancelGesture()
+            context.check(
+                "canceling the move preserves the prior color adjustment", model.document == beforeCanceledMove)
+            model.undo()
+            model.undo()
+            context.check("canvas-move adjustments undo separately", model.document == final)
+            coalescer.run(model) { model.setLayerOpacity(0.8, for: layer.id) }
+            // The slider starts a distinct group; its completion owns only that group.
+            model.endContinuousChange()
+            let sliderID = model.beginContinuousChange()
+            model.setLayerOpacity(0.6, for: layer.id)
+            try await Task.sleep(for: .milliseconds(800))
+            model.setLayerOpacity(0.4, for: layer.id)
+            model.endContinuousChange(sliderID)
+            model.undo()
+            context.check(
+                "the color timer cannot split the following slider", model.document.layers.first?.opacity == 0.8)
+            model.undo()
+            context.check("the prior color adjustment remains a separate undo", model.document == final)
         }
 
         static func redaction(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

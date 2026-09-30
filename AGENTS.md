@@ -74,6 +74,10 @@ swift test --package-path Packages/RecortiaKit --filter <Test>   # one test or s
 
 Record the exact commands used. UI tests need a suitable GUI session and test configuration; a successful unsigned compilation is not a signing, TCC, UI, or release test. Use separate unsigned PR checks and protected signed release checks.
 
+Requested Xcode-beta MCP diagnostics supplement source review; stable Xcode gates remain binding.
+Release entitlements must be parsed as a plist: verify the Keychain access-group array itself and
+reject debug entitlements rather than searching for matching text elsewhere in the plist.
+
 For owner-authorized local Developer ID installation, use `xcodebuild archive` followed by
 `xcodebuild -exportArchive` with the export settings in `scripts/release.sh`. Before installing,
 verify the exported bundle with `codesign --verify --deep --strict`, confirm its version/build,

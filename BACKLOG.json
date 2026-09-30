@@ -5,6 +5,31 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26. No task is complete without recorded verification; FR-15/FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.9.1-beta3",
+    "build": 9,
+    "date": "2026-09-30",
+    "scope": "Approved FR-01 through FR-14 corrections: recapture window visibility, capture admission, scrolling cancellation/occlusion, editor geometry/undo/preview/pixel bounds, and parsed Release entitlements.",
+    "status": "source_verified_awaiting_manual_validation",
+    "verification": "Final stable Xcode 27.0 scripts/check.sh --unsigned passed, exit 0: 494 package tests, 12 Python controls, two Debug targets and 477 translated strings. Final synthetic E2E at 20260930-013025 passed, exit 0: 23/23 scenarios, 407 assertions and 41 screenshots per language. Queued scrolling admission and held permission await now reject overlapping commands; granted access checks the per-operation prompt delta (before=3, after=3). AppModel defaults to native messages; the harness records permission denial instead of blocking in NSAlert. The earlier full run 20260930-012132 timed out in that modal boundary and is retained as failed evidence. Different-model independent source/security reverify passed 266 focused tests and seven Python release controls, reconciled the final reports, and found no remaining confirmed source defect. Fully independent final UI execution is BLOCKED because a fresh agent context was refused by the server's thread limit; the final synthetic UI run was driven by the integrator. Real alerts/TCC, hardware, stable-host performance, clean-user launch and production qualification remain pending. No beta3 installation or public distribution is claimed.",
+    "evidence_paths": [
+      ".scratch/beta3-message-boundary-check.log",
+      ".scratch/beta3-message-boundary-e2e.log",
+      ".scratch/e2e/20260930-013025/en/report.json",
+      ".scratch/e2e/20260930-013025/pt-BR/report.json",
+      ".scratch/final-code-reverify-tests.log",
+      ".scratch/beta3-fresh-ui-reverify.log",
+      ".scratch/capture-admission-queued-green.log",
+      ".scratch/beta3-final-check.log",
+      ".scratch/editor-regressions-green.log",
+      ".scratch/e2e/20260929-235623/en/report.json",
+      ".scratch/e2e/20260929-235623/pt-BR/report.json",
+      ".scratch/e2e/20260930-000651/en/report.json",
+      ".scratch/e2e/20260930-000457/en/report.json",
+      ".scratch/e2e/20260930-000457/pt-BR/report.json",
+      ".scratch/beta3-reverify-sandbox-build.log"
+    ]
+  },
+  "previous_candidate": {
     "version": "0.9.1-beta2",
     "build": 8,
     "date": "2026-09-29",

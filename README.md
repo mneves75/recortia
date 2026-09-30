@@ -3,7 +3,7 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, without accounts, uploads, or a screenshot archive.
 
-**Status:** beta source candidate (0.9.1-beta2, build 8). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
+**Status:** beta source candidate (0.9.1-beta3, build 9). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
 multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
@@ -24,12 +24,17 @@ Or download the notarized DMG from [Releases](https://github.com/mneves75/recort
 
 The current source candidate has not been published as a DMG. A local Developer ID-signed
 0.9.1 build 7 was installed on the maintainer's Mac on 2026-09-29; it has not been notarized.
-The beta2 documentation/build-number follow-up does not replace that installed build.
+The beta3 source/build-number update does not replace that installed build. Its final stable gate
+and synthetic E2E passed; independent source/security reverification found no remaining confirmed
+defect. A fully independent final UI rerun was unavailable because the agent server reached its
+thread limit. No beta3 installation or public distribution is claimed here.
 
 ## What it does
 
 - **Capture** a region, a display, or a chosen window; delayed capture; repeat the last region.
-  Recortia's own windows are excluded; regions stay on one display.
+  Recortia's own windows are excluded; regions stay on one display. Starting another capture hides
+  existing Recortia windows during selection and capture, then restores them without closing
+  documents or taking focus. Still and scrolling workflows cannot overlap.
 - **The macOS shortcuts**: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and
   ⇧⌘5 shows every capture mode at the pointer. They start working once you turn the macOS ones off
   in System Settings › Keyboard › Keyboard Shortcuts › Screenshots; Recortia never changes them
@@ -101,10 +106,16 @@ geometry, state machines), `Imaging` (decode, privacy renderer, export, OCR, QR,
 Automated: Swift Testing suites for every module, including the redaction metamorphic tests
 (RED-01…RED-04) with planted-leak controls, import hardening (IO-01), export container inspection,
 OCR accuracy on a 104-sample EN/PT-BR corpus, and scroll stitching with held-out calibration, plus
-the end-to-end scenario runner (20 scenarios in English and Brazilian Portuguese).
+the end-to-end scenario runner (23 scenarios in English and Brazilian Portuguese). The last complete
+gate passed 494 package tests, 12 Python controls and both Debug builds. After the queued
+capture-admission correction and isolated message presentation, the final synthetic run passed
+23/23 scenarios and 407 assertions in each language, with 41 screenshots each. A different-model
+independent source/security verifier also passed 266 focused tests. The final UI execution was
+performed by the integrator; real permission alerts, TCC and live capture remain outside that
+synthetic proof. `BACKLOG.json` records the exact evidence and independence limit.
 
 Security: source reviews and synthetic regressions cover redaction, export boundaries, input
-limits, asynchronous freshness, and cancellation. The 0.9.1-beta1 corrections are listed in
+limits, asynchronous freshness, and cancellation. The beta1 and beta3 corrections are listed in
 `CHANGELOG.md`; accepted residuals and the limits of live verification remain in `THREAT_MODEL.md`.
 These checks do not establish that all platform behavior or security risks have been eliminated.
 

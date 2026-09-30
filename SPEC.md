@@ -98,6 +98,11 @@ Region selection MUST work on every connected display, including negative deskto
 
 Use public ScreenCaptureKit APIs, exclude the app's overlay/editor/pin windows by default, and hide the cursor unless explicitly requested. Verify exclusions with a visible checkerboard test overlay. Do not use private capture frameworks, shell `screencapture`, or `CGWindowListCreateImage` as the primary implementation. One-shot capture and stream capture are separate code paths. [S06]
 
+Before a new capture selection, temporarily hide existing visible Recortia windows without closing
+their documents. Keep them hidden through countdown and collection, then restore their previous
+visibility without taking focus. Replacement selections must not restore them early, and windows
+closed during capture must not reopen. Still capture and scrolling share one active-session limit.
+
 Capture MUST stop on cancellation, permission loss, screen lock, target disappearance, or a relevant display reconfiguration. Respect protected content; do not attempt a bypass. A dark image alone is not reliable proof of capture denial: use reported errors and target state, and avoid mislabeling legitimately black content.
 
 ### FR-03 — Import and clipboard input

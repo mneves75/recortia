@@ -241,6 +241,29 @@ struct EditorPreviewTests {
         #expect(h.renderer.fullRenders.last?.presentation.padding == 20)
     }
 
+    @Test("Toggling output preview retains ownership until the canceled render finishes")
+    func outputToggleWhileRendering() async throws {
+        let pending = Pending<Result<CGImage, TestError>>()
+        let h = EditorHarness()
+        await h.settle()
+        h.renderer.pending = pending
+        h.model.setShowsOutputPreview(true)
+        await waitFor("first output render") { pending.waiterCount == 1 }
+        h.model.setShowsOutputPreview(false)
+        h.model.setPadding(20)
+        h.model.setShowsOutputPreview(true)
+        await drain()
+        #expect(h.renderer.fullRenders.count == 1, "one render remains in flight despite cancellation")
+        pending.resolve(.failure(TestError()))
+        await waitFor("latest output render") { pending.waiterCount == 1 }
+        #expect(h.renderer.fullRenders.count == 2)
+        #expect(h.model.notice != .previewFailed, "canceled render cannot report a failure")
+        pending.resolve(.success(try #require(makeImage(width: 440, height: 340))))
+        await h.settle()
+        #expect(h.renderer.fullRenders.count == 2)
+        #expect(h.model.isOutputPreviewCurrent)
+    }
+
     @Test("Results arriving after close are ignored and asset pixels are released")
     func lateResultsAfterClose() async throws {
         let pending = Pending<Result<CGImage, TestError>>()

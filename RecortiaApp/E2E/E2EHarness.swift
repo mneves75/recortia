@@ -21,6 +21,7 @@
         let textPasteboard: NSPasteboard
         let drag: SyntheticDragReceiver
         let links = RecordingLinkOpener()
+        let messages = RecordingMessagePresenter()
         let services: AppServices
         let app: AppModel
         let features: FeatureModels
@@ -61,10 +62,12 @@
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: live.autoScroller, loginItem: live.loginItem, clock: live.clock)
             let system = systemShortcuts
+            let messages = self.messages
             app = AppModel(
                 settings: settings, services: services,
                 shortcutRegistry: KeyboardShortcutsRegistry(
-                    takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }))
+                    takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
+                showMessage: { messages.values.append($0) })
             guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
             self.features = features
             environment = EditorEnvironment(
@@ -121,6 +124,11 @@
             clipboard.pasteboard.releaseGlobally()
             textPasteboard.releaseGlobally()
         }
+    }
+
+    @MainActor
+    final class RecordingMessagePresenter {
+        var values: [UserMessage] = []
     }
 
     /// `EditorWindowManager.open` without `present()`: real editor windows and models, parked

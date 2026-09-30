@@ -14,6 +14,26 @@ import Testing
 @Suite("Editor pixel tools (PIX-01)")
 @MainActor
 struct EditorPixelToolsTests {
+    @Test("Finite document coordinates outside the integer range do not crash pixel tools")
+    func oversizedCoordinates() async throws {
+        let h = try await chartHarness()
+        let layer = try #require(h.model.document.layers.first)
+        h.model.setFrame(Rect(x: 1e20, y: 0, width: 32, height: 16), for: .layer(layer.id))
+        h.model.fitCanvasToContent()
+        h.model.setViewportSize(Size(width: 500, height: 400), backingScale: 1)
+        h.model.inspect(at: Point(x: 5e19, y: 8))
+        #expect(h.model.inspection == nil)
+    }
+
+    @Test("An oversized loupe radius is bounded by the image")
+    func oversizedLoupeRadius() async throws {
+        let h = try await chartHarness()
+        h.model.inspect(at: Point(x: 8, y: 8))
+        let loupe = try #require(h.model.loupe(radius: Int.max))
+        #expect(loupe.image.width == h.model.baseImage?.width)
+        #expect(loupe.image.height == h.model.baseImage?.height)
+    }
+
     private func chartHarness(origin: AssetOrigin = .imported) async throws -> EditorHarness {
         let chart = try ChartFixture.colorChart(cell: 8)
         let h = EditorHarness(session: EditorFixtures.session(width: chart.width, height: chart.height, origin: origin))
