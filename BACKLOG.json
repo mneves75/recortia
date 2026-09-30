@@ -11,7 +11,7 @@
     "scope": "Approved FR-01 through FR-14 corrections: recapture window visibility, capture admission, scrolling cancellation/occlusion, editor geometry/undo/preview/pixel bounds, and parsed Release entitlements.",
     "status": "source_verified_awaiting_manual_validation",
     "signed_gate_verification": "Stable Xcode 27.0 scripts/check.sh also passed, exit 0, on 2026-09-30: same 494 package tests, 12 Python controls and 477 translated strings, with both Debug targets signed. Only documentation changed after those gates; the signed local artifact remains bound to source commit 49047c7.",
-    "verification": "Final stable Xcode 27.0 scripts/check.sh --unsigned passed, exit 0: 494 package tests, 12 Python controls, two Debug targets and 477 translated strings. Final synthetic E2E at 20260930-013025 passed, exit 0: 23/23 scenarios, 407 assertions and 41 screenshots per language. Queued scrolling admission and held permission await now reject overlapping commands; granted access checks the per-operation prompt delta (before=3, after=3). AppModel defaults to native messages; the harness records permission denial instead of blocking in NSAlert. The earlier full run 20260930-012132 timed out in that modal boundary and is retained as failed evidence. Different-model independent source/security reverify passed 266 focused tests and seven Python release controls, reconciled the final reports, and found no remaining confirmed source defect. Fully independent final UI execution is BLOCKED because a fresh agent context was refused by the server's thread limit; the final synthetic UI run was driven by the integrator. Real alerts/TCC, hardware, stable-host performance, clean-user launch and production qualification remain pending. No beta3 installation or public distribution is claimed.",
+    "verification": "Final stable Xcode 27.0 scripts/check.sh --unsigned passed, exit 0: 494 package tests, 12 Python controls, two Debug targets and 477 translated strings. Final synthetic E2E at 20260930-013025 passed, exit 0: 23/23 scenarios, 407 assertions and 41 screenshots per language. Queued scrolling admission and held permission await now reject overlapping commands; granted access checks the per-operation prompt delta (before=3, after=3). AppModel defaults to native messages; the harness records permission denial instead of blocking in NSAlert. The earlier full run 20260930-012132 timed out in that modal boundary and is retained as failed evidence. Different-model independent source/security reverify passed 266 focused tests and seven Python release controls, reconciled the final reports, and found no remaining confirmed source defect. Fully independent final UI execution is BLOCKED because a fresh agent context was refused by the server's thread limit; the final synthetic UI run was driven by the integrator. Real alerts/TCC, hardware, stable-host performance, clean-user launch and production qualification remain pending. Signed beta3 installation is independently verified in local_installation; no public distribution is claimed.",
     "evidence_paths": [
       ".scratch/beta3-signed-check.log",
       ".scratch/beta3-message-boundary-check.log",
@@ -49,7 +49,7 @@
     "source_commit": "49047c7889f0a14e4f20ea5c8617f32f85c76be2",
     "executable_sha256": "6379ff7410e419e2e00c960eb30210fafad44b0bf0abd533861714ad5619e5f0",
     "verification": "Stable Xcode 27.0 archive and Developer ID export succeeded, exit 0. Strict signature, Hardened Runtime, version/build/minimum OS, profile compatibility and actual Keychain access group passed. Debug entitlements absent; Release test-marker isolation and bundled license/provenance checks passed, with a Debug binary correctly rejected as a failing control.",
-    "distribution_status": "Prepared inside the repository; not installed, notarized, tagged or publicly distributed. Existing build 7 installation and the user's session preserved. CI passed for source commit 49047c7. Different-model independent artifact verification passed strict signing/runtime, exact executable hash, profile signer certificate and group compatibility, actual entitlements with adversarial debug controls, binary isolation with a rejected Debug control, and both bundled licenses. This is local preparation evidence, not production qualification.",
+    "distribution_status": "Prepared from source commit 49047c7 and subsequently installed locally; see local_installation. Not notarized, tagged or publicly distributed. Different-model independent artifact verification passed strict signing/runtime, exact executable hash, profile signer certificate and group compatibility, actual entitlements with adversarial debug controls, binary isolation with a rejected Debug control, and both bundled licenses. Preparation and installation are recorded separately; neither proves production qualification.",
     "pull_request": "https://github.com/mneves75/recortia/pull/5",
     "ci_evidence": ["https://github.com/mneves75/recortia/actions/runs/36669782062"],
     "evidence_paths": [
@@ -59,6 +59,27 @@
     ]
   },
   "local_installation": {
+    "candidate": "0.9.1-beta3",
+    "app_version": "0.9.1",
+    "build": 9,
+    "date": "2026-09-30",
+    "source_commit": "49047c7889f0a14e4f20ea5c8617f32f85c76be2",
+    "merged_commit_with_identical_application_source": "f7bdf52097593743d65d305d49996f5aaa242233",
+    "executable_sha256": "6379ff7410e419e2e00c960eb30210fafad44b0bf0abd533861714ad5619e5f0",
+    "verification": "Owner authorized merge and installation explicitly after reviewing the prepared artifact. Installed /Applications/Recortia.app independently matches the approved export: 33 regular files, 59 entries, no symlinks, version 0.9.1/build 9/minimum 15.0 and exact executable hash. Strict Developer ID signature, Hardened Runtime and actual entitlements passed; debug entitlements absent. Original build 7 preserved with byte equality against its backup. No process was terminated and the app was not launched.",
+    "distribution_status": "Signed local installation; not notarized, tagged or publicly distributed. Launch, clean-user/offline behavior, TCC and live qualification unrun. Production remains blocked.",
+    "pull_request": "https://github.com/mneves75/recortia/pull/5",
+    "ci_evidence": [
+      "https://github.com/mneves75/recortia/actions/runs/36670599953",
+      "https://github.com/mneves75/recortia/actions/runs/36697604111"
+    ],
+    "evidence_paths": [
+      ".scratch/local-install-beta3-20260930/archive.log",
+      ".scratch/local-install-beta3-20260930/export.log",
+      ".scratch/local-install-beta3-20260930/installation.json"
+    ]
+  },
+  "previous_local_installation": {
     "candidate": "0.9.1-beta1",
     "app_version": "0.9.1",
     "build": 7,

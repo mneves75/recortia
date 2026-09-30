@@ -22,15 +22,16 @@ brew install --cask mneves75/tap/recortia
 
 Or download the notarized DMG from [Releases](https://github.com/mneves75/recortia/releases).
 
-The current source candidate has not been published as a DMG. A local Developer ID-signed
-0.9.1 build 7 was installed on the maintainer's Mac on 2026-09-29; it has not been notarized.
-The beta3 source/build-number update does not replace that installed build. Its final stable gate
-and synthetic E2E passed; independent source/security reverification found no remaining confirmed
-defect. A fully independent final UI rerun was unavailable because the agent server reached its
-thread limit. A Developer ID-signed beta3 archive/export is prepared from commit `49047c7`;
-independent verification of its signature, distribution entitlements and bundled licenses passed.
-Both unsigned and signed local gates passed. It is not installed or
-notarized. [PR #5](https://github.com/mneves75/recortia/pull/5) carries the source changes.
+The current source candidate has not been published as a DMG. The local Developer ID-signed
+0.9.1-beta3 candidate (app version 0.9.1, build 9) was installed on the maintainer's Mac on
+2026-09-30 from commit `49047c7`. Independent verification confirmed that all installed files
+match the approved export, with valid signature, distribution entitlements and bundled licenses.
+The previous build 7 was preserved. The app was not launched by the installation procedure and
+has not been notarized. [PR #5](https://github.com/mneves75/recortia/pull/5) merged the source changes.
+
+Both unsigned and signed local gates and the final synthetic E2E passed; independent
+source/security reverification found no remaining confirmed defect. A fully independent final
+UI rerun was unavailable because the agent server reached its thread limit.
 
 ## What it does
 
@@ -122,11 +123,12 @@ limits, asynchronous freshness, and cancellation. The beta1 and beta3 correction
 `CHANGELOG.md`; accepted residuals and the limits of live verification remain in `THREAT_MODEL.md`.
 These checks do not establish that all platform behavior or security risks have been eliminated.
 
-Release evidence: PR #3 and its post-merge unsigned CI passed for the beta1 source. The local
-0.9.1 build 7 archive/export succeeded with stable Xcode 27.0; strict signature verification,
+Release evidence: PR #3 and its post-merge unsigned CI passed for the beta1 source; PR #5 and
+its pre-merge and post-merge CI passed for beta3. The local 0.9.1 build 9 archive/export succeeded with stable
+Xcode 27.0; strict signature verification,
 Hardened Runtime, the embedded provisioning profile, the protected Keychain access group,
 absence of the debug entitlement, and byte equality between the export and installed bundle
-were checked. The existing running session was preserved; launch after replacement and
+were checked independently against the installed bundle. Build 7 was preserved; launch after replacement and
 clean-user/offline behavior were not verified. This is partial REL-02 evidence, not a
 notarized distribution or production qualification. `BACKLOG.json` records the source,
 artifact hash, CI links, and local evidence paths.
