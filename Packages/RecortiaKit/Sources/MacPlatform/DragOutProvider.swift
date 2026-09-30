@@ -62,7 +62,9 @@ public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
         do {
             // Never replace a file the receiver already has at this URL. The lease is held during
             // the write, so a redaction or close either prevents it or waits for it to finish.
-            let wrote = try lease.whileValid { try snapshot.bytes.write(to: url, options: [.withoutOverwriting]) }
+            let wrote: Void? = try lease.whileValid {
+                try snapshot.bytes.write(to: url, options: [.withoutOverwriting])
+            }
             guard wrote != nil else {
                 onWriteFinished?(.revoked)
                 completionHandler(WriteError.revoked)

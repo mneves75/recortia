@@ -4,6 +4,48 @@ All notable changes to Recortia are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.9.1-beta1] - 2026-09-29
+
+### Security
+
+- Ordinary document edits invalidate completed OCR and QR results; stale text and links can no
+  longer be copied or opened. Closing an editor releases these results.
+- Privacy changes immediately discard the old base preview, including duplicated source layers,
+  even when the replacement render fails.
+- Capture dimensions are bounded before ScreenCaptureKit allocates still or scrolling surfaces.
+- Automatic scrolling checks target ownership, unchanged bounds, and the window under the event
+  point before posting each event. Synthetic E2E no longer registers a global Escape key.
+- Saving first attempts exclusive creation; a collision requires explicit replacement consent.
+
+### Fixed
+
+- Deleted image assets are released after their last undo-history reference is evicted; remaining
+  duplicate layers continue to retain their shared source.
+- Escape cancels move, resize, and numbered-step gestures without retaining a partial edit.
+- Crop bounds round outward to preserve every selected source pixel.
+- A suspended automatic-scroll step no longer blocks a replacement session.
+- Clipboard failure messages no longer promise preservation that AppKit cannot guarantee.
+- Toolchain detection drains Swift's output without an intermittent SIGPIPE gate failure. The
+  repository gate includes toolchain and E2E-isolation regression controls.
+- Localization validation scans the selected build configuration and rejects missing artifacts;
+  stale Release strings no longer contaminate Debug verification.
+
+- Scrolling capture now binds the window under the selected region and stops when that window,
+  an unrelated foreground app, or the display changes, including while paused or when a frame was
+  already buffered. Automatic scrolling refuses to start when a third app has focus.
+- Changing or restoring shortcuts unregisters the old assignments before writing new ones, so a
+  shortcut still owned by macOS is never briefly registered by Recortia. The recorder refreshes
+  its displayed combination even when the status stays active.
+- The release manifest records the same source commit used for its clean checkout, even if the
+  working branch advances during the build.
+- The exported app includes Recortia's MIT license and the pinned KeyboardShortcuts MIT notice;
+  the release pipeline verifies both notices against their sources.
+- The shortcut E2E scenario uses its isolated fake system-shortcut state rather than the host's
+  real shortcut settings. Compiler warnings in drag-out, export tests, and app conformance were
+  also removed.
+
 ## [0.9.0-beta5] - 2026-09-27
 
 ### Added

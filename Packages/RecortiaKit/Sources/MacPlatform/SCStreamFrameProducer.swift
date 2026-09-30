@@ -94,11 +94,12 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
             display: display, excludingWindowIDs: excludedWindowIDs, content: content, ownPID: ownProcessID)
         let scale = Double(filter.pointPixelScale)
         guard abs(scale - expectedScale) <= 0.001 else { throw CaptureError.displayChanged }
+        let size = try CapturePlan.pixelSize(for: sourceRect, scale: scale)
 
         let configuration = SCStreamConfiguration()
         configuration.sourceRect = sourceRect
-        configuration.width = Int((sourceRect.width * scale).rounded())
-        configuration.height = Int((sourceRect.height * scale).rounded())
+        configuration.width = size.width
+        configuration.height = size.height
         configuration.scalesToFit = false
         configuration.showsCursor = false
         configuration.captureResolution = .best

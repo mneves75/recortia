@@ -64,7 +64,7 @@ No credentials or real screenshots in source control, logs, prompts, issues, or 
 The repository gates (stable Xcode via `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`):
 
 ```sh
-scripts/check.sh              # doctor, strict format lint, project freshness, package tests, signed Debug build
+scripts/check.sh              # doctor/isolation regressions, format lint, project freshness, tests, signed Debug build
 scripts/check.sh --unsigned   # CI and machines without the signing identity
 scripts/e2e.sh --lang all     # DEBUG scenario runner through the real app: screenshots + report.json
 scripts/release.sh            # owner-only, on a v<version>[-betaN] tag: fresh checkout, gate, Developer ID export, checks, DMG, notarize, manifest

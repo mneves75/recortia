@@ -76,7 +76,7 @@ public final class ScrollSessionModel {
     @ObservationIgnored private var deadlineTask: Task<Void, Never>?
     @ObservationIgnored private var settleTask: Task<Void, Never>?
     @ObservationIgnored private var unansweredSteps = 0
-    @ObservationIgnored private var autoStepInFlight = false
+    @ObservationIgnored private var autoStepOwner: UUID?
 
     public init(
         frames: any ScrollFrameSourceService, stitcher: any ScrollStitchService, autoScroller: (any AutoScrollService)?,
@@ -320,15 +320,15 @@ public final class ScrollSessionModel {
     /// Sends one scroll step and, once it was sent, waits `automaticSettleInterval` for a frame.
     /// Runs from the collection loop, the settle timer, or Resume; one step at a time.
     private func autoStep(_ target: CaptureTarget, id: UUID) async {
-        guard sessionID == id, state == .collecting, mode == .automatic, !autoStepInFlight else { return }
+        guard sessionID == id, state == .collecting, mode == .automatic, autoStepOwner != id else { return }
         guard accessibility.isTrusted, let autoScroller else {
             mode = .manual
             notice = .accessibilityRevoked
             return
         }
-        autoStepInFlight = true
+        autoStepOwner = id
         let step = await autoScroller.step(target)
-        autoStepInFlight = false
+        if autoStepOwner == id { autoStepOwner = nil }
         guard sessionID == id, state == .collecting else { return }
         switch step {
         case .scrolled:

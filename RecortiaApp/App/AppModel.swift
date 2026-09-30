@@ -290,8 +290,7 @@ final class AppModel: AppActions {
 
     /// Restore Defaults in Settings: the macOS-style table, every other command cleared.
     func restoreDefaultShortcuts() {
-        ShortcutDefaults.restore()
-        refreshShortcuts()
+        shortcutStatus.reassign { ShortcutDefaults.restore() }
     }
 
     private func watchHeldShortcuts() {

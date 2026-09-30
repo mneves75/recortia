@@ -50,6 +50,25 @@ final class ScrollHarness {
 @Suite("ScrollSessionModel (FR-10, SCR-02/04)")
 @MainActor
 struct ScrollSessionModelTests {
+    @Test("A canceled session's suspended automatic step cannot stall its replacement")
+    func replacementDoesNotInheritStepInFlight() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        h.scroller.holdSteps = true
+        await h.startCollecting()
+        h.frames.deliver()
+        await waitFor("old automatic step") { h.scroller.pendingSteps.waiterCount == 1 }
+        h.model.cancel()
+        h.scroller.holdSteps = false
+        await h.startCollecting()
+        h.frames.deliver()
+        await waitFor("new session's first frame") { h.model.acceptedFrames == 1 }
+        #expect(h.scroller.stepCount == 2)
+        h.scroller.pendingSteps.resolve(())
+        await waitFor("old step returned") { h.scroller.pendingSteps.waiterCount == 0 }
+        #expect(h.model.state == .collecting)
+        h.model.cancel()
+    }
+
     @Test("Manual collection accepts frames and records seams, then reviews and accepts")
     func manualHappyPath() async {
         let h = ScrollHarness()

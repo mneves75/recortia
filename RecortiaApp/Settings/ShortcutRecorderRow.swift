@@ -13,9 +13,14 @@ struct ShortcutRecorderRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             KeyboardShortcuts.Recorder(
-                for: binding.name,
-                onChange: { _ in status.refresh(named: binding.name.rawValue) },
-                label: { Text(binding.title) })
+                shortcut: Binding(
+                    get: { KeyboardShortcuts.getShortcut(for: binding.name) },
+                    set: { shortcut in
+                        status.reassign { KeyboardShortcuts.setShortcut(shortcut, for: binding.name) }
+                    }),
+                label: { Text(binding.title) }
+            )
+            .id(status.assignmentRevision)
             switch status.state(of: binding.name.rawValue) {
             case .heldBySystem:
                 note(

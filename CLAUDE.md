@@ -11,7 +11,7 @@ Every command needs the stable toolchain: `xcode-select` on the maintainer's Mac
 Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`
 (`scripts/*.sh` default to it). A bare `xcodebuild` builds with the beta and its evidence doesn't count.
 
-- Full gate: `scripts/check.sh` (doctor, strict `swift format lint`, generated-project freshness,
+- Full gate: `scripts/check.sh` (doctor and E2E-isolation regression controls, strict `swift format lint`, generated-project freshness,
   all package tests, signed Debug build, pt-BR coverage of every extracted string, E2E target build); `--unsigned` without the signing identity.
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
 - End-to-end: `scripts/e2e.sh --lang all` runs the DEBUG scenario runner (`-RecortiaE2E <dir>`)

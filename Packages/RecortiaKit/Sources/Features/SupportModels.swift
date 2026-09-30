@@ -73,6 +73,7 @@ public enum ShortcutState: Hashable, Sendable {
 @Observable
 public final class ShortcutStatusModel {
     public private(set) var states: [String: ShortcutState] = [:]
+    public private(set) var assignmentRevision = 0
     @ObservationIgnored private let registry: any ShortcutRegistry
     @ObservationIgnored private let names: [String]
     /// Called whenever a refresh holds a shortcut (a launch, a recording forced onto macOS's keys, a
@@ -91,6 +92,15 @@ public final class ShortcutStatusModel {
 
     public func refreshAll() {
         for name in names { refresh(named: name) }
+    }
+
+    /// Keep the old and new combinations unregistered while assignments are changed. The
+    /// shortcut library registers a new stored combination synchronously if its handler is active.
+    public func reassign(_ change: () -> Void) {
+        for name in names { registry.setRegistered(false, shortcutNamed: name) }
+        change()
+        refreshAll()
+        assignmentRevision += 1
     }
 
     /// Re-checks only the held shortcuts, for the periodic watch while macOS claims one; active

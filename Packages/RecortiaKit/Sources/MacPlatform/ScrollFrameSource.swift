@@ -12,6 +12,13 @@ protocol ScrollFrameProducer: Sendable {
     func stop() async
 }
 
+@MainActor
+protocol ScrollTargetChecking {
+    /// Bind the window beneath the selected region before starting a display stream.
+    func bind() -> Bool
+    func isCurrent() -> Bool
+}
+
 /// Viewport frames of one region for an explicit scrolling session only (FR-10). Never used for
 /// still capture, never running while idle (CAP-02).
 ///
@@ -42,8 +49,11 @@ public final class ScrollFrameSource {
     public private(set) var state: State = .idle
 
     private let producer: any ScrollFrameProducer
+    private let targetChecker: (any ScrollTargetChecking)?
     private var continuation: AsyncStream<CGImage>.Continuation?
     private var displayObserver: (any NSObjectProtocol)?
+    private var activationObserver: (any NSObjectProtocol)?
+    private var targetWatch: Task<Void, Never>?
 
     /// A live source for `region` on `display`, excluding Recortia's windows and the given window
     /// numbers. The region is clamped to the display; an empty result fails at `start()`.
@@ -55,12 +65,14 @@ public final class ScrollFrameSource {
                 sourceRect: local.map { CGRect(x: $0.minX, y: $0.minY, width: $0.width, height: $0.height) },
                 expectedScale: display.pointPixelScale,
                 excludedWindowIDs: excludingWindowNumbers.compactMap { CGWindowID(exactly: $0) },
-                ownProcessID: ProcessInfo.processInfo.processIdentifier))
+                ownProcessID: ProcessInfo.processInfo.processIdentifier),
+            targetChecker: LiveScrollTargetChecker(region: region, display: display))
         observeDisplayChanges()
     }
 
-    init(producer: any ScrollFrameProducer) {
+    init(producer: any ScrollFrameProducer, targetChecker: (any ScrollTargetChecking)? = nil) {
         self.producer = producer
+        self.targetChecker = targetChecker
         let (stream, continuation) = AsyncStream<CGImage>.makeStream(
             bufferingPolicy: .bufferingNewest(Self.bufferDepth))
         frames = stream
@@ -70,6 +82,10 @@ public final class ScrollFrameSource {
     public func start() async throws(CaptureError) {
         guard state == .idle, let continuation else { throw .canceled }
         state = .starting
+        if targetChecker?.bind() == false {
+            finish(.targetChanged)
+            throw .targetUnavailable
+        }
         do {
             try await producer.start(
                 deliver: { image in continuation.yield(image) },
@@ -86,6 +102,18 @@ public final class ScrollFrameSource {
             throw .canceled
         }
         state = .running
+        observeTargetChanges()
+        guard await ensureTargetCurrent() else { throw .targetUnavailable }
+    }
+
+    /// Check again before accepting a buffered frame, including one queued before a focus change.
+    public func ensureTargetCurrent() async -> Bool {
+        guard state == .running else { return false }
+        guard targetChecker?.isCurrent() != false else {
+            await stop(reason: .targetChanged)
+            return false
+        }
+        return true
     }
 
     public func stop(reason: StopReason = .requested) async {
@@ -110,9 +138,35 @@ public final class ScrollFrameSource {
         state = .stopped(reason)
         continuation?.finish()
         continuation = nil
+        targetWatch?.cancel()
+        targetWatch = nil
+        if let activationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
+            self.activationObserver = nil
+        }
         if let displayObserver {
             NotificationCenter.default.removeObserver(displayObserver)
             self.displayObserver = nil
+        }
+    }
+
+    private func observeTargetChanges() {
+        guard targetChecker != nil else { return }
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                Task { _ = await self.ensureTargetCurrent() }
+            }
+        }
+        // Window closure and movement have no reliable notification without Accessibility. Check
+        // window identity while collecting or paused, even when no new frame arrives.
+        targetWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                guard let self, await self.ensureTargetCurrent() else { return }
+            }
         }
     }
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fails when a string the compiler extracted from the app has no translated pt-BR entry.
 
-Usage: scripts/check-localization.py <derived-data-dir> [target]
+Usage: scripts/check-localization.py <derived-data-dir> [target] [configuration]
 Reads the `.stringsdata` files the build emits (SWIFT_EMIT_LOC_STRINGS) for the target (default
-Recortia) and checks every key against RecortiaApp/Resources/<table>.xcstrings.
+Recortia, configuration Debug) and checks every key against RecortiaApp/Resources/<table>.xcstrings.
 """
 import json
 import pathlib
@@ -12,9 +12,10 @@ import sys
 root = pathlib.Path(__file__).resolve().parent.parent
 derived = pathlib.Path(sys.argv[1])
 target = sys.argv[2] if len(sys.argv) > 2 else "Recortia"
-data = sorted(derived.glob(f"Build/Intermediates.noindex/Recortia.build/*/{target}.build/Objects-normal/*/*.stringsdata"))
+configuration = sys.argv[3] if len(sys.argv) > 3 else "Debug"
+data = sorted(derived.glob(f"Build/Intermediates.noindex/Recortia.build/{configuration}/{target}.build/Objects-normal/*/*.stringsdata"))
 if not data:
-    sys.exit(f"localization: no .stringsdata for {target} under {derived}; build the app first")
+    sys.exit(f"localization: no .stringsdata for {target} ({configuration}) under {derived}; build the app first")
 
 def translated(node):
     """True when every leaf of a localization (plain, or plural/device variations, nested) is a

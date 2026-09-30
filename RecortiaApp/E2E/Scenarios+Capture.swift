@@ -143,14 +143,15 @@
             context.check(
                 "nothing is captured during the countdown", harness.capture.captures.count == capturesBefore,
                 "\(harness.capture.captures.count - capturesBefore) captures")
-            // Escape cancels the countdown although its panel never takes focus: a temporary
-            // Carbon hot key (no permission needed). It must register, and release on close.
-            let escape = EscapeHotKey {}
-            context.check("the countdown's Escape hot key registers", escape != nil)
-            escape?.unregister()
-            let again = EscapeHotKey {}
-            context.check("the Escape hot key is released when the countdown ends", again != nil)
-            again?.unregister()
+            // Exercise the cancellation action without taking the host's global Escape key.
+            // Carbon registration itself belongs to the explicitly approved live-desktop check.
+            coordinator.cancel()
+            context.check("Cancel ends the countdown", coordinator.state == .canceled, "\(coordinator.state)")
+            context.check("Cancel captures nothing", harness.capture.captures.count == capturesBefore)
+            harness.app.perform(.captureWithDelay)
+            try context.require(
+                "a new countdown can start after Cancel",
+                coordinator.commitRegion(E2EActions.desktopRect(rect), on: harness.capture.display))
 
             var seen: [Int] = []
             let finished = await E2EWait.until(timeout: .seconds(8), poll: .milliseconds(50)) {

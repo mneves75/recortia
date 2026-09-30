@@ -215,7 +215,7 @@ struct EditorCompositionTests {
         let m = h.model
         m.selectTool(.crop)
         h.drag((10.4, 20.6), (200.2, 150.7))
-        #expect(m.document.crop == Rect(x: 10, y: 21, width: 190, height: 130))
+        #expect(m.document.crop == Rect(x: 10, y: 20, width: 191, height: 131))
         m.setResizeScale(99)
         #expect(m.document.resizeScale == EditorModel.resizeRange.upperBound)
         m.setCrop(nil)

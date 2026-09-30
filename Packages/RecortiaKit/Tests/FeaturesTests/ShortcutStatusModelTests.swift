@@ -52,6 +52,26 @@ struct ShortcutStatusModelTests {
         #expect(!model.isHoldingAny)
     }
 
+    @Test("Reassignment suspends handlers before changing stored keys, then restores only safe keys")
+    func reassignmentOrder() {
+        let registry = FakeShortcutRegistry(assigned: ["captureRegion", "captureDisplay"])
+        let model = ShortcutStatusModel(registry: registry, names: names)
+        model.refreshAll()
+        #expect(registry.registered["captureRegion"] == true)
+
+        var changedWhileSuspended = false
+        model.reassign {
+            changedWhileSuspended = names.allSatisfy { registry.registered[$0] == false }
+            registry.takenBySystem = ["captureRegion"]
+        }
+
+        #expect(changedWhileSuspended)
+        #expect(registry.registered["captureRegion"] == false)
+        #expect(model.state(of: "captureRegion") == .heldBySystem)
+        #expect(registry.registered["captureDisplay"] == true)
+        #expect(model.assignmentRevision == 1)
+    }
+
     @Test("Every path that holds a shortcut reports it, so the caller starts watching")
     func holdingIsReported() {
         let registry = FakeShortcutRegistry(assigned: ["captureRegion"])

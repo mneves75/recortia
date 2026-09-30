@@ -3,7 +3,7 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, without accounts, uploads, or a screenshot archive.
 
-**Status:** beta (0.9.0). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
+**Status:** beta source candidate (0.9.1-beta1, build 7). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
 multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
@@ -42,7 +42,8 @@ Or download the notarized DMG from [Releases](https://github.com/mneves75/recort
   untrusted data; only http/https links open, and only when you click.
 - **Pin** up to five floating references with adjustable opacity and zoom.
 - **Scrolling capture**, manual by default; automatic scrolling is opt-in and asks for Accessibility
-  only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch.
+  only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch. A live
+  session stops if its source window, an unrelated foreground app, or its display changes.
 - **Pixel tools**: nearest-neighbor loupe, ruler, and sRGB color picker (HEX/RGB).
 - **Compose and present**: multiple images on one canvas, side-by-side, background, padding,
   rounded corners, shadow, spotlight, and magnifier callouts.
@@ -88,10 +89,10 @@ Automated: Swift Testing suites for every module, including the redaction metamo
 OCR accuracy on a 104-sample EN/PT-BR corpus, and scroll stitching with held-out calibration, plus
 the end-to-end scenario runner (20 scenarios in English and Brazilian Portuguese).
 
-Security: a source-review audit of the pre-release tree (three hunting waves, independent
-verification) found no confirmed vulnerability; its two leads and the independent review's
-findings, including an independent Codex review, are fixed and listed under Security in
-`CHANGELOG.md`. Accepted residuals are listed in `THREAT_MODEL.md`.
+Security: source reviews and synthetic regressions cover redaction, export boundaries, input
+limits, asynchronous freshness, and cancellation. The 0.9.1-beta1 corrections are listed in
+`CHANGELOG.md`; accepted residuals and the limits of live verification remain in `THREAT_MODEL.md`.
+These checks do not establish that all platform behavior or security risks have been eliminated.
 
 Not yet validated: live capture on 1× and mixed-DPI multi-display setups (GEO-01), macOS 15 and
 26 hosts, the real-app scrolling compatibility matrix (SCR-03), VoiceOver and input-method passes
@@ -107,4 +108,4 @@ preserved in `docs/handoff/`.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE). The app bundle includes this license and the pinned KeyboardShortcuts MIT notice.

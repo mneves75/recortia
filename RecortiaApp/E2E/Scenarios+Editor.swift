@@ -73,6 +73,18 @@
             await E2EActions.snapshotEditor(controller, context, shot: "selection")
 
             let final = model.document
+            model.selectTool(.step)
+            model.pointerDown(at: p(100, 100))
+            let escape = try context.unwrap(
+                "Escape event",
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: controller.window?.windowNumber ?? 0, context: nil,
+                    characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53))
+            canvas.keyDown(with: escape)
+            context.check(
+                "Escape cancels step creation through the canvas", model.document == final && !model.session.isGrouping)
+            model.selectTool(.select)
             var undos = 0
             while model.canUndo, undos < 100 {
                 model.undo()

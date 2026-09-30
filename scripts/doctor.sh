@@ -24,6 +24,7 @@ if ! command -v xcodegen >/dev/null; then
   echo "doctor: xcodegen missing (brew install xcodegen); needed only to regenerate the project" >&2
 fi
 
-swift_line=$(xcrun swift --version 2>&1 | head -1)
+swift_output=$(xcrun swift --version 2>&1)
+swift_line="${swift_output%%$'\n'*}"
 echo "doctor: $swift_line"
 exit $rc

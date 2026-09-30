@@ -52,11 +52,14 @@ final class FakeScrollPoster: ScrollEventPosting {
 
 @Suite("Automatic scrolling stop policy (FR-10, SCR-03)")
 struct AutoScrollStopPolicyTests {
-    let policy = AutoScrollStopPolicy(frontmostPIDAtStart: targetPID, displayFingerprint: display.fingerprint)
+    let policy = AutoScrollStopPolicy(
+        targetPID: targetPID, controllerPID: ProcessInfo.processInfo.processIdentifier,
+        displayFingerprint: display.fingerprint)
 
     @Test("An unchanged environment continues")
     func unchangedContinues() {
         #expect(policy.stopReason(for: observation()) == nil)
+        #expect(policy.stopReason(for: observation(frontmost: ProcessInfo.processInfo.processIdentifier)) == nil)
     }
 
     @Test(
@@ -85,6 +88,32 @@ struct AutoScrollStopPolicyTests {
 @MainActor
 @Suite("Automatic scroller: targeted scroll events only while the policy allows (FR-10, PERM-01)")
 struct AutoScrollerTests {
+    @Test("Live target validation rejects moved, replaced, malformed, and covered windows")
+    func targetIdentityBeforeEvents() {
+        func entry(id: UInt32 = 42, pid: pid_t = targetPID, x: Double = 100) -> [String: Any] {
+            [
+                kCGWindowNumber as String: NSNumber(value: id), kCGWindowOwnerPID as String: NSNumber(value: pid),
+                kCGWindowIsOnscreen as String: true, kCGWindowLayer as String: 0,
+                kCGWindowBounds as String: ["X": x, "Y": 100.0, "Width": 800.0, "Height": 600.0],
+            ]
+        }
+        let point = CGPoint(x: 500, y: 400)
+        #expect(LiveAutoScrollEnvironment.targetIsCurrent(target, at: point, in: [entry()]))
+        for list in [
+            [entry(x: 101)], [entry(pid: 778)], [[kCGWindowNumber as String: 42]],
+            [entry(id: 43), entry()], [],
+        ] {
+            #expect(!LiveAutoScrollEnvironment.targetIsCurrent(target, at: point, in: list))
+        }
+        // The controller's HUD is excluded; other windows of the target app are not.
+        #expect(
+            LiveAutoScrollEnvironment.targetIsCurrent(
+                target, at: point,
+                in: [
+                    entry(id: 99, pid: ProcessInfo.processInfo.processIdentifier), entry(),
+                ]))
+    }
+
     private func make(_ observation: AutoScrollObservation = observation()) throws -> (
         AutoScroller, FakeScrollEnvironment, FakeScrollPoster
     ) {
@@ -159,14 +188,25 @@ struct AutoScrollerTests {
         #expect(poster.posts.isEmpty)
     }
 
-    @Test("The frontmost app is compared with the one at start, whichever it was")
-    func frontmostBaselineIsStart() throws {
-        let (scroller, environment, poster) = try make(observation(frontmost: 555))
+    @Test("A chosen window in a background app cannot receive automatic scroll events")
+    func frontmostMustOwnTargetAtStart() throws {
+        let (scroller, _, poster) = try make(observation(frontmost: 555))
+        #expect(throws: AutoScrollError.targetUnavailable) { try scroller.start() }
+        #expect(scroller.scrollDown(byPixels: 10) == .notRunning)
+        #expect(poster.posts.isEmpty)
+    }
+
+    @Test("The scrolling HUD may have focus when its target is started")
+    func controllerMayOwnFocusAtStart() throws {
+        let (scroller, environment, poster) = try make(
+            observation(frontmost: ProcessInfo.processInfo.processIdentifier))
         try scroller.start()
         #expect(scroller.scrollDown(byPixels: 10) == .scrolled)
         environment.current = observation(frontmost: targetPID)
+        #expect(scroller.scrollDown(byPixels: 10) == .scrolled)
+        environment.current = observation(frontmost: 555)
         #expect(scroller.scrollDown(byPixels: 10) == .stopped(.frontmostAppChanged))
-        #expect(poster.posts.count == 1)
+        #expect(poster.posts.count == 2)
     }
 
     @Test("A failed event post stops scrolling")

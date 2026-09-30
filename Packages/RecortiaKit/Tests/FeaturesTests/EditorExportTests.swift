@@ -74,7 +74,7 @@ struct EditorExportTests {
         #expect(!h.model.document.masks.isEmpty)
         #expect(lease.isRevoked)
         #expect(h.drag.dismissCount == 1)
-        await export.value
+        _ = await export.value
         #expect(h.drag.writtenSnapshots.isEmpty)
     }
 
@@ -86,7 +86,7 @@ struct EditorExportTests {
         await waitFor("drag offered") { h.drag.leases.count == 1 }
         h.model.close()
         #expect(h.drag.leases.first?.isRevoked == true)
-        await export.value
+        _ = await export.value
         #expect(h.drag.writtenSnapshots.isEmpty)
     }
 
@@ -151,6 +151,65 @@ struct EditorExportTests {
         h.model.setLayerOpacity(0.5, for: layer)  // an unrelated edit discards the redo step
         #expect(Set(h.assets.released) == added)
         #expect(h.model.canRedo == false)
+    }
+
+    @Test("Deleted image pixels are released only after their undo history is evicted")
+    func deletedAssetReleasedAfterHistoryEviction() async throws {
+        let h = EditorHarness(session: EditorFixtures.session(undoLimit: 1))
+        let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-read.png")
+        h.input.files[url] = .success(Data([1]))
+        #expect(await h.model.addImageLayer(from: .file(url)))
+        let layer = try #require(h.model.document.layers.last)
+        h.model.select(.layer(layer.id))
+        h.model.deleteSelection()
+        #expect(h.model.document.assets[layer.assetID] == nil)
+        #expect(h.assets.released.isEmpty, "deletion can still be undone")
+        h.model.undo()
+        #expect(h.model.document.layers.contains { $0.id == layer.id })
+        h.model.redo()
+        #expect(h.assets.released.isEmpty, "undo history still owns the deleted pixels")
+        h.model.setResizeScale(0.5)
+        #expect(h.assets.released == [layer.assetID])
+    }
+
+    @Test("Finalizing gestures and continuous changes releases assets evicted from history")
+    func groupFinalizationReleasesEvictedAsset() async throws {
+        for useGesture in [false, true] {
+            let h = EditorHarness(session: EditorFixtures.session(undoLimit: 1))
+            let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-read.png")
+            h.input.files[url] = .success(Data([1]))
+            #expect(await h.model.addImageLayer(from: .file(url)))
+            let deleted = try #require(h.model.document.layers.last)
+            h.model.select(.layer(deleted.id))
+            h.model.deleteSelection()
+            #expect(h.assets.released.isEmpty)
+            if useGesture {
+                h.model.selectTool(.select)
+                h.model.pointerDown(at: Point(x: 100, y: 80))
+                h.model.pointerDragged(to: Point(x: 110, y: 90))
+                #expect(h.model.session.isGrouping)
+                #expect(h.assets.released.isEmpty)
+                h.model.pointerUp(at: Point(x: 110, y: 90))
+            } else {
+                h.model.beginContinuousChange()
+                h.model.setResizeScale(0.5)
+                #expect(h.assets.released.isEmpty)
+                h.model.endContinuousChange()
+            }
+            #expect(h.assets.released == [deleted.assetID])
+        }
+    }
+
+    @Test("Deleting one duplicate keeps the shared asset until its last layer and history are gone")
+    func deletingDuplicateRetainsSharedAsset() throws {
+        let h = EditorHarness(session: EditorFixtures.session(undoLimit: 1))
+        let layer = try #require(h.model.document.layers.first)
+        h.model.select(.layer(layer.id))
+        h.model.duplicateSelection()
+        h.model.deleteSelection()
+        #expect(h.model.document.assets[layer.assetID] != nil)
+        h.model.setResizeScale(0.5)
+        #expect(h.assets.released.isEmpty)
     }
 
     @Test("Close releases every asset the editor added, including undone ones")

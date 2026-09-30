@@ -56,7 +56,11 @@ Supports the concurrency caveat about caller isolation, the explicit @concurrent
 
 URL: `https://github.com/sindresorhus/KeyboardShortcuts`
 
-Supports the candidate dependency's user-customizable global shortcut interface and its statement that it does not produce permission dialogs. The inspected README labels version 3.1.0. M0 must resolve and review an actual stable revision instead of assuming that this README value is a verified immutable release lock.
+Supports the dependency's user-customizable global shortcut interface and its statement that it
+does not produce permission dialogs. Package.resolved pins 3.1.0 at
+`772133d9dbe800fdac0473226822994c5c162c58`. On 2026-09-29,
+scripts/test-release-contract.py verified the checkout revision and the bundled MIT notices
+against the source and actual unsigned app bundles.
 
 ## S10 — Bishop Fox: Unredacter
 
@@ -87,6 +91,23 @@ Primary guidance for CI trust separation and dependency/workflow security. The p
 URL: `https://opensource.org/license/mit`
 
 Supports identifying MIT as an open-source license option. Final ownership, third-party compatibility, notices, and any needed legal review remain maintainer responsibilities. This specification does not grant rights to Shottr's assets or to Apple's proprietary frameworks.
+
+## S15 — Apple: NSPasteboard.clearContents()
+
+URL: `https://developer.apple.com/documentation/appkit/nspasteboard/clearcontents()`
+
+Consulted on 2026-09-29 using Apple's Markdown documentation. Clearing the pasteboard removes
+its previous contents before a later write; failure copy must not promise preservation once
+that step has occurred. Encoding failures still occur before the sink clears anything.
+
+## S16 — Swift Evolution: Structured concurrency (SE-0304)
+
+URL: `https://github.com/swiftlang/swift-evolution/blob/main/proposals/0304-structured-concurrency.md`
+
+The proposal by John McCall, Joe Groff, Doug Gregor and Konrad Malawski explains cooperative
+cancellation. Consulted on 2026-09-29: cancellation does not replace request/session identity
+checks when asynchronous work resumes. The scrolling regression suspends an old step and verifies
+that it cannot block or clear ownership belonging to a replacement session.
 
 ## External assertions not made
 

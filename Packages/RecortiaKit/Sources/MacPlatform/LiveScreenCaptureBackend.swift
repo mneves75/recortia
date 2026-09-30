@@ -45,16 +45,12 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
         let scale = Double(filter.pointPixelScale)
         guard scale.isFinite, scale > 0 else { throw CaptureError.displayChanged }
         let pointRect = plan.sourceRect ?? CGRect(origin: .zero, size: filter.contentRect.size)
-        let pixelWidth = (pointRect.width * scale).rounded()
-        let pixelHeight = (pointRect.height * scale).rounded()
-        guard pixelWidth >= 1, pixelHeight >= 1, pixelWidth <= 32_768, pixelHeight <= 32_768 else {
-            throw CaptureError.targetUnavailable
-        }
+        let size = try CapturePlan.pixelSize(for: pointRect, scale: scale)
 
         let configuration = SCStreamConfiguration()
         if let sourceRect = plan.sourceRect { configuration.sourceRect = sourceRect }
-        configuration.width = Int(pixelWidth)
-        configuration.height = Int(pixelHeight)
+        configuration.width = size.width
+        configuration.height = size.height
         configuration.scalesToFit = false
         configuration.showsCursor = plan.showsCursor
         configuration.captureResolution = .best

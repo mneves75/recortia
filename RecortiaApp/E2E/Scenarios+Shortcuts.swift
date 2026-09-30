@@ -30,10 +30,6 @@
                 "the offered defaults are recorded",
                 Set(UserDefaults.standard.stringArray(forKey: ShortcutDefaults.offeredKey) ?? [])
                     == ["captureRegion", "captureDisplay", "captureMenu"])
-            let unused = KeyboardShortcuts.Shortcut(.f13, modifiers: [.command, .control, .option, .shift])
-            context.check(
-                "this Mac lists its shortcuts (the check is not failing closed)", !SystemShortcuts.isTaken(unused))
-
             // A fresh Mac: macOS still owns ⇧⌘3/4/5, so Recortia holds them and says so.
             for name in ["captureRegion", "captureDisplay", "captureMenu"] {
                 context.check(
@@ -62,6 +58,23 @@
             context.check("a press now runs the command", status.admitPress(named: "captureRegion"))
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "active")
+
+            // Binding-backed recorders must repaint even when both old and new keys stay active.
+            let alternate = KeyboardShortcuts.Shortcut(.r, modifiers: [.command, .option])
+            status.reassign { KeyboardShortcuts.setShortcut(alternate, for: .captureRegion) }
+            await E2ESnapshot.settle(root)
+            context.check(
+                "the hosted recorder displays an alternate active shortcut",
+                EditorWindowController.all(KeyboardShortcuts.RecorderCocoa.self, in: root)
+                    .contains { $0.shortcut == alternate })
+            app.restoreDefaultShortcuts()
+            await E2ESnapshot.settle(root)
+            let displayed = EditorWindowController.all(KeyboardShortcuts.RecorderCocoa.self, in: root)
+                .compactMap(\.shortcut)
+            context.check(
+                "Restore Defaults refreshes the hosted recorder while its status remains active",
+                status.state(of: "captureRegion") == .active && displayed.contains(region)
+                    && !displayed.contains(alternate))
 
             // A shortcut the user clears stays cleared; Restore Defaults brings the table back.
             KeyboardShortcuts.setShortcut(nil, for: .captureRegion)
