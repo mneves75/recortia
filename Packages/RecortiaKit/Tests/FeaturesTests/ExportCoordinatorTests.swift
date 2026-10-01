@@ -303,4 +303,44 @@ struct ExportCoordinatorTests {
         _ = await h.export(.copy)
         #expect(h.clipboard.writes.first?.format == .png)
     }
+
+    @Test("Canceling automatic copy cancels the whole batch before save")
+    func cancelAutomaticBatch() async {
+        let h = ExportHarness()
+        h.settings.update {
+            $0.autoCopy = true
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        h.folders.folder = destination.deletingLastPathComponent()
+        let pending = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = pending
+        let running = Task { await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session }) }
+        await waitFor("automatic copy rendering") { pending.waiterCount == 1 }
+        h.coordinator.cancel()
+        // Subsequent snapshots must not wait here: that would hide a canceled-batch regression.
+        h.exporter.pending = nil
+        pending.resolve(.success(()))
+        #expect(await running.value == [.canceled])
+        #expect(h.exporter.snapshotCount == 1)
+        #expect(h.clipboard.writes.isEmpty)
+        #expect(h.files.uniqueSaves.isEmpty)
+    }
+
+    @Test("An automatic batch rejected while busy returns a presentable failure")
+    func automaticBusyIsReported() async {
+        let h = ExportHarness()
+        h.settings.update { $0.autoCopy = true }
+        h.drag.pending = Pending<DragDeliveryOutcome>()
+        let first = Task { await h.export(.drag) }
+        await waitFor("pending drag") { h.drag.leases.count == 1 }
+        let outcomes = await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session })
+        #expect(
+            outcomes.contains {
+                if case .failed = $0 { return true }; return false
+            })
+        #expect(h.clipboard.writes.isEmpty)
+        h.coordinator.cancel()
+        _ = await first.value
+    }
 }

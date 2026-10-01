@@ -4,8 +4,88 @@
     import Features
     import Imaging
     import RecortiaFixtures
+    import Synchronization
 
-    /// Export sinks, pins, and import (FR-03, FR-07, FR-09, IO-01, EXP-01, RED-02, PIN-01).
+    /// Counts actual PNG materialization, rather than type discovery, on a private pasteboard.
+    nonisolated final class SyntheticDropDataProvider: NSObject, NSPasteboardItemDataProvider {
+        private let png: Data
+        private let requests = Mutex(0)
+        var dataRequests: Int { requests.withLock { $0 } }
+
+        init(png: Data) { self.png = png }
+
+        func pasteboard(
+            _ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType
+        ) {
+            requests.withLock { $0 += 1 }
+            item.setData(png, forType: type)
+        }
+    }
+
+    /// Only the private pasteboard and destination window are meaningful for this synthetic drag.
+    @MainActor
+    final class SyntheticCanvasDrag: NSObject, NSDraggingInfo {
+        let draggingPasteboard: NSPasteboard
+        let draggingDestinationWindow: NSWindow?
+        var draggingSourceOperationMask: NSDragOperation { .copy }
+        var draggingLocation: NSPoint { .zero }
+        var draggedImageLocation: NSPoint { .zero }
+        nonisolated var draggedImage: NSImage? { nil }
+        var draggingSource: Any? { nil }
+        var draggingSequenceNumber: Int { 1 }
+        var draggingFormation: NSDraggingFormation = .none
+        var animatesToDestination = false
+        var numberOfValidItemsForDrop = 1
+        var springLoadingHighlight: NSSpringLoadingHighlight { .none }
+
+        init(pasteboard: NSPasteboard, window: NSWindow?) {
+            draggingPasteboard = pasteboard
+            draggingDestinationWindow = window
+        }
+
+        func slideDraggedImage(to screenPoint: NSPoint) {}
+        nonisolated override func namesOfPromisedFilesDropped(atDestination dropDestination: URL) -> [String]? { nil }
+        func resetSpringLoading() {}
+        func enumerateDraggingItems(
+            options: NSDraggingItemEnumerationOptions, for view: NSView?, classes classArray: [AnyClass],
+            searchOptions: [NSPasteboard.ReadingOptionKey: Any],
+            using block: (NSDraggingItem, Int, UnsafeMutablePointer<ObjCBool>) -> Void
+        ) {}
+    }
+
+    /// Holds a synthetic file read so the real app's admission decisions are observable.
+    /// Paste never reads the user's general pasteboard in this runner.
+    @MainActor
+    final class SyntheticImportInput: ImageInputService {
+        private let input: any ImageInputService
+        var holdNextRead = false
+        private var waiter: CheckedContinuation<Void, Never>?
+        var isWaiting: Bool { waiter != nil }
+        private(set) var fileReads = 0
+        private(set) var pasteboardReads = 0
+
+        init(input: any ImageInputService) { self.input = input }
+
+        func readFile(at url: URL) async throws(ImportError) -> Data {
+            fileReads += 1
+            if holdNextRead {
+                holdNextRead = false
+                await withCheckedContinuation { waiter = $0 }
+            }
+            return try await input.readFile(at: url)
+        }
+
+        func readPasteboardImage() -> Data? {
+            pasteboardReads += 1
+            return nil
+        }
+
+        func release() {
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+
     @MainActor
     enum OutputScenarios {
         /// PNG chunks the export pipeline may write (Imaging's ExportEncoder allowlist).
@@ -167,6 +247,108 @@
             let pixels = try E2EActions.pixels(of: repinned.image, "new pin", context)
             let center = pixels.pixel(x: Int(secret.midX * 2), y: Int(secret.midY * 2))
             context.check("the new pin shows the redaction", center == ChartFixture.Color(0, 0, 0), center.hex)
+        }
+
+        static func importAdmission(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let controller = try await harness.openImported(harness.desktop, name: "admission.png")
+            let model = controller.model
+            let url = harness.output.workDirectory.appending(path: "admission.png")
+            let input = harness.importInput
+            let initialEditors = harness.editors.controllers.count
+            let initialReads = input.fileReads
+            let initialMessages = harness.messages.values.count
+            input.holdNextRead = true
+            defer { input.release() }
+            harness.app.importImage(from: .file(url))
+            let started = await E2EWait.until { input.isWaiting }
+            try context.require("new-document read is suspended", started)
+            context.check("Open Image is disabled during import", !harness.app.isEnabled(.openImage))
+            context.check("Paste Image is disabled during import", !harness.app.isEnabled(.pasteImage))
+            let rejected = await model.addImageLayer(from: .pasteboard)
+            context.check("layer import shares the app's busy slot", !rejected && model.notice == .importFailed(.busy))
+            context.check("busy Paste never reads the clipboard", input.pasteboardReads == 0)
+            let canvas = try context.unwrap("real editor canvas", controller.canvasView)
+            let droppedPNG = try E2EDrawing.png(harness.desktop)
+            let busyProvider = SyntheticDropDataProvider(png: droppedPNG)
+            let busyBoard = NSPasteboard.withUniqueName()
+            defer { busyBoard.releaseGlobally() }
+            let busyItem = NSPasteboardItem()
+            try context.require("busy PNG data is promised", busyItem.setDataProvider(busyProvider, forTypes: [.png]))
+            try context.require("private busy drop is installed", busyBoard.writeObjects([busyItem]))
+            let busyDrag = SyntheticCanvasDrag(pasteboard: busyBoard, window: controller.window)
+            context.check("raw PNG hover accepts the type", canvas.draggingEntered(busyDrag) == .copy)
+            context.check("hover does not request PNG bytes", busyProvider.dataRequests == 0)
+            let noticesBeforeDrop = model.noticeSerial
+            _ = canvas.performDragOperation(busyDrag)
+            let dropRejected = await E2EWait.until {
+                model.noticeSerial > noticesBeforeDrop && model.notice == .importFailed(.busy)
+            }
+            context.check("busy canvas drop is rejected", dropRejected)
+            context.check(
+                "busy canvas drop never requests PNG bytes", busyProvider.dataRequests == 0,
+                "requests: \(busyProvider.dataRequests)")
+            context.check("busy canvas drop creates no layer", model.document.layers.count == 1)
+            for _ in 0..<16 { harness.app.importImage(from: .file(url)) }
+            let reported = await E2EWait.until { harness.messages.values.count == initialMessages + 16 }
+            context.check("all excess app requests report busy", reported)
+            context.check("excess requests perform no file reads", input.fileReads == initialReads + 1)
+            context.check("rejections leave the original import active", harness.features.importer.isImporting)
+            context.check(
+                "no editor opens before the admitted read finishes", harness.editors.controllers.count == initialEditors
+            )
+            if let root = controller.window?.contentView {
+                await E2ESnapshot.settle(root)
+                context.snapshot(root, shot: "busy-layer")
+            }
+            input.release()
+            _ = try await E2EActions.waitForNewEditor(harness, after: initialEditors, context)
+            context.check(
+                "only the admitted request opened an editor", harness.editors.controllers.count == initialEditors + 1)
+            context.check(
+                "successful completion restores Open and Paste",
+                harness.app.isEnabled(.openImage) && harness.app.isEnabled(.pasteImage))
+
+            input.holdNextRead = true
+            let layer = Task { await model.addImageLayer(from: .file(url)) }
+            let layerStarted = await E2EWait.until { input.isWaiting }
+            try context.require("layer read is suspended", layerStarted)
+            let messagesBefore = harness.messages.values.count
+            harness.app.importImage(from: .file(url))
+            let appRejected = await E2EWait.until { harness.messages.values.count == messagesBefore + 1 }
+            context.check("app import shares the layer's busy slot", appRejected)
+            context.check("only one read per admitted operation", input.fileReads == initialReads + 2)
+            layer.cancel()
+            context.check("cancellation retains the slot until the reader exits", harness.features.importer.isImporting)
+            input.release()
+            context.check(
+                "cancelled layer is discarded", await layer.value == false && model.document.layers.count == 1)
+            context.check("cancellation releases the slot", !harness.features.importer.isImporting)
+            let retried = await model.addImageLayer(from: .file(url))
+            context.check("a later layer import succeeds", retried && model.document.layers.count == 2)
+            if let root = controller.window?.contentView {
+                await E2ESnapshot.settle(root)
+                context.snapshot(root, shot: "retry-layer")
+            }
+            let admittedProvider = SyntheticDropDataProvider(png: droppedPNG)
+            let admittedBoard = NSPasteboard.withUniqueName()
+            defer { admittedBoard.releaseGlobally() }
+            let admittedItem = NSPasteboardItem()
+            try context.require(
+                "admitted PNG data is promised", admittedItem.setDataProvider(admittedProvider, forTypes: [.png]))
+            try context.require("private admitted drop is installed", admittedBoard.writeObjects([admittedItem]))
+            let admittedDrag = SyntheticCanvasDrag(pasteboard: admittedBoard, window: controller.window)
+            context.check("admitted PNG hover accepts the type", canvas.draggingEntered(admittedDrag) == .copy)
+            context.check("admitted hover does not request bytes", admittedProvider.dataRequests == 0)
+            context.check("admitted canvas drop starts", canvas.performDragOperation(admittedDrag))
+            let dropAdded = await E2EWait.until { model.document.layers.count == 3 }
+            context.check("admitted canvas drop adds one layer", dropAdded)
+            context.check(
+                "admitted canvas drop requests PNG bytes", admittedProvider.dataRequests > 0,
+                "requests: \(admittedProvider.dataRequests)")
+            if let root = controller.window?.contentView {
+                await E2ESnapshot.settle(root)
+                context.snapshot(root, shot: "admitted-drop")
+            }
         }
 
         static func importFiles(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

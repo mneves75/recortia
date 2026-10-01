@@ -34,7 +34,11 @@ and a clean-user launch are separate verification steps; see README for the curr
 - Tests first (Swift Testing). A bug fix starts with a test that fails on the bug.
 - Every save, copy, drag, and pin goes through `ExportPipeline` and a `ShareSnapshot`. Changes to
   masks, geometry, magnifier caches, export formats, or clipboard types must pass the RED suite.
-- No network code, telemetry, clipboard polling, private frameworks, or permission shortcuts.
+- No telemetry, clipboard polling, private frameworks, or permission shortcuts. The approved
+  opt-in GitHub uploader (ADR-006) is the only image-network destination; every transfer uses
+  a sanitized `ShareSnapshot`, sealed consent, and bounded redirect-free HTTPS.
+- New-document imports and editor layers share one admission slot. Acquire file, clipboard,
+  and drop-provider bytes after admission; retain the slot until canceled work has exited.
 - Never commit real screenshots or content-bearing logs; fixtures are generated in code.
 - Swift 6 language mode; no `@unchecked Sendable`, `nonisolated(unsafe)`, `try!`, or `fatalError`
   in production paths.

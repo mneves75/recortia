@@ -35,7 +35,7 @@ Only public behavior and documentation were inspected. No binary was executed, d
 | Permissions | Screen Recording just in time; Accessibility only for separately enabled automatic scrolling | Basic capture, editing, imported-image OCR, export, and manual scrolling must not require Accessibility or Input Monitoring. |
 | Dependencies | Native frameworks first; KeyboardShortcuts as the initial approved third-party candidate; Sparkle in the release milestone | Resolve reviewed stable versions and commit Package.resolved; do not invent dependency hashes. [S09, S12] |
 | License | MIT license for original project code, recorded in LICENSE | Preserve third-party notices. MIT is an OSI-listed license. [S14] |
-| Network | No app-initiated network requests on a fresh installation | Update checks require opt-in or a manual action. Upload and cloud AI are absent from the v1 core. |
+| Network | No app-initiated network requests on a fresh installation | GitHub upload was authorized on 2026-10-01 (ADR-006), with setup and separate opt-in. Update checks require opt-in/manual action. Cloud AI remains absent. |
 
 No backend, webview shell, Electron, Tauri, React, authentication server, telemetry SDK, plugin runtime, or LLM orchestration framework is needed for this scope. These are product choices, not claims that those technologies are generally unsuitable.
 
@@ -59,7 +59,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-12 | Multiple-image canvas, transparency overlays, side-by-side comparison | 1.0 | COMP / RED |
 | FR-13 | Background, padding, corner radius, shadow, spotlight, magnifier callout | 1.0 | COMP / RED |
 | FR-14 | Native settings, accessibility, EN/PT-BR localization, release/update flow | Foundation in 0.1; complete in 1.0 | UX / REL |
-| FR-15 | Optional upload to user-controlled S3-compatible storage | Post-1.0, separate approval | NET |
+| FR-15 | Optional upload to user-controlled GitHub repository; S3 deferred | GitHub approved 2026-10-01, ADR-006 | NET |
 | FR-16 | Approved local automation and optional on-device writing assistance | Post-1.0, separate approval | AUTO / AI |
 
 Deferred rather than silently omitted: horizontal scrolling; cross-display selections; arbitrary nested-scroll reliability; text-only object removal/inpainting; intelligent object snapping; hand-drawn styling; contrast analyzers; before/after animation; editable project files; persistent history/search; CLI/App Intents/URL integrations; HDR-preserving export; Intel/Windows/Linux support; cloud hosting.
@@ -228,6 +228,11 @@ The composition root injects CaptureService, PermissionService, RenderService, O
 
 UI/window/clipboard operations belong to MainActor where required. UI state uses explicit `@MainActor` isolation and Observation. Domain values are immutable and Sendable where appropriate. Rendering, matching, OCR, and image decoding run in explicitly isolated worker actors or audited concurrent functions, with bounded task counts and cancellation.
 
+The app shares one image-import read/decode admission slot across new documents and editor
+layers. Reject overlapping requests before file, clipboard or drop-provider bytes are read;
+there is no waiting image queue. Cancellation keeps admission held until underlying work
+returns, then discards/releases any newly decoded asset before a document can be created.
+
 An `async` function is not automatically a background task: Swift's concurrency model can keep async work on its caller's actor. Audit actual build settings; use explicit isolation or `@concurrent` where supported and appropriate. [S08] Do not silence compiler diagnostics with wholesale `@unchecked Sendable`, blanket `@preconcurrency`, `nonisolated(unsafe)`, or detached tasks. Audit each Core Foundation/framework object at the boundary against the selected SDK's annotations.
 
 Every result carries request ID, document revision, and privacy epoch. On completion, the UI accepts it only if all still match and the request was not canceled. A late OCR/render/capture callback cannot reopen a closed editor, replace a newer result, or write the clipboard.
@@ -331,7 +336,10 @@ Use Sparkle's supported signing flow rather than inventing an updater; require v
 
 Document reproducible build **inputs**; do not claim byte-for-byte reproducible notarized/signature-bearing artifacts without demonstrating that stronger property. Free source builds and signed public distribution have different credential and infrastructure requirements. Never advise users to disable Gatekeeper as the normal installation path.
 
-## 13. Post-1.0 contracts, not current implementation authorization
+## 13. Optional extensions
+
+GitHub auto-upload (FR-15) was authorized on 2026-10-01. ADR-006 owns its provider, consent,
+token, retry and privacy contract. Other providers and FR-16 remain deferred.
 
 ### Optional S3-compatible sharing
 

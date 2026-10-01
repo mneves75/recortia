@@ -235,12 +235,14 @@ final class FakeAccessibilityPermission: AccessibilityPermissionService {
 @MainActor
 final class FakeAssetService: ImageAssetService {
     var importError: ImportError?
+    var pendingImport: Pending<Void>?
     private(set) var imported: [(byteCount: Int, origin: AssetOrigin)] = []
     private(set) var registeredCaptures: [ImageAssetInfo] = []
     private(set) var registeredStitched: [ImageAssetInfo] = []
     private(set) var released: [AssetID] = []
 
     func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo {
+        if let pendingImport { await pendingImport.wait() }
         if let importError { throw importError }
         imported.append((data.count, origin))
         return ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 16, height: 9), origin: origin)

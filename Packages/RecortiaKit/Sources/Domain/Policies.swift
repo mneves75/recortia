@@ -218,6 +218,7 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var ocrTextMode = OCRTextMode.preserveLineBreaks
     public var pinDefaultOpacity = 1.0
     public var preferredSaveFolderBookmark: Data?
+    public var githubUpload: GitHubUploadPreferences?
 
     public init() {}
 
@@ -232,6 +233,7 @@ extension Preferences {
     /// from preferences Recortia sealed itself (SettingsStore, THREAT_MODEL.md).
     public var grantsSideEffects: Bool {
         autoCopy || autoSave || automaticScrollingEnabled || preferredSaveFolderBookmark != nil
+            || githubUpload?.automatic == true
     }
 
     /// These preferences with every side-effect consent turned off.
@@ -241,6 +243,7 @@ extension Preferences {
         copy.autoSave = false
         copy.automaticScrollingEnabled = false
         copy.preferredSaveFolderBookmark = nil
+        copy.githubUpload?.automatic = false
         return copy
     }
 }

@@ -21,6 +21,9 @@
                 run: CaptureVisibilityScenarios.admission),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(
+                id: "canvas-focus", title: "Space pan ends when keyboard ownership changes",
+                run: EditorScenarios.canvasFocus),
+            E2EScenario(
                 id: "inspector-height", title: "Resize an image by its inspector height",
                 run: EditorScenarios.inspectorHeight),
             E2EScenario(id: "redaction", title: "Redaction and RED-01", run: EditorScenarios.redaction),
@@ -29,9 +32,15 @@
             E2EScenario(id: "pixel-tools", title: "Loupe, ruler, and color picker", run: EditorScenarios.pixelTools),
             E2EScenario(id: "composition", title: "Composition and presentation", run: EditorScenarios.composition),
             E2EScenario(id: "export-sinks", title: "Copy, save, and drag out", run: OutputScenarios.exportSinks),
+            E2EScenario(
+                id: "automatic-export", title: "Automatic export cancellation, busy notice and GitHub",
+                run: AutomaticExportScenarios.regression),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
             E2EScenario(id: "import", title: "Import and import errors", run: OutputScenarios.importFiles),
+            E2EScenario(
+                id: "import-admission", title: "One import read/decode across documents and layers",
+                run: OutputScenarios.importAdmission),
         ]
     }
 #endif

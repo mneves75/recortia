@@ -205,6 +205,9 @@ enum EditorStrings {
 
     static func importMessage(_ failure: ImportFailure) -> String {
         switch failure {
+        case .busy:
+            String(localized: "Another image is still being opened. Try again when it finishes.", table: "Editor")
+        case .cancelled: String(localized: "Opening the image was canceled.", table: "Editor")
         case .nothingToPaste: String(localized: "The clipboard does not contain a PNG or JPEG image.", table: "Editor")
         case .tooLarge: String(localized: "The file is larger than 64 MB.", table: "Editor")
         case .tooManyPixels: String(localized: "The image is larger than 40 megapixels.", table: "Editor")
@@ -221,6 +224,7 @@ enum EditorStrings {
         case .copied: String(localized: "Image copied.", table: "Editor")
         case .saved: String(localized: "Image saved.", table: "Editor")
         case .dragged: String(localized: "Image delivered.", table: "Editor")
+        case .uploaded: String(localized: "Image uploaded to GitHub.", table: "Editor")
         case .alreadyCompleted:
             String(localized: "The export had already finished and cannot be undone.", table: "Editor")
         case .canceled: String(localized: "Export canceled. Nothing was written.", table: "Editor")
@@ -231,6 +235,8 @@ enum EditorStrings {
 
     static func exportFailure(_ failure: ExportFailure) -> String {
         switch failure {
+        case .busy: String(localized: "Automatic export was skipped because another export is still running.")
+        case .upload(let failure): GitHubUploadStrings.message(failure)
         case .renderFailed, .encodeFailed:
             String(localized: "Nothing was exported: the image could not be rendered.", table: "Editor")
         case .budgetExceeded: String(localized: "Nothing was exported: the image is too large.", table: "Editor")

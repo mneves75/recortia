@@ -50,6 +50,31 @@ struct EditorCompositionTests {
         #expect(h.model.document.layers.count == 1)
     }
 
+    @Test("Editors sharing an environment cannot overlap image reads and decodes")
+    func overlappingLayers() async {
+        let h = EditorHarness()
+        let other = EditorModel(session: EditorFixtures.session(), environment: h.model.environment)
+        let pending = Pending<Void>()
+        h.assets.pendingImport = pending
+        let first = Task { await h.model.addImageLayer(from: .droppedData(Data([1]))) }
+        await waitFor("layer import decoding") { pending.waiterCount == 1 }
+        h.input.pasteboardData = Data([2])
+        var overlap: Bool?
+        let second = Task { overlap = await other.addImageLayer(from: .pasteboard) }
+        await drain()
+        #expect(h.input.pasteboardReads == 0)
+        #expect(overlap == false)
+        pending.resolve(())
+        await drain()
+        while pending.resolve(()) { await drain() }
+        #expect(await first.value)
+        await second.value
+        #expect(h.model.document.layers.count == 2)
+        #expect(other.document.layers.count == 1)
+        h.model.close()
+        other.close()
+    }
+
     @Test("Side by side scales every image uniformly to one height with no overlap")
     func sideBySide() async throws {
         let h = EditorHarness()

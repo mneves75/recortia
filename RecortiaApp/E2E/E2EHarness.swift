@@ -20,6 +20,9 @@
         let clipboard: PrivatePasteboardClipboard
         let textPasteboard: NSPasteboard
         let drag: SyntheticDragReceiver
+        let github = SyntheticGitHubUpload()
+        let exportGate: SyntheticExportGate
+        let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
         let messages = RecordingMessagePresenter()
         let services: AppServices
@@ -55,9 +58,12 @@
             drag = SyntheticDragReceiver(dropFolder: dropFolder)
 
             let live = AppServices.live()
+            exportGate = SyntheticExportGate(exporter: live.exporter)
+            importInput = SyntheticImportInput(input: live.input)
             services = AppServices(
+                githubUpload: github, githubCredentials: github,
                 capture: capture, screenPermission: permission, accessibility: live.accessibility,
-                assets: live.assets, input: live.input, renderer: live.renderer, exporter: live.exporter,
+                assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: live.autoScroller, loginItem: live.loginItem, clock: live.clock)
@@ -74,7 +80,8 @@
                 renderer: services.renderer, export: features.export, folders: services.folders,
                 textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
                 input: services.input, pins: features.pins,
-                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links, settings: settings)
+                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links, settings: settings,
+                imageImporter: features.importer.imageImporter)
             editors = E2EEditorHost(environment: environment)
             wire()
             // What a normal launch does (ADR-005), without registering any handler.
@@ -85,11 +92,8 @@
         /// Mirrors `AppModel.wire`: every new document opens an editor.
         private func wire() {
             let editors = self.editors
-            features.capture.onCaptured = { completion in
-                switch completion.purpose {
-                case .edit: editors.open(completion.session)
-                case .recognizeText: editors.open(completion.session, initialAction: .recognizeText)
-                }
+            features.capture.onCaptured = { [weak app] completion in
+                app?.handleCapture(completion)
             }
             features.importer.onImported = { editors.open($0) }
             features.scroll.onAccepted = { editors.open($0) }
@@ -113,6 +117,10 @@
 
         /// Closes editors and pins and resets per-scenario state.
         func reset() {
+            exportGate.release()
+            settings.update {
+                $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
+            }
             editors.closeAll()
             features.pins.closeAll()
             if features.capture.state.isActive { features.capture.cancel() }

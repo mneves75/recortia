@@ -11,6 +11,93 @@
     enum EditorScenarios {
         static let accentedText = "Revisão: ação, coração ✅ 👋🏽\nSegunda linha — café"
 
+        /// Real canvas input with synthetic events; no global keyboard, TCC, or personal pixels.
+        static func canvasFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            for transition in [
+                "normal-release", "unrelated-window", "text-focus", "window-resigns-key", "app-deactivates",
+                "text-focus-mid-pan", "window-resigns-key-mid-pan", "app-deactivates-mid-pan",
+            ] {
+                let controller = try await E2EActions.captureRegion(
+                    harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)
+                let model = controller.model
+                let canvas = EditorCanvasView(model: model)
+                let root = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+                let window = E2ESnapshot.host(nsView: root, size: root.frame.size)
+                defer { window.close() }
+                canvas.frame = root.bounds
+                root.addSubview(canvas)
+                try context.require("\(transition): canvas accepts focus", window.makeFirstResponder(canvas))
+                model.selectTool(.rectangle)
+                model.setViewport(EditorViewport(zoom: 1, offset: .zero))
+
+                func key(_ type: NSEvent.EventType) throws -> NSEvent {
+                    try context.unwrap(
+                        "Space event",
+                        NSEvent.keyEvent(
+                            with: type, location: .zero, modifierFlags: [], timestamp: 0,
+                            windowNumber: window.windowNumber, context: nil, characters: " ",
+                            charactersIgnoringModifiers: " ", isARepeat: false, keyCode: 49))
+                }
+                func mouse(_ type: NSEvent.EventType, _ point: NSPoint) throws -> NSEvent {
+                    try context.unwrap(
+                        "canvas mouse event",
+                        NSEvent.mouseEvent(
+                            with: type, location: canvas.convert(point, to: nil), modifierFlags: [], timestamp: 0,
+                            windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1,
+                            pressure: 1))
+                }
+                func drag() throws {
+                    canvas.mouseDown(with: try mouse(.leftMouseDown, NSPoint(x: 40, y: 40)))
+                    canvas.mouseDragged(with: try mouse(.leftMouseDragged, NSPoint(x: 90, y: 90)))
+                    canvas.mouseUp(with: try mouse(.leftMouseUp, NSPoint(x: 90, y: 90)))
+                }
+
+                canvas.keyDown(with: try key(.keyDown))
+                if transition.hasSuffix("-mid-pan") {
+                    canvas.mouseDown(with: try mouse(.leftMouseDown, NSPoint(x: 20, y: 20)))
+                }
+                switch transition.replacingOccurrences(of: "-mid-pan", with: "") {
+                case "normal-release", "unrelated-window":
+                    if transition == "unrelated-window" {
+                        let other = E2ESnapshot.host(nsView: NSView(), size: NSSize(width: 10, height: 10))
+                        NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: other)
+                        other.close()
+                    }
+                    try drag()
+                    context.check(
+                        "\(transition): held Space pans",
+                        model.document.annotations.isEmpty && model.viewport.offset != .zero)
+                    canvas.keyUp(with: try key(.keyUp))
+                    model.setViewport(EditorViewport(zoom: 1, offset: .zero))
+                case "text-focus":
+                    let text = NSTextView(frame: .zero)
+                    root.addSubview(text)
+                    try context.require("text accepts focus", window.makeFirstResponder(text))
+                    text.keyUp(with: try key(.keyUp))
+                    text.insertText("ação ✅", replacementRange: NSRange(location: 0, length: 0))
+                    context.check("text receives input without canvas shortcuts", text.string == "ação ✅")
+                    try context.require("canvas regains focus", window.makeFirstResponder(canvas))
+                case "window-resigns-key":
+                    // Deliver the AppKit lifecycle event without ordering a test window or taking focus globally.
+                    NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: window)
+                    context.check("window transition keeps canvas responder", window.firstResponder === canvas)
+                default:
+                    NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp)
+                    context.check("app transition keeps canvas responder", window.firstResponder === canvas)
+                }
+                let offset = model.viewport.offset
+                try drag()
+                context.check(
+                    "\(transition): rectangle drag adds one annotation", model.document.annotations.count == 1,
+                    "annotations: \(model.document.annotations.count)")
+                context.check(
+                    "\(transition): rectangle drag does not pan", model.viewport.offset == offset,
+                    "offset: \(model.viewport.offset)")
+                await E2ESnapshot.settle(canvas)
+                context.snapshot(canvas, shot: transition)
+            }
+        }
+
         static func inspectorHeight(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let controller = try await E2EActions.captureRegion(
                 harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)

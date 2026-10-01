@@ -73,6 +73,7 @@
             let preferences = harness.settings.preferences
             context.check("automatic copy is off by default", !preferences.autoCopy)
             context.check("automatic save is off by default", !preferences.autoSave)
+            context.check("automatic upload is off by default", preferences.githubUpload?.automatic != true)
             context.check("update checks are off by default", !preferences.updateChecksEnabled)
             context.check("automatic scrolling is off by default", !preferences.automaticScrollingEnabled)
             context.check("export defaults to PNG at 100%", preferences.exportOptions == ExportOptions())
@@ -88,7 +89,8 @@
             await E2ESnapshot.settle(root)
 
             let tabs = [
-                "general", "shortcuts", "capture", "export", "privacy", "text-recognition", "pins", "scrolling",
+                "general", "shortcuts", "capture", "export", "github", "privacy", "text-recognition", "pins",
+                "scrolling",
             ]
             if let tabView = EditorWindowController.first(NSTabView.self, in: root) {
                 context.check(

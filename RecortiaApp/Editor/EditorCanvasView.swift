@@ -36,6 +36,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
                 table: "Editor"))
         loop = ObservationLoop { [weak self] in self?.modelChanged() }
         registerForDraggedTypes(Self.droppableTypes)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(resetTransientPan), name: NSApplication.didResignActiveNotification,
+            object: NSApp)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @available(*, unavailable)
@@ -82,13 +89,17 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        guard let dropped = droppedImage(from: sender.draggingPasteboard) else { return false }
-        let source: ImportSource =
-            switch dropped {
-            case .file(let url): .droppedFile(url)
-            case .data(let data): .droppedData(data)
-            }
-        Task { await model.addImageLayer(from: source) }
+        guard draggingEntered(sender) == .copy else { return false }
+        let pasteboard = sender.draggingPasteboard
+        Task {
+            await model.addImageLayer(readSource: { () throws(ImportFailure) in
+                guard let dropped = self.droppedImage(from: pasteboard) else { throw .unsupportedFormat }
+                return switch dropped {
+                case .file(let url): .droppedFile(url)
+                case .data(let data): .droppedData(data)
+                }
+            })
+        }
         return true
     }
 
@@ -137,7 +148,27 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        resetTransientPan()
+        NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: nil)
+        if let window {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(resetTransientPan), name: NSWindow.didResignKeyNotification, object: window)
+        }
         reportViewport()
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { resetTransientPan() }
+        return resigned
+    }
+
+    /// Space's key-up can go to a text editor or another app after keyboard ownership changes.
+    /// Drop only transient pan input; native text composition and document gestures stay independent.
+    @objc private func resetTransientPan() {
+        isSpaceDown = false
+        panAnchor = nil
+        window?.invalidateCursorRects(for: self)
     }
 
     private func reportViewport() {

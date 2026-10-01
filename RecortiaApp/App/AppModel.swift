@@ -23,7 +23,7 @@ struct FeatureModels {
             clock: services.clock, settings: settings)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
-            folders: services.folders, clock: services.clock, settings: settings)
+            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
         importer = ImportCoordinator(input: services.input, assets: services.assets)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
@@ -115,7 +115,7 @@ final class AppModel: AppActions {
         case .scrollingCapture:
             return features != nil && openDocument != nil && features?.capture.state.isActive == false
         case .openImage, .pasteImage:
-            return features != nil && openDocument != nil
+            return features != nil && openDocument != nil && features?.importer.isImporting == false
         case .repeatLastRegion:
             return features?.capture.hasRepeatRegion == true && openDocument != nil
                 && features?.scroll.state.isActive == false
@@ -195,7 +195,7 @@ final class AppModel: AppActions {
             renderer: services.renderer, export: features.export, folders: services.folders,
             textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
             input: services.input, pins: features.pins, textClipboard: PasteboardTextClipboard(),
-            links: WorkspaceLinkOpener(), settings: settings)
+            links: WorkspaceLinkOpener(), settings: settings, imageImporter: features.importer.imageImporter)
         openDocument = { [editors] session in editors.open(session, environment: environment) }
         let monitor = SystemEventMonitor { event in
             switch event {
@@ -214,7 +214,7 @@ final class AppModel: AppActions {
         }
     }
 
-    private func handleCapture(_ completion: CaptureCompletion) {
+    func handleCapture(_ completion: CaptureCompletion) {
         switch completion.purpose {
         case .edit:
             let editor = openDocument?(completion.session)
@@ -230,9 +230,11 @@ final class AppModel: AppActions {
     private func runAutomaticExports(for session: DocumentSession, editor: EditorModel?) {
         guard let export = features?.export else { return }
         let preferences = settings.preferences
-        guard preferences.autoCopy || preferences.autoSave else { return }
+        guard preferences.autoCopy || preferences.autoSave || preferences.githubUpload?.automatic == true else {
+            return
+        }
         let opened = editor != nil
-        let live: () -> DocumentSession? = { [weak editor] in
+        let live: @MainActor @Sendable () -> DocumentSession? = { [weak editor] in
             // No editor wired: the capture itself is current. An editor that closed (or was
             // released) makes the export stale.
             guard opened else { return session }
@@ -243,6 +245,9 @@ final class AppModel: AppActions {
             let outcomes = await export.runAutomaticExports(for: session, currentSession: live)
             for case .failed(let failure) in outcomes {
                 showMessage(.export(failure))
+            }
+            for outcome in outcomes where outcome.uploadedURL != nil {
+                editor?.reportAutomaticExport(outcome)
             }
         }
     }

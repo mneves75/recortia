@@ -6,6 +6,30 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0-beta2] - 2026-10-01
+
+### Fixed
+
+- Image imports share one read/decode slot across new documents and editor layers; overlapping requests are rejected before reading bytes, and canceled results are discarded.
+- Holding Space no longer leaves the canvas stuck in pan mode after text focus, window focus, or app activation changes.
+
+Build 11 is a source candidate. Synthetic validation, signed artifacts, installation, notarization and production qualification are recorded separately.
+
+## [0.10.0-beta1] - 2026-10-01
+
+### Added
+
+- Optional automatic upload of still captures to a configured private GitHub repository, with
+  separate opt-in, app-scoped Keychain tokens, sanitized exports, an 8 MiB limit, redirect
+  refusal, stable per-intent paths and honest uncertain-completion reporting.
+
+### Fixed
+
+- Canceling automatic copy cancels the rest of the batch, including save and upload.
+- Automatic exports skipped while another export runs now report the failure visibly.
+
+Local installation and live GitHub qualification remain distinct from source/E2E checks.
+
 ## [0.9.1-beta3] - 2026-09-30
 
 ### Fixed

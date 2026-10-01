@@ -46,6 +46,12 @@ For generated valid transforms, round trips agree within the documented subpixel
 
 Test valid PNG/JPEG; truncated headers; corrupt payloads; oversized declared dimensions; decompression bombs; unsupported animation; unexpected orientation; malicious metadata; a 64 MiB boundary; and a 40 MP boundary. Reject unsafe inputs without unbounded allocation, network access, source mutation, or app crash. Clipboard input occurs only after Paste.
 
+Suspend an admitted read/decode and issue simultaneous Open/Paste/Drop and Add Image requests
+across editor windows. Only one operation reads bytes; excess requests report busy without
+clearing the active state. Cancel the admitted request: hold its slot until underlying work
+returns, discard/release its result, and allow a subsequent import. Verify the shared app wiring
+with the synthetic `import-admission` E2E scenario.
+
 ### EDIT-01 — Deterministic editor replay
 
 Replay a fixed script creating each annotation, editing text, dragging/resizing/duplicating, changing z-order, cropping, and resizing the document. Undo every operation, redo it, and verify model equality and expected render. A complete pointer gesture is one undo group. Exercise the undo-budget boundary without breaking remaining commands.
@@ -57,6 +63,12 @@ an image's inspector Height preserves its aspect ratio and refreshes both size f
 ### EDIT-02 — Zoom, focus, and text composition
 
 At 25%, 100%, 200%, and 800% zoom, the same document-space operation produces the same image geometry. Test keyboard nudging, panning, and hit targets. Accented Portuguese, emoji, right-to-left text, multiline editing, and an input method do not lose characters or accidentally trigger tool shortcuts. Text layout regressions use per-OS baselines where system typography differs.
+
+Hold Space, transfer first-responder ownership to a sibling text view, release Space there,
+then return and draw a rectangle: annotation creation and viewport offset stay correct.
+Repeat for window key loss, app deactivation, and mid-pan interruption. An unrelated window's
+notification must not interrupt the canvas; normal held/released Space remains a control.
+The synthetic `canvas-focus` scenario covers these cases; live IME/VoiceOver checks remain separate.
 
 ### PIN-01 — Reference lifecycle
 
@@ -157,6 +169,23 @@ With explicit release approval, build from the reviewed tag, sign, notarize, sta
 
 - **0.1:** PERM, CAP, GEO, IO, EDIT, PIN, RED, EXP, OCR, UX, PRIV, relevant PERF and REL cases pass. No scrolling or pro-tool parity claim.
 - **1.0:** All v1 cases pass, with a published scroll compatibility matrix and complete EN/PT-BR/accessibility review.
-- **Post-1.0:** NET/AUTO/AI tests must be specified and approved before implementing those features. Existing privacy/export gates continue to apply.
+- **Extensions:** NET-01 covers owner-authorized GitHub upload (2026-10-01, ADR-006).
+  AUTO/AI and other providers remain deferred. Existing privacy/export gates continue to apply.
+
+### NET-01 — Optional GitHub upload
+
+Fresh installs and migrated settings perform no requests. Saving a destination/token does not
+enable upload; unsealed consent is dropped. Enabling requires separate confirmation naming
+the destination and explaining pre-edit upload and Git history retention.
+
+Exercise public/archived/malformed/moved repositories, invalid destination/header injection,
+missing/inaccessible tokens, denial/conflict/rate-limit/server errors, 8 MiB image and 2 MiB
+response limits, redirect refusal, cancellation before/after PUT, stale revision/privacy/consent,
+and same-intent retry. No overwrite, raw-image fallback, retry after indeterminate completion,
+or promise of remote deletion is allowed.
+
+E2E: real capture→pipeline→synthetic remote sink, cancellation of copy→save→upload, busy notice,
+opt-out and native settings EN/PT-BR. RED/EXP/PRIV remain binding. Live credentials/transfers
+require owner testing and are separate from synthetic evidence.
 
 All unexecuted or hardware-dependent cases remain explicitly `unrun`/`awaiting_manual_validation`. A passing unit-test suite does not convert them to passed.

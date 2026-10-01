@@ -5,10 +5,15 @@ task status, signed local-install evidence, and outstanding manual qualification
 task contracts rather than a build log. Local installation does not complete notarized distribution
 or the 1.0 release contract.
 
+The 0.10.0-beta2/build11 corrective slice covers FR-03/FR-12 shared import admission
+(IO-01/COMP-01) and FR-04 canvas keyboard ownership (EDIT-02). New-document and layer
+imports share a concrete importer; drop payloads are acquired after admission. Synthetic
+regressions and independent review supplement, rather than complete, the manual gates.
+
 ## Execution policy
 
 The owner approved FR-01…FR-14 implementation on 2026-09-26 (AGENTS.md). The original
-docs/handoff/START_HERE.md is historical; FR-15/FR-16 still require separate approval. Publishing,
+docs/handoff/START_HERE.md is historical; other FR-15 providers and FR-16 require separate approval. Publishing,
 live screen access, credentials, and external side effects require explicit authority. A single
 coherent vertical slice must remain buildable.
 
@@ -17,6 +22,9 @@ The baseline critical path is M0 -> M1 -> M2 -> M3 -> M4/M5 -> M6. M4 and M5 may
 Every task below inherits SPEC.md and AGENTS.md. Its verification IDs resolve to ACCEPTANCE_TESTS.md. Tests shared with earlier tasks must continue to pass; a feature addition does not reset earlier gates.
 
 ## Milestone map
+
+The owner authorized optional FR-15 GitHub auto-upload and local test installation on
+2026-10-01. ADR-006 and NET-01 define that extension; other providers and FR-16 remain deferred.
 
 | Milestone | Outcome | Exit condition |
 |---|---|---|

@@ -11,12 +11,14 @@ public enum ExportAction: Hashable, Sendable {
     /// Save with a collision-free name into a previously authorized folder.
     case saveToFolder(URL)
     case drag
+    case upload(to: GitHubDestination, intent: UUID)
 }
 
 public enum ExportOutcome: Hashable, Sendable {
     case copied
     case saved(URL)
     case dragged
+    case uploaded(URL)
     /// Cancel arrived after the write was committed; the action happened and cannot be retracted.
     indirect case alreadyCompleted(ExportOutcome)
     case canceled
@@ -24,9 +26,17 @@ public enum ExportOutcome: Hashable, Sendable {
     /// Another export is running; nothing was done.
     case rejectedBusy
 
+    public var uploadedURL: URL? {
+        switch self {
+        case .uploaded(let url): url
+        case .alreadyCompleted(let outcome): outcome.uploadedURL
+        default: nil
+        }
+    }
+
     public var didWrite: Bool {
         switch self {
-        case .copied, .saved, .dragged, .alreadyCompleted: true
+        case .copied, .saved, .dragged, .uploaded, .alreadyCompleted: true
         case .canceled, .failed, .rejectedBusy: false
         }
     }
@@ -47,6 +57,7 @@ public final class ExportCoordinator {
     public private(set) var state: ExportState?
     public private(set) var lastOutcome: ExportOutcome?
     private var operation: Operation?
+    private var automaticBatch: Operation?
 
     @ObservationIgnored private let exporter: any ExportService
     @ObservationIgnored private let clipboard: any ClipboardSinkService
@@ -55,8 +66,10 @@ public final class ExportCoordinator {
     @ObservationIgnored private let folders: any SaveFolderService
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
+    @ObservationIgnored private let upload: (any GitHubUploadService)?
     @ObservationIgnored private var snapshotTask: Task<ShareSnapshot, any Error>?
     @ObservationIgnored private var pendingDrag: PendingDrag?
+    @ObservationIgnored private var uploadTask: Task<URL, any Error>?
 
     private struct PendingDrag {
         let documentID: DocumentID
@@ -73,7 +86,8 @@ public final class ExportCoordinator {
     public init(
         exporter: any ExportService, clipboard: any ClipboardSinkService, files: any FileSinkService,
         drag: any DragSinkService,
-        folders: any SaveFolderService, clock: any FeatureClock, settings: SettingsStore
+        folders: any SaveFolderService, clock: any FeatureClock, settings: SettingsStore,
+        upload: (any GitHubUploadService)? = nil
     ) {
         self.exporter = exporter
         self.clipboard = clipboard
@@ -82,6 +96,7 @@ public final class ExportCoordinator {
         self.folders = folders
         self.clock = clock
         self.settings = settings
+        self.upload = upload
     }
 
     public var isBusy: Bool { operation != nil }
@@ -89,7 +104,8 @@ public final class ExportCoordinator {
     /// Exports `session` through one sink. `currentSession` returns the live session (nil once
     /// its editor closed) and is consulted after the snapshot, before anything is committed.
     public func export(
-        _ action: ExportAction, session: DocumentSession, currentSession: @escaping () -> DocumentSession?
+        _ action: ExportAction, session: DocumentSession,
+        currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
     ) async -> ExportOutcome {
         guard operation == nil else { return .rejectedBusy }
         let id = UUID()
@@ -97,6 +113,7 @@ public final class ExportCoordinator {
         defer {
             if operation?.id == id { operation = nil }
             snapshotTask = nil
+            uploadTask = nil
         }
 
         state = .requested
@@ -145,6 +162,36 @@ public final class ExportCoordinator {
             case .saveToFolder(let folder):
                 apply(.commit)
                 completed = .saved(try await files.saveUnique(snapshot, in: folder))
+            case .upload(let destination, let intent):
+                guard let upload else { return fail(.upload(.missingCredential)) }
+                let task = Task<URL, any Error> { [weak self] in
+                    try await upload.upload(
+                        snapshot, to: destination, intent: intent,
+                        isCurrent: { [weak self] in
+                            guard let self, self.operation?.cancelRequested == false,
+                                self.settings.preferences.githubUpload?.automatic == true,
+                                self.settings.preferences.githubUpload?.destination == destination,
+                                let current = currentSession()
+                            else { return false }
+                            guard
+                                current.document.id == snapshot.documentID && current.revision == snapshot.revision
+                                    && current.privacyEpoch == snapshot.privacyEpoch
+                            else { return false }
+                            self.apply(.commit)
+                            return true
+                        })
+                }
+                uploadTask = task
+                switch await task.result {
+                case .success(let url): completed = .uploaded(url)
+                case .failure(let error):
+                    let failure = (error as? GitHubUploadFailure) ?? .completionUnknown
+                    if failure == .canceled {
+                        if state != .canceled { apply(.cancel) }
+                        return finish(.canceled)
+                    }
+                    return fail(.upload(failure))
+                }
             case .drag:
                 // The receiver writes the file later, after an unbounded wait; the lease lets a
                 // document change, cancel, or close revoke the offer before that write (RED-03).
@@ -191,9 +238,11 @@ public final class ExportCoordinator {
     /// Cancels the running export. Before the commit nothing is written; during the commit the
     /// write completes and the outcome says so.
     public func cancel() {
+        automaticBatch?.cancelRequested = true
         guard var current = operation else { return }
         current.cancelRequested = true
         operation = current
+        uploadTask?.cancel()
         if current.awaitingDragReceiver {
             revokePendingDrag()
             return
@@ -221,13 +270,17 @@ public final class ExportCoordinator {
 
     /// Automatic copy/save after a capture, only when the user enabled them (off by default).
     public func runAutomaticExports(
-        for session: DocumentSession, currentSession: @escaping () -> DocumentSession?
+        for session: DocumentSession, currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
     ) async -> [ExportOutcome] {
+        guard automaticBatch == nil, operation == nil else { return [.failed(.busy)] }
+        automaticBatch = Operation(id: UUID())
+        defer { automaticBatch = nil }
         let preferences = settings.preferences
         var outcomes: [ExportOutcome] = []
         if preferences.autoCopy {
             outcomes.append(await export(.copy, session: session, currentSession: currentSession))
         }
+        guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
         if preferences.autoSave {
             if let bookmark = preferences.preferredSaveFolderBookmark,
                 let folder = folders.resolveFolder(bookmark: bookmark)
@@ -236,6 +289,13 @@ public final class ExportCoordinator {
             } else {
                 outcomes.append(.failed(.accessDenied))
             }
+        }
+        guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
+        if let configuration = preferences.githubUpload, configuration.automatic {
+            outcomes.append(
+                await export(
+                    .upload(to: configuration.destination, intent: UUID()), session: session,
+                    currentSession: currentSession))
         }
         return outcomes
     }

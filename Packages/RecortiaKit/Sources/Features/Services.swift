@@ -65,6 +65,20 @@ public protocol ImageInputService: AnyObject {
 // MARK: - Render and export
 
 @MainActor
+public protocol GitHubUploadService: AnyObject {
+    func upload(
+        _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async throws(GitHubUploadFailure) -> URL
+}
+
+@MainActor
+public protocol GitHubCredentialService: AnyObject {
+    func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure)
+    func remove(for destination: GitHubDestination) throws(GitHubUploadFailure)
+}
+
+@MainActor
 public protocol RenderService: AnyObject {
     /// Full sanitized, flattened output (SPEC §8) at `scale` × document.resizeScale.
     func render(_ document: Document, scale: Double) async throws -> CGImage

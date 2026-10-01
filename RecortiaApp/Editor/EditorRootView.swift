@@ -209,6 +209,9 @@ struct EditorStatusBar: View {
                 Button(String(localized: "Cancel Export", table: "Editor")) { model.cancelExport() }
                     .controlSize(.small)
             }
+            if case .exported(let outcome) = model.notice, let url = outcome.uploadedURL {
+                Link("View on GitHub", destination: url).controlSize(.small)
+            }
         }
         .font(.callout)
         .padding(.horizontal, 10)

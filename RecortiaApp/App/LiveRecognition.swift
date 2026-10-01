@@ -80,7 +80,9 @@ extension AppServices {
     static func live() -> AppServices {
         let store = ImageStore()
         let capture = LiveCaptureService()
+        let github = LiveGitHubUpload()
         return AppServices(
+            githubUpload: github, githubCredentials: github,
             capture: capture, screenPermission: LiveScreenPermission(), accessibility: LiveAccessibilityPermission(),
             assets: LiveImageAssets(store: store), input: LiveImageInput(), renderer: LiveRenderer(store: store),
             exporter: LiveExporter(store: store), clipboard: LiveClipboard(), files: LiveFiles(), drag: LiveDragSink(),

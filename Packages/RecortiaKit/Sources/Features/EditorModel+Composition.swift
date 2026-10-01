@@ -12,29 +12,18 @@ extension EditorModel {
     /// scaled down uniformly to fit the canvas when it is larger. Needs no screen access.
     @discardableResult
     public func addImageLayer(from source: ImportSource) async -> Bool {
+        await addImageLayer(readSource: { source })
+    }
+
+    /// A drop's bytes are requested only after the shared importer admits its lazy reader.
+    @discardableResult
+    public func addImageLayer(readSource: () throws(ImportFailure) -> ImportSource) async -> Bool {
         guard !isClosed else { return false }
         let info: ImageAssetInfo
-        do throws(ImportError) {
-            let data: Data
-            let origin: AssetOrigin
-            switch source {
-            case .file(let url), .droppedFile(let url):
-                data = try await environment.input.readFile(at: url)
-                origin = .imported
-            case .pasteboard:
-                guard let pasted = environment.input.readPasteboardImage() else {
-                    post(.importFailed(.nothingToPaste))
-                    return false
-                }
-                data = pasted
-                origin = .pasted
-            case .droppedData(let dropped):
-                data = dropped
-                origin = .imported
-            }
-            info = try await environment.assets.importImage(data, origin: origin)
+        do throws(ImportFailure) {
+            info = try await environment.imageImporter.importImage(readSource: readSource)
         } catch {
-            post(.importFailed(ImportFailure(error)))
+            post(.importFailed(error))
             return false
         }
         guard !isClosed else {

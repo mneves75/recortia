@@ -142,6 +142,8 @@ public enum ScrollEvent: Hashable, Sendable {
 // MARK: - Export
 
 public enum ExportFailure: Hashable, Sendable {
+    case busy
+    case upload(GitHubUploadFailure)
     case renderFailed
     case encodeFailed
     case budgetExceeded

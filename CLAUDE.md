@@ -49,6 +49,9 @@ beta compilation does not replace the stable-toolchain release gates.
   resample or effect (RED suite with planted controls); async results are accepted only while
   request identity, revision, and privacy epoch still match.
 - Contracts between modules: `docs/architecture/module-contracts.md`. Decisions: `docs/adr/`.
+- Import admission and canvas keyboard ownership follow the corrective contract in `AGENTS.md`.
+  `ImageImporter` is shared by the app and every editor; drop providers run only after admission.
+  Keep the real-app synthetic `import-admission` and `canvas-focus` scenarios in EN/PT-BR runs.
 
 ## Repository facts
 

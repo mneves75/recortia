@@ -56,7 +56,7 @@ private struct LocalProcessingStep: View {
                 .font(.title3)
             Label {
                 Text(
-                    "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded."
+                    "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it."
                 )
             } icon: {
                 Image(systemName: "lock.laptopcomputer").frame(width: 24).accessibilityHidden(true)

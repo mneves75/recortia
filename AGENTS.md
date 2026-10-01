@@ -6,9 +6,19 @@ Build the approved milestone of the native macOS screenshot utility defined in S
 
 Read, in order: this file, SPEC.md, IMPLEMENTATION_PLAN.md, the selected task in BACKLOG.json, the relevant ACCEPTANCE_TESTS.md cases, and existing repository instructions/ADRs. Consult SOURCES.md when an API or external assumption matters. Read actual implementation before proposing edits.
 
-**Authority.** The owner approved implementation of the v1 milestones (FR-01…FR-14) on 2026-09-26; FR-15/FR-16 still need a separate design and approval. For new work, propose the change first when it is not already a planned task. Once work is approved, complete its scoped changes without repeatedly asking for the same approval. New permissions, external transfers, paid services, license changes, credential access, architecture replacement, release publishing, and scope expansion require fresh approval.
+**Authority.** The owner approved implementation of the v1 milestones (FR-01…FR-14) on 2026-09-26 and the GitHub portion of FR-15 as recorded below; other FR-15 providers and FR-16 still need separate design and approval. For new work, propose the change first when it is not already a planned task. Once work is approved, complete its scoped changes without repeatedly asking for the same approval. New permissions, external transfers beyond configured opt-in upload, paid services, license changes, credential access, architecture replacement, release publishing, and scope expansion require fresh approval.
 
 ## First-session preflight
+
+**Additional owner authorization (2026-10-01):** FR-15 GitHub auto-upload per ADR-006 and local
+test installation are approved. FR-16 and other providers remain deferred. Automated tests use
+synthetic sinks; this implementation request does not authorize sending real screenshots or
+reading personal screen content during validation.
+
+Import admission and canvas keyboard ownership follow SPEC.md's concurrency policy and
+ACCEPTANCE_TESTS.md IO-01/EDIT-02. Keep `import-admission` and `canvas-focus` synthetic
+E2E regressions in the stable gate evidence; they do not replace live IME/VoiceOver/TCC
+qualification.
 
 Identify the actual working directory, repository state, branch, existing instructions, uncommitted changes, Xcode project/workspace, shared schemes, packages, tests, and build scripts. Do not assume this spec's proposed paths already exist. Preserve unrelated work; never reset, delete, stash, force-push, or overwrite it without permission.
 
