@@ -89,6 +89,10 @@ Launch at login is off until selected. The editor follows the active Space and c
 
 ### FR-02 — Capture
 
+Region selection invoked by a global shortcut must remain on the user's current desktop,
+without activating Recortia's editor in another Space. Its panel must still accept Escape,
+Return and Space; native menu invocation remains available.
+
 **Input:** CaptureRequest with unique ID, mode, optional delay, requested display/window, cursor/shadow preferences, and target geometry.  
 **Output:** CapturedFrame with immutable pixel content and a CaptureGeometry record, or a typed error.
 

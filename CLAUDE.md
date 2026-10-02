@@ -49,6 +49,10 @@ beta compilation does not replace the stable-toolchain release gates.
   resample or effect (RED suite with planted controls); async results are accepted only while
   request identity, revision, and privacy epoch still match.
 - Contracts between modules: `docs/architecture/module-contracts.md`. Decisions: `docs/adr/`.
+- Region-selection panels receive keyboard focus without activating the app; synthetic
+  foreground/activation checks supplement the physical shortcut/Space matrix (CAP-01).
+- GitHub upload consent is session-versioned; capture-to-batch-to-sink carries the original
+  identity, so revocation and restoring the same preferences cannot revive an old intent.
 - Import admission and canvas keyboard ownership follow the corrective contract in `AGENTS.md`.
   `ImageImporter` is shared by the app and every editor; drop providers run only after admission.
   Keep the real-app synthetic `import-admission` and `canvas-focus` scenarios in EN/PT-BR runs.

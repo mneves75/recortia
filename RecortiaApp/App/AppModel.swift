@@ -230,6 +230,7 @@ final class AppModel: AppActions {
     private func runAutomaticExports(for session: DocumentSession, editor: EditorModel?) {
         guard let export = features?.export else { return }
         let preferences = settings.preferences
+        let uploadConsentID = settings.githubUploadConsentID
         guard preferences.autoCopy || preferences.autoSave || preferences.githubUpload?.automatic == true else {
             return
         }
@@ -242,7 +243,8 @@ final class AppModel: AppActions {
             return editor.session
         }
         Task {
-            let outcomes = await export.runAutomaticExports(for: session, currentSession: live)
+            let outcomes = await export.runAutomaticExports(
+                for: session, currentSession: live, uploadConsentID: uploadConsentID)
             for case .failed(let failure) in outcomes {
                 showMessage(.export(failure))
             }

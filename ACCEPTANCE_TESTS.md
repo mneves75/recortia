@@ -25,6 +25,12 @@ On each supported OS, capture a region, each display, a chosen window, a delayed
 
 ### CAP-02 — One active capture and no idle recording
 
+Invoke region capture from a different application's Space using the global shortcut and
+from the menu icon. Selection must stay on the current desktop/display, retain Escape,
+Return and Space handling, and avoid activating an editor in another Space. Synthetic
+checks require another foreground PID and continuous activation observation; physical
+hotkeys, fullscreen and multiple displays need the manual desktop matrix.
+
 Rapidly invoke capture 20 times. Assert the declared replacement/cancellation policy, maximum one active session, and no queued background captures. After completion/cancel, instrument zero active SCStreams and no new screenshot buffers while idle. A second process invocation reuses the existing application.
 
 Include transitions between still and scrolling modes: a collecting/armed scrolling session cannot
@@ -173,6 +179,11 @@ With explicit release approval, build from the reviewed tag, sign, notarize, sta
   AUTO/AI and other providers remain deferred. Existing privacy/export gates continue to apply.
 
 ### NET-01 — Optional GitHub upload
+
+Suspend an upload before its write, revoke consent and enable the same destination again.
+The old capture must never be sent. Repeat with destination away/back, preferences reset,
+and revocation during rendering or an earlier automatic-copy step. Unrelated settings must
+not invalidate valid consent. New captures can use the newly granted consent.
 
 Fresh installs and migrated settings perform no requests. Saving a destination/token does not
 enable upload; unsealed consent is dropped. Enabling requires separate confirmation naming

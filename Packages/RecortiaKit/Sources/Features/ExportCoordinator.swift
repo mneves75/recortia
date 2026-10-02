@@ -105,10 +105,12 @@ public final class ExportCoordinator {
     /// its editor closed) and is consulted after the snapshot, before anything is committed.
     public func export(
         _ action: ExportAction, session: DocumentSession,
-        currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
+        currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
+        uploadConsentID: UUID? = nil
     ) async -> ExportOutcome {
         guard operation == nil else { return .rejectedBusy }
         let id = UUID()
+        let consentID = uploadConsentID ?? settings.githubUploadConsentID
         operation = Operation(id: id)
         defer {
             if operation?.id == id { operation = nil }
@@ -169,6 +171,7 @@ public final class ExportCoordinator {
                         snapshot, to: destination, intent: intent,
                         isCurrent: { [weak self] in
                             guard let self, self.operation?.cancelRequested == false,
+                                self.settings.githubUploadConsentID == consentID,
                                 self.settings.preferences.githubUpload?.automatic == true,
                                 self.settings.preferences.githubUpload?.destination == destination,
                                 let current = currentSession()
@@ -270,12 +273,14 @@ public final class ExportCoordinator {
 
     /// Automatic copy/save after a capture, only when the user enabled them (off by default).
     public func runAutomaticExports(
-        for session: DocumentSession, currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
+        for session: DocumentSession, currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
+        uploadConsentID: UUID? = nil
     ) async -> [ExportOutcome] {
         guard automaticBatch == nil, operation == nil else { return [.failed(.busy)] }
         automaticBatch = Operation(id: UUID())
         defer { automaticBatch = nil }
         let preferences = settings.preferences
+        let consentID = uploadConsentID ?? settings.githubUploadConsentID
         var outcomes: [ExportOutcome] = []
         if preferences.autoCopy {
             outcomes.append(await export(.copy, session: session, currentSession: currentSession))
@@ -295,7 +300,7 @@ public final class ExportCoordinator {
             outcomes.append(
                 await export(
                     .upload(to: configuration.destination, intent: UUID()), session: session,
-                    currentSession: currentSession))
+                    currentSession: currentSession, uploadConsentID: consentID))
         }
         return outcomes
     }

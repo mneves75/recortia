@@ -20,6 +20,11 @@ ACCEPTANCE_TESTS.md IO-01/EDIT-02. Keep `import-admission` and `canvas-focus` sy
 E2E regressions in the stable gate evidence; they do not replace live IME/VoiceOver/TCC
 qualification.
 
+Region overlays use nonactivating panels so a shortcut does not activate an editor in another
+Space. CAP-01 synthetic evidence must verify an external foreground application and keyboard
+ownership; physical shortcut/display/Space qualification remains separate. NET-01 pending
+uploads must retain their original consent identity across every asynchronous batch step.
+
 Identify the actual working directory, repository state, branch, existing instructions, uncommitted changes, Xcode project/workspace, shared schemes, packages, tests, and build scripts. Do not assume this spec's proposed paths already exist. Preserve unrelated work; never reset, delete, stash, force-push, or overwrite it without permission.
 
 On a Mac, record the actual results of the following read-only commands when applicable:

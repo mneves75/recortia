@@ -32,6 +32,10 @@ Secure masks cover source pixels twice: the regions bound when the mask is drawn
 
 ## Threat register
 
+Pending GitHub uploads bind the session's original consent identity before asynchronous work.
+Changing GitHub configuration or resetting settings changes that identity. Restoring identical
+preferences never revives the old intent; the final pre-write check rejects it (NET-01).
+
 | Threat | Failure path | Required mitigation | Evidence |
 |---|---|---|---|
 | Insecure redaction | Source survives under blur, transparency, layers, metadata, or an alternate clipboard type | Opaque source replacement; pre-filter masking; new flattened encoding; metadata/type allowlists | RED-01/02/03 |

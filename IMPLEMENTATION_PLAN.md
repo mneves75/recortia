@@ -5,7 +5,11 @@ task status, signed local-install evidence, and outstanding manual qualification
 task contracts rather than a build log. Local installation does not complete notarized distribution
 or the 1.0 release contract.
 
-The 0.10.0-beta2/build11 corrective slice covers FR-03/FR-12 shared import admission
+The 0.10.0-beta3/build12 corrective slice covers FR-02 shortcut selection without foreground
+activation and FR-15 permanent invalidation of revoked pending upload consent (CAP-01/NET-01).
+Physical hotkeys, monitor/Space transitions and signed distribution remain manual gates.
+
+The earlier 0.10.0-beta2/build11 corrective slice covers FR-03/FR-12 shared import admission
 (IO-01/COMP-01) and FR-04 canvas keyboard ownership (EDIT-02). New-document and layer
 imports share a concrete importer; drop payloads are acquired after admission. Synthetic
 regressions and independent review supplement, rather than complete, the manual gates.

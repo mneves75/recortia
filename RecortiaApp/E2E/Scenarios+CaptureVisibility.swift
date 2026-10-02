@@ -2,9 +2,135 @@
     import AppKit
     import Domain
     import Features
+    import MacPlatform
 
     @MainActor
     enum CaptureVisibilityScenarios {
+        private final class ActivationProbe {
+            var appActivationCount = 0
+            var foregroundPIDs: [pid_t] = []
+        }
+
+        static func shortcutFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let display = try context.unwrap(
+                "a connected display is available", DesktopGeometry.displays().first)
+            var created: OverlayWindow?
+            let overlay = RegionOverlayController { display, screen in
+                let window = OverlayWindow(display: display, screen: screen)
+                window.alphaValue = 0
+                window.ignoresMouseEvents = true
+                window.setContentSize(SyntheticDesktop.size)
+                E2ESnapshot.park(window)
+                created = window
+                return window
+            }
+            defer {
+                overlay.dismiss()
+                harness.features.capture.cancel()
+            }
+
+            // A global shortcut starts while another application is active. Only transparent,
+            // offscreen synthetic windows are used; no desktop pixels or global keys are read.
+            NSApp.deactivate()
+            try context.require(
+                "shortcut starts with Recortia inactive", await E2EWait.until { !NSApp.isActive })
+            let foreground = try context.unwrap(
+                "another foreground application exists", NSWorkspace.shared.frontmostApplication?.processIdentifier)
+            try context.require(
+                "the shortcut starts outside Recortia", foreground != ProcessInfo.processInfo.processIdentifier)
+            let probe = ActivationProbe()
+            let appObserver = NotificationCenter.default.addObserver(
+                forName: NSApplication.didBecomeActiveNotification, object: NSApp, queue: .main
+            ) { _ in MainActor.assumeIsolated { probe.appActivationCount += 1 } }
+            let workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+                forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+            ) { notification in
+                let pid = (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
+                    .processIdentifier
+                MainActor.assumeIsolated { if let pid { probe.foregroundPIDs.append(pid) } }
+            }
+            defer {
+                NotificationCenter.default.removeObserver(appObserver)
+                NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver)
+            }
+            harness.app.perform(.captureRegion)
+            try context.require("the shortcut action starts selection", harness.features.capture.state == .selecting)
+            overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
+            let window = try context.unwrap("the real region overlay was created", created)
+            await E2ESnapshot.settle(window.selectionView)
+            context.check(
+                "region selection sends no application activation notification", probe.appActivationCount == 0,
+                "notifications=\(probe.appActivationCount); isActive=\(NSApp.isActive)")
+            context.check(
+                "region selection never activates another foreground application",
+                probe.foregroundPIDs.allSatisfy { $0 == foreground },
+                "baseline=\(foreground); observed=\(probe.foregroundPIDs)")
+            context.check(
+                "region selection preserves the foreground application",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
+            context.check("the selection still receives keyboard input", window.isKeyWindow)
+            context.check("the selection view owns the responder", window.firstResponder === window.selectionView)
+            context.check(
+                "the overlay can join the current Space", window.collectionBehavior.contains(.canJoinAllSpaces))
+            context.check(
+                "the overlay supports fullscreen Spaces", window.collectionBehavior.contains(.fullScreenAuxiliary))
+            context.check(
+                "the overlay does not activate the application", window.styleMask.contains(.nonactivatingPanel))
+            context.check(
+                "the synthetic overlay stays offscreen", window.frame.maxX < -10_000 && window.frame.maxY < -10_000)
+            context.snapshot(window.selectionView, shot: "shortcut-selection", over: harness.desktop)
+
+            var canceled = false
+            overlay.onCancel = { [weak overlay] in
+                canceled = true
+                harness.features.capture.cancel()
+                overlay?.dismiss()
+            }
+            try sendKey(53, characters: "\u{1b}", to: window)
+            context.check("Escape cancels without quitting", canceled && harness.features.capture.state == .canceled)
+            context.check("cancel removes all overlays", !overlay.isPresented && !window.isVisible)
+            context.check(
+                "cancellation preserves the foreground application",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
+
+            // A repeated presentation must remain usable without depending on AppKit allowing
+            // a background process to activate itself (a real menu click is owner-only QA).
+            overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
+            let repeatedWindow = try context.unwrap("the replacement overlay was created", created)
+            await E2ESnapshot.settle(repeatedWindow.selectionView)
+            context.check(
+                "replacement selection preserves the foreground application",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
+            context.check("replacement selection still receives keyboard input", repeatedWindow.isKeyWindow)
+            overlay.onSwitchToWindow = { harness.features.capture.switchToWindowSelection() }
+            harness.app.perform(.captureRegion)
+            try sendKey(49, characters: " ", to: repeatedWindow)
+            context.check("Space through AppKit switches to window selection", harness.features.capture.mode == .window)
+            var committedDisplay: DisplayInfo?
+            overlay.onCommit = { _, selected in committedDisplay = selected }
+            try sendKey(36, characters: "\r", to: repeatedWindow)
+            context.check("Return through AppKit selects the same display", committedDisplay == display)
+            overlay.dismiss()
+            await E2ESnapshot.settle(nil)
+            context.check(
+                "all keyboard transitions preserve the foreground application",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
+            context.check("no keyboard transition activates Recortia", probe.appActivationCount == 0)
+            context.check(
+                "no keyboard transition activates another app",
+                probe.foregroundPIDs.allSatisfy { $0 == foreground })
+        }
+
+        private static func sendKey(_ code: UInt16, characters: String, to window: NSWindow) throws {
+            guard
+                let event = NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber, context: nil, characters: characters,
+                    charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code)
+            else { throw E2EAbort("could not synthesize selection key \(code)") }
+            NSApp.sendEvent(event)
+        }
+
         static func admission(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             harness.app.perform(.scrollingCapture)
             context.check("a queued scrolling start already holds admission", !harness.app.isEnabled(.captureRegion))

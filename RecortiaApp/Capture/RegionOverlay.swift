@@ -26,6 +26,11 @@ final class RegionOverlayController {
     var onSwitchToWindow: (() -> Void)?
 
     private var windows: [CGDirectDisplayID: OverlayWindow] = [:]
+    private let makeWindow: (DisplayInfo, NSScreen) -> OverlayWindow
+
+    init(makeWindow: @escaping (DisplayInfo, NSScreen) -> OverlayWindow = { OverlayWindow(display: $0, screen: $1) }) {
+        self.makeWindow = makeWindow
+    }
 
     var isPresented: Bool { !windows.isEmpty }
 
@@ -42,7 +47,7 @@ final class RegionOverlayController {
                 continue
             }
             guard let screen = display.screen else { continue }
-            let window = OverlayWindow(display: display, screen: screen)
+            let window = makeWindow(display, screen)
             window.selectionView.notice = notice
             window.selectionView.allowsWindowSwitch = allowsWindowSwitch
             window.selectionView.onSwitchToWindow = { [weak self] in self?.onSwitchToWindow?() }
@@ -63,22 +68,26 @@ final class RegionOverlayController {
         let pointer = NSEvent.mouseLocation
         let target = windows.values.first { $0.frame.contains(pointer) } ?? windows.values.first
         guard let target else { return }
-        NSApp.activate()
         target.makeKey()
         target.makeFirstResponder(target.selectionView)
     }
 }
 
-final class OverlayWindow: NSWindow {
+final class OverlayWindow: NSPanel {
     let selectionView: RegionSelectionView
 
     init(display: DisplayInfo, screen: NSScreen) {
         selectionView = RegionSelectionView(display: display)
-        super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        super.init(
+            contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isReleasedWhenClosed = false
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
+        // A global shortcut must select the current desktop without activating Recortia's
+        // editor in another Space. Nonactivating panels can still own the keyboard responder.
+        isFloatingPanel = true
+        hidesOnDeactivate = false
         level = .screenSaver
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         contentView = selectionView
@@ -86,6 +95,7 @@ final class OverlayWindow: NSWindow {
     }
 
     override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }
 
 /// Draws the dimmed screen, the selection, and a live size label in the display's real pixels.

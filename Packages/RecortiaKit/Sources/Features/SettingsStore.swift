@@ -23,6 +23,8 @@ public final class SettingsStore {
 
     public private(set) var preferences: Preferences
     public private(set) var loadIssue: LoadIssue?
+    /// Session-only identity: restoring the same settings cannot revive a revoked upload.
+    public private(set) var githubUploadConsentID = UUID()
 
     @ObservationIgnored private let storage: any PreferenceStorage
     @ObservationIgnored private let integrity: any PreferenceIntegrityService
@@ -41,12 +43,14 @@ public final class SettingsStore {
         change(&updated)
         updated = Self.sanitized(updated)
         guard updated != preferences else { return }
+        if updated.githubUpload != preferences.githubUpload { githubUploadConsentID = UUID() }
         preferences = updated
         persist()
     }
 
     /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
+        githubUploadConsentID = UUID()
         preferences = Preferences()
         loadIssue = nil
         persist()

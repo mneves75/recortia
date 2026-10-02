@@ -36,6 +36,7 @@
     final class SyntheticGitHubUpload: GitHubUploadService, GitHubCredentialService {
         var snapshots: [ShareSnapshot] = []
         var hasCredential = false
+        var holdBeforeCommit = false
         var holdAfterCommit = false
         private var waiter: CheckedContinuation<Void, Never>?
         var isWaiting: Bool { waiter != nil }
@@ -54,6 +55,10 @@
             isCurrent: @escaping @MainActor @Sendable () -> Bool
         ) async throws(GitHubUploadFailure) -> URL {
             guard hasCredential else { throw .missingCredential }
+            if holdBeforeCommit {
+                holdBeforeCommit = false
+                await withCheckedContinuation { waiter = $0 }
+            }
             guard isCurrent() else { throw .staleDocument }
             snapshots.append(snapshot)
             if holdAfterCommit {
@@ -134,9 +139,54 @@
                     return false
                 })
             await E2EActions.snapshotEditor(canceled, context, shot: "github-completed-after-cancel")
+
+            for change in ["opt-out", "destination", "reset", "unrelated"] {
+                harness.github.holdBeforeCommit = true
+                let before = harness.github.snapshots.count
+                _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+                try context.require(
+                    "\(change): upload waits before the write", await E2EWait.until { harness.github.isWaiting })
+                switch change {
+                case "opt-out": harness.settings.update { $0.githubUpload?.automatic = false }
+                case "destination":
+                    harness.settings.update {
+                        $0.githubUpload?.destination = GitHubDestination(owner: "fixture", repository: "other-private")
+                    }
+                case "reset": harness.settings.resetToDefaults()
+                default: harness.settings.update { $0.jpegQuality = 0.75 }
+                }
+                harness.settings.update {
+                    $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true)
+                }
+                harness.github.release()
+                try context.require(
+                    "\(change): pending upload finishes", await E2EWait.until { !harness.features.export.isBusy })
+                context.check(
+                    "\(change): re-enabled consent cannot revive an old upload; unrelated settings are allowed",
+                    harness.github.snapshots.count == before + (change == "unrelated" ? 1 : 0))
+            }
+            for copying in [false, true] {
+                harness.settings.update { $0.autoCopy = copying }
+                harness.exportGate.holdNextSnapshot = true
+                let before = harness.github.snapshots.count
+                _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+                try context.require(
+                    "copy=\(copying): rendering waits before upload",
+                    await E2EWait.until { harness.exportGate.isWaiting })
+                harness.settings.update { $0.githubUpload?.automatic = false }
+                harness.settings.update { $0.githubUpload?.automatic = true }
+                harness.exportGate.release()
+                try context.require(
+                    "copy=\(copying): automatic batch finishes",
+                    await E2EWait.until { !harness.features.export.isBusy })
+                context.check(
+                    "copy=\(copying): revocation during an earlier batch step prevents upload",
+                    harness.github.snapshots.count == before)
+            }
+            harness.settings.update { $0.autoCopy = false }
             harness.settings.update { $0.githubUpload?.automatic = false }
             _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
-            context.check("upload opt-out prevents additional sends", harness.github.snapshots.count == uploads + 2)
+            context.check("upload opt-out prevents additional sends", harness.github.snapshots.count == uploads + 3)
         }
     }
 #endif

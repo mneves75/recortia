@@ -9,6 +9,9 @@
             E2EScenario(id: "shortcuts", title: "macOS-style default shortcuts", run: ShortcutScenarios.defaults),
             E2EScenario(id: "capture-menu", title: "Capture menu (⇧⌘5)", run: ShortcutScenarios.captureMenu),
             E2EScenario(id: "region-overlay", title: "Region selection overlay", run: CaptureScenarios.regionOverlay),
+            E2EScenario(
+                id: "capture-focus", title: "Shortcut selection preserves the current application and Space",
+                run: CaptureVisibilityScenarios.shortcutFocus),
             E2EScenario(id: "space-window", title: "Space switches to a window", run: ShortcutScenarios.spaceForWindow),
             E2EScenario(id: "window-chooser", title: "Window chooser", run: CaptureScenarios.windowChooser),
             E2EScenario(id: "countdown", title: "Delayed capture countdown", run: CaptureScenarios.countdown),

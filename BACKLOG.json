@@ -5,6 +5,24 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.10.0-beta3",
+    "build": 12,
+    "date": "2026-10-01",
+    "scope": "FR-02 shortcut region selection without foreground activation; FR-15 permanent invalidation of revoked pending upload consent.",
+    "status": "local_candidate_awaiting_manual_validation",
+    "verification": "Test-first synthetic regressions reproduced the activating overlay/key-ownership defect and upload consent revocation ABA. Corrected targeted EN/PT-BR suite passed all five scenarios and157 assertions per language. Final stable signed scripts/check.sh exited0:517 package tests,12 Python controls,517 translated strings,strict formatting/project freshness and both Debug targets. A fresh different-model behavior verifier executed the full synthetic suite once, exit0:27/27 scenarios,672 assertions and56 reported screenshots per language; every assertion passed and all reported PNGs were valid. Fresh Standards/security and Spec reviews accepted external foreground identity and activation notifications as the synthetic selection oracle; NSApp.isActive is recorded diagnostically. Both resolved Debug bundles are0.10.0/build12/min15.0. Physical hotkeys, actual monitor/Space/fullscreen transitions, live credentials/provider transfers, installation and notarized distribution remain unrun. Build-11 evidence is retained separately below.",
+    "evidence_paths": [
+      ".scratch/e2e/20261001-224940/en/report.json",
+      ".scratch/e2e/20261001-225137/en/report.json",
+      ".scratch/e2e/20261001-225901/en/report.json",
+      ".scratch/e2e/20261001-230208/en/report.json",
+      ".scratch/e2e/20261001-230208/pt-BR/report.json",
+      ".scratch/capture-shortcut-build12-20261001/check.log",
+      ".scratch/e2e/20261001-230940/en/report.json",
+      ".scratch/e2e/20261001-230940/pt-BR/report.json"
+    ]
+  },
+  "previous_source_candidate": {
     "version": "0.10.0-beta2",
     "build": 11,
     "date": "2026-10-01",

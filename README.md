@@ -3,7 +3,7 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
-**Status:** beta source candidate (0.10.0-beta2, build 11). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
+**Status:** beta source candidate (0.10.0-beta3, build 12). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
 multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
@@ -136,10 +136,20 @@ geometry, state machines), `Imaging` (decode, privacy renderer, export, OCR, QR,
 
 ## Validation status
 
+Build 12 corrects shortcut selection activation and permanently invalidates revoked GitHub
+upload intents. Synthetic coverage checks an external foreground application, activation
+notifications and AppKit keyboard dispatch; it does not prove physical hotkeys, multiple
+monitors or actual fullscreen/Space transitions. Build-11 results below are historical.
+The final build-12 signed `scripts/check.sh` passed 517 package tests, 12 Python controls,
+517 translated strings, formatting/project freshness and both Debug builds. A fresh different-model
+behavior verifier ran the complete suite once: 27/27 scenarios, 672 assertions and 56 reported
+screenshots per language; all assertions passed and reported PNGs were valid. Evidence:
+`.scratch/capture-shortcut-build12-20261001/check.log` and `.scratch/e2e/20261001-230940/`.
+
 Automated: Swift Testing suites for every module, including the redaction metamorphic tests
 (RED-01…RED-04) with planted-leak controls, import hardening (IO-01), export container inspection,
 OCR accuracy on a 104-sample EN/PT-BR corpus, and scroll stitching with held-out calibration, plus
-the end-to-end scenario runner (26 scenarios in English and Brazilian Portuguese). The build-11
+the end-to-end scenario runner (27 scenarios in English and Brazilian Portuguese). The build-11
 stable-Xcode signed gate passed 517 package tests, 12 Python controls, 517 translated strings,
 project freshness, strict formatting, and both Debug builds. A fresh different-model verifier
 independently executed the full synthetic suite: 26/26 scenarios, 603 assertions, and 55 screenshots

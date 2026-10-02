@@ -21,6 +21,9 @@ preferences contain destination and sealed consent, never tokens or image bytes.
   Contents lookups use object media, which omits inline content above 1 MiB. The response
   budget accommodates base64 for smaller files plus metadata and remains explicitly bounded.
 - Recheck document/revision/privacy epoch and destination/consent immediately before PUT.
+- Bind the original session consent identity before any queued/render/batch step; revoking,
+  changing destinations or resetting preferences invalidates pending intents permanently.
+  Re-enabling the same destination authorizes new captures, never the revoked pending one.
 - Canceling an automatic batch prevents later sinks; an occupied batch reports an error.
 - One screenshots/<UUID>.png or .jpg path per intent. GET before PUT; matching Git blob SHA
   recognizes completion. Conflicting bytes are refused; existing files are never overwritten.
