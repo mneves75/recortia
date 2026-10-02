@@ -36,7 +36,10 @@
     "backup_equals_previous": true,
     "launched": false,
     "notarized": false,
-    "evidence_path": ".scratch/local-install-build12-20261002/installation.json"
+    "evidence_path": ".scratch/local-install-build12-20261002/installation.json",
+    "independent_verdict": "BLOCKED",
+    "independent_verification": "Fresh different-model verifier passed provenance, version, strict signature, runtime, parsed entitlements/profile, licenses and all60 installed entries compared with export; all33 backup files match the pre-install manifest. Overall verdict is BLOCKED solely by absent independent process audit of the installation interval. No artifact defect was found; no launch or termination command was issued by the installer.",
+    "independent_evidence_path": ".scratch/local-install-build12-20261002/verification.md"
   },
   "previous_source_candidate": {
     "version": "0.10.0-beta2",

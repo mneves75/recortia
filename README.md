@@ -29,7 +29,10 @@ Hardened Runtime, parsed distribution entitlements and provisioning profile chec
 All 33 installed files match the export; build 10 was preserved intact. The installation
 procedure did not launch or terminate the app. Physical shortcuts, actual displays/Spaces,
 TCC, clean-user launch and notarized/public distribution remain unverified.
-Evidence: `.scratch/local-install-build12-20261002/installation.json`.
+Independent verification passed provenance, installed bundle checks and backup integrity.
+Its overall verdict is `BLOCKED` solely because no independent process audit covers the
+installation interval. Evidence: `.scratch/local-install-build12-20261002/installation.json`
+and `verification.md`.
 
 The build-11 candidate adds shared import admission across documents/layers and clears transient
 Space-to-pan input when the canvas loses keyboard ownership. It has not been installed or published.

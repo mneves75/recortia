@@ -3,8 +3,9 @@
 **Status:** Acceptance contracts with partial automated verification. Package regressions and
 synthetic native E2E have executed; live hardware, permissions, accessibility, performance, and
 notarized distribution qualification remain pending. A signed local archive/export and installation
-were independently verified for 0.9.1 build 9, with build 7 preserved; clean-user launch and TCC
-checks were not. See README.md and
+were checked for 0.10.0 build 12, with build 10 preserved. Independent artifact and backup
+checks passed; the overall installation verdict is BLOCKED only by absent process audit of
+the installation interval. Clean-user launch and TCC checks were not run. See README.md and
 BACKLOG.json for current evidence.
 
 Every automated test must produce machine-readable results. Image fixtures must declare their generator/source, license, scale, color space, dimensions, and expected output. Use fixed seeds for generated noise/geometry. Use golden outputs only where their provenance and expected meaning are documented; never bless a broken output just to make CI green.
