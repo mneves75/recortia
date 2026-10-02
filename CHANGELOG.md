@@ -13,7 +13,7 @@ All notable changes to Recortia are documented here. The format follows
 - Starting a region capture with a shortcut uses a nonactivating selection panel instead of activating Recortia and bringing another desktop forward; Escape, Space and Return remain available.
 - Revoking automatic GitHub upload, changing its destination or resetting preferences permanently invalidates pending upload consent; enabling it again applies to new captures.
 
-Build 12 is a source candidate. Physical shortcuts, multi-display/Space behavior, installation and notarized distribution require separate evidence.
+Build 12 was installed locally on 2026-10-02 from the Developer ID export of `2069d91`, preserving build 10. Physical shortcuts, multi-display/Space behavior, clean-user launch and notarized distribution require separate evidence.
 
 ## [0.10.0-beta2] - 2026-10-01
 

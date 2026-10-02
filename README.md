@@ -22,6 +22,15 @@ brew install --cask mneves75/tap/recortia
 
 Or download the notarized DMG from [Releases](https://github.com/mneves75/recortia/releases).
 
+The current 0.10.0-beta3 candidate (app version 0.10.0, build 12) was installed locally on
+2026-10-02 from commit `2069d91` after the signed stable gate, synthetic EN/PT-BR E2E,
+independent reviews and PR CI passed. Developer ID archive/export, strict signature,
+Hardened Runtime, parsed distribution entitlements and provisioning profile checks passed.
+All 33 installed files match the export; build 10 was preserved intact. The installation
+procedure did not launch or terminate the app. Physical shortcuts, actual displays/Spaces,
+TCC, clean-user launch and notarized/public distribution remain unverified.
+Evidence: `.scratch/local-install-build12-20261002/installation.json`.
+
 The build-11 candidate adds shared import admission across documents/layers and clears transient
 Space-to-pan input when the canvas loses keyboard ownership. It has not been installed or published.
 The previous local Developer ID-signed
@@ -40,7 +49,7 @@ match the approved export, with valid signature, distribution entitlements and b
 The previous build 7 was preserved. The app was not launched by the installation procedure and
 has not been notarized. [PR #5](https://github.com/mneves75/recortia/pull/5) merged the source changes.
 
-Build-10 gate and installation evidence remains historical. Build-11 verification is recorded in
+Earlier build-10 installation and build-11 verification evidence remains historical and is recorded in
 `BACKLOG.json`; live capture and production qualification remain pending. See
 [Validation status](#validation-status).
 
