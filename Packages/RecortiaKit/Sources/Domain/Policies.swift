@@ -47,16 +47,21 @@ public struct ScrollLimits: Hashable, Sendable {
     public var maxOutputArea: Int
     public var maxSide: Int
     public var defaultMaxHeight: Int
+    /// Peak bytes a single `append` may hold at once: the accepted output rows, the previous frame's
+    /// matching planes, and the incoming frame's pixel and matching planes. Checked before the
+    /// incoming frame is converted. The default is SPEC §10's 512 MiB target for the heavy workflow.
+    public var maxWorkingBytes: Int
 
     public init(
         maxDuration: Duration = .seconds(120), maxAcceptedFrames: Int = 200, maxOutputArea: Int = 40_000_000,
-        maxSide: Int = 32_768, defaultMaxHeight: Int = 20_000
+        maxSide: Int = 32_768, defaultMaxHeight: Int = 20_000, maxWorkingBytes: Int = 512 * 1024 * 1024
     ) {
         self.maxDuration = maxDuration
         self.maxAcceptedFrames = maxAcceptedFrames
         self.maxOutputArea = maxOutputArea
         self.maxSide = maxSide
         self.defaultMaxHeight = defaultMaxHeight
+        self.maxWorkingBytes = maxWorkingBytes
     }
 
     public static let `default` = ScrollLimits()

@@ -28,6 +28,7 @@ struct ScrollLimitsTests {
         #expect(limits.maxOutputArea == 40_000_000)
         #expect(limits.maxSide == 32_768)
         #expect(limits.defaultMaxHeight == 20_000)
+        #expect(limits.maxWorkingBytes == 512 * 1024 * 1024)
     }
 
     @Test("Scroll, render, and import pixel bounds stay coupled so none can drift silently")
@@ -86,6 +87,62 @@ struct ScrollLimitsTests {
         #expect(stitcher.append(try Self.blankFrame(width: 8000, height: 5001), elapsed: .zero) == .limitReached(.area))
         #expect(stitcher.retainedByteCount == 0)
         #expect(throws: ScrollStitchError.noFrames) { try stitcher.assemble() }
+    }
+
+    @Test("Working budget: a viewport whose peak allocation exceeds it is refused before its planes exist")
+    func rejectsViewportExceedingWorkingBudget() throws {
+        // 100x200 viewport: the first frame peaks near 240 KB, the second append near 560 KB.
+        let fixture = ScrollPageFixture(
+            seed: 56, width: 100, viewportHeight: 200, headerHeight: 20, footerHeight: 10, pageHeight: 800)
+        var stitcher = ScrollStitcher(limits: ScrollLimits(maxWorkingBytes: 400_000))
+        let first = try #require(fixture.frame(offset: 0, index: 0))
+        #expect(stitcher.append(first, elapsed: .zero) == .accepted(offset: 0))
+        let retained = stitcher.retainedByteCount
+
+        let second = try #require(fixture.frame(offset: 40, index: 1))
+        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.area))
+        // Sticky like every limit, and nothing was allocated or lost.
+        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.area))
+        #expect(stitcher.acceptedFrameCount == 1)
+        #expect(stitcher.retainedByteCount == retained)
+        let output = try stitcher.assemble()
+        #expect(output.width == 100 && output.height == 200)
+
+        // Control: the same session under the default budget accepts the second frame.
+        var roomy = ScrollStitcher()
+        _ = roomy.append(first, elapsed: .zero)
+        #expect(roomy.append(second, elapsed: .zero) == .accepted(offset: 40))
+    }
+
+    @Test("Working budget: even the first frame is refused when its own planes cannot fit")
+    func firstFrameExceedingWorkingBudget() throws {
+        var stitcher = ScrollStitcher(limits: ScrollLimits(maxWorkingBytes: 100_000))
+        let frame = try Self.blankFrame(width: 100, height: 200)
+        #expect(stitcher.append(frame, elapsed: .zero) == .limitReached(.area))
+        #expect(stitcher.retainedByteCount == 0)
+        #expect(throws: ScrollStitchError.noFrames) { try stitcher.assemble() }
+    }
+
+    @Test("Working budget arithmetic: the 4,000x10,000 viewport fits once and then breaks 512 MiB")
+    func peakEstimateForLargeViewport() throws {
+        let size = PixelSize(width: 4000, height: 10_000)
+        let budget = ScrollLimits.default.maxWorkingBytes
+        let firstPeak = try #require(
+            ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: false))
+        #expect(firstPeak <= budget)
+        // After the first frame: output rows plus the previous frame's luma are retained.
+        let retained = 4000 * 10_000 * 4 + 4000 * 10_000 * 4
+        let secondPeak = try #require(
+            ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: retained, appending: true))
+        #expect(secondPeak >= 640_000_000)
+        #expect(secondPeak > budget)
+        // Overflow-checked: absurd dimensions report no estimate instead of wrapping.
+        #expect(
+            ScrollStitcher.peakWorkingBytes(
+                frameSize: PixelSize(width: Int.max / 2, height: 4), retainedBytes: 0, appending: false) == nil)
+        #expect(
+            ScrollStitcher.peakWorkingBytes(
+                frameSize: PixelSize(width: 10, height: 10), retainedBytes: Int.max, appending: true) == nil)
     }
 
     @Test("32,768 side: a wider viewport is refused under default limits")

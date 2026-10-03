@@ -17,7 +17,11 @@ public enum ScrollStitchError: Error, Equatable, Sendable {
 ///
 /// Memory: the appended output rows, one footer band, and the matching planes of the previous
 /// frame; during `append` the incoming frame is the second full frame. Matching temporaries are
-/// chunk-sized (`workingBudgetBytes`). The value is synchronous: run it off the main actor.
+/// chunk-sized (`workingBudgetBytes`). Before the incoming frame's planes are allocated, the peak
+/// of all of this is checked against `ScrollLimits.maxWorkingBytes` (`peakWorkingBytes`); a frame
+/// that would exceed it ends collection as `.limitReached(.area)` and the accepted output stays.
+/// A frame whose luma matches the previous one but whose colors do not is ambiguous, not stationary.
+/// The value is synchronous: run it off the main actor.
 public struct ScrollStitcher: Sendable {
     public let limits: ScrollLimits
     /// Consecutive stationary frames after which the page is taken to have ended.
@@ -52,6 +56,7 @@ public struct ScrollStitcher: Sendable {
         guard let previous else {
             // Checked before decoding so an oversized viewport is never materialized.
             if let limit = limits.firstExceeded(elapsed: elapsed, frames: 1, outputSize: size) { return stop(limit) }
+            if exceedsWorkingBudget(frameSize: size, appending: false) { return stop(.area) }
             guard let first = ScrollFrame(image: frame) else { return .ambiguous(.lowConfidence) }
             frameWidth = size.width
             frameHeight = size.height
@@ -64,7 +69,13 @@ public struct ScrollStitcher: Sendable {
         if let limit = limits.firstExceeded(elapsed: elapsed, frames: acceptedFrameCount, outputSize: outputSize) {
             return stop(limit)
         }
-        guard size.width == frameWidth, size.height == frameHeight, let current = ScrollFrame(image: frame) else {
+        guard size.width == frameWidth, size.height == frameHeight else {
+            consecutiveStationaryFrames = 0
+            return .ambiguous(.lowConfidence)
+        }
+        // Checked before the frame's pixel and luma planes are allocated; the accepted output stays.
+        if exceedsWorkingBudget(frameSize: size, appending: true) { return stop(.area) }
+        guard let current = ScrollFrame(image: frame) else {
             consecutiveStationaryFrames = 0
             return .ambiguous(.lowConfidence)
         }
@@ -87,6 +98,16 @@ public struct ScrollStitcher: Sendable {
         }
         switch decision {
         case .stationary:
+            // Luma agrees, which two colors of equal luminance also do. Standing still needs the
+            // colors to agree as well; otherwise the frame is ambiguous and is not counted toward
+            // the end of the page (SPEC FR-10: pause on ambiguous patterns).
+            guard
+                previous.colorChangedFraction(comparedTo: current, tolerance: thresholds.pixelTolerance)
+                    <= thresholds.maximumMatchError
+            else {
+                consecutiveStationaryFrames = 0
+                return .ambiguous(.ambiguousMatch)
+            }
             consecutiveStationaryFrames += 1
             return .stationary
         case .pause(let reason):
@@ -169,7 +190,35 @@ public struct ScrollStitcher: Sendable {
     package static let workingBudgetBytes =
         ScrollMatcher.scratchTemporaries * ScrollMatcher.scratchElements * MemoryLayout<Float>.stride
 
+    /// Peak bytes held while one frame is appended, before any of the frame's planes exist: what is
+    /// already retained, the incoming frame's pixels, luma and signatures, and (when appending) the
+    /// output rows its newest content may add, at most one viewport. Checked at admission against
+    /// `ScrollLimits.maxWorkingBytes`. `nil` when the arithmetic overflows, which also refuses.
+    package static func peakWorkingBytes(frameSize: PixelSize, retainedBytes: Int, appending: Bool) -> Int? {
+        guard let incoming = ScrollFrame.plannedByteCount(width: frameSize.width, height: frameSize.height) else {
+            return nil
+        }
+        var growth = 0
+        if appending {
+            let (area, areaOverflow) = frameSize.width.multipliedReportingOverflow(by: frameSize.height)
+            let (bytes, bytesOverflow) = area.multipliedReportingOverflow(by: 4)
+            guard !areaOverflow, !bytesOverflow else { return nil }
+            growth = bytes
+        }
+        let (partial, firstOverflow) = retainedBytes.addingReportingOverflow(incoming)
+        let (total, secondOverflow) = partial.addingReportingOverflow(growth)
+        return firstOverflow || secondOverflow ? nil : total
+    }
+
     // MARK: Private
+
+    private func exceedsWorkingBudget(frameSize: PixelSize, appending: Bool) -> Bool {
+        guard
+            let peak = Self.peakWorkingBytes(
+                frameSize: frameSize, retainedBytes: retainedByteCount, appending: appending)
+        else { return true }
+        return peak > limits.maxWorkingBytes
+    }
 
     private mutating func stop(_ limit: ScrollLimit) -> ScrollAppendResult {
         reachedLimit = limit

@@ -12,6 +12,33 @@ package struct ScrollFrame: Sendable {
     package let blockCount: Int
     /// `height` rows of `blockCount` mean-luma values.
     package let signature: [Float]
+    /// `height` rows of `blockCount` blocks of mean R, G, B (three values each). Matching uses luma
+    /// alone, which cannot tell two colors of equal luminance apart; this bounded signature keeps
+    /// that evidence after the pixels are demoted, so stationarity can require colors to agree.
+    package let colorSignature: [Float]
+
+    /// Column-block layout shared by the luma and color signatures.
+    private static func blockLayout(width: Int) -> (blockWidth: Int, blocks: Int) {
+        let blockWidth = max(4, width / 32)
+        return (blockWidth, max(1, width / blockWidth))
+    }
+
+    /// Bytes `init(image:)` holds at its peak for a frame of this size: the RGBA pixels, the luma
+    /// plane and both signatures. The conversion's transient copy of the pixels is no larger than
+    /// the pixels plus luma it precedes. `nil` when the arithmetic overflows.
+    package static func plannedByteCount(width: Int, height: Int) -> Int? {
+        guard width > 0, height > 0 else { return nil }
+        let (area, areaOverflow) = width.multipliedReportingOverflow(by: height)
+        let (cells, cellsOverflow) = height.multipliedReportingOverflow(by: blockLayout(width: width).blocks)
+        guard !areaOverflow, !cellsOverflow else { return nil }
+        let float = MemoryLayout<Float>.stride
+        // Per pixel: 4 RGBA bytes plus one Float of luma. Per cell: one luma and three color means.
+        let (pixelBytes, pixelOverflow) = area.multipliedReportingOverflow(by: 4 + float)
+        let (cellBytes, cellOverflow) = cells.multipliedReportingOverflow(by: 4 * float)
+        guard !pixelOverflow, !cellOverflow else { return nil }
+        let (total, totalOverflow) = pixelBytes.addingReportingOverflow(cellBytes)
+        return totalOverflow ? nil : total
+    }
 
     package init?(image: CGImage) {
         let width = image.width, height = image.height
@@ -27,17 +54,49 @@ package struct ScrollFrame: Sendable {
         }
         self.luma = luma
 
-        let blockWidth = max(4, width / 32)
-        let blocks = max(1, width / blockWidth)
+        let (blockWidth, blocks) = Self.blockLayout(width: width)
         var signature = [Float](repeating: 0, count: height * blocks)
+        var color = [Float](repeating: 0, count: height * blocks * 3)
         var counts = [Float](repeating: 0, count: blocks)
         for x in 0..<width { counts[min(x / blockWidth, blocks - 1)] += 1 }
         for y in 0..<height {
-            for x in 0..<width { signature[y * blocks + min(x / blockWidth, blocks - 1)] += luma[y * width + x] }
-            for b in 0..<blocks { signature[y * blocks + b] /= counts[b] }
+            for x in 0..<width {
+                let cell = y * blocks + min(x / blockWidth, blocks - 1)
+                signature[cell] += luma[y * width + x]
+                let p = (y * width + x) * 4
+                color[cell * 3] += Float(pixels[p])
+                color[cell * 3 + 1] += Float(pixels[p + 1])
+                color[cell * 3 + 2] += Float(pixels[p + 2])
+            }
+            for b in 0..<blocks {
+                let cell = y * blocks + b
+                signature[cell] /= counts[b]
+                for c in 0..<3 { color[cell * 3 + c] /= counts[b] }
+            }
         }
         self.blockCount = blocks
         self.signature = signature
+        self.colorSignature = color
+    }
+
+    /// Share of (row, block) cells whose mean color differs from `other`'s by at least `tolerance`
+    /// in any channel. Luma-blind comparison cannot see this: two colors of equal luminance match.
+    package func colorChangedFraction(comparedTo other: ScrollFrame, tolerance: Float) -> Double {
+        guard width == other.width, height == other.height, colorSignature.count == other.colorSignature.count,
+            !colorSignature.isEmpty
+        else { return 1 }
+        var changed = 0
+        let cells = colorSignature.count / 3
+        for cell in 0..<cells {
+            let i = cell * 3
+            if abs(colorSignature[i] - other.colorSignature[i]) >= tolerance
+                || abs(colorSignature[i + 1] - other.colorSignature[i + 1]) >= tolerance
+                || abs(colorSignature[i + 2] - other.colorSignature[i + 2]) >= tolerance
+            {
+                changed += 1
+            }
+        }
+        return Double(changed) / Double(cells)
     }
 
     /// The matching data only; the pixels have either been appended or are no longer needed.
@@ -48,7 +107,7 @@ package struct ScrollFrame: Sendable {
     }
 
     package var byteCount: Int {
-        pixels.count + luma.count * MemoryLayout<Float>.stride + signature.count * MemoryLayout<Float>.stride
+        pixels.count + (luma.count + signature.count + colorSignature.count) * MemoryLayout<Float>.stride
     }
 
     package func pixelRows(_ rows: Range<Int>) -> ArraySlice<UInt8> {
