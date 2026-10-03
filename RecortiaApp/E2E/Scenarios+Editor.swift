@@ -277,6 +277,15 @@
                 model, .redact, from: p(secretPixels.minX - 6, secretPixels.minY - 6),
                 to: p(secretPixels.maxX + 6, secretPixels.maxY + 6))
             let mask = try context.unwrap("a secure mask was added", model.document.masks.first)
+            // The mask must be non-empty and must really cover the secret's pixels; otherwise the
+            // black-pixel checks below could inspect an empty or misplaced area and pass vacuously.
+            let area = mask.outputRect
+            context.check("the mask is not empty", !area.isEmpty, "\(area)")
+            context.check(
+                "the mask covers the secret line's pixel rect",
+                area.minX <= secretPixels.minX && area.minY <= secretPixels.minY && area.maxX >= secretPixels.maxX
+                    && area.maxY >= secretPixels.maxY,
+                "mask=\(area); secret=\(secretPixels)")
             context.check("the mask is opaque", mask.fill.a == 255, "\(mask.fill)")
             context.check("adding a mask advances the privacy epoch", model.session.privacyEpoch > epoch)
             E2EActions.drag(model, .blur, from: p(40, 100), to: p(700, 170))
@@ -294,17 +303,40 @@
             try context.require("export saved the PNG", outcome == .saved(url), "\(outcome)")
             let data = try Data(contentsOf: url)
             let decoded = try E2EActions.decode(data, "export", context)
-            let mx = Int(mask.outputRect.minX), my = Int(mask.outputRect.minY)
-            var uncovered = 0
-            for y in my..<Int(mask.outputRect.maxY) {
-                for x in mx..<Int(mask.outputRect.maxX) where decoded.pixel(x: x, y: y) != ChartFixture.Color(0, 0, 0) {
-                    uncovered += 1
+            context.check(
+                "the export keeps the document's pixel size",
+                decoded.width == Int(model.document.canvasSize.width)
+                    && decoded.height == Int(model.document.canvasSize.height),
+                "\(decoded.width) × \(decoded.height)")
+            func blackCount(in rect: CGRect) -> (inspected: Int, uncovered: Int) {
+                let x0 = max(0, Int(rect.minX.rounded(.down))), x1 = min(decoded.width, Int(rect.maxX.rounded(.up)))
+                let y0 = max(0, Int(rect.minY.rounded(.down))), y1 = min(decoded.height, Int(rect.maxY.rounded(.up)))
+                var inspected = 0, uncovered = 0
+                for y in y0..<max(y0, y1) {
+                    for x in x0..<max(x0, x1) {
+                        inspected += 1
+                        if decoded.pixel(x: x, y: y) != ChartFixture.Color(0, 0, 0) { uncovered += 1 }
+                    }
                 }
+                return (inspected, uncovered)
             }
+            // The second region is the secret line itself, independent of where the mask landed.
+            let maskPixels = blackCount(
+                in: CGRect(x: area.minX, y: area.minY, width: area.width, height: area.height))
             context.check(
-                "every masked pixel is solid black in the export", uncovered == 0, "\(uncovered) pixels differ")
+                "every masked pixel is solid black in the export",
+                maskPixels.inspected > 0 && maskPixels.uncovered == 0,
+                "\(maskPixels.uncovered) of \(maskPixels.inspected) pixels differ")
+            let secretCheck = blackCount(in: secretPixels)
             context.check(
-                "the export carries no secret text", !ContainerInspector.contains("sk-live", in: data))
+                "every pixel of the secret line is solid black in the export",
+                secretCheck.inspected == Int(secretPixels.width * secretPixels.height) && secretCheck.uncovered == 0,
+                "\(secretCheck.uncovered) of \(secretCheck.inspected) pixels differ")
+            // Container-level check only: the PNG pixel stream is compressed, so this searches the
+            // metadata and text chunks, not the image. Pixel-level absence is asserted above.
+            context.check(
+                "the export's container metadata carries no secret text",
+                !ContainerInspector.contains("sk-live", in: data))
             try await redOnePair(harness, context)
         }
 
