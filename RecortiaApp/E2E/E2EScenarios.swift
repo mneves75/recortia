@@ -67,6 +67,9 @@
             E2EScenario(
                 id: "import-admission", title: "One import read/decode across documents and layers",
                 run: OutputScenarios.importAdmission),
+            E2EScenario(
+                id: "editor-notices", title: "Editor notices are announced and failures stay until dismissed",
+                run: EditorFixScenarios.notices),
         ]
     }
 #endif

@@ -7,6 +7,38 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Outra imagem ainda está sendo aberta. Tente novamente quando terminar." } }
       }
     },
+    "Dismiss": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar"
+          }
+        }
+      }
+    },
+    "Dismiss notice": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss notice"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar aviso"
+          }
+        }
+      }
+    },
     "Opening the image was canceled.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Opening the image was canceled." } },
