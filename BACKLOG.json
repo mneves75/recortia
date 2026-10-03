@@ -6,10 +6,10 @@
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
     "version": "0.10.1",
-    "build": 13,
+    "build": 14,
     "date": "2026-10-03",
     "scope": "FR-01/FR-02/FR-04/FR-09 on every desktop (other Spaces, other apps' fullscreen Spaces, multiple displays) plus fixes from a full-source review: Space policy for every window, framework-window adoption before activation, capture-display/pointer screen choice, capture suspension limited to the active Space, Quit confirmation, capture geometry from the captured snapshot, crop/scroll-memory/chroma/pins/scroll-Stop fixes, IO-01 synchronous drop admission, persistent announced notices, GitHub token cleanup, stale folder bookmarks, release-script hardening.",
-    "status": "verified_source_awaiting_release",
+    "status": "released_beta_and_production_pending",
     "verification": "Branch fix/all-desktops-0.10.1 at f49c247: scripts/check.sh passed (548 package tests, 31 script controls, 526 pt-BR strings, project freshness, strict lint, signed Debug and E2E builds). scripts/e2e.sh --lang all: 40/40 scenarios, 843 assertions, 59 screenshots per language; two activation-dependent checks were recorded SKIPPED because this host declined activation. Physical probe scripts/space-probe/run.sh stale (FORCE=1, one display, 2026-10-03): windows without a Space policy switched the active Space in 6/6 runs; the six configurations Recortia uses switched it in 0/18. Reviews: four module-slice reviews (Codex x2, Claude x2), Standards/Spec two-axis review, independent Codex autoreview (one P2 found and fixed red-first). capture-focus is environment-sensitive on a busy desktop: 5/6 at the 9dc25fa baseline and 7/8 at HEAD.",
     "evidence_paths": [
       ".scratch/check-f49c247.log",
@@ -23,7 +23,19 @@
       "The probe measures window configurations equivalent to Recortia's, not Recortia's own windows; activation was forced to stand in for a user's hotkey or menu click.",
       "Physical hotkeys, TCC prompting, clean-user launch and live GitHub upload remain owner checks.",
       "The editor no longer enters its own fullscreen Space (fullscreen-auxiliary and fullscreen-primary are mutually exclusive)."
-    ]
+    ],
+    "beta_release": {
+      "tag": "v0.10.1-beta1",
+      "commit": "ddf483c67da3f0bc443663972d563f852743745f",
+      "build": 13,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.1-beta1",
+      "dmg_sha256": "fb58e6eaebb905e75ab83789f6dc57a8582f7c68fbabbf6d564399bd20a2c1f8",
+      "notarization": [
+        "app 229447f7-c1f4-48ed-8cf2-2268a0569ee2 Accepted",
+        "dmg fd63f729-e8fc-4227-a67d-4b8fbedbdd26 Accepted"
+      ],
+      "checks": "scripts/release.sh gate passed in a fresh checkout; app and DMG stapled; spctl Notarized Developer ID; mounted app 0.10.1 (13), strict signature, no get-task-allow; served asset hash matches."
+    }
   },
   "previous_shortcut_candidate": {
     "version": "0.10.0-beta3",
