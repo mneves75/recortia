@@ -61,6 +61,9 @@
             E2EScenario(
                 id: "automatic-export", title: "Automatic export cancellation, busy notice and GitHub",
                 run: AutomaticExportScenarios.regression),
+            E2EScenario(
+                id: "export-feedback-routing", title: "Automatic-export failures are never hidden",
+                run: AutomaticExportScenarios.feedbackRouting),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
             E2EScenario(id: "import", title: "Import and import errors", run: OutputScenarios.importFiles),

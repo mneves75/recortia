@@ -193,5 +193,36 @@
             _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             context.check("upload opt-out prevents additional sends", harness.github.snapshots.count == uploads + 3)
         }
+
+        /// A batch's failures are never hidden behind another notice in the editor's single slot.
+        static func feedbackRouting(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let url = try context.unwrap(
+                "fixture URL", URL(string: "https://github.com/fixture/private/blob/main/a.png"))
+            let uploaded = ExportOutcome.uploaded(url)
+            func shown(_ route: (editorNotices: [ExportOutcome], alerts: [ExportFailure])) -> [String] {
+                // The editor keeps only its last notice; every alert is shown.
+                (route.editorNotices.last.map { ["\($0)"] } ?? []) + route.alerts.map { "alert \($0)" }
+            }
+            let single = AppModel.routeAutomaticExport([.failed(.diskFull)], editorOpen: true)
+            context.check(
+                "a lone failure becomes the editor notice",
+                single.editorNotices == [.failed(.diskFull)] && single.alerts.isEmpty,
+                "\(single)")
+            let mixed = AppModel.routeAutomaticExport([.copied, .failed(.diskFull), uploaded], editorOpen: true)
+            context.check(
+                "a failure beside an upload is still shown", shown(mixed).contains { $0.contains("diskFull") },
+                "\(shown(mixed))")
+            context.check(
+                "the upload link is still shown", shown(mixed).contains { $0.contains("uploaded") }, "\(shown(mixed))")
+            let double = AppModel.routeAutomaticExport(
+                [.failed(.diskFull), .failed(.clipboardFailed)], editorOpen: true)
+            context.check(
+                "two failures are both shown",
+                shown(double).contains { $0.contains("diskFull") }
+                    && shown(double).contains { $0.contains("clipboardFailed") },
+                "\(shown(double))")
+            let closed = AppModel.routeAutomaticExport([.failed(.diskFull)], editorOpen: false)
+            context.check("without an editor a failure is an alert", closed.alerts == [.diskFull], "\(closed)")
+        }
     }
 #endif

@@ -264,19 +264,24 @@ final class AppModel: AppActions {
         Task {
             let outcomes = await export.runAutomaticExports(
                 for: session, currentSession: live, uploadConsentID: uploadConsentID)
-            // With the capture's editor open, a failure is a persistent, announced notice there
-            // instead of a modal alert that takes focus from the app the user is in.
-            for case .failed(let failure) in outcomes {
-                if let editor, !editor.isClosed {
-                    editor.reportAutomaticExport(.failed(failure))
-                } else {
-                    showMessage(.export(failure))
-                }
-            }
-            for outcome in outcomes where outcome.uploadedURL != nil {
-                editor?.reportAutomaticExport(outcome)
-            }
+            let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
+            for failure in route.alerts { showMessage(.export(failure)) }
+            for outcome in route.editorNotices { editor?.reportAutomaticExport(outcome) }
         }
+    }
+
+    /// Where automatic-export results are reported. The editor has one notice slot, so it shows a
+    /// failure only when that is the batch's only report; otherwise failures become alerts, so
+    /// none is hidden behind another notice, and an upload link keeps the editor slot.
+    static func routeAutomaticExport(_ outcomes: [ExportOutcome], editorOpen: Bool) -> (
+        editorNotices: [ExportOutcome], alerts: [ExportFailure]
+    ) {
+        var failures: [ExportFailure] = []
+        for case .failed(let failure) in outcomes { failures.append(failure) }
+        let uploads = outcomes.filter { $0.uploadedURL != nil }
+        guard editorOpen else { return ([], failures) }
+        if uploads.isEmpty, failures.count == 1 { return (failures.map { .failed($0) }, []) }
+        return (uploads, failures)
     }
 
     private func startScrollingCapture() {
