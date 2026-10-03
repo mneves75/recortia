@@ -66,7 +66,7 @@ final class DragChipPanel: NSPanel {
         level = .floating
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        collectionBehavior = SpacePolicy.joinsAllSpaces
         let chip = DragChipView(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
             self?.onEnd(outcome)
         }
@@ -83,9 +83,8 @@ final class DragChipPanel: NSPanel {
 
     func presentNearPointer() {
         let pointer = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(pointer) } ?? NSScreen.main
         var origin = NSPoint(x: pointer.x + 16, y: pointer.y - frame.height - 16)
-        if let visible = screen?.visibleFrame {
+        if let visible = ScreenChoice.screen()?.visibleFrame {
             origin.x = min(max(origin.x, visible.minX), visible.maxX - frame.width)
             origin.y = min(max(origin.y, visible.minY), visible.maxY - frame.height)
         }

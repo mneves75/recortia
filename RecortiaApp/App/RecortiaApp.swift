@@ -37,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #else
             let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)
         #endif
-        model = AppModel(settings: settings, services: .live(), shortcutRegistry: KeyboardShortcutsRegistry())
+        model = AppModel(
+            settings: settings, services: .live(settings: settings), shortcutRegistry: KeyboardShortcutsRegistry())
         super.init()
     }
 
@@ -51,6 +52,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ShortcutDefaults.seedIfNeeded(isNewInstall: !model.settings.preferences.hasCompletedOnboarding)
         #endif
         model.launch()
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        model.shouldTerminate() ? .terminateNow : .terminateCancel
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

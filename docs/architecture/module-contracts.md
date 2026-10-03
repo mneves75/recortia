@@ -154,6 +154,12 @@ public enum ExternalLinkPolicy { public static func canOpen(_ url: URL) -> Bool 
 
 ## Features: editor adjustment ownership
 
+Image importing has a separate app-wide owner: the concrete `ImageImporter` in
+`Features/ImportCoordinator.swift`. `ImportCoordinator` and `EditorEnvironment` share its
+instance through the app composition root. It admits one read/decode, returns typed busy or
+cancellation failures, and releases an asset decoded after cancellation. Drag providers are
+lazy readers invoked only inside admission; a waiting queue must not retain image bytes.
+
 `EditorModel` runs on MainActor. `beginContinuousChange() -> UUID` returns the current
 adjustment's identity; `endContinuousChange(_ id: UUID)` closes only that adjustment. Delayed
 color callbacks retain the identity they began with. A slider first ends the preceding adjustment,

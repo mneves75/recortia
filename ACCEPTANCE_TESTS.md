@@ -3,8 +3,9 @@
 **Status:** Acceptance contracts with partial automated verification. Package regressions and
 synthetic native E2E have executed; live hardware, permissions, accessibility, performance, and
 notarized distribution qualification remain pending. A signed local archive/export and installation
-were independently verified for 0.9.1 build 9, with build 7 preserved; clean-user launch and TCC
-checks were not. See README.md and
+were checked for 0.10.0 build 12, with build 10 preserved. Independent artifact and backup
+checks passed; the overall installation verdict is BLOCKED only by absent process audit of
+the installation interval. Clean-user launch and TCC checks were not run. See README.md and
 BACKLOG.json for current evidence.
 
 Every automated test must produce machine-readable results. Image fixtures must declare their generator/source, license, scale, color space, dimensions, and expected output. Use fixed seeds for generated noise/geometry. Use golden outputs only where their provenance and expected meaning are documented; never bless a broken output just to make CI green.
@@ -25,12 +26,31 @@ On each supported OS, capture a region, each display, a chosen window, a delayed
 
 ### CAP-02 — One active capture and no idle recording
 
+Invoke region capture from a different application's Space using the global shortcut and
+from the menu icon. Selection must stay on the current desktop/display, retain Escape,
+Return and Space handling, and avoid activating an editor in another Space. Synthetic
+checks require another foreground PID and continuous activation observation; physical
+hotkeys, fullscreen and multiple displays need the manual desktop matrix.
+
 Rapidly invoke capture 20 times. Assert the declared replacement/cancellation policy, maximum one active session, and no queued background captures. After completion/cancel, instrument zero active SCStreams and no new screenshot buffers while idle. A second process invocation reuses the existing application.
 
 Include transitions between still and scrolling modes: a collecting/armed scrolling session cannot
 start a still capture, and an active still capture cannot start scrolling. Existing visible windows
 hide synchronously before selection and restore after success, denial, cancellation, or interruption;
 already hidden windows stay hidden, child-window ownership survives, and closed windows stay closed.
+
+Successful capture must present the real editor controller, not just create a document in an
+offscreen host. Test a hidden app, inactive presentation, minimized editor reopening, normal
+window level, active-Space/fullscreen-auxiliary policy, and canvas ownership after hosted-view
+layout when activation succeeds (`editor-presentation`). Visibility cannot depend on activation
+being immediate or guaranteed. Qualify actual fullscreen/Space/display transitions separately.
+
+Every window Recortia constructs follows the active Space or joins all Spaces, and framework
+windows are adopted before activation (`space-policy`); capture suspension leaves windows on
+other Spaces untouched (`other-spaces`); screens are chosen by capture display, then pointer,
+including negative origins (`screen-choice`). Physical qualification: with another app in a
+fullscreen Space and a Recortia window left on a desktop Space, activating Recortia must not
+change the active Space (`scripts/space-probe/run.sh stale <variant>`; 0 switches required).
 
 ### GEO-01 — Mixed-DPI desktop matrix
 
@@ -46,6 +66,12 @@ For generated valid transforms, round trips agree within the documented subpixel
 
 Test valid PNG/JPEG; truncated headers; corrupt payloads; oversized declared dimensions; decompression bombs; unsupported animation; unexpected orientation; malicious metadata; a 64 MiB boundary; and a 40 MP boundary. Reject unsafe inputs without unbounded allocation, network access, source mutation, or app crash. Clipboard input occurs only after Paste.
 
+Suspend an admitted read/decode and issue simultaneous Open/Paste/Drop and Add Image requests
+across editor windows. Only one operation reads bytes; excess requests report busy without
+clearing the active state. Cancel the admitted request: hold its slot until underlying work
+returns, discard/release its result, and allow a subsequent import. Verify the shared app wiring
+with the synthetic `import-admission` E2E scenario.
+
 ### EDIT-01 — Deterministic editor replay
 
 Replay a fixed script creating each annotation, editing text, dragging/resizing/duplicating, changing z-order, cropping, and resizing the document. Undo every operation, redo it, and verify model equality and expected render. A complete pointer gesture is one undo group. Exercise the undo-budget boundary without breaking remaining commands.
@@ -57,6 +83,12 @@ an image's inspector Height preserves its aspect ratio and refreshes both size f
 ### EDIT-02 — Zoom, focus, and text composition
 
 At 25%, 100%, 200%, and 800% zoom, the same document-space operation produces the same image geometry. Test keyboard nudging, panning, and hit targets. Accented Portuguese, emoji, right-to-left text, multiline editing, and an input method do not lose characters or accidentally trigger tool shortcuts. Text layout regressions use per-OS baselines where system typography differs.
+
+Hold Space, transfer first-responder ownership to a sibling text view, release Space there,
+then return and draw a rectangle: annotation creation and viewport offset stay correct.
+Repeat for window key loss, app deactivation, and mid-pan interruption. An unrelated window's
+notification must not interrupt the canvas; normal held/released Space remains a control.
+The synthetic `canvas-focus` scenario covers these cases; live IME/VoiceOver checks remain separate.
 
 ### PIN-01 — Reference lifecycle
 
@@ -157,6 +189,28 @@ With explicit release approval, build from the reviewed tag, sign, notarize, sta
 
 - **0.1:** PERM, CAP, GEO, IO, EDIT, PIN, RED, EXP, OCR, UX, PRIV, relevant PERF and REL cases pass. No scrolling or pro-tool parity claim.
 - **1.0:** All v1 cases pass, with a published scroll compatibility matrix and complete EN/PT-BR/accessibility review.
-- **Post-1.0:** NET/AUTO/AI tests must be specified and approved before implementing those features. Existing privacy/export gates continue to apply.
+- **Extensions:** NET-01 covers owner-authorized GitHub upload (2026-10-01, ADR-006).
+  AUTO/AI and other providers remain deferred. Existing privacy/export gates continue to apply.
+
+### NET-01 — Optional GitHub upload
+
+Suspend an upload before its write, revoke consent and enable the same destination again.
+The old capture must never be sent. Repeat with destination away/back, preferences reset,
+and revocation during rendering or an earlier automatic-copy step. Unrelated settings must
+not invalidate valid consent. New captures can use the newly granted consent.
+
+Fresh installs and migrated settings perform no requests. Saving a destination/token does not
+enable upload; unsealed consent is dropped. Enabling requires separate confirmation naming
+the destination and explaining pre-edit upload and Git history retention.
+
+Exercise public/archived/malformed/moved repositories, invalid destination/header injection,
+missing/inaccessible tokens, denial/conflict/rate-limit/server errors, 8 MiB image and 2 MiB
+response limits, redirect refusal, cancellation before/after PUT, stale revision/privacy/consent,
+and same-intent retry. No overwrite, raw-image fallback, retry after indeterminate completion,
+or promise of remote deletion is allowed.
+
+E2E: real capture→pipeline→synthetic remote sink, cancellation of copy→save→upload, busy notice,
+opt-out and native settings EN/PT-BR. RED/EXP/PRIV remain binding. Live credentials/transfers
+require owner testing and are separate from synthetic evidence.
 
 All unexecuted or hardware-dependent cases remain explicitly `unrun`/`awaiting_manual_validation`. A passing unit-test suite does not convert them to passed.

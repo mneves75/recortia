@@ -1,6 +1,6 @@
 #!/bin/zsh
-# Builds, signs, notarizes, and staples the Developer ID disk image from a reviewed tag, and writes
-# a manifest that ties it to its source, gate result, toolchain, and dependencies (SPEC.md §12).
+# Builds the Developer ID app, notarizes and staples it, then builds, signs, notarizes, and staples
+# the disk image from that app, from a reviewed tag, and writes a manifest that ties it to its source, gate result, toolchain, and dependencies (SPEC.md §12).
 # Owner-only: needs the Developer ID identity, the "Recortia Developer ID" provisioning profile, and
 # an `asc` notary profile.
 # Usage: scripts/release.sh            release the tag at HEAD (v<MARKETING_VERSION>[-betaN])
@@ -104,7 +104,7 @@ if [[ "$signature" != *"flags=0x10000(runtime)"* ]]; then
   echo "release: Hardened Runtime is not enabled" >&2
   exit 1
 fi
-scripts/check-release-binary.sh "$app/Contents/MacOS/Recortia"
+scripts/check-release-binary.sh "$app"
 notice="$src/RecortiaApp/Resources/KeyboardShortcuts-LICENSE.txt"
 upstream_notice="$out/spm/checkouts/KeyboardShortcuts/license"
 bundled_notice="$app/Contents/Resources/KeyboardShortcuts-LICENSE.txt"
@@ -115,6 +115,20 @@ fi
 if ! cmp -s "$src/LICENSE" "$app/Contents/Resources/Recortia-LICENSE.txt"; then
   echo "release: the bundled Recortia license is missing or differs from the reviewed source" >&2
   exit 1
+fi
+
+# Notarize and staple the app itself before it goes into the image, so a copy dragged out of the DMG
+# still passes Gatekeeper offline. The DMG is notarized and stapled again below.
+if (( ! dry_run )); then
+  echo "== notarize the app"
+  app_zip="$out/Recortia-$label-app.zip"
+  ditto -c -k --keepParent "$app" "$app_zip"
+  asc notarization submit --file "$app_zip" --wait --timeout 1h --output table
+  xcrun stapler staple "$app"
+  xcrun stapler validate "$app"
+  # Stapling adds a ticket to the bundle; the signature seal and Gatekeeper assessment must still hold.
+  codesign --verify --deep --strict "$app"
+  spctl --assess --type execute --verbose=2 "$app"
 fi
 
 echo "== disk image"

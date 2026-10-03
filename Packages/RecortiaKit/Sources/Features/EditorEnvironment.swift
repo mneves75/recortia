@@ -30,6 +30,7 @@ public struct EditorEnvironment {
     public let qrDecoder: any QRDecodingService
     public let assets: any ImageAssetService
     public let input: any ImageInputService
+    public let imageImporter: ImageImporter
     public let pins: PinsModel
     public let textClipboard: any TextClipboardService
     public let links: any ExternalLinkOpenerService
@@ -39,7 +40,7 @@ public struct EditorEnvironment {
         renderer: any RenderService, export: ExportCoordinator, folders: any SaveFolderService,
         textRecognition: any TextRecognitionService, qrDecoder: any QRDecodingService, assets: any ImageAssetService,
         input: any ImageInputService, pins: PinsModel, textClipboard: any TextClipboardService,
-        links: any ExternalLinkOpenerService, settings: SettingsStore
+        links: any ExternalLinkOpenerService, settings: SettingsStore, imageImporter: ImageImporter? = nil
     ) {
         self.renderer = renderer
         self.export = export
@@ -48,6 +49,7 @@ public struct EditorEnvironment {
         self.qrDecoder = qrDecoder
         self.assets = assets
         self.input = input
+        self.imageImporter = imageImporter ?? ImageImporter(input: input, assets: assets)
         self.pins = pins
         self.textClipboard = textClipboard
         self.links = links

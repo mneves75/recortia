@@ -79,6 +79,9 @@ public final class ShortcutStatusModel {
     /// Called whenever a refresh holds a shortcut (a launch, a recording forced onto macOS's keys, a
     /// press macOS reclaimed), so the caller can watch for macOS to let the keys go.
     @ObservationIgnored public var onHold: (() -> Void)?
+    /// Called when the person looks at shortcut settings, so a held key they free next is
+    /// noticed quickly instead of at the watch's backed-off interval.
+    @ObservationIgnored public var onAttention: (() -> Void)?
 
     public init(registry: any ShortcutRegistry, names: [String]) {
         self.registry = registry
@@ -92,6 +95,12 @@ public final class ShortcutStatusModel {
 
     public func refreshAll() {
         for name in names { refresh(named: name) }
+    }
+
+    /// The shortcut settings became visible: re-check now and resume quick checks.
+    public func noteUserAttention() {
+        refreshAll()
+        onAttention?()
     }
 
     /// Keep the old and new combinations unregistered while assignments are changed. The

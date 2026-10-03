@@ -12,29 +12,48 @@ extension EditorModel {
     /// scaled down uniformly to fit the canvas when it is larger. Needs no screen access.
     @discardableResult
     public func addImageLayer(from source: ImportSource) async -> Bool {
+        await addImageLayer(readSource: { source })
+    }
+
+    /// A drop's bytes are requested only after the shared importer admits its lazy reader.
+    @discardableResult
+    public func addImageLayer(readSource: () throws(ImportFailure) -> ImportSource) async -> Bool {
         guard !isClosed else { return false }
-        let info: ImageAssetInfo
-        do throws(ImportError) {
-            let data: Data
-            let origin: AssetOrigin
-            switch source {
-            case .file(let url), .droppedFile(let url):
-                data = try await environment.input.readFile(at: url)
-                origin = .imported
-            case .pasteboard:
-                guard let pasted = environment.input.readPasteboardImage() else {
-                    post(.importFailed(.nothingToPaste))
-                    return false
-                }
-                data = pasted
-                origin = .pasted
-            case .droppedData(let dropped):
-                data = dropped
-                origin = .imported
-            }
-            info = try await environment.assets.importImage(data, origin: origin)
+        let admission: ImportAdmission
+        do throws(ImportFailure) {
+            admission = try environment.imageImporter.admit(readSource: readSource)
         } catch {
-            post(.importFailed(ImportFailure(error)))
+            post(.importFailed(error))
+            return false
+        }
+        return await addImageLayer(admitted: admission)
+    }
+
+    /// Admits a drop while it is performed, so its pasteboard is read while still valid and only
+    /// after the shared importer has a free slot (IO-01). Posts the failure and returns nil when
+    /// the drop is refused; otherwise pass the admission to `addImageLayer(admitted:)`.
+    public func admitDroppedImage(readSource: () throws(ImportFailure) -> ImportSource) -> ImportAdmission? {
+        guard !isClosed else { return nil }
+        do throws(ImportFailure) {
+            return try environment.imageImporter.admit(readSource: readSource)
+        } catch {
+            post(.importFailed(error))
+            return nil
+        }
+    }
+
+    /// Decodes an admitted image and adds it as a layer. Always frees the importer's slot.
+    @discardableResult
+    public func addImageLayer(admitted admission: ImportAdmission) async -> Bool {
+        guard !isClosed else {
+            environment.imageImporter.release(admission)
+            return false
+        }
+        let info: ImageAssetInfo
+        do throws(ImportFailure) {
+            info = try await environment.imageImporter.importImage(admission)
+        } catch {
+            post(.importFailed(error))
             return false
         }
         guard !isClosed else {

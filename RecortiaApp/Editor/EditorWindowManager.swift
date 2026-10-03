@@ -56,6 +56,9 @@ final class EditorWindowManager {
 
     var openDocumentIDs: [DocumentID] { Array(controllers.keys) }
 
+    /// Editors whose edits were never copied, saved, dragged, or pinned.
+    var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
+
     func model(for id: DocumentID) -> EditorModel? { controllers[id]?.model }
 }
 
@@ -67,7 +70,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     private let canvas: EditorCanvasView
     private var discardConfirmed = false
 
-    init(model: EditorModel) {
+    init(model: EditorModel, noticePresentation: EditorNoticePresentation = EditorNoticePresentation()) {
         self.model = model
         canvas = EditorCanvasView(model: model)
         let window = NSWindow(
@@ -75,15 +78,18 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = String(localized: "Recortia Editor", table: "Editor")
-        // Follows the active Space instead of pulling the user back to another one (FR-01).
-        window.collectionBehavior = [.moveToActiveSpace, .fullScreenPrimary]
+        // The capture result follows the current Space, including another app's fullscreen
+        // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
+        window.collectionBehavior = SpacePolicy.followsActiveSpace
         window.contentMinSize = NSSize(width: 980, height: 560)
         window.tabbingMode = .disallowed
         super.init(window: window)
         window.delegate = self
         canvas.actions = self
-        let root = EditorRootView(model: model, canvas: canvas, actions: self)
+        let root = EditorRootView(
+            model: model, canvas: canvas, actions: self, noticePresentation: noticePresentation)
         window.contentViewController = NSHostingController(rootView: root)
+        window.initialFirstResponder = canvas
         window.setContentSize(Self.initialContentSize(for: model.document, on: targetScreen()))
     }
 
@@ -93,33 +99,35 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
     func present() {
         guard let window else { return }
+        if NSApp.isHidden { NSApp.unhideWithoutActivation() }
+        if window.isMiniaturized { window.deminiaturize(nil) }
         if !window.isVisible, let visible = targetScreen()?.visibleFrame {
             let size = window.frame.size
             window.setFrameOrigin(NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
         }
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        // SwiftUI attaches the canvas lazily. It must belong to this window before AppKit
+        // can accept it as first responder, including on the first capture after launch.
+        window.contentView?.layoutSubtreeIfNeeded()
         window.makeFirstResponder(canvas)
+        // Cooperative activation is asynchronous and can be declined. A completed, explicit
+        // capture must still show its result; normal-level ordering does not force activation.
+        if !NSApp.isActive { window.orderFrontRegardless() }
     }
 
     private func targetScreen() -> NSScreen? {
         let assets = model.document.assets.values
+        var displayID: CGDirectDisplayID?
         if assets.count == 1, case .captured(let geometry)? = assets.first?.origin {
-            let displayID: UInt32 =
+            displayID =
                 switch geometry.source {
                 case .display(let id): id
                 case .window(_, let id): id
                 case .region(let id): id
                 }
-            let key = NSDeviceDescriptionKey("NSScreenNumber")
-            if let screen = NSScreen.screens.first(where: {
-                ($0.deviceDescription[key] as? NSNumber)?.uint32Value == displayID
-            }) {
-                return screen
-            }
         }
-        let pointer = NSEvent.mouseLocation
-        return NSScreen.screens.first { $0.frame.contains(pointer) } ?? NSScreen.main
+        return ScreenChoice.screen(displayID: displayID)
     }
 
     /// Room for the image at its captured point size plus the side panels, within the screen.
@@ -132,6 +140,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         let width = min(max(document.canvasSize.width / scale + chromeWidth, 980), visible.width * 0.92)
         let height = min(max(document.canvasSize.height / scale + chromeHeight, 560), visible.height * 0.92)
         return NSSize(width: width, height: height)
+    }
+
+    /// Commits in-progress text first, so typed text counts as an edit.
+    func hasUnexportedEdits() -> Bool {
+        canvas.finishTextEditing(commit: true)
+        return model.isDirty && !model.isClosed
     }
 
     // MARK: NSWindowDelegate

@@ -1,6 +1,642 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Destination saved, but the previous destination's token could not be removed from Keychain.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination saved, but the previous destination's token could not be removed from Keychain."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino salvo, mas o token do destino anterior não pôde ser removido do Keychain."
+          }
+        }
+      }
+    },
+    "Quit and discard your edits?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit and discard your edits?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair e descartar suas edições?"
+          }
+        }
+      }
+    },
+    "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma imagem aberta tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+          }
+        }
+      }
+    },
+    "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld imagens abertas têm alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+          }
+        }
+      }
+    },
+    "Quit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair"
+          }
+        }
+      }
+    },
+    "Another image is still being opened. Try again when it finishes.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Another image is still being opened. Try again when it finishes." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Outra imagem ainda está sendo aberta. Tente novamente quando terminar." } }
+      }
+    },
+    "Opening the image was canceled.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Opening the image was canceled." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "A abertura da imagem foi cancelada." } }
+      }
+    },
+    "GitHub": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub"
+          }
+        }
+      }
+    },
+    "Repository owner": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repository owner"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proprietário do repositório"
+          }
+        }
+      }
+    },
+    "Private repository": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private repository"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repositório privado"
+          }
+        }
+      }
+    },
+    "Fine-grained GitHub token": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fine-grained GitHub token"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token de acesso limitado do GitHub"
+          }
+        }
+      }
+    },
+    "Save destination and token": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save destination and token"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar destino e token"
+          }
+        }
+      }
+    },
+    "GitHub destination": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub destination"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino no GitHub"
+          }
+        }
+      }
+    },
+    "Automatic upload": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic upload"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envio automático"
+          }
+        }
+      }
+    },
+    "Upload automatically after capture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload automatically after capture"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar automaticamente após a captura"
+          }
+        }
+      }
+    },
+    "Remove destination and token": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove destination and token"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover destino e token"
+          }
+        }
+      }
+    },
+    "Automatic upload is off. Save a destination and token first.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic upload is off. Save a destination and token first."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O envio automático está desativado. Salve primeiro um destino e um token."
+          }
+        }
+      }
+    },
+    "Enable automatic upload to GitHub?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable automatic upload to GitHub?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar o envio automático para o GitHub?"
+          }
+        }
+      }
+    },
+    "Enable automatic upload": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable automatic upload"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar envio automático"
+          }
+        }
+      }
+    },
+    "Destination saved. Enable automatic upload separately.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination saved. Enable automatic upload separately."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino salvo. Ative o envio automático separadamente."
+          }
+        }
+      }
+    },
+    "Use a dedicated private repository and a fine-grained token restricted to it, with Contents: read and write. The token stays in Keychain. Each upload creates a commit in screenshots/.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use a dedicated private repository and a fine-grained token restricted to it, with Contents: read and write. The token stays in Keychain. Each upload creates a commit in screenshots/."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use um repositório privado dedicado e um token limitado a ele, com permissão Contents: leitura e escrita. O token fica nas Chaves. Cada envio cria um commit em screenshots/."
+          }
+        }
+      }
+    },
+    "When enabled, each still capture is uploaded before later edits or redaction. Uploads require a private repository and are limited to 8 MB. Git history retains earlier images; turning this off or closing Recortia does not delete remote copies.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When enabled, each still capture is uploaded before later edits or redaction. Uploads require a private repository and are limited to 8 MB. Git history retains earlier images; turning this off or closing Recortia does not delete remote copies."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quando ativado, cada captura estática é enviada antes de edições ou tarjas posteriores. Os envios exigem um repositório privado e têm limite de 8 MB. O histórico do Git mantém imagens anteriores; desativar o envio ou fechar o Recortia não exclui cópias remotas."
+          }
+        }
+      }
+    },
+    "Every new still capture will be sent to %@/%@ before you can edit or redact it. Remote copies cannot be recalled.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every new still capture will be sent to %@/%@ before you can edit or redact it. Remote copies cannot be recalled."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada nova captura estática será enviada para %1$@/%2$@ antes que você possa editar ou aplicar tarjas. Não é possível recuperar as cópias remotas."
+          }
+        }
+      }
+    },
+    "%@/%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/%@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@/%2$@"
+          }
+        }
+      }
+    },
+    "View on GitHub": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View on GitHub"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver no GitHub"
+          }
+        }
+      }
+    },
+    "Enter a valid GitHub owner and repository name.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a valid GitHub owner and repository name."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informe um proprietário e um nome de repositório válidos no GitHub."
+          }
+        }
+      }
+    },
+    "Save a GitHub token in Settings before uploading.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save a GitHub token in Settings before uploading."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salve um token do GitHub nos Ajustes antes de enviar."
+          }
+        }
+      }
+    },
+    "The GitHub token could not be accessed in Keychain.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The GitHub token could not be accessed in Keychain."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível acessar o token do GitHub nas Chaves."
+          }
+        }
+      }
+    },
+    "Upload refused: the GitHub repository is public.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload refused: the GitHub repository is public."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envio recusado: o repositório do GitHub é público."
+          }
+        }
+      }
+    },
+    "GitHub uploads are limited to 8 MB. Reduce the export scale.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub uploads are limited to 8 MB. Reduce the export scale."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os envios ao GitHub têm limite de 8 MB. Reduza a escala de exportação."
+          }
+        }
+      }
+    },
+    "GitHub denied access. Check the private repository and token permissions.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub denied access. Check the private repository and token permissions."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O GitHub negou o acesso. Confira o repositório privado e as permissões do token."
+          }
+        }
+      }
+    },
+    "GitHub rate limit reached. Try again later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub rate limit reached. Try again later."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite de requisições do GitHub atingido. Tente novamente mais tarde."
+          }
+        }
+      }
+    },
+    "GitHub could not create this file. No existing file was replaced.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub could not create this file. No existing file was replaced."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O GitHub não conseguiu criar este arquivo. Nenhum arquivo existente foi substituído."
+          }
+        }
+      }
+    },
+    "Upload stopped because the image or upload consent changed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload stopped because the image or upload consent changed."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O envio parou porque a imagem ou o consentimento de envio mudou."
+          }
+        }
+      }
+    },
+    "Upload canceled before sending the image.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload canceled before sending the image."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envio cancelado antes de enviar a imagem."
+          }
+        }
+      }
+    },
+    "GitHub could not be reached. No image upload was started.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub could not be reached. No image upload was started."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível acessar o GitHub. Nenhum envio de imagem foi iniciado."
+          }
+        }
+      }
+    },
+    "The upload may have reached GitHub. Check the repository before trying again; remote copies cannot be recalled.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The upload may have reached GitHub. Check the repository before trying again; remote copies cannot be recalled."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O envio pode ter chegado ao GitHub. Confira o repositório antes de tentar novamente; não é possível recuperar as cópias remotas."
+          }
+        }
+      }
+    },
+    "GitHub returned an unexpected response. Upload stopped.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub returned an unexpected response. Upload stopped."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O GitHub retornou uma resposta inesperada. O envio parou."
+          }
+        }
+      }
+    },
+    "Automatic export was skipped because another export is still running.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic export was skipped because another export is still running."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A exportação automática foi ignorada porque outra exportação ainda está em andamento."
+          }
+        }
+      }
+    },
+    "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A captura, a edição e o reconhecimento são locais neste Mac. O envio opcional ao GitHub ocorre somente quando você o ativa."
+          }
+        }
+      }
+    },
+    "Recortia keeps no local screenshot history. Optional GitHub upload sends still captures only after separate setup and consent.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortia keeps no local screenshot history. Optional GitHub upload sends still captures only after separate setup and consent."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Recortia não mantém um histórico local de capturas. O envio opcional ao GitHub envia capturas estáticas somente após configuração e consentimento separados."
+          }
+        }
+      }
+    },
     "Show Capture Menu": {
       "localizations": {
         "en": {
@@ -609,18 +1245,18 @@
         }
       }
     },
-    "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps.": {
+    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps."
+            "value": "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ambos vêm desativados. A cópia e o salvamento automáticos acontecem logo após a captura, antes de qualquer edição ou tarja que você fizer depois, e não podem ser desfeitos em outros apps."
+            "value": "Ambos vêm desativados. A cópia e o salvamento automáticos valem para capturas estáticas: acontecem logo após a captura, antes de qualquer edição ou tarja que você fizer depois, e não podem ser desfeitos em outros apps. Capturas com rolagem abrem para revisão."
           }
         }
       }
@@ -2577,6 +3213,22 @@
         }
       }
     },
+    "The memory limit for scrolling capture was reached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The memory limit for scrolling capture was reached."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O limite de memória da captura com rolagem foi atingido."
+          }
+        }
+      }
+    },
     "The clipboard could not be updated.": {
       "localizations": {
         "en": {
@@ -3085,6 +3737,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "O macOS não alterou o item de início de sessão. Confira em Ajustes do Sistema › Geral › Itens de Início e Extensões."
+          }
+        }
+      }
+    },
+    "Check the GitHub upload": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the GitHub upload"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifique o upload no GitHub"
           }
         }
       }

@@ -36,6 +36,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
                 table: "Editor"))
         loop = ObservationLoop { [weak self] in self?.modelChanged() }
         registerForDraggedTypes(Self.droppableTypes)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(resetTransientPan), name: NSApplication.didResignActiveNotification,
+            object: NSApp)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @available(*, unavailable)
@@ -50,25 +57,23 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     ]
     static let droppableTypes: [NSPasteboard.PasteboardType] = [.fileURL] + imageDataTypes
 
-    private enum DroppedImage {
-        case file(URL)
-        case data(Data)
-    }
-
     private static let fileURLOptions: [NSPasteboard.ReadingOptionKey: Any] = [
         .urlReadingFileURLsOnly: true,
         .urlReadingContentsConformToTypes: [UTType.png.identifier, UTType.jpeg.identifier],
     ]
 
-    /// Reads the dropped URL or image bytes; called only once the drop is performed.
-    private func droppedImage(from pasteboard: NSPasteboard) -> DroppedImage? {
+    /// The dropped file URL, or the dropped image bytes. Runs only inside the importer's admission,
+    /// while the drop is performed: a busy importer rejects before this reads anything, and the
+    /// drag pasteboard can change or clear once `performDragOperation` returns. A file URL carries
+    /// no bytes; the importer reads the file afterwards.
+    private func dropSource(from pasteboard: NSPasteboard) throws(ImportFailure) -> ImportSource {
         if let url = (pasteboard.readObjects(forClasses: [NSURL.self], options: Self.fileURLOptions) as? [URL])?.first {
-            return .file(url)
+            return .droppedFile(url)
         }
         for type in Self.imageDataTypes {
-            if let data = pasteboard.data(forType: type) { return .data(data) }
+            if let data = pasteboard.data(forType: type) { return .droppedData(data) }
         }
-        return nil
+        throw .unsupportedFormat
     }
 
     /// Hovering inspects only the offered types and file URLs; image bytes are never loaded
@@ -82,13 +87,14 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        guard let dropped = droppedImage(from: sender.draggingPasteboard) else { return false }
-        let source: ImportSource =
-            switch dropped {
-            case .file(let url): .droppedFile(url)
-            case .data(let data): .droppedData(data)
-            }
-        Task { await model.addImageLayer(from: source) }
+        guard draggingEntered(sender) == .copy else { return false }
+        let pasteboard = sender.draggingPasteboard
+        guard
+            let admission = model.admitDroppedImage(readSource: { () throws(ImportFailure) in
+                try self.dropSource(from: pasteboard)
+            })
+        else { return true }  // refused: the model posted why
+        Task { await model.addImageLayer(admitted: admission) }
         return true
     }
 
@@ -137,7 +143,27 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        resetTransientPan()
+        NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: nil)
+        if let window {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(resetTransientPan), name: NSWindow.didResignKeyNotification, object: window)
+        }
         reportViewport()
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { resetTransientPan() }
+        return resigned
+    }
+
+    /// Space's key-up can go to a text editor or another app after keyboard ownership changes.
+    /// Drop only transient pan input; native text composition and document gestures stay independent.
+    @objc private func resetTransientPan() {
+        isSpaceDown = false
+        panAnchor = nil
+        window?.invalidateCursorRects(for: self)
     }
 
     private func reportViewport() {

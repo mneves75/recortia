@@ -26,6 +26,8 @@ struct SettingsView: View {
                 .tabItem { Label("Capture", systemImage: "camera.viewfinder") }
             ExportSettingsTab(settings: model.settings, folders: model.features?.services.folders)
                 .tabItem { Label("Export", systemImage: "square.and.arrow.up") }
+            GitHubUploadSettings(settings: model.settings, credentials: model.features?.services.githubCredentials)
+                .tabItem { Label("GitHub", systemImage: "icloud.and.arrow.up") }
             PrivacySettingsTab()
                 .tabItem { Label("Privacy", systemImage: "hand.raised") }
             OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages)
@@ -105,6 +107,7 @@ struct ShortcutsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { status.noteUserAttention() }
     }
 }
 
@@ -188,7 +191,7 @@ struct ExportSettingsTab: View {
                 Text("Automatic export")
             } footer: {
                 Text(
-                    "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps."
+                    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
                 )
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -238,7 +241,7 @@ struct PrivacySettingsTab: View {
         Form {
             Section("What stays on this Mac") {
                 Text(
-                    "Screenshots, edits, and recognized text exist only in memory while you work. Recortia keeps no screenshot history and uploads nothing."
+                    "Recortia keeps no local screenshot history. Optional GitHub upload sends still captures only after separate setup and consent."
                 )
                 Text(
                     "Recortia saves only these settings. It writes an image to disk or the clipboard only when you choose Copy, Save, drag an image out, or turn on automatic export."

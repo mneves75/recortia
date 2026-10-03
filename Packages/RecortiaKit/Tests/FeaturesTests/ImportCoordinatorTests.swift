@@ -97,6 +97,51 @@ struct ImportCoordinatorTests {
         _ = try await h.coordinator.importImage(from: .droppedData(Data([1]))).get()
         #expect(h.coordinator.lastFailure == nil)
     }
+
+    @Test("An overlapping import is rejected before reading bytes and cannot clear the active state")
+    func overlappingImport() async throws {
+        let h = ImportHarness()
+        let pending = Pending<Void>()
+        h.assets.pendingImport = pending
+        let first = Task { await h.coordinator.importImage(from: .droppedData(Data([1]))) }
+        await waitFor("first import decoding") { pending.waiterCount == 1 }
+        h.input.pasteboardData = Data([2])
+        var overlap: Result<DocumentSession, ImportFailure>?
+        let second = Task { overlap = await h.coordinator.importImage(from: .pasteboard) }
+        await drain()
+        #expect(h.input.pasteboardReads == 0)
+        #expect(overlap?.failureValue != nil)
+        #expect(h.coordinator.isImporting)
+        pending.resolve(())
+        await drain()
+        while pending.resolve(()) { await drain() }
+        _ = try await first.value.get()
+        await second.value
+        #expect(h.imported.count == 1)
+        #expect(!h.coordinator.isImporting)
+        h.assets.pendingImport = nil
+        _ = try await h.coordinator.importImage(from: .droppedData(Data([3]))).get()
+        #expect(h.imported.count == 2)
+    }
+
+    @Test("Canceling an admitted decode discards its asset before releasing the slot")
+    func cancelledImport() async throws {
+        let h = ImportHarness()
+        let pending = Pending<Void>()
+        h.assets.pendingImport = pending
+        let task = Task { await h.coordinator.importImage(from: .droppedData(Data([1]))) }
+        await waitFor("admitted decode") { pending.waiterCount == 1 }
+        task.cancel()
+        #expect(h.coordinator.isImporting)
+        pending.resolve(())
+        #expect(await task.value.failureValue != nil)
+        #expect(h.imported.isEmpty)
+        #expect(h.assets.released.count == 1)
+        #expect(!h.coordinator.isImporting)
+        h.assets.pendingImport = nil
+        _ = try await h.coordinator.importImage(from: .droppedData(Data([2]))).get()
+        #expect(h.imported.count == 1)
+    }
 }
 
 @Suite("Support models")

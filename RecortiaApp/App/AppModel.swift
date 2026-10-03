@@ -23,7 +23,7 @@ struct FeatureModels {
             clock: services.clock, settings: settings)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
-            folders: services.folders, clock: services.clock, settings: settings)
+            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
         importer = ImportCoordinator(input: services.input, assets: services.assets)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
@@ -68,14 +68,23 @@ final class AppModel: AppActions {
     /// Re-checks held shortcuts until macOS lets their keys go (ADR-005).
     @ObservationIgnored private var heldShortcutWatch: Task<Void, Never>?
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var resignObserver: (any NSObjectProtocol)?
+    /// Gives Settings, About and alert windows a Space policy before the app activates (FR-01).
+    @ObservationIgnored private let spacePolicy = SpacePolicyMonitor()
     @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
+    /// Open editors whose edits were never copied, saved, dragged, or pinned.
+    @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
+    /// Asks whether to quit and discard those edits; the argument is how many editors have them.
+    @ObservationIgnored private let confirmQuit: @MainActor (Int) -> Bool
 
     init(
         settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry,
-        showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) }
+        showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
+        confirmQuit: @escaping @MainActor (Int) -> Bool = { MessagePresenter.confirmDiscardOnQuit(count: $0) }
     ) {
         self.settings = settings
         self.showMessage = showMessage
+        self.confirmQuit = confirmQuit
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = services.map { FeatureModels(services: $0, settings: settings) }
@@ -84,8 +93,10 @@ final class AppModel: AppActions {
                 self?.isStartingScrollingCapture == true
             }
         }
+        spacePolicy.start()
         // Every path that holds a shortcut starts the watch, including a recording in Settings.
         shortcutStatus.onHold = { [weak self] in self?.watchHeldShortcuts() }
+        shortcutStatus.onAttention = { [weak self] in self?.watchHeldShortcuts(restart: true) }
     }
 
     /// Called once from `applicationDidFinishLaunching`. Requests no permission.
@@ -115,7 +126,7 @@ final class AppModel: AppActions {
         case .scrollingCapture:
             return features != nil && openDocument != nil && features?.capture.state.isActive == false
         case .openImage, .pasteImage:
-            return features != nil && openDocument != nil
+            return features != nil && openDocument != nil && features?.importer.isImporting == false
         case .repeatLastRegion:
             return features?.capture.hasRepeatRegion == true && openDocument != nil
                 && features?.scroll.state.isActive == false
@@ -159,6 +170,13 @@ final class AppModel: AppActions {
         }
     }
 
+    /// Whether the app may terminate now (`applicationShouldTerminate`). Termination never asks
+    /// each editor's `windowShouldClose`, so unexported edits are confirmed here (FR-04).
+    func shouldTerminate() -> Bool {
+        let count = unexportedEditCount()
+        return count == 0 || confirmQuit(count)
+    }
+
     func showSettings() {
         NSApp.activate()
         openSettingsWindow?()
@@ -195,8 +213,9 @@ final class AppModel: AppActions {
             renderer: services.renderer, export: features.export, folders: services.folders,
             textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
             input: services.input, pins: features.pins, textClipboard: PasteboardTextClipboard(),
-            links: WorkspaceLinkOpener(), settings: settings)
+            links: WorkspaceLinkOpener(), settings: settings, imageImporter: features.importer.imageImporter)
         openDocument = { [editors] session in editors.open(session, environment: environment) }
+        unexportedEditCount = { [editors] in editors.unexportedEditCount }
         let monitor = SystemEventMonitor { event in
             switch event {
             case .displaysChanged:
@@ -214,7 +233,7 @@ final class AppModel: AppActions {
         }
     }
 
-    private func handleCapture(_ completion: CaptureCompletion) {
+    func handleCapture(_ completion: CaptureCompletion) {
         switch completion.purpose {
         case .edit:
             let editor = openDocument?(completion.session)
@@ -230,9 +249,12 @@ final class AppModel: AppActions {
     private func runAutomaticExports(for session: DocumentSession, editor: EditorModel?) {
         guard let export = features?.export else { return }
         let preferences = settings.preferences
-        guard preferences.autoCopy || preferences.autoSave else { return }
+        let uploadConsentID = settings.githubUploadConsentID
+        guard preferences.autoCopy || preferences.autoSave || preferences.githubUpload?.automatic == true else {
+            return
+        }
         let opened = editor != nil
-        let live: () -> DocumentSession? = { [weak editor] in
+        let live: @MainActor @Sendable () -> DocumentSession? = { [weak editor] in
             // No editor wired: the capture itself is current. An editor that closed (or was
             // released) makes the export stale.
             guard opened else { return session }
@@ -240,11 +262,26 @@ final class AppModel: AppActions {
             return editor.session
         }
         Task {
-            let outcomes = await export.runAutomaticExports(for: session, currentSession: live)
-            for case .failed(let failure) in outcomes {
-                showMessage(.export(failure))
-            }
+            let outcomes = await export.runAutomaticExports(
+                for: session, currentSession: live, uploadConsentID: uploadConsentID)
+            let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
+            for failure in route.alerts { showMessage(.export(failure)) }
+            for outcome in route.editorNotices { editor?.reportAutomaticExport(outcome) }
         }
+    }
+
+    /// Where automatic-export results are reported. The editor has one notice slot, so it shows a
+    /// failure only when that is the batch's only report; otherwise failures become alerts, so
+    /// none is hidden behind another notice, and an upload link keeps the editor slot.
+    static func routeAutomaticExport(_ outcomes: [ExportOutcome], editorOpen: Bool) -> (
+        editorNotices: [ExportOutcome], alerts: [ExportFailure]
+    ) {
+        var failures: [ExportFailure] = []
+        for case .failed(let failure) in outcomes { failures.append(failure) }
+        let uploads = outcomes.filter { $0.uploadedURL != nil }
+        guard editorOpen else { return ([], failures) }
+        if uploads.isEmpty, failures.count == 1 { return (failures.map { .failed($0) }, []) }
+        return (uploads, failures)
     }
 
     private func startScrollingCapture() {
@@ -305,13 +342,19 @@ final class AppModel: AppActions {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshShortcuts() }
         }
+        // Leaving Recortia is when a person goes to System Settings to free a held key.
+        resignObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.watchHeldShortcuts(restart: true) }
+        }
     }
 
     /// Registers or holds every shortcut. Holding one starts a two-second watch (`onHold`), so a
     /// default starts working soon after the user turns the macOS shortcut off (ADR-005).
     func refreshShortcuts() {
         shortcutStatus.refreshAll()
-        watchHeldShortcuts()
+        watchHeldShortcuts(restart: true)
     }
 
     /// Restore Defaults in Settings: the macOS-style table, every other command cleared.
@@ -319,16 +362,29 @@ final class AppModel: AppActions {
         shortcutStatus.reassign { ShortcutDefaults.restore() }
     }
 
-    private func watchHeldShortcuts() {
+    /// Quick at first (the user may be in System Settings freeing the key), then backing off to
+    /// one check every 10 s, so a default install that keeps macOS's shortcuts wakes far less often
+    /// (ADR-005). Activation, resigning active and opening shortcut settings restart quick checks.
+    static func heldShortcutPollDelay(afterChecks checks: Int) -> Duration {
+        .seconds(min(2 << min(max(checks, 0), 3), 10))
+    }
+
+    private func watchHeldShortcuts(restart: Bool = false) {
         guard shortcutStatus.isHoldingAny else {
             heldShortcutWatch?.cancel()
             heldShortcutWatch = nil
             return
         }
+        if restart {
+            heldShortcutWatch?.cancel()
+            heldShortcutWatch = nil
+        }
         guard heldShortcutWatch == nil else { return }
         heldShortcutWatch = Task { [weak self] in
+            var checks = 0
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: Self.heldShortcutPollDelay(afterChecks: checks))
+                checks += 1
                 guard let self, !Task.isCancelled else { return }
                 self.shortcutStatus.refreshHeld()
                 if !self.shortcutStatus.isHoldingAny {

@@ -5,10 +5,28 @@ task status, signed local-install evidence, and outstanding manual qualification
 task contracts rather than a build log. Local installation does not complete notarized distribution
 or the 1.0 release contract.
 
+The 0.10.1 corrective release covers FR-01/FR-02/FR-04/FR-09 on every desktop (CAP-01, CAP-02,
+GEO-01, EDIT-02): every window follows the active Space or joins all Spaces, framework windows
+are adopted before activation, screens follow the capture display, capture leaves other Spaces
+alone, and Quit confirms unexported edits. It also fixes the full-source review findings in
+imaging (crop, scroll memory/chroma), capture geometry, pins, scroll Stop, IO-01 drop admission,
+notices/VoiceOver, GitHub token cleanup, stale folder bookmarks and the release scripts.
+A physical probe qualified the window configurations on one display; multiple physical
+displays, TCC and clean-user launch remain manual gates.
+
+The earlier 0.10.0-beta3/build12 corrective slice covers FR-02 shortcut selection without foreground
+activation and FR-15 permanent invalidation of revoked pending upload consent (CAP-01/NET-01).
+Physical hotkeys, monitor/Space transitions and signed distribution remain manual gates.
+
+The earlier 0.10.0-beta2/build11 corrective slice covers FR-03/FR-12 shared import admission
+(IO-01/COMP-01) and FR-04 canvas keyboard ownership (EDIT-02). New-document and layer
+imports share a concrete importer; drop payloads are acquired after admission. Synthetic
+regressions and independent review supplement, rather than complete, the manual gates.
+
 ## Execution policy
 
 The owner approved FR-01…FR-14 implementation on 2026-09-26 (AGENTS.md). The original
-docs/handoff/START_HERE.md is historical; FR-15/FR-16 still require separate approval. Publishing,
+docs/handoff/START_HERE.md is historical; other FR-15 providers and FR-16 require separate approval. Publishing,
 live screen access, credentials, and external side effects require explicit authority. A single
 coherent vertical slice must remain buildable.
 
@@ -17,6 +35,9 @@ The baseline critical path is M0 -> M1 -> M2 -> M3 -> M4/M5 -> M6. M4 and M5 may
 Every task below inherits SPEC.md and AGENTS.md. Its verification IDs resolve to ACCEPTANCE_TESTS.md. Tests shared with earlier tasks must continue to pass; a feature addition does not reset earlier gates.
 
 ## Milestone map
+
+The owner authorized optional FR-15 GitHub auto-upload and local test installation on
+2026-10-01. ADR-006 and NET-01 define that extension; other providers and FR-16 remain deferred.
 
 | Milestone | Outcome | Exit condition |
 |---|---|---|

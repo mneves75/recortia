@@ -4,11 +4,25 @@ import AppKit
 /// macOS Screenshot options. It adds no capture logic; each item performs an `AppCommand`.
 @MainActor
 final class CaptureMenuPresenter: NSObject {
-    private weak var actions: (any AppActions)?
-    private var isPresenting = false
+    /// The focus operations around the menu; tests replace them so no real app is activated.
+    struct Focus {
+        var frontmost: @MainActor () -> NSRunningApplication? = { NSWorkspace.shared.frontmostApplication }
+        var activate: @MainActor () -> Void = { NSApp.activate() }
+        var popUp: @MainActor (NSMenu) -> Void = { $0.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil) }
+        var returnFocus: @MainActor (NSRunningApplication) -> Void = { app in
+            NSApp.yieldActivation(to: app)
+            app.activate()
+        }
+    }
 
-    init(actions: any AppActions) {
+    private weak var actions: (any AppActions)?
+    private let focus: Focus
+    private var isPresenting = false
+    private var didChoose = false
+
+    init(actions: any AppActions, focus: Focus = Focus()) {
         self.actions = actions
+        self.focus = focus
     }
 
     /// The menu for the current state: a mode whose backend is unavailable is disabled.
@@ -30,12 +44,20 @@ final class CaptureMenuPresenter: NSObject {
         guard !isPresenting else { return }
         isPresenting = true
         defer { isPresenting = false }
-        NSApp.activate()
-        makeMenu().popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        // The menu needs Recortia active for keyboard navigation. Escape or a click outside must
+        // hand focus back to the app the user was in; a chosen mode keeps it for the capture.
+        let previous = focus.frontmost()
+        didChoose = false
+        focus.activate()
+        focus.popUp(makeMenu())
+        if !didChoose, let previous, previous.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            focus.returnFocus(previous)
+        }
     }
 
     @objc private func choose(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let command = AppCommand(rawValue: raw) else { return }
+        didChoose = true
         // After the menu closes, so the capture UI does not open under the menu's tracking loop.
         Task { @MainActor [weak actions] in actions?.perform(command) }
     }

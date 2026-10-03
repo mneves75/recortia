@@ -13,6 +13,8 @@ public enum ImportSource: Hashable, Sendable {
 
 /// User-presentable import failures (IO-01).
 public enum ImportFailure: Error, Hashable, Sendable {
+    case busy
+    case cancelled
     case nothingToPaste
     case tooLarge
     case tooManyPixels
@@ -39,23 +41,24 @@ public enum ImportFailure: Error, Hashable, Sendable {
 @MainActor
 @Observable
 public final class ImportCoordinator {
-    public private(set) var isImporting = false
+    public var isImporting: Bool { imageImporter.isImporting }
+    public let imageImporter: ImageImporter
     public private(set) var lastFailure: ImportFailure?
     @ObservationIgnored public var onImported: ((DocumentSession) -> Void)?
 
-    @ObservationIgnored private let input: any ImageInputService
-    @ObservationIgnored private let assets: any ImageAssetService
-
     public init(input: any ImageInputService, assets: any ImageAssetService) {
-        self.input = input
-        self.assets = assets
+        imageImporter = ImageImporter(input: input, assets: assets)
     }
 
     @discardableResult
     public func importImage(from source: ImportSource) async -> Result<DocumentSession, ImportFailure> {
-        isImporting = true
-        defer { isImporting = false }
-        let result = await load(source)
+        let result: Result<DocumentSession, ImportFailure>
+        do throws(ImportFailure) {
+            let info = try await imageImporter.importImage(from: source)
+            result = .success(DocumentSession(document: Document(asset: info)))
+        } catch {
+            result = .failure(error)
+        }
         switch result {
         case .success(let session):
             lastFailure = nil
@@ -67,27 +70,93 @@ public final class ImportCoordinator {
     }
 
     public func clearFailure() { lastFailure = nil }
+}
 
-    private func load(_ source: ImportSource) async -> Result<DocumentSession, ImportFailure> {
+/// An import admitted into the shared slot, with the source it read. It holds the slot until it is
+/// imported or released.
+public struct ImportAdmission: Sendable {
+    public let source: ImportSource
+}
+
+/// One read/decode admission slot, shared by the app's new-document and editor-layer paths.
+/// Rejection is synchronous before any byte read; no queue retains waiting image payloads.
+@MainActor
+@Observable
+public final class ImageImporter {
+    public private(set) var isImporting = false
+    @ObservationIgnored private let input: any ImageInputService
+    @ObservationIgnored private let assets: any ImageAssetService
+
+    public init(input: any ImageInputService, assets: any ImageAssetService) {
+        self.input = input
+        self.assets = assets
+    }
+
+    /// Takes the slot, then calls `readSource`: a busy importer rejects without reading. Called on
+    /// the main actor while a drop is performed, so a drag pasteboard is read while it is valid.
+    /// The admission holds the slot until `importImage(_:)` or `release(_:)`.
+    public func admit(readSource: () throws(ImportFailure) -> ImportSource) throws(ImportFailure) -> ImportAdmission {
+        guard !Task.isCancelled else { throw .cancelled }
+        guard !isImporting else { throw .busy }
+        isImporting = true
+        do throws(ImportFailure) {
+            return ImportAdmission(source: try readSource())
+        } catch {
+            isImporting = false
+            throw error
+        }
+    }
+
+    /// Releases an admission that will not be imported (its editor closed first).
+    public func release(_ admission: ImportAdmission) {
+        isImporting = false
+    }
+
+    public func importImage(from source: ImportSource) async throws(ImportFailure) -> ImageAssetInfo {
+        try await importImage(admit(readSource: { source }))
+    }
+
+    /// Acquires a lazy drag provider only after admission, before it can materialize image bytes.
+    public func importImage(readSource: () throws(ImportFailure) -> ImportSource) async throws(ImportFailure)
+        -> ImageAssetInfo
+    {
+        try await importImage(admit(readSource: readSource))
+    }
+
+    /// Reads and decodes an admitted source, then frees the slot.
+    public func importImage(_ admission: ImportAdmission) async throws(ImportFailure) -> ImageAssetInfo {
+        // Cancellation does not free the slot while a reader or decoder still owns its buffers.
+        defer { isImporting = false }
+        guard !Task.isCancelled else { throw .cancelled }
         let data: Data
         let origin: AssetOrigin
-        do throws(ImportError) {
-            switch source {
-            case .file(let url), .droppedFile(let url):
+        switch admission.source {
+        case .file(let url), .droppedFile(let url):
+            do throws(ImportError) {
                 data = try await input.readFile(at: url)
-                origin = .imported
-            case .pasteboard:
-                guard let pasted = input.readPasteboardImage() else { return .failure(.nothingToPaste) }
-                data = pasted
-                origin = .pasted
-            case .droppedData(let dropped):
-                data = dropped
-                origin = .imported
+            } catch {
+                throw Task.isCancelled ? .cancelled : ImportFailure(error)
             }
-            let info = try await assets.importImage(data, origin: origin)
-            return .success(DocumentSession(document: Document(asset: info)))
-        } catch {
-            return .failure(ImportFailure(error))
+            origin = .imported
+        case .pasteboard:
+            guard let pasted = input.readPasteboardImage() else { throw .nothingToPaste }
+            data = pasted
+            origin = .pasted
+        case .droppedData(let dropped):
+            data = dropped
+            origin = .imported
         }
+        guard !Task.isCancelled else { throw .cancelled }
+        let info: ImageAssetInfo
+        do throws(ImportError) {
+            info = try await assets.importImage(data, origin: origin)
+        } catch {
+            throw Task.isCancelled ? .cancelled : ImportFailure(error)
+        }
+        guard !Task.isCancelled else {
+            assets.release(info.id)
+            throw .cancelled
+        }
+        return info
     }
 }

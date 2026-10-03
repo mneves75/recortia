@@ -3,8 +3,109 @@
   "document_version": "1.0",
   "research_date": "2026-09-26",
   "status": "beta_implemented_awaiting_manual_validation",
-  "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26. No task is complete without recorded verification; FR-15/FR-16, publishing and live-data access require separate authorization.",
+  "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.10.1",
+    "build": 13,
+    "date": "2026-10-03",
+    "scope": "FR-01/FR-02/FR-04/FR-09 on every desktop (other Spaces, other apps' fullscreen Spaces, multiple displays) plus fixes from a full-source review: Space policy for every window, framework-window adoption before activation, capture-display/pointer screen choice, capture suspension limited to the active Space, Quit confirmation, capture geometry from the captured snapshot, crop/scroll-memory/chroma/pins/scroll-Stop fixes, IO-01 synchronous drop admission, persistent announced notices, GitHub token cleanup, stale folder bookmarks, release-script hardening.",
+    "status": "verified_source_awaiting_release",
+    "verification": "Branch fix/all-desktops-0.10.1 at f49c247: scripts/check.sh passed (548 package tests, 31 script controls, 526 pt-BR strings, project freshness, strict lint, signed Debug and E2E builds). scripts/e2e.sh --lang all: 40/40 scenarios, 843 assertions, 59 screenshots per language; two activation-dependent checks were recorded SKIPPED because this host declined activation. Physical probe scripts/space-probe/run.sh stale (FORCE=1, one display, 2026-10-03): windows without a Space policy switched the active Space in 6/6 runs; the six configurations Recortia uses switched it in 0/18. Reviews: four module-slice reviews (Codex x2, Claude x2), Standards/Spec two-axis review, independent Codex autoreview (one P2 found and fixed red-first). capture-focus is environment-sensitive on a busy desktop: 5/6 at the 9dc25fa baseline and 7/8 at HEAD.",
+    "evidence_paths": [
+      ".scratch/check-f49c247.log",
+      ".scratch/e2e/20261003-195723/en/report.json",
+      ".scratch/e2e/20261003-195723/pt-BR/report.json",
+      ".scratch/space-probe-0.10.1/stale.jsonl",
+      ".scratch/head-cf.log"
+    ],
+    "limitations": [
+      "Multiple physical displays, mixed DPI and Stage Manager were not exercised physically; display choice is verified with synthetic two-display layouts.",
+      "The probe measures window configurations equivalent to Recortia's, not Recortia's own windows; activation was forced to stand in for a user's hotkey or menu click.",
+      "Physical hotkeys, TCC prompting, clean-user launch and live GitHub upload remain owner checks.",
+      "The editor no longer enters its own fullscreen Space (fullscreen-auxiliary and fullscreen-primary are mutually exclusive)."
+    ]
+  },
+  "previous_shortcut_candidate": {
+    "version": "0.10.0-beta3",
+    "build": 12,
+    "date": "2026-10-01",
+    "scope": "FR-02 shortcut region selection without foreground activation; FR-15 permanent invalidation of revoked pending upload consent.",
+    "status": "locally_installed_awaiting_manual_validation",
+    "verification": "Test-first synthetic regressions reproduced the activating overlay/key-ownership defect and upload consent revocation ABA. Corrected targeted EN/PT-BR suite passed all five scenarios and157 assertions per language. Final stable signed scripts/check.sh exited0:517 package tests,12 Python controls,517 translated strings,strict formatting/project freshness and both Debug targets. A fresh different-model behavior verifier executed the full synthetic suite once, exit0:27/27 scenarios,672 assertions and56 reported screenshots per language; every assertion passed and all reported PNGs were valid. Fresh Standards/security and Spec reviews accepted external foreground identity and activation notifications as the synthetic selection oracle; NSApp.isActive is recorded diagnostically. Both resolved Debug bundles are0.10.0/build12/min15.0. Correctly staged autoreview returned scoped-clean/P2; CI36955190485 passed on2069d91. Developer ID archive/export of that commit and local installation passed on2026-10-02: all33 installed files match export and all33 previous build10 files were preserved. No app launch or termination occurred. Physical hotkeys, actual monitor/Space/fullscreen transitions, live credentials/provider transfers and notarized distribution remain unrun. Build-11 evidence is retained separately below.",
+    "evidence_paths": [
+      ".scratch/e2e/20261001-224940/en/report.json",
+      ".scratch/e2e/20261001-225137/en/report.json",
+      ".scratch/e2e/20261001-225901/en/report.json",
+      ".scratch/e2e/20261001-230208/en/report.json",
+      ".scratch/e2e/20261001-230208/pt-BR/report.json",
+      ".scratch/capture-shortcut-build12-20261001/check.log",
+      ".scratch/e2e/20261001-230940/en/report.json",
+      ".scratch/e2e/20261001-230940/pt-BR/report.json",
+      ".scratch/local-install-build12-20261002/installation.json"
+    ]
+  },
+  "current_local_installation": {
+    "candidate": "0.10.0-beta3",
+    "app_version": "0.10.0",
+    "build": 12,
+    "date": "2026-10-02",
+    "source_commit": "2069d91674c2c69f119c3d87b0404844a2765c90",
+    "installed_path": "/Applications/Recortia.app",
+    "backup_path": ".scratch/local-install-build12-20261002/previous-build10.app",
+    "executable_sha256": "0e379d88a7108bd78c6d6232ba2d8c2ce348584111e497487617aef3d276d34e",
+    "installed_equals_export": true,
+    "backup_equals_previous": true,
+    "launched": false,
+    "notarized": false,
+    "evidence_path": ".scratch/local-install-build12-20261002/installation.json",
+    "independent_verdict": "BLOCKED",
+    "independent_verification": "Fresh different-model verifier passed provenance, version, strict signature, runtime, parsed entitlements/profile, licenses and all60 installed entries compared with export; all33 backup files match the pre-install manifest. Overall verdict is BLOCKED solely by absent independent process audit of the installation interval. No artifact defect was found; no launch or termination command was issued by the installer.",
+    "independent_evidence_path": ".scratch/local-install-build12-20261002/verification.md"
+  },
+  "previous_source_candidate": {
+    "version": "0.10.0-beta2",
+    "build": 11,
+    "date": "2026-10-01",
+    "scope": "FR-03/FR-12 shared import admission and cancellation; FR-04 canvas keyboard ownership reset. Includes the prior approved FR-07/FR-15 changes.",
+    "status": "local_gates_passed_release_validation_blocked",
+    "verification": "Regressions were red before import/cancellation/focus fixes; a provider-counting canvas regression then reproduced and closed eager drop reads. Final stable Xcode27 signed scripts/check.sh exited0:517 package tests,12 Python controls,517 translated strings,format/project freshness and both Debug targets. Independent full E2E exited0:26/26 scenarios,603 assertions,55 screenshots per language. A separate fresh different-model behavior context passed159 focused assertions per language and inspected all22 renders. Independent Standards and Spec correction reruns found zero remaining confirmed findings; resolved app/E2E versions are0.10.0/build11/min15.0. Dedicated security execution is BLOCKED because this host cannot enforce sandbox memory limits; source security inspection found no confirmed defect. Live Keychain/GitHub transfer, IME/VoiceOver,TCC/clean-user launch,stable-host performance,notarization and public beta/production release remain unrun. No build11 installation is claimed.",
+    "evidence_paths": [
+      "/private/tmp/recortia-fix-20261001-import-red.log",
+      "/private/tmp/recortia-fix-20261001-cancel-red.log",
+      "/private/tmp/recortia-fix-20261001-import-green.log",
+      ".scratch/e2e/20261001-164809/en/report.json",
+      ".scratch/e2e/20261001-164845/en/report.json",
+      ".scratch/e2e/20261001-164845/pt-BR/report.json",
+      ".scratch/e2e/20261001-170535/en/report.json",
+      ".scratch/e2e/20261001-170712/en/report.json",
+      ".scratch/e2e/20261001-170712/pt-BR/report.json",
+      "/private/tmp/recortia-fix-20261001-check-final.log",
+      ".scratch/e2e/20261001-171230/en/report.json",
+      ".scratch/e2e/20261001-171230/pt-BR/report.json",
+      ".scratch/e2e/20261001-171639/en/report.json",
+      ".scratch/e2e/20261001-171639/pt-BR/report.json"
+    ]
+  },
+  "previous_verified_candidate": {
+    "version": "0.10.0-beta1",
+    "build": 10,
+    "date": "2026-10-01",
+    "scope": "FR-07 automatic export cancellation and busy reporting; owner-authorized FR-15 optional private GitHub auto-upload (ADR-006).",
+    "status": "source_verified_locally_installed_awaiting_manual_validation",
+    "verification": "Red regressions preceded all five confirmed fixes. Stable Xcode 27 scripts/check.sh --unsigned exited 0: 514 package tests, 12 Python controls, 513 translated strings and both Debug targets. Final synthetic E2E exited 0: 24/24 scenarios, 444 assertions and 44 screenshots per language. Fresh different-model security reverify passed 47 focused tests and closed all three additional findings. Final Developer ID archive/export and strict signature/runtime/parsed entitlements/profile checks passed; version0.10.0 build10 installed with matching executable SHA256 and build9 backup. PID6408 remains on build9. Xcode-beta MCP follow-up succeeded: four affected app files report zero diagnostics; initial Settings timeout resolved on retry. Real GitHub transfers, credential/Keychain interaction, TCC and clean-user launch remain unrun; no notarization/public release.",
+    "evidence_paths": [
+      "/private/tmp/recortia-autoupload-red.log",
+      "/private/tmp/recortia-autoupload-busy-red.log",
+      "/private/tmp/recortia-github-first-green.log",
+      "/private/tmp/recortia-github-final-check.log",
+      "/private/tmp/recortia-independent-final-review.log",
+      ".scratch/e2e/20261001-013242/en/report.json",
+      ".scratch/e2e/20261001-013242/pt-BR/report.json",
+      ".scratch/local-install-github-build10-final-20261001/verification.txt",
+      ".scratch/local-install-github-build10-final-20261001/installation.txt"
+    ]
+  },
+  "prior_verified_candidate": {
     "version": "0.9.1-beta3",
     "build": 9,
     "date": "2026-09-30",
@@ -51,7 +152,9 @@
     "verification": "Stable Xcode 27.0 archive and Developer ID export succeeded, exit 0. Strict signature, Hardened Runtime, version/build/minimum OS, profile compatibility and actual Keychain access group passed. Debug entitlements absent; Release test-marker isolation and bundled license/provenance checks passed, with a Debug binary correctly rejected as a failing control.",
     "distribution_status": "Prepared from source commit 49047c7 and subsequently installed locally; see local_installation. Not notarized, tagged or publicly distributed. Different-model independent artifact verification passed strict signing/runtime, exact executable hash, profile signer certificate and group compatibility, actual entitlements with adversarial debug controls, binary isolation with a rejected Debug control, and both bundled licenses. Preparation and installation are recorded separately; neither proves production qualification.",
     "pull_request": "https://github.com/mneves75/recortia/pull/5",
-    "ci_evidence": ["https://github.com/mneves75/recortia/actions/runs/36669782062"],
+    "ci_evidence": [
+      "https://github.com/mneves75/recortia/actions/runs/36669782062"
+    ],
     "evidence_paths": [
       ".scratch/local-install-beta3-20260930/archive.log",
       ".scratch/local-install-beta3-20260930/export.log",
@@ -852,8 +955,16 @@
   "deferred_scope": [
     {
       "requirement_id": "FR-15",
-      "title": "User-controlled S3-compatible upload",
-      "status": "requires_separate_design_and_approval"
+      "title": "Optional user-controlled GitHub upload (ADR-006); S3 remains deferred",
+      "status": "awaiting_manual_validation",
+      "authorization": "Owner requested GitHub auto-upload and local test installation on 2026-10-01",
+      "verification": [
+        "NET-01",
+        "EXP-02",
+        "RED-01",
+        "RED-02",
+        "RED-03"
+      ]
     },
     {
       "requirement_id": "FR-16",

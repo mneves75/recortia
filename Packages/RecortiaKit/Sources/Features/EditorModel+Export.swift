@@ -13,6 +13,10 @@ public enum EditorExportRequest: Hashable, Sendable {
 // Export (FR-07) and pinning (FR-09). Every external write goes through `ExportCoordinator`
 // (sanitized ShareSnapshot) or `PinsModel` (sanitized render); nothing here encodes or writes.
 extension EditorModel {
+    public func reportAutomaticExport(_ outcome: ExportOutcome) {
+        guard !isClosed else { return }
+        post(.exported(outcome))
+    }
     @discardableResult
     public func export(_ request: EditorExportRequest) async -> ExportOutcome {
         guard !isClosed else { return .failed(.staleDocument) }

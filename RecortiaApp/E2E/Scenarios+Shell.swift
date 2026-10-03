@@ -69,10 +69,40 @@
             context.snapshot(root)
         }
 
+        /// Quit asks before discarding edits that were never exported (FR-04). Window close already
+        /// asks; termination never calls `windowShouldClose`, so it needs its own check.
+        static func quitConfirmation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let app = harness.app
+            harness.quit.answers = []
+            context.check("with no editor, Quit proceeds", app.shouldTerminate())
+            context.check("with no editor, Quit asks nothing", harness.quit.questions.isEmpty)
+
+            let controller = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+            context.check("an unedited capture does not block Quit", app.shouldTerminate())
+            context.check("an unedited capture asks nothing", harness.quit.questions.isEmpty)
+
+            E2EActions.drag(controller.model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
+            try context.require("the edit makes the document dirty", controller.model.isDirty)
+            harness.quit.answers = [false]
+            context.check("declining keeps Recortia running", !app.shouldTerminate())
+            context.check(
+                "Quit asks once about one edited image", harness.quit.questions == [1], "\(harness.quit.questions)")
+            context.check("declining keeps the edits", controller.model.isDirty && !controller.model.isClosed)
+            harness.quit.answers = [true]
+            context.check("confirming lets Recortia quit", app.shouldTerminate())
+
+            harness.quit.questions = []
+            let copied = await E2EActions.export(controller, .copy)
+            try context.require("Copy succeeds", copied == .copied, "\(copied)")
+            context.check("exported edits do not block Quit", app.shouldTerminate())
+            context.check("exported edits ask nothing", harness.quit.questions.isEmpty)
+        }
+
         static func settings(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let preferences = harness.settings.preferences
             context.check("automatic copy is off by default", !preferences.autoCopy)
             context.check("automatic save is off by default", !preferences.autoSave)
+            context.check("automatic upload is off by default", preferences.githubUpload?.automatic != true)
             context.check("update checks are off by default", !preferences.updateChecksEnabled)
             context.check("automatic scrolling is off by default", !preferences.automaticScrollingEnabled)
             context.check("export defaults to PNG at 100%", preferences.exportOptions == ExportOptions())
@@ -88,7 +118,8 @@
             await E2ESnapshot.settle(root)
 
             let tabs = [
-                "general", "shortcuts", "capture", "export", "privacy", "text-recognition", "pins", "scrolling",
+                "general", "shortcuts", "capture", "export", "github", "privacy", "text-recognition", "pins",
+                "scrolling",
             ]
             if let tabView = EditorWindowController.first(NSTabView.self, in: root) {
                 context.check(

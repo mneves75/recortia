@@ -11,6 +11,93 @@
     enum EditorScenarios {
         static let accentedText = "Revisão: ação, coração ✅ 👋🏽\nSegunda linha — café"
 
+        /// Real canvas input with synthetic events; no global keyboard, TCC, or personal pixels.
+        static func canvasFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            for transition in [
+                "normal-release", "unrelated-window", "text-focus", "window-resigns-key", "app-deactivates",
+                "text-focus-mid-pan", "window-resigns-key-mid-pan", "app-deactivates-mid-pan",
+            ] {
+                let controller = try await E2EActions.captureRegion(
+                    harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)
+                let model = controller.model
+                let canvas = EditorCanvasView(model: model)
+                let root = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+                let window = E2ESnapshot.host(nsView: root, size: root.frame.size)
+                defer { window.close() }
+                canvas.frame = root.bounds
+                root.addSubview(canvas)
+                try context.require("\(transition): canvas accepts focus", window.makeFirstResponder(canvas))
+                model.selectTool(.rectangle)
+                model.setViewport(EditorViewport(zoom: 1, offset: .zero))
+
+                func key(_ type: NSEvent.EventType) throws -> NSEvent {
+                    try context.unwrap(
+                        "Space event",
+                        NSEvent.keyEvent(
+                            with: type, location: .zero, modifierFlags: [], timestamp: 0,
+                            windowNumber: window.windowNumber, context: nil, characters: " ",
+                            charactersIgnoringModifiers: " ", isARepeat: false, keyCode: 49))
+                }
+                func mouse(_ type: NSEvent.EventType, _ point: NSPoint) throws -> NSEvent {
+                    try context.unwrap(
+                        "canvas mouse event",
+                        NSEvent.mouseEvent(
+                            with: type, location: canvas.convert(point, to: nil), modifierFlags: [], timestamp: 0,
+                            windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1,
+                            pressure: 1))
+                }
+                func drag() throws {
+                    canvas.mouseDown(with: try mouse(.leftMouseDown, NSPoint(x: 40, y: 40)))
+                    canvas.mouseDragged(with: try mouse(.leftMouseDragged, NSPoint(x: 90, y: 90)))
+                    canvas.mouseUp(with: try mouse(.leftMouseUp, NSPoint(x: 90, y: 90)))
+                }
+
+                canvas.keyDown(with: try key(.keyDown))
+                if transition.hasSuffix("-mid-pan") {
+                    canvas.mouseDown(with: try mouse(.leftMouseDown, NSPoint(x: 20, y: 20)))
+                }
+                switch transition.replacingOccurrences(of: "-mid-pan", with: "") {
+                case "normal-release", "unrelated-window":
+                    if transition == "unrelated-window" {
+                        let other = E2ESnapshot.host(nsView: NSView(), size: NSSize(width: 10, height: 10))
+                        NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: other)
+                        other.close()
+                    }
+                    try drag()
+                    context.check(
+                        "\(transition): held Space pans",
+                        model.document.annotations.isEmpty && model.viewport.offset != .zero)
+                    canvas.keyUp(with: try key(.keyUp))
+                    model.setViewport(EditorViewport(zoom: 1, offset: .zero))
+                case "text-focus":
+                    let text = NSTextView(frame: .zero)
+                    root.addSubview(text)
+                    try context.require("text accepts focus", window.makeFirstResponder(text))
+                    text.keyUp(with: try key(.keyUp))
+                    text.insertText("ação ✅", replacementRange: NSRange(location: 0, length: 0))
+                    context.check("text receives input without canvas shortcuts", text.string == "ação ✅")
+                    try context.require("canvas regains focus", window.makeFirstResponder(canvas))
+                case "window-resigns-key":
+                    // Deliver the AppKit lifecycle event without ordering a test window or taking focus globally.
+                    NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: window)
+                    context.check("window transition keeps canvas responder", window.firstResponder === canvas)
+                default:
+                    NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp)
+                    context.check("app transition keeps canvas responder", window.firstResponder === canvas)
+                }
+                let offset = model.viewport.offset
+                try drag()
+                context.check(
+                    "\(transition): rectangle drag adds one annotation", model.document.annotations.count == 1,
+                    "annotations: \(model.document.annotations.count)")
+                context.check(
+                    "\(transition): rectangle drag does not pan", model.viewport.offset == offset,
+                    "offset: \(model.viewport.offset)")
+                await E2ESnapshot.settle(canvas)
+                context.snapshot(canvas, shot: transition)
+            }
+        }
+
         static func inspectorHeight(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let controller = try await E2EActions.captureRegion(
                 harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)
@@ -190,6 +277,15 @@
                 model, .redact, from: p(secretPixels.minX - 6, secretPixels.minY - 6),
                 to: p(secretPixels.maxX + 6, secretPixels.maxY + 6))
             let mask = try context.unwrap("a secure mask was added", model.document.masks.first)
+            // The mask must be non-empty and must really cover the secret's pixels; otherwise the
+            // black-pixel checks below could inspect an empty or misplaced area and pass vacuously.
+            let area = mask.outputRect
+            context.check("the mask is not empty", !area.isEmpty, "\(area)")
+            context.check(
+                "the mask covers the secret line's pixel rect",
+                area.minX <= secretPixels.minX && area.minY <= secretPixels.minY && area.maxX >= secretPixels.maxX
+                    && area.maxY >= secretPixels.maxY,
+                "mask=\(area); secret=\(secretPixels)")
             context.check("the mask is opaque", mask.fill.a == 255, "\(mask.fill)")
             context.check("adding a mask advances the privacy epoch", model.session.privacyEpoch > epoch)
             E2EActions.drag(model, .blur, from: p(40, 100), to: p(700, 170))
@@ -207,17 +303,40 @@
             try context.require("export saved the PNG", outcome == .saved(url), "\(outcome)")
             let data = try Data(contentsOf: url)
             let decoded = try E2EActions.decode(data, "export", context)
-            let mx = Int(mask.outputRect.minX), my = Int(mask.outputRect.minY)
-            var uncovered = 0
-            for y in my..<Int(mask.outputRect.maxY) {
-                for x in mx..<Int(mask.outputRect.maxX) where decoded.pixel(x: x, y: y) != ChartFixture.Color(0, 0, 0) {
-                    uncovered += 1
+            context.check(
+                "the export keeps the document's pixel size",
+                decoded.width == Int(model.document.canvasSize.width)
+                    && decoded.height == Int(model.document.canvasSize.height),
+                "\(decoded.width) × \(decoded.height)")
+            func blackCount(in rect: CGRect) -> (inspected: Int, uncovered: Int) {
+                let x0 = max(0, Int(rect.minX.rounded(.down))), x1 = min(decoded.width, Int(rect.maxX.rounded(.up)))
+                let y0 = max(0, Int(rect.minY.rounded(.down))), y1 = min(decoded.height, Int(rect.maxY.rounded(.up)))
+                var inspected = 0, uncovered = 0
+                for y in y0..<max(y0, y1) {
+                    for x in x0..<max(x0, x1) {
+                        inspected += 1
+                        if decoded.pixel(x: x, y: y) != ChartFixture.Color(0, 0, 0) { uncovered += 1 }
+                    }
                 }
+                return (inspected, uncovered)
             }
+            // The second region is the secret line itself, independent of where the mask landed.
+            let maskPixels = blackCount(
+                in: CGRect(x: area.minX, y: area.minY, width: area.width, height: area.height))
             context.check(
-                "every masked pixel is solid black in the export", uncovered == 0, "\(uncovered) pixels differ")
+                "every masked pixel is solid black in the export",
+                maskPixels.inspected > 0 && maskPixels.uncovered == 0,
+                "\(maskPixels.uncovered) of \(maskPixels.inspected) pixels differ")
+            let secretCheck = blackCount(in: secretPixels)
             context.check(
-                "the export carries no secret text", !ContainerInspector.contains("sk-live", in: data))
+                "every pixel of the secret line is solid black in the export",
+                secretCheck.inspected == Int(secretPixels.width * secretPixels.height) && secretCheck.uncovered == 0,
+                "\(secretCheck.uncovered) of \(secretCheck.inspected) pixels differ")
+            // Container-level check only: the PNG pixel stream is compressed, so this searches the
+            // metadata and text chunks, not the image. Pixel-level absence is asserted above.
+            context.check(
+                "the export's container metadata carries no secret text",
+                !ContainerInspector.contains("sk-live", in: data))
             try await redOnePair(harness, context)
         }
 

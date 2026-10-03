@@ -20,8 +20,12 @@
         let clipboard: PrivatePasteboardClipboard
         let textPasteboard: NSPasteboard
         let drag: SyntheticDragReceiver
+        let github = SyntheticGitHubUpload()
+        let exportGate: SyntheticExportGate
+        let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
         let messages = RecordingMessagePresenter()
+        let quit = RecordingQuitConfirmation()
         let services: AppServices
         let app: AppModel
         let features: FeatureModels
@@ -54,10 +58,13 @@
             textPasteboard = NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.text.\(run)"))
             drag = SyntheticDragReceiver(dropFolder: dropFolder)
 
-            let live = AppServices.live()
+            let live = AppServices.live(settings: settings)
+            exportGate = SyntheticExportGate(exporter: live.exporter)
+            importInput = SyntheticImportInput(input: live.input)
             services = AppServices(
+                githubUpload: github, githubCredentials: github,
                 capture: capture, screenPermission: permission, accessibility: live.accessibility,
-                assets: live.assets, input: live.input, renderer: live.renderer, exporter: live.exporter,
+                assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: live.autoScroller, loginItem: live.loginItem, clock: live.clock)
@@ -67,14 +74,16 @@
                 settings: settings, services: services,
                 shortcutRegistry: KeyboardShortcutsRegistry(
                     takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
-                showMessage: { messages.values.append($0) })
+                showMessage: { messages.values.append($0) },
+                confirmQuit: { [quit] in quit.answer($0) })
             guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
             self.features = features
             environment = EditorEnvironment(
                 renderer: services.renderer, export: features.export, folders: services.folders,
                 textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
                 input: services.input, pins: features.pins,
-                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links, settings: settings)
+                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links, settings: settings,
+                imageImporter: features.importer.imageImporter)
             editors = E2EEditorHost(environment: environment)
             wire()
             // What a normal launch does (ADR-005), without registering any handler.
@@ -85,16 +94,14 @@
         /// Mirrors `AppModel.wire`: every new document opens an editor.
         private func wire() {
             let editors = self.editors
-            features.capture.onCaptured = { completion in
-                switch completion.purpose {
-                case .edit: editors.open(completion.session)
-                case .recognizeText: editors.open(completion.session, initialAction: .recognizeText)
-                }
+            features.capture.onCaptured = { [weak app] completion in
+                app?.handleCapture(completion)
             }
             features.importer.onImported = { editors.open($0) }
             features.scroll.onAccepted = { editors.open($0) }
             app.openDocument = { editors.open($0).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
+            app.unexportedEditCount = { editors.unexportedEditCount }
         }
 
         /// Imports `image` as PNG through the real input, decode, and asset path; opens an editor.
@@ -113,6 +120,10 @@
 
         /// Closes editors and pins and resets per-scenario state.
         func reset() {
+            exportGate.release()
+            settings.update {
+                $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
+            }
             editors.closeAll()
             features.pins.closeAll()
             if features.capture.state.isActive { features.capture.cancel() }
@@ -131,12 +142,27 @@
         var values: [UserMessage] = []
     }
 
+    /// Stands in for the Quit confirmation alert: records each question and answers from a script
+    /// (declining when the script is empty). No modal alert is shown.
+    @MainActor
+    final class RecordingQuitConfirmation {
+        var answers: [Bool] = []
+        var questions: [Int] = []
+
+        func answer(_ count: Int) -> Bool {
+            questions.append(count)
+            return answers.isEmpty ? false : answers.removeFirst()
+        }
+    }
+
     /// `EditorWindowManager.open` without `present()`: real editor windows and models, parked
     /// offscreen at one fixed content size.
     @MainActor
     final class E2EEditorHost {
         private let environment: EditorEnvironment
         private(set) var controllers: [EditorWindowController] = []
+        /// Applied to editors opened from now on; scenarios record announcements through it.
+        var noticePresentation = EditorNoticePresentation()
 
         init(environment: EditorEnvironment) {
             self.environment = environment
@@ -145,7 +171,7 @@
         @discardableResult
         func open(_ session: DocumentSession, initialAction: EditorInitialAction = .none) -> EditorWindowController {
             let model = EditorModel(session: session, environment: environment)
-            let controller = EditorWindowController(model: model)
+            let controller = EditorWindowController(model: model, noticePresentation: noticePresentation)
             if let window = controller.window {
                 window.setContentSize(E2ESnapshot.editorSize)
                 E2ESnapshot.park(window)
@@ -157,6 +183,9 @@
             }
             return controller
         }
+
+        /// Editors whose edits were never exported, as `EditorWindowManager` counts them.
+        var unexportedEditCount: Int { controllers.filter { $0.hasUnexportedEdits() }.count }
 
         func closeAll() {
             for controller in controllers { controller.window?.close() }

@@ -8,6 +8,7 @@ struct EditorRootView: View {
     let model: EditorModel
     let canvas: EditorCanvasView
     let actions: any EditorWindowActions
+    var noticePresentation = EditorNoticePresentation()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,8 +37,40 @@ struct EditorRootView: View {
                     .frame(width: 290)
             }
             Divider()
-            EditorStatusBar(model: model)
+            EditorStatusBar(model: model, presentation: noticePresentation)
                 .background(Color(nsColor: .windowBackgroundColor))
+        }
+    }
+}
+
+/// How an editor presents notices: how long a notice that needs no action stays, and how each
+/// notice reaches VoiceOver. Injected per editor window; the E2E runner records announcements and
+/// shortens the delay instead of changing shared state.
+@MainActor
+struct EditorNoticePresentation {
+    var autoDismissDelay: Duration = .seconds(8)
+    var announce: @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
+
+    /// Failures, and notices that carry a link or ask the person to act, stay until dismissed.
+    /// Only success and passive information dismisses itself.
+    static func persists(_ notice: EditorNotice) -> Bool {
+        switch notice {
+        case .copyFailed, .recognitionFailed, .linkNotAllowed, .previewFailed, .redactionRefused, .importFailed,
+            .pinFailed, .noPreferredFolder:
+            true
+        case .exported(let outcome): persists(outcome)
+        case .noTextFound, .recognitionLanguagesUnavailable, .textCopied, .recognitionDiscarded,
+            .recognitionInvalidated, .noQRCodeFound, .payloadCopied, .colorCopied, .previewNotReady, .pinned,
+            .pinsInvalidated, .undoHistoryTrimmed:
+            false
+        }
+    }
+
+    private static func persists(_ outcome: ExportOutcome) -> Bool {
+        switch outcome {
+        case .failed, .uploaded: true
+        case .alreadyCompleted(let completed): persists(completed)
+        case .copied, .saved, .dragged, .canceled, .rejectedBusy: false
         }
     }
 }
@@ -180,6 +213,7 @@ private struct ExportButtons: View {
 
 struct EditorStatusBar: View {
     let model: EditorModel
+    var presentation = EditorNoticePresentation()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -201,13 +235,20 @@ struct EditorStatusBar: View {
                 } icon: {
                     Image(systemName: "info.circle").accessibilityHidden(true)
                 }
-                .accessibilityAddTraits(.updatesFrequently)
                 .transition(reduceMotion ? .identity : .opacity)
+                if EditorNoticePresentation.persists(notice) {
+                    Button(String(localized: "Dismiss", table: "Editor")) { model.dismissNotice() }
+                        .controlSize(.small)
+                        .accessibilityLabel(String(localized: "Dismiss notice", table: "Editor"))
+                }
             }
             if model.isExporting {
                 ProgressView().controlSize(.small)
                 Button(String(localized: "Cancel Export", table: "Editor")) { model.cancelExport() }
                     .controlSize(.small)
+            }
+            if case .exported(let outcome) = model.notice, let url = outcome.uploadedURL {
+                Link("View on GitHub", destination: url).controlSize(.small)
             }
         }
         .font(.callout)
@@ -215,9 +256,13 @@ struct EditorStatusBar: View {
         .frame(height: 30)
         .animation(reduceMotion ? nil : .default, value: model.noticeSerial)
         .task(id: model.noticeSerial) {
-            guard model.notice != nil else { return }
+            guard let notice = model.notice else { return }
+            // Status text is silent for VoiceOver unless it is posted, and a timeout must not
+            // remove it before a person who needs more time has read it.
+            presentation.announce(EditorStrings.message(notice))
+            guard !EditorNoticePresentation.persists(notice) else { return }
             do {
-                try await Task.sleep(for: .seconds(8))
+                try await Task.sleep(for: presentation.autoDismissDelay)
             } catch {
                 return
             }

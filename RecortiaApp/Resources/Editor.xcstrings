@@ -1,6 +1,66 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Another image is still being opened. Try again when it finishes.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Another image is still being opened. Try again when it finishes." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Outra imagem ainda está sendo aberta. Tente novamente quando terminar." } }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar"
+          }
+        }
+      }
+    },
+    "Dismiss notice": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss notice"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar aviso"
+          }
+        }
+      }
+    },
+    "Opening the image was canceled.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Opening the image was canceled." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "A abertura da imagem foi cancelada." } }
+      }
+    },
+    "Image uploaded to GitHub.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image uploaded to GitHub."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagem enviada ao GitHub."
+          }
+        }
+      }
+    },
     "Replace Existing File?": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Replace Existing File?" } },

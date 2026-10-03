@@ -73,14 +73,27 @@ final class ScrollUIController {
 
     private func showReview() {
         guard review == nil else { return }
+        let window = Self.makeReviewWindow(model: model)
+        // On the display that was scrolled, not the key window's (FR-01).
+        let displayID: CGDirectDisplayID? =
+            switch model.target {
+            case .region(_, let display)?, .display(let display)?: display.id
+            case .window(let info)?: info.displayID
+            case nil: nil
+            }
+        window.center(on: ScreenChoice.screen(displayID: displayID))
+        review = window
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    static func makeReviewWindow(model: ScrollSessionModel) -> NSWindow {
         let window = NSWindow(contentViewController: NSHostingController(rootView: LiveScrollReview(model: model)))
         window.title = String(localized: "Review Scrolling Capture")
         window.styleMask = [.titled]
         window.isReleasedWhenClosed = false
-        window.center()
-        review = window
-        NSApp.activate()
-        window.makeKeyAndOrderFront(nil)
+        SpacePolicy.follow(window)
+        return window
     }
 
     private func closeReview() {

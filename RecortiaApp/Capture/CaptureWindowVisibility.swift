@@ -33,8 +33,10 @@ final class CaptureWindowVisibility: NSObject {
         guard suspended == nil else { return }
         // Hiding a parent also hides its children/sheet. Ordering a child out separately would
         // detach it from its parent, breaking sheet and auxiliary-panel ownership on restore.
+        // Windows on other Spaces cannot appear in this capture; ordering them back in would move
+        // windows that follow the active Space onto this one (FR-01).
         let windows = NSApp.orderedWindows.filter {
-            $0.isVisible && !$0.isMiniaturized && $0.parent == nil && $0.sheetParent == nil
+            $0.isVisible && $0.isOnActiveSpace && !$0.isMiniaturized && $0.parent == nil && $0.sheetParent == nil
         }
         suspended = windows.map { SuspendedWindow(window: $0) }
         for window in windows { window.orderOut(nil) }

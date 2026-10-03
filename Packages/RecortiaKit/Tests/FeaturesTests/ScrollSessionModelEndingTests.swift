@@ -79,6 +79,51 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.state == .collecting)
     }
 
+    // Failure mode (review r2): Stop froze the review's dimensions and seams while an admitted
+    // append was still mutating the stitcher, so the preview and the assembled image included
+    // rows that the review metadata and seam markers did not.
+    @Test("Stop while a frame is being stitched settles it into one consistent review", .timeLimit(.minutes(1)))
+    func stopDuringAppendKeepsReviewConsistent() async throws {
+        let h = ScrollHarness()
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        h.stitcher.holdAppends = true
+        h.frames.deliver()
+        await waitFor("append in progress") { h.stitcher.appends.waiterCount == 1 }
+
+        h.model.stop()
+        #expect(h.frames.stopCount >= 1, "the stream stops immediately")
+        h.stitcher.appends.resolve(())
+        await waitFor("review settled") { h.model.state == .reviewing && h.model.preview != nil }
+
+        #expect(h.stitcher.acceptedFrameCount == 2)
+        #expect(h.model.acceptedFrames == 2)
+        #expect(h.model.outputSize == h.stitcher.outputSize)
+        #expect(h.model.seams == [100], "the seam where the settled frame joined is marked")
+        let assembled = try await h.stitcher.assemble()
+        #expect(assembled.height == h.model.outputSize.height)
+        #expect(h.model.partialReason == nil)
+    }
+
+    @Test("Cancel while a stopped session is settling its last frame leaves no review", .timeLimit(.minutes(1)))
+    func cancelWhileSettlingStop() async {
+        let h = ScrollHarness()
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        h.stitcher.holdAppends = true
+        h.frames.deliver()
+        await waitFor("append in progress") { h.stitcher.appends.waiterCount == 1 }
+
+        h.model.stop()
+        h.model.cancel()
+        h.stitcher.appends.resolve(())
+        await drain()
+        #expect(h.model.state == .canceled)
+        #expect(h.model.preview == nil)
+        #expect(h.model.seams.isEmpty)
+        #expect(h.model.acceptedFrames == 0)
+    }
+
     @Test("Automatic mode ends a page that stops moving as a complete result")
     func automaticEndOfPageFromStationaryFrames() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)

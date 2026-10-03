@@ -29,6 +29,8 @@ public enum ScrollLimit: Hashable, Sendable, Codable {
     case area
     case side
     case height
+    /// The peak working memory of one append (`ScrollLimits.maxWorkingBytes`).
+    case memory
 }
 
 /// Why an accepted scrolling capture is partial (SCR-02/04). A partial result is never labeled complete.
@@ -47,16 +49,21 @@ public struct ScrollLimits: Hashable, Sendable {
     public var maxOutputArea: Int
     public var maxSide: Int
     public var defaultMaxHeight: Int
+    /// Peak bytes a single `append` may hold at once: the accepted output rows, the previous frame's
+    /// matching planes, and the incoming frame's pixel and matching planes. Checked before the
+    /// incoming frame is converted. The default is SPEC §10's 512 MiB target for the heavy workflow.
+    public var maxWorkingBytes: Int
 
     public init(
         maxDuration: Duration = .seconds(120), maxAcceptedFrames: Int = 200, maxOutputArea: Int = 40_000_000,
-        maxSide: Int = 32_768, defaultMaxHeight: Int = 20_000
+        maxSide: Int = 32_768, defaultMaxHeight: Int = 20_000, maxWorkingBytes: Int = 512 * 1024 * 1024
     ) {
         self.maxDuration = maxDuration
         self.maxAcceptedFrames = maxAcceptedFrames
         self.maxOutputArea = maxOutputArea
         self.maxSide = maxSide
         self.defaultMaxHeight = defaultMaxHeight
+        self.maxWorkingBytes = maxWorkingBytes
     }
 
     public static let `default` = ScrollLimits()
@@ -218,6 +225,7 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var ocrTextMode = OCRTextMode.preserveLineBreaks
     public var pinDefaultOpacity = 1.0
     public var preferredSaveFolderBookmark: Data?
+    public var githubUpload: GitHubUploadPreferences?
 
     public init() {}
 
@@ -232,6 +240,7 @@ extension Preferences {
     /// from preferences Recortia sealed itself (SettingsStore, THREAT_MODEL.md).
     public var grantsSideEffects: Bool {
         autoCopy || autoSave || automaticScrollingEnabled || preferredSaveFolderBookmark != nil
+            || githubUpload?.automatic == true
     }
 
     /// These preferences with every side-effect consent turned off.
@@ -241,6 +250,7 @@ extension Preferences {
         copy.autoSave = false
         copy.automaticScrollingEnabled = false
         copy.preferredSaveFolderBookmark = nil
+        copy.githubUpload?.automatic = false
         return copy
     }
 }

@@ -56,7 +56,7 @@ private struct LocalProcessingStep: View {
                 .font(.title3)
             Label {
                 Text(
-                    "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded."
+                    "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it."
                 )
             } icon: {
                 Image(systemName: "lock.laptopcomputer").frame(width: 24).accessibilityHidden(true)
@@ -104,6 +104,7 @@ private struct ShortcutsStep: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .onAppear { shortcutStatus.noteUserAttention() }
         }
     }
 }
@@ -121,11 +122,8 @@ final class OnboardingWindowController {
         let view = OnboardingView(onboarding: onboarding, shortcutStatus: shortcutStatus) { [weak self] in
             self?.close()
         }
-        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
-        window.title = String(localized: "Welcome to Recortia")
-        window.styleMask = [.titled, .closable]
-        window.isReleasedWhenClosed = false
-        window.center()
+        let window = Self.makeWindow(NSHostingController(rootView: view))
+        window.center(on: ScreenChoice.screen())
         self.window = window
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
@@ -134,6 +132,15 @@ final class OnboardingWindowController {
     private func close() {
         window?.close()
         window = nil
+    }
+
+    static func makeWindow(_ content: NSViewController) -> NSWindow {
+        let window = NSWindow(contentViewController: content)
+        window.title = String(localized: "Welcome to Recortia")
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        SpacePolicy.follow(window)
+        return window
     }
 }
 

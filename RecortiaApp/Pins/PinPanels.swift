@@ -37,6 +37,9 @@ final class PinsUIController {
 }
 
 final class PinPanel: NSPanel {
+    /// Chosen once, so the pin is sized for the screen it appears on (FR-09).
+    private let targetScreen = ScreenChoice.screen()
+
     init(pinID: PinID, model: PinsModel) {
         super.init(
             contentRect: .zero, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
@@ -50,10 +53,10 @@ final class PinPanel: NSPanel {
         // control bar paints a background.
         isOpaque = false
         backgroundColor = .clear
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        collectionBehavior = SpacePolicy.joinsAllSpaces
         title = String(localized: "Pin")
         setAccessibilityLabel(String(localized: "Pinned screenshot"))
-        let fit = Self.fitScale(for: model.pin(for: pinID))
+        let fit = Self.fitScale(for: model.pin(for: pinID), visibleFrame: targetScreen?.visibleFrame)
         let controller = NSHostingController(
             rootView: PinContentView(pinID: pinID, model: model, fitScale: fit))
         controller.sizingOptions = [.preferredContentSize]
@@ -64,8 +67,7 @@ final class PinPanel: NSPanel {
 
     func presentNearPointer() {
         let pointer = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(pointer) } ?? NSScreen.main
-        if let visible = screen?.visibleFrame {
+        if let visible = targetScreen?.visibleFrame {
             let size = frame.size
             let x = min(max(pointer.x - size.width / 2, visible.minX), visible.maxX - size.width)
             let y = min(max(pointer.y - size.height / 2, visible.minY), visible.maxY - size.height)
@@ -75,9 +77,10 @@ final class PinPanel: NSPanel {
         makeKeyAndOrderFront(nil)
     }
 
-    /// Shrinks very large images so a new pin fits on screen; the pin's own zoom applies on top.
-    private static func fitScale(for pin: Pin?) -> Double {
-        guard let pin, let visible = NSScreen.main?.visibleFrame else { return 1 }
+    /// Shrinks very large images so a new pin fits the visible frame of the screen it appears on;
+    /// the pin's own zoom applies on top.
+    static func fitScale(for pin: Pin?, visibleFrame visible: CGRect?) -> Double {
+        guard let pin, let visible else { return 1 }
         let width = Double(pin.image.width) / pin.displayScale
         let height = Double(pin.image.height) / pin.displayScale
         guard width > 0, height > 0 else { return 1 }

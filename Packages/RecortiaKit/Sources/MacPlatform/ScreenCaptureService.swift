@@ -40,6 +40,10 @@ struct CapturePlan: Sendable, Equatable {
     var source: Source
     /// Display-local points, top-left origin; nil captures the whole display or window.
     var sourceRect: CGRect?
+    /// The display frame the selection was made on (display and region captures). The backend
+    /// refuses to capture when its own content read reports another frame, so the stored source
+    /// rectangle is never applied to a resized or moved display.
+    var expectedDisplayFrame: CGRect?
     var showsCursor: Bool
     var includesShadow: Bool
 
@@ -61,6 +65,9 @@ struct BackendImage: Sendable {
     var image: CGImage
     /// Pixels per point that ScreenCaptureKit reports for the captured content.
     var pointPixelScale: Double
+    /// The shareable-content snapshot the capture filter was built from. The service derives the
+    /// returned geometry from it, so pixels and geometry always describe the same displays.
+    var content: ShareableContentSnapshot
 }
 
 /// The only boundary to ScreenCaptureKit. The live implementation uses the one-shot screenshot
@@ -139,6 +146,11 @@ public actor ScreenCaptureService {
         // SCK's completion-based API cannot be interrupted; a cancelled caller discards the image.
         try Self.checkCancellation()
 
+        // Geometry comes from the snapshot the backend filtered with, not from the planning read:
+        // a window can move between displays, or a display can be resized at an unchanged scale,
+        // between the two reads.
+        let (source, desktopBounds) = try Self.resolveGeometry(prepared, in: captured.content, ownPID: ownProcessID)
+
         if let expectedScale = prepared.expectedScale,
             abs(expectedScale - captured.pointPixelScale) > Self.tolerance
         {
@@ -148,7 +160,7 @@ public actor ScreenCaptureService {
             throw .system(code: SCStreamError.Code.internalError.rawValue)
         }
         let geometry = CaptureGeometry(
-            source: prepared.source, desktopBounds: prepared.desktopBounds, pointPixelScale: captured.pointPixelScale,
+            source: source, desktopBounds: desktopBounds, pointPixelScale: captured.pointPixelScale,
             pixelSize: PixelSize(width: captured.image.width, height: captured.image.height), capturedAt: now())
         return (captured.image, geometry)
     }
@@ -161,6 +173,24 @@ public actor ScreenCaptureService {
         var desktopBounds: Rect<DesktopSpace>
         /// The selection-time display scale the capture must still match; nil for windows.
         var expectedScale: Double?
+        /// The selection-time display a display or region capture must still match; nil for windows.
+        var expectedDisplay: DisplayInfo?
+        /// The window a window capture targets.
+        var windowID: CGWindowID?
+    }
+
+    /// The source and bounds to report, checked against the content the backend captured from.
+    private static func resolveGeometry(
+        _ prepared: Prepared, in content: ShareableContentSnapshot, ownPID: pid_t
+    ) throws(CaptureError) -> (CaptureSource, Rect<DesktopSpace>) {
+        if let display = prepared.expectedDisplay {
+            try verify(display, in: content)
+            return (prepared.source, prepared.desktopBounds)
+        }
+        guard let id = prepared.windowID, let window = content.windows.first(where: { $0.id == id }),
+            window.ownerPID != ownPID, let displayID = bestDisplay(for: window.frame, in: content.displays)
+        else { throw .targetUnavailable }
+        return (.window(id: id, displayID: displayID), desktopRect(window.frame))
     }
 
     private func prepare(
@@ -179,11 +209,12 @@ public actor ScreenCaptureService {
             let plan = CapturePlan(
                 source: .display(display.id, excludedWindowIDs: excludedWindowIDs(excludingWindowNumbers, content)),
                 sourceRect: CGRect(x: local.minX, y: local.minY, width: local.width, height: local.height),
+                expectedDisplayFrame: Self.cgRect(display.frame),
                 showsCursor: showsCursor, includesShadow: includesShadow)
             return Prepared(
                 plan: plan, source: .region(displayID: display.id),
                 desktopBounds: DesktopGeometry.desktopRect(fromLocal: local, on: display),
-                expectedScale: display.pointPixelScale)
+                expectedScale: display.pointPixelScale, expectedDisplay: display, windowID: nil)
 
         case .display(let display):
             try Self.verify(display, in: content)
@@ -192,20 +223,23 @@ public actor ScreenCaptureService {
                 scale: display.pointPixelScale)
             let plan = CapturePlan(
                 source: .display(display.id, excludedWindowIDs: excludedWindowIDs(excludingWindowNumbers, content)),
-                sourceRect: nil, showsCursor: showsCursor, includesShadow: includesShadow)
+                sourceRect: nil, expectedDisplayFrame: Self.cgRect(display.frame), showsCursor: showsCursor,
+                includesShadow: includesShadow)
             return Prepared(
                 plan: plan, source: .display(id: display.id), desktopBounds: display.frame,
-                expectedScale: display.pointPixelScale)
+                expectedScale: display.pointPixelScale, expectedDisplay: display, windowID: nil)
 
         case .window(let info):
             guard let window = content.windows.first(where: { $0.id == info.id }), window.ownerPID != ownProcessID,
                 let displayID = Self.bestDisplay(for: window.frame, in: content.displays)
             else { throw .targetUnavailable }
             let plan = CapturePlan(
-                source: .window(window.id), sourceRect: nil, showsCursor: showsCursor, includesShadow: includesShadow)
+                source: .window(window.id), sourceRect: nil, expectedDisplayFrame: nil, showsCursor: showsCursor,
+                includesShadow: includesShadow)
             return Prepared(
                 plan: plan, source: .window(id: window.id, displayID: displayID),
-                desktopBounds: Self.desktopRect(window.frame), expectedScale: nil)
+                desktopBounds: Self.desktopRect(window.frame), expectedScale: nil, expectedDisplay: nil,
+                windowID: window.id)
         }
     }
 
@@ -220,14 +254,18 @@ public actor ScreenCaptureService {
 
     private static func verify(_ display: DisplayInfo, in content: ShareableContentSnapshot) throws(CaptureError) {
         guard let current = content.displays.first(where: { $0.id == display.id }) else { throw .targetUnavailable }
-        let frame = display.frame
-        let matches =
-            abs(current.frame.minX - frame.minX) <= tolerance && abs(current.frame.minY - frame.minY) <= tolerance
-            && abs(current.frame.width - frame.width) <= tolerance
-            && abs(current.frame.height - frame.height) <= tolerance
-        guard matches else { throw .displayChanged }
+        guard framesMatch(cgRect(display.frame), current.frame) else { throw .displayChanged }
     }
 
+    /// Display frames reported at different times agree within rounding noise.
+    static func framesMatch(_ a: CGRect, _ b: CGRect) -> Bool {
+        abs(a.minX - b.minX) <= tolerance && abs(a.minY - b.minY) <= tolerance
+            && abs(a.width - b.width) <= tolerance && abs(a.height - b.height) <= tolerance
+    }
+
+    private static func cgRect(_ rect: Rect<DesktopSpace>) -> CGRect {
+        CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height)
+    }
     static func bestDisplay(
         for frame: CGRect, in displays: [ShareableContentSnapshot.Display]
     ) -> CGDirectDisplayID? {

@@ -15,6 +15,41 @@ struct UserMessage: Equatable {
 enum MessagePresenter {
     static func present(_ message: UserMessage) {
         NSApp.activate()
+        let alert = makeAlert(message)
+        let response = alert.runModal()
+        if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
+            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// Asks before Quit discards edits in `count` open editors. True means quit.
+    static func confirmDiscardOnQuit(count: Int) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Quit and discard your edits?")
+        alert.informativeText =
+            count == 1
+            ? String(
+                localized: """
+                    An open image has changes that were not copied, saved, dragged, or pinned. \
+                    Quitting discards them.
+                    """)
+            : String(
+                localized: """
+                    \(count) open images have changes that were not copied, saved, dragged, or pinned. \
+                    Quitting discards them.
+                    """)
+        let quit = alert.addButton(withTitle: String(localized: "Quit"))
+        quit.hasDestructiveAction = true
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        SpacePolicy.follow(alert.window)
+        NSApp.activate()
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    static func makeAlert(_ message: UserMessage) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = message.title
         alert.informativeText = message.detail
@@ -25,12 +60,9 @@ enum MessagePresenter {
         } else {
             alert.addButton(withTitle: String(localized: "OK"))
         }
-        let response = alert.runModal()
-        if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
-            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-        {
-            NSWorkspace.shared.open(url)
-        }
+        // A message raised over another app's fullscreen Space must appear there (FR-01).
+        SpacePolicy.follow(alert.window)
+        return alert
     }
 }
 
@@ -74,6 +106,8 @@ extension UserMessage {
         let title = String(localized: "The image could not be opened")
         let detail =
             switch failure {
+            case .busy: String(localized: "Another image is still being opened. Try again when it finishes.")
+            case .cancelled: String(localized: "Opening the image was canceled.")
             case .nothingToPaste: String(localized: "The clipboard does not contain a PNG or JPEG image.")
             case .tooLarge: String(localized: "The file is larger than 64 MB.")
             case .tooManyPixels: String(localized: "The image is larger than 40 megapixels.")
@@ -89,6 +123,8 @@ extension UserMessage {
     static func export(_ failure: ExportFailure) -> UserMessage {
         let detail =
             switch failure {
+            case .busy: String(localized: "Automatic export was skipped because another export is still running.")
+            case .upload(let failure): GitHubUploadStrings.message(failure)
             case .renderFailed, .encodeFailed: String(localized: "The image could not be rendered.")
             case .budgetExceeded: String(localized: "The image is too large to export.")
             case .clipboardFailed:
@@ -101,7 +137,10 @@ extension UserMessage {
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")
             case .system(let code): String(localized: "The system reported an error (\(code)).")
             }
-        return UserMessage(title: String(localized: "Nothing was exported"), detail: detail)
+        let title =
+            failure == .upload(.completionUnknown)
+            ? String(localized: "Check the GitHub upload") : String(localized: "Nothing was exported")
+        return UserMessage(title: title, detail: detail)
     }
 
     static func scroll(_ failure: ScrollFailure) -> UserMessage {

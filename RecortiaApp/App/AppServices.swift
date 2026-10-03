@@ -5,6 +5,8 @@ import Foundation
 /// MacPlatform modules. Until that wiring lands, the app runs with `services == nil` and every
 /// command that needs one of these is disabled rather than faked.
 struct AppServices {
+    var githubUpload: (any GitHubUploadService)? = nil
+    var githubCredentials: (any GitHubCredentialService)? = nil
     let capture: any CaptureService
     let screenPermission: any ScreenPermissionService
     let accessibility: any AccessibilityPermissionService

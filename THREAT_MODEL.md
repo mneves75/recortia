@@ -1,12 +1,24 @@
 # Threat model — Recortia v1
 
-**Status:** Security contract for 0.9.1 beta. Source review and synthetic regressions cover the
+**Status:** Security contract for 0.10.0 beta. Source review and synthetic regressions cover the
 boundaries below; live capture, platform qualification, and notarized distribution remain separate
 checks. Signed local-install evidence and its limits are recorded in README.md and BACKLOG.json.
 **Owner:** Repository maintainer.
 **Distribution assumption:** A direct-distribution, Hardened Runtime-enabled app that is not protected by App Sandbox. The tradeoff is recorded in ADR-0002.
 
 ## Assets and trust boundaries
+
+Image import uses one shared read/decode admission slot across documents and layers.
+Rejected requests do not materialize file/clipboard/drop-provider data. An admitted operation
+keeps the slot through cancellation until its reader/decoder exits, then releases a discarded
+asset. This limits overlapping workload; it does not establish a bound on framework RSS or
+the allocation a single pasteboard provider performs before the byte budget can be checked.
+
+Optional GitHub upload (authorized 2026-10-01) adds a repository-scoped token and sanitized
+remote copies. ADR-006 owns its boundary: sealed opt-in, private destination verification,
+device-only app-scoped Keychain, bounded HTTPS without redirects, revision/consent checks,
+and no automatic retry after an uncertain PUT. Git history and later repository visibility
+or collaborator changes are outside local revocation guarantees.
 
 Sensitive assets are screenshot pixels, recognized text, QR payloads, user clipboard content, chosen file destinations, future upload credentials, and release-signing/update keys. Settings are lower sensitivity but may still disclose user preferences or folder access. The clipboard, receiving applications, exported files, backups, OS services, and update infrastructure are separate trust domains.
 
@@ -19,6 +31,10 @@ A same-user process that lacks Recortia's Screen Recording or Accessibility gran
 Secure masks cover source pixels twice: the regions bound when the mask is drawn (they follow the content if a layer moves), and, at render time, whatever layer lies under the mask's output rectangle now (a layer added or moved there later), always before any resample or effect. Secure masks are also the topmost output layer, over annotations and callouts. Any layer change while a mask exists advances the privacy epoch, so derived text, QR results, and pins go stale. Automatic export checks freshness against the live editor session. Capture requires Recortia to be excluded as an application and fails otherwise. Drag-out offers follow ADR-004: revocable until the receiver writes the file, never reported canceled once it has.
 
 ## Threat register
+
+Pending GitHub uploads bind the session's original consent identity before asynchronous work.
+Changing GitHub configuration or resetting settings changes that identity. Restoring identical
+preferences never revives the old intent; the final pre-write check rejects it (NET-01).
 
 | Threat | Failure path | Required mitigation | Evidence |
 |---|---|---|---|
@@ -59,7 +75,7 @@ Signing/update key material must never be available to untrusted PR jobs, coding
 
 Before v1, document how to stop a compromised update rollout, distribute a corrected signed build, notify users, and rotate the relevant credential without assuming all users can auto-update. Key recovery and updater trust continuity require an actual staging test. For privacy defects, document what kinds of exports may have been affected rather than promising retroactive deletion from recipients.
 
-## Accepted residuals (0.9.1 beta)
+## Accepted residuals (0.10.0 beta)
 
 ### Additional validation gaps from the 2026-09-29 source review
 
@@ -90,7 +106,7 @@ user's own action, or needs a platform capability not yet adopted.
 | Any process can post `com.apple.screenIsLocked` and cancel a capture or scroll | Fail-safe: it only cancels | Confirm with `CGSessionCopyCurrentDictionary` |
 | Scrolling's source-window/focus binding has only synthetic verification | Identity is checked while collecting; each automatic event also checks owner, bounds, and the window under its point | Validate window switching and Recortia focus on a dedicated live-capture desktop |
 | Chooser and overlay commits do not carry their request ID | A replaced session's UI can only commit into a session the user started | Bind commits to the active request ID |
-| Auto-copy/auto-save is skipped silently while a drag chip is pending | Fails closed | Surface the skipped export |
+| Auto-copy/auto-save cannot start while another export or drag is pending | Fails closed; automatic batches now report a busy failure | Retain the busy/cancellation regression |
 | Paste and drop read the pasteboard item on the main thread before the 64 MiB check | Explicit user action; own-process availability only | Read off the main actor where AppKit allows |
 | A TIFF-only clipboard is read and then refused as unsupported | By design: the bounded importer decodes only PNG and JPEG (FR-03); reading it lets the message say why | Add a bounded TIFF path only with its own validation and review |
 | Magnifier callouts can show pixels outside a crop | Visible in the preview; crop is not a privacy control (FR-04) | Clip magnifier sources to the content rect |

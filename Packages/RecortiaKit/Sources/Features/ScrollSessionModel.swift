@@ -77,6 +77,18 @@ public final class ScrollSessionModel {
     @ObservationIgnored private var settleTask: Task<Void, Never>?
     @ObservationIgnored private var unansweredSteps = 0
     @ObservationIgnored private var autoStepOwner: UUID?
+    /// True while the collection loop awaits `stitcher.append`; the stitcher may still mutate.
+    @ObservationIgnored private var appendInFlight = false
+    /// A Stop (or other ending) that arrived while an append was in flight. The stream is already
+    /// stopped; the review is frozen once that append settles, so its rows, seam, and counters
+    /// land in one snapshot.
+    @ObservationIgnored private var pendingFinish: PendingFinish?
+
+    /// How collection is to end once the admitted append settles.
+    private struct PendingFinish {
+        var partial: ScrollPartialReason?
+        var event: ScrollEvent
+    }
 
     public init(
         frames: any ScrollFrameSourceService, stitcher: any ScrollStitchService, autoScroller: (any AutoScrollService)?,
@@ -147,7 +159,7 @@ public final class ScrollSessionModel {
 
     /// Pauses appending. The stream keeps running; frames that arrive while paused are dropped.
     public func pause() {
-        guard state == .collecting else { return }
+        guard state == .collecting, pendingFinish == nil else { return }
         settleTask?.cancel()
         apply(.pause(.userPaused))
     }
@@ -279,14 +291,25 @@ public final class ScrollSessionModel {
 
             let elapsed = elapsedSinceStart()
             let heightBefore = stitcher.outputSize.height
+            appendInFlight = true
             let result = await stitcher.append(frame, elapsed: elapsed)
+            if sessionID == id { appendInFlight = false }  // a replacement session owns the flag now
             guard isCurrent(id) else { return }
 
-            switch result {
-            case .accepted:
+            if case .accepted = result {
                 if heightBefore > 0 { seams.append(heightBefore) }
                 acceptedFrames = stitcher.acceptedFrameCount
                 outputSize = stitcher.outputSize
+            }
+            if let finish = pendingFinish {
+                // Stop landed during the append: its result is recorded above, so freeze now.
+                pendingFinish = nil
+                completeFinish(partial: finish.partial, event: finish.event)
+                return
+            }
+
+            switch result {
+            case .accepted:
                 unansweredSteps = 0
             case .stationary:
                 break
@@ -373,8 +396,18 @@ public final class ScrollSessionModel {
     }
 
     private func finishCollecting(partial: ScrollPartialReason?, event: ScrollEvent = .stop) {
+        guard pendingFinish == nil else { return }
         stopStream()
         cancelTimers()
+        if appendInFlight {
+            // Keep the collection task: it settles the admitted append, then calls `completeFinish`.
+            pendingFinish = PendingFinish(partial: partial, event: event)
+            return
+        }
+        completeFinish(partial: partial, event: event)
+    }
+
+    private func completeFinish(partial: ScrollPartialReason?, event: ScrollEvent) {
         task?.cancel()
         task = nil
         pageEndLikely = false
@@ -422,6 +455,8 @@ public final class ScrollSessionModel {
     // MARK: Bookkeeping
 
     private func tearDown() {
+        pendingFinish = nil
+        appendInFlight = false
         cancelTimers()
         task?.cancel()
         task = nil
@@ -453,6 +488,8 @@ public final class ScrollSessionModel {
     }
 
     private func resetProgress() {
+        pendingFinish = nil
+        appendInFlight = false
         acceptedFrames = 0
         outputSize = PixelSize(width: 0, height: 0)
         seams = []

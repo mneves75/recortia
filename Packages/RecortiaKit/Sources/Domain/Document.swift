@@ -262,8 +262,13 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
 
     public var canvasRect: Rect<DocumentSpace> { Rect(origin: .zero, size: canvasSize) }
 
-    /// Region of the canvas that is exported: the crop, or the whole canvas.
-    public var contentRect: Rect<DocumentSpace> { crop.flatMap { $0.intersection(canvasRect) } ?? canvasRect }
+    /// Region of the canvas that is exported: the crop clipped to the canvas, or the whole canvas
+    /// when there is no crop. An explicit crop that is empty or lies wholly off the canvas has no
+    /// content: the result is empty (never the whole canvas) so the renderer refuses it.
+    public var contentRect: Rect<DocumentSpace> {
+        guard let crop else { return canvasRect }
+        return crop.intersection(canvasRect) ?? Rect(x: 0, y: 0, width: 0, height: 0)
+    }
 
     /// Output pixel size at `exportScale`, including presentation padding.
     public func outputPixelSize(exportScale: Double) -> PixelSize {
