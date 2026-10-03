@@ -68,6 +68,7 @@ final class AppModel: AppActions {
     /// Re-checks held shortcuts until macOS lets their keys go (ADR-005).
     @ObservationIgnored private var heldShortcutWatch: Task<Void, Never>?
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var resignObserver: (any NSObjectProtocol)?
     /// Gives Settings, About and alert windows a Space policy before the app activates (FR-01).
     @ObservationIgnored private let spacePolicy = SpacePolicyMonitor()
     @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
@@ -95,6 +96,7 @@ final class AppModel: AppActions {
         spacePolicy.start()
         // Every path that holds a shortcut starts the watch, including a recording in Settings.
         shortcutStatus.onHold = { [weak self] in self?.watchHeldShortcuts() }
+        shortcutStatus.onAttention = { [weak self] in self?.watchHeldShortcuts(restart: true) }
     }
 
     /// Called once from `applicationDidFinishLaunching`. Requests no permission.
@@ -335,13 +337,19 @@ final class AppModel: AppActions {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshShortcuts() }
         }
+        // Leaving Recortia is when a person goes to System Settings to free a held key.
+        resignObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.watchHeldShortcuts(restart: true) }
+        }
     }
 
     /// Registers or holds every shortcut. Holding one starts a two-second watch (`onHold`), so a
     /// default starts working soon after the user turns the macOS shortcut off (ADR-005).
     func refreshShortcuts() {
         shortcutStatus.refreshAll()
-        watchHeldShortcuts()
+        watchHeldShortcuts(restart: true)
     }
 
     /// Restore Defaults in Settings: the macOS-style table, every other command cleared.
@@ -351,16 +359,20 @@ final class AppModel: AppActions {
 
     /// Quick at first (the user may be in System Settings freeing the key), then backing off to
     /// one check every 10 s, so a default install that keeps macOS's shortcuts wakes far less often
-    /// while a freed key is still claimed soon (ADR-005). Becoming active refreshes immediately.
+    /// (ADR-005). Activation, resigning active and opening shortcut settings restart quick checks.
     static func heldShortcutPollDelay(afterChecks checks: Int) -> Duration {
         .seconds(min(2 << min(max(checks, 0), 3), 10))
     }
 
-    private func watchHeldShortcuts() {
+    private func watchHeldShortcuts(restart: Bool = false) {
         guard shortcutStatus.isHoldingAny else {
             heldShortcutWatch?.cancel()
             heldShortcutWatch = nil
             return
+        }
+        if restart {
+            heldShortcutWatch?.cancel()
+            heldShortcutWatch = nil
         }
         guard heldShortcutWatch == nil else { return }
         heldShortcutWatch = Task { [weak self] in

@@ -104,6 +104,7 @@ private struct ShortcutsStep: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .onAppear { shortcutStatus.noteUserAttention() }
         }
     }
 }

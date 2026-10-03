@@ -107,6 +107,7 @@ struct ShortcutsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { status.noteUserAttention() }
     }
 }
 
