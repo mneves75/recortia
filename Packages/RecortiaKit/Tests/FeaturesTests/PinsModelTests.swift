@@ -144,6 +144,90 @@ struct PinsModelTests {
         #expect(h.model.canAddPin)
     }
 
+    @Test(
+        "Overlapping pin requests are bounded by the free slots before they reach the renderer",
+        .timeLimit(.minutes(1)))
+    func overlappingPinRequestsAreBounded() async throws {
+        let h = PinsHarness()
+        let session = TestFixtures.session()
+        for _ in 0..<2 { _ = try await h.model.pin(session, currentSession: { session }) }
+        let baseline = h.renderer.renderCount
+        let pending = Pending<Result<CGImage, ExportServiceError>>()
+        h.renderer.pending = pending
+
+        let free = PinLimits.maxPins - h.model.pins.count
+        let tasks = (0..<(free + 3)).map { _ in Task { try await h.model.pin(session, currentSession: { session }) } }
+        await waitFor("admitted renders") { pending.waiterCount == free }
+        await drain()
+        #expect(h.renderer.renderCount - baseline == free, "excess requests never reach the renderer")
+        #expect(h.model.canAddPin == false, "reserved slots count as taken")
+
+        var limited = 0
+        let image = try #require(makeImage())
+        // Release every held render (a defective model would hold more than `free`).
+        while pending.resolve(.success(image)) {}
+        for task in tasks {
+            do { _ = try await task.value } catch { if (error as? PinError) == .limitReached { limited += 1 } }
+        }
+        #expect(limited == 3)
+        #expect(h.model.pins.count == PinLimits.maxPins)
+    }
+
+    @Test("A reservation is released when its render fails, is rejected, or is canceled", .timeLimit(.minutes(1)))
+    func reservationReleased() async throws {
+        let h = PinsHarness()
+        let session = TestFixtures.session()
+
+        h.renderer.shouldFail = true
+        for _ in 0..<(PinLimits.maxPins + 2) {
+            await #expect(throws: PinError.renderFailed) {
+                _ = try await h.model.pin(session, currentSession: { session })
+            }
+        }
+        #expect(h.model.canAddPin, "failed renders give their slot back")
+        h.renderer.shouldFail = false
+
+        for _ in 0..<(PinLimits.maxPins + 2) {
+            await #expect(throws: PinError.staleDocument) {
+                _ = try await h.model.pin(session, currentSession: { nil })
+            }
+        }
+        #expect(h.model.canAddPin, "rejected completions give their slot back")
+
+        let pending = Pending<Result<CGImage, ExportServiceError>>()
+        h.renderer.pending = pending
+        let tasks = (0..<PinLimits.maxPins).map { _ in
+            Task { try await h.model.pin(session, currentSession: { nil }) }
+        }
+        await waitFor("renders held") { pending.waiterCount == PinLimits.maxPins }
+        for task in tasks { task.cancel() }
+        for _ in tasks { pending.resolve(.failure(ExportServiceError(.renderFailed))) }
+        for task in tasks { _ = await task.result }
+        #expect(h.model.canAddPin, "canceled requests give their slot back")
+        #expect(h.model.pins.isEmpty)
+    }
+
+    @Test("Close all discards a pin request that was still rendering", .timeLimit(.minutes(1)))
+    func closeAllInvalidatesPendingPin() async throws {
+        let h = PinsHarness()
+        let session = TestFixtures.session()
+        _ = try await h.model.pin(session, currentSession: { session })
+        let pending = Pending<Result<CGImage, ExportServiceError>>()
+        h.renderer.pending = pending
+        let task = Task { try await h.model.pin(session, currentSession: { session }) }
+        await waitFor("rendering") { pending.waiterCount == 1 }
+
+        h.model.closeAll()
+        pending.resolve(.success(try #require(makeImage())))
+        await #expect(throws: PinError.staleDocument) { _ = try await task.value }
+        #expect(h.model.pins.isEmpty, "the older request must not reopen a pin")
+        #expect(h.model.canAddPin, "its reservation is released")
+
+        h.renderer.pending = nil
+        _ = try await h.model.pin(session, currentSession: { session })
+        #expect(h.model.pins.count == 1, "requests made after Close All still work")
+    }
+
     @Test("Opacity and zoom are clamped to their ranges")
     func clamping() async throws {
         let h = PinsHarness()
