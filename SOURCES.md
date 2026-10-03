@@ -165,6 +165,28 @@ apply to Recortia's fixed-style overlay. Published guidance and an independent r
 advisory are not personal consultation with Apple or the author. These older API explanations
 remain applicable to the verified 2026 SDK; no future-year behavior is claimed.
 
+## S22 — Window Spaces and fullscreen Spaces (consulted 2026-10-03)
+
+The installed stable Xcode 27.0 `NSWindow.h` allows at most one of `fullScreenPrimary`,
+`fullScreenAuxiliary` and `fullScreenNone`, and at most one of `primary`, `auxiliary` and
+`canJoinAllApplications` ("join other apps' sets and full screen spaces when eligible").
+An Apple DTS engineer's answer on the Developer Forums (thread 826308, May 2026) recommends an
+accessory activation policy and a nonactivating `NSPanel` for windows over other apps'
+fullscreen Spaces, and reports `.floating` below fullscreen content in their test.
+
+Recortia's own measurement (`scripts/space-probe/run.sh`, macOS 27, one display, n=3 per
+variant, 2026-10-03) decided the policy: activating an accessory app switched the user's Space
+to a window without a Space policy every time (3/3, including out of a fullscreen Space), and
+never with `[.moveToActiveSpace, .fullScreenAuxiliary]` (0/6, either activation order);
+nonactivating `.floating` panels with `[.canJoinAllSpaces, .fullScreenAuxiliary]` were listed
+above the fullscreen window. SPEC §FR-09 keeps pins off the screen-saver level, so the DTS
+level advice is not adopted. Measured on one Mac and display; other OS versions and multiple
+physical displays are not claimed.
+
+Sources: [Developer Forums 826308](https://developer.apple.com/forums/thread/826308),
+[NSWindow.CollectionBehavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct),
+installed SDK header `AppKit.framework/Headers/NSWindow.h`.
+
 ## External assertions not made
 
 No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

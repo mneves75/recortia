@@ -45,6 +45,13 @@ window level, active-Space/fullscreen-auxiliary policy, and canvas ownership aft
 layout when activation succeeds (`editor-presentation`). Visibility cannot depend on activation
 being immediate or guaranteed. Qualify actual fullscreen/Space/display transitions separately.
 
+Every window Recortia constructs follows the active Space or joins all Spaces, and framework
+windows are adopted before activation (`space-policy`); capture suspension leaves windows on
+other Spaces untouched (`other-spaces`); screens are chosen by capture display, then pointer,
+including negative origins (`screen-choice`). Physical qualification: with another app in a
+fullscreen Space and a Recortia window left on a desktop Space, activating Recortia must not
+change the active Space (`scripts/space-probe/run.sh stale <variant>`; 0 switches required).
+
 ### GEO-01 — Mixed-DPI desktop matrix
 
 Use displays at 1x and 2x, a display to the left/above the primary, different resolutions, and a rotated display where hardware allows. Test all four selection directions, one-pixel edges, fractional logical coordinates, and display unplug/replug. Exported pixel bounds agree with the geometry contract; there are no inverted crops, seams, or silent cross-display resampling.

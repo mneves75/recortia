@@ -3,13 +3,14 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
-**Status:** 0.10.1 source candidate (build 13), awaiting release qualification. The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
+**Status:** 0.10.1, the release that makes Recortia work on every desktop: other Spaces, other
+apps' fullscreen Spaces, and multiple displays. The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
 multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
-and the in-app updater are pending (see [Validation status](#validation-status)). Betas are published
-as regular GitHub releases so that Homebrew and the Releases "latest" link follow them; the version
-number says beta. Recortia is an independent project and is not affiliated
+and the in-app updater are pending (see [Validation status](#validation-status)). From 0.10.1,
+betas are GitHub pre-releases (`v<version>-betaN`); Homebrew and the Releases "latest" link follow
+stable releases. Recortia is an independent project and is not affiliated
 with Shottr or any other screenshot tool.
 
 ## Install
@@ -22,11 +23,11 @@ brew install --cask mneves75/tap/recortia
 
 Or download the notarized DMG from [Releases](https://github.com/mneves75/recortia/releases).
 
-Build 13 corrects capture-result window presentation: the editor follows the active Space,
-supports fullscreen-auxiliary placement, and remains visible if activation is delayed or
-declined. It lays out the canvas before assigning keyboard focus. Synthetic regression uses
-the real controller; actual fullscreen/Space transitions remain a dedicated-desktop check.
-Source version changes alone do not upgrade the installed app.
+0.10.1 keeps every Recortia window on the Space you are using, including another app's
+fullscreen Space, and opens windows on the display you captured. Before, using Recortia could
+switch you to the Space where one of its windows was last shown. Quit now asks before
+discarding unexported edits. See `CHANGELOG.md` for the full list of fixes from the
+full-source review. Update an existing install with `brew upgrade --cask recortia`.
 
 The previous 0.10.0-beta3 candidate (app version 0.10.0, build 12) was installed locally on
 2026-10-02 from commit `2069d91` after the signed stable gate, synthetic EN/PT-BR E2E,
@@ -154,10 +155,13 @@ geometry, state machines), `Imaging` (decode, privacy renderer, export, OCR, QR,
 
 ## Validation status
 
-Build 13 adds the `editor-presentation` native scenario (28 scenarios in total). Its initial
-regression failed the fullscreen policy check; expanded bilingual testing reproduced canvas
-focus loss before hosted layout. Current verification and installation evidence is recorded in
-`BACKLOG.json`. Earlier build-12 results below remain historical.
+0.10.1 adds eleven native scenarios (39 in total) for Spaces, displays, focus, Quit, notices
+and imports; each went red before its fix. A physical probe (`scripts/space-probe/run.sh`)
+measured the window policies on this project's Mac on 2026-10-03: windows without a Space
+policy switched the user out of a fullscreen Space in 6 of 6 runs, and the six configurations
+Recortia now uses never did (0 of 18). The probe uses one display; multiple physical displays remain a
+manual check. Gate, E2E counts, reviews and release evidence for 0.10.1 are in `BACKLOG.json`.
+Earlier results below remain historical.
 
 Build 12 corrects shortcut selection activation and permanently invalidates revoked GitHub
 upload intents. Synthetic coverage checks an external foreground application, activation

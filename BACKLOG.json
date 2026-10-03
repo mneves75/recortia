@@ -7,18 +7,22 @@
   "current_candidate": {
     "version": "0.10.1",
     "build": 13,
-    "date": "2026-10-02",
-    "scope": "FR-01/FR-02/FR-04 capture-result editor presentation, fullscreen-auxiliary active-Space policy, activation-independent visibility and hosted canvas keyboard focus.",
-    "status": "verification_in_progress",
-    "verification": "Test-first native editor-presentation regression failed the fullscreen policy on unchanged production presentation. Expanded testing reproduced canvas first-responder loss before hosted layout. Full gate, independent review, final native E2E, signed artifact, installation and release checks are pending.",
+    "date": "2026-10-03",
+    "scope": "FR-01/FR-02/FR-04/FR-09 on every desktop (other Spaces, other apps' fullscreen Spaces, multiple displays) plus fixes from a full-source review: Space policy for every window, framework-window adoption before activation, capture-display/pointer screen choice, capture suspension limited to the active Space, Quit confirmation, capture geometry from the captured snapshot, crop/scroll-memory/chroma/pins/scroll-Stop fixes, IO-01 synchronous drop admission, persistent announced notices, GitHub token cleanup, stale folder bookmarks, release-script hardening.",
+    "status": "verified_source_awaiting_release",
+    "verification": "Branch fix/all-desktops-0.10.1 at f49c247: scripts/check.sh passed (548 package tests, 31 script controls, 526 pt-BR strings, project freshness, strict lint, signed Debug and E2E builds). scripts/e2e.sh --lang all: 40/40 scenarios, 843 assertions, 59 screenshots per language; two activation-dependent checks were recorded SKIPPED because this host declined activation. Physical probe scripts/space-probe/run.sh stale (FORCE=1, one display, 2026-10-03): windows without a Space policy switched the active Space in 6/6 runs; the six configurations Recortia uses switched it in 0/18. Reviews: four module-slice reviews (Codex x2, Claude x2), Standards/Spec two-axis review, independent Codex autoreview (one P2 found and fixed red-first). capture-focus is environment-sensitive on a busy desktop: 5/6 at the 9dc25fa baseline and 7/8 at HEAD.",
     "evidence_paths": [
-      ".scratch/editor-presentation-red.log",
-      ".scratch/e2e/20261002-204305/en/report.json",
-      ".scratch/e2e/20261002-204534/pt-BR/report.json"
+      ".scratch/check-f49c247.log",
+      ".scratch/e2e/20261003-195723/en/report.json",
+      ".scratch/e2e/20261003-195723/pt-BR/report.json",
+      ".scratch/space-probe-0.10.1/stale.jsonl",
+      ".scratch/head-cf.log"
     ],
     "limitations": [
-      "Synthetic window state does not prove physical hotkeys, fullscreen/Space/display transitions, TCC or clean-user launch.",
-      "A declined activation request can leave the visible ordinary editor requiring a user click for keyboard focus."
+      "Multiple physical displays, mixed DPI and Stage Manager were not exercised physically; display choice is verified with synthetic two-display layouts.",
+      "The probe measures window configurations equivalent to Recortia's, not Recortia's own windows; activation was forced to stand in for a user's hotkey or menu click.",
+      "Physical hotkeys, TCC prompting, clean-user launch and live GitHub upload remain owner checks.",
+      "The editor no longer enters its own fullscreen Space (fullscreen-auxiliary and fullscreen-primary are mutually exclusive)."
     ]
   },
   "previous_shortcut_candidate": {
@@ -148,7 +152,9 @@
     "verification": "Stable Xcode 27.0 archive and Developer ID export succeeded, exit 0. Strict signature, Hardened Runtime, version/build/minimum OS, profile compatibility and actual Keychain access group passed. Debug entitlements absent; Release test-marker isolation and bundled license/provenance checks passed, with a Debug binary correctly rejected as a failing control.",
     "distribution_status": "Prepared from source commit 49047c7 and subsequently installed locally; see local_installation. Not notarized, tagged or publicly distributed. Different-model independent artifact verification passed strict signing/runtime, exact executable hash, profile signer certificate and group compatibility, actual entitlements with adversarial debug controls, binary isolation with a rejected Debug control, and both bundled licenses. Preparation and installation are recorded separately; neither proves production qualification.",
     "pull_request": "https://github.com/mneves75/recortia/pull/5",
-    "ci_evidence": ["https://github.com/mneves75/recortia/actions/runs/36669782062"],
+    "ci_evidence": [
+      "https://github.com/mneves75/recortia/actions/runs/36669782062"
+    ],
     "evidence_paths": [
       ".scratch/local-install-beta3-20260930/archive.log",
       ".scratch/local-install-beta3-20260930/export.log",
@@ -952,7 +958,13 @@
       "title": "Optional user-controlled GitHub upload (ADR-006); S3 remains deferred",
       "status": "awaiting_manual_validation",
       "authorization": "Owner requested GitHub auto-upload and local test installation on 2026-10-01",
-      "verification": ["NET-01", "EXP-02", "RED-01", "RED-02", "RED-03"]
+      "verification": [
+        "NET-01",
+        "EXP-02",
+        "RED-01",
+        "RED-02",
+        "RED-03"
+      ]
     },
     {
       "requirement_id": "FR-16",

@@ -54,6 +54,14 @@ beta compilation does not replace the stable-toolchain release gates.
 - Capture completion shows an ordinary fullscreen-auxiliary editor even when cooperative
   activation is delayed or declined. Layout precedes canvas focus. Keep `editor-presentation`
   in bilingual native E2E; its synthetic window state does not qualify physical Spaces.
+- All desktops: `RecortiaApp/App/SpacePolicy.swift` owns window Space behavior (windows follow
+  the active Space, panels join all Spaces; `SpacePolicyMonitor` adopts Settings/About before
+  activation) and `ScreenChoice.swift` picks screens. `scripts/space-probe/` is the physical
+  probe (fullscreen host app + window variants); rerun it when changing either file.
+- Quit goes through `AppModel.shouldTerminate()`; unexported edits need confirmation.
+  Imports admit synchronously (`ImageImporter.admit`) before reading any bytes, drops included.
+- Pipe-free E2E: redirect `scripts/e2e.sh` output to a file; a pipe stays open for the
+  runner watchdog's 300 s sleep.
 - GitHub upload consent is session-versioned; capture-to-batch-to-sink carries the original
   identity, so revocation and restoring the same preferences cannot revive an old intent.
 - Import admission and canvas keyboard ownership follow the corrective contract in `AGENTS.md`.

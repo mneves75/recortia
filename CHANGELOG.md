@@ -6,17 +6,56 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.10.1] - 2026-10-02
+## [0.10.1] - 2026-10-03
+
+Recortia now works on every desktop: other Spaces, other apps' fullscreen Spaces, and
+multiple displays. A full-source review (four module slices, a two-axis Standards/Spec
+review, and an independent different-model review) drove the remaining fixes.
 
 ### Fixed
 
-- Area-capture results use an ordinary fullscreen-auxiliary editor on the active Space instead of a fullscreen-primary window.
-- Editor presentation explicitly reveals hidden/minimized results and orders the window even when macOS delays or declines app activation.
-- The hosted canvas is laid out before assigning keyboard focus, including the first editor after launch.
+- **Spaces and fullscreen apps.** Every window Recortia shows follows the Space you are on,
+  including another app's fullscreen Space. This covers the editor, Settings, About, the
+  welcome window, the scrolling-capture review, and alerts. Before, using Recortia could
+  switch you to the Space where one of its windows was last shown, even out of a fullscreen
+  app. Capture panels, HUDs and pins still appear on every Space.
+- **Displays.** The editor and the scrolling review open on the display you captured. HUDs,
+  the drag chip and new pins open on the display under the pointer. A large pin is sized
+  for the display it opens on.
+- Capturing no longer hides, then moves, Recortia windows that are on other Spaces.
+- Dismissing the capture menu (⇧⌘5) returns keyboard focus to the app you were using.
+- Quitting asks before discarding edits that were never copied, saved, dragged or pinned.
+- A window capture reports the display the window is on when it is captured. A display
+  that changes between selection and capture stops the capture with a clear message.
+- Editor notices are announced to VoiceOver. Failures, and notices that carry a link or
+  need an action, stay until you dismiss them.
+- Automatic-export failures appear in the capture's editor instead of a modal alert.
+- Dropping an image waits for the shared import slot before it reads any bytes, and still
+  works after the drag pasteboard is cleared.
+- Changing the GitHub destination removes the previous token from the Keychain. Spaces or
+  line breaks pasted around a token are ignored.
+- A renamed or moved save folder keeps working; its bookmark is renewed.
+- Scrolling capture checks its working-memory budget before each frame and reports a
+  dedicated memory limit. Frames whose colors change no longer count as a stopped page.
+  Stop during a frame in progress keeps the review's size and seams consistent.
+- An empty or off-canvas crop is refused instead of exporting the whole canvas.
+- Pin requests reserve their slot before rendering. Close All Pins discards renders
+  started before it.
+- The countdown accepts a click, and takes the keyboard when Escape cannot be registered.
+- Shortcuts held by macOS are re-checked with backoff (2 s to 10 s) instead of every 2 s.
+- Settings says that automatic copy and save apply to still captures.
 
-Build 13 is the current source candidate. Real-controller synthetic E2E adds hidden/inactive
-presentation, minimized reopening and canvas focus controls. Physical shortcuts, fullscreen
-Spaces, TCC, clean-user launch and distribution checks require separate evidence.
+### Changed
+
+- The editor can no longer enter its own fullscreen Space. macOS allows a window either to
+  have its own fullscreen Space or to join another app's, and Recortia now does the latter.
+- Release builds notarize and staple the app itself before building the disk image, and
+  scan every binary in the bundle for test-only code.
+
+Validation: the full gate (548 package tests, strict lint, signed builds) and 40 native
+scenarios in English and Brazilian Portuguese passed. A physical probe on one display found that
+windows without a Space policy pulled the user out of a fullscreen Space in 6 of 6 runs, and
+Recortia's window configurations in 0 of 18. Multiple physical displays remain a manual check.
 
 ## [0.10.0-beta3] - 2026-10-01
 
