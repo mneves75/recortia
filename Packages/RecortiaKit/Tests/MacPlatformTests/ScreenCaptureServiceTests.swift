@@ -35,6 +35,8 @@ final class FakeCaptureBackend: ScreenCaptureBackend {
         var plans: [CapturePlan] = []
         var contentCalls = 0
         var gated = false
+        /// What the backend sees when it re-reads content at capture time; defaults to `content`.
+        var captureContent: ShareableContentSnapshot?
     }
 
     let state: Mutex<State>
@@ -61,9 +63,12 @@ final class FakeCaptureBackend: ScreenCaptureBackend {
     }
 
     func captureImage(_ plan: CapturePlan) async throws -> BackendImage {
-        let (failure, size, scale, gated) = state.withLock { state in
+        let (failure, size, scale, gated, content) = state.withLock { state in
             state.plans.append(plan)
-            return (state.captureFailure, state.imageSize, state.reportedScale, state.gated)
+            return (
+                state.captureFailure, state.imageSize, state.reportedScale, state.gated,
+                state.captureContent ?? state.content
+            )
         }
         if gated {
             entered.continuation.yield()
@@ -73,7 +78,7 @@ final class FakeCaptureBackend: ScreenCaptureBackend {
         guard let image = TestSupport.image(width: size.width, height: size.height) else {
             throw FakeFailure.foreign(domain: "test", code: 1).error
         }
-        return BackendImage(image: image, pointPixelScale: scale)
+        return BackendImage(image: image, pointPixelScale: scale, content: content)
     }
 }
 
@@ -229,6 +234,93 @@ struct ScreenCaptureServiceTests {
         #expect(geometry.source == .window(id: 10, displayID: 2))
         #expect(geometry.desktopBounds == Rect<DesktopSpace>(x: -1500, y: 20, width: 640, height: 480))
         #expect(geometry.pointPixelScale == 1)
+    }
+
+    // Failure mode (review r2): the service built geometry from its own content read while the
+    // backend captured from a second read, so a window that moved between displays between the
+    // two was captured on one display and labelled with the other.
+    @Test("Geometry describes the display and bounds the backend actually captured")
+    func captureGeometryMatchesBackendSnapshot() async throws {
+        let before = CGRect(x: 100, y: 100, width: 400, height: 300)
+        let after = CGRect(x: -1500, y: 20, width: 640, height: 480)
+        let (service, backend) = makeService(windows: [window(10, frame: before)])
+        backend.update {
+            $0.reportedScale = 1
+            $0.captureContent = ShareableContentSnapshot(
+                displays: [retina, standard].map(record), windows: [window(10, frame: after)])
+        }
+        let info = WindowInfo(
+            id: 10, ownerName: "Other", ownerPID: 900, title: nil, frame: Rect(x: 100, y: 100, width: 400, height: 300),
+            displayID: 1)
+        let (_, geometry) = try await service.capture(
+            .window(info), showsCursor: false, includesShadow: false, excludingWindowNumbers: [])
+        #expect(geometry.source == .window(id: 10, displayID: 2))
+        #expect(geometry.desktopBounds == Rect<DesktopSpace>(x: -1500, y: 20, width: 640, height: 480))
+    }
+
+    @Test("A window that vanished or became Recortia's own between enumeration and capture is unavailable")
+    func windowGoneAtCapture() async throws {
+        for replacement in [[], [window(10, pid: ownPID)]] {
+            let (service, backend) = makeService(windows: [window(10)])
+            backend.update {
+                $0.captureContent = ShareableContentSnapshot(
+                    displays: [retina, standard].map(record), windows: replacement)
+            }
+            let info = WindowInfo(
+                id: 10, ownerName: "Other", ownerPID: 900, title: nil,
+                frame: Rect(x: 100, y: 100, width: 400, height: 300), displayID: 1)
+            await #expect(throws: CaptureError.targetUnavailable) {
+                _ = try await service.capture(
+                    .window(info), showsCursor: false, includesShadow: false, excludingWindowNumbers: [])
+            }
+        }
+    }
+
+    @Test("A display resized at the same scale between selection and capture reports displayChanged")
+    func sameScaleResizeBetweenReadsIsDisplayChanged() async throws {
+        let resized = TestSupport.display(id: 1, x: 0, y: 0, width: 1280, height: 800, scale: 2)
+        for target in [
+            CaptureTarget.display(retina), .region(Rect(x: 10, y: 10, width: 100, height: 50), display: retina),
+        ] {
+            let (service, backend) = makeService()
+            backend.update {
+                $0.captureContent = ShareableContentSnapshot(displays: [resized, standard].map(record), windows: [])
+            }
+            await #expect(throws: CaptureError.displayChanged) {
+                _ = try await service.capture(
+                    target, showsCursor: false, includesShadow: true, excludingWindowNumbers: [])
+            }
+        }
+    }
+
+    @Test("Display and region plans carry the selection-time display frame for the backend to verify")
+    func planCarriesExpectedDisplayFrame() async throws {
+        let (service, backend) = makeService()
+        _ = try await service.capture(
+            .region(Rect(x: 10, y: 10, width: 100, height: 50), display: retina), showsCursor: false,
+            includesShadow: true, excludingWindowNumbers: [])
+        backend.update { $0.reportedScale = 1 }
+        _ = try await service.capture(
+            .display(standard), showsCursor: false, includesShadow: true, excludingWindowNumbers: [])
+        backend.update { $0.content.windows = [window(10)] }
+        _ = try await service.capture(
+            .window(
+                WindowInfo(
+                    id: 10, ownerName: "Other", ownerPID: 900, title: nil,
+                    frame: Rect(x: 100, y: 100, width: 400, height: 300), displayID: 1)),
+            showsCursor: false, includesShadow: true, excludingWindowNumbers: [])
+        #expect(
+            backend.plans.map(\.expectedDisplayFrame) == [
+                CGRect(x: 0, y: 0, width: 1440, height: 900), CGRect(x: -1920, y: -180, width: 1920, height: 1080), nil,
+            ])
+    }
+
+    @Test("Frame comparison tolerates rounding noise but not a real resize or move")
+    func frameComparison() {
+        let base = CGRect(x: -1920, y: -180, width: 1920, height: 1080)
+        #expect(ScreenCaptureService.framesMatch(base, base.offsetBy(dx: 0.0005, dy: 0)))
+        #expect(!ScreenCaptureService.framesMatch(base, base.offsetBy(dx: 1, dy: 0)))
+        #expect(!ScreenCaptureService.framesMatch(base, CGRect(x: -1920, y: -180, width: 1728, height: 1080)))
     }
 
     @Test("A vanished window, a Recortia window, or a missing display is unavailable")

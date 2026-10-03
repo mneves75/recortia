@@ -11,8 +11,11 @@ import ScreenCaptureKit
 /// Sendable `CGImage` leave.
 struct LiveScreenCaptureBackend: ScreenCaptureBackend {
     func shareableContent() async throws -> ShareableContentSnapshot {
-        let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-        return ShareableContentSnapshot(
+        Self.snapshot(of: try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true))
+    }
+
+    private static func snapshot(of content: SCShareableContent) -> ShareableContentSnapshot {
+        ShareableContentSnapshot(
             displays: content.displays.map { .init(id: $0.displayID, frame: $0.frame) },
             windows: content.windows.map { window in
                 ShareableContentSnapshot.Window(
@@ -31,6 +34,9 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
         case .display(let displayID, let excludedIDs):
             guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
                 throw CaptureError.targetUnavailable
+            }
+            if let expected = plan.expectedDisplayFrame, !ScreenCaptureService.framesMatch(expected, display.frame) {
+                throw CaptureError.displayChanged
             }
             filter = try await CaptureExclusion.filter(
                 display: display, excludingWindowIDs: Set(excludedIDs), content: content,
@@ -58,6 +64,6 @@ struct LiveScreenCaptureBackend: ScreenCaptureBackend {
         configuration.includeChildWindows = true
 
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
-        return BackendImage(image: image, pointPixelScale: scale)
+        return BackendImage(image: image, pointPixelScale: scale, content: Self.snapshot(of: content))
     }
 }
