@@ -181,7 +181,9 @@ never with `[.moveToActiveSpace, .fullScreenAuxiliary]` (0/6, either activation 
 nonactivating `.floating` panels with `[.canJoinAllSpaces, .fullScreenAuxiliary]` were listed
 above the fullscreen window. SPEC §FR-09 keeps pins off the screen-saver level, so the DTS
 level advice is not adopted. Measured on one Mac and display; other OS versions and multiple
-physical displays are not claimed.
+physical displays are not claimed. The probe covers windows whose policy is set at construction;
+on the installed 0.10.1 app, SwiftUI's Settings-scene window still switched Spaces (fresh and
+reused), so 0.10.2 constructs Settings in AppKit. Real-app checks supplement the probe.
 
 Sources: [Developer Forums 826308](https://developer.apple.com/forums/thread/826308),
 [NSWindow.CollectionBehavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct),

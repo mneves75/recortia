@@ -53,8 +53,7 @@ final class AppModel: AppActions {
 
     var openDocument: ((DocumentSession) -> EditorModel?)?
     var recognizeText: ((DocumentSession) -> Void)?
-    /// Installed by the menu from SwiftUI's `openSettings` environment action.
-    @ObservationIgnored var openSettingsWindow: (() -> Void)?
+    @ObservationIgnored private lazy var settingsWindow = SettingsWindowController(model: self)
 
     @ObservationIgnored private var captureUI: CaptureUIController?
     @ObservationIgnored private var scrollUI: ScrollUIController?
@@ -178,8 +177,7 @@ final class AppModel: AppActions {
     }
 
     func showSettings() {
-        NSApp.activate()
-        openSettingsWindow?()
+        settingsWindow.show()
     }
 
     /// Imports a dropped or opened file; used by Open Image and by drop targets.

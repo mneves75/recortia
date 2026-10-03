@@ -81,6 +81,7 @@
 		86A1C1B0D1C683EBB2C8CB6D /* SyntheticImages.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */; };
 		86C00E2E2FFA0E88047FA20A /* MessagePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */; };
 		8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
+		903193BD2B60CF8D8B4E2E84 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */; };
 		9DFE06BFFEDA1701F0319C70 /* GitHubUploadSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E42652874A3A93FCB17228 /* GitHubUploadSettings.swift */; };
 		9F2020ACB10567056318B19E /* ScreenChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED2B14CE42AB62F1B1F016E /* ScreenChoice.swift */; };
 		A30DD234D2E1308C1916965D /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
@@ -127,6 +128,7 @@
 		F58461558AAE86DB9A5FCF13 /* MacPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 136F37C6FC004EFC4C721BAC /* MacPlatform */; };
 		F59A68B8DB8BC381B7A2E988 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
 		F719870225B18848414BD58A /* LiveServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A32821DBE9F97E4B468E29 /* LiveServices.swift */; };
+		F92B254B4F2A5021F338BAFF /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */; };
 		FAE0B9FA6ACC12AFC7DF5B20 /* EditorStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */; };
 		FC936A982CD8C0C69D3F0824 /* SpacePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6606E40D90DE7108819150A3 /* SpacePolicy.swift */; };
 		FDBFBB3327828B197282BDE9 /* Scenarios+Spaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE69FEA380523086B4D11CEE /* Scenarios+Spaces.swift */; };
@@ -191,6 +193,7 @@
 		988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderRow.swift; sourceTree = "<group>"; };
 		9A00D2B63EC9352383E5AA0C /* E2EActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EActions.swift; sourceTree = "<group>"; };
 		9C6AABCCCF1691C1818B8DB7 /* RecortiaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RecortiaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Output.swift"; sourceTree = "<group>"; };
 		AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorStrings.swift; sourceTree = "<group>"; };
 		AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSupport.swift; sourceTree = "<group>"; };
@@ -320,6 +323,7 @@
 			children = (
 				90E42652874A3A93FCB17228 /* GitHubUploadSettings.swift */,
 				FBEF619B471E0C3284F9AED2 /* SettingsView.swift */,
+				A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */,
 				988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */,
 			);
 			path = Settings;
@@ -651,6 +655,7 @@
 				652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */,
 				D24EE0E8714F0274DE8B1AEC /* ScrollViews.swift in Sources */,
 				A676779ABA0EA316566E2589 /* SettingsView.swift in Sources */,
+				F92B254B4F2A5021F338BAFF /* SettingsWindowController.swift in Sources */,
 				30D34F21A538DECAD6DDA000 /* ShortcutRecorderRow.swift in Sources */,
 				70F09348F93F717784EDADBE /* SpacePolicy.swift in Sources */,
 				86A1C1B0D1C683EBB2C8CB6D /* SyntheticImages.swift in Sources */,
@@ -708,6 +713,7 @@
 				33579819E3C0DC24D79F49B2 /* ScrollUIController.swift in Sources */,
 				BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */,
 				D4FECB987E3DC7287BFF5A41 /* SettingsView.swift in Sources */,
+				903193BD2B60CF8D8B4E2E84 /* SettingsWindowController.swift in Sources */,
 				B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */,
 				FC936A982CD8C0C69D3F0824 /* SpacePolicy.swift in Sources */,
 				C4B185E0117961F2B3801409 /* SystemEventMonitor.swift in Sources */,
@@ -837,7 +843,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 15;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -856,7 +862,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.10.1;
+				MARKETING_VERSION = 0.10.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -908,7 +914,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 15;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -933,7 +939,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.10.1;
+				MARKETING_VERSION = 0.10.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

@@ -55,9 +55,11 @@ beta compilation does not replace the stable-toolchain release gates.
   activation is delayed or declined. Layout precedes canvas focus. Keep `editor-presentation`
   in bilingual native E2E; its synthetic window state does not qualify physical Spaces.
 - All desktops: `RecortiaApp/App/SpacePolicy.swift` owns window Space behavior (windows follow
-  the active Space, panels join all Spaces; `SpacePolicyMonitor` adopts Settings/About before
-  activation) and `ScreenChoice.swift` picks screens. `scripts/space-probe/` is the physical
-  probe (fullscreen host app + window variants); rerun it when changing either file.
+  the active Space, panels join all Spaces; `SpacePolicyMonitor` is a safety net for framework
+  windows like About) and `ScreenChoice.swift` picks screens. Settings is an AppKit window
+  (`Settings/SettingsWindowController.swift`), not a SwiftUI `Settings` scene, whose window
+  switched Spaces in 0.10.1. `scripts/space-probe/` is the physical probe; rerun it, and check
+  the installed app over a fullscreen Space, when changing any of these files.
 - Quit goes through `AppModel.shouldTerminate()`; unexported edits need confirmation.
   Imports admit synchronously (`ImageImporter.admit`) before reading any bytes, drops included.
 - Pipe-free E2E: redirect `scripts/e2e.sh` output to a file; a pipe stays open for the

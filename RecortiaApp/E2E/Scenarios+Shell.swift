@@ -107,10 +107,8 @@
             context.check("automatic scrolling is off by default", !preferences.automaticScrollingEnabled)
             context.check("export defaults to PNG at 100%", preferences.exportOptions == ExportOptions())
 
-            let controller = NSHostingController(rootView: SettingsView(model: harness.app))
-            let window = NSWindow(contentViewController: controller)
-            window.styleMask = [.titled, .closable]
-            window.isReleasedWhenClosed = false
+            let window = SettingsWindowController.makeWindow(model: harness.app)
+            window.appearance = NSAppearance(named: .aqua)
             E2ESnapshot.park(window)
             window.setContentSize(NSSize(width: 560, height: 540))
             defer { window.close() }
@@ -136,8 +134,8 @@
                             "OCR languages load at runtime", loaded, "\(harness.features.ocrLanguages.state)")
                     }
                     await E2ESnapshot.settle(root, for: .milliseconds(400))
-                    // The tab's own content: outside the Settings scene the strip is a plain
-                    // NSTabView whose selected label does not render offscreen.
+                    // The tab's own content: the toolbar tab strip belongs to the window and does
+                    // not render offscreen.
                     context.snapshot(tabView.selectedTabViewItem?.view ?? root, shot: name)
                 }
             } else {
