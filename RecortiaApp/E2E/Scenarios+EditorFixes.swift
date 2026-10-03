@@ -201,5 +201,85 @@
                 "a whitespace-only token is a missing credential", save(" \n\t", second) == .failed(.missingCredential))
             context.check("a whitespace-only token makes no Keychain call", credentials.calls.count == calls)
         }
+
+        // MARK: Stale save-folder bookmarks
+
+        static func staleFolderBookmark(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let fileManager = FileManager.default
+            let run = UUID().uuidString.prefix(8)
+            let original = harness.output.workDirectory.appending(
+                path: "folder-\(run)-before", directoryHint: .isDirectory)
+            let renamed = harness.output.workDirectory.appending(
+                path: "folder-\(run)-after", directoryHint: .isDirectory)
+            try fileManager.createDirectory(at: original, withIntermediateDirectories: true)
+            let bookmark = try original.bookmarkData()
+            try fileManager.moveItem(at: original, to: renamed)
+
+            // Premise: macOS finds the renamed folder but reports the bookmark stale.
+            var isStale = false
+            let resolved = try URL(
+                resolvingBookmarkData: bookmark, options: [.withoutUI, .withoutMounting], relativeTo: nil,
+                bookmarkDataIsStale: &isStale)
+            try context.require("the renamed folder's bookmark is stale", isStale)
+            try context.require(
+                "the stale bookmark still finds the renamed folder",
+                resolved.resolvingSymlinksInPath().path == renamed.resolvingSymlinksInPath().path, resolved.path)
+
+            // A resolver with no settings: it must accept the folder and offer a renewed bookmark.
+            var renewals: [(stale: Data, fresh: Data)] = []
+            let folders = LiveSaveFolders { renewals.append(($0, $1)) }
+            let url = folders.resolveFolder(bookmark: bookmark)
+            context.check(
+                "a stale bookmark resolves to the renamed folder",
+                url?.resolvingSymlinksInPath().path == renamed.resolvingSymlinksInPath().path,
+                url?.path ?? "nil")
+            context.check("the stale bookmark is offered for renewal", await E2EWait.until { renewals.count == 1 })
+            if let fresh = renewals.first?.fresh {
+                var freshIsStale = true
+                let again = try? URL(
+                    resolvingBookmarkData: fresh, options: [.withoutUI, .withoutMounting], relativeTo: nil,
+                    bookmarkDataIsStale: &freshIsStale)
+                context.check(
+                    "the renewed bookmark resolves and is no longer stale",
+                    !freshIsStale && again?.resolvingSymlinksInPath().path == renamed.resolvingSymlinksInPath().path)
+                var quiet = 0
+                let second = LiveSaveFolders { _, _ in quiet += 1 }
+                context.check("a current bookmark resolves", second.resolveFolder(bookmark: fresh) != nil)
+                try? await Task.sleep(for: .milliseconds(100))
+                context.check("a current bookmark is not renewed", quiet == 0)
+            }
+
+            // The app's own resolver renews the stored preference.
+            harness.settings.update { $0.preferredSaveFolderBookmark = bookmark }
+            let live = harness.services.folders.resolveFolder(bookmark: bookmark)
+            context.check("the app resolver accepts the stale bookmark", live != nil)
+            context.check(
+                "the app resolver renews the stored bookmark",
+                await E2EWait.until { harness.settings.preferences.preferredSaveFolderBookmark != bookmark })
+
+            // Saving to the preferred folder works through the stale bookmark.
+            harness.settings.update { $0.preferredSaveFolderBookmark = bookmark }
+            let controller = try await harness.openImported(harness.desktop, name: "stale-folder.png")
+            let outcome = await controller.model.export(.saveToPreferredFolder)
+            if case .saved(let saved) = outcome {
+                context.check(
+                    "Save to Preferred Folder writes into the renamed folder",
+                    saved.deletingLastPathComponent().resolvingSymlinksInPath().path
+                        == renamed.resolvingSymlinksInPath().path && fileManager.fileExists(atPath: saved.path),
+                    saved.path)
+            } else {
+                context.check("Save to Preferred Folder succeeds through a stale bookmark", false, "\(outcome)")
+            }
+
+            // A folder that is gone is still unavailable and is never renewed.
+            let gone = harness.output.workDirectory.appending(path: "folder-\(run)-gone", directoryHint: .isDirectory)
+            try fileManager.createDirectory(at: gone, withIntermediateDirectories: true)
+            let goneBookmark = try gone.bookmarkData()
+            try fileManager.removeItem(at: gone)
+            renewals.removeAll()
+            context.check("a deleted folder is unavailable", folders.resolveFolder(bookmark: goneBookmark) == nil)
+            try? await Task.sleep(for: .milliseconds(100))
+            context.check("a deleted folder is not renewed", renewals.isEmpty)
+        }
     }
 #endif

@@ -164,18 +164,38 @@ final class LiveFiles: FileSinkService {
 }
 
 final class LiveSaveFolders: SaveFolderService {
+    private let refresh: @MainActor (_ stale: Data, _ fresh: Data) -> Void
+
+    /// `refresh` receives a renewed bookmark when the stored one resolved but had gone stale.
+    init(refresh: @escaping @MainActor (_ stale: Data, _ fresh: Data) -> Void = { _, _ in }) {
+        self.refresh = refresh
+    }
+
+    /// Renews a stale stored bookmark in `settings`, unless the person chose another folder meanwhile.
+    static func storing(in settings: SettingsStore) -> LiveSaveFolders {
+        LiveSaveFolders { stale, fresh in
+            guard settings.preferences.preferredSaveFolderBookmark == stale else { return }
+            settings.update { $0.preferredSaveFolderBookmark = fresh }
+        }
+    }
+
     func resolveFolder(bookmark: Data) -> URL? {
         var stale = false
         guard
             let url = try? URL(
                 resolvingBookmarkData: bookmark, options: [.withoutUI, .withoutMounting], relativeTo: nil,
-                bookmarkDataIsStale: &stale),
-            !stale
+                bookmarkDataIsStale: &stale)
         else { return nil }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false), isDirectory: &isDirectory),
             isDirectory.boolValue
         else { return nil }
+        // Stale means the folder moved or was renamed, not that access ended: use the URL it
+        // resolved to and renew the stored bookmark. A Task, because callers include SwiftUI
+        // view bodies, which must not change settings while they render.
+        if stale, let fresh = try? url.bookmarkData() {
+            Task { refresh(bookmark, fresh) }
+        }
         return url
     }
 }

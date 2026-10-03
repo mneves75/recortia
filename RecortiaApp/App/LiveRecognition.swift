@@ -77,7 +77,7 @@ final class LiveStitcher: ScrollStitchService {
 
 extension AppServices {
     /// The production composition root: one image store shared by import, render, and export.
-    static func live() -> AppServices {
+    static func live(settings: SettingsStore) -> AppServices {
         let store = ImageStore()
         let capture = LiveCaptureService()
         let github = LiveGitHubUpload()
@@ -86,7 +86,8 @@ extension AppServices {
             capture: capture, screenPermission: LiveScreenPermission(), accessibility: LiveAccessibilityPermission(),
             assets: LiveImageAssets(store: store), input: LiveImageInput(), renderer: LiveRenderer(store: store),
             exporter: LiveExporter(store: store), clipboard: LiveClipboard(), files: LiveFiles(), drag: LiveDragSink(),
-            folders: LiveSaveFolders(), textRecognition: LiveTextRecognition(), qrDecoder: LiveQRDecoding(),
+            folders: LiveSaveFolders.storing(in: settings), textRecognition: LiveTextRecognition(),
+            qrDecoder: LiveQRDecoding(),
             scrollFrames: LiveScrollFrames(), stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(),
             loginItem: LiveLoginItem(), clock: SystemClock())
     }

@@ -37,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #else
             let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)
         #endif
-        model = AppModel(settings: settings, services: .live(), shortcutRegistry: KeyboardShortcutsRegistry())
+        model = AppModel(
+            settings: settings, services: .live(settings: settings), shortcutRegistry: KeyboardShortcutsRegistry())
         super.init()
     }
 

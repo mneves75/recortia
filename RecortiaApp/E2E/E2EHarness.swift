@@ -58,7 +58,7 @@
             textPasteboard = NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.text.\(run)"))
             drag = SyntheticDragReceiver(dropFolder: dropFolder)
 
-            let live = AppServices.live()
+            let live = AppServices.live(settings: settings)
             exportGate = SyntheticExportGate(exporter: live.exporter)
             importInput = SyntheticImportInput(input: live.input)
             services = AppServices(

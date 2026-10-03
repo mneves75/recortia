@@ -73,6 +73,9 @@
             E2EScenario(
                 id: "github-destination", title: "Changing the destination removes the old token",
                 run: EditorFixScenarios.githubDestination),
+            E2EScenario(
+                id: "stale-folder", title: "A stale save-folder bookmark still resolves and is renewed",
+                run: EditorFixScenarios.staleFolderBookmark),
         ]
     }
 #endif
