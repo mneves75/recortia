@@ -3,7 +3,7 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
-**Status:** beta source candidate (0.10.0-beta3, build 12). The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
+**Status:** 0.10.1 source candidate (build 13), awaiting release qualification. The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
 multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
@@ -22,7 +22,13 @@ brew install --cask mneves75/tap/recortia
 
 Or download the notarized DMG from [Releases](https://github.com/mneves75/recortia/releases).
 
-The current 0.10.0-beta3 candidate (app version 0.10.0, build 12) was installed locally on
+Build 13 corrects capture-result window presentation: the editor follows the active Space,
+supports fullscreen-auxiliary placement, and remains visible if activation is delayed or
+declined. It lays out the canvas before assigning keyboard focus. Synthetic regression uses
+the real controller; actual fullscreen/Space transitions remain a dedicated-desktop check.
+Source version changes alone do not upgrade the installed app.
+
+The previous 0.10.0-beta3 candidate (app version 0.10.0, build 12) was installed locally on
 2026-10-02 from commit `2069d91` after the signed stable gate, synthetic EN/PT-BR E2E,
 independent reviews and PR CI passed. Developer ID archive/export, strict signature,
 Hardened Runtime, parsed distribution entitlements and provisioning profile checks passed.
@@ -147,6 +153,11 @@ geometry, state machines), `Imaging` (decode, privacy renderer, export, OCR, QR,
 `RecortiaFixtures` (synthetic test inputs).
 
 ## Validation status
+
+Build 13 adds the `editor-presentation` native scenario (28 scenarios in total). Its initial
+regression failed the fullscreen policy check; expanded bilingual testing reproduced canvas
+focus loss before hosted layout. Current verification and installation evidence is recorded in
+`BACKLOG.json`. Earlier build-12 results below remain historical.
 
 Build 12 corrects shortcut selection activation and permanently invalidates revoked GitHub
 upload intents. Synthetic coverage checks an external foreground application, activation

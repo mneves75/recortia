@@ -17,6 +17,9 @@
             E2EScenario(id: "countdown", title: "Delayed capture countdown", run: CaptureScenarios.countdown),
             E2EScenario(id: "capture-editor", title: "Capture to editor", run: CaptureScenarios.captureToEditor),
             E2EScenario(
+                id: "editor-presentation", title: "Capture completion presents the real editor",
+                run: CaptureVisibilityScenarios.editorPresentation),
+            E2EScenario(
                 id: "recapture", title: "Hide existing windows during recapture",
                 run: CaptureVisibilityScenarios.recapture),
             E2EScenario(

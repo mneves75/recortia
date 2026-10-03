@@ -39,6 +39,12 @@ start a still capture, and an active still capture cannot start scrolling. Exist
 hide synchronously before selection and restore after success, denial, cancellation, or interruption;
 already hidden windows stay hidden, child-window ownership survives, and closed windows stay closed.
 
+Successful capture must present the real editor controller, not just create a document in an
+offscreen host. Test a hidden app, inactive presentation, minimized editor reopening, normal
+window level, active-Space/fullscreen-auxiliary policy, and canvas ownership after hosted-view
+layout when activation succeeds (`editor-presentation`). Visibility cannot depend on activation
+being immediate or guaranteed. Qualify actual fullscreen/Space/display transitions separately.
+
 ### GEO-01 — Mixed-DPI desktop matrix
 
 Use displays at 1x and 2x, a display to the left/above the primary, different resolutions, and a rotated display where hardware allows. Test all four selection directions, one-pixel edges, fractional logical coordinates, and display unplug/replug. Exported pixel bounds agree with the geometry contract; there are no inverted crops, seams, or silent cross-display resampling.

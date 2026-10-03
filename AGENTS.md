@@ -25,6 +25,12 @@ Space. CAP-01 synthetic evidence must verify an external foreground application 
 ownership; physical shortcut/display/Space qualification remains separate. NET-01 pending
 uploads must retain their original consent identity across every asynchronous batch step.
 
+Capture completion must exercise the real editor presentation path (`editor-presentation`),
+not only the offscreen editor host. Keep editor visibility independent of cooperative app
+activation; lay out the hosted canvas before assigning its responder. Editor windows follow
+the active Space and use fullscreen-auxiliary behavior; never combine it with fullscreen-primary.
+Physical fullscreen/Space transitions still require dedicated-desktop qualification.
+
 Identify the actual working directory, repository state, branch, existing instructions, uncommitted changes, Xcode project/workspace, shared schemes, packages, tests, and build scripts. Do not assume this spec's proposed paths already exist. Preserve unrelated work; never reset, delete, stash, force-push, or overwrite it without permission.
 
 On a Mac, record the actual results of the following read-only commands when applicable:

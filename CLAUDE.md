@@ -51,6 +51,9 @@ beta compilation does not replace the stable-toolchain release gates.
 - Contracts between modules: `docs/architecture/module-contracts.md`. Decisions: `docs/adr/`.
 - Region-selection panels receive keyboard focus without activating the app; synthetic
   foreground/activation checks supplement the physical shortcut/Space matrix (CAP-01).
+- Capture completion shows an ordinary fullscreen-auxiliary editor even when cooperative
+  activation is delayed or declined. Layout precedes canvas focus. Keep `editor-presentation`
+  in bilingual native E2E; its synthetic window state does not qualify physical Spaces.
 - GitHub upload consent is session-versioned; capture-to-batch-to-sink carries the original
   identity, so revocation and restoring the same preferences cannot revive an old intent.
 - Import admission and canvas keyboard ownership follow the corrective contract in `AGENTS.md`.

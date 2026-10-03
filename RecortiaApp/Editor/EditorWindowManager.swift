@@ -75,8 +75,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = String(localized: "Recortia Editor", table: "Editor")
-        // Follows the active Space instead of pulling the user back to another one (FR-01).
-        window.collectionBehavior = [.moveToActiveSpace, .fullScreenPrimary]
+        // The capture result follows the current Space, including another app's fullscreen
+        // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         window.contentMinSize = NSSize(width: 980, height: 560)
         window.tabbingMode = .disallowed
         super.init(window: window)
@@ -84,6 +85,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         canvas.actions = self
         let root = EditorRootView(model: model, canvas: canvas, actions: self)
         window.contentViewController = NSHostingController(rootView: root)
+        window.initialFirstResponder = canvas
         window.setContentSize(Self.initialContentSize(for: model.document, on: targetScreen()))
     }
 
@@ -93,13 +95,21 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
     func present() {
         guard let window else { return }
+        if NSApp.isHidden { NSApp.unhideWithoutActivation() }
+        if window.isMiniaturized { window.deminiaturize(nil) }
         if !window.isVisible, let visible = targetScreen()?.visibleFrame {
             let size = window.frame.size
             window.setFrameOrigin(NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
         }
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        // SwiftUI attaches the canvas lazily. It must belong to this window before AppKit
+        // can accept it as first responder, including on the first capture after launch.
+        window.contentView?.layoutSubtreeIfNeeded()
         window.makeFirstResponder(canvas)
+        // Cooperative activation is asynchronous and can be declined. A completed, explicit
+        // capture must still show its result; normal-level ordering does not force activation.
+        if !NSApp.isActive { window.orderFrontRegardless() }
     }
 
     private func targetScreen() -> NSScreen? {

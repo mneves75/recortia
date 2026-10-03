@@ -6,6 +6,18 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-02
+
+### Fixed
+
+- Area-capture results use an ordinary fullscreen-auxiliary editor on the active Space instead of a fullscreen-primary window.
+- Editor presentation explicitly reveals hidden/minimized results and orders the window even when macOS delays or declines app activation.
+- The hosted canvas is laid out before assigning keyboard focus, including the first editor after launch.
+
+Build 13 is the current source candidate. Real-controller synthetic E2E adds hidden/inactive
+presentation, minimized reopening and canvas focus controls. Physical shortcuts, fullscreen
+Spaces, TCC, clean-user launch and distribution checks require separate evidence.
+
 ## [0.10.0-beta3] - 2026-10-01
 
 ### Fixed

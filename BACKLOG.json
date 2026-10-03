@@ -5,6 +5,23 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.10.1",
+    "build": 13,
+    "date": "2026-10-02",
+    "scope": "FR-01/FR-02/FR-04 capture-result editor presentation, fullscreen-auxiliary active-Space policy, activation-independent visibility and hosted canvas keyboard focus.",
+    "status": "verification_in_progress",
+    "verification": "Test-first native editor-presentation regression failed the fullscreen policy on unchanged production presentation. Expanded testing reproduced canvas first-responder loss before hosted layout. Full gate, independent review, final native E2E, signed artifact, installation and release checks are pending.",
+    "evidence_paths": [
+      ".scratch/editor-presentation-red.log",
+      ".scratch/e2e/20261002-204305/en/report.json",
+      ".scratch/e2e/20261002-204534/pt-BR/report.json"
+    ],
+    "limitations": [
+      "Synthetic window state does not prove physical hotkeys, fullscreen/Space/display transitions, TCC or clean-user launch.",
+      "A declined activation request can leave the visible ordinary editor requiring a user click for keyboard focus."
+    ]
+  },
+  "previous_shortcut_candidate": {
     "version": "0.10.0-beta3",
     "build": 12,
     "date": "2026-10-01",

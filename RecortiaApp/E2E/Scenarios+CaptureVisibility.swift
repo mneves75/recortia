@@ -11,6 +11,80 @@
             var foregroundPIDs: [pid_t] = []
         }
 
+        static func editorPresentation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            var controller: EditorWindowController?
+            let originalOpenDocument = harness.app.openDocument
+            harness.app.openDocument = { session in
+                let model = EditorModel(session: session, environment: harness.environment)
+                let opened = EditorWindowController(model: model)
+                // Exercise production presentation without exposing desktop pixels or
+                // intercepting real input. Snapshots render this synthetic view only.
+                opened.window?.alphaValue = 0
+                opened.window?.ignoresMouseEvents = true
+                controller = opened
+                opened.present()
+                return model
+            }
+            defer {
+                harness.app.openDocument = originalOpenDocument
+                controller?.window?.close()
+                NSApp.unhideWithoutActivation()
+            }
+            NSApp.hide(nil)
+            try context.require("the app starts hidden", await E2EWait.until { NSApp.isHidden })
+            harness.app.perform(.captureRegion)
+            try context.require("selection starts", harness.features.capture.state == .selecting)
+            try context.require(
+                "synthetic region commits",
+                harness.features.capture.commitRegion(
+                    Rect(x: 0, y: 0, width: 300, height: 200), on: harness.capture.display))
+            try context.require("completion creates the real controller", await E2EWait.until { controller != nil })
+            let opened = try context.unwrap("the editor exists", controller)
+            let window = try context.unwrap("the editor has a window", opened.window)
+            await E2ESnapshot.settle(window.contentView)
+            context.check("capture unhides the application", !NSApp.isHidden)
+            context.check("capture editor is ordered onscreen", window.isVisible)
+            context.check("capture editor belongs to the active Space", window.isOnActiveSpace)
+            context.check("capture editor uses the normal window level", window.level == .normal)
+            context.check(
+                "capture editor is an ordinary activating window", !window.styleMask.contains(.nonactivatingPanel))
+            context.check(
+                "capture editor follows the active Space", window.collectionBehavior.contains(.moveToActiveSpace))
+            context.check(
+                "capture editor supports a fullscreen Space", window.collectionBehavior.contains(.fullScreenAuxiliary))
+            if NSApp.isActive {
+                context.check("an activated editor owns the keyboard", window.isKeyWindow)
+            }
+            let canvas = try context.unwrap("hosted layout attaches the canvas", opened.canvasView)
+            context.check(
+                "the editor installs its canvas responder", window.firstResponder === canvas,
+                "responder=\(String(describing: window.firstResponder))")
+            context.check(
+                "the editor does not combine fullscreen policies",
+                !window.collectionBehavior.contains(.fullScreenPrimary))
+            let content = try context.unwrap("the editor hosts content", window.contentView)
+            context.snapshot(content, shot: "presented-editor", over: harness.desktop)
+
+            window.miniaturize(nil)
+            try context.require("the existing editor is minimized", await E2EWait.until { window.isMiniaturized })
+            opened.present()
+            await E2ESnapshot.settle(window.contentView)
+            context.check("presenting an existing editor restores it", !window.isMiniaturized && window.isVisible)
+
+            window.orderOut(nil)
+            NSApp.deactivate()
+            try context.require("presentation starts inactive", await E2EWait.until { !NSApp.isActive })
+            let foreground = try context.unwrap(
+                "another app is foreground before presentation",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier)
+            try context.require(
+                "presentation starts outside Recortia", foreground != ProcessInfo.processInfo.processIdentifier)
+            opened.present()
+            await E2ESnapshot.settle(window.contentView)
+            context.check("inactive presentation still orders the editor", window.isVisible && window.isOnActiveSpace)
+            context.check("presentation preserves the document", !opened.model.isClosed)
+        }
+
         static func shortcutFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let display = try context.unwrap(
                 "a connected display is available", DesktopGeometry.displays().first)

@@ -146,6 +146,25 @@ allows an app to claim a specific group with that prefix. The exported Recortia 
 the exact `Q96FUTC5G8.dev.mvneves.Recortia` group; the profile's `Q96FUTC5G8.*` allowlist is not
 an entitlement claimed by the app. Actual bundle entitlements still undergo the parsed gate.
 
+## S21 — Capture-result window presentation (consulted 2026-10-02)
+
+Apple's current documentation and installed stable Xcode 27.0 headers separate window ordering
+from activation. `activate()` is an asynchronous request and is not guaranteed to succeed;
+`orderFrontRegardless()` orders within the existing level without changing key/main status.
+`fullScreenPrimary` and `fullScreenAuxiliary` are mutually exclusive. The editor remains an
+ordinary normal-level window; only region selection uses a nonactivating panel.
+
+Sources: [cooperative activation](https://developer.apple.com/documentation/appkit/passing-control-from-one-app-to-another-with-cooperative-activation),
+[window ordering](https://developer.apple.com/documentation/appkit/nswindow/orderfrontregardless()),
+[fullscreen auxiliary](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/fullscreenauxiliary),
+[unhide without activation](https://developer.apple.com/documentation/appkit/nsapplication/unhidewithoutactivation()).
+
+Original expert analysis: [Phil Zakharchenko on nonactivating panels](https://philz.blog/nspanel-nonactivating-style-mask-flag/)
+explains why activation and keyboard ownership differ. His style-mask mutation defect does not
+apply to Recortia's fixed-style overlay. Published guidance and an independent read-only agent
+advisory are not personal consultation with Apple or the author. These older API explanations
+remain applicable to the verified 2026 SDK; no future-year behavior is claimed.
+
 ## External assertions not made
 
 No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

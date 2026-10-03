@@ -5,7 +5,13 @@ task status, signed local-install evidence, and outstanding manual qualification
 task contracts rather than a build log. Local installation does not complete notarized distribution
 or the 1.0 release contract.
 
-The 0.10.0-beta3/build12 corrective slice covers FR-02 shortcut selection without foreground
+The 0.10.1/build13 corrective slice covers FR-01/FR-02/FR-04 capture-result presentation
+(CAP-01, CAP-02, EDIT-02): ordinary auxiliary editor windows follow the active Space;
+visibility survives delayed/declined activation; canvas layout precedes first-responder setup.
+The real presentation regression supplements the existing selection and recapture checks.
+Physical fullscreen/Space transitions remain manual gates.
+
+The earlier 0.10.0-beta3/build12 corrective slice covers FR-02 shortcut selection without foreground
 activation and FR-15 permanent invalidation of revoked pending upload consent (CAP-01/NET-01).
 Physical hotkeys, monitor/Space transitions and signed distribution remain manual gates.
 
