@@ -134,6 +134,35 @@ struct RenderCompositionTests {
         #expect(p.pixel(x: 47, y: 21).distance(to: Self.q[3]) <= 2)
     }
 
+    @Test(
+        "An explicit crop that is empty or wholly off the canvas is invalid geometry, never the whole canvas",
+        arguments: [
+            Rect<DocumentSpace>(x: 250, y: 0, width: 20, height: 20),  // wholly off the canvas
+            Rect<DocumentSpace>(x: 200, y: 0, width: 20, height: 20),  // touches the edge only
+            Rect<DocumentSpace>(x: -30, y: -30, width: 20, height: 20),  // wholly before the origin
+            Rect<DocumentSpace>(x: 50, y: 30, width: 0, height: 60),  // zero width
+            Rect<DocumentSpace>(x: 50, y: 30, width: 100, height: 0),  // zero height
+        ])
+    func rejectsNonintersectingCrop(crop: Rect<DocumentSpace>) async throws {
+        let harness = ImagingHarness()
+        var document = try await composite(harness)
+        document.crop = crop
+        await #expect(throws: RenderError.invalidGeometry) {
+            try await harness.renderer.render(document, scale: 1)
+        }
+    }
+
+    @Test("A partially intersecting crop still clips; an absent crop still means the whole canvas")
+    func partialCropClipsAndAbsentCropIsWholeCanvas() async throws {
+        let harness = ImagingHarness()
+        var document = try await composite(harness)
+        let whole = try await harness.renderer.render(document, scale: 1)
+        #expect(whole.width == 200 && whole.height == 120)
+        document.crop = Rect(x: 150, y: 80, width: 100, height: 100)  // only 50x40 lies on the canvas
+        let clipped = try await harness.renderer.render(document, scale: 1)
+        #expect(clipped.width == 50 && clipped.height == 40)
+    }
+
     @Test("renderBase covers the whole canvas without annotations, callouts, crop, or presentation")
     func renderBaseExcludesOverlays() async throws {
         let harness = ImagingHarness()
