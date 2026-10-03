@@ -31,8 +31,16 @@ enum MessagePresenter {
         alert.messageText = String(localized: "Quit and discard your edits?")
         alert.informativeText =
             count == 1
-            ? String(localized: "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them.")
-            : String(localized: "\(count) open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them.")
+            ? String(
+                localized: """
+                    An open image has changes that were not copied, saved, dragged, or pinned. \
+                    Quitting discards them.
+                    """)
+            : String(
+                localized: """
+                    \(count) open images have changes that were not copied, saved, dragged, or pinned. \
+                    Quitting discards them.
+                    """)
         let quit = alert.addButton(withTitle: String(localized: "Quit"))
         quit.hasDestructiveAction = true
         alert.addButton(withTitle: String(localized: "Cancel"))

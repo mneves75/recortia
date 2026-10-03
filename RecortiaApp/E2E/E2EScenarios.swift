@@ -5,7 +5,8 @@
         static let all: [E2EScenario] = [
             E2EScenario(id: "onboarding", title: "First-launch onboarding", run: ShellScenarios.onboarding),
             E2EScenario(id: "menu", title: "Menu bar menu", run: ShellScenarios.menu),
-            E2EScenario(id: "space-policy", title: "Every window follows the active Space", run: SpaceScenarios.spacePolicy),
+            E2EScenario(
+                id: "space-policy", title: "Every window follows the active Space", run: SpaceScenarios.spacePolicy),
             E2EScenario(
                 id: "other-spaces", title: "Capture leaves windows on other Spaces alone",
                 run: DesktopScenarios.otherSpaces),
