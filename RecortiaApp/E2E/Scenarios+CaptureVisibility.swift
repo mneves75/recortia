@@ -4,6 +4,14 @@
     import Features
     import MacPlatform
 
+    /// What these scenarios can and cannot observe. They run one synthetic process on whatever
+    /// desktop hosts it, with no extra Spaces and no other app they may drive. Checks marked
+    /// "configured" read a window's `collectionBehavior`: they guard the policy, not what macOS
+    /// does with it. Real Space switching, fullscreen-Space placement, and cooperative-activation
+    /// outcomes are covered only by the owner-run physical probe in `.scratch/space-probe`
+    /// (macOS 27) and the dedicated-desktop qualification. A check that depends on the host
+    /// (another app taking activation, the system granting activation) records a `SKIPPED:`
+    /// assertion with its reason instead of passing silently.
     @MainActor
     enum CaptureVisibilityScenarios {
         private final class ActivationProbe {
@@ -44,23 +52,28 @@
             await E2ESnapshot.settle(window.contentView)
             context.check("capture unhides the application", !NSApp.isHidden)
             context.check("capture editor is ordered onscreen", window.isVisible)
-            context.check("capture editor belongs to the active Space", window.isOnActiveSpace)
+            context.check(
+                "capture editor is on the active Space (observed on this single desktop)", window.isOnActiveSpace)
             context.check("capture editor uses the normal window level", window.level == .normal)
             context.check(
                 "capture editor is an ordinary activating window", !window.styleMask.contains(.nonactivatingPanel))
             context.check(
-                "capture editor follows the active Space", window.collectionBehavior.contains(.moveToActiveSpace))
+                "capture editor is configured to follow the active Space (collectionBehavior only)",
+                window.collectionBehavior.contains(.moveToActiveSpace))
             context.check(
-                "capture editor supports a fullscreen Space", window.collectionBehavior.contains(.fullScreenAuxiliary))
+                "capture editor is configured as fullscreen-auxiliary (collectionBehavior only)",
+                window.collectionBehavior.contains(.fullScreenAuxiliary))
             if NSApp.isActive {
                 context.check("an activated editor owns the keyboard", window.isKeyWindow)
+            } else {
+                skip(context, "an activated editor owns the keyboard", "the system did not activate Recortia")
             }
             let canvas = try context.unwrap("hosted layout attaches the canvas", opened.canvasView)
             context.check(
                 "the editor installs its canvas responder", window.firstResponder === canvas,
                 "responder=\(String(describing: window.firstResponder))")
             context.check(
-                "the editor does not combine fullscreen policies",
+                "the editor is configured without fullscreen-primary (collectionBehavior only)",
                 !window.collectionBehavior.contains(.fullScreenPrimary))
             let content = try context.unwrap("the editor hosts content", window.contentView)
             context.snapshot(content, shot: "presented-editor", over: harness.desktop)
@@ -72,8 +85,15 @@
             context.check("presenting an existing editor restores it", !window.isMiniaturized && window.isVisible)
 
             window.orderOut(nil)
-            NSApp.deactivate()
-            try context.require("presentation starts inactive", await E2EWait.until { !NSApp.isActive })
+            guard await becomeInactive() else {
+                // The host desktop would not hand activation to another app (deactivate() and
+                // hide() both failed), so the inactive-presentation precondition cannot be set up
+                // here. That is a host limitation, not evidence about the editor.
+                skip(
+                    context, "inactive presentation orders the editor in front of other apps",
+                    "Recortia stayed active after deactivate() and hide(); isActive=\(NSApp.isActive)")
+                return
+            }
             let foreground = try context.unwrap(
                 "another app is foreground before presentation",
                 NSWorkspace.shared.frontmostApplication?.processIdentifier)
@@ -82,7 +102,59 @@
             opened.present()
             await E2ESnapshot.settle(window.contentView)
             context.check("inactive presentation still orders the editor", window.isVisible && window.isOnActiveSpace)
+            // `makeKeyAndOrderFront` alone leaves the window behind the active app's windows when
+            // Recortia is inactive (its occlusion state is not visible; planting the removal of
+            // `orderFrontRegardless()` showed this). Only that fallback puts it in front.
+            // Occlusion updates asynchronously, so wait for it.
+            let inFront = await E2EWait.until(timeout: .seconds(3)) { window.occlusionState.contains(.visible) }
+            context.check(
+                "inactive presentation puts the editor in front of other apps (occlusion state visible)", inFront,
+                "occlusion=\(window.occlusionState.rawValue); active=\(NSApp.isActive); key=\(window.isKeyWindow)")
             context.check("presentation preserves the document", !opened.model.isClosed)
+        }
+
+        /// Leaves Recortia inactive with another app in front. `NSApp.deactivate()` only asks the
+        /// system, and whether it hands activation on depends on the host desktop (it failed
+        /// repeatedly on one Mac, then passed). Hiding the app always makes the system activate
+        /// the previously frontmost app, so it is the fallback; the app is then unhidden without
+        /// activation. Returns false when the host never leaves the app inactive.
+        /// Counts `didBecomeActive` for `app` and records the pid of every application the
+        /// workspace reports as activated. The scenario and its wiring control share this code.
+        /// Returns the removal action.
+        private static func observeActivations(
+            _ probe: ActivationProbe, app: AnyObject, center: NotificationCenter, workspace: NotificationCenter
+        ) -> () -> Void {
+            let appObserver = center.addObserver(
+                forName: NSApplication.didBecomeActiveNotification, object: app, queue: .main
+            ) { _ in MainActor.assumeIsolated { probe.appActivationCount += 1 } }
+            let workspaceObserver = workspace.addObserver(
+                forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+            ) { notification in
+                let pid = (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
+                    .processIdentifier
+                MainActor.assumeIsolated { if let pid { probe.foregroundPIDs.append(pid) } }
+            }
+            return {
+                center.removeObserver(appObserver)
+                workspace.removeObserver(workspaceObserver)
+            }
+        }
+
+        /// Records a host-dependent check that could not run, as an assertion named `SKIPPED:`
+        /// with the reason, and echoes it to the run log. It is deliberately visible; the report
+        /// model has no separate skipped state, so it is counted with the passing assertions.
+        private static func skip(_ context: ScenarioContext, _ name: String, _ reason: String) {
+            context.check("SKIPPED: \(name)", true, reason)
+            E2ERunner.log("SKIPPED \(context.id): \(name): \(reason)")
+        }
+
+        private static func becomeInactive() async -> Bool {
+            NSApp.deactivate()
+            if await E2EWait.until(timeout: .seconds(2), { !NSApp.isActive }) { return true }
+            NSApp.hide(nil)
+            let inactive = await E2EWait.until(timeout: .seconds(3)) { !NSApp.isActive }
+            NSApp.unhideWithoutActivation()
+            return inactive
         }
 
         static func shortcutFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
@@ -105,28 +177,16 @@
 
             // A global shortcut starts while another application is active. Only transparent,
             // offscreen synthetic windows are used; no desktop pixels or global keys are read.
-            NSApp.deactivate()
             try context.require(
-                "shortcut starts with Recortia inactive", await E2EWait.until { !NSApp.isActive })
+                "shortcut starts with Recortia inactive", await becomeInactive(), "isActive=\(NSApp.isActive)")
             let foreground = try context.unwrap(
                 "another foreground application exists", NSWorkspace.shared.frontmostApplication?.processIdentifier)
             try context.require(
                 "the shortcut starts outside Recortia", foreground != ProcessInfo.processInfo.processIdentifier)
             let probe = ActivationProbe()
-            let appObserver = NotificationCenter.default.addObserver(
-                forName: NSApplication.didBecomeActiveNotification, object: NSApp, queue: .main
-            ) { _ in MainActor.assumeIsolated { probe.appActivationCount += 1 } }
-            let workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
-                forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-            ) { notification in
-                let pid = (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
-                    .processIdentifier
-                MainActor.assumeIsolated { if let pid { probe.foregroundPIDs.append(pid) } }
-            }
-            defer {
-                NotificationCenter.default.removeObserver(appObserver)
-                NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver)
-            }
+            let removeObservers = observeActivations(
+                probe, app: NSApp, center: .default, workspace: NSWorkspace.shared.notificationCenter)
+            defer { removeObservers() }
             harness.app.perform(.captureRegion)
             try context.require("the shortcut action starts selection", harness.features.capture.state == .selecting)
             overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
@@ -193,6 +253,51 @@
             context.check(
                 "no keyboard transition activates another app",
                 probe.foregroundPIDs.allSatisfy { $0 == foreground })
+
+            // Positive control: "== 0" and "allSatisfy" also hold when an observer is miswired or
+            // its notification never arrives. Activating Recortia once on purpose must move both
+            // probes, which shows the zero counts above could have been non-zero. If the host
+            // declines the activation, the control cannot run and is recorded as skipped.
+            let own = ProcessInfo.processInfo.processIdentifier
+            // Host-independent half: the same observers, on private notification centers, must
+            // count a delivered activation and make the foreground comparison fail.
+            let wiringProbe = ActivationProbe()
+            let privateCenter = NotificationCenter(), privateWorkspace = NotificationCenter()
+            let sender = NSObject()
+            let removeWiring = observeActivations(
+                wiringProbe, app: sender, center: privateCenter, workspace: privateWorkspace)
+            defer { removeWiring() }
+            privateCenter.post(name: NSApplication.didBecomeActiveNotification, object: sender)
+            privateWorkspace.post(
+                name: NSWorkspace.didActivateApplicationNotification, object: nil,
+                userInfo: [NSWorkspace.applicationUserInfoKey: NSRunningApplication.current])
+            let counted = await E2EWait.until(timeout: .seconds(2)) {
+                wiringProbe.appActivationCount == 1 && wiringProbe.foregroundPIDs == [own]
+            }
+            context.check(
+                "positive control: the probes count a delivered activation and notice Recortia in front", counted,
+                "didBecomeActive=\(wiringProbe.appActivationCount); foreground notifications=\(wiringProbe.foregroundPIDs)"
+            )
+            context.check(
+                "positive control: the foreground comparison rejects Recortia becoming frontmost",
+                !wiringProbe.foregroundPIDs.allSatisfy { $0 == foreground })
+            probe.appActivationCount = 0
+            probe.foregroundPIDs = []
+            NSApp.activate()
+            if await E2EWait.until(timeout: .seconds(3), { NSApp.isActive }) {
+                let moved = await E2EWait.until(timeout: .seconds(3)) {
+                    probe.appActivationCount > 0 && probe.foregroundPIDs.contains(own)
+                }
+                context.check(
+                    "positive control: a real activation moves both activation probes (AppKit delivery)", moved,
+                    "didBecomeActive=\(probe.appActivationCount); foreground notifications=\(probe.foregroundPIDs); own=\(own)"
+                )
+                _ = await becomeInactive()
+            } else {
+                skip(
+                    context, "positive control for the activation probes",
+                    "the host did not activate Recortia on request; isActive=\(NSApp.isActive)")
+            }
         }
 
         static func keyEvent(_ code: UInt16, characters: String, windowNumber: Int) throws -> NSEvent {
