@@ -190,7 +190,7 @@ struct ExportSettingsTab: View {
                 Text("Automatic export")
             } footer: {
                 Text(
-                    "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps."
+                    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
                 )
                 .font(.callout)
                 .foregroundStyle(.secondary)

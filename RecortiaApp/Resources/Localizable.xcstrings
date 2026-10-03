@@ -1245,18 +1245,18 @@
         }
       }
     },
-    "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps.": {
+    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Both are off by default. Automatic copy and save happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps."
+            "value": "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ambos vêm desativados. A cópia e o salvamento automáticos acontecem logo após a captura, antes de qualquer edição ou tarja que você fizer depois, e não podem ser desfeitos em outros apps."
+            "value": "Ambos vêm desativados. A cópia e o salvamento automáticos valem para capturas estáticas: acontecem logo após a captura, antes de qualquer edição ou tarja que você fizer depois, e não podem ser desfeitos em outros apps. Capturas com rolagem abrem para revisão."
           }
         }
       }
