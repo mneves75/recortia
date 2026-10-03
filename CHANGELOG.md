@@ -52,6 +52,9 @@ review, and an independent different-model review) drove the remaining fixes.
 - Release builds notarize and staple the app itself before building the disk image, and
   scan every binary in the bundle for test-only code.
 
+Released as build 14. The identical source was published first as the notarized pre-release
+0.10.1-beta1 (build 13, `ddf483c`); build 14 changes only the build number and these notes.
+
 Validation: the full gate (548 package tests, strict lint, signed builds) and 40 native
 scenarios in English and Brazilian Portuguese passed. A physical probe on one display found that
 windows without a Space policy pulled the user out of a fullscreen Space in 6 of 6 runs, and
