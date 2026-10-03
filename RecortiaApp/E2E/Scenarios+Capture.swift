@@ -89,20 +89,41 @@
                 "the chooser lists every synthetic window", windows == harness.capture.windowList,
                 windows.map(\.ownerName).joined(separator: ", "))
 
-            var chosen: WindowInfo?
+            var chosenWindows: [WindowInfo] = []
             let panel = HostingPanel(title: "", activating: true)
             panel.setContent(
-                WindowChooserView(windows: windows, onChoose: { chosen = $0 }, onCancel: { coordinator.cancel() }))
+                WindowChooserView(
+                    windows: windows,
+                    onChoose: {
+                        chosenWindows.append($0)
+                        coordinator.commitSelection(.window($0))  // as `CaptureUIController` wires it
+                    }, onCancel: { coordinator.cancel() }))
             E2ESnapshot.park(panel)
             defer { panel.close() }
             let root = try context.unwrap("chooser panel has content", panel.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "list")
 
-            chosen = windows.first
-            let window = try context.unwrap("a window is chosen", chosen)
+            // Drive the chooser's own controls: select the second row in the hosted list, then
+            // send Return as a key equivalent, which fires the default "Capture" button. `onChoose` must receive the
+            // selected row's window, not the first one and not a value this scenario assigned.
+            let table = try context.unwrap(
+                "the chooser hosts its window list", EditorWindowController.first(NSTableView.self, in: root))
+            try context.require(
+                "the list has one row per window", table.numberOfRows == windows.count,
+                "rows=\(table.numberOfRows); windows=\(windows.count)")
+            let window = try context.unwrap("a second window exists to select", windows.dropFirst().first)
+            table.selectRowIndexes(IndexSet(integer: 1), byExtendingSelection: false)
+            await E2ESnapshot.settle(root)
+            context.check("nothing is chosen before Capture is pressed", chosenWindows.isEmpty, "\(chosenWindows)")
             let before = harness.editors.controllers.count
-            try context.require("committing the window is accepted", coordinator.commitSelection(.window(window)))
+            let returnKey = try CaptureVisibilityScenarios.keyEvent(
+                36, characters: "\r", windowNumber: panel.windowNumber)
+            context.check("the panel handles Return as a key equivalent", panel.performKeyEquivalent(with: returnKey))
+            await E2ESnapshot.settle(root)
+            context.check(
+                "pressing Capture chooses exactly the selected row's window", chosenWindows == [window],
+                "chosen=\(chosenWindows.map(\.ownerName)); expected=\(window.ownerName)")
             let controller = try await E2EActions.waitForNewEditor(harness, after: before, context)
             let geometry = try context.unwrap("capture carries geometry", capturedGeometry(controller.model))
             context.check(

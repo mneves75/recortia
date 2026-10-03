@@ -195,14 +195,18 @@
                 probe.foregroundPIDs.allSatisfy { $0 == foreground })
         }
 
-        private static func sendKey(_ code: UInt16, characters: String, to window: NSWindow) throws {
+        static func keyEvent(_ code: UInt16, characters: String, windowNumber: Int) throws -> NSEvent {
             guard
                 let event = NSEvent.keyEvent(
                     with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber, context: nil, characters: characters,
+                    windowNumber: windowNumber, context: nil, characters: characters,
                     charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code)
             else { throw E2EAbort("could not synthesize selection key \(code)") }
-            NSApp.sendEvent(event)
+            return event
+        }
+
+        private static func sendKey(_ code: UInt16, characters: String, to window: NSWindow) throws {
+            NSApp.sendEvent(try keyEvent(code, characters: characters, windowNumber: window.windowNumber))
         }
 
         static func admission(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
