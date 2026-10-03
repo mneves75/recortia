@@ -76,6 +76,9 @@
             E2EScenario(
                 id: "stale-folder", title: "A stale save-folder bookmark still resolves and is renewed",
                 run: EditorFixScenarios.staleFolderBookmark),
+            E2EScenario(
+                id: "canvas-drop", title: "A canvas drop survives the drag pasteboard clearing",
+                run: EditorFixScenarios.dropOutlivesPasteboard),
         ]
     }
 #endif

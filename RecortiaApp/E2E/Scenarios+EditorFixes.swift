@@ -3,7 +3,9 @@
     import Domain
     import Features
     import Foundation
+    import Imaging
     import MacPlatform
+    import RecortiaFixtures
 
     /// Regressions for the editor review fixes: notices (r4 P2), GitHub destination credentials
     /// (r3 F11), stale save-folder bookmarks (r3 F12), and drops that outlive the drag
@@ -280,6 +282,79 @@
             context.check("a deleted folder is unavailable", folders.resolveFolder(bookmark: goneBookmark) == nil)
             try? await Task.sleep(for: .milliseconds(100))
             context.check("a deleted folder is not renewed", renewals.isEmpty)
+        }
+
+        // MARK: Drops that outlive the drag pasteboard
+
+        /// A drop is performed once; the drag pasteboard may change or clear as soon as
+        /// `performDragOperation` returns, so the import must already hold what it needs.
+        static func dropOutlivesPasteboard(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let controller = try await harness.openImported(harness.desktop, name: "drop-base.png")
+            let model = controller.model
+            let canvas = try context.unwrap("real editor canvas", controller.canvasView)
+            let png = try E2EDrawing.png(harness.desktop)
+            let fileURL = harness.output.workDirectory.appending(path: "drop-file.png")
+            try png.write(to: fileURL, options: .atomic)
+
+            // A dropped file: its URL is captured while the drop is performed.
+            let fileBoard = NSPasteboard.withUniqueName()
+            defer { fileBoard.releaseGlobally() }
+            try context.require(
+                "a file URL is placed on the private drag pasteboard", fileBoard.writeObjects([fileURL as NSURL]))
+            let fileDrag = SyntheticCanvasDrag(pasteboard: fileBoard, window: controller.window)
+            let layersBefore = model.document.layers.count
+            context.check("the file drop is accepted", canvas.performDragOperation(fileDrag))
+            fileBoard.clearContents()
+            fileBoard.setString("cleared", forType: .string)
+            context.check(
+                "a file drop still adds a layer after the pasteboard is cleared",
+                await E2EWait.until { model.document.layers.count == layersBefore + 1 },
+                "layers: \(model.document.layers.count), notice: \(String(describing: model.notice))")
+
+            // Dropped image bytes: read while the drop is performed, only once admission is possible.
+            let provider = SyntheticDropDataProvider(png: png)
+            let dataBoard = NSPasteboard.withUniqueName()
+            defer { dataBoard.releaseGlobally() }
+            let item = NSPasteboardItem()
+            try context.require("PNG data is promised", item.setDataProvider(provider, forTypes: [.png]))
+            try context.require("the PNG promise is placed on the drag pasteboard", dataBoard.writeObjects([item]))
+            let dataDrag = SyntheticCanvasDrag(pasteboard: dataBoard, window: controller.window)
+            context.check("hover accepts PNG data", canvas.draggingEntered(dataDrag) == .copy)
+            context.check("hover requests no bytes", provider.dataRequests == 0)
+            let before = model.document.layers.count
+            context.check("the data drop is accepted", canvas.performDragOperation(dataDrag))
+            dataBoard.clearContents()
+            dataBoard.setString("cleared", forType: .string)
+            context.check(
+                "a data drop still adds a layer after the pasteboard is cleared",
+                await E2EWait.until { model.document.layers.count == before + 1 },
+                "layers: \(model.document.layers.count), notice: \(String(describing: model.notice))")
+            context.check(
+                "the data was requested once", provider.dataRequests == 1, "requests: \(provider.dataRequests)")
+
+            // While another import holds the slot, a drop reads nothing and reports busy.
+            let busyProvider = SyntheticDropDataProvider(png: png)
+            let busyBoard = NSPasteboard.withUniqueName()
+            defer { busyBoard.releaseGlobally() }
+            let busyItem = NSPasteboardItem()
+            try context.require("busy PNG data is promised", busyItem.setDataProvider(busyProvider, forTypes: [.png]))
+            try context.require("the busy promise is placed", busyBoard.writeObjects([busyItem]))
+            let input = harness.importInput
+            input.holdNextRead = true
+            defer { input.release() }
+            let holder = Task { await model.addImageLayer(from: .file(fileURL)) }
+            try context.require("another import holds the slot", await E2EWait.until { input.isWaiting })
+            let serial = model.noticeSerial
+            _ = canvas.performDragOperation(SyntheticCanvasDrag(pasteboard: busyBoard, window: controller.window))
+            busyBoard.clearContents()
+            context.check(
+                "a busy drop reports busy",
+                await E2EWait.until { model.noticeSerial > serial && model.notice == .importFailed(.busy) })
+            context.check(
+                "a busy drop requests no bytes", busyProvider.dataRequests == 0,
+                "requests: \(busyProvider.dataRequests)")
+            input.release()
+            _ = await holder.value
         }
     }
 #endif
