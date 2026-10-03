@@ -20,6 +20,7 @@ python3 scripts/test-e2e-isolation.py
 python3 scripts/test-localization.py
 python3 scripts/test-release-entitlements.py
 python3 scripts/test-release-binary.py
+python3 scripts/test-release-contract.py   # static release.sh checks; the bundle checks need --app
 python3 scripts/test-project-freshness.py
 
 echo "== format lint"

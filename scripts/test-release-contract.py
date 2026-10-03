@@ -58,7 +58,37 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertNotEqual(source_commit, git("rev-parse", "HEAD", cwd=repository))
             self.assertEqual(source_commit, git("rev-parse", "HEAD", cwd=checkout))
 
+    def test_app_is_notarized_and_stapled_before_the_disk_image_is_built(self) -> None:
+        script = RELEASE.read_text()
+        steps = [
+            'ditto -c -k --keepParent "$app" "$app_zip"',
+            'asc notarization submit --file "$app_zip" --wait --timeout 1h --output table',
+            'xcrun stapler staple "$app"',
+            'xcrun stapler validate "$app"',
+            'ditto "$app" "$staging/Recortia.app"',
+            'hdiutil create',
+            'codesign --sign "Developer ID Application: Marcus Neves (Q96FUTC5G8)" --timestamp "$dmg"',
+            'asc notarization submit --file "$dmg" --wait --timeout 1h --output table',
+            'xcrun stapler staple "$dmg"',
+            'xcrun stapler validate "$dmg"',
+        ]
+        positions = []
+        for step in steps:
+            self.assertEqual(1, script.count(step), f"expected exactly one: {step}")
+            positions.append(script.index(step))
+        self.assertEqual(positions, sorted(positions), "the app must be stapled before the DMG is built")
+        # A dry run builds the DMG without notarizing either artifact.
+        for step in (steps[1], steps[2], steps[3]):
+            guarded = r"(?s)\nif \(\( ! dry_run \)\); then\n(?:(?!\nfi\n).)*?" + re.escape(step)
+            self.assertRegex(script, guarded, f"not skipped in a dry run: {step}")
+        # Stapling edits the bundle, so its seal and Gatekeeper assessment are checked afterwards.
+        self.assertLess(
+            positions[3], script.index('codesign --verify --deep --strict "$app"', positions[3]),
+        )
+
     def test_bundled_notice_matches_pinned_dependency(self) -> None:
+        if not hasattr(self, "app"):
+            self.skipTest("run with --app and --package-checkout to check the bundled notices")
         pins = json.loads(RESOLVED.read_text())["pins"]
         keyboard_shortcuts = next(pin for pin in pins if pin["identity"] == "keyboardshortcuts")
         self.assertEqual("3.1.0", keyboard_shortcuts["state"]["version"])
@@ -77,11 +107,15 @@ class ReleaseContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--app", type=pathlib.Path, required=True)
-    parser.add_argument("--package-checkout", type=pathlib.Path, required=True)
+    # Without both paths only the static script checks run and the bundle checks are reported as skipped.
+    parser.add_argument("--app", type=pathlib.Path)
+    parser.add_argument("--package-checkout", type=pathlib.Path)
     arguments = parser.parse_args()
-    ReleaseContractTests.app = arguments.app
-    ReleaseContractTests.checkout = arguments.package_checkout
+    if (arguments.app is None) != (arguments.package_checkout is None):
+        parser.error("--app and --package-checkout go together")
+    if arguments.app is not None:
+        ReleaseContractTests.app = arguments.app
+        ReleaseContractTests.checkout = arguments.package_checkout
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(ReleaseContractTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     print(json.dumps({"tests_run": result.testsRun, "failures": len(result.failures), "errors": len(result.errors)}))
