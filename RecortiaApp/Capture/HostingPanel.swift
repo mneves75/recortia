@@ -45,8 +45,7 @@ final class HostingPanel: NSPanel {
 
     /// Shows the panel near the top center of the screen with the pointer.
     func present(activate: Bool) {
-        let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
-        if let visible = screen?.visibleFrame {
+        if let visible = ScreenChoice.screen()?.visibleFrame {
             let size = frame.size
             setFrameOrigin(
                 CGPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - visible.height * 0.18))

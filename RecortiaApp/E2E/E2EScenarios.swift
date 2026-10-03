@@ -6,6 +6,21 @@
             E2EScenario(id: "onboarding", title: "First-launch onboarding", run: ShellScenarios.onboarding),
             E2EScenario(id: "menu", title: "Menu bar menu", run: ShellScenarios.menu),
             E2EScenario(id: "space-policy", title: "Every window follows the active Space", run: SpaceScenarios.spacePolicy),
+            E2EScenario(
+                id: "other-spaces", title: "Capture leaves windows on other Spaces alone",
+                run: DesktopScenarios.otherSpaces),
+            E2EScenario(
+                id: "screen-choice", title: "Windows open on the captured or pointer display",
+                run: DesktopScenarios.screenChoice),
+            E2EScenario(
+                id: "countdown-cancel", title: "Countdown cancels by click and keyboard",
+                run: DesktopScenarios.countdownCancel),
+            E2EScenario(
+                id: "held-shortcut-polling", title: "Held shortcuts are re-checked with backoff",
+                run: DesktopScenarios.heldShortcutPolling),
+            E2EScenario(
+                id: "capture-menu-focus", title: "Dismissing the capture menu returns focus",
+                run: DesktopScenarios.captureMenuFocus),
             E2EScenario(id: "settings", title: "Settings tabs", run: ShellScenarios.settings),
             E2EScenario(
                 id: "quit-confirmation", title: "Quit asks before discarding edits",

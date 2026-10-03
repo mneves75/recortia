@@ -74,7 +74,19 @@ final class ScrollUIController {
     private func showReview() {
         guard review == nil else { return }
         let window = Self.makeReviewWindow(model: model)
-        window.center()
+        // On the display that was scrolled, not the key window's (FR-01).
+        let displayID: CGDirectDisplayID? =
+            switch model.target {
+            case .region(_, let display)?, .display(let display)?: display.id
+            case .window(let info)?: info.displayID
+            case nil: nil
+            }
+        if let visible = ScreenChoice.screen(displayID: displayID)?.visibleFrame {
+            let size = window.frame.size
+            window.setFrameOrigin(NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
+        } else {
+            window.center()
+        }
         review = window
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)

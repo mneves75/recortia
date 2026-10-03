@@ -343,6 +343,13 @@ final class AppModel: AppActions {
         shortcutStatus.reassign { ShortcutDefaults.restore() }
     }
 
+    /// Quick at first (the user may be in System Settings freeing the key), then backing off to
+    /// one check a minute, so a default install that keeps macOS's shortcuts does not wake every 2 s.
+    /// Becoming active refreshes immediately regardless.
+    static func heldShortcutPollDelay(afterChecks checks: Int) -> Duration {
+        .seconds(min(2 << min(max(checks, 0), 5), 60))
+    }
+
     private func watchHeldShortcuts() {
         guard shortcutStatus.isHoldingAny else {
             heldShortcutWatch?.cancel()
@@ -351,8 +358,10 @@ final class AppModel: AppActions {
         }
         guard heldShortcutWatch == nil else { return }
         heldShortcutWatch = Task { [weak self] in
+            var checks = 0
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: Self.heldShortcutPollDelay(afterChecks: checks))
+                checks += 1
                 guard let self, !Task.isCancelled else { return }
                 self.shortcutStatus.refreshHeld()
                 if !self.shortcutStatus.isHoldingAny {

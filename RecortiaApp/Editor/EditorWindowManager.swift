@@ -117,22 +117,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     private func targetScreen() -> NSScreen? {
         let assets = model.document.assets.values
+        var displayID: CGDirectDisplayID?
         if assets.count == 1, case .captured(let geometry)? = assets.first?.origin {
-            let displayID: UInt32 =
+            displayID =
                 switch geometry.source {
                 case .display(let id): id
                 case .window(_, let id): id
                 case .region(let id): id
                 }
-            let key = NSDeviceDescriptionKey("NSScreenNumber")
-            if let screen = NSScreen.screens.first(where: {
-                ($0.deviceDescription[key] as? NSNumber)?.uint32Value == displayID
-            }) {
-                return screen
-            }
         }
-        let pointer = NSEvent.mouseLocation
-        return NSScreen.screens.first { $0.frame.contains(pointer) } ?? NSScreen.main
+        return ScreenChoice.screen(displayID: displayID)
     }
 
     /// Room for the image at its captured point size plus the side panels, within the screen.
