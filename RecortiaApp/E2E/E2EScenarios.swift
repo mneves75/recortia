@@ -5,7 +5,11 @@
         static let all: [E2EScenario] = [
             E2EScenario(id: "onboarding", title: "First-launch onboarding", run: ShellScenarios.onboarding),
             E2EScenario(id: "menu", title: "Menu bar menu", run: ShellScenarios.menu),
+            E2EScenario(id: "space-policy", title: "Every window follows the active Space", run: SpaceScenarios.spacePolicy),
             E2EScenario(id: "settings", title: "Settings tabs", run: ShellScenarios.settings),
+            E2EScenario(
+                id: "quit-confirmation", title: "Quit asks before discarding edits",
+                run: ShellScenarios.quitConfirmation),
             E2EScenario(id: "shortcuts", title: "macOS-style default shortcuts", run: ShortcutScenarios.defaults),
             E2EScenario(id: "capture-menu", title: "Capture menu (⇧⌘5)", run: ShortcutScenarios.captureMenu),
             E2EScenario(id: "region-overlay", title: "Region selection overlay", run: CaptureScenarios.regionOverlay),

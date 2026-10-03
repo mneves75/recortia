@@ -19,7 +19,7 @@ public enum ScrollStitchError: Error, Equatable, Sendable {
 /// frame; during `append` the incoming frame is the second full frame. Matching temporaries are
 /// chunk-sized (`workingBudgetBytes`). Before the incoming frame's planes are allocated, the peak
 /// of all of this is checked against `ScrollLimits.maxWorkingBytes` (`peakWorkingBytes`); a frame
-/// that would exceed it ends collection as `.limitReached(.area)` and the accepted output stays.
+/// that would exceed it ends collection as `.limitReached(.memory)` and the accepted output stays.
 /// A frame whose luma matches the previous one but whose colors do not is ambiguous, not stationary.
 /// The value is synchronous: run it off the main actor.
 public struct ScrollStitcher: Sendable {
@@ -56,7 +56,7 @@ public struct ScrollStitcher: Sendable {
         guard let previous else {
             // Checked before decoding so an oversized viewport is never materialized.
             if let limit = limits.firstExceeded(elapsed: elapsed, frames: 1, outputSize: size) { return stop(limit) }
-            if exceedsWorkingBudget(frameSize: size, appending: false) { return stop(.area) }
+            if exceedsWorkingBudget(frameSize: size, appending: false) { return stop(.memory) }
             guard let first = ScrollFrame(image: frame) else { return .ambiguous(.lowConfidence) }
             frameWidth = size.width
             frameHeight = size.height
@@ -74,7 +74,7 @@ public struct ScrollStitcher: Sendable {
             return .ambiguous(.lowConfidence)
         }
         // Checked before the frame's pixel and luma planes are allocated; the accepted output stays.
-        if exceedsWorkingBudget(frameSize: size, appending: true) { return stop(.area) }
+        if exceedsWorkingBudget(frameSize: size, appending: true) { return stop(.memory) }
         guard let current = ScrollFrame(image: frame) else {
             consecutiveStationaryFrames = 0
             return .ambiguous(.lowConfidence)

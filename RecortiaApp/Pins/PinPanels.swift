@@ -50,7 +50,7 @@ final class PinPanel: NSPanel {
         // control bar paints a background.
         isOpaque = false
         backgroundColor = .clear
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        collectionBehavior = SpacePolicy.joinsAllSpaces
         title = String(localized: "Pin")
         setAccessibilityLabel(String(localized: "Pinned screenshot"))
         let fit = Self.fitScale(for: model.pin(for: pinID))

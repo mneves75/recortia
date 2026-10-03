@@ -15,6 +15,33 @@ struct UserMessage: Equatable {
 enum MessagePresenter {
     static func present(_ message: UserMessage) {
         NSApp.activate()
+        let alert = makeAlert(message)
+        let response = alert.runModal()
+        if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
+            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// Asks before Quit discards edits in `count` open editors. True means quit.
+    static func confirmDiscardOnQuit(count: Int) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Quit and discard your edits?")
+        alert.informativeText =
+            count == 1
+            ? String(localized: "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them.")
+            : String(localized: "\(count) open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them.")
+        let quit = alert.addButton(withTitle: String(localized: "Quit"))
+        quit.hasDestructiveAction = true
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        SpacePolicy.follow(alert.window)
+        NSApp.activate()
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    static func makeAlert(_ message: UserMessage) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = message.title
         alert.informativeText = message.detail
@@ -25,12 +52,9 @@ enum MessagePresenter {
         } else {
             alert.addButton(withTitle: String(localized: "OK"))
         }
-        let response = alert.runModal()
-        if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
-            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-        {
-            NSWorkspace.shared.open(url)
-        }
+        // A message raised over another app's fullscreen Space must appear there (FR-01).
+        SpacePolicy.follow(alert.window)
+        return alert
     }
 }
 

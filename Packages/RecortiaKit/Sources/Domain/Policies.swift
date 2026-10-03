@@ -29,6 +29,8 @@ public enum ScrollLimit: Hashable, Sendable, Codable {
     case area
     case side
     case height
+    /// The peak working memory of one append (`ScrollLimits.maxWorkingBytes`).
+    case memory
 }
 
 /// Why an accepted scrolling capture is partial (SCR-02/04). A partial result is never labeled complete.

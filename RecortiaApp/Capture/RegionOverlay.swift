@@ -89,7 +89,7 @@ final class OverlayWindow: NSPanel {
         isFloatingPanel = true
         hidesOnDeactivate = false
         level = .screenSaver
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        collectionBehavior = SpacePolicy.joinsAllSpaces.union([.stationary, .ignoresCycle])
         contentView = selectionView
         setFrame(screen.frame, display: false)
     }

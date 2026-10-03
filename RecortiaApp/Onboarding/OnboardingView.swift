@@ -121,10 +121,7 @@ final class OnboardingWindowController {
         let view = OnboardingView(onboarding: onboarding, shortcutStatus: shortcutStatus) { [weak self] in
             self?.close()
         }
-        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
-        window.title = String(localized: "Welcome to Recortia")
-        window.styleMask = [.titled, .closable]
-        window.isReleasedWhenClosed = false
+        let window = Self.makeWindow(NSHostingController(rootView: view))
         window.center()
         self.window = window
         NSApp.activate()
@@ -134,6 +131,15 @@ final class OnboardingWindowController {
     private func close() {
         window?.close()
         window = nil
+    }
+
+    static func makeWindow(_ content: NSViewController) -> NSWindow {
+        let window = NSWindow(contentViewController: content)
+        window.title = String(localized: "Welcome to Recortia")
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        SpacePolicy.follow(window)
+        return window
     }
 }
 

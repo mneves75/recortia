@@ -100,9 +100,9 @@ struct ScrollLimitsTests {
         let retained = stitcher.retainedByteCount
 
         let second = try #require(fixture.frame(offset: 40, index: 1))
-        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.area))
+        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.memory))
         // Sticky like every limit, and nothing was allocated or lost.
-        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.area))
+        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.memory))
         #expect(stitcher.acceptedFrameCount == 1)
         #expect(stitcher.retainedByteCount == retained)
         let output = try stitcher.assemble()
@@ -118,7 +118,7 @@ struct ScrollLimitsTests {
     func firstFrameExceedingWorkingBudget() throws {
         var stitcher = ScrollStitcher(limits: ScrollLimits(maxWorkingBytes: 100_000))
         let frame = try Self.blankFrame(width: 100, height: 200)
-        #expect(stitcher.append(frame, elapsed: .zero) == .limitReached(.area))
+        #expect(stitcher.append(frame, elapsed: .zero) == .limitReached(.memory))
         #expect(stitcher.retainedByteCount == 0)
         #expect(throws: ScrollStitchError.noFrames) { try stitcher.assemble() }
     }
@@ -193,7 +193,7 @@ struct ScrollLimitsTests {
         case .side: limits.maxSide = 330
         case .height: limits.defaultMaxHeight = 330
         case .frames: limits.maxAcceptedFrames = 4
-        case .duration: break
+        case .duration, .memory: break  // time and working memory have their own tests
         }
         var stitcher = ScrollStitcher(limits: limits)
         var results: [ScrollAppendResult] = []

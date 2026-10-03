@@ -22,7 +22,7 @@ final class HostingPanel: NSPanel {
         isFloatingPanel = true
         level = .floating
         hidesOnDeactivate = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        collectionBehavior = SpacePolicy.joinsAllSpaces
         isMovableByWindowBackground = true
     }
 

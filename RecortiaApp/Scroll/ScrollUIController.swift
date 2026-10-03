@@ -73,14 +73,20 @@ final class ScrollUIController {
 
     private func showReview() {
         guard review == nil else { return }
-        let window = NSWindow(contentViewController: NSHostingController(rootView: LiveScrollReview(model: model)))
-        window.title = String(localized: "Review Scrolling Capture")
-        window.styleMask = [.titled]
-        window.isReleasedWhenClosed = false
+        let window = Self.makeReviewWindow(model: model)
         window.center()
         review = window
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    static func makeReviewWindow(model: ScrollSessionModel) -> NSWindow {
+        let window = NSWindow(contentViewController: NSHostingController(rootView: LiveScrollReview(model: model)))
+        window.title = String(localized: "Review Scrolling Capture")
+        window.styleMask = [.titled]
+        window.isReleasedWhenClosed = false
+        SpacePolicy.follow(window)
+        return window
     }
 
     private func closeReview() {

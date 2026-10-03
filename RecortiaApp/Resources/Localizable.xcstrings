@@ -1,6 +1,70 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Quit and discard your edits?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit and discard your edits?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair e descartar suas edições?"
+          }
+        }
+      }
+    },
+    "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma imagem aberta tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+          }
+        }
+      }
+    },
+    "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld imagens abertas têm alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+          }
+        }
+      }
+    },
+    "Quit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair"
+          }
+        }
+      }
+    },
     "Another image is still being opened. Try again when it finishes.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Another image is still being opened. Try again when it finishes." } },
@@ -3129,6 +3193,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "O limite de 40 megapixels foi atingido."
+          }
+        }
+      }
+    },
+    "The memory limit for scrolling capture was reached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The memory limit for scrolling capture was reached."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O limite de memória da captura com rolagem foi atingido."
           }
         }
       }

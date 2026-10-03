@@ -56,6 +56,9 @@ final class EditorWindowManager {
 
     var openDocumentIDs: [DocumentID] { Array(controllers.keys) }
 
+    /// Editors whose edits were never copied, saved, dragged, or pinned.
+    var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
+
     func model(for id: DocumentID) -> EditorModel? { controllers[id]?.model }
 }
 
@@ -77,7 +80,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         window.title = String(localized: "Recortia Editor", table: "Editor")
         // The capture result follows the current Space, including another app's fullscreen
         // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
-        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        window.collectionBehavior = SpacePolicy.followsActiveSpace
         window.contentMinSize = NSSize(width: 980, height: 560)
         window.tabbingMode = .disallowed
         super.init(window: window)
@@ -142,6 +145,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         let width = min(max(document.canvasSize.width / scale + chromeWidth, 980), visible.width * 0.92)
         let height = min(max(document.canvasSize.height / scale + chromeHeight, 560), visible.height * 0.92)
         return NSSize(width: width, height: height)
+    }
+
+    /// Commits in-progress text first, so typed text counts as an edit.
+    func hasUnexportedEdits() -> Bool {
+        canvas.finishTextEditing(commit: true)
+        return model.isDirty && !model.isClosed
     }
 
     // MARK: NSWindowDelegate

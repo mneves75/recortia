@@ -68,14 +68,22 @@ final class AppModel: AppActions {
     /// Re-checks held shortcuts until macOS lets their keys go (ADR-005).
     @ObservationIgnored private var heldShortcutWatch: Task<Void, Never>?
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
+    /// Gives Settings, About and alert windows a Space policy before the app activates (FR-01).
+    @ObservationIgnored private let spacePolicy = SpacePolicyMonitor()
     @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
+    /// Open editors whose edits were never copied, saved, dragged, or pinned.
+    @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
+    /// Asks whether to quit and discard those edits; the argument is how many editors have them.
+    @ObservationIgnored private let confirmQuit: @MainActor (Int) -> Bool
 
     init(
         settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry,
-        showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) }
+        showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
+        confirmQuit: @escaping @MainActor (Int) -> Bool = { MessagePresenter.confirmDiscardOnQuit(count: $0) }
     ) {
         self.settings = settings
         self.showMessage = showMessage
+        self.confirmQuit = confirmQuit
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = services.map { FeatureModels(services: $0, settings: settings) }
@@ -84,6 +92,7 @@ final class AppModel: AppActions {
                 self?.isStartingScrollingCapture == true
             }
         }
+        spacePolicy.start()
         // Every path that holds a shortcut starts the watch, including a recording in Settings.
         shortcutStatus.onHold = { [weak self] in self?.watchHeldShortcuts() }
     }
@@ -159,6 +168,13 @@ final class AppModel: AppActions {
         }
     }
 
+    /// Whether the app may terminate now (`applicationShouldTerminate`). Termination never asks
+    /// each editor's `windowShouldClose`, so unexported edits are confirmed here (FR-04).
+    func shouldTerminate() -> Bool {
+        let count = unexportedEditCount()
+        return count == 0 || confirmQuit(count)
+    }
+
     func showSettings() {
         NSApp.activate()
         openSettingsWindow?()
@@ -197,6 +213,7 @@ final class AppModel: AppActions {
             input: services.input, pins: features.pins, textClipboard: PasteboardTextClipboard(),
             links: WorkspaceLinkOpener(), settings: settings, imageImporter: features.importer.imageImporter)
         openDocument = { [editors] session in editors.open(session, environment: environment) }
+        unexportedEditCount = { [editors] in editors.unexportedEditCount }
         let monitor = SystemEventMonitor { event in
             switch event {
             case .displaysChanged:

@@ -25,6 +25,7 @@
         let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
         let messages = RecordingMessagePresenter()
+        let quit = RecordingQuitConfirmation()
         let services: AppServices
         let app: AppModel
         let features: FeatureModels
@@ -73,7 +74,8 @@
                 settings: settings, services: services,
                 shortcutRegistry: KeyboardShortcutsRegistry(
                     takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
-                showMessage: { messages.values.append($0) })
+                showMessage: { messages.values.append($0) },
+                confirmQuit: { [quit] in quit.answer($0) })
             guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
             self.features = features
             environment = EditorEnvironment(
@@ -99,6 +101,7 @@
             features.scroll.onAccepted = { editors.open($0) }
             app.openDocument = { editors.open($0).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
+            app.unexportedEditCount = { editors.unexportedEditCount }
         }
 
         /// Imports `image` as PNG through the real input, decode, and asset path; opens an editor.
@@ -139,6 +142,19 @@
         var values: [UserMessage] = []
     }
 
+    /// Stands in for the Quit confirmation alert: records each question and answers from a script
+    /// (declining when the script is empty). No modal alert is shown.
+    @MainActor
+    final class RecordingQuitConfirmation {
+        var answers: [Bool] = []
+        var questions: [Int] = []
+
+        func answer(_ count: Int) -> Bool {
+            questions.append(count)
+            return answers.isEmpty ? false : answers.removeFirst()
+        }
+    }
+
     /// `EditorWindowManager.open` without `present()`: real editor windows and models, parked
     /// offscreen at one fixed content size.
     @MainActor
@@ -165,6 +181,9 @@
             }
             return controller
         }
+
+        /// Editors whose edits were never exported, as `EditorWindowManager` counts them.
+        var unexportedEditCount: Int { controllers.filter { $0.hasUnexportedEdits() }.count }
 
         func closeAll() {
             for controller in controllers { controller.window?.close() }

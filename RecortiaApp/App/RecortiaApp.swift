@@ -53,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.launch()
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        model.shouldTerminate() ? .terminateNow : .terminateCancel
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { model.showSettings() }
         return true

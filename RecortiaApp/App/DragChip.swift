@@ -66,7 +66,7 @@ final class DragChipPanel: NSPanel {
         level = .floating
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        collectionBehavior = SpacePolicy.joinsAllSpaces
         let chip = DragChipView(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
             self?.onEnd(outcome)
         }
