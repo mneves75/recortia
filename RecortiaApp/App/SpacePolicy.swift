@@ -2,7 +2,7 @@ import AppKit
 
 /// How Recortia's windows relate to Spaces, including other apps' fullscreen Spaces (FR-01).
 ///
-/// Measured on macOS 27 with an accessory probe (`.scratch/space-probe`): activating the app
+/// Measured on macOS 27 with an accessory probe (`scripts/space-probe`): activating the app
 /// switches the user to any Space that holds one of its windows without a Space policy, even out
 /// of another app's fullscreen Space. A window that follows the active Space moves to the user
 /// instead, whether the app activates before or after ordering it.

@@ -6,7 +6,7 @@
 
     /// FR-01/FR-02/FR-09 on every desktop: Spaces, displays and focus. Physical Spaces and second
     /// displays cannot be created here; these checks use AppKit's own window properties and
-    /// synthetic display layouts, and `.scratch/space-probe` records the physical evidence.
+    /// synthetic display layouts, and `scripts/space-probe` records the physical evidence.
     @MainActor
     enum DesktopScenarios {
         /// A window AppKit reports as being on another Space.

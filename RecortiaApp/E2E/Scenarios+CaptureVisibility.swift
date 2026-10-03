@@ -8,7 +8,7 @@
     /// desktop hosts it, with no extra Spaces and no other app they may drive. Checks marked
     /// "configured" read a window's `collectionBehavior`: they guard the policy, not what macOS
     /// does with it. Real Space switching, fullscreen-Space placement, and cooperative-activation
-    /// outcomes are covered only by the owner-run physical probe in `.scratch/space-probe`
+    /// outcomes are covered only by the owner-run physical probe in `scripts/space-probe`
     /// (macOS 27) and the dedicated-desktop qualification. A check that depends on the host
     /// (another app taking activation, the system granting activation) records a `SKIPPED:`
     /// assertion with its reason instead of passing silently.

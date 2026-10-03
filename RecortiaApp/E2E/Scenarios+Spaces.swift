@@ -5,7 +5,7 @@
     import MacPlatform
 
     /// FR-01 on every desktop: each window Recortia shows carries a Space policy. A physical probe
-    /// (`.scratch/space-probe`, macOS 27) showed that activating the app switches the user to any
+    /// (`scripts/space-probe`, macOS 27) showed that activating the app switches the user to any
     /// Space holding a Recortia window without one, even out of another app's fullscreen Space,
     /// while windows that follow the active Space move to the user instead. This scenario guards
     /// the configuration; it cannot create Spaces, so it does not replace the physical check.
