@@ -20,23 +20,13 @@ python3 scripts/test-e2e-isolation.py
 python3 scripts/test-localization.py
 python3 scripts/test-release-entitlements.py
 python3 scripts/test-release-binary.py
+python3 scripts/test-project-freshness.py
 
 echo "== format lint"
 xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests RecortiaApp RecortiaUITests
 
-if command -v xcodegen >/dev/null; then
-  echo "== generated project is current"
-  before=$(find Recortia.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
-  xcodegen generate --quiet
-  after=$(find Recortia.xcodeproj -name '*.pbxproj' -o -name '*.xcscheme' | sort | xargs shasum | shasum)
-  if [[ "$before" != "$after" ]]; then
-    echo "check: Recortia.xcodeproj was stale; it has been regenerated from project.yml, commit the result" >&2
-    exit 1
-  fi
-elif [[ -n "${CI:-}" ]]; then
-  echo "check: xcodegen is missing, so the generated-project freshness gate cannot run in CI" >&2
-  exit 1
-fi
+echo "== generated project is current (compared with git)"
+scripts/check-project-fresh.sh
 
 echo "== package tests"
 swift test --package-path Packages/RecortiaKit --parallel
