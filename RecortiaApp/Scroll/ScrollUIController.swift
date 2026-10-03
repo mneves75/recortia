@@ -81,12 +81,7 @@ final class ScrollUIController {
             case .window(let info)?: info.displayID
             case nil: nil
             }
-        if let visible = ScreenChoice.screen(displayID: displayID)?.visibleFrame {
-            let size = window.frame.size
-            window.setFrameOrigin(NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
-        } else {
-            window.center()
-        }
+        window.center(on: ScreenChoice.screen(displayID: displayID))
         review = window
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)

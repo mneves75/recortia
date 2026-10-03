@@ -123,7 +123,7 @@ final class OnboardingWindowController {
             self?.close()
         }
         let window = Self.makeWindow(NSHostingController(rootView: view))
-        window.center()
+        window.center(on: ScreenChoice.screen())
         self.window = window
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)

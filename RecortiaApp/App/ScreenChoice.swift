@@ -18,6 +18,14 @@ enum ScreenChoice {
     }
 }
 
+extension NSWindow {
+    /// Centers the window in `screen`'s visible frame; `center()` would use the key window's screen.
+    func center(on screen: NSScreen?) {
+        guard let visible = screen?.visibleFrame else { return center() }
+        setFrameOrigin(NSPoint(x: visible.midX - frame.width / 2, y: visible.midY - frame.height / 2))
+    }
+}
+
 extension NSScreen {
     /// The Core Graphics display this screen shows.
     var displayID: CGDirectDisplayID? {
