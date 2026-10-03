@@ -104,7 +104,7 @@ if [[ "$signature" != *"flags=0x10000(runtime)"* ]]; then
   echo "release: Hardened Runtime is not enabled" >&2
   exit 1
 fi
-scripts/check-release-binary.sh "$app/Contents/MacOS/Recortia"
+scripts/check-release-binary.sh "$app"
 notice="$src/RecortiaApp/Resources/KeyboardShortcuts-LICENSE.txt"
 upstream_notice="$out/spm/checkouts/KeyboardShortcuts/license"
 bundled_notice="$app/Contents/Resources/KeyboardShortcuts-LICENSE.txt"

@@ -19,6 +19,7 @@ python3 scripts/test-doctor.py
 python3 scripts/test-e2e-isolation.py
 python3 scripts/test-localization.py
 python3 scripts/test-release-entitlements.py
+python3 scripts/test-release-binary.py
 
 echo "== format lint"
 xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests RecortiaApp RecortiaUITests
