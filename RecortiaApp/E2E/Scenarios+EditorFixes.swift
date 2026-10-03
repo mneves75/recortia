@@ -3,6 +3,7 @@
     import Domain
     import Features
     import Foundation
+    import MacPlatform
 
     /// Regressions for the editor review fixes: notices (r4 P2), GitHub destination credentials
     /// (r3 F11), stale save-folder bookmarks (r3 F12), and drops that outlive the drag
@@ -95,6 +96,110 @@
                 await E2EWait.until { announcements.contains(copied) })
             context.check(
                 "the replacing success notice dismisses itself", await E2EWait.until { model.notice == nil })
+        }
+
+        // MARK: GitHub destination credentials
+
+        /// Records every Keychain call a Settings save makes, in order, without a real Keychain.
+        @MainActor
+        final class RecordingCredentials: GitHubCredentialService {
+            private(set) var tokens: [String: String] = [:]
+            private(set) var calls: [String] = []
+            var failNextStore = false
+            var failNextRemove = false
+
+            func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+                let account = GitHubTokenStore.account(for: destination)
+                calls.append("store \(account)")
+                if failNextStore {
+                    failNextStore = false
+                    throw .credentialsUnavailable
+                }
+                tokens[account] = token
+            }
+
+            func remove(for destination: GitHubDestination) throws(GitHubUploadFailure) {
+                let account = GitHubTokenStore.account(for: destination)
+                calls.append("remove \(account)")
+                if failNextRemove {
+                    failNextRemove = false
+                    throw .credentialsUnavailable
+                }
+                tokens[account] = nil
+            }
+        }
+
+        static func githubDestination(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let settings = harness.settings
+            let credentials = RecordingCredentials()
+            let first = GitHubDestination(owner: "fixture", repository: "private-one")
+            let second = GitHubDestination(owner: "fixture", repository: "private-two")
+            func save(_ token: String, _ destination: GitHubDestination) -> GitHubDestinationSaver.Result {
+                GitHubDestinationSaver.save(
+                    token: token, destination: destination, settings: settings, credentials: credentials)
+            }
+
+            context.check(
+                "the first save succeeds, trimming a pasted token", save("  ghp_one\n", first) == .saved)
+            context.check(
+                "the stored token has no surrounding whitespace",
+                credentials.tokens[GitHubTokenStore.account(for: first)] == "ghp_one",
+                "stored: \(credentials.tokens)")
+            context.check(
+                "the first destination is saved", settings.preferences.githubUpload?.destination == first)
+            context.check("the first save removes nothing", !credentials.calls.contains { $0.hasPrefix("remove") })
+
+            context.check("changing the destination succeeds", save("ghp_two", second) == .saved)
+            context.check(
+                "the new destination is saved with automatic upload off",
+                settings.preferences.githubUpload == GitHubUploadPreferences(destination: second))
+            context.check(
+                "the previous destination's token is removed after the new one is stored",
+                credentials.calls.suffix(2) == ["store fixture/private-two", "remove fixture/private-one"],
+                "calls: \(credentials.calls)")
+            context.check(
+                "only the new destination keeps a token",
+                credentials.tokens == [GitHubTokenStore.account(for: second): "ghp_two"],
+                "stored: \(credentials.tokens)")
+
+            // The same Keychain item under another spelling is not a change: removing it would
+            // delete the token that was just stored.
+            let respelled = GitHubDestination(owner: "Fixture", repository: "Private-Two")
+            let callsBefore = credentials.calls.count
+            context.check("re-saving with other letter case succeeds", save("ghp_three", respelled) == .saved)
+            context.check(
+                "other letter case removes nothing",
+                !credentials.calls.dropFirst(callsBefore).contains { $0.hasPrefix("remove") },
+                "calls: \(credentials.calls)")
+            context.check(
+                "the token for the respelled destination survives",
+                credentials.tokens[GitHubTokenStore.account(for: second)] == "ghp_three")
+
+            // A failed store leaves the saved destination and its token alone.
+            credentials.failNextStore = true
+            let before = credentials.calls.count
+            let failed = save("ghp_four", first)
+            context.check("a failed store reports the failure", failed == .failed(.credentialsUnavailable), "\(failed)")
+            context.check(
+                "a failed store keeps the saved destination",
+                settings.preferences.githubUpload?.destination == respelled)
+            context.check(
+                "a failed store removes nothing",
+                !credentials.calls.dropFirst(before).contains { $0.hasPrefix("remove") })
+
+            // A failed removal still saves the destination and says the old token remains.
+            credentials.failNextRemove = true
+            let stale = save("ghp_five", first)
+            context.check(
+                "a failed removal is reported", stale == .savedWithStaleCredential(.credentialsUnavailable), "\(stale)")
+            context.check(
+                "a failed removal still saves the destination", settings.preferences.githubUpload?.destination == first)
+
+            // A token that is only whitespace never reaches the Keychain.
+            let calls = credentials.calls.count
+            context.check(
+                "a whitespace-only token is a missing credential", save(" \n\t", second) == .failed(.missingCredential))
+            context.check("a whitespace-only token makes no Keychain call", credentials.calls.count == calls)
         }
     }
 #endif

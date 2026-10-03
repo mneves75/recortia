@@ -70,6 +70,9 @@
             E2EScenario(
                 id: "editor-notices", title: "Editor notices are announced and failures stay until dismissed",
                 run: EditorFixScenarios.notices),
+            E2EScenario(
+                id: "github-destination", title: "Changing the destination removes the old token",
+                run: EditorFixScenarios.githubDestination),
         ]
     }
 #endif

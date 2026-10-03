@@ -1,6 +1,22 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Destination saved, but the previous destination's token could not be removed from Keychain.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination saved, but the previous destination's token could not be removed from Keychain."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino salvo, mas o token do destino anterior não pôde ser removido do Keychain."
+          }
+        }
+      }
+    },
     "Quit and discard your edits?": {
       "localizations": {
         "en": {

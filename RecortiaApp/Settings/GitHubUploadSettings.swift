@@ -1,5 +1,6 @@
 import Domain
 import Features
+import MacPlatform
 import SwiftUI
 
 enum GitHubUploadStrings {
@@ -27,6 +28,40 @@ enum GitHubUploadStrings {
     }
 }
 
+/// The Save action, apart from the view so the E2E runner can drive it with a recording
+/// credential service.
+@MainActor
+enum GitHubDestinationSaver {
+    enum Result: Equatable {
+        case saved
+        /// The new destination is saved, but the previous destination's token is still in Keychain.
+        case savedWithStaleCredential(GitHubUploadFailure)
+        /// Nothing changed.
+        case failed(GitHubUploadFailure)
+    }
+
+    static func save(
+        token: String, destination: GitHubDestination, settings: SettingsStore,
+        credentials: any GitHubCredentialService
+    ) -> Result {
+        let previous = settings.preferences.githubUpload?.destination
+        do {
+            // The store call and the Keychain share one rule for what a token may contain.
+            try credentials.store(GitHubTokenStore.validatedToken(token), for: destination)
+        } catch { return .failed(error) }
+        settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination) }
+        // The new token is stored first, so a failure never leaves the person without a credential.
+        // The Keychain item ignores letter case: removing a respelled destination would delete the
+        // token just stored.
+        guard let previous, GitHubTokenStore.account(for: previous) != GitHubTokenStore.account(for: destination)
+        else { return .saved }
+        do {
+            try credentials.remove(for: previous)
+        } catch { return .savedWithStaleCredential(error) }
+        return .saved
+    }
+}
+
 /// Destination edits disable automation until the user explicitly enables it again. Tokens
 /// exist only in this secure field until saved to the app's Keychain; never in preferences.
 struct GitHubUploadSettings: View {
@@ -51,7 +86,9 @@ struct GitHubUploadSettings: View {
                 TextField("Private repository", text: $repository)
                 SecureField("Fine-grained GitHub token", text: $token)
                 Button("Save destination and token") { save() }
-                    .disabled(credentials == nil || !destination.isValid || token.isEmpty)
+                    .disabled(
+                        credentials == nil || !destination.isValid
+                            || token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 if let message { Text(message).font(.callout).foregroundStyle(.secondary) }
             } header: {
                 Text("GitHub destination")
@@ -110,12 +147,20 @@ struct GitHubUploadSettings: View {
 
     private func save() {
         guard let credentials else { return }
-        do {
-            try credentials.store(token, for: destination)
-            settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination) }
+        switch GitHubDestinationSaver.save(
+            token: token, destination: destination, settings: settings, credentials: credentials)
+        {
+        case .saved:
             token = ""
             message = String(localized: "Destination saved. Enable automatic upload separately.")
-        } catch { message = GitHubUploadStrings.message(error) }
+        case .savedWithStaleCredential:
+            token = ""
+            message = String(
+                localized: "Destination saved, but the previous destination's token could not be removed from Keychain."
+            )
+        case .failed(let failure):
+            message = GitHubUploadStrings.message(failure)
+        }
     }
 
     private func remove(_ destination: GitHubDestination) {
