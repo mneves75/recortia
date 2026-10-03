@@ -15,19 +15,14 @@
         // MARK: Notices
 
         static func notices(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let delay = Duration.milliseconds(250)
+            var announcements: [String] = []
+            harness.editors.noticePresentation = EditorNoticePresentation(
+                autoDismissDelay: delay, announce: { announcements.append($0) })
+            defer { harness.editors.noticePresentation = EditorNoticePresentation() }
             let controller = try await harness.openImported(harness.desktop, name: "notices.png")
             let model = controller.model
             let root = try context.unwrap("editor content", controller.contentRoot)
-            let delay = Duration.milliseconds(250)
-            var announcements: [String] = []
-            let previousDelay = EditorNoticePresentation.autoDismissDelay
-            let previousAnnounce = EditorNoticePresentation.announce
-            EditorNoticePresentation.autoDismissDelay = delay
-            EditorNoticePresentation.announce = { announcements.append($0) }
-            defer {
-                EditorNoticePresentation.autoDismissDelay = previousDelay
-                EditorNoticePresentation.announce = previousAnnounce
-            }
             let linkURL = try context.unwrap(
                 "fixture URL", URL(string: "https://github.com/fixture/private-captures/blob/main/screenshots/a.png"))
 

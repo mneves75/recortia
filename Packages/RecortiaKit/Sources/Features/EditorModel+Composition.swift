@@ -19,9 +19,39 @@ extension EditorModel {
     @discardableResult
     public func addImageLayer(readSource: () throws(ImportFailure) -> ImportSource) async -> Bool {
         guard !isClosed else { return false }
+        let admission: ImportAdmission
+        do throws(ImportFailure) {
+            admission = try environment.imageImporter.admit(readSource: readSource)
+        } catch {
+            post(.importFailed(error))
+            return false
+        }
+        return await addImageLayer(admitted: admission)
+    }
+
+    /// Admits a drop while it is performed, so its pasteboard is read while still valid and only
+    /// after the shared importer has a free slot (IO-01). Posts the failure and returns nil when
+    /// the drop is refused; otherwise pass the admission to `addImageLayer(admitted:)`.
+    public func admitDroppedImage(readSource: () throws(ImportFailure) -> ImportSource) -> ImportAdmission? {
+        guard !isClosed else { return nil }
+        do throws(ImportFailure) {
+            return try environment.imageImporter.admit(readSource: readSource)
+        } catch {
+            post(.importFailed(error))
+            return nil
+        }
+    }
+
+    /// Decodes an admitted image and adds it as a layer. Always frees the importer's slot.
+    @discardableResult
+    public func addImageLayer(admitted admission: ImportAdmission) async -> Bool {
+        guard !isClosed else {
+            environment.imageImporter.release(admission)
+            return false
+        }
         let info: ImageAssetInfo
         do throws(ImportFailure) {
-            info = try await environment.imageImporter.importImage(readSource: readSource)
+            info = try await environment.imageImporter.importImage(admission)
         } catch {
             post(.importFailed(error))
             return false

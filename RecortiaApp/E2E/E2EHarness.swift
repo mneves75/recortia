@@ -161,6 +161,8 @@
     final class E2EEditorHost {
         private let environment: EditorEnvironment
         private(set) var controllers: [EditorWindowController] = []
+        /// Applied to editors opened from now on; scenarios record announcements through it.
+        var noticePresentation = EditorNoticePresentation()
 
         init(environment: EditorEnvironment) {
             self.environment = environment
@@ -169,7 +171,7 @@
         @discardableResult
         func open(_ session: DocumentSession, initialAction: EditorInitialAction = .none) -> EditorWindowController {
             let model = EditorModel(session: session, environment: environment)
-            let controller = EditorWindowController(model: model)
+            let controller = EditorWindowController(model: model, noticePresentation: noticePresentation)
             if let window = controller.window {
                 window.setContentSize(E2ESnapshot.editorSize)
                 E2ESnapshot.park(window)

@@ -262,8 +262,14 @@ final class AppModel: AppActions {
         Task {
             let outcomes = await export.runAutomaticExports(
                 for: session, currentSession: live, uploadConsentID: uploadConsentID)
+            // With the capture's editor open, a failure is a persistent, announced notice there
+            // instead of a modal alert that takes focus from the app the user is in.
             for case .failed(let failure) in outcomes {
-                showMessage(.export(failure))
+                if let editor, !editor.isClosed {
+                    editor.reportAutomaticExport(.failed(failure))
+                } else {
+                    showMessage(.export(failure))
+                }
             }
             for outcome in outcomes where outcome.uploadedURL != nil {
                 editor?.reportAutomaticExport(outcome)
@@ -344,10 +350,10 @@ final class AppModel: AppActions {
     }
 
     /// Quick at first (the user may be in System Settings freeing the key), then backing off to
-    /// one check a minute, so a default install that keeps macOS's shortcuts does not wake every 2 s.
-    /// Becoming active refreshes immediately regardless.
+    /// one check every 10 s, so a default install that keeps macOS's shortcuts wakes far less often
+    /// while a freed key is still claimed soon (ADR-005). Becoming active refreshes immediately.
     static func heldShortcutPollDelay(afterChecks checks: Int) -> Duration {
-        .seconds(min(2 << min(max(checks, 0), 5), 60))
+        .seconds(min(2 << min(max(checks, 0), 3), 10))
     }
 
     private func watchHeldShortcuts() {

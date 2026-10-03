@@ -75,7 +75,8 @@
             let delays = (0..<12).map { AppModel.heldShortcutPollDelay(afterChecks: $0) }
             context.check("the first re-check is quick", delays.first == .seconds(2), "\(delays)")
             context.check("re-checks back off", delays == delays.sorted() && delays.last! > delays.first!, "\(delays)")
-            context.check("re-checks never wait more than a minute", delays.allSatisfy { $0 <= .seconds(60) })
+            context.check(
+                "a freed key is claimed within 10 s", delays.allSatisfy { $0 <= .seconds(10) }, "\(delays)")
         }
 
         static func captureMenuFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

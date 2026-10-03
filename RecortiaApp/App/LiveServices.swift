@@ -193,6 +193,8 @@ final class LiveSaveFolders: SaveFolderService {
         // Stale means the folder moved or was renamed, not that access ended: use the URL it
         // resolved to and renew the stored bookmark. A Task, because callers include SwiftUI
         // view bodies, which must not change settings while they render.
+        // If renewal fails, the resolved URL is still used and the next resolve tries again;
+        // the stored bookmark stays valid for the folder's old identity until then.
         if stale, let fresh = try? url.bookmarkData() {
             Task { refresh(bookmark, fresh) }
         }

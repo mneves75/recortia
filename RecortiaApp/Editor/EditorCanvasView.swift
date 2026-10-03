@@ -57,36 +57,23 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     ]
     static let droppableTypes: [NSPasteboard.PasteboardType] = [.fileURL] + imageDataTypes
 
-    /// What the drop handed over, captured while the drop is performed.
-    private enum DroppedImage {
-        case file(URL)
-        case data(Data)
-        /// Another import held the slot when the drop was performed, so no bytes were read.
-        case busy
-        case unsupported
-    }
-
     private static let fileURLOptions: [NSPasteboard.ReadingOptionKey: Any] = [
         .urlReadingFileURLsOnly: true,
         .urlReadingContentsConformToTypes: [UTType.png.identifier, UTType.jpeg.identifier],
     ]
 
-    /// Takes the dropped file URL, or the dropped image bytes, from the drag pasteboard. Called
-    /// only while the drop is performed: the pasteboard can change or clear once
-    /// `performDragOperation` returns, so a later read would find nothing. Image bytes are read
-    /// only when the shared importer is idle, so a drop on a busy importer reads nothing. The
-    /// importer admits one read at a time. If an import that was already queued takes the slot
-    /// first, this drop is rejected as busy and its bytes are discarded. A file URL carries no
-    /// bytes; the importer reads the file after admission.
-    private func captureDrop(from pasteboard: NSPasteboard) -> DroppedImage {
+    /// The dropped file URL, or the dropped image bytes. Runs only inside the importer's admission,
+    /// while the drop is performed: a busy importer rejects before this reads anything, and the
+    /// drag pasteboard can change or clear once `performDragOperation` returns. A file URL carries
+    /// no bytes; the importer reads the file afterwards.
+    private func dropSource(from pasteboard: NSPasteboard) throws(ImportFailure) -> ImportSource {
         if let url = (pasteboard.readObjects(forClasses: [NSURL.self], options: Self.fileURLOptions) as? [URL])?.first {
-            return .file(url)
+            return .droppedFile(url)
         }
-        guard !model.environment.imageImporter.isImporting else { return .busy }
         for type in Self.imageDataTypes {
-            if let data = pasteboard.data(forType: type) { return .data(data) }
+            if let data = pasteboard.data(forType: type) { return .droppedData(data) }
         }
-        return .unsupported
+        throw .unsupportedFormat
     }
 
     /// Hovering inspects only the offered types and file URLs; image bytes are never loaded
@@ -101,17 +88,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         guard draggingEntered(sender) == .copy else { return false }
-        let dropped = captureDrop(from: sender.draggingPasteboard)
-        Task {
-            await model.addImageLayer(readSource: { () throws(ImportFailure) in
-                switch dropped {
-                case .file(let url): .droppedFile(url)
-                case .data(let data): .droppedData(data)
-                case .busy: throw .busy
-                case .unsupported: throw .unsupportedFormat
-                }
+        let pasteboard = sender.draggingPasteboard
+        guard
+            let admission = model.admitDroppedImage(readSource: { () throws(ImportFailure) in
+                try self.dropSource(from: pasteboard)
             })
-        }
+        else { return true }  // refused: the model posted why
+        Task { await model.addImageLayer(admitted: admission) }
         return true
     }
 

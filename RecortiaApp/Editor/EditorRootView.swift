@@ -8,6 +8,7 @@ struct EditorRootView: View {
     let model: EditorModel
     let canvas: EditorCanvasView
     let actions: any EditorWindowActions
+    var noticePresentation = EditorNoticePresentation()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,20 +37,19 @@ struct EditorRootView: View {
                     .frame(width: 290)
             }
             Divider()
-            EditorStatusBar(model: model)
+            EditorStatusBar(model: model, presentation: noticePresentation)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
     }
 }
 
-/// Presentation rules for editor notices. The values are seams: the E2E runner records the
-/// announcements and shortens the delay so it never waits for the production timeout.
+/// How an editor presents notices: how long a notice that needs no action stays, and how each
+/// notice reaches VoiceOver. Injected per editor window; the E2E runner records announcements and
+/// shortens the delay instead of changing shared state.
 @MainActor
-enum EditorNoticePresentation {
-    /// How long a notice that needs no action stays in the status bar.
-    static var autoDismissDelay: Duration = .seconds(8)
-    /// Speaks a notice to VoiceOver and other assistive technology.
-    static var announce: (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
+struct EditorNoticePresentation {
+    var autoDismissDelay: Duration = .seconds(8)
+    var announce: @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
 
     /// Failures, and notices that carry a link or ask the person to act, stay until dismissed.
     /// Only success and passive information dismisses itself.
@@ -68,8 +68,7 @@ enum EditorNoticePresentation {
 
     private static func persists(_ outcome: ExportOutcome) -> Bool {
         switch outcome {
-        case .failed: true
-        case .uploaded: true
+        case .failed, .uploaded: true
         case .alreadyCompleted(let completed): persists(completed)
         case .copied, .saved, .dragged, .canceled, .rejectedBusy: false
         }
@@ -214,6 +213,7 @@ private struct ExportButtons: View {
 
 struct EditorStatusBar: View {
     let model: EditorModel
+    var presentation = EditorNoticePresentation()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -235,7 +235,6 @@ struct EditorStatusBar: View {
                 } icon: {
                     Image(systemName: "info.circle").accessibilityHidden(true)
                 }
-                .accessibilityAddTraits(.updatesFrequently)
                 .transition(reduceMotion ? .identity : .opacity)
                 if EditorNoticePresentation.persists(notice) {
                     Button(String(localized: "Dismiss", table: "Editor")) { model.dismissNotice() }
@@ -260,10 +259,10 @@ struct EditorStatusBar: View {
             guard let notice = model.notice else { return }
             // Status text is silent for VoiceOver unless it is posted, and a timeout must not
             // remove it before a person who needs more time has read it.
-            EditorNoticePresentation.announce(EditorStrings.message(notice))
+            presentation.announce(EditorStrings.message(notice))
             guard !EditorNoticePresentation.persists(notice) else { return }
             do {
-                try await Task.sleep(for: EditorNoticePresentation.autoDismissDelay)
+                try await Task.sleep(for: presentation.autoDismissDelay)
             } catch {
                 return
             }

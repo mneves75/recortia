@@ -117,6 +117,9 @@ final class CaptureUIController {
         // The panel never takes focus from the app being captured, so Escape is a temporary
         // system-wide hot key for as long as the countdown shows.
         escape = EscapeHotKey { [coordinator] in coordinator.cancel() }
+        // Without the hot key (another app owns Escape), give the countdown the keyboard so a
+        // keyboard-only user can still cancel; a nonactivating panel takes it without activation.
+        if escape == nil { panel.makeKey() }
     }
 
     /// Shown without taking focus from the app being captured. A click makes it key, so Escape

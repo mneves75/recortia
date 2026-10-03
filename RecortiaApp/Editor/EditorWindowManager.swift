@@ -70,7 +70,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     private let canvas: EditorCanvasView
     private var discardConfirmed = false
 
-    init(model: EditorModel) {
+    init(model: EditorModel, noticePresentation: EditorNoticePresentation = EditorNoticePresentation()) {
         self.model = model
         canvas = EditorCanvasView(model: model)
         let window = NSWindow(
@@ -86,7 +86,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         super.init(window: window)
         window.delegate = self
         canvas.actions = self
-        let root = EditorRootView(model: model, canvas: canvas, actions: self)
+        let root = EditorRootView(
+            model: model, canvas: canvas, actions: self, noticePresentation: noticePresentation)
         window.contentViewController = NSHostingController(rootView: root)
         window.initialFirstResponder = canvas
         window.setContentSize(Self.initialContentSize(for: model.document, on: targetScreen()))

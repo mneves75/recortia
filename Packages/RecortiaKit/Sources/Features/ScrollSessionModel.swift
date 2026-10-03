@@ -82,7 +82,13 @@ public final class ScrollSessionModel {
     /// A Stop (or other ending) that arrived while an append was in flight. The stream is already
     /// stopped; the review is frozen once that append settles, so its rows, seam, and counters
     /// land in one snapshot.
-    @ObservationIgnored private var pendingFinish: (partial: ScrollPartialReason?, event: ScrollEvent)?
+    @ObservationIgnored private var pendingFinish: PendingFinish?
+
+    /// How collection is to end once the admitted append settles.
+    private struct PendingFinish {
+        var partial: ScrollPartialReason?
+        var event: ScrollEvent
+    }
 
     public init(
         frames: any ScrollFrameSourceService, stitcher: any ScrollStitchService, autoScroller: (any AutoScrollService)?,
@@ -395,7 +401,7 @@ public final class ScrollSessionModel {
         cancelTimers()
         if appendInFlight {
             // Keep the collection task: it settles the admitted append, then calls `completeFinish`.
-            pendingFinish = (partial, event)
+            pendingFinish = PendingFinish(partial: partial, event: event)
             return
         }
         completeFinish(partial: partial, event: event)

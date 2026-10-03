@@ -101,10 +101,15 @@
             harness.exportGate.holdNextSnapshot = true
             let running = Task { await controller.model.export(.copy) }
             try context.require("manual export is busy", await E2EWait.until { harness.exportGate.isWaiting })
-            _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+            let messagesBefore = harness.messages.values.count
+            let busyEditor = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             context.check(
-                "busy automatic export produces a visible failure",
-                await E2EWait.until { harness.messages.values.contains(.export(.busy)) })
+                "busy automatic export shows a failure in the new capture's editor",
+                await E2EWait.until { busyEditor.model.notice == .exported(.failed(.busy)) },
+                "\(String(describing: busyEditor.model.notice))")
+            context.check(
+                "an automatic-export failure with an editor open raises no modal alert",
+                harness.messages.values.count == messagesBefore, "\(harness.messages.values)")
             harness.exportGate.release()
             _ = await running.value
             harness.settings.update { $0.autoCopy = false }

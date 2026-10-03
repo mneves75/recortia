@@ -72,6 +72,12 @@ public final class ImportCoordinator {
     public func clearFailure() { lastFailure = nil }
 }
 
+/// An import admitted into the shared slot, with the source it read. It holds the slot until it is
+/// imported or released.
+public struct ImportAdmission: Sendable {
+    public let source: ImportSource
+}
+
 /// One read/decode admission slot, shared by the app's new-document and editor-layer paths.
 /// Rejection is synchronous before any byte read; no queue retains waiting image payloads.
 @MainActor
@@ -86,23 +92,45 @@ public final class ImageImporter {
         self.assets = assets
     }
 
+    /// Takes the slot, then calls `readSource`: a busy importer rejects without reading. Called on
+    /// the main actor while a drop is performed, so a drag pasteboard is read while it is valid.
+    /// The admission holds the slot until `importImage(_:)` or `release(_:)`.
+    public func admit(readSource: () throws(ImportFailure) -> ImportSource) throws(ImportFailure) -> ImportAdmission {
+        guard !Task.isCancelled else { throw .cancelled }
+        guard !isImporting else { throw .busy }
+        isImporting = true
+        do throws(ImportFailure) {
+            return ImportAdmission(source: try readSource())
+        } catch {
+            isImporting = false
+            throw error
+        }
+    }
+
+    /// Releases an admission that will not be imported (its editor closed first).
+    public func release(_ admission: ImportAdmission) {
+        isImporting = false
+    }
+
     public func importImage(from source: ImportSource) async throws(ImportFailure) -> ImageAssetInfo {
-        try await importImage(readSource: { source })
+        try await importImage(admit(readSource: { source }))
     }
 
     /// Acquires a lazy drag provider only after admission, before it can materialize image bytes.
     public func importImage(readSource: () throws(ImportFailure) -> ImportSource) async throws(ImportFailure)
         -> ImageAssetInfo
     {
-        guard !Task.isCancelled else { throw .cancelled }
-        guard !isImporting else { throw .busy }
-        isImporting = true
+        try await importImage(admit(readSource: readSource))
+    }
+
+    /// Reads and decodes an admitted source, then frees the slot.
+    public func importImage(_ admission: ImportAdmission) async throws(ImportFailure) -> ImageAssetInfo {
         // Cancellation does not free the slot while a reader or decoder still owns its buffers.
         defer { isImporting = false }
-        let source = try readSource()
+        guard !Task.isCancelled else { throw .cancelled }
         let data: Data
         let origin: AssetOrigin
-        switch source {
+        switch admission.source {
         case .file(let url), .droppedFile(let url):
             do throws(ImportError) {
                 data = try await input.readFile(at: url)
