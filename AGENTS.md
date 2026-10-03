@@ -30,10 +30,13 @@ not only the offscreen editor host. Keep editor visibility independent of cooper
 activation; lay out the hosted canvas before assigning its responder.
 
 Every window Recortia shows needs a Space policy from `SpacePolicy` (FR-01). Ordinary windows
-(editor, onboarding, scrolling review, alerts) follow the active Space with fullscreen-auxiliary
+(editor, Settings, onboarding, scrolling review, alerts) follow the active Space with fullscreen-auxiliary
 behavior; panels (overlay, HUDs, chooser, pins, drag chip) join all Spaces. Never combine a
-window's Space or fullscreen behaviors (AppKit allows one of each). `SpacePolicyMonitor`
-adopts framework-made windows (Settings, About) before activation. A physical probe showed
+window's Space or fullscreen behaviors (AppKit allows one of each). Apply the policy where a
+window is constructed: SwiftUI's `Settings` scene orders its window before a policy can exist and
+switched Spaces in 0.10.1, so Settings is the AppKit `SettingsWindowController`.
+`SpacePolicyMonitor` remains a safety net for framework windows such as About. Verify window
+policy changes on the installed app, not only with the probe. A physical probe showed
 that a window without a policy makes activation switch the user's Space, even out of a
 fullscreen app; keep `space-policy`, `other-spaces` and `screen-choice` in the E2E gate.
 Choose screens with `ScreenChoice` (capture display, then pointer), never `NSScreen.main`.

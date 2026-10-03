@@ -3,7 +3,7 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
-**Status:** 0.10.1 (build 14), the release that makes Recortia work on every desktop: other Spaces, other
+**Status:** 0.10.2 (build 15). 0.10.1 made Recortia work on every desktop: other Spaces, other
 apps' fullscreen Spaces, and multiple displays. The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
@@ -23,8 +23,9 @@ brew install --cask mneves75/tap/recortia
 
 Or download the notarized DMG from [Releases](https://github.com/mneves75/recortia/releases).
 
-0.10.1 keeps every Recortia window on the Space you are using, including another app's
-fullscreen Space, and opens windows on the display you captured. Before, using Recortia could
+0.10.1 keeps Recortia's windows on the Space you are using, including another app's
+fullscreen Space, and opens windows on the display you captured; 0.10.2 extends this to
+Settings, which 0.10.1 still showed on a desktop Space. Before, using Recortia could
 switch you to the Space where one of its windows was last shown. Quit now asks before
 discarding unexported edits. See `CHANGELOG.md` for the full list of fixes from the
 full-source review. Update an existing install with `brew upgrade --cask recortia`.
