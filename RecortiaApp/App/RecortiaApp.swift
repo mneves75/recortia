@@ -16,10 +16,7 @@ struct RecortiaApp: App {
             Label(String(localized: "Recortia"), systemImage: "viewfinder")
         }
         .menuBarExtraStyle(.menu)
-
-        Settings {
-            SettingsView(model: appDelegate.model)
-        }
+        // Settings is an AppKit window (SettingsWindowController) so it follows the active Space.
     }
 }
 

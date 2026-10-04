@@ -6,7 +6,6 @@ import SwiftUI
 /// while macOS still uses its keys (ADR-005).
 struct MenuContent: View {
     let model: AppModel
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Group {
@@ -27,18 +26,12 @@ struct MenuContent: View {
                 item(.closeAllPins)
             }
             Divider()
-            Button(AppCommand.settings.title) {
-                model.openSettingsWindow = { openSettings() }
-                model.perform(.settings)
-            }
-            .keyboardShortcut(",")
+            item(.settings)
+                .keyboardShortcut(",")
             item(.about)
             Divider()
             item(.quit)
                 .keyboardShortcut("q")
-        }
-        .onAppear {
-            model.openSettingsWindow = { openSettings() }
         }
     }
 

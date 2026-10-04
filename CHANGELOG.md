@@ -6,6 +6,17 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-10-03
+
+### Fixed
+
+- Settings now opens on the Space you are using, including another app's fullscreen Space.
+  In 0.10.1, opening Settings, or reopening Recortia, while a fullscreen app was visible could
+  still switch you to a desktop Space: macOS's SwiftUI Settings window did not keep Recortia's
+  Space policy. Settings is now Recortia's own window with the same toolbar tabs.
+
+0.10.1's notes said this case was fixed; a check on the installed app found otherwise.
+
 ## [0.10.1] - 2026-10-03
 
 Recortia now works on every desktop: other Spaces, other apps' fullscreen Spaces, and

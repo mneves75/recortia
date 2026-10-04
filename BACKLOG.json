@@ -5,11 +5,23 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.10.2",
+    "build": 15,
+    "date": "2026-10-03",
+    "scope": "FR-01/FR-14: Settings becomes a Recortia-owned AppKit window (native toolbar tabs) carrying the follow-the-active-Space policy from construction; the SwiftUI Settings scene and its openSettings closure are removed.",
+    "status": "verification_in_progress",
+    "verification": "space-policy E2E checks the production Settings window (red first: no policy, no tabs); settings, menu and shortcuts scenarios pass; pane renders match 0.10.1. Full gate, bilingual E2E, beta and an installed-app check over a fullscreen Space are pending.",
+    "evidence_paths": [],
+    "limitations": [
+      "The toolbar tab strip does not render in offscreen snapshots; it is checked on the installed beta."
+    ]
+  },
+  "previous_release_0_10_1": {
     "version": "0.10.1",
     "build": 14,
     "date": "2026-10-03",
     "scope": "FR-01/FR-02/FR-04/FR-09 on every desktop (other Spaces, other apps' fullscreen Spaces, multiple displays) plus fixes from a full-source review: Space policy for every window, framework-window adoption before activation, capture-display/pointer screen choice, capture suspension limited to the active Space, Quit confirmation, capture geometry from the captured snapshot, crop/scroll-memory/chroma/pins/scroll-Stop fixes, IO-01 synchronous drop admission, persistent announced notices, GitHub token cleanup, stale folder bookmarks, release-script hardening.",
-    "status": "released_beta_and_production_pending",
+    "status": "released",
     "verification": "Branch fix/all-desktops-0.10.1 at f49c247: scripts/check.sh passed (548 package tests, 31 script controls, 526 pt-BR strings, project freshness, strict lint, signed Debug and E2E builds). scripts/e2e.sh --lang all: 40/40 scenarios, 843 assertions, 59 screenshots per language; two activation-dependent checks were recorded SKIPPED because this host declined activation. Physical probe scripts/space-probe/run.sh stale (FORCE=1, one display, 2026-10-03): windows without a Space policy switched the active Space in 6/6 runs; the six configurations Recortia uses switched it in 0/18. Reviews: four module-slice reviews (Codex x2, Claude x2), Standards/Spec two-axis review, independent Codex autoreview (one P2 found and fixed red-first). capture-focus is environment-sensitive on a busy desktop: 5/6 at the 9dc25fa baseline and 7/8 at HEAD.",
     "evidence_paths": [
       ".scratch/check-f49c247.log",
@@ -35,7 +47,21 @@
         "dmg fd63f729-e8fc-4227-a67d-4b8fbedbdd26 Accepted"
       ],
       "checks": "scripts/release.sh gate passed in a fresh checkout; app and DMG stapled; spctl Notarized Developer ID; mounted app 0.10.1 (13), strict signature, no get-task-allow; served asset hash matches."
-    }
+    },
+    "production_release": {
+      "tag": "v0.10.1",
+      "commit": "68f3f40bf517ca35056a80d179ed1e26fe527b0b",
+      "build": 14,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.1",
+      "dmg_sha256": "3466c6a87e3d1ce39de09f196e440c1dfcbcbfcded5081701555409019cca69c",
+      "notarization": [
+        "app 9193be88-7ac8-43fd-b335-076fd961610c Accepted",
+        "dmg 3b691634-ed79-486b-93f7-c16c82f2450c Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap 047a16e recortia: 0.10.1",
+      "installed": "2026-10-03 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.1 (14), strict signature, stapled, Notarized Developer ID; previous 0.10.0 (12) bundle backed up under .scratch/installed-backup."
+    },
+    "known_issue": "On the installed app, reopening Recortia or opening Settings while another app's fullscreen Space was visible switched to a desktop Space for both a fresh and an existing SwiftUI Settings window (3/3 and 1/1 runs; the host app was visible but not frontmost). Fixed in 0.10.2."
   },
   "previous_shortcut_candidate": {
     "version": "0.10.0-beta3",

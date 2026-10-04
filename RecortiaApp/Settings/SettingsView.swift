@@ -12,36 +12,6 @@ extension SettingsStore {
     }
 }
 
-/// Native Settings window (FR-14): one tab per area, standard controls, system typography.
-struct SettingsView: View {
-    let model: AppModel
-
-    var body: some View {
-        TabView {
-            GeneralSettingsTab(settings: model.settings, loginItem: model.features?.loginItem)
-                .tabItem { Label("General", systemImage: "gearshape") }
-            ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)
-                .tabItem { Label("Shortcuts", systemImage: "keyboard") }
-            CaptureSettingsTab(settings: model.settings)
-                .tabItem { Label("Capture", systemImage: "camera.viewfinder") }
-            ExportSettingsTab(settings: model.settings, folders: model.features?.services.folders)
-                .tabItem { Label("Export", systemImage: "square.and.arrow.up") }
-            GitHubUploadSettings(settings: model.settings, credentials: model.features?.services.githubCredentials)
-                .tabItem { Label("GitHub", systemImage: "icloud.and.arrow.up") }
-            PrivacySettingsTab()
-                .tabItem { Label("Privacy", systemImage: "hand.raised") }
-            OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages)
-                .tabItem { Label("Text Recognition", systemImage: "text.viewfinder") }
-            PinsSettingsTab(settings: model.settings)
-                .tabItem { Label("Pins", systemImage: "pin") }
-            ScrollingSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility)
-                .tabItem { Label("Scrolling", systemImage: "arrow.up.and.down.text.horizontal") }
-        }
-        .frame(width: 560)
-        .frame(minHeight: 360)
-    }
-}
-
 // MARK: - General
 
 struct GeneralSettingsTab: View {
@@ -396,7 +366,15 @@ struct ScrollingSettingsTab: View {
 
 #if DEBUG
     #Preview("Settings") {
-        SettingsView(model: PreviewSupport.appModel())
+        SettingsPreview()
+    }
+
+    /// The production tab controller, as the Settings window shows it.
+    private struct SettingsPreview: NSViewControllerRepresentable {
+        func makeNSViewController(context: Context) -> NSTabViewController {
+            SettingsWindowController.makeTabs(model: PreviewSupport.appModel())
+        }
+        func updateNSViewController(_ controller: NSTabViewController, context: Context) {}
     }
 
     #Preview("General with login item") {

@@ -35,6 +35,19 @@
             checkFollows("the onboarding window", OnboardingWindowController.makeWindow(NSViewController()))
             checkFollows(
                 "the scrolling review window", ScrollUIController.makeReviewWindow(model: harness.features.scroll))
+            // Settings is Recortia's own window: SwiftUI's Settings scene orders its window inside
+            // openSettings, before a policy can exist, and a fresh one switched Spaces (0.10.1).
+            let settings = SettingsWindowController.makeWindow(model: harness.app)
+            defer { settings.close() }
+            checkFollows("the Settings window", settings)
+            let tabs = try context.unwrap(
+                "Settings uses native tabs", settings.contentViewController as? NSTabViewController)
+            context.check("Settings shows toolbar tabs like macOS Settings", tabs.tabStyle == .toolbar)
+            context.check(
+                "Settings has one tab per area", tabs.tabViewItems.count == 9, "\(tabs.tabViewItems.count) tabs")
+            context.check(
+                "every Settings tab has a label and an icon",
+                tabs.tabViewItems.allSatisfy { !$0.label.isEmpty && $0.image != nil })
             for message in [UserMessage.capture(.permissionDenied), .scroll(.targetLost)] {
                 checkFollows("the alert \"\(message.title)\"", MessagePresenter.makeAlert(message).window)
             }
