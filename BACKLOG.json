@@ -9,7 +9,7 @@
     "build": 16,
     "date": "2026-10-03",
     "scope": "FR-01/FR-14: Settings becomes a Recortia-owned AppKit window (native toolbar tabs) carrying the follow-the-active-Space policy from construction; the SwiftUI Settings scene and its openSettings closure are removed.",
-    "status": "released_beta_and_production_pending",
+    "status": "released",
     "verification": "scripts/check.sh passed at 08333a0 (main 5f5d57e has an identical tree); E2E 40/40 in EN and PT-BR; independent Codex review of the delta scoped-clean. Real-app A/B over a fullscreen host Space with valid baselines: 0.10.1 switched Spaces 4/4 (fresh and existing Settings), 0.10.2-beta1 0/4; probe controls in the same session 0/5.",
     "evidence_paths": [
       ".scratch/check-08333a0.log",
@@ -31,6 +31,19 @@
         "app 8fd72e34-b631-48af-b599-21b6b5ef9755 Accepted",
         "dmg bb1eaea6-a4af-484f-8b61-b0a26d523f4c Accepted"
       ]
+    },
+    "production_release": {
+      "tag": "v0.10.2",
+      "commit": "c0a169844292751a8292bc4b0f3efdc6c66b63b2",
+      "build": 16,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2",
+      "dmg_sha256": "7a1371d9433ee3faafbaa7ce55c44e5d0b49e14c206fbaa0ece04d89b17bb441",
+      "notarization": [
+        "app 0a1a6a16-f36d-40f0-9df2-630fc972f41c Accepted",
+        "dmg 1118109a-a8c9-40d6-950b-cc8c598b16cf Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap d0f179b recortia: 0.10.2",
+      "installed": "2026-10-04 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.2 (16), strict signature, stapled, Notarized Developer ID. Installed-app check over a fullscreen host Space: 0/2 Space switches (fresh and existing Settings), valid baselines; reopening shows Settings without opening the menu first (R3-F9 disproved)."
     }
   },
   "previous_release_0_10_1": {
