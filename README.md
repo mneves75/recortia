@@ -3,7 +3,7 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
-**Status:** 0.10.2 (build 16). 0.10.1 made Recortia work on every desktop: other Spaces, other
+**Status:** 0.10.2 (build 16), released and available through Homebrew. 0.10.1 made Recortia work on every desktop: other Spaces, other
 apps' fullscreen Spaces, and multiple displays. The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
