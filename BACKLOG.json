@@ -6,15 +6,32 @@
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
     "version": "0.10.2",
-    "build": 15,
+    "build": 16,
     "date": "2026-10-03",
     "scope": "FR-01/FR-14: Settings becomes a Recortia-owned AppKit window (native toolbar tabs) carrying the follow-the-active-Space policy from construction; the SwiftUI Settings scene and its openSettings closure are removed.",
-    "status": "verification_in_progress",
-    "verification": "space-policy E2E checks the production Settings window (red first: no policy, no tabs); settings, menu and shortcuts scenarios pass; pane renders match 0.10.1. Full gate, bilingual E2E, beta and an installed-app check over a fullscreen Space are pending.",
-    "evidence_paths": [],
+    "status": "released_beta_and_production_pending",
+    "verification": "scripts/check.sh passed at 08333a0 (main 5f5d57e has an identical tree); E2E 40/40 in EN and PT-BR; independent Codex review of the delta scoped-clean. Real-app A/B over a fullscreen host Space with valid baselines: 0.10.1 switched Spaces 4/4 (fresh and existing Settings), 0.10.2-beta1 0/4; probe controls in the same session 0/5.",
+    "evidence_paths": [
+      ".scratch/check-08333a0.log",
+      ".scratch/e2e/20261003-204708/en/report.json",
+      ".scratch/e2e/20261003-204708/pt-BR/report.json",
+      ".scratch/real-app-0.10.2/ab.txt"
+    ],
     "limitations": [
-      "The toolbar tab strip does not render in offscreen snapshots; it is checked on the installed beta."
-    ]
+      "The toolbar tab strip does not render in offscreen snapshots; it is checked on the installed beta.",
+      "The About panel is not exercised by the real-app A/B (no menu automation); it relies on the adoption safety net and the probe's fresh-window result."
+    ],
+    "beta_release": {
+      "tag": "v0.10.2-beta1",
+      "commit": "5f5d57e",
+      "build": 15,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2-beta1",
+      "dmg_sha256": "560cbb04a61d482f248853553b60bb6a10314e63173444ae184b8ba8cf3a3fd7",
+      "notarization": [
+        "app 8fd72e34-b631-48af-b599-21b6b5ef9755 Accepted",
+        "dmg bb1eaea6-a4af-484f-8b61-b0a26d523f4c Accepted"
+      ]
+    }
   },
   "previous_release_0_10_1": {
     "version": "0.10.1",

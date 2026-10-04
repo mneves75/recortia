@@ -15,7 +15,9 @@ All notable changes to Recortia are documented here. The format follows
   still switch you to a desktop Space: macOS's SwiftUI Settings window did not keep Recortia's
   Space policy. Settings is now Recortia's own window with the same toolbar tabs.
 
-0.10.1's notes said this case was fixed; a check on the installed app found otherwise.
+0.10.1's notes said this case was fixed; a check on the installed app found otherwise. On
+the real apps over a fullscreen Space, 0.10.1 switched Spaces in 4 of 4 runs and 0.10.2 in
+0 of 4. Released as build 16; the same source shipped first as 0.10.2-beta1 (build 15).
 
 ## [0.10.1] - 2026-10-03
 
