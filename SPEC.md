@@ -87,6 +87,8 @@ The app MUST expose capture commands, Open Image, Settings, About, and Quit from
 
 Launch at login is off until selected. The editor follows the active Space and capture display when possible, without repeatedly stealing focus. App reactivation MUST reuse the existing process. Settings MUST remain reachable when all image windows are closed. Capture cancellation MUST never imply copy, save, or upload.
 
+Recortia launches without a Dock icon. While it has a switchable window (a visible or minimized editor, Settings, onboarding, scrolling review, About, alert, or pin), it MUST appear in ⌘Tab and the Dock, and its windows MUST be listed by window switchers that list ordinary windows (ADR-007); when the last one closes it returns to the menu bar only. Temporarily hiding windows for a capture, or hiding the app, does not remove it. Clicking the Dock icon restores a minimized window before opening Settings.
+
 ### FR-02 — Capture
 
 Region selection invoked by a global shortcut must remain on the user's current desktop,
@@ -157,9 +159,9 @@ Decode QR payloads as untrusted data. Display the payload; copy or open only aft
 
 ### FR-09 — Pins
 
-Pin a rendered document snapshot, not an invisible live recording. Provide move, scale, opacity, close, and “bring pins forward” controls. Maximum five pins initially, subject to the common memory budget. Do not create a click-through pin unless an explicit mode also provides an always-reachable recovery action; default pins are normal interactive panels.
+Pin a rendered document snapshot, not an invisible live recording. Provide move, scale, opacity, copy, drag-out, close, and “bring pins forward” controls. Pins are ordinary normal-level windows shown on every Space, so window switchers list them; other windows can cover them (ADR-007). Copy and drag-out export the pinned sanitized raster through the single export pipeline; a closed or invalidated pin cannot be exported, and its pending drag offer is revoked. Maximum five pins initially, subject to the common memory budget. Do not create a click-through pin unless an explicit mode also provides an always-reachable recovery action; default pins are normal interactive panels.
 
-Pins referencing a live document MUST be refreshed or invalidated on privacy-epoch changes. Closing the source editor and keeping a pin requires retaining only the data necessary for that rendered reference. Pins disappear on app quit and are not restored from disk. Always-on-top behavior must respect system security surfaces and does not promise display above every full-screen/system window.
+Pins referencing a live document MUST be refreshed or invalidated on privacy-epoch changes. Closing the source editor and keeping a pin requires retaining only the data necessary for that rendered reference. Pins disappear on app quit and are not restored from disk. Pins do not float above other windows.
 
 ### FR-10 — Scrolling capture
 

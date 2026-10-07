@@ -22,6 +22,7 @@ final class SettingsWindowController {
             created.center(on: ScreenChoice.screen())
             window = created
         }
+        AppPresence.shared.windowWillAppear()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }

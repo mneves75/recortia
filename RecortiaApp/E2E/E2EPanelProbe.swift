@@ -78,8 +78,12 @@
                 hosting.setContent(CountdownView(remaining: 3, onCancel: {}), fixedToFittingSize: true)
                 panel = hosting
             case .pin:
-                let pins = PinsModel(
-                    renderer: LiveRenderer(store: ImageStore()), settings: SettingsStore.e2eInMemory())
+                let settings = SettingsStore.e2eInMemory()
+                let services = AppServices.live(settings: settings)
+                let export = ExportCoordinator(
+                    exporter: services.exporter, clipboard: services.clipboard, files: services.files,
+                    drag: services.drag, folders: services.folders, clock: services.clock, settings: settings)
+                let pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
                 let notes = SyntheticDesktop.notesWindow
                 guard
                     let image = try SyntheticDesktop.image().cropping(

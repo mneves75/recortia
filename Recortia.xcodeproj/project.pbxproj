@@ -82,15 +82,19 @@
 		86C00E2E2FFA0E88047FA20A /* MessagePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */; };
 		8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
 		903193BD2B60CF8D8B4E2E84 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */; };
+		9CB38D928DC1ACE86AE42098 /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
 		9DFE06BFFEDA1701F0319C70 /* GitHubUploadSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E42652874A3A93FCB17228 /* GitHubUploadSettings.swift */; };
 		9F2020ACB10567056318B19E /* ScreenChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED2B14CE42AB62F1B1F016E /* ScreenChoice.swift */; };
 		A30DD234D2E1308C1916965D /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
+		A49AB85E4F2C60B5495F83EF /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
 		A55745B240F288A4EE6CE160 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97C30D7091C2051638564FB /* GlobalShortcuts.swift */; };
 		A676779ABA0EA316566E2589 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
+		A8310D2D3CD5C642EB8F3D94 /* Scenarios+Presence.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */; };
 		A88E581773148D9E9762B36A /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 7DC7FE9A68C4351CD90EA55B /* Domain */; };
 		A8A476C5D3007B4823361E64 /* LiveScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B885E83C460249621067B7FB /* LiveScrolling.swift */; };
 		AC4AFBDA384BF5B9EAE8BAC8 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
 		AF3F7784F944B8399EA0F17E /* E2EReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DF83ABF11B31DAAABA963C /* E2EReport.swift */; };
+		B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */; };
 		B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
 		B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
 		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
@@ -197,7 +201,9 @@
 		AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Output.swift"; sourceTree = "<group>"; };
 		AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorStrings.swift; sourceTree = "<group>"; };
 		AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewSupport.swift; sourceTree = "<group>"; };
+		AE004CDB83EE7107E4A5B806 /* AppPresence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPresence.swift; sourceTree = "<group>"; };
 		B885E83C460249621067B7FB /* LiveScrolling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveScrolling.swift; sourceTree = "<group>"; };
+		BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Presence.swift"; sourceTree = "<group>"; };
 		BFAA916D5D458FADC7481398 /* RecortiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecortiaApp.swift; sourceTree = "<group>"; };
 		CE69FEA380523086B4D11CEE /* Scenarios+Spaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Spaces.swift"; sourceTree = "<group>"; };
 		D07F8A23F06F222D5CAD4B07 /* Scenarios+Scroll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Scroll.swift"; sourceTree = "<group>"; };
@@ -212,6 +218,7 @@
 		E33BB654473B6F3033727605 /* E2EScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EScenarios.swift; sourceTree = "<group>"; };
 		E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticImages.swift; sourceTree = "<group>"; };
 		E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Latency.swift"; sourceTree = "<group>"; };
 		E8D31CC0BCFF030833F67F96 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EA2F7298595658EBCA75FF77 /* AppActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActions.swift; sourceTree = "<group>"; };
 		EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -278,6 +285,7 @@
 			children = (
 				EA2F7298595658EBCA75FF77 /* AppActions.swift */,
 				E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */,
+				AE004CDB83EE7107E4A5B806 /* AppPresence.swift */,
 				8122F2A3706BEFC20DE3331B /* AppServices.swift */,
 				4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */,
 				977B7B2D3F02E7F78030DFEE /* DragChip.swift */,
@@ -382,7 +390,9 @@
 				8105CD4BFB83087E563EDD04 /* Scenarios+Desktops.swift */,
 				D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */,
 				DFCE525587D4EDB1319159B1 /* Scenarios+EditorFixes.swift */,
+				E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */,
 				AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */,
+				BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */,
 				2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */,
 				D07F8A23F06F222D5CAD4B07 /* Scenarios+Scroll.swift */,
 				414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */,
@@ -601,6 +611,7 @@
 			files = (
 				D8D1CC076F25EFF7A3DDE1D3 /* AppActions.swift in Sources */,
 				CB3160AA629F25ECBB8B6DBA /* AppModel.swift in Sources */,
+				A49AB85E4F2C60B5495F83EF /* AppPresence.swift in Sources */,
 				06650EB2D93E1F2271D9AF96 /* AppServices.swift in Sources */,
 				655F1843CB07BF76DB75B64D /* CaptureMenu.swift in Sources */,
 				F54C69AE574623D0E81BCF97 /* CaptureUIController.swift in Sources */,
@@ -645,7 +656,9 @@
 				F13BED59D44D9F2EEF670478 /* Scenarios+Desktops.swift in Sources */,
 				3AC080957ABB8147960886B8 /* Scenarios+Editor.swift in Sources */,
 				E65AC2695767655A13BF576E /* Scenarios+EditorFixes.swift in Sources */,
+				B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */,
 				F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */,
+				A8310D2D3CD5C642EB8F3D94 /* Scenarios+Presence.swift in Sources */,
 				EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */,
 				35207593563862BE445A53FE /* Scenarios+Scroll.swift in Sources */,
 				01DD6F970229DB8FA2B2DA21 /* Scenarios+Shell.swift in Sources */,
@@ -678,6 +691,7 @@
 			files = (
 				352F5AF31DB3F2F8A4F44CBC /* AppActions.swift in Sources */,
 				38F97E15732CA80EEE0746B3 /* AppModel.swift in Sources */,
+				9CB38D928DC1ACE86AE42098 /* AppPresence.swift in Sources */,
 				0EAF61DA2A9566FBFC619339 /* AppServices.swift in Sources */,
 				4234F4D2B14EDC9B3CC7D889 /* CaptureMenu.swift in Sources */,
 				EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */,

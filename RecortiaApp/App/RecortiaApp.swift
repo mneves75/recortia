@@ -3,8 +3,8 @@ import Features
 import MacPlatform
 import SwiftUI
 
-/// Menu-bar-only app (LSUIElement). Relaunching reuses this process; Settings stays reachable
-/// from the menu when no other window is open.
+/// Menu-bar app (LSUIElement) that joins ⌘Tab and the Dock while a window is open (ADR-007).
+/// Relaunching reuses this process; Settings stays reachable from the menu when no window is open.
 @main
 struct RecortiaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -16,6 +16,14 @@ struct RecortiaApp: App {
             Label(String(localized: "Recortia"), systemImage: "viewfinder")
         }
         .menuBarExtraStyle(.menu)
+        // The app menu is visible while Recortia is regular (ADR-007).
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button(AppCommand.settings.title) { appDelegate.model.showSettings() }
+                    .keyboardShortcut(",")
+            }
+            CommandGroup(replacing: .help) {}
+        }
         // Settings is an AppKit window (SettingsWindowController) so it follows the active Space.
     }
 }
@@ -56,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { model.showSettings() }
+        model.handleReopen(hasVisibleWindows: flag)
         return true
     }
 }

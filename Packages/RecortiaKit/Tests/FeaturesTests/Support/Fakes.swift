@@ -325,6 +325,20 @@ final class FakeExportService: ExportService {
             format: options.format, pixelSize: PixelSize(width: 8, height: 8), bytes: Data([0x89, 0x50]),
             suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
     }
+
+    private(set) var pinnedRequests: [(image: CGImage, exportID: DocumentID, options: ExportOptions)] = []
+
+    func makeSnapshot(
+        ofPinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64, options: ExportOptions, date: Date
+    ) async throws(ExportServiceError) -> ShareSnapshot {
+        pinnedRequests.append((image, exportID, options))
+        if let pending { try await pending.wait().get() }
+        if let failure { throw ExportServiceError(failure) }
+        return ShareSnapshot(
+            documentID: exportID, revision: 0, privacyEpoch: privacyEpoch, format: options.format,
+            pixelSize: PixelSize(width: image.width, height: image.height), bytes: Data([0x89, 0x50]),
+            suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
+    }
 }
 
 @MainActor

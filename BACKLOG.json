@@ -1018,6 +1018,86 @@
       ],
       "authorization": "requires_approved_milestone",
       "status_note": "Release-contract and signed local-install checks pass for 0.9.1 build 9; independent verification confirms the installed files and preserved build 7. PR #5 and post-merge CI passed. Notarized/public distribution, clean-user launch, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [],
+      "id": "FP-026",
+      "title": "Window presence: pins and Recortia in window switchers",
+      "status": "in_progress",
+      "depends_on": [],
+      "requirement_ids": [
+        "FR-01",
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "UX-02",
+        "PIN-01"
+      ],
+      "scope": "Pins become normal-level windows so AltTab lists them; Recortia is regular while a switchable window exists and accessory otherwise (ADR-007).",
+      "deliverables": [
+        "AppPresence",
+        "normal-level pins",
+        "window-presence E2E scenario",
+        "space probe dynamic mode"
+      ],
+      "completion_contract": "window-presence passes in EN and PT-BR; installed app listed by AltTab (editor, Settings, pins) and ⌘Tab, with no Space switch over a fullscreen Space."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [],
+      "id": "FP-027",
+      "title": "Pin copy and drag-out through the export pipeline",
+      "status": "not_started",
+      "depends_on": [
+        "FP-026"
+      ],
+      "requirement_ids": [
+        "FR-07",
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "PIN-02",
+        "RED-01",
+        "RED-02",
+        "EXP-02"
+      ],
+      "scope": "Copy and Drag Out on pins via ExportCoordinator and ExportPipeline; only document-rendered pins export; close/invalidate revokes pending offers.",
+      "deliverables": [
+        "PinsModel export",
+        "ExportPipeline pin snapshot",
+        "pin controls",
+        "RED and coordinator tests",
+        "E2E pin export"
+      ],
+      "completion_contract": "Package tests and pin E2E prove sanitized bytes equal the editor's 1x export, refusal of raw pins, and revocation on close/invalidate."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [],
+      "id": "FP-028",
+      "title": "Window-open latency budget and security audit",
+      "status": "not_started",
+      "depends_on": [
+        "FP-026",
+        "FP-027"
+      ],
+      "requirement_ids": [
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "PERF-02"
+      ],
+      "scope": "Time each window open in E2E (editor from capture/import, Settings, onboarding, pin); keep medians under 50 ms; audit the changed surface for security findings.",
+      "deliverables": [
+        "latency metrics in report.json",
+        "optimizations",
+        "audit report"
+      ],
+      "completion_contract": "report.json medians under 50 ms for each window in EN and PT-BR; audit has no open finding."
     }
   ],
   "deferred_scope": [

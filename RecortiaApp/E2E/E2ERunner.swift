@@ -8,6 +8,8 @@
         let id: String
         let title: String
         let run: @MainActor (E2EHarness, ScenarioContext) async throws -> Void
+        /// Measurements outside the gate run only when `-RecortiaE2EOnly` names them.
+        var runsOnlyWhenNamed = false
     }
 
     /// Entry point for `-RecortiaE2E <absolute output dir> [-RecortiaE2EOnly id,id]`. DEBUG builds
@@ -50,7 +52,7 @@
                     return 2
                 }
             }
-            let selected = scenarios.filter { only?.contains($0.id) ?? true }
+            let selected = scenarios.filter { only?.contains($0.id) ?? !$0.runsOnlyWhenNamed }
             let harness: E2EHarness
             do {
                 try FileManager.default.createDirectory(at: output.workDirectory, withIntermediateDirectories: true)

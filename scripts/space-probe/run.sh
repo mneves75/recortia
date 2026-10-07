@@ -10,8 +10,9 @@
 #   stale  the probe's window already exists on the desktop Space, then is shown again
 # Variants: default, follow-activate-first, follow-order-first, activate-only-default,
 #   activate-only-follow, panel-activating, panel-nonactivating, panel-nonactivating-alljoin,
-#   overlay (see probe.swift). Each prints one JSON line; spaceChanges must be 0 for every
-#   variant Recortia uses (follow-*, activate-only-follow, panel-*, overlay).
+#   overlay, dynamic-follow, dynamic-pin (see probe.swift). Each prints one JSON line;
+#   spaceChanges must be 0 for every variant Recortia uses (follow-*, activate-only-follow,
+#   panel-*, overlay, and the dynamic-* variants that start accessory and become regular, ADR-007).
 # FORCE=1 stands in for user-granted activation (a hotkey or menu click); without it macOS 14+
 # may decline the probe's cooperative activation request.
 set -u

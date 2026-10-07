@@ -105,7 +105,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             let size = window.frame.size
             window.setFrameOrigin(NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
         }
-        NSApp.activate()
+        AppPresence.shared.activate()
         window.makeKeyAndOrderFront(nil)
         // SwiftUI attaches the canvas lazily. It must belong to this window before AppKit
         // can accept it as first responder, including on the first capture after launch.

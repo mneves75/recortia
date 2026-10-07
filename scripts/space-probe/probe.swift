@@ -18,14 +18,16 @@ let hostPIDFile = ProcessInfo.processInfo.environment["HOST_PID_FILE"] ?? ""
 func activateApp() { if force { NSApp.activate(ignoringOtherApps: true) } else { NSApp.activate() } }
 
 func windows(of pid: pid_t) -> [[String: Any]] {
-    let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+    let list =
+        CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
         as? [[String: Any]] ?? []
     return list.filter { ($0[kCGWindowOwnerPID as String] as? pid_t) == pid }
 }
 
 /// The window list is ordered front to back: is our window listed before the host's largest one?
 func zAboveIn(_ hostPID: pid_t) -> String {
-    let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+    let list =
+        CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
         as? [[String: Any]] ?? []
     func area(_ w: [String: Any]) -> Double {
         let b = w[kCGWindowBounds as String] as? [String: Double] ?? [:]
@@ -101,7 +103,7 @@ final class Probe: NSObject, NSApplicationDelegate {
         switch variant {
         case "default", "activate-only-default":
             w = NSWindow(contentRect: rect, styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        case "follow-activate-first", "follow-order-first", "activate-only-follow":
+        case "follow-activate-first", "follow-order-first", "activate-only-follow", "dynamic-follow":
             w = NSWindow(
                 contentRect: rect, styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered, defer: false)
@@ -115,6 +117,15 @@ final class Probe: NSObject, NSApplicationDelegate {
         case "panel-nonactivating-alljoin":
             w = panel([.titled, .fullSizeContentView, .nonactivatingPanel])
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .canJoinAllApplications]
+        case "dynamic-pin":
+            // `PinPanel` (ADR-007): a normal-level, non-floating borderless panel on every Space.
+            let p = NSPanel(contentRect: rect, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
+            p.isFloatingPanel = false
+            p.level = .normal
+            p.hidesOnDeactivate = false
+            p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            p.backgroundColor = .gray
+            w = p
         case "overlay":
             w = panel([.borderless, .nonactivatingPanel])
             w.level = .screenSaver
@@ -138,6 +149,11 @@ final class Probe: NSObject, NSApplicationDelegate {
         }
         switch variant {
         case "default", "follow-activate-first", "panel-activating":
+            activateApp()
+            window.makeKeyAndOrderFront(nil)
+        case "dynamic-follow", "dynamic-pin":
+            // `AppPresence.activate()`: an accessory app becomes regular, then activates and shows.
+            NSApp.setActivationPolicy(.regular)
             activateApp()
             window.makeKeyAndOrderFront(nil)
         case "follow-order-first":
@@ -165,6 +181,7 @@ final class Probe: NSObject, NSApplicationDelegate {
             "appActive": NSApp.isActive,
             "probeAboveHost": zAbove(),
             "frontmostIsHost": NSWorkspace.shared.frontmostApplication?.processIdentifier == hostPID,
+            "policy": NSApp.activationPolicy() == .regular ? "regular" : "accessory",
         ]
         let data = try! JSONSerialization.data(withJSONObject: facts, options: [.sortedKeys])
         print(String(data: data, encoding: .utf8)!)

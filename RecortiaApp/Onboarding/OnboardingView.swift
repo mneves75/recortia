@@ -115,6 +115,7 @@ final class OnboardingWindowController {
 
     func show(onboarding: OnboardingModel, shortcutStatus: ShortcutStatusModel) {
         if let window {
+            AppPresence.shared.windowWillAppear()
             window.makeKeyAndOrderFront(nil)
             NSApp.activate()
             return
@@ -125,7 +126,7 @@ final class OnboardingWindowController {
         let window = Self.makeWindow(NSHostingController(rootView: view))
         window.center(on: ScreenChoice.screen())
         self.window = window
-        NSApp.activate()
+        AppPresence.shared.activate()
         window.makeKeyAndOrderFront(nil)
     }
 

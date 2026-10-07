@@ -31,7 +31,7 @@ activation; lay out the hosted canvas before assigning its responder.
 
 Every window Recortia shows needs a Space policy from `SpacePolicy` (FR-01). Ordinary windows
 (editor, Settings, onboarding, scrolling review, alerts) follow the active Space with fullscreen-auxiliary
-behavior; panels (overlay, HUDs, chooser, pins, drag chip) join all Spaces. Never combine a
+behavior; panels (overlay, HUDs, chooser, drag chip) and pins join all Spaces. Never combine a
 window's Space or fullscreen behaviors (AppKit allows one of each). Apply the policy where a
 window is constructed: SwiftUI's `Settings` scene orders its window before a policy can exist and
 switched Spaces in 0.10.1, so Settings is the AppKit `SettingsWindowController`.
@@ -40,6 +40,14 @@ policy changes on the installed app, not only with the probe. A physical probe s
 that a window without a policy makes activation switch the user's Space, even out of a
 fullscreen app; keep `space-policy`, `other-spaces` and `screen-choice` in the E2E gate.
 Choose screens with `ScreenChoice` (capture display, then pointer), never `NSScreen.main`.
+
+Window presence (ADR-007): Recortia is accessory at launch and regular while a switchable window
+exists; `AppPresence` owns that rule. Code that presents an ordinary window activates through
+`AppPresence.activate()`, or calls `AppPresence.windowWillAppear()` before it orders and
+activates; only capture panels and menus use a bare `NSApp.activate()`. Pins are normal-level windows (they
+still join all Spaces) so window switchers list them; never make them floating again. Keep the
+`window-presence` E2E scenario in the gate, and rerun the space probe's `dynamic` mode and the
+installed-app fullscreen check when changing activation or pin windows.
 Synthetic checks guard configuration only; physical Space/display qualification stays manual,
 with `scripts/space-probe/run.sh` as the reusable probe.
 

@@ -39,6 +39,8 @@ final class CaptureWindowVisibility: NSObject {
             $0.isVisible && $0.isOnActiveSpace && !$0.isMiniaturized && $0.parent == nil && $0.sheetParent == nil
         }
         suspended = windows.map { SuspendedWindow(window: $0) }
+        // The hidden windows still exist for the user: Recortia stays in ⌘Tab and the Dock.
+        AppPresence.shared.beginHold()
         for window in windows { window.orderOut(nil) }
     }
 
@@ -53,6 +55,7 @@ final class CaptureWindowVisibility: NSObject {
         }
         guard !stillCapturing, !scrolling, !startingScroll, let windows = suspended else { return }
         suspended = nil
+        defer { AppPresence.shared.endHold() }
         // Back ordering preserves the prior relative order and never replaces the new editor's
         // key/main window, activates the app, or takes focus from the user's target application.
         for entry in windows {

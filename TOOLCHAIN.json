@@ -2,28 +2,31 @@
   "status": "observed_pending_owner_review",
   "research_date": "2026-09-26",
   "platform": "macOS",
-  "release_architectures": ["arm64"],
+  "release_architectures": [
+    "arm64"
+  ],
   "minimum_deployment_target": "15.0",
   "required_stable_xcode_major": 27,
   "expected_bundled_swift_compiler_major_minor": "6.4",
   "swift_language_mode": "6",
   "documented_build_host_minimum": "macOS 26.6",
   "allow_beta_toolchains_for_release": false,
-  "actual_xcode_version": "27.0",
-  "actual_xcode_build": "27A266a",
+  "actual_xcode_version": "27.1",
+  "actual_xcode_build": "27A9275",
   "actual_swift_version_output": "swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
   "actual_macos_sdk_version": "27.0",
   "actual_macos_sdk_build": "26A425",
-  "actual_build_host_os": "macOS 27.2 (26B5091g), seed build: software-update catalog is index-27seed",
+  "actual_build_host_os": "macOS 27.2 (26B5101f), seed build",
   "package_resolution_verified": true,
   "actual_developer_dir": "/Applications/Xcode.app/Contents/Developer",
-  "observation_date": "2026-09-30",
+  "observation_date": "2026-10-07",
   "observation_notes": [
     "xcode-select points to /Applications/Xcode-beta.app (Xcode 27.2, 27B5019j, macOS SDK 27.2 26B5086k). Every build/test command must export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; see docs/adr/0001-native-stack-and-toolchain-baseline.md.",
     "Build host is a seed OS. Compilation evidence is valid; performance and release evidence from this host is not (SPEC.md section 10 requires a stable OS).",
     "Host hardware: Mac17,9, Apple M5 Pro, 64 GB, one built-in 3024x1964 Retina display, no external display (observed 2026-09-26).",
     "2026-09-30: stable Xcode 27.0 and Swift 6.4 rechecked; the gate passed 494 package tests and both Debug builds. KeyboardShortcuts checkout HEAD matches Package.resolved revision 772133d9dbe800fdac0473226822994c5c162c58 (3.1.0); its MIT notice matches the repository notice byte for byte.",
-    "Supplemental owner-requested Xcode-beta MCP BuildProject succeeded on 2026-09-30. Beta diagnostics are not distribution or stable-host qualification."
+    "Supplemental owner-requested Xcode-beta MCP BuildProject succeeded on 2026-09-30. Beta diagnostics are not distribution or stable-host qualification.",
+    "2026-10-07: stable Xcode updated to 27.1 (27A9275) with the same Swift 6.4 driver (swiftlang-6.4.0.34.1); scripts/doctor.sh failed against the old 27A266a pin until this record was updated."
   ],
   "source": "S05 in SOURCES.md; observed values from FP-001 preflight commands recorded in docs/plans/M0-plan.md",
   "instructions": "Replace only observed fields after an actual Mac preflight. Record toolchain updates through review; never fill null values with guesses."

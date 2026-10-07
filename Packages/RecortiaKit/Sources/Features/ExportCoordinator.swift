@@ -1,3 +1,4 @@
+import CoreGraphics
 import Domain
 import Foundation
 import MacPlatform
@@ -108,6 +109,39 @@ public final class ExportCoordinator {
         currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
         uploadConsentID: UUID? = nil
     ) async -> ExportOutcome {
+        let exporter = self.exporter
+        return await run(
+            action, uploadConsentID: uploadConsentID,
+            makeSnapshot: { options, date in try await exporter.makeSnapshot(of: session, options: options, date: date)
+            },
+            isCurrent: { snapshot in
+                guard let current = currentSession() else { return false }
+                return current.document.id == snapshot.documentID && current.revision == snapshot.revision
+                    && current.privacyEpoch == snapshot.privacyEpoch
+            })
+    }
+
+    /// Exports a pin's sanitized raster (FR-09, ADR-007) at its own size. `isCurrent` is false once
+    /// the pin was closed or invalidated; a pending drag is revoked through `invalidatePendingDrag`.
+    public func export(
+        _ action: ExportAction, pinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async -> ExportOutcome {
+        let exporter = self.exporter
+        return await run(
+            action, uploadConsentID: nil, fixedScale: 1,
+            makeSnapshot: { options, date in
+                try await exporter.makeSnapshot(
+                    ofPinned: image, exportID: exportID, privacyEpoch: privacyEpoch, options: options, date: date)
+            },
+            isCurrent: { snapshot in snapshot.documentID == exportID && isCurrent() })
+    }
+
+    private func run(
+        _ action: ExportAction, uploadConsentID: UUID?, fixedScale: Double? = nil,
+        makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
+        isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
+    ) async -> ExportOutcome {
         guard operation == nil else { return .rejectedBusy }
         let id = UUID()
         let consentID = uploadConsentID ?? settings.githubUploadConsentID
@@ -125,15 +159,14 @@ public final class ExportCoordinator {
 
         let options: ExportOptions
         do {
-            options = try exportOptions(for: action).validated()
+            var requested = exportOptions(for: action)
+            if let fixedScale { requested.scale = fixedScale }
+            options = try requested.validated()
         } catch {
             return fail(.encodeFailed)
         }
         let date = clock.now()
-        let exporter = self.exporter
-        let task = Task<ShareSnapshot, any Error> {
-            try await exporter.makeSnapshot(of: session, options: options, date: date)
-        }
+        let task = Task<ShareSnapshot, any Error> { try await makeSnapshot(options, date) }
         snapshotTask = task
         let result = await task.result
         if operation?.cancelRequested == true { return finish(.canceled) }
@@ -147,9 +180,7 @@ public final class ExportCoordinator {
         }
         apply(.encode)
 
-        guard let current = currentSession(), current.document.id == snapshot.documentID,
-            current.revision == snapshot.revision, current.privacyEpoch == snapshot.privacyEpoch
-        else { return fail(.staleDocument) }
+        guard isCurrent(snapshot) else { return fail(.staleDocument) }
 
         do throws(SinkError) {
             let completed: ExportOutcome
@@ -174,11 +205,7 @@ public final class ExportCoordinator {
                                 self.settings.githubUploadConsentID == consentID,
                                 self.settings.preferences.githubUpload?.automatic == true,
                                 self.settings.preferences.githubUpload?.destination == destination,
-                                let current = currentSession()
-                            else { return false }
-                            guard
-                                current.document.id == snapshot.documentID && current.revision == snapshot.revision
-                                    && current.privacyEpoch == snapshot.privacyEpoch
+                                isCurrent(snapshot)
                             else { return false }
                             self.apply(.commit)
                             return true

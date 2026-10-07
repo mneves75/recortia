@@ -14,9 +14,11 @@ struct UserMessage: Equatable {
 /// window titles, or paths (PRIV-01).
 enum MessagePresenter {
     static func present(_ message: UserMessage) {
-        NSApp.activate()
+        AppPresence.shared.activate()
         let alert = makeAlert(message)
         let response = alert.runModal()
+        // A finished alert is ordered out, not closed: re-evaluate the Dock presence.
+        AppPresence.shared.setNeedsRefresh()
         if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
             let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
         {
@@ -45,7 +47,8 @@ enum MessagePresenter {
         quit.hasDestructiveAction = true
         alert.addButton(withTitle: String(localized: "Cancel"))
         SpacePolicy.follow(alert.window)
-        NSApp.activate()
+        AppPresence.shared.activate()
+        defer { AppPresence.shared.setNeedsRefresh() }
         return alert.runModal() == .alertFirstButtonReturn
     }
 
