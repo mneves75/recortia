@@ -28,15 +28,25 @@ enum ExportEncoder {
     /// JPEG has no alpha: composite over the declared opaque background first (FR-07).
     static func flatten(_ image: CGImage, on background: RGBA) throws(ExportError) -> CGImage {
         guard background.isOpaque else { throw ExportError.invalidOptions(.translucentJPEGBackground) }
+        return try redraw(image, on: background)
+    }
+
+    /// Redraws `image` pixel for pixel into a fresh premultiplied sRGB raster, so only what is
+    /// visible survives: color under fully transparent pixels becomes zero (RED-02).
+    static func redraw(_ image: CGImage) throws(ExportError) -> CGImage {
+        try redraw(image, on: nil)
+    }
+
+    private static func redraw(_ image: CGImage, on background: RGBA?) throws(ExportError) -> CGImage {
         do {
             var raster = try RenderRaster(width: image.width, height: image.height)
-            raster.fill(raster.bounds, with: background)
+            if let background { raster.fill(raster.bounds, with: background) }
             try raster.withContext { context in
                 context.interpolationQuality = .none
                 context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
             }
-            guard let flattened = raster.makeImage(opaque: true) else { throw ExportError.encodingFailed }
-            return flattened
+            guard let drawn = raster.makeImage(opaque: background != nil) else { throw ExportError.encodingFailed }
+            return drawn
         } catch let error as ExportError {
             throw error
         } catch {

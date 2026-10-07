@@ -143,7 +143,7 @@ public final class PinsModel {
     public func export(_ action: PinExportAction, _ id: PinID) async -> ExportOutcome {
         guard let pin = pin(for: id), let exportID = pin.exportID else { return .failed(.staleDocument) }
         return await exports.export(
-            action == .copy ? .copy : .drag, pinned: pin.image, exportID: exportID, privacyEpoch: pin.privacyEpoch,
+            action, pinned: pin.image, exportID: exportID, privacyEpoch: pin.privacyEpoch,
             isCurrent: { [weak self] in self?.pins.contains { $0.exportID == exportID } == true })
     }
 

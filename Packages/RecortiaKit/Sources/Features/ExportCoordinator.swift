@@ -124,12 +124,12 @@ public final class ExportCoordinator {
     /// Exports a pin's sanitized raster (FR-09, ADR-007) at its own size. `isCurrent` is false once
     /// the pin was closed or invalidated; a pending drag is revoked through `invalidatePendingDrag`.
     public func export(
-        _ action: ExportAction, pinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64,
+        _ action: PinExportAction, pinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
-            action, uploadConsentID: nil, fixedScale: 1,
+            action == .copy ? .copy : .drag, uploadConsentID: nil, fixedScale: 1,
             makeSnapshot: { options, date in
                 try await exporter.makeSnapshot(
                     ofPinned: image, exportID: exportID, privacyEpoch: privacyEpoch, options: options, date: date)

@@ -31,7 +31,8 @@ public struct ExportPipeline: Sendable {
     }
 
     /// A pin's raster: what `PrivacyRenderer` produced for the pinned document at 1x (FR-09,
-    /// PIN-02). It is encoded fresh, never resampled, under the pin's own export identity.
+    /// PIN-02). It is redrawn so only visible pixels survive whatever raster it is handed, then
+    /// encoded fresh, never resampled, under the pin's own export identity.
     @concurrent
     public func snapshot(
         ofPinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64, options: ExportOptions, date: Date
@@ -39,7 +40,8 @@ public struct ExportPipeline: Sendable {
         try Self.validate(options)
         guard options.scale == 1 else { throw ExportError.invalidOptions(.invalidScale) }
         return try Self.encode(
-            image, documentID: exportID, revision: 0, privacyEpoch: privacyEpoch, options: options, date: date)
+            try ExportEncoder.redraw(image), documentID: exportID, revision: 0, privacyEpoch: privacyEpoch,
+            options: options, date: date)
     }
 
     private static func validate(_ options: ExportOptions) throws(ExportError) {

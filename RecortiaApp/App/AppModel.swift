@@ -326,6 +326,8 @@ final class AppModel: AppActions {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.message = String(localized: "Choose a PNG or JPEG image to open.")
+        // A finished open panel is ordered out, not closed: re-evaluate the Dock presence.
+        defer { AppPresence.shared.setNeedsRefresh() }
         guard panel.runModal() == .OK, let url = panel.url else { return }
         importImage(from: .file(url))
     }

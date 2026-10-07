@@ -3,8 +3,9 @@ import Domain
 import Features
 import SwiftUI
 
-/// Floating reference pins (FR-09): interactive panels (never click-through), movable by
-/// dragging, with opacity, zoom, and an explicit close. Escape or ⌘W closes the focused pin.
+/// Reference pins (FR-09, ADR-007): ordinary normal-level panels (never click-through) on every
+/// Space, movable by dragging, with opacity, zoom, copy, drag-out, and an explicit close.
+/// Escape or ⌘W closes the focused pin.
 final class PinsUIController {
     private let model: PinsModel
     private var panels: [PinID: PinPanel] = [:]
@@ -146,10 +147,12 @@ struct PinView: View {
                 .accessibilityLabel(Text("Pinned screenshot"))
             controls
             if let status {
+                // Wraps within the pin instead of widening it.
                 Text(status)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: max(imageSize.width, 240), alignment: .leading)
                     .padding(.horizontal, 8)
                     .padding(.bottom, 6)
                     .background(Color(nsColor: .windowBackgroundColor))

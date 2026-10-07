@@ -53,7 +53,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-06 | Solid secure redaction; cosmetic blur/pixelation clearly distinguished | 0.1 | RED |
 | FR-07 | Flattened PNG/JPEG save, PNG clipboard copy, safe drag-out | 0.1 | EXP / RED |
 | FR-08 | On-device OCR and QR decoding, EN and PT-BR workflows | 0.1 | OCR |
-| FR-09 | Floating reference pins with opacity, zoom, and explicit close | 0.1 | PIN / PRIV |
+| FR-09 | Reference pins with opacity, zoom, copy, drag-out, and explicit close | 0.1 | PIN / PRIV |
 | FR-10 | Manual and automatic vertical scrolling capture with confidence checks | 1.0 | SCR / PERM |
 | FR-11 | Pixel loupe, ruler, dimensions, sRGB color inspection | 1.0 | PIX / GEO |
 | FR-12 | Multiple-image canvas, transparency overlays, side-by-side comparison | 1.0 | COMP / RED |
