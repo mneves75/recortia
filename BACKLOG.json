@@ -17,7 +17,16 @@
     "limitations": [
       "Editor (229-514 ms) and first-open Settings (105-238 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding is borderline (36-66 ms).",
       "Physical Space and AltTab checks of the build have not run."
-    ]
+    ],
+    "local_installation": {
+      "date": "2026-10-07",
+      "commit": "5b4c1ef",
+      "build_command": "scripts/release.sh --dry-run (fresh worktree, Release archive, developer-id export; no gate, no notarization)",
+      "checks": "release-script checks passed (codesign --verify --deep --strict, version 0.11.0 (17), distribution entitlements with access group Q96FUTC5G8.dev.mvneves.Recortia, embedded provisioning profile, Hardened Runtime, no test-only markers); installed bundle identical to the export (diff -r); spctl accepted (Developer ID); launched as UIElement with no window.",
+      "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
+      "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
+      "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
+    }
   },
   "previous_release_0_10_1": {
     "version": "0.10.1",
