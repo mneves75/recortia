@@ -6,6 +6,37 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-07
+
+### Added
+
+- **Pins can be copied and dragged out.** Each pin has Copy (⌘C) and Drag Out buttons. Both
+  export the pinned image exactly as the editor's 1× export would: freshly encoded, without
+  metadata. Closing a pin, or a redaction that removes it, cancels a drag that has not been
+  delivered yet. Adopted from [Tendedero](https://github.com/alejandrobujan/tendedero)'s
+  click-to-copy and drag-to-share.
+- **Recortia appears in ⌘Tab and the Dock while one of its windows is open**, including a
+  minimized one, and leaves them when the last window closes. Clicking the Dock icon restores a
+  minimized window. The app menu has Settings… (⌘,).
+
+### Changed
+
+- **Pins are ordinary windows**, so window switchers such as AltTab (⌥Tab) list them. They no
+  longer float above other windows; ⌥Tab, ⌘Tab or Bring Pins Forward brings them back. AltTab
+  does not list windows that float above other apps, so a pin could not do both.
+
+### Not adopted from Tendedero
+
+Taking over the macOS screenshot settings, watching the Desktop or screenshot folder, keeping
+screenshots after quitting, hiding in fullscreen through private window-server calls, and
+sounds. Recortia never changes system settings or keeps a screenshot archive (ADR-007).
+
+### Known limitations
+
+- Opening the editor (about 230 ms) and Settings for the first time (about 105 ms) take longer
+  than the 50 ms window budget on the build Mac; reopening Settings, onboarding and pins meet
+  it. Recorded in PERF-02 and BACKLOG FP-028.
+
 ## [0.10.2] - 2026-10-03
 
 ### Fixed

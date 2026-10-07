@@ -3,7 +3,7 @@
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
-**Status:** 0.10.2 (build 16), released and available through Homebrew. 0.10.1 made Recortia work on every desktop: other Spaces, other
+**Status:** 0.11.0 (build 17) is the current candidate: pins are ordinary windows that window switchers such as AltTab list, pins can be copied and dragged out, and Recortia appears in ⌘Tab and the Dock while one of its windows is open (ADR-007). 0.10.2 (build 16) is the release available through Homebrew. 0.10.1 made Recortia work on every desktop: other Spaces, other
 apps' fullscreen Spaces, and multiple displays. The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
 in-app update flow (updates come through Homebrew or a new download); they are covered by automated
 and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
@@ -84,7 +84,9 @@ Earlier build-10 installation and build-11 verification evidence remains histori
   hidden layers.
 - **Read text and QR codes on device** with Vision (English and Portuguese). QR payloads are shown as
   untrusted data; only http/https links open, and only when you click.
-- **Pin** up to five floating references with adjustable opacity and zoom.
+- **Pin** up to five references with adjustable opacity and zoom, and copy or drag a pin out.
+  Pins are ordinary windows, so ⌥Tab switchers list them, and Recortia joins ⌘Tab and the Dock
+  while any of its windows is open.
 - **Scrolling capture**, manual by default; automatic scrolling is opt-in and asks for Accessibility
   only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch. A live
   session stops if its source window, an unrelated foreground app, or its display changes.
