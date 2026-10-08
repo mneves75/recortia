@@ -19,6 +19,14 @@ All notable changes to Recortia are documented here. The format follows
   minimized one, and leaves them when the last window closes. Clicking the Dock icon restores a
   minimized window. The app menu has Settings… (⌘,).
 
+### Fixed
+
+- **Opening Recortia now shows a window.** Opening it from Finder, Spotlight or the Dock shows
+  Settings (onboarding on the first run), so it appears in ⌘Tab and the Dock right away. Before,
+  it only added its menu-bar icon. "Open at login" still starts silently. Recortia also opts out
+  of macOS automatic termination, which could end a menu-bar app with no windows and its
+  shortcuts.
+
 ### Changed
 
 - **Pins are ordinary windows**, so window switchers such as AltTab (⌥Tab) list them. They no

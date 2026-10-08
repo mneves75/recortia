@@ -11,6 +11,9 @@
                 id: "window-presence", title: "Recortia joins ⌘Tab and the Dock while a window is open",
                 run: PresenceScenarios.windowPresence),
             E2EScenario(
+                id: "launch-presentation", title: "Opening Recortia shows a window; Open at login does not",
+                run: PresenceScenarios.launchPresentation),
+            E2EScenario(
                 id: "other-spaces", title: "Capture leaves windows on other Spaces alone",
                 run: DesktopScenarios.otherSpaces),
             E2EScenario(

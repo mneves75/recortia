@@ -115,6 +115,41 @@
             return window
         }
 
+        /// FR-01: opening Recortia shows a window (onboarding first, then Settings) so it is visible
+        /// in ⌘Tab and the Dock; "Open at login" stays silent. The login marker is what macOS puts
+        /// on the open-application event of a login item.
+        static func launchPresentation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            func openEvent(loginItem: Bool) -> NSAppleEventDescriptor {
+                let event = NSAppleEventDescriptor(
+                    eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEOpenApplication),
+                    targetDescriptor: nil, returnID: AEReturnID(kAutoGenerateReturnID),
+                    transactionID: AETransactionID(kAnyTransactionID))
+                if loginItem {
+                    event.setParam(
+                        NSAppleEventDescriptor(enumCode: OSType(keyAELaunchedAsLogInItem)),
+                        forKeyword: AEKeyword(keyAEPropData))
+                }
+                return event
+            }
+            context.check(
+                "an open event marked as a login item is a login launch",
+                LaunchKind(openEvent: openEvent(loginItem: true)) == .loginItem)
+            context.check(
+                "a plain open event is a launch by the person",
+                LaunchKind(openEvent: openEvent(loginItem: false)) == .user)
+            context.check("a launch without an event counts as the person's", LaunchKind(openEvent: nil) == .user)
+            context.check(
+                "first launch shows onboarding",
+                LaunchWindow.choose(onboardingPending: true, kind: .user) == .onboarding
+                    && LaunchWindow.choose(onboardingPending: true, kind: .loginItem) == .onboarding)
+            context.check(
+                "opening Recortia shows Settings",
+                LaunchWindow.choose(onboardingPending: false, kind: .user) == .settings)
+            context.check(
+                "Open at login shows no window",
+                LaunchWindow.choose(onboardingPending: false, kind: .loginItem) == .none)
+        }
+
         /// Orders `window` in the way presenting code does, parked offscreen and transparent.
         private static func show(_ window: NSWindow, _ presence: AppPresence) {
             E2ESnapshot.park(window)

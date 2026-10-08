@@ -6,11 +6,11 @@
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
     "version": "0.11.0",
-    "build": 17,
+    "build": 18,
     "date": "2026-10-07",
-    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline.",
+    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent; automatic termination disabled.",
     "status": "in_review",
-    "verification": "scripts/check.sh passed at 6ae23e0 (558 package tests); window-presence, pins, space-policy and export-sinks E2E passed in EN; bilingual E2E, reviewer, live AltTab/Space checks pending.",
+    "verification": "Build 18 pending re-verification after the launch fix; build 17 evidence: scripts/check.sh passed at 0966d36, bilingual E2E 41/41.",
     "evidence_paths": [
       ".scratch/check-3.log"
     ],

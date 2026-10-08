@@ -38,7 +38,15 @@ reachability, and asked that Recortia also appear in ⌘Tab and the Dock while i
    - While capture has temporarily hidden Recortia's windows, or the app is hidden (⌘H), the
      policy does not demote: those windows still exist for the user.
    - Clicking the Dock icon restores a minimized window before it falls back to Settings.
-3. **Pins can be copied and dragged out**, adopted from Tendedero's click-to-copy and
+3. **Opening Recortia shows a window.** A menu-bar app is otherwise invisible after being opened:
+   the owner opened 0.11.0 twice, saw nothing, and quit (unified log, 2026-10-07). A launch by
+   the person shows onboarding or Settings; a launch whose open-application event carries
+   `keyAELaunchedAsLogInItem` ("Open at login") shows none. No source confirms that
+   `SMAppService.mainApp` login launches carry the marker, so a missing marker shows Settings at
+   login (visible) rather than hiding a window on a manual launch. Automatic termination is
+   disabled at launch: the log showed the windowless app eligible for it, and termination would
+   silently end its global shortcuts.
+4. **Pins can be copied and dragged out**, adopted from Tendedero's click-to-copy and
    drag-to-share. The export reuses `ExportCoordinator` and the drag-out lease (ADR-004):
    - Only a pin rendered from a document session through the sanitizing renderer is exportable;
      an image added directly (previews, E2E fixtures) is refused.

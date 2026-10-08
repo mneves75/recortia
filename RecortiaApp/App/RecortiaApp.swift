@@ -56,7 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             integrity.prepare()
             ShortcutDefaults.seedIfNeeded(isNewInstall: !model.settings.preferences.hasCompletedOnboarding)
         #endif
-        model.launch()
+        // A menu-bar app with no window is otherwise eligible for automatic termination, which
+        // would silently end its global shortcuts.
+        ProcessInfo.processInfo.disableAutomaticTermination("Recortia waits in the menu bar for capture shortcuts")
+        model.launch(kind: LaunchKind(openEvent: NSAppleEventManager.shared().currentAppleEvent))
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

@@ -99,16 +99,19 @@ final class AppModel: AppActions {
         shortcutStatus.onAttention = { [weak self] in self?.watchHeldShortcuts(restart: true) }
     }
 
-    /// Called once from `applicationDidFinishLaunching`. Requests no permission.
-    func launch() {
+    /// Called once from `applicationDidFinishLaunching`. Requests no permission. Opening Recortia
+    /// shows onboarding or Settings, so it appears in ⌘Tab and the Dock; Open at login stays silent.
+    func launch(kind: LaunchKind) {
         guard !didLaunch else { return }
         didLaunch = true
         if let features {
             wire(features)
         }
         registerShortcutHandlers()
-        if onboarding.shouldPresent {
-            showOnboarding()
+        switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind) {
+        case .onboarding: showOnboarding()
+        case .settings: showSettings()
+        case .none: break
         }
     }
 

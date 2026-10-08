@@ -93,6 +93,7 @@
 		A88E581773148D9E9762B36A /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 7DC7FE9A68C4351CD90EA55B /* Domain */; };
 		A8A476C5D3007B4823361E64 /* LiveScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B885E83C460249621067B7FB /* LiveScrolling.swift */; };
 		AC4AFBDA384BF5B9EAE8BAC8 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
+		AE228DFF7511E5EB3A9CB2A8 /* LaunchKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */; };
 		AF3F7784F944B8399EA0F17E /* E2EReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0DF83ABF11B31DAAABA963C /* E2EReport.swift */; };
 		B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */; };
 		B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
@@ -105,6 +106,7 @@
 		C4B185E0117961F2B3801409 /* SystemEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */; };
 		C5AC5B580637289E9DC07F54 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
 		CB3160AA629F25ECBB8B6DBA /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */; };
+		CB41D288F549F14A5DD8BED4 /* LaunchKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */; };
 		CF14A9DD112EE6655C40C9E9 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
 		D06F657E1ACE66C9015FA699 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8692E975D9E5A251D35D00 /* KeyboardShortcuts */; };
 		D24EE0E8714F0274DE8B1AEC /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
@@ -184,6 +186,7 @@
 		68A32821DBE9F97E4B468E29 /* LiveServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveServices.swift; sourceTree = "<group>"; };
 		6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollUIController.swift; sourceTree = "<group>"; };
 		78E65B31A931DA8F9BA987BB /* PinPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinPanels.swift; sourceTree = "<group>"; };
+		78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchKind.swift; sourceTree = "<group>"; };
 		7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionOverlay.swift; sourceTree = "<group>"; };
 		7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Capture.swift"; sourceTree = "<group>"; };
 		8105CD4BFB83087E563EDD04 /* Scenarios+Desktops.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Desktops.swift"; sourceTree = "<group>"; };
@@ -290,6 +293,7 @@
 				4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */,
 				977B7B2D3F02E7F78030DFEE /* DragChip.swift */,
 				D97C30D7091C2051638564FB /* GlobalShortcuts.swift */,
+				78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */,
 				6610A99F1B386ECA2E10FF6C /* LiveGitHubUpload.swift */,
 				F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */,
 				B885E83C460249621067B7FB /* LiveScrolling.swift */,
@@ -638,6 +642,7 @@
 				739432D25946A1A2AF701CEB /* GitHubUploadSettings.swift in Sources */,
 				701F0314C45185A00CC56645 /* GlobalShortcuts.swift in Sources */,
 				B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */,
+				AE228DFF7511E5EB3A9CB2A8 /* LaunchKind.swift in Sources */,
 				3D6140BA1D228918E1B4AE7F /* LiveGitHubUpload.swift in Sources */,
 				41302BAADF8304A81FE45EC9 /* LiveRecognition.swift in Sources */,
 				A8A476C5D3007B4823361E64 /* LiveScrolling.swift in Sources */,
@@ -711,6 +716,7 @@
 				9DFE06BFFEDA1701F0319C70 /* GitHubUploadSettings.swift in Sources */,
 				A55745B240F288A4EE6CE160 /* GlobalShortcuts.swift in Sources */,
 				778801BF8774508093BCD36C /* HostingPanel.swift in Sources */,
+				CB41D288F549F14A5DD8BED4 /* LaunchKind.swift in Sources */,
 				F0163A96FE80D54253E0E1EF /* LiveGitHubUpload.swift in Sources */,
 				4EC666D8B2EF6F97E6C3EFED /* LiveRecognition.swift in Sources */,
 				30B346D5FCE3BE82877BD2A2 /* LiveScrolling.swift in Sources */,
@@ -857,7 +863,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -928,7 +934,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
