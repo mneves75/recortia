@@ -15,7 +15,7 @@
       ".scratch/check-3.log"
     ],
     "limitations": [
-      "Editor (229-514 ms) and first-open Settings (105-238 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding is borderline (36-66 ms).",
+      "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
       "Physical Space and AltTab checks of the build have not run.",
       "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`)."
     ],
@@ -1070,7 +1070,8 @@
       "evidence": [
         "scripts/e2e.sh --only window-latency: editor median 229.4 ms, Settings first open 105.4 ms (fail); Settings reopened 6.8, onboarding 35.8, pin 25.8 ms (pass)",
         "Security review of the 0.11.0 diff: no open finding after the reviewer fixes",
-        "Independent verifier run (gpt-6-astra, fresh worktree, bilingual): editor 478.5/514.4 ms, Settings first open 238.4/199.3 ms, onboarding 57.1/66.4 ms; results vary with machine load."
+        "Independent verifier run (gpt-6-astra, fresh worktree, bilingual): editor 478.5/514.4 ms, Settings first open 238.4/199.3 ms, onboarding 57.1/66.4 ms; results vary with machine load.",
+        "Verifier run at 728688d (gpt-6-astra): editor 506.9/640.4 ms, first-open Settings 191.3/248.2 ms; English onboarding 57.0 ms and pin 52.5 ms over budget, PT-BR 41.4/31.0 ms."
       ],
       "id": "FP-028",
       "title": "Window-open latency budget and security audit",
@@ -1092,7 +1093,7 @@
         "audit report"
       ],
       "completion_contract": "report.json medians under 50 ms for each window in EN and PT-BR; audit has no open finding.",
-      "status_note": "Owner chose to record and defer the editor and first-open Settings latency; onboarding is borderline (36-66 ms across runs) and is not covered by that decision. A fix needs pre-built windows (a separate approved plan)."
+      "status_note": "Owner chose to record and defer the editor and first-open Settings latency; onboarding and pins are borderline (they exceed 50 ms in some runs) and are not covered by that decision. A fix needs pre-built windows (a separate approved plan)."
     }
   ],
   "deferred_scope": [

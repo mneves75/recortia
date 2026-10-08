@@ -40,10 +40,10 @@ sounds. Recortia never changes system settings or keeps a screenshot archive (AD
 
 ### Known limitations
 
-- Window-open times on the build Mac (Debug build, two independent runs; they vary with load):
-  the editor takes 229–514 ms and Settings 105–238 ms when first opened, well over the 50 ms
-  budget; onboarding is borderline at 36–66 ms; reopening Settings (under 7 ms) and pins (about
-  26 ms) meet it. Recorded in PERF-02 and BACKLOG FP-028.
+- Window-open times on the build Mac (Debug build, four runs; they vary with load): the editor
+  takes 229–640 ms and Settings 105–248 ms when first opened, well over the 50 ms budget;
+  onboarding (31–66 ms) and pins (14–53 ms) are borderline; reopening Settings stays under 7 ms.
+  Recorded in PERF-02 and BACKLOG FP-028.
 
 ## [0.10.2] - 2026-10-03
 
