@@ -5,8 +5,8 @@ import AppKit
 ///
 /// Activation policy is process-wide, so there is one instance. Promotion is immediate: presenting
 /// code calls `activate()`, which becomes regular before activating, because a switch after
-/// activation leaves the previous app's menu in the menu bar. Demotion is coalesced to the next
-/// main-queue turn, so one window replacing another never drops the Dock icon.
+/// activation leaves the previous app's menu in the menu bar. Demotion is coalesced to a later
+/// main-actor turn, so one window replacing another never drops the Dock icon.
 @MainActor
 final class AppPresence {
     static let shared = AppPresence()
@@ -47,15 +47,13 @@ final class AppPresence {
         if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
     }
 
-    /// Re-evaluates on the next main-queue turn, after the window change in progress completes.
+    /// Re-evaluates on a later main-actor turn, after the window change in progress completes.
     func setNeedsRefresh() {
         guard !refreshScheduled else { return }
         refreshScheduled = true
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated {
-                AppPresence.shared.refreshScheduled = false
-                AppPresence.shared.refresh()
-            }
+        Task { @MainActor in
+            refreshScheduled = false
+            refresh()
         }
     }
 

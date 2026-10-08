@@ -127,6 +127,6 @@
             return imported
         }
 
-        private static func format(_ ms: Double) -> String { String(format: "%.1f", ms) }
+        private static func format(_ ms: Double) -> String { ms.formatted(.number.precision(.fractionLength(1))) }
     }
 #endif
