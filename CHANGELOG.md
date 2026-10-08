@@ -23,9 +23,7 @@ All notable changes to Recortia are documented here. The format follows
 
 - **Opening Recortia now shows a window.** Opening it from Finder, Spotlight or the Dock shows
   Settings (onboarding on the first run), so it appears in ⌘Tab and the Dock right away. Before,
-  it only added its menu-bar icon. "Open at login" still starts silently. Recortia also opts out
-  of macOS automatic termination, which could end a menu-bar app with no windows and its
-  shortcuts.
+  it only added its menu-bar icon. "Open at login" still starts silently.
 
 ### Changed
 

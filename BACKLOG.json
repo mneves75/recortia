@@ -8,7 +8,7 @@
     "version": "0.11.0",
     "build": 18,
     "date": "2026-10-07",
-    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent; automatic termination disabled.",
+    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
     "status": "in_review",
     "verification": "Build 18 pending re-verification after the launch fix; build 17 evidence: scripts/check.sh passed at 0966d36, bilingual E2E 41/41.",
     "evidence_paths": [
@@ -16,7 +16,8 @@
     ],
     "limitations": [
       "Editor (229-514 ms) and first-open Settings (105-238 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding is borderline (36-66 ms).",
-      "Physical Space and AltTab checks of the build have not run."
+      "Physical Space and AltTab checks of the build have not run.",
+      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`)."
     ],
     "local_installation": {
       "date": "2026-10-07",

@@ -2,6 +2,7 @@ import AppKit
 import Features
 import MacPlatform
 import SwiftUI
+import os
 
 /// Menu-bar app (LSUIElement) that joins ⌘Tab and the Dock while a window is open (ADR-007).
 /// Relaunching reuses this process; Settings stays reachable from the menu when no window is open.
@@ -56,10 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             integrity.prepare()
             ShortcutDefaults.seedIfNeeded(isNewInstall: !model.settings.preferences.hasCompletedOnboarding)
         #endif
-        // A menu-bar app with no window is otherwise eligible for automatic termination, which
-        // would silently end its global shortcuts.
-        ProcessInfo.processInfo.disableAutomaticTermination("Recortia waits in the menu bar for capture shortcuts")
-        model.launch(kind: LaunchKind(openEvent: NSAppleEventManager.shared().currentAppleEvent))
+        let kind = LaunchKind(openEvent: NSAppleEventManager.shared().currentAppleEvent)
+        // Content-free: lets a real login confirm whether macOS marks Open at login (ADR-007).
+        Logger(subsystem: "dev.mvneves.Recortia", category: "launch").notice(
+            "launch kind: \(String(describing: kind), privacy: .public)")
+        model.launch(kind: kind)
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

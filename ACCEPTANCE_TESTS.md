@@ -199,7 +199,8 @@ PERF-01's stable-hardware qualification. A missed budget is recorded, never rede
 
 Opening Recortia shows onboarding (first run) or Settings, so it is in ⌘Tab and the Dock; an
 open-application event marked `keyAELaunchedAsLogInItem` shows no window. With no window,
-Recortia has no Dock icon and is not automatically terminated. Opening an editor, Settings, onboarding, or a pin makes it a
+Recortia has no Dock icon. Physical checks include opening the installed app (Settings appears)
+and a real login with Open at login enabled (no window; the `launch` log says `loginItem`). Opening an editor, Settings, onboarding, or a pin makes it a
 regular app before it activates; minimizing keeps it regular; capture suspension and ⌘H keep it
 regular; closing the last window returns it to accessory on the next turn, without an
 intermediate demotion when one window replaces another. A Dock click restores a minimized
