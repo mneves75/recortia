@@ -7,17 +7,18 @@
   "current_candidate": {
     "version": "0.11.0",
     "build": 18,
-    "date": "2026-10-07",
+    "date": "2026-10-08",
     "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
-    "status": "in_review",
-    "verification": "Build 18 pending re-verification after the launch fix; build 17 evidence: scripts/check.sh passed at 0966d36, bilingual E2E 41/41.",
+    "status": "released",
+    "verification": "scripts/check.sh passed at 4a32aed and in the release pipeline at c346017; bilingual E2E 42/42; independent reviewer and adversarial reviewer findings fixed; mneves-verify (gpt-6-astra) at 728688d: criteria 1-8 and 10 PASS, criterion 9 (physical desktop) BLOCKED, not run by owner's choice.",
     "evidence_paths": [
       ".scratch/check-3.log"
     ],
     "limitations": [
       "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
       "Physical Space and AltTab checks of the build have not run.",
-      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`)."
+      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`).",
+      "Physical AltTab (pins, editor), ⌘Tab and fullscreen-Space checks were not run for this release."
     ],
     "local_installation": {
       "date": "2026-10-07",
@@ -27,6 +28,19 @@
       "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
       "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
       "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
+    },
+    "production_release": {
+      "tag": "v0.11.0",
+      "commit": "c34601790c9715a6aafce3cd3d7c9a448ef66e0d",
+      "build": 18,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.11.0",
+      "dmg_sha256": "423bb95e39c818edaeef9eb89241034e091d1472a6aa51f7df61618c811e9fb4",
+      "notarization": [
+        "app b5a2f65d-52f1-4ad3-8cd6-5157dd5cdf46 Accepted",
+        "dmg 98db4d7b-c91c-4a80-8264-9a6e6888af27 Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap 0f4daa0 recortia: 0.11.0",
+      "installed": "2026-10-08 via brew upgrade --cask recortia on the maintainer's Mac: 0.11.0 (18), strict signature, stapled, Notarized Developer ID; opening it showed Settings and made it Foreground."
     }
   },
   "previous_release_0_10_1": {
@@ -1029,7 +1043,7 @@
         "space probe dynamic mode"
       ],
       "completion_contract": "window-presence passes in EN and PT-BR; installed app listed by AltTab (editor, Settings, pins) and ⌘Tab, with no Space switch over a fullscreen Space.",
-      "status_note": "Physical AltTab, ⌘Tab and fullscreen-Space checks have not run (owner stopped the probe run on 2026-10-07)."
+      "status_note": "Released in 0.11.0 without the physical AltTab/⌘Tab/fullscreen-Space checks (owner's choice, 2026-10-08); the installed app's Settings window was listed by AltTab and the app was Foreground."
     },
     {
       "milestone": "M6",

@@ -6,7 +6,10 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.11.0] - 2026-10-07
+## [0.11.0] - 2026-10-08
+
+Released as build 18 (notarized; Homebrew `mneves75/tap/recortia`). The physical AltTab, ⌘Tab
+and fullscreen-Space checks of this build were not run; the owner chose to release without them.
 
 ### Added
 
