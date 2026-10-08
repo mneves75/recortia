@@ -116,7 +116,8 @@
         }
 
         /// FR-01: opening Recortia shows a window (onboarding first, then Settings) so it is visible
-        /// in ⌘Tab and the Dock; "Open at login" stays silent. The login marker is what macOS puts
+        /// in ⌘Tab and the Dock; "Open at login" stays silent once onboarding is complete (FR-01
+        /// requires the first launch to explain local processing). The login marker is what macOS puts
         /// on the open-application event of a login item.
         static func launchPresentation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             func openEvent(loginItem: Bool) -> NSAppleEventDescriptor {

@@ -198,7 +198,8 @@ PERF-01's stable-hardware qualification. A missed budget is recorded, never rede
 ### UX-02 — Window presence
 
 Opening Recortia shows onboarding (first run) or Settings, so it is in ⌘Tab and the Dock; an
-open-application event marked `keyAELaunchedAsLogInItem` shows no window. With no window,
+open-application event marked `keyAELaunchedAsLogInItem` shows no window once onboarding is
+complete (unfinished onboarding still appears). With no window,
 Recortia has no Dock icon. Physical checks include opening the installed app (Settings appears)
 and a real login with Open at login enabled (no window; the `launch` log says `loginItem`). Opening an editor, Settings, onboarding, or a pin makes it a
 regular app before it activates; minimizing keeps it regular; capture suspension and ⌘H keep it

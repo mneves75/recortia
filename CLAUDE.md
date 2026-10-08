@@ -58,7 +58,7 @@ beta compilation does not replace the stable-toolchain release gates.
   switchable window (normal/modal level, shown or minimized; pins included) exists and accessory
   otherwise. Present ordinary windows through `AppPresence.activate()`; pins are normal-level
   windows so AltTab lists them. Opening the app shows onboarding or Settings (`LaunchKind`,
-  `LaunchWindow`); "Open at login" stays silent. Keep `window-presence` and
+  `LaunchWindow`); "Open at login" stays silent once onboarding is complete. Keep `window-presence` and
   `launch-presentation` in bilingual E2E.
 - All desktops: `RecortiaApp/App/SpacePolicy.swift` owns window Space behavior (windows follow
   the active Space, panels join all Spaces; `SpacePolicyMonitor` is a safety net for framework

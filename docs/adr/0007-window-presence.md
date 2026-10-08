@@ -41,7 +41,8 @@ reachability, and asked that Recortia also appear in ⌘Tab and the Dock while i
 3. **Opening Recortia shows a window.** A menu-bar app is otherwise invisible after being opened:
    the owner opened 0.11.0 twice, saw nothing, and quit (unified log, 2026-10-07). A launch by
    the person shows onboarding or Settings; a launch whose open-application event carries
-   `keyAELaunchedAsLogInItem` ("Open at login") shows none. No source confirms that
+   `keyAELaunchedAsLogInItem` ("Open at login") shows none once onboarding is complete;
+   unfinished onboarding takes precedence, as FR-01 requires. No source confirms that
    `SMAppService.mainApp` login launches carry the marker, so a missing marker shows Settings at
    login (visible) rather than hiding a window on a manual launch. Each launch logs its kind
    (subsystem `dev.mvneves.Recortia`, category `launch`), so a real login settles it.

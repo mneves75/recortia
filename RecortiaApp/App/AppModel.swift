@@ -100,7 +100,8 @@ final class AppModel: AppActions {
     }
 
     /// Called once from `applicationDidFinishLaunching`. Requests no permission. Opening Recortia
-    /// shows onboarding or Settings, so it appears in ⌘Tab and the Dock; Open at login stays silent.
+    /// shows onboarding or Settings, so it appears in ⌘Tab and the Dock; Open at login stays silent
+    /// once onboarding is complete.
     func launch(kind: LaunchKind) {
         guard !didLaunch else { return }
         didLaunch = true

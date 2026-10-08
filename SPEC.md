@@ -88,7 +88,8 @@ The app MUST expose capture commands, Open Image, Settings, About, and Quit from
 Launch at login is off until selected. The editor follows the active Space and capture display when possible, without repeatedly stealing focus. App reactivation MUST reuse the existing process. Settings MUST remain reachable when all image windows are closed. Capture cancellation MUST never imply copy, save, or upload.
 
 Opening Recortia (Finder, Spotlight, Dock) MUST show a window: onboarding on first run,
-otherwise Settings. A launch by "Open at login" shows none. Recortia launches without a Dock icon. While it has a switchable window (a visible or minimized editor, Settings, onboarding, scrolling review, About, alert, or pin), it MUST appear in ⌘Tab and the Dock, and its windows MUST be listed by window switchers that list ordinary windows (ADR-007); when the last one closes it returns to the menu bar only. Temporarily hiding windows for a capture, or hiding the app, does not remove it. Clicking the Dock icon restores a minimized window before opening Settings.
+otherwise Settings. Once onboarding is complete, a launch by "Open at login" shows none
+(onboarding still appears until it is finished, as the first launch requires). Recortia launches without a Dock icon. While it has a switchable window (a visible or minimized editor, Settings, onboarding, scrolling review, About, alert, or pin), it MUST appear in ⌘Tab and the Dock, and its windows MUST be listed by window switchers that list ordinary windows (ADR-007); when the last one closes it returns to the menu bar only. Temporarily hiding windows for a capture, or hiding the app, does not remove it. Clicking the Dock icon restores a minimized window before opening Settings.
 
 ### FR-02 — Capture
 
