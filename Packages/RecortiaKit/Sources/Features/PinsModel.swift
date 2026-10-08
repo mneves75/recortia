@@ -15,13 +15,22 @@ public enum PinError: Error, Hashable, Sendable {
     case staleDocument
 }
 
-/// A floating reference: only a rendered, sanitized image plus the identity it was rendered from.
+/// What a pin can hand to another app (PIN-02).
+public enum PinExportAction: Hashable, Sendable {
+    case copy
+    case drag
+}
+
+/// A reference: only a rendered, sanitized image plus the identity it was rendered from.
 /// It never references source assets, so it cannot show pixels a later redaction removed.
 public struct Pin: Identifiable, Sendable {
     public let id: PinID
     public let image: CGImage
     public let sourceDocumentID: DocumentID?
     public let privacyEpoch: UInt64
+    /// Names this pin's exports. Only a pin rendered from a document through the sanitizing
+    /// renderer has one; an image added directly cannot be copied or dragged out.
+    public let exportID: DocumentID?
     /// Pixels per point used to show the image at its captured size; 1 for imported images.
     public let displayScale: Double
     public var opacity: Double
@@ -44,15 +53,17 @@ public final class PinsModel {
 
     @ObservationIgnored private let renderer: any RenderService
     @ObservationIgnored private let settings: SettingsStore
+    @ObservationIgnored private let exports: ExportCoordinator
     /// Renders that were admitted and have not finished. Each holds one pin slot from admission
     /// until its render returns, so overlapping requests cannot allocate more images than fit.
     @ObservationIgnored private var pendingRenders = 0
     /// Advances on Close All Pins; a render admitted before that must not open a pin afterwards.
     @ObservationIgnored private var requestGeneration = 0
 
-    public init(renderer: any RenderService, settings: SettingsStore) {
+    public init(renderer: any RenderService, settings: SettingsStore, export: ExportCoordinator) {
         self.renderer = renderer
         self.settings = settings
+        self.exports = export
     }
 
     /// True while a new pin has a free slot, counting renders already admitted.
@@ -82,19 +93,21 @@ public final class PinsModel {
         guard generation == requestGeneration else { throw .staleDocument }
         guard let current = currentSession(), current.accepts(identity) else { throw .staleDocument }
         let scale = session.document.assets.count == 1 ? session.document.assets.values.first?.pointPixelScale : nil
-        return try insert(image, source: identity, displayScale: scale ?? 1)
+        return try insert(image, source: identity, displayScale: scale ?? 1, exportable: true)
     }
 
     /// Adds an already rendered, sanitized image.
     @discardableResult
     public func add(_ image: CGImage, source: RequestIdentity?, displayScale: Double) throws(PinError) -> PinID {
         guard canAddPin else { throw .limitReached }
-        return try insert(image, source: source, displayScale: displayScale)
+        return try insert(image, source: source, displayScale: displayScale, exportable: false)
     }
 
     /// Appends a pin into a free slot. A rendering request calls this while still holding its own
     /// reservation, so it checks the committed pins only.
-    private func insert(_ image: CGImage, source: RequestIdentity?, displayScale: Double) throws(PinError) -> PinID {
+    private func insert(
+        _ image: CGImage, source: RequestIdentity?, displayScale: Double, exportable: Bool
+    ) throws(PinError) -> PinID {
         guard pins.count < PinLimits.maxPins else { throw .limitReached }
         let (pixels, overflow) = image.width.multipliedReportingOverflow(by: image.height)
         guard !overflow, retainedPixelCount + pixels <= PinLimits.maxTotalPixels else {
@@ -102,6 +115,7 @@ public final class PinsModel {
         }
         let pin = Pin(
             id: PinID(), image: image, sourceDocumentID: source?.documentID, privacyEpoch: source?.privacyEpoch ?? 0,
+            exportID: exportable ? DocumentID() : nil,
             displayScale: displayScale.isFinite && displayScale > 0 ? displayScale : 1,
             opacity: settings.preferences.pinDefaultOpacity, zoom: 1)
         pins.append(pin)
@@ -111,17 +125,35 @@ public final class PinsModel {
     /// Drops every pin of `documentID` rendered before privacy epoch `epoch` (RED-03).
     public func invalidate(documentID: DocumentID, epoch: UInt64) {
         let before = pins.count
-        pins.removeAll { $0.sourceDocumentID == documentID && $0.privacyEpoch < epoch }
+        remove { $0.sourceDocumentID == documentID && $0.privacyEpoch < epoch }
         lastInvalidatedCount = before - pins.count
     }
 
     public func close(_ id: PinID) {
-        pins.removeAll { $0.id == id }
+        remove { $0.id == id }
     }
 
     public func closeAll() {
         requestGeneration += 1
-        pins.removeAll()
+        remove { _ in true }
+    }
+
+    /// Copies or drags out the pin's sanitized raster through the export pipeline (PIN-02). A pin
+    /// without an export identity, or one removed before the export commits, exports nothing.
+    public func export(_ action: PinExportAction, _ id: PinID) async -> ExportOutcome {
+        guard let pin = pin(for: id), let exportID = pin.exportID else { return .failed(.staleDocument) }
+        return await exports.export(
+            action, pinned: pin.image, exportID: exportID, privacyEpoch: pin.privacyEpoch,
+            isCurrent: { [weak self] in self?.pins.contains { $0.exportID == exportID } == true })
+    }
+
+    /// Removes pins and revokes any drag offer made from them, before a receiver can ask for it.
+    private func remove(where shouldRemove: (Pin) -> Bool) {
+        let removed = pins.filter(shouldRemove)
+        pins.removeAll(where: shouldRemove)
+        for exportID in removed.compactMap(\.exportID) {
+            exports.invalidatePendingDrag(documentID: exportID)
+        }
     }
 
     public func bringForward() {

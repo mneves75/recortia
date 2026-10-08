@@ -140,7 +140,7 @@ final class EditorHarness {
         export = ExportCoordinator(
             exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
             settings: settings)
-        pins = PinsModel(renderer: renderer, settings: settings)
+        pins = PinsModel(renderer: renderer, settings: settings, export: export)
         let environment = EditorEnvironment(
             renderer: renderer, export: export, folders: folders, textRecognition: recognizer, qrDecoder: qr,
             assets: assets, input: input, pins: pins, textClipboard: textClipboard, links: links, settings: settings)

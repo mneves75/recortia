@@ -124,6 +124,17 @@ final class LiveExporter: ExportService {
         }
     }
 
+    func makeSnapshot(
+        ofPinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64, options: ExportOptions, date: Date
+    ) async throws(ExportServiceError) -> ShareSnapshot {
+        do {
+            return try await pipeline.snapshot(
+                ofPinned: image, exportID: exportID, privacyEpoch: privacyEpoch, options: options, date: date)
+        } catch {
+            throw ExportServiceError(Self.failure(for: error))
+        }
+    }
+
     static func failure(for error: ExportError) -> ExportFailure {
         switch error {
         case .encodingFailed: .encodeFailed

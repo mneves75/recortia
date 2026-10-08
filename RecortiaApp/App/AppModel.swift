@@ -29,7 +29,7 @@ struct FeatureModels {
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
             accessibility: services.accessibility, screenPermission: services.screenPermission,
             assets: services.assets, clock: services.clock, settings: settings)
-        pins = PinsModel(renderer: services.renderer, settings: settings)
+        pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
     }
@@ -93,21 +93,26 @@ final class AppModel: AppActions {
             }
         }
         spacePolicy.start()
+        AppPresence.shared.start()
         // Every path that holds a shortcut starts the watch, including a recording in Settings.
         shortcutStatus.onHold = { [weak self] in self?.watchHeldShortcuts() }
         shortcutStatus.onAttention = { [weak self] in self?.watchHeldShortcuts(restart: true) }
     }
 
-    /// Called once from `applicationDidFinishLaunching`. Requests no permission.
-    func launch() {
+    /// Called once from `applicationDidFinishLaunching`. Requests no permission. Opening Recortia
+    /// shows onboarding or Settings, so it appears in ⌘Tab and the Dock; Open at login stays silent
+    /// once onboarding is complete.
+    func launch(kind: LaunchKind) {
         guard !didLaunch else { return }
         didLaunch = true
         if let features {
             wire(features)
         }
         registerShortcutHandlers()
-        if onboarding.shouldPresent {
-            showOnboarding()
+        switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind) {
+        case .onboarding: showOnboarding()
+        case .settings: showSettings()
+        case .none: break
         }
     }
 
@@ -163,7 +168,7 @@ final class AppModel: AppActions {
         case .closeAllPins: features?.pins.closeAll()
         case .settings: showSettings()
         case .about:
-            NSApp.activate()
+            AppPresence.shared.activate()
             NSApp.orderFrontStandardAboutPanel(nil)
         case .quit: NSApp.terminate(nil)
         }
@@ -178,6 +183,17 @@ final class AppModel: AppActions {
 
     func showSettings() {
         settingsWindow.show()
+    }
+
+    /// A Dock click or relaunch: restores a minimized window, else opens Settings so the app stays
+    /// reachable (FR-01).
+    func handleReopen(hasVisibleWindows: Bool) {
+        guard !hasVisibleWindows else { return }
+        if let window = AppPresence.shared.minimizedWindow {
+            window.deminiaturize(nil)
+        } else {
+            showSettings()
+        }
     }
 
     /// Imports a dropped or opened file; used by Open Image and by drop targets.
@@ -308,12 +324,14 @@ final class AppModel: AppActions {
     }
 
     private func chooseImageFile() {
-        NSApp.activate()
+        AppPresence.shared.activate()
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.png, .jpeg]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.message = String(localized: "Choose a PNG or JPEG image to open.")
+        // A finished open panel is ordered out, not closed: re-evaluate the Dock presence.
+        defer { AppPresence.shared.setNeedsRefresh() }
         guard panel.runModal() == .OK, let url = panel.url else { return }
         importImage(from: .file(url))
     }

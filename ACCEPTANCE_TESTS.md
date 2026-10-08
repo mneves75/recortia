@@ -94,6 +94,15 @@ The synthetic `canvas-focus` scenario covers these cases; live IME/VoiceOver che
 
 Create five pins, reach the budget limit, move between displays/Spaces, vary opacity, close the editor, and close each pin. No invisible window blocks user input. Closing pins releases their retained snapshots. A source-document privacy-epoch change updates or invalidates linked pins and prevents a stale raw view from being re-exported.
 
+### PIN-02 — Pin copy, drag-out, and switching
+
+Pin a capture, copy it, and drag it out: the clipboard and the promised file hold the same
+sanitized, freshly encoded image as the editor's 1× export, with no other pasteboard types.
+Redact the source, close the pin, or close all pins while a drag offer waits: the receiver gets
+no file and the outcome is stale or canceled, never delivered. A pin added from a raw image is
+refused. Each open pin is a normal-level window that AltTab lists; RED-01's paired-secret
+comparison holds for the pin's clipboard and drag-out bytes.
+
 ## Redaction and export — release blocking
 
 ### RED-01 — Source-independence metamorphic test
@@ -176,6 +185,29 @@ On a fresh install with update checks off, exercise every v1 core feature while 
 ### PERF-01 — Performance and lifecycle evidence
 
 Run SPEC.md's stated performance scenarios with the specified sample counts and actual physical hardware. Attach timings/footprint summaries and Instruments traces without sensitive pixels. Separate cold/warm results and human delay. After 200 capture-close cycles, inspect retained object counts and steady-state footprint. If a target fails, record the failure instead of silently redefining the endpoint.
+
+### PERF-02 — Window-open latency
+
+`scripts/e2e.sh --only window-latency` times each window from construction to its first drawn
+frame (ordered transparent): the editor for a decoded document, Settings on first open and when
+reopened, onboarding, and a pin, five samples each, synthetic images only. Every median stays
+under 50 ms on the build host, recorded in `report.json` and `work/window-latency.json`. The
+build host is a seed OS and the runner is a Debug build, so this is a regression budget, not
+PERF-01's stable-hardware qualification. A missed budget is recorded, never redefined.
+
+### UX-02 — Window presence
+
+Opening Recortia shows onboarding (first run) or Settings, so it is in ⌘Tab and the Dock; an
+open-application event marked `keyAELaunchedAsLogInItem` shows no window once onboarding is
+complete (unfinished onboarding still appears). With no window,
+Recortia has no Dock icon. Physical checks include opening the installed app (Settings appears)
+and a real login with Open at login enabled (no window; the `launch` log says `loginItem`). Opening an editor, Settings, onboarding, or a pin makes it a
+regular app before it activates; minimizing keeps it regular; capture suspension and ⌘H keep it
+regular; closing the last window returns it to accessory on the next turn, without an
+intermediate demotion when one window replaces another. A Dock click restores a minimized
+window. The visible app menu offers Settings (⌘,) and Quit (⌘Q through the unexported-edits
+confirmation). Physical check: AltTab lists editor, Settings and pins, and ⌘Tab lists Recortia,
+over a desktop and over another app's fullscreen Space without switching Spaces.
 
 ### REL-01 — Independent build and CI boundary
 

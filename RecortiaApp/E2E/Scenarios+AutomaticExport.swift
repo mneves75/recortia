@@ -25,6 +25,13 @@
             return try await exporter.makeSnapshot(of: session, options: options, date: date)
         }
 
+        func makeSnapshot(
+            ofPinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64, options: ExportOptions, date: Date
+        ) async throws(ExportServiceError) -> ShareSnapshot {
+            try await exporter.makeSnapshot(
+                ofPinned: image, exportID: exportID, privacyEpoch: privacyEpoch, options: options, date: date)
+        }
+
         func release() {
             waiter?.resume()
             waiter = nil

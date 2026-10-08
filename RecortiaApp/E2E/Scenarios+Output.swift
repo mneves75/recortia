@@ -223,6 +223,28 @@
             pins.setOpacity(0.6, for: pin.id)
             context.check("opacity changes to 60%", pins.pin(for: pin.id)?.opacity == 0.6)
 
+            // PIN-02: copy and drag-out export the pinned sanitized raster through the pipeline, the
+            // same bytes as the editor's own 1x copy; opacity and zoom are display only.
+            context.check("a pin rendered from a document can be exported", pin.exportID != nil)
+            let pinCopy = await pins.export(.copy, pin.id)
+            try context.require("Copy from a pin succeeds", pinCopy == .copied, "\(pinCopy)")
+            let board = harness.clipboard.pasteboard
+            context.check(
+                "the pin's copy stores only PNG", board.pasteboardItems?.first?.types == [.png],
+                board.pasteboardItems?.first?.types.map(\.rawValue).joined(separator: ", ") ?? "none")
+            let pinBytes = try context.unwrap("the pin's PNG on the pasteboard", board.data(forType: .png))
+            let editorCopy = await E2EActions.export(controller, .copy)
+            try context.require("the editor's copy succeeds", editorCopy == .copied, "\(editorCopy)")
+            let editorBytes = try context.unwrap("the editor's PNG on the pasteboard", board.data(forType: .png))
+            context.check("the pin copies exactly the editor's 1x export", pinBytes == editorBytes)
+            let filesBefore = harness.drag.deliveredFiles.count
+            let pinDrag = await pins.export(.drag, pin.id)
+            context.check("Drag Out from a pin delivers a file", pinDrag == .dragged, "\(pinDrag)")
+            let dropped = try context.unwrap(
+                "the receiver got the pin's file",
+                harness.drag.deliveredFiles.count == filesBefore + 1 ? harness.drag.deliveredFiles.last : nil)
+            context.check("the dropped file holds the same bytes", (try? Data(contentsOf: dropped)) == pinBytes)
+
             // The pin's real SwiftUI content from the live model. The real `PinPanel` around it is
             // exercised in a child process (below), because it can end the process.
             let host = E2ESnapshot.host(PinContentView(pinID: pin.id, model: pins, fitScale: 1))

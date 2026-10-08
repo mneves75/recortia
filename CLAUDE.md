@@ -54,6 +54,12 @@ beta compilation does not replace the stable-toolchain release gates.
 - Capture completion shows an ordinary fullscreen-auxiliary editor even when cooperative
   activation is delayed or declined. Layout precedes canvas focus. Keep `editor-presentation`
   in bilingual native E2E; its synthetic window state does not qualify physical Spaces.
+- Window presence (ADR-007): `RecortiaApp/App/AppPresence.swift` makes the app regular while a
+  switchable window (normal/modal level, shown or minimized; pins included) exists and accessory
+  otherwise. Present ordinary windows through `AppPresence.activate()`; pins are normal-level
+  windows so AltTab lists them. Opening the app shows onboarding or Settings (`LaunchKind`,
+  `LaunchWindow`); "Open at login" stays silent once onboarding is complete. Keep `window-presence` and
+  `launch-presentation` in bilingual E2E.
 - All desktops: `RecortiaApp/App/SpacePolicy.swift` owns window Space behavior (windows follow
   the active Space, panels join all Spaces; `SpacePolicyMonitor` is a safety net for framework
   windows like About) and `ScreenChoice.swift` picks screens. Settings is an AppKit window

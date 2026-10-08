@@ -8,6 +8,12 @@
             E2EScenario(
                 id: "space-policy", title: "Every window follows the active Space", run: SpaceScenarios.spacePolicy),
             E2EScenario(
+                id: "window-presence", title: "Recortia joins ⌘Tab and the Dock while a window is open",
+                run: PresenceScenarios.windowPresence),
+            E2EScenario(
+                id: "launch-presentation", title: "Opening Recortia shows a window; Open at login does not",
+                run: PresenceScenarios.launchPresentation),
+            E2EScenario(
                 id: "other-spaces", title: "Capture leaves windows on other Spaces alone",
                 run: DesktopScenarios.otherSpaces),
             E2EScenario(
@@ -65,6 +71,9 @@
                 id: "export-feedback-routing", title: "Automatic-export failures are never hidden",
                 run: AutomaticExportScenarios.feedbackRouting),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
+            E2EScenario(
+                id: "window-latency", title: "Each window opens in under 50 ms", run: LatencyScenarios.windowLatency,
+                runsOnlyWhenNamed: true),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
             E2EScenario(id: "import", title: "Import and import errors", run: OutputScenarios.importFiles),
             E2EScenario(

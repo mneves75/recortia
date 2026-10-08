@@ -44,7 +44,7 @@
             return EditorEnvironment(
                 renderer: renderer, export: export, folders: PreviewEditorSink(),
                 textRecognition: PreviewTextRecognition(), qrDecoder: PreviewEditorQR(), assets: PreviewEditorAssets(),
-                input: PreviewEditorAssets(), pins: PinsModel(renderer: renderer, settings: settings),
+                input: PreviewEditorAssets(), pins: PinsModel(renderer: renderer, settings: settings, export: export),
                 textClipboard: PreviewEditorSink(), links: PreviewEditorSink(), settings: settings)
         }
 
@@ -90,6 +90,12 @@
         func makeSnapshot(of session: DocumentSession, options: ExportOptions, date: Date)
             async throws(ExportServiceError) -> ShareSnapshot
         {
+            throw ExportServiceError(.renderFailed)
+        }
+
+        func makeSnapshot(
+            ofPinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64, options: ExportOptions, date: Date
+        ) async throws(ExportServiceError) -> ShareSnapshot {
             throw ExportServiceError(.renderFailed)
         }
     }

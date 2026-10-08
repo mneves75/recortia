@@ -3,8 +3,9 @@ import Domain
 import Features
 import SwiftUI
 
-/// Floating reference pins (FR-09): interactive panels (never click-through), movable by
-/// dragging, with opacity, zoom, and an explicit close. Escape or ⌘W closes the focused pin.
+/// Reference pins (FR-09, ADR-007): ordinary normal-level panels (never click-through) on every
+/// Space, movable by dragging, with opacity, zoom, copy, drag-out, and an explicit close.
+/// Escape or ⌘W closes the focused pin.
 final class PinsUIController {
     private let model: PinsModel
     private var panels: [PinID: PinPanel] = [:]
@@ -44,8 +45,9 @@ final class PinPanel: NSPanel {
         super.init(
             contentRect: .zero, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         isReleasedWhenClosed = false
-        isFloatingPanel = true
-        level = .floating
+        // An ordinary window, not a floating one, so window switchers list it (ADR-007).
+        isFloatingPanel = false
+        level = .normal
         hidesOnDeactivate = false
         isMovableByWindowBackground = true
         hasShadow = true
@@ -73,7 +75,7 @@ final class PinPanel: NSPanel {
             let y = min(max(pointer.y - size.height / 2, visible.minY), visible.maxY - size.height)
             setFrameOrigin(CGPoint(x: x, y: y))
         }
-        NSApp.activate()
+        AppPresence.shared.activate()
         makeKeyAndOrderFront(nil)
     }
 
@@ -93,23 +95,41 @@ struct PinContentView: View {
     let pinID: PinID
     let model: PinsModel
     let fitScale: Double
+    /// The latest copy or drag-out outcome, in the editor's words (PIN-02).
+    @State private var status: String?
 
     var body: some View {
         if let pin = model.pin(for: pinID) {
             PinView(
-                pin: pin, fitScale: fitScale,
+                pin: pin, fitScale: fitScale, status: status,
                 onOpacity: { model.setOpacity($0, for: pinID) },
                 onZoom: { model.setZoom($0, for: pinID) },
+                onExport: { action in Task { await export(action) } },
                 onClose: { model.close(pinID) })
         }
+    }
+
+    private func export(_ action: PinExportAction) async {
+        status = nil
+        let outcome = await model.export(action, pinID)
+        guard outcome != .canceled, model.pin(for: pinID) != nil else { return }
+        let message = EditorStrings.exportMessage(outcome)
+        status = message
+        AccessibilityNotification.Announcement(message).post()
+        // Failures stay until the next action; a success note clears itself.
+        guard outcome.didWrite else { return }
+        try? await Task.sleep(for: .seconds(4))
+        if status == message { status = nil }
     }
 }
 
 struct PinView: View {
     let pin: Pin
     let fitScale: Double
+    var status: String?
     let onOpacity: @MainActor (Double) -> Void
     let onZoom: (Double) -> Void
+    let onExport: (PinExportAction) -> Void
     let onClose: () -> Void
 
     private var imageSize: CGSize {
@@ -126,6 +146,17 @@ struct PinView: View {
                 .opacity(pin.opacity)
                 .accessibilityLabel(Text("Pinned screenshot"))
             controls
+            if let status {
+                // Wraps within the pin instead of widening it.
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: max(imageSize.width, 240), alignment: .leading)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 6)
+                    .background(Color(nsColor: .windowBackgroundColor))
+            }
         }
     }
 
@@ -143,6 +174,24 @@ struct PinView: View {
                 .frame(width: 0, height: 0)
                 .opacity(0)
                 .accessibilityHidden(true)
+            if pin.exportID != nil {
+                Divider().frame(height: 16)
+                Button {
+                    onExport(.copy)
+                } label: {
+                    Label(String(localized: "Copy", table: "Editor"), systemImage: "doc.on.doc")
+                }
+                .labelStyle(.iconOnly)
+                .help(Text(String(localized: "Copy", table: "Editor")))
+                .keyboardShortcut("c")
+                Button {
+                    onExport(.drag)
+                } label: {
+                    Label(String(localized: "Drag Out", table: "Editor"), systemImage: "hand.draw")
+                }
+                .labelStyle(.iconOnly)
+                .help(Text(String(localized: "Drag Out", table: "Editor")))
+            }
             Divider().frame(height: 16)
             Button {
                 onZoom(pin.zoom / 1.25)
@@ -186,17 +235,11 @@ struct PinView: View {
 #if DEBUG
     #Preview("Pin") {
         if let image = PreviewSupport.image() {
-            let model = PinsModel(renderer: PreviewRenderer(), settings: PreviewSupport.settings())
+            let model = EditorPreviewFactory.environment().pins
             let id = try? model.add(image, source: nil, displayScale: 2)
             if let id {
                 PinContentView(pinID: id, model: model, fitScale: 1)
             }
         }
-    }
-
-    private final class PreviewRenderer: RenderService {
-        struct Unavailable: Error {}
-        func render(_ document: Domain.Document, scale: Double) async throws -> CGImage { throw Unavailable() }
-        func renderBase(_ document: Domain.Document, scale: Double) async throws -> CGImage { throw Unavailable() }
     }
 #endif

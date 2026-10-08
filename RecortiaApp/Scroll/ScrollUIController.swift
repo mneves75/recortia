@@ -83,7 +83,7 @@ final class ScrollUIController {
             }
         window.center(on: ScreenChoice.screen(displayID: displayID))
         review = window
-        NSApp.activate()
+        AppPresence.shared.activate()
         window.makeKeyAndOrderFront(nil)
     }
 
@@ -98,6 +98,7 @@ final class ScrollUIController {
 
     private func closeReview() {
         review?.orderOut(nil)
+        AppPresence.shared.setNeedsRefresh()
         review = nil
     }
 }

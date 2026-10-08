@@ -5,45 +5,28 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
-    "version": "0.10.2",
-    "build": 16,
-    "date": "2026-10-03",
-    "scope": "FR-01/FR-14: Settings becomes a Recortia-owned AppKit window (native toolbar tabs) carrying the follow-the-active-Space policy from construction; the SwiftUI Settings scene and its openSettings closure are removed.",
-    "status": "released",
-    "verification": "scripts/check.sh passed at 08333a0 (main 5f5d57e has an identical tree); E2E 40/40 in EN and PT-BR; independent Codex review of the delta scoped-clean. Real-app A/B over a fullscreen host Space with valid baselines: 0.10.1 switched Spaces 4/4 (fresh and existing Settings), 0.10.2-beta1 0/4; probe controls in the same session 0/5.",
+    "version": "0.11.0",
+    "build": 18,
+    "date": "2026-10-07",
+    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
+    "status": "in_review",
+    "verification": "Build 18 pending re-verification after the launch fix; build 17 evidence: scripts/check.sh passed at 0966d36, bilingual E2E 41/41.",
     "evidence_paths": [
-      ".scratch/check-08333a0.log",
-      ".scratch/e2e/20261003-204708/en/report.json",
-      ".scratch/e2e/20261003-204708/pt-BR/report.json",
-      ".scratch/real-app-0.10.2/ab.txt"
+      ".scratch/check-3.log"
     ],
     "limitations": [
-      "The toolbar tab strip does not render in offscreen snapshots; it is checked on the installed beta.",
-      "The About panel is not exercised by the real-app A/B (no menu automation); it relies on the adoption safety net and the probe's fresh-window result."
+      "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
+      "Physical Space and AltTab checks of the build have not run.",
+      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`)."
     ],
-    "beta_release": {
-      "tag": "v0.10.2-beta1",
-      "commit": "5f5d57e",
-      "build": 15,
-      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2-beta1",
-      "dmg_sha256": "560cbb04a61d482f248853553b60bb6a10314e63173444ae184b8ba8cf3a3fd7",
-      "notarization": [
-        "app 8fd72e34-b631-48af-b599-21b6b5ef9755 Accepted",
-        "dmg bb1eaea6-a4af-484f-8b61-b0a26d523f4c Accepted"
-      ]
-    },
-    "production_release": {
-      "tag": "v0.10.2",
-      "commit": "c0a169844292751a8292bc4b0f3efdc6c66b63b2",
-      "build": 16,
-      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2",
-      "dmg_sha256": "7a1371d9433ee3faafbaa7ce55c44e5d0b49e14c206fbaa0ece04d89b17bb441",
-      "notarization": [
-        "app 0a1a6a16-f36d-40f0-9df2-630fc972f41c Accepted",
-        "dmg 1118109a-a8c9-40d6-950b-cc8c598b16cf Accepted"
-      ],
-      "homebrew": "mneves75/homebrew-tap d0f179b recortia: 0.10.2",
-      "installed": "2026-10-04 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.2 (16), strict signature, stapled, Notarized Developer ID. Installed-app check over a fullscreen host Space: 0/2 Space switches (fresh and existing Settings), valid baselines; reopening shows Settings without opening the menu first (R3-F9 disproved)."
+    "local_installation": {
+      "date": "2026-10-07",
+      "commit": "5b4c1ef",
+      "build_command": "scripts/release.sh --dry-run (fresh worktree, Release archive, developer-id export; no gate, no notarization)",
+      "checks": "release-script checks passed (codesign --verify --deep --strict, version 0.11.0 (17), distribution entitlements with access group Q96FUTC5G8.dev.mvneves.Recortia, embedded provisioning profile, Hardened Runtime, no test-only markers); installed bundle identical to the export (diff -r); spctl accepted (Developer ID); launched as UIElement with no window.",
+      "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
+      "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
+      "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
     }
   },
   "previous_release_0_10_1": {
@@ -1018,6 +1001,99 @@
       ],
       "authorization": "requires_approved_milestone",
       "status_note": "Release-contract and signed local-install checks pass for 0.9.1 build 9; independent verification confirms the installed files and preserved build 7. PR #5 and post-merge CI passed. Notarized/public distribution, clean-user launch, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [
+        "window-presence E2E 22/22 (EN and PT-BR, .scratch/e2e/20261007-165531)",
+        "scripts/check.sh passed at 6ae23e0"
+      ],
+      "id": "FP-026",
+      "title": "Window presence: pins and Recortia in window switchers",
+      "status": "awaiting_manual_validation",
+      "depends_on": [],
+      "requirement_ids": [
+        "FR-01",
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "UX-02",
+        "PIN-01"
+      ],
+      "scope": "Pins become normal-level windows so AltTab lists them; Recortia is regular while a switchable window exists and accessory otherwise (ADR-007).",
+      "deliverables": [
+        "AppPresence",
+        "normal-level pins",
+        "window-presence E2E scenario",
+        "space probe dynamic mode"
+      ],
+      "completion_contract": "window-presence passes in EN and PT-BR; installed app listed by AltTab (editor, Settings, pins) and ⌘Tab, with no Space switch over a fullscreen Space.",
+      "status_note": "Physical AltTab, ⌘Tab and fullscreen-Space checks have not run (owner stopped the probe run on 2026-10-07)."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [
+        "PinsExportTests, PinnedExportTests, PinsExportReviewTests, PinnedExportReviewTests",
+        "pins E2E: pin copy equals the editor 1x copy; drag-out file equal bytes (EN and PT-BR)"
+      ],
+      "id": "FP-027",
+      "title": "Pin copy and drag-out through the export pipeline",
+      "status": "completed",
+      "depends_on": [
+        "FP-026"
+      ],
+      "requirement_ids": [
+        "FR-07",
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "PIN-02",
+        "RED-01",
+        "RED-02",
+        "EXP-02"
+      ],
+      "scope": "Copy and Drag Out on pins via ExportCoordinator and ExportPipeline; only document-rendered pins export; close/invalidate revokes pending offers.",
+      "deliverables": [
+        "PinsModel export",
+        "ExportPipeline pin snapshot",
+        "pin controls",
+        "RED and coordinator tests",
+        "E2E pin export"
+      ],
+      "completion_contract": "Package tests and pin E2E prove sanitized bytes equal the editor's 1x export, refusal of raw pins, and revocation on close/invalidate."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [
+        "scripts/e2e.sh --only window-latency: editor median 229.4 ms, Settings first open 105.4 ms (fail); Settings reopened 6.8, onboarding 35.8, pin 25.8 ms (pass)",
+        "Security review of the 0.11.0 diff: no open finding after the reviewer fixes",
+        "Independent verifier run (gpt-6-astra, fresh worktree, bilingual): editor 478.5/514.4 ms, Settings first open 238.4/199.3 ms, onboarding 57.1/66.4 ms; results vary with machine load.",
+        "Verifier run at 728688d (gpt-6-astra): editor 506.9/640.4 ms, first-open Settings 191.3/248.2 ms; English onboarding 57.0 ms and pin 52.5 ms over budget, PT-BR 41.4/31.0 ms."
+      ],
+      "id": "FP-028",
+      "title": "Window-open latency budget and security audit",
+      "status": "blocked",
+      "depends_on": [
+        "FP-026",
+        "FP-027"
+      ],
+      "requirement_ids": [
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "PERF-02"
+      ],
+      "scope": "Time each window open in E2E (editor from capture/import, Settings, onboarding, pin); keep medians under 50 ms; audit the changed surface for security findings.",
+      "deliverables": [
+        "latency metrics in report.json",
+        "optimizations",
+        "audit report"
+      ],
+      "completion_contract": "report.json medians under 50 ms for each window in EN and PT-BR; audit has no open finding.",
+      "status_note": "Owner chose to record and defer the editor and first-open Settings latency; onboarding and pins are borderline (they exceed 50 ms in some runs) and are not covered by that decision. A fix needs pre-built windows (a separate approved plan)."
     }
   ],
   "deferred_scope": [
@@ -1039,5 +1115,47 @@
       "title": "Local automation and optional on-device writing assistance",
       "status": "requires_separate_design_and_approval"
     }
-  ]
+  ],
+  "previous_release_0_10_2": {
+    "version": "0.10.2",
+    "build": 16,
+    "date": "2026-10-03",
+    "scope": "FR-01/FR-14: Settings becomes a Recortia-owned AppKit window (native toolbar tabs) carrying the follow-the-active-Space policy from construction; the SwiftUI Settings scene and its openSettings closure are removed.",
+    "status": "released",
+    "verification": "scripts/check.sh passed at 08333a0 (main 5f5d57e has an identical tree); E2E 40/40 in EN and PT-BR; independent Codex review of the delta scoped-clean. Real-app A/B over a fullscreen host Space with valid baselines: 0.10.1 switched Spaces 4/4 (fresh and existing Settings), 0.10.2-beta1 0/4; probe controls in the same session 0/5.",
+    "evidence_paths": [
+      ".scratch/check-08333a0.log",
+      ".scratch/e2e/20261003-204708/en/report.json",
+      ".scratch/e2e/20261003-204708/pt-BR/report.json",
+      ".scratch/real-app-0.10.2/ab.txt"
+    ],
+    "limitations": [
+      "The toolbar tab strip does not render in offscreen snapshots; it is checked on the installed beta.",
+      "The About panel is not exercised by the real-app A/B (no menu automation); it relies on the adoption safety net and the probe's fresh-window result."
+    ],
+    "beta_release": {
+      "tag": "v0.10.2-beta1",
+      "commit": "5f5d57e",
+      "build": 15,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2-beta1",
+      "dmg_sha256": "560cbb04a61d482f248853553b60bb6a10314e63173444ae184b8ba8cf3a3fd7",
+      "notarization": [
+        "app 8fd72e34-b631-48af-b599-21b6b5ef9755 Accepted",
+        "dmg bb1eaea6-a4af-484f-8b61-b0a26d523f4c Accepted"
+      ]
+    },
+    "production_release": {
+      "tag": "v0.10.2",
+      "commit": "c0a169844292751a8292bc4b0f3efdc6c66b63b2",
+      "build": 16,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2",
+      "dmg_sha256": "7a1371d9433ee3faafbaa7ce55c44e5d0b49e14c206fbaa0ece04d89b17bb441",
+      "notarization": [
+        "app 0a1a6a16-f36d-40f0-9df2-630fc972f41c Accepted",
+        "dmg 1118109a-a8c9-40d6-950b-cc8c598b16cf Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap d0f179b recortia: 0.10.2",
+      "installed": "2026-10-04 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.2 (16), strict signature, stapled, Notarized Developer ID. Installed-app check over a fullscreen host Space: 0/2 Space switches (fresh and existing Settings), valid baselines; reopening shows Settings without opening the menu first (R3-F9 disproved)."
+    }
+  }
 }

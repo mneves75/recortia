@@ -100,6 +100,10 @@ public protocol ExportService: AnyObject {
     /// Sanitizes, renders, and encodes one immutable snapshot of `session` (ExportPipeline).
     func makeSnapshot(of session: DocumentSession, options: ExportOptions, date: Date) async throws(ExportServiceError)
         -> ShareSnapshot
+    /// Encodes a pin's sanitized raster fresh under the pin's export identity (ExportPipeline).
+    func makeSnapshot(
+        ofPinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64, options: ExportOptions, date: Date
+    ) async throws(ExportServiceError) -> ShareSnapshot
 }
 
 @MainActor
