@@ -5,7 +5,8 @@ not been tagged, installed or distributed. The replayable first-run feature tour
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). Native palette control
-acceptance remains blocked by the current synthetic SwiftUI accessibility lookup failure.
+checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
+final independent UI acceptance remains pending.
 This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
 toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.

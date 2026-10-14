@@ -1,18 +1,64 @@
 #if DEBUG
     import AppKit
+    import ApplicationServices
 
     @MainActor
     enum E2EAccessibilityControl {
+        enum TextAttribute: String {
+            case value = "accessibilityValue"
+            case help = "accessibilityHelp"
+        }
+
+        static func text(
+            _ attribute: TextAttribute, for identifier: String, in root: NSView,
+            _ context: ScenarioContext
+        ) throws -> String {
+            let control = try control(identifier, in: root, context)
+            try context.require(
+                "\(identifier) exposes \(attribute.rawValue)",
+                control.responds(to: NSSelectorFromString(attribute.rawValue)))
+            return try context.unwrap(
+                "\(identifier) \(attribute.rawValue)",
+                control.value(forKey: attribute.rawValue) as? String)
+        }
+
         static func press(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
-            var visited: Set<ObjectIdentifier> = []
-            var remaining = 4096
-            let control = try context.unwrap(
-                "\(identifier) is accessible",
-                find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0))
+            let control = try control(identifier, in: root, context)
             if let modern = control as? any NSAccessibilityProtocol {
                 try context.require("\(identifier) responds to Press", modern.accessibilityPerformPress())
                 return
             }
+            try pressFrame(control, in: root, context)
+        }
+
+        static func isEnabled(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws -> Bool {
+            let control = try control(identifier, in: root, context)
+            try context.require(
+                "\(identifier) exposes enabled state",
+                control.responds(to: NSSelectorFromString("isAccessibilityEnabled"))
+                    || control.responds(to: NSSelectorFromString("accessibilityEnabled")))
+            return try context.unwrap(
+                "\(identifier) enabled state", control.value(forKey: "accessibilityEnabled") as? Bool)
+        }
+
+        private static func control(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws
+            -> NSObject
+        {
+            // SwiftUI creates its AX nodes lazily. Query only this synthetic runner's application;
+            // this does not prompt, change permissions, or inspect another process's UI.
+            let application = AXUIElementCreateApplication(ProcessInfo.processInfo.processIdentifier)
+            var windows: CFTypeRef?
+            let result = AXUIElementCopyAttributeValue(application, kAXWindowsAttribute as CFString, &windows)
+            try context.require(
+                "synthetic runner AX query succeeds", result == .success, "AX status \(result.rawValue)")
+            var visited: Set<ObjectIdentifier> = []
+            var remaining = 4096
+            return try context.unwrap(
+                "\(identifier) is accessible",
+                find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0))
+        }
+
+        private static func pressFrame(_ control: NSObject, in root: NSView, _ context: ScenarioContext) throws {
             let window = try context.unwrap("control has a window", root.window)
             try context.require(
                 "control exposes its frame", control.responds(to: NSSelectorFromString("accessibilityFrame")))

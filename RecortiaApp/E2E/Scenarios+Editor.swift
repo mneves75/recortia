@@ -15,10 +15,12 @@
             let controller = try await E2EActions.captureRegion(
                 harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)
             let model = controller.model
+            controller.window?.orderFront(nil)
             model.selectTool(.rectangle)
             let root = try context.unwrap("editor content", controller.contentRoot)
             let document = model.document
             let preferences = harness.settings.preferences
+            defer { harness.settings.update { $0.annotationPalette = preferences.annotationPalette } }
             let consentID = harness.settings.githubUploadConsentID
             let snapshots = harness.exportGate.snapshotCount
             let clipboardChanges = harness.clipboard.pasteboard.changeCount
@@ -34,6 +36,41 @@
             }
             context.check("saved colors keep insertion order", model.savedAnnotationColors == [.red, .black, .white])
             context.check("duplicate color cannot be saved", !model.canSaveStrokeColor)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "the native Save button is disabled for a duplicate",
+                try !E2EAccessibilityControl.isEnabled("palette.save", in: root, context))
+            context.check(
+                "disabled Save exposes its palette limit and duplicate explanation",
+                try E2EAccessibilityControl.text(.help, for: "palette.save", in: root, context)
+                    == String(
+                        localized: "Save up to 12 distinct annotation colors. Duplicate colors are already saved.",
+                        table: "Editor"))
+            for index in 1...9 {
+                let color = RGBA(r: UInt8(index * 20), g: 80, b: 120)
+                model.setStrokeColor(color)
+                await E2ESnapshot.settle(root)
+                try E2EAccessibilityControl.press("palette.save", in: root, context)
+                try context.require(
+                    "native Save fills palette slot \(index + 3)",
+                    await E2EWait.until { model.savedAnnotationColors.contains(color) })
+            }
+            model.setStrokeColor(.yellow)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "the native Save button is disabled for a full palette",
+                try !E2EAccessibilityControl.isEnabled("palette.save", in: root, context))
+            context.check(
+                "the native Remove button is disabled for an unsaved color",
+                try !E2EAccessibilityControl.isEnabled("palette.remove", in: root, context))
+            context.check(
+                "disabled Remove explains preservation of existing annotations",
+                try E2EAccessibilityControl.text(.help, for: "palette.remove", in: root, context)
+                    == String(
+                        localized:
+                            "Remove the current annotation color from saved colors. Existing annotations keep their color.",
+                        table: "Editor"))
+            model.setStrokeColor(.white)
             context.check("saving leaves the document and undo unchanged", model.document == document && !model.canUndo)
             context.check(
                 "saving preserves upload consent identity", harness.settings.githubUploadConsentID == consentID)
@@ -48,21 +85,30 @@
             try E2EAccessibilityControl.press("palette.apply.E53935", in: root, context)
             let applied = await E2EWait.until { model.document.annotations.first?.style.stroke == .red }
             try context.require("the native saved swatch applies its color", applied)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "the saved swatch exposes selected state without relying on color",
+                try E2EAccessibilityControl.text(.value, for: "palette.apply.E53935", in: root, context)
+                    == String(localized: "Selected", table: "Editor"))
             model.undo()
             context.check("applying a saved color is undoable", model.document == beforeApply)
             model.redo()
             context.check("redo reapplies the saved color", model.document.annotations.first?.style.stroke == .red)
             let beforeRemoval = model.document
+            let remainingColors = model.savedAnnotationColors.filter { $0 != .red }
             await E2ESnapshot.settle(root)
             try E2EAccessibilityControl.press("palette.remove", in: root, context)
             try context.require(
                 "the native Remove Current Color button removes the saved color",
-                await E2EWait.until { model.savedAnnotationColors == [.black, .white] })
+                await E2EWait.until { model.savedAnnotationColors == remainingColors })
             context.check("removing a saved color leaves annotations unchanged", model.document == beforeRemoval)
             await E2EActions.snapshotEditor(controller, context, shot: "palette")
             if let window = controller.window {
                 window.setContentSize(NSSize(width: 980, height: 560))
                 window.appearance = NSAppearance(named: .darkAqua)
+                await E2ESnapshot.settle(root)
+                await E2EActions.scrollInspector(controller, to: 0.15)
+                model.zoomToFit()
                 await E2ESnapshot.settle(root)
                 context.check("palette fits the minimum editor width", abs(root.bounds.width - 980) < 1)
                 context.snapshot(root, shot: "palette-compact-dark")

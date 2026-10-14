@@ -30,6 +30,15 @@ the workflow, use no new dependency, and measure rather than promise competitor 
 
 ## Sequence / vertical slices
 
+Continuation status: area sampling, straight lines and explicit saved colors have source and
+regression evidence. Saved-color native controls now pass both languages after the synthetic
+runner's self-scoped public AX query initializes lazy SwiftUI nodes and the offscreen editor
+is ordered for interaction. Do not substitute offscreen cache rendering for real native actions.
+Next gates are the corrected full E2E suite, independent native acceptance and exact-head CI;
+then choose the next safe matrix gap (text style presets) before any release action. Curved
+arrows and horizontal scrolling need separate geometry/matching regression slices. Recording,
+audio/history/cloud and unknown proprietary internals remain protected or unverifiable.
+
 1. Inventory: actual repo/toolchain/build-artifact state and installed reference versions;
    public docs, implementation evidence, reference gaps and protected boundaries.
 2. ONB-01 / FR-01: docs first, failing ordered-navigation regression, minimal state-machine
