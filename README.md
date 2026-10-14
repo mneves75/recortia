@@ -18,8 +18,9 @@ language, 190 screenshots, with four host-activation checks explicitly skipped. 
 text now paints every line and restores composed characters to the current zoom font size;
 mixed-selection background controls show selected fills and retain Reset/undo eligibility.
 The subsequent expanded full run on 2df6387 failed capture-focus keyboard ownership in English
-(45/46; Portuguese46/46), before any text scenario ran. Its cause remains unproven; narrow
-reproduction is in progress. Passing isolated reruns do not erase that failure or qualify a release.
+(45/46; Portuguese46/46), before any text scenario ran. Isolated, complete-prefix, 50-cycle
+and one full-English diagnostic replay passed without reproducing it. The cause remains
+unattributed and controlled focus qualification is pending; these passes do not erase the failure.
 This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
 toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.
@@ -175,6 +176,15 @@ scripts/release.sh             # maintainer only: Developer ID archive, checks, 
 ```
 
 Run one test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
+
+The optional `capture-focus-repeat` scenario runs 50 synthetic offscreen overlay cycles and is
+excluded from the default suite. Capture-focus reports retain bounded own-window key-event
+timelines and record recovery only after FAIL; they do not relax the keyboard-ownership check
+or qualify physical focus/Space behavior. With the recorded local development toolchain:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/e2e.sh --lang all --only capture-focus,capture-focus-repeat --unsigned
+```
 
 The recorded local Xcode 27.1 RC (27A9275) is available for development checks only:
 

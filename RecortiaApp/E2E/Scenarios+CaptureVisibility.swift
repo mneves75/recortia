@@ -17,6 +17,17 @@
         private final class ActivationProbe {
             var appActivationCount = 0
             var foregroundPIDs: [pid_t] = []
+            var keyEvents: [String] = []
+            var keyEventsTruncated = false
+            var observedWindows = 0
+
+            func recordKeyEvent(_ event: String) {
+                guard keyEvents.count < 64 else {
+                    keyEventsTruncated = true
+                    return
+                }
+                keyEvents.append(event)
+            }
         }
 
         static func editorPresentation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
@@ -160,6 +171,9 @@
         static func shortcutFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let display = try context.unwrap(
                 "a connected display is available", DesktopGeometry.displays().first)
+            let probe = ActivationProbe()
+            var keyObservers: [NSObjectProtocol] = []
+            defer { keyObservers.forEach(NotificationCenter.default.removeObserver) }
             var created: OverlayWindow?
             let overlay = RegionOverlayController { display, screen in
                 let window = OverlayWindow(display: display, screen: screen)
@@ -167,6 +181,17 @@
                 window.ignoresMouseEvents = true
                 window.setContentSize(SyntheticDesktop.size)
                 E2ESnapshot.park(window)
+                probe.observedWindows += 1
+                let ordinal = probe.observedWindows
+                for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification] {
+                    keyObservers.append(
+                        NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { _ in
+                            MainActor.assumeIsolated {
+                                probe.recordKeyEvent(
+                                    "\(ProcessInfo.processInfo.systemUptime): window\(ordinal) \(name.rawValue)")
+                            }
+                        })
+                }
                 created = window
                 return window
             }
@@ -183,12 +208,12 @@
                 "another foreground application exists", NSWorkspace.shared.frontmostApplication?.processIdentifier)
             try context.require(
                 "the shortcut starts outside Recortia", foreground != ProcessInfo.processInfo.processIdentifier)
-            let probe = ActivationProbe()
             let removeObservers = observeActivations(
                 probe, app: NSApp, center: .default, workspace: NSWorkspace.shared.notificationCenter)
             defer { removeObservers() }
             harness.app.perform(.captureRegion)
             try context.require("the shortcut action starts selection", harness.features.capture.state == .selecting)
+            probe.recordKeyEvent("\(ProcessInfo.processInfo.systemUptime): first present requested")
             overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
             let window = try context.unwrap("the real region overlay was created", created)
             await E2ESnapshot.settle(window.selectionView)
@@ -202,7 +227,24 @@
             context.check(
                 "region selection preserves the foreground application",
                 NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
-            context.check("the selection still receives keyboard input", window.isKeyWindow)
+            let initialKey = window.isKeyWindow
+            probe.recordKeyEvent("\(ProcessInfo.processInfo.systemUptime): initial key assertion=\(initialKey)")
+            context.check(
+                "the selection still receives keyboard input", initialKey,
+                "visible=\(window.isVisible); keyWindowMatches=\(NSApp.keyWindow === window); "
+                    + "responderMatches=\(window.firstResponder === window.selectionView); "
+                    + "hidden=\(NSApp.isHidden); isActive=\(NSApp.isActive); "
+                    + "policy=\(NSApp.activationPolicy().rawValue); "
+                    + "foregroundUnchanged=\(NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground); "
+                    + "ownKeyWindow=\(NSApp.keyWindow?.windowNumber ?? -1); events=\(probe.keyEvents); "
+                    + "traceTruncated=\(probe.keyEventsTruncated)")
+            if !initialKey {
+                // Collect recovery only after recording FAIL; two seconds is not a product timing allowance.
+                let recovered = await E2EWait.until(timeout: .seconds(2)) { window.isKeyWindow }
+                E2ERunner.log(
+                    "capture-focus: recoveredWithin2s=\(recovered); at=\(ProcessInfo.processInfo.systemUptime); "
+                        + "events=\(probe.keyEvents); traceTruncated=\(probe.keyEventsTruncated)")
+            }
             context.check("the selection view owns the responder", window.firstResponder === window.selectionView)
             context.check(
                 "the overlay can join the current Space", window.collectionBehavior.contains(.canJoinAllSpaces))
@@ -302,6 +344,49 @@
                 skip(
                     context, "positive control for the activation probes",
                     "the host did not activate Recortia on request; isActive=\(NSApp.isActive)")
+            }
+        }
+
+        static func repeatedShortcutFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let display = try context.unwrap("a connected display is available", DesktopGeometry.displays().first)
+            var created: OverlayWindow?
+            let overlay = RegionOverlayController { display, screen in
+                let window = OverlayWindow(display: display, screen: screen)
+                window.alphaValue = 0
+                window.ignoresMouseEvents = true
+                window.setContentSize(SyntheticDesktop.size)
+                E2ESnapshot.park(window)
+                created = window
+                return window
+            }
+            defer {
+                overlay.dismiss()
+                harness.features.capture.cancel()
+            }
+            for cycle in 1...50 {
+                try context.require("repeat starts inactive", await becomeInactive())
+                let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
+                harness.app.perform(.captureRegion)
+                try context.require("repeat starts selection", harness.features.capture.state == .selecting)
+                overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
+                let window = try context.unwrap("repeat creates the overlay", created)
+                await E2ESnapshot.settle(window.selectionView)
+                let key = window.isKeyWindow
+                let state =
+                    "cycle=\(cycle); visible=\(window.isVisible); hidden=\(NSApp.isHidden); "
+                    + "keyWindowMatches=\(NSApp.keyWindow === window); "
+                    + "responderMatches=\(window.firstResponder === window.selectionView); "
+                    + "isActive=\(NSApp.isActive); policy=\(NSApp.activationPolicy().rawValue); "
+                    + "foregroundUnchanged=\(NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)"
+                context.check("repeat overlay cycle \(cycle) owns keyboard", key, state)
+                if !key {
+                    let recovered = await E2EWait.until(timeout: .seconds(2)) { window.isKeyWindow }
+                    E2ERunner.log("capture-focus-repeat: \(state); recoveredWithin2s=\(recovered)")
+                    context.snapshot(window.selectionView, shot: "focus-cycle-\(cycle)", over: harness.desktop)
+                }
+                overlay.dismiss()
+                harness.features.capture.cancel()
+                await Task.yield()
             }
         }
 

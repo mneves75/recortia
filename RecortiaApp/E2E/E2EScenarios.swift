@@ -38,6 +38,9 @@
             E2EScenario(
                 id: "capture-focus", title: "Shortcut selection preserves the current application and Space",
                 run: CaptureVisibilityScenarios.shortcutFocus),
+            E2EScenario(
+                id: "capture-focus-repeat", title: "Repeated shortcut overlays own the keyboard",
+                run: CaptureVisibilityScenarios.repeatedShortcutFocus, runsOnlyWhenNamed: true),
             E2EScenario(id: "space-window", title: "Space switches to a window", run: ShortcutScenarios.spaceForWindow),
             E2EScenario(id: "window-chooser", title: "Window chooser", run: CaptureScenarios.windowChooser),
             E2EScenario(id: "countdown", title: "Delayed capture countdown", run: CaptureScenarios.countdown),

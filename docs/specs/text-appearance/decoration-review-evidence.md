@@ -277,6 +277,57 @@ but the complete integration gate is FAIL until this existing capture failure is
 its precise protected host limitation is independently established. A narrow unchanged
 capture-focus reproduction loop is being prepared; no assertion has been weakened.
 
+Capture diagnosis controls, unchanged production: three isolated EN/PT runs passed6/6
+capture-focus executions (`.scratch/capture-focus-baseline-01.log`, `-02.log`, `-03.log`);
+three adjacent region-overlay+capture-focus EN/PT runs passed all12 scenario executions
+(`.scratch/capture-focus-preceding-overlay-01.log`, `-02.log`, `-03.log`). Three complete
+first16-scenario English prefix replays passed16/16 each
+(`.scratch/capture-focus-prefix-01.log`, `-02.log`, `-03.log`). These runs retain explicit
+host-declined activation positive-control SKIPs; passing reruns do not establish a fix.
+
+The original assertion now retains initial visible/key/responder/hidden/activation/foreground
+state on failure. A named-only bounded50-cycle own-overlay repetition probe passed50/50 at
+`.scratch/e2e/20261014-194817/en/report.json`, log `.scratch/capture-focus-repeat-diagnostic.log`.
+The probe does not run in the default suite, does not alter production, and leaves the original
+assertion intact. On a probe failure it observes bounded2s recovery without changing FAIL.
+No tight/high-rate red loop has been established. A single full-English diagnostic replay is
+running to capture richer state if the original failure recurs. No speculative focus change,
+activation workaround, latency relaxation or host-root-cause claim is accepted.
+
+The single full-English diagnostic replay passed46/46 with126 images at
+`.scratch/e2e/20261014-195033/en/report.json`, log `.scratch/capture-focus-full-diagnostic.log`.
+This adds no causal evidence and does not erase the earlier FAIL. The diagnosis round stops
+with the cause unreproduced/unattributed; controlled dedicated-desktop focus qualification
+remains pending. There is no production focus fix. Independent in-repo work may proceed;
+release/installation qualification remains blocked.
+
+The plan-only adversarial advisor changed future observability: retain passive monotonic
+own-window key gain/loss, present-request/assertion times and preceding-scenario reset time;
+record FAIL before any bounded recovery observation. A later key grant would not, by itself,
+justify relaxing the assertion. A cooperative foreground helper was rejected for this round
+because it changes the disputed activation conditions and adds machinery. Five-year judgment:
+the preserved failure and a small causal trace are more useful than accumulated green reruns.
+The advisor read no code and executed nothing; its opinion does not attribute the failure.
+
+Passive bounded event diagnostics and the named-only50-cycle probe passed3/3 scenarios per
+language at `.scratch/e2e/20261014-195446/{en,pt-BR}/report.json`, log
+`.scratch/capture-focus-observability-check.log`. Actual native key-gain events were recorded
+about3–4ms after presentation, before the original assertion; no recovery path was exercised.
+The trace now caps retained events at64 and reports truncation; observers are removed on exit.
+Temporary DEBUG tags were removed. The cap's final build/gates and source review are pending.
+
+Final bounded diagnostics passed the full unsigned development gate (656 tests,604 translations,
+format/freshness/isolation and both builds), log
+`.scratch/capture-focus-observability-full-check.log`. The final bilingual named run passed3/3
+scenarios per language,242 recorded assertions per language,100 total repetition cycles and4
+images at `.scratch/e2e/20261014-200041/{en,pt-BR}/report.json`, log
+`.scratch/capture-focus-observability-final-native.log`. Each language retained the explicit
+host-declined activation positive-control SKIP. The initial-presentation trace contains actual
+native key-gain notifications and reports no truncation. It supplies observability, not a
+production fix or an attribution of the original failure. Cccc1.8.0 advisory: three E2E files,
+68 functions,zero parse errors/empty stderr; max cognitive18/cyclomatic15. Files:
+`.scratch/capture-focus-observability-complexity.json` and `.stderr`.
+
 ## Gate and remaining qualification
 
 Full development gate on15dd74f passed:
