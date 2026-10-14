@@ -10,9 +10,12 @@
     "build": 19,
     "date": "2026-10-14",
     "scope": "FR-01 replayable feature tour and FR-11 bounded area color sampling; broader reference parity remains unfinished.",
-    "status": "source_implemented_awaiting_verification",
-    "verification": "Focused model/area suites and bilingual onboarding,pixel-tools E2E passed on repository-pinned Xcode27.1RC; full synthetic E2E40/42 each, capture-focus and editor-presentation failed. Final corrected artifact gates and independent acceptance pending.",
+    "status": "source_verified_release_blocked",
+    "verification": "Final scripts/check.sh --unsigned passed: 589 tests, two unsigned Debug builds, 578 translated strings. Final corrected bilingual onboarding and pixel-tools passed; full E2E40/42 each and isolated rerun retain capture-focus/editor-presentation failures. Independent focused tests37 passed; acceptance BLOCKED by full parity, UI failures and missing stable Xcode. See acceptance-verdict.md and review-evidence.md.",
     "evidence_paths": [
+      "docs/specs/feature-discovery/acceptance-verdict.md",
+      "docs/specs/feature-discovery/review-evidence.md",
+      ".scratch/feature-discovery-final-check.log",
       ".scratch/onboarding-replay-green.log",
       ".scratch/area-color-sampling/15-binding-green.log",
       ".scratch/e2e/20261014-005643/en/report.json",
@@ -1098,7 +1101,7 @@
       "title": "Replayable first-run feature discovery",
       "milestone": "M6",
       "authorization": "owner_approved_2026-10-14_no_interview",
-      "status": "in_progress",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-007"
       ],
@@ -1126,7 +1129,7 @@
       "title": "Bounded average-area sRGB color picking",
       "milestone": "M5",
       "authorization": "owner_approved_2026-10-14_reference_feature_request",
-      "status": "in_progress",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-019"
       ],

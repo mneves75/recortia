@@ -19,8 +19,11 @@ Focused verification: stable-Xcode `swift test --package-path Packages/RecortiaK
 PixelSamplerTests`, then `--filter EditorPixelToolsTests`, plus strict `swift format lint` on
 owned changed Swift files. Parent owns full app builds, synthetic UI evidence and independent review.
 
-Status: implemented; parent integration and synthetic native UI evidence pending. Source-red
+Status: source verified; awaiting manual validation and stable release qualification. Parent
+integration, bilingual synthetic UI and independent code acceptance PASS. Overall acceptance
+BLOCKED; see ../feature-discovery/acceptance-verdict.md. Source-red
 evidence: `.scratch/area-color-sampling/02-sampler-red.log` (`averageColor` absent) and
 `04-editor-red.log` (sample-size API absent). Focused final suites passed: `06-sampler-final.log`
-(10 tests), `07-editor-final.log` (13 tests). Strict format passed in `08-format.log` (empty log,
-exit 0). Stable Xcode 27.1 / Swift 6.4 / macOS 27.0 SDK on macOS 27.2 arm64.
+(10 tests), `15-binding-green.log` (14 tests). Strict format passed in `16-binding-format.log`
+(exit 0). Xcode 27.1 RC 27A9275 / Swift 6.4 / macOS 27.0 SDK on macOS 27.2 seed arm64;
+this is development evidence, not stable qualification.
