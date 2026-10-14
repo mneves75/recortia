@@ -9,8 +9,10 @@
 - Use the existing OnboardingModel/SettingsStore public seam and the bilingual synthetic
   native E2E runner. No live personal-screen capture, credential reads or real uploads.
 - Stable Xcode remains the delivery gate; installed Xcode 27.2 beta is supplementary.
-- The owner authorized a working branch, commits, push, merge, a beta tag and local macOS
-  installation. Public release/notarization services are separate from local installation.
+- The owner authorized a working branch, commits, push and preparation for a beta tag/local
+  macOS installation. The current Feature workflow reserves merging for the owner, and changes
+  outside this repository require confirmation. Prepare reviewable artifacts before those stops.
+  Public release/notarization services are separate from local installation.
 - Preserve preexisting untracked docs/handoffs and preexisting build/scratch directories.
 - Specs/tickets are tracked locally under docs/specs, as required by the current owner
   contract; existing GitHub bug triage remains unchanged.

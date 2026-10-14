@@ -248,13 +248,13 @@
                 await E2ESnapshot.settle(root)
                 context.snapshot(root, shot: "background-controls-compact-dark")
             }
-            try await decoratedWrapping(harness, document: model.document, context)
+            try await wrappedInput(harness, document: model.document, context)
         }
 
-        private static func decoratedWrapping(
+        private static func wrappedInput(
             _ harness: E2EHarness, document: Document, _ context: ScenarioContext
         ) async throws {
-            for appearance in [TextAppearance.outlined, .boxed, .roundedBoxed, .monospacedBoxed] {
+            for appearance in TextAppearance.allCases {
                 var wrapped = document
                 let annotation = Annotation(
                     kind: .text(
@@ -313,6 +313,15 @@
                         "\(appearance.rawValue) native input contains all wrapped glyphs at \(zoom)",
                         input.bounds.height >= used.maxY,
                         "bounds=\(input.bounds); used=\(used); container=\(container.containerSize)")
+                    try verifyVisibleGlyphs(input, appearance: appearance, context)
+                    context.snapshot(input, shot: "\(appearance.rawValue)-native-\(Int(zoom * 100))")
+                    if let root = controller.contentRoot {
+                        context.snapshot(root, shot: "\(appearance.rawValue)-viewport-\(Int(zoom * 100))")
+                    }
+                    context.check(
+                        "raster observation preserves marked input",
+                        input.hasMarkedText() && input.markedRange() == marked && input.selectedRange() == selected
+                            && input.string == string)
                 }
                 let livePixels = try E2EActions.decode(
                     E2ESnapshot.png(of: input, background: .black), "wrapped native glyph pixels", context)
@@ -335,30 +344,7 @@
                 context.check(
                     "composed text follows the displayed font size after zoom",
                     abs((finalFont?.pointSize ?? 0) - 24 * controller.model.viewport.zoom) < 0.001)
-                let linePixels = try E2EActions.decode(
-                    E2ESnapshot.png(of: input, background: .white), "native wrapped lines", context)
-                let window = try context.unwrap("wrapped text window", input.window)
-                for index in [0, 7, 13, string.utf16.count - 1] {
-                    let screen = input.firstRect(
-                        forCharacterRange: NSRange(location: index, length: 1), actualRange: nil)
-                    let local = input.convert(window.convertFromScreen(screen), from: nil)
-                    let sample = local.intersection(input.bounds)
-                    try context.require("native glyph anchor lies in the input", !sample.isNull && !sample.isEmpty)
-                    let scale = E2ESnapshot.scale
-                    let minX = max(0, Int(floor(sample.minX * scale)))
-                    let maxX = min(linePixels.width, Int(ceil(sample.maxX * scale)))
-                    let minY = max(0, Int(floor(sample.minY * scale)))
-                    let maxY = min(linePixels.height, Int(ceil(sample.maxY * scale)))
-                    var ink = 0
-                    for y in minY..<maxY {
-                        for x in minX..<maxX {
-                            let pixel = linePixels.pixel(x: x, y: y)
-                            if pixel.r < 180 || pixel.g < 180 || pixel.b < 180 { ink += 1 }
-                        }
-                    }
-                    context.check(
-                        "\(appearance.rawValue) paints the native glyph at UTF-16 index \(index)", ink > 0)
-                }
+                try verifyVisibleGlyphs(input, appearance: appearance, context)
                 if let root = controller.contentRoot { context.snapshot(root, shot: "\(appearance.rawValue)-wrapped") }
                 input.setSelectedRange(NSRange(location: input.string.utf16.count, length: 0))
                 input.breakUndoCoalescing()
@@ -389,6 +375,35 @@
                 } else {
                     try context.require("decorated wrapped text remains text", false)
                 }
+            }
+        }
+
+        private static func verifyVisibleGlyphs(
+            _ input: NSTextView, appearance: TextAppearance, _ context: ScenarioContext
+        ) throws {
+            let linePixels = try E2EActions.decode(
+                E2ESnapshot.png(of: input, background: .white), "native wrapped lines", context)
+            let window = try context.unwrap("wrapped text window", input.window)
+            for index in [0, 7, 13, input.string.utf16.count - 1] {
+                let screen = input.firstRect(
+                    forCharacterRange: NSRange(location: index, length: 1), actualRange: nil)
+                let local = input.convert(window.convertFromScreen(screen), from: nil)
+                let sample = local.intersection(input.bounds)
+                try context.require("native glyph anchor lies in the input", !sample.isNull && !sample.isEmpty)
+                let scale = E2ESnapshot.scale
+                let minX = max(0, Int(floor(sample.minX * scale)))
+                let maxX = min(linePixels.width, Int(ceil(sample.maxX * scale)))
+                let minY = max(0, Int(floor(sample.minY * scale)))
+                let maxY = min(linePixels.height, Int(ceil(sample.maxY * scale)))
+                var ink = 0
+                for y in minY..<maxY {
+                    for x in minX..<maxX {
+                        let pixel = linePixels.pixel(x: x, y: y)
+                        if pixel.r < 180 || pixel.g < 180 || pixel.b < 180 { ink += 1 }
+                    }
+                }
+                context.check(
+                    "\(appearance.rawValue) paints the native glyph at UTF-16 index \(index)", ink > 0)
             }
         }
     }

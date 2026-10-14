@@ -41,6 +41,11 @@ installed build 27A9275 is Xcode 27.1 RC.
 
 ### Fixed
 
+- Wrapped native text paints all lines after resizing and zoom, with the current presentation
+  font restored when composition ends. Keep one native text engine selected at construction.
+- Boxed-text background controls show selected fills and mixed values; Reset remains available
+  for custom fills in mixed selections independently of the future-text default, including undo.
+
 - A text layout failure clears partial canvas pixels and reports the existing preview error;
   exports propagate the typed failure. Imaging admits only the two reviewed public font-class
   imports in its layout helper, with regression controls against broader side-effect APIs.

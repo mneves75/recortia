@@ -10,8 +10,12 @@ tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candid
 on f1852b7. Outlined, Boxed, Rounded Box and Monospaced Box are now implemented and under
 qualification, with background color/reset and passive decoration during native input. Native palette control
 checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
-fresh independent native acceptance passes on e6c259c. The latest full native run passes 45/45
-scenarios in each language, with three host-activation checks skipped across both languages.
+fresh independent native acceptance passes on e6c259c. On 2276817 the full development gate
+passes 656 tests and 604 translations; the full native run passes 46/46 scenarios in each
+language, 190 screenshots, with four host-activation checks explicitly skipped. Native wrapped
+text now paints every line and restores composed characters to the current zoom font size;
+mixed-selection background controls show selected fills and retain Reset/undo eligibility.
+Fresh independent seven-style native acceptance remains pending.
 The earlier intermittent Portuguese capture-focus keyboard failure did not reproduce; its
 cause remains unproven. This does not qualify a release.
 This is phased work; it does

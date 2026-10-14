@@ -5,12 +5,13 @@ and monospaced-boxed text, preserving editing, geometry, export and privacy beha
 
 **Blocked by:** None; ticket01 verified-development. Follow ../implementation-plan.md.
 
-**Status:** in-progress (backend outlined-pixel tracer and native input feasibility)
+**Status:** integrated; formal native acceptance blocked by missing25% raster evidence,
+with its one correction in progress. See ../decoration-review-evidence.md.
 
-- [ ] Four decorations have independently checked glyph/box output, padding and outside bounds.
-- [ ] Background color/alpha controls describe actual defaults and remain effective.
-- [ ] Selected and newly created text retain styles across undo/redo and duplication.
-- [ ] Mixed selection does not restyle unrelated annotations; Unicode/wrapping remains intact.
-- [ ] Every style passes paired-secret masked exports, edge/cache and clean-representation tests.
-- [ ] Native selector interaction and bilingual standard/minimum-width dark renders are verified.
+- [x] Four decorations have independently checked glyph/box output, padding and outside bounds.
+- [x] Background color/alpha controls describe actual defaults and remain effective.
+- [x] Selected and newly created text retain styles across undo/redo and duplication.
+- [x] Mixed selection does not restyle unrelated annotations; Unicode/wrapping remains intact.
+- [x] Every style passes paired-secret masked exports, edge/cache and clean-representation tests.
+- [x] Native selector interaction and bilingual standard/minimum-width dark renders are verified.
 - [ ] Development gates and independent adversarial/native acceptance pass for this slice.

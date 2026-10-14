@@ -114,6 +114,22 @@ Exact gate commands retain the current repository toolchain contract:
 
 ## Alternatives and five-year review
 
+The expert-review pass targets editable, readable annotations for macOS users and maintainers;
+acceptance requires preserved input plus visible output, not merely correct layout metrics.
+First principles: one document-space style, one native input owner, source-pixel replacement
+before any external export, and observable failure/undo. Real constraints are native composition,
+macOS15 and privacy; defaulting to TextKit 2 is a convention rather than a product requirement.
+The strongest opposing case is keeping the modern default with a small public layout fix.
+Actual pixel regressions disproved the tested fixes, so the single TextKit 1 constructor wins
+for this widget. Hiding wrapping or limiting user text challenges the premise but violates the
+approved behavior; a custom editor adds disproportionate input/accessibility maintenance.
+This is an evidence-backed project judgment, not expert consensus or minimum-OS qualification.
+The cached composition-font failure further changed the design: font-only presentation updates
+must survive both zoom and composition completion. Five years later, retaining these observable
+regressions and revisiting the constructor when a future SDK passes them is preferable to
+permanent fallback machinery. No additional research would resolve the outstanding physical
+IME/VoiceOver qualification; that requires actual manual evidence.
+
 Size/color presets challenge whether seven appearances are needed, but do not implement the
 approved visual capability. A general rich-text inspector would supply more formatting while
 expanding state, input and export obligations. The chosen typed values plus shared stateless

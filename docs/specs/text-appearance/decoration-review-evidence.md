@@ -174,6 +174,76 @@ inspected; Arabic, Latin, emoji and the composed suffix are visible at the prope
 This includes private plaintext paste, deletion, grouped native undo and unchanged confirmation.
 Only formatting changed afterward. Full correction gate and independent acceptance remain pending.
 
+## Corrected integration on2276817
+
+Full unsigned development gate passed again, exit0, log
+`.scratch/text-decoration-correction-full-check.log`: 656 tests (134 MacPlatform,158 Imaging,
+304 Features,60 Domain),604 translated production strings, strict format, doctor/isolation,
+generated-project freshness and both Debug builds. Refreshed cccc1.8.0 advisory covers the
+three corrected App source files:289 functions,zero parse errors; cognitive max22/median0,
+cyclomatic max16/median1. Files:
+`.scratch/text-decoration-correction-complexity-final.json` and `.stderr` (empty).
+
+Both Matt Pocock axes rereviewed the complete a3ad94e...2276817 diff independently, source-only.
+Spec: zero remaining confirmed findings; mixed-selection P2 fixed and native wrapping gap
+addressed in regression source. Standards: zero documented-standard violations; one existing
+nonblocking duplication heuristic remains for the outline-percentage arithmetic in Core Text
+and AppKit adapters. Current calculations agree; no extra public helper was introduced solely
+to remove three small expressions. Neither reviewer ran tests/apps or claimed physical proof.
+Fresh code/security and source-blind native verification remain separate pending verdicts.
+
+Fresh mneves-verify code/security lane: requested Astra/high, different from the Sol builder,
+fresh context and read-only source review of the full pinned diff. Criteria1/2/3/5/6 passed
+(typed state/undo, actual export geometry/pixels, boxed-background refusals, privacy/export
+boundary, public APIs/errors/off-main rendering). Criterion4's source/package portion passed;
+its native runtime portion is BLOCKED in that lane and explicitly allocated to the separate
+source-blind native verifier. The scoped verdict is therefore BLOCKED pending consolidation,
+not an overall PASS. No security defect was confirmed.
+
+Independent command actually executed:
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development swift test --package-path Packages/RecortiaKit --filter 'TextDecorationExportTests|EditorTextDecorationTests|TextAppearanceExportTests|EditorTextAppearanceTests|TextAppearanceTests|AnnotationRendererTests|EditorCanvasRendererTests'`.
+The first host-sandbox attempt failed at sandbox_apply; approved escalated execution retained
+SwiftPM sandboxing and passed, exit0 (verifier exec session61768, output chunka389a9).
+No source edits, app execution or new retained artifacts were made by that verifier. Model
+identity is requested dispatch information, not independently attested runtime identity.
+
+The corrected full native suite passed46/46 scenarios per language,190 screenshots and3,564
+recorded assertions at `.scratch/e2e/20261014-191611/{en,pt-BR}/report.json`, log
+`.scratch/text-decoration-correction-full-native.log`, exit0. Four activation checks were
+explicitly SKIPPED: capture-focus positive control and activated-editor keyboard ownership in
+each language, because the host declined activation. These are not physical passes; the earlier
+editor-presentation skip recurred, without a claimed root cause or fix. The separate fresh
+source-blind verifier receives the unchanged native artifact after this run, not these images
+as its acceptance proof.
+
+Exact-head hosted CI also passed on2276817: run38646573924/job116134784187, stable Xcode27.0
+(27A266a),656 tests,604 translations and the complete unsigned gate. Actual job logs are
+retained directly at `.scratch/text-decoration-ci-2276817.log`; no outside gh cache was used.
+This proves the source gate on that runner, not a local stable-toolchain archive or installation.
+
+## Formal native acceptance: blocked evidence and correction
+
+The fresh source-blind Astra/high-requested verifier independently ran four scenarios per
+language,698 assertions per language and60 images at
+`.scratch/e2e/20261014-192222/{en,pt-BR}/report.json`. It inspected its own normal, compact-dark
+and wrapped renders and confirmed no visual defect in those images. Criteria1/3/4 passed;
+criterion2 was BLOCKED because wrapped images showed200% only. At25% the reports established
+content/ranges/zoom/geometry but no raster observation. Overall acceptance remains BLOCKED,
+not PASS. The unchanged executable hash was
+`e9700ae6517aae97715b1036b385efe820142babaac4e4196ed8b703b343257f`.
+This is an evidence defect, not proof that25% glyphs were absent.
+
+The single formal correction adds direct native glyph-anchor pixel observations and both
+native-input/whole-viewport snapshots at each requested zoom. It extends the same unchanged
+Unicode/RTL fixture to all seven appearances because the native constructor serves all seven.
+Existing composition, selection, paste/deletion/undo and post-unmark font checks remain.
+No production source changed in this correction. Fresh full reverify remains required.
+Builder correction run passed four scenarios per language,974 recorded assertions per
+language and122 images at `.scratch/e2e/20261014-192629/{en,pt-BR}/report.json`, log
+`.scratch/text-decoration-visible-zoom-correction.log`. Actual25% native-input/viewport images
+were inspected; the glyphs are present. This builder run addresses the missing artifact but
+does not replace the required fresh independent full reverify.
+
 ## Gate and remaining qualification
 
 Full development gate on15dd74f passed:
