@@ -5,11 +5,14 @@ not been tagged, installed or distributed. The replayable first-run feature tour
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). Three editable
-[text font designs](docs/specs/text-appearance/spec.md) have local model/export/native
-regressions; full gate and independent acceptance are pending for that slice. Native palette control
+[text font designs](docs/specs/text-appearance/spec.md) passed the 640-test development gate and
+[independent code/security and native acceptance](docs/specs/text-appearance/acceptance-verdict.md)
+on f1852b7. Four decorated appearances remain planned. Native palette control
 checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
-fresh independent native acceptance passes on e6c259c. The full Portuguese suite still has a
-capture-focus keyboard failure, so this does not qualify a release.
+fresh independent native acceptance passes on e6c259c. The latest full native run passes 45/45
+scenarios in each language, with three host-activation checks skipped across both languages.
+The earlier intermittent Portuguese capture-focus keyboard failure did not reproduce; its
+cause remains unproven. This does not qualify a release.
 This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
 toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.

@@ -1196,7 +1196,8 @@
       "scope": "Seven independently implemented appearances in two vertical tickets: three public system font designs, then four decorations. Preserve native text editing, wrapping, undo and secure exports.",
       "deliverables": ["docs/specs/text-appearance/spec.md", "model/render/native-control regressions"],
       "completion_contract": "Both tickets require source-red regressions, measured geometry, development gates and fresh independent code/native acceptance. Physical and stable release qualification remain separate.",
-      "evidence": [".scratch/text-font-feasibility-20261014/evidence.md"]
+      "evidence": [".scratch/text-font-feasibility-20261014/evidence.md", "docs/specs/text-appearance/acceptance-verdict.md", "docs/specs/text-appearance/review-evidence.md"],
+      "progress_note": "Ticket01 three-font slice verified-development on f1852b7: gate640, independent code/security41, source-blind native6/6, full native45/45 per language with3activation checks skipped. Ticket02 decorations pending; whole FP-033 remains in_progress."
     }
   ],
   "deferred_scope": [

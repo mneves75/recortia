@@ -109,3 +109,21 @@ source/behavior verdicts remain pending at this checkpoint.
 Correction metrics use the same cccc1.8.0 policy and flags: four explicitly named changed
 Swift files, 145 functions, zero parse errors; output `.scratch/text-font-correction-complexity.json`
 and `.stderr`, exit0. The earlier 27-file metrics retain their RenderEngine parse limitation.
+
+## Corrected acceptance
+
+On f1852b7, `.scratch/text-font-corrected-check.log` passed the same full development command:
+640 tests (134 MacPlatform / 150 Imaging / 296 Features / 60 Domain), 596 app translations,
+both unsigned Debug builds and all doctor/isolation/format/freshness checks. Both Matt Pocock
+review axes reread the correction and reported their findings fixed, with no new confirmed
+issue. Fresh different-model code/security and fresh source-blind native acceptance passed;
+the full criterion/command/evidence record is in acceptance-verdict.md.
+
+The complete bilingual native command
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/e2e.sh --lang all --unsigned --no-build`
+passed 45/45 scenarios per language at `.scratch/e2e/20261014-180114/{en,pt-BR}/report.json`:
+164 images and 2,884 recorded assertions, including three explicit skips. Capture-focus's
+activation positive control was skipped in each language; editor-presentation's activated
+keyboard-owner check was skipped in Portuguese. These are not passing physical criteria.
+Log: `.scratch/text-font-full-native.log`, exit0. The earlier Portuguese replacement-selection
+keyboard failure did not reproduce; no product focus fix or root cause is claimed.
