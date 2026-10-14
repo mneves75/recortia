@@ -5,43 +5,27 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
-    "version": "0.11.0",
-    "build": 18,
-    "date": "2026-10-08",
-    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
-    "status": "released",
-    "verification": "scripts/check.sh passed at 4a32aed and in the release pipeline at c346017; bilingual E2E 42/42; independent reviewer and adversarial reviewer findings fixed; mneves-verify (gpt-6-astra) at 728688d: criteria 1-8 and 10 PASS, criterion 9 (physical desktop) BLOCKED, not run by owner's choice.",
+    "version": "0.12.0-beta1",
+    "app_version": "0.12.0",
+    "build": 19,
+    "date": "2026-10-14",
+    "scope": "FR-01 replayable feature tour and FR-11 bounded area color sampling; broader reference parity remains unfinished.",
+    "status": "source_implemented_awaiting_verification",
+    "verification": "Focused model/area suites and bilingual onboarding,pixel-tools E2E passed on repository-pinned Xcode27.1RC; full synthetic E2E40/42 each, capture-focus and editor-presentation failed. Final corrected artifact gates and independent acceptance pending.",
     "evidence_paths": [
-      ".scratch/check-3.log"
+      ".scratch/onboarding-replay-green.log",
+      ".scratch/area-color-sampling/15-binding-green.log",
+      ".scratch/e2e/20261014-005643/en/report.json",
+      ".scratch/e2e/20261014-005643/pt-BR/report.json",
+      ".scratch/e2e/20261014-005816/en/report.json",
+      ".scratch/e2e/20261014-005816/pt-BR/report.json"
     ],
     "limitations": [
-      "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
-      "Physical Space and AltTab checks of the build have not run.",
-      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`).",
-      "Physical AltTab (pins, editor), ⌘Tab and fullscreen-Space checks were not run for this release."
-    ],
-    "local_installation": {
-      "date": "2026-10-07",
-      "commit": "5b4c1ef",
-      "build_command": "scripts/release.sh --dry-run (fresh worktree, Release archive, developer-id export; no gate, no notarization)",
-      "checks": "release-script checks passed (codesign --verify --deep --strict, version 0.11.0 (17), distribution entitlements with access group Q96FUTC5G8.dev.mvneves.Recortia, embedded provisioning profile, Hardened Runtime, no test-only markers); installed bundle identical to the export (diff -r); spctl accepted (Developer ID); launched as UIElement with no window.",
-      "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
-      "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
-      "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
-    },
-    "production_release": {
-      "tag": "v0.11.0",
-      "commit": "c34601790c9715a6aafce3cd3d7c9a448ef66e0d",
-      "build": 18,
-      "url": "https://github.com/mneves75/recortia/releases/tag/v0.11.0",
-      "dmg_sha256": "423bb95e39c818edaeef9eb89241034e091d1472a6aa51f7df61618c811e9fb4",
-      "notarization": [
-        "app b5a2f65d-52f1-4ad3-8cd6-5157dd5cdf46 Accepted",
-        "dmg 98db4d7b-c91c-4a80-8264-9a6e6888af27 Accepted"
-      ],
-      "homebrew": "mneves75/homebrew-tap 0f4daa0 recortia: 0.11.0",
-      "installed": "2026-10-08 via brew upgrade --cask recortia on the maintainer's Mac: 0.11.0 (18), strict signature, stapled, Notarized Developer ID; opening it showed Settings and made it Foreground."
-    }
+      "Only installed Xcodes are27.1RC27A9275 and27.2beta27B5028f; stable-toolchain release gate BLOCKED.",
+      "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
+      "No new tag, merge, archive/export, Mac installation, notarization or public distribution.",
+      "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals."
+    ]
   },
   "previous_release_0_10_1": {
     "version": "0.10.1",
@@ -1108,6 +1092,65 @@
       ],
       "completion_contract": "report.json medians under 50 ms for each window in EN and PT-BR; audit has no open finding.",
       "status_note": "Owner chose to record and defer the editor and first-open Settings latency; onboarding and pins are borderline (they exceed 50 ms in some runs) and are not covered by that decision. A fix needs pre-built windows (a separate approved plan)."
+    },
+    {
+      "id": "FP-029",
+      "title": "Replayable first-run feature discovery",
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-14_no_interview",
+      "status": "in_progress",
+      "depends_on": [
+        "FP-007"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-01",
+        "PERM-01"
+      ],
+      "scope": "Seven native localized pages, skip/back/continue/done, real controller replay, preserved completion/preferences/consent and no permission/export side effects.",
+      "deliverables": [
+        "docs/specs/feature-discovery/spec.md",
+        "real-control bilingual onboarding E2E"
+      ],
+      "completion_contract": "Pinned development gate and independent onboarding acceptance pass; stable release/physical qualification remains explicit.",
+      "evidence": [
+        ".scratch/e2e/20261014-005643/en/report.json",
+        ".scratch/e2e/20261014-005643/pt-BR/report.json"
+      ]
+    },
+    {
+      "id": "FP-030",
+      "title": "Bounded average-area sRGB color picking",
+      "milestone": "M5",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "in_progress",
+      "depends_on": [
+        "FP-019"
+      ],
+      "requirement_ids": [
+        "FR-11"
+      ],
+      "acceptance_test_ids": [
+        "PIX-01",
+        "RED-02",
+        "RED-03"
+      ],
+      "scope": "1x1/3x3/5x5 samples from sanitized current base; encoded premultiplied sRGB mean off MainActor, bounded allocation, cancellation and stale-result rejection.",
+      "deliverables": [
+        "docs/specs/area-color-sampling/spec.md",
+        "sampler/editor regressions",
+        "native sample-size picker and bilingual E2E"
+      ],
+      "completion_contract": "Literal-color/alpha/edge/stale/close tests and integrated E2E pass; independent privacy acceptance attached.",
+      "evidence": [
+        ".scratch/area-color-sampling/06-sampler-final.log",
+        ".scratch/area-color-sampling/15-binding-green.log",
+        ".scratch/e2e/20261014-005643/en/report.json",
+        ".scratch/e2e/20261014-005643/pt-BR/report.json"
+      ]
     }
   ],
   "deferred_scope": [
@@ -1170,6 +1213,45 @@
       ],
       "homebrew": "mneves75/homebrew-tap d0f179b recortia: 0.10.2",
       "installed": "2026-10-04 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.2 (16), strict signature, stapled, Notarized Developer ID. Installed-app check over a fullscreen host Space: 0/2 Space switches (fresh and existing Settings), valid baselines; reopening shows Settings without opening the menu first (R3-F9 disproved)."
+    }
+  },
+  "previous_release_0_11_0": {
+    "version": "0.11.0",
+    "build": 18,
+    "date": "2026-10-08",
+    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
+    "status": "released",
+    "verification": "scripts/check.sh passed at 4a32aed and in the release pipeline at c346017; bilingual E2E 42/42; independent reviewer and adversarial reviewer findings fixed; mneves-verify (gpt-6-astra) at 728688d: criteria 1-8 and 10 PASS, criterion 9 (physical desktop) BLOCKED, not run by owner's choice.",
+    "evidence_paths": [
+      ".scratch/check-3.log"
+    ],
+    "limitations": [
+      "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
+      "Physical Space and AltTab checks of the build have not run.",
+      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`).",
+      "Physical AltTab (pins, editor), ⌘Tab and fullscreen-Space checks were not run for this release."
+    ],
+    "local_installation": {
+      "date": "2026-10-07",
+      "commit": "5b4c1ef",
+      "build_command": "scripts/release.sh --dry-run (fresh worktree, Release archive, developer-id export; no gate, no notarization)",
+      "checks": "release-script checks passed (codesign --verify --deep --strict, version 0.11.0 (17), distribution entitlements with access group Q96FUTC5G8.dev.mvneves.Recortia, embedded provisioning profile, Hardened Runtime, no test-only markers); installed bundle identical to the export (diff -r); spctl accepted (Developer ID); launched as UIElement with no window.",
+      "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
+      "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
+      "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
+    },
+    "production_release": {
+      "tag": "v0.11.0",
+      "commit": "c34601790c9715a6aafce3cd3d7c9a448ef66e0d",
+      "build": 18,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.11.0",
+      "dmg_sha256": "423bb95e39c818edaeef9eb89241034e091d1472a6aa51f7df61618c811e9fb4",
+      "notarization": [
+        "app b5a2f65d-52f1-4ad3-8cd6-5157dd5cdf46 Accepted",
+        "dmg 98db4d7b-c91c-4a80-8264-9a6e6888af27 Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap 0f4daa0 recortia: 0.11.0",
+      "installed": "2026-10-08 via brew upgrade --cask recortia on the maintainer's Mac: 0.11.0 (18), strict signature, stapled, Notarized Developer ID; opening it showed Settings and made it Foreground."
     }
   }
 }

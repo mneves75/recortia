@@ -12,12 +12,14 @@
         var holdNextSnapshot = false
         private var waiter: CheckedContinuation<Void, Never>?
         var isWaiting: Bool { waiter != nil }
+        private(set) var snapshotCount = 0
 
         init(exporter: any ExportService) { self.exporter = exporter }
 
         func makeSnapshot(of session: DocumentSession, options: ExportOptions, date: Date)
             async throws(ExportServiceError) -> ShareSnapshot
         {
+            snapshotCount += 1
             if holdNextSnapshot {
                 holdNextSnapshot = false
                 await withCheckedContinuation { waiter = $0 }
@@ -28,7 +30,8 @@
         func makeSnapshot(
             ofPinned image: CGImage, exportID: DocumentID, privacyEpoch: UInt64, options: ExportOptions, date: Date
         ) async throws(ExportServiceError) -> ShareSnapshot {
-            try await exporter.makeSnapshot(
+            snapshotCount += 1
+            return try await exporter.makeSnapshot(
                 ofPinned: image, exportID: exportID, privacyEpoch: privacyEpoch, options: options, date: date)
         }
 

@@ -87,6 +87,10 @@ beta compilation does not replace the stable-toolchain release gates.
 
 ## Agent skills
 
+Feature discovery specs/tickets are tracked in `docs/specs/feature-discovery/`; the canonical
+contract in AGENTS.md defines replay, real-control E2E and reference-evidence boundaries. New
+feature specs stay in tracked `docs/specs/<feature>/`; GitHub continues to handle bug triage.
+
 ### Issue tracker
 
 GitHub Issues in `mneves75/recortia` via `gh`; planned FP-xxx tasks stay in `BACKLOG.json`. See `docs/agents/issue-tracker.md`.

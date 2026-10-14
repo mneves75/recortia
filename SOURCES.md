@@ -1,5 +1,16 @@
 # Research sources and verification boundaries
 
+**2026-10-14 supplement:** [Reference inventory](docs/specs/feature-discovery/reference-matrix.md)
+records installed Shottr 1.9.3/build 137 and CleanShot X Setapp 5.0.1, current official feature
+pages, and read-only resource enumeration. Earlier research/version statements below are
+historical. Resource presence does not prove runtime behavior or proprietary algorithms.
+Current UI guidance: [Apple onboarding](https://developer.apple.com/design/human-interface-guidelines/onboarding),
+[Xcode 27.2 beta release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
+Repository-pinned Xcode 27.1 (27A9275), Swift 6.4 and macOS SDK 27.0 remain the local development
+gates. [Apple identifies 27A9275 as RC](https://developer.apple.com/news/releases/?id=10052026g):
+the existing pin therefore does not satisfy the specification's stable-toolchain release
+qualification. Xcode 27.2 beta (27B5028f) diagnostics supplement source checks only.
+
 **Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Shottr or Apple uses that implementation.
 
 No Shottr binary or Mac hardware was tested. Some Apple symbol-documentation pages exposed a JavaScript-only view; where that prevented inspection, readable official WWDC transcripts and Apple's support table were used instead. Exact symbol availability and build settings still require M0 verification in the selected installed SDK.

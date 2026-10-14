@@ -106,6 +106,13 @@
         }
     }
 
+    final class SyntheticAccessibilityPermission: AccessibilityPermissionService {
+        var isTrusted = true
+        private(set) var requestCount = 0
+
+        func requestWithPrompt() { requestCount += 1 }
+    }
+
     /// Feeds pre-rendered viewport frames of a RecortiaFixtures long page. `holdAfter` pauses the
     /// feed after that many frames until `release()`, so the HUD can be captured mid-collection.
     final class SyntheticScrollFrames: ScrollFrameSourceService {

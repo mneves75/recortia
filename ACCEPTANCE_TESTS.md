@@ -176,6 +176,16 @@ Combine at least three images with scaling, opacity, overlap, a background, roun
 
 ### UX-01 — Keyboard, accessibility, and localization
 
+First launch presents a skippable feature tour covering local processing, capture/import/scrolling,
+editing/redaction, recognition/pixel tools, composition/pins, sharing and shortcuts in EN/PT-BR.
+Continue walks every page without marking completion early; Back cannot leave the first page;
+Skip on any page and final Done persist completion. The menu-bar Feature tour command reopens
+the first page without resetting completion, shortcuts, automatic exports, upload consent or
+permissions. Closing without Skip/Done leaves an unfinished first run unfinished. The actual
+onboarding window follows SpacePolicy; all text is reachable by scrolling and controls by
+keyboard. The tour performs no capture, export or permission request. Synthetic `onboarding`
+evidence covers navigation and rendering; physical VoiceOver and TCC remain separate.
+
 Verify essential flows using the keyboard; inspect VoiceOver labels and the annotation list; test Reduce Motion/Transparency, increased contrast, focus visibility, and dark/light appearance. Test EN/PT-BR including longer strings and error messages. No control is icon/color-only without an accessible name. The custom canvas exposes deliberate accessibility elements.
 
 ### PRIV-01 — Network, persistence, and diagnostics

@@ -70,6 +70,14 @@ Use stable Xcode 27 / bundled Swift 6.4 / Swift 6 mode as the researched baselin
 
 ## Work unit and completion discipline
 
+Feature discovery (2026-10-14): specs and tickets for this owner-authorized work are tracked in
+`docs/specs/feature-discovery/` (not disposable scratch). Review the reference matrix when a
+capability changes; keep the tour truthful about existing features and qualification gaps. The
+tour requests no permission and starts no export. Replay preserves completion and preferences;
+closing an unfinished first run does not finish it. Keep the bilingual `onboarding` real-control
+E2E gate; `SpacePolicy` and `AppPresence` still own its ordinary window. Current comparison
+metadata does not verify proprietary internals or authorize protected recording/cloud behavior.
+
 Implement one task or coherent small group from the approved milestone. State the requirement IDs, expected behavior, failure behavior, and test cases before editing. Prefer a failing regression test when fixing a bug. Build the smallest end-to-end vertical slice before adding extra abstraction.
 
 Treat BACKLOG.json as a planned task contract. Change a task from not_started only when work actually begins. completed requires attached verification, not just source files. Use blocked or awaiting_manual_validation when appropriate. Never mark physical-device checks passed from a mock.

@@ -473,6 +473,33 @@
                 harness.textPasteboard.string(forType: .string) == "#1A2B3C",
                 String(describing: harness.textPasteboard.string(forType: .string)))
             await E2EActions.snapshotEditor(controller, context, shot: "color-picker")
+
+            // The neighborhood crosses a literal red/green fixture boundary: this distinguishes
+            // an average from the existing nearest-pixel result (#00FF00).
+            for (size, expected) in [(PixelSampleSize.threeByThree, "#55AA00"), (.fiveByFive, "#669900")] {
+                model.setColorSampleSize(size)
+                context.check("changing sample size clears the prior pick", model.pickedColor == nil)
+                E2EActions.click(model, .colorPicker, at: p(96, 48))
+                try context.require("area color sampling completes", await E2EWait.until { model.pickedColor != nil })
+                context.check(
+                    "\(size) averages encoded sRGB across the boundary", model.pickedColor?.hex == expected,
+                    "\(String(describing: model.pickedColor?.hex))")
+                context.check("area HEX copy succeeds", model.copyPickedColor())
+                context.check(
+                    "the private pasteboard holds the area result",
+                    harness.textPasteboard.string(forType: .string) == expected)
+                await E2EActions.snapshotEditor(controller, context, shot: "color-average-\(size.rawValue)")
+            }
+            E2EActions.drag(model, .redact, from: p(90, 40), to: p(104, 56))
+            context.check("redaction clears the picked area color", model.pickedColor == nil)
+            context.check("the old area color cannot be copied", !model.copyPickedColor())
+            try context.require("the sanitized preview refreshes", await E2EWait.until { model.isBaseCurrent })
+            E2EActions.click(model, .colorPicker, at: p(96, 48))
+            try context.require("masked area sampling completes", await E2EWait.until { model.pickedColor != nil })
+            context.check(
+                "area sampling reads the solid mask, not the underlying colors", model.pickedColor?.hex == "#000000",
+                "\(String(describing: model.pickedColor?.hex))")
+            await E2EActions.snapshotEditor(controller, context, shot: "color-average-redacted")
         }
 
         static func composition(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

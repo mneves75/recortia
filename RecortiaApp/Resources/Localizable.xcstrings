@@ -1,6 +1,446 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Start with a capture": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comece com uma captura"
+          }
+        }
+      }
+    },
+    "Choose a capture mode from the Recortia menu-bar icon.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha um modo de captura no ícone do Recortia na barra de menus."
+          }
+        }
+      }
+    },
+    "Region, display or window": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Região, tela ou janela"
+          }
+        }
+      }
+    },
+    "Capture Region lets you drag an area; press Space to choose a window, Return to confirm, or Escape to cancel. Capture Display and Capture Window select the source directly. Recortia hides its own windows during capture.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar região permite arrastar uma área; pressione Espaço para escolher uma janela, Return para confirmar ou Escape para cancelar. Capturar tela e Capturar janela selecionam a origem diretamente. O Recortia oculta suas próprias janelas durante a captura."
+          }
+        }
+      }
+    },
+    "Delay and repeat": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atraso e repetição"
+          }
+        }
+      }
+    },
+    "Use Capture with Delay for menus or temporary states, then Repeat Last Region for the same area. Settings › Capture controls the delay, cursor and window shadow.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Capturar com atraso para menus ou estados temporários e Repetir última região para a mesma área. Ajustes › Captura controla o atraso, o cursor e a sombra da janela."
+          }
+        }
+      }
+    },
+    "Long pages and existing images": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Páginas longas e imagens existentes"
+          }
+        }
+      }
+    },
+    "Scrolling Capture joins vertical frames while you scroll manually. Uncertain matches pause for review; automatic scrolling is optional and requests Accessibility only when enabled. Open Image, Paste Image or drop a PNG/JPEG to edit without Screen Recording permission.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura com rolagem une quadros verticais enquanto você rola manualmente. Correspondências incertas pausam para revisão; a rolagem automática é opcional e pede Acessibilidade apenas quando ativada. Abra, cole ou solte um PNG/JPEG para editar sem permissão de Gravação de Tela."
+          }
+        }
+      }
+    },
+    "Make the point clear": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deixe a ideia clara"
+          }
+        }
+      }
+    },
+    "Annotations stay editable in the editor. Export creates a flattened image.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As anotações continuam editáveis no editor. A exportação cria uma imagem achatada."
+          }
+        }
+      }
+    },
+    "Annotate and adjust": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anote e ajuste"
+          }
+        }
+      }
+    },
+    "Choose text, arrows, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha texto, setas, retângulos, elipses, desenho livre, marca-texto ou etapas numeradas no editor. Selecione uma anotação para mover, redimensionar, duplicar ou reordenar; Desfazer e Refazer recuperam alterações."
+          }
+        }
+      }
+    },
+    "Crop, resize and navigate": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorte, redimensione e navegue"
+          }
+        }
+      }
+    },
+    "Use Crop to keep the relevant area and Resize to change output dimensions. Zoom in for details and hold Space while dragging to pan the canvas.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Recortar para manter a área relevante e Redimensionar para mudar as dimensões de saída. Amplie para ver detalhes e segure Espaço ao arrastar para deslocar a tela de edição."
+          }
+        }
+      }
+    },
+    "Redact with solid masks": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oculte com máscaras sólidas"
+          }
+        }
+      }
+    },
+    "Choose solid redaction and cover sensitive content before sharing. It replaces source pixels in exports. Blur and pixelate are cosmetic effects, not secure redaction. Review the final output before Copy, Save or Drag Out.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha ocultação sólida e cubra o conteúdo sensível antes de compartilhar. Ela substitui os pixels de origem nas exportações. Desfoque e pixelização são efeitos cosméticos, não ocultação segura. Revise a saída final antes de Copiar, Salvar ou Arrastar para fora."
+          }
+        }
+      }
+    },
+    "Read text and inspect pixels": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leia texto e inspecione pixels"
+          }
+        }
+      }
+    },
+    "Recognition and pixel inspection run on this Mac.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O reconhecimento e a inspeção de pixels são processados neste Mac."
+          }
+        }
+      }
+    },
+    "Text recognition and QR codes": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconhecimento de texto e códigos QR"
+          }
+        }
+      }
+    },
+    "Use Capture Text (OCR) from the menu, or recognize text in an open image. Choose text formatting in Settings › Text Recognition and copy the result. QR content is untrusted; only http/https links can open, after your click.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Capturar texto (OCR) no menu ou reconheça texto em uma imagem aberta. Escolha a formatação em Ajustes › Reconhecimento de texto e copie o resultado. Conteúdo QR não é confiável; apenas links http/https podem abrir, após seu clique."
+          }
+        }
+      }
+    },
+    "Loupe and color picker": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lupa e seletor de cores"
+          }
+        }
+      }
+    },
+    "Select the pixel tools in the editor for a nearest-neighbor loupe. In Color Picker, choose 1×1 for one pixel or 3×3/5×5 to average a neighborhood. Copy encoded sRGB as HEX or RGB; zoom does not change the sampled pixels.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione as ferramentas de pixels no editor para usar a lupa de vizinho mais próximo. No Seletor de cores, escolha 1×1 para um pixel ou 3×3/5×5 para calcular a média de uma região. Copie sRGB codificado como HEX ou RGB; o zoom não muda os pixels amostrados."
+          }
+        }
+      }
+    },
+    "Measure without guessing": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meça sem adivinhar"
+          }
+        }
+      }
+    },
+    "Use the ruler to place measurement anchors. Dimensions distinguish image pixels from capture points; imported files have no invented screen scale.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use a régua para colocar pontos de medição. As dimensões distinguem pixels da imagem de pontos da captura; arquivos importados não recebem uma escala de tela inventada."
+          }
+        }
+      }
+    },
+    "Compose and keep references": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Componha e mantenha referências"
+          }
+        }
+      }
+    },
+    "Arrange images and add emphasis without leaving the editor.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Organize imagens e destaque detalhes sem sair do editor."
+          }
+        }
+      }
+    },
+    "Multiple images on one canvas": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Várias imagens em uma tela"
+          }
+        }
+      }
+    },
+    "Add an image layer in the editor, then position, resize, reorder or adjust its opacity. Arrange images side by side to explain a comparison; secure masks remain attached to their source images.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicione uma camada de imagem no editor e ajuste posição, tamanho, ordem ou opacidade. Organize imagens lado a lado para explicar uma comparação; máscaras seguras permanecem vinculadas às imagens de origem."
+          }
+        }
+      }
+    },
+    "Presentation and emphasis": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apresentação e destaque"
+          }
+        }
+      }
+    },
+    "Use the presentation inspector for solid or gradient backgrounds, padding, rounded corners and shadows. Spotlight and magnifier effects emphasize details using sanitized image content.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use o inspetor de apresentação para fundos sólidos ou em gradiente, margens, cantos arredondados e sombras. Destaque e ampliação enfatizam detalhes usando conteúdo de imagem sanitizado."
+          }
+        }
+      }
+    },
+    "Reference pins": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Referências fixadas"
+          }
+        }
+      }
+    },
+    "Pin an image from the editor to keep a reference in its own window. Adjust zoom and opacity, Copy or Drag Out, and close it when finished. Up to five pins join all Spaces and appear in window switchers; they are ordinary windows, not always-on-top overlays.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixe uma imagem pelo editor para manter uma referência em sua própria janela. Ajuste zoom e opacidade, copie ou arraste para fora e feche quando terminar. Até cinco referências aparecem em todos os Spaces e nos alternadores de janelas; são janelas comuns, não sobreposições sempre no topo."
+          }
+        }
+      }
+    },
+    "Choose what leaves the editor": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha o que sai do editor"
+          }
+        }
+      }
+    },
+    "Sharing uses a flattened, freshly encoded image.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O compartilhamento usa uma imagem achatada e recém-codificada."
+          }
+        }
+      }
+    },
+    "Copy, Save or Drag Out": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar, Salvar ou Arrastar para fora"
+          }
+        }
+      }
+    },
+    "Copy puts a sanitized PNG on the clipboard. Save writes PNG or JPEG atomically; Drag Out shares the same sanitized output. Exported files omit hidden layers and location or text metadata.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar coloca um PNG sanitizado na área de transferência. Salvar grava PNG ou JPEG atomicamente; Arrastar para fora compartilha a mesma saída sanitizada. Arquivos exportados não incluem camadas ocultas nem metadados de localização ou texto."
+          }
+        }
+      }
+    },
+    "Automatic exports are optional": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportações automáticas são opcionais"
+          }
+        }
+      }
+    },
+    "Settings › Export can enable automatic copy or save after capture. Disable automatic copy, save and upload before capturing sensitive content: they run before redaction. Later edits cannot recall earlier clipboard, file or remote copies. Redact first, then export deliberately.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes › Exportação permite ativar cópia ou salvamento automático após a captura. Desative cópia, salvamento e envio automáticos antes de capturar conteúdo sensível: eles ocorrem antes da ocultação. Edições posteriores não recolhem cópias anteriores da área de transferência, de arquivos ou remotas. Oculte primeiro e exporte deliberadamente."
+          }
+        }
+      }
+    },
+    "Optional GitHub sharing": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartilhamento opcional no GitHub"
+          }
+        }
+      }
+    },
+    "Settings › GitHub requires your destination, credentials and separate opt-in. Uploads leave this Mac; automatic upload is off by default and sends the capture before later edits. Disable it before sensitive captures. Local deletion or later redaction does not delete a remote copy.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes › GitHub exige destino, credenciais e consentimento separado. Os envios saem deste Mac; o envio automático vem desativado e envia a captura antes de edições posteriores. Desative-o antes de capturas sensíveis. Apagar localmente ou ocultar depois não apaga uma cópia remota."
+          }
+        }
+      }
+    },
+    "Step %lld of %lld": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etapa %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Feature Tour": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tour de recursos"
+          }
+        }
+      }
+    },
+    "Automatic copy, save and upload are off on a fresh install. You decide whether to enable them in Settings.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cópia, salvamento e envio automáticos vêm desativados em uma instalação nova. Você decide se deseja ativá-los nos Ajustes."
+          }
+        }
+      }
+    },
+    "Settings also controls Open at login, recognition, pins and scrolling. You can reopen this introduction from Feature Tour in the menu bar.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os Ajustes também controlam Abrir ao iniciar sessão, reconhecimento, referências e rolagem. Você pode reabrir esta introdução pelo Tour de recursos na barra de menus."
+          }
+        }
+      }
+    },
     "Destination saved, but the previous destination's token could not be removed from Keychain.": {
       "localizations": {
         "en": {

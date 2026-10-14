@@ -1,5 +1,10 @@
 # Issue tracker: GitHub
 
+Owner workflow override (2026-10-14): new feature specs and implementation tickets are tracked
+locally at `docs/specs/<feature>/`, in English. Delete completed ticket files in the finishing
+commit and keep their acceptance/evidence in the spec and BACKLOG.json. Existing GitHub bug
+triage and milestone FP-xxx records remain as described below.
+
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
 Repository: `mneves75/recortia` (remote `origin`). Planned milestone work stays in

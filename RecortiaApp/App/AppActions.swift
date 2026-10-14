@@ -17,6 +17,7 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
     case bringPinsForward
     case closeAllPins
     case settings
+    case featureTour
     case about
     case quit
 
@@ -43,6 +44,7 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
         case .bringPinsForward: String(localized: "Bring Pins Forward")
         case .closeAllPins: String(localized: "Close All Pins")
         case .settings: String(localized: "Settings…")
+        case .featureTour: String(localized: "Feature Tour")
         case .about: String(localized: "About Recortia")
         case .quit: String(localized: "Quit Recortia")
         }

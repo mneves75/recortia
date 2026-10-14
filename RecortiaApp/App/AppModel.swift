@@ -140,7 +140,7 @@ final class AppModel: AppActions {
             return AppCommand.captureModes.contains { isEnabled($0) }
         case .bringPinsForward, .closeAllPins:
             return features?.pins.pins.isEmpty == false
-        case .settings, .about, .quit:
+        case .settings, .featureTour, .about, .quit:
             return true
         }
     }
@@ -167,6 +167,9 @@ final class AppModel: AppActions {
         case .bringPinsForward: features?.pins.bringForward()
         case .closeAllPins: features?.pins.closeAll()
         case .settings: showSettings()
+        case .featureTour:
+            if !onboardingWindow.isVisible { onboarding.beginTour() }
+            showOnboarding()
         case .about:
             AppPresence.shared.activate()
             NSApp.orderFrontStandardAboutPanel(nil)

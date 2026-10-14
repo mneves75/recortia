@@ -16,6 +16,7 @@
         let desktop: CGImage
         let capture: SyntheticCaptureService
         let permission: SyntheticScreenPermission
+        let accessibility = SyntheticAccessibilityPermission()
         let scrollFrames: SyntheticScrollFrames
         let clipboard: PrivatePasteboardClipboard
         let textPasteboard: NSPasteboard
@@ -63,7 +64,7 @@
             importInput = SyntheticImportInput(input: live.input)
             services = AppServices(
                 githubUpload: github, githubCredentials: github,
-                capture: capture, screenPermission: permission, accessibility: live.accessibility,
+                capture: capture, screenPermission: permission, accessibility: accessibility,
                 assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,

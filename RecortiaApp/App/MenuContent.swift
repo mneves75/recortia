@@ -29,6 +29,7 @@ struct MenuContent: View {
             item(.settings)
                 .keyboardShortcut(",")
             item(.about)
+            item(.featureTour)
             Divider()
             item(.quit)
                 .keyboardShortcut("q")

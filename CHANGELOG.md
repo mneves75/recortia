@@ -6,6 +6,28 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). No local
+installation, notarization or distribution is claimed. Stable-toolchain qualification is blocked:
+installed build 27A9275 is Xcode 27.1 RC.
+
+### Added
+
+- Color Picker sample sizes: 1×1 (the existing default), 3×3 and 5×5. Area samples use one
+  bounded sanitized tile off the UI actor, alpha-weighted encoded sRGB averaging, and stale
+  completion checks. Changing size, redacting or closing prevents copying an obsolete sample.
+- A seven-page, skippable first-run feature tour in English and Portuguese, explaining capture,
+  editing/redaction, recognition and pixel tools, composition/pins, exports and shortcuts.
+- **Feature Tour** in the menu-bar menu reopens the introduction without resetting preferences,
+  shortcut assignments or first-run completion. Navigation remains available when content scrolls
+  at the minimum window size; the tour follows the existing Space policy.
+- A versioned read-only Shottr/CleanShot resource inventory, explicit parity gaps and an
+  adversarial implementation plan. No proprietary assets or undocumented optimizations are copied.
+
+### Fixed
+
+- Onboarding now explains that automatic exports precede redaction and later edits cannot
+  recall earlier clipboard, file or remote copies.
+
 ## [0.11.0] - 2026-10-08
 
 Released as build 18 (notarized; Homebrew `mneves75/tap/recortia`). The physical AltTab, ⌘Tab

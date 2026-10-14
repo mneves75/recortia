@@ -1,5 +1,11 @@
 # Recortia
 
+**Development candidate:** 0.12.0 (build 19), intended label `0.12.0-beta1`, is source work and has
+not been tagged, installed or distributed. The replayable first-run feature tour and reference-feature inventory are
+tracked in [feature discovery](docs/specs/feature-discovery/spec.md). This is phased work; it does
+not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
+toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.
+
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
@@ -66,6 +72,14 @@ Earlier build-10 installation and build-11 verification evidence remains histori
 
 ## What it does
 
+- **Learn on first launch.** A skippable tour explains capture/import/scrolling, annotations and
+  secure redaction, OCR/QR and pixel tools, composition and pins, exports and optional sharing,
+  then shortcuts. Open **Feature Tour** from the menu-bar menu to replay it. Back/Continue and
+  Skip/Done use native controls; replay preserves preferences and first-run completion. No
+  screen permission is requested by the tour. Automatic exports happen before later edits:
+  disable automatic copy/save/upload before sensitive captures; later redaction cannot recall
+  copies already made.
+
 - **Capture** a region, a display, or a chosen window; delayed capture; repeat the last region.
   Recortia's own windows are excluded; regions stay on one display. Starting another capture hides
   existing Recortia windows during selection and capture, then restores them without closing
@@ -91,6 +105,8 @@ Earlier build-10 installation and build-11 verification evidence remains histori
   only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch. A live
   session stops if its source window, an unrelated foreground app, or its display changes.
 - **Pixel tools**: nearest-neighbor loupe, ruler, and sRGB color picker (HEX/RGB).
+  The development candidate adds 1×1, 3×3 and 5×5 color-picker samples. Area choices average
+  encoded sRGB pixels from the sanitized preview off the UI actor; the loupe remains nearest-pixel.
 - **Compose and present**: multiple images on one canvas, side-by-side, background, padding,
   rounded corners, shadow, spotlight, and magnifier callouts.
 - English and Brazilian Portuguese; keyboard-accessible, with VoiceOver labels.
