@@ -7,7 +7,8 @@ tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candid
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). Three editable
 [text font designs](docs/specs/text-appearance/spec.md) passed the 640-test development gate and
 [independent code/security and native acceptance](docs/specs/text-appearance/acceptance-verdict.md)
-on f1852b7. Four decorated appearances remain planned. Native palette control
+on f1852b7. Outlined, Boxed, Rounded Box and Monospaced Box are now implemented and under
+qualification, with background color/reset and passive decoration during native input. Native palette control
 checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
 fresh independent native acceptance passes on e6c259c. The latest full native run passes 45/45
 scenarios in each language, with three host-activation checks skipped across both languages.

@@ -146,7 +146,7 @@
             }
             wrappedController.window?.orderFront(nil)
             let wrappedRoot = try context.unwrap("wrapped editor content", wrappedController.contentRoot)
-            for appearance in TextAppearance.allCases {
+            for appearance in [TextAppearance.standard, .rounded, .monospaced] {
                 await E2EActions.scrollInspector(wrappedController, to: 0.35)
                 await E2ESnapshot.settle(wrappedRoot)
                 let identifier = "textAppearance.\(appearance.rawValue)"

@@ -141,7 +141,13 @@ use public system-font designs shared by native editing, selection geometry and 
 Explicit appearance changes affect selected text only, form a separate undo step and refuse
 while native text input is active. Native editing retains content-width constraints at zoom.
 Failed text layout is an explicit error; a failed canvas draw clears partial pixels. The
-remaining outlined/boxed appearances are tracked separately in the text-appearance spec.
+Outlined uses white monochrome glyph interiors and the chosen stroke color/width. Boxed,
+Rounded Box and Monospaced Box retain the content origin/wrapping width and add padded
+backgrounds. Nil background means automatic white; explicit transparent color remains clear.
+Background Color changes selected boxed text and a separate local future-text default;
+Reset restores white with its own undo step. Native input uses the same font and passive
+background geometry without replacing marked text. The canvas and its input overlays stay
+clipped to the viewport at high zoom. Qualification is tracked in the text-appearance spec.
 
 ### FR-06 — Redaction
 

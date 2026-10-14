@@ -11,6 +11,10 @@ enum EditorStrings {
         case .standard: String(localized: "Standard", table: "Editor")
         case .rounded: String(localized: "Rounded", table: "Editor")
         case .monospaced: String(localized: "Monospaced", table: "Editor")
+        case .outlined: String(localized: "Outlined", table: "Editor")
+        case .boxed: String(localized: "Boxed", table: "Editor")
+        case .roundedBoxed: String(localized: "Rounded Box", table: "Editor")
+        case .monospacedBoxed: String(localized: "Monospaced Box", table: "Editor")
         }
     }
 

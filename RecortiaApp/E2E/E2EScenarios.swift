@@ -61,6 +61,9 @@
                 id: "text-layout-failure", title: "Text render failure clears partial canvas output",
                 run: TextAppearanceScenarios.layoutFailure),
             E2EScenario(
+                id: "text-decorations", title: "Native outlined and boxed text",
+                run: TextDecorationScenarios.decorations),
+            E2EScenario(
                 id: "canvas-focus", title: "Space pan ends when keyboard ownership changes",
                 run: EditorScenarios.canvasFocus),
             E2EScenario(

@@ -96,6 +96,15 @@ the actual canvas clears those partial pixels and exposes a render notice. Expor
 must propagate rather than omit text. Minimum-width dark rendering and the RED family remain
 required; these synthetic checks do not qualify physical IME/VoiceOver behavior.
 
+The `text-decorations` scenario additionally operates Outlined/Boxed/Rounded Box/Monospaced
+Box, verifies selected values and native fonts, white-fill/stroke input attributes, Unicode
+insertion and marked-text preservation during zoom, literal live padding pixels and native
+Reset with independent undo/redo. Background controls refuse during input. Check standard
+and minimum-width dark layouts in both languages. High-zoom canvas/input drawing must not
+change a pixel in the adjacent object-list surface. Actual exports prove all-seven-style
+glyph/background bounds, transparent/custom/automatic fills, final group opacity and paired
+secret source independence with transformed PNG/JPEG, topmost masks and magnifiers.
+
 Start an image move immediately after a color/opacity adjustment. The adjustment's delayed completion
 cannot split the move's undo group or revert the adjustment when the move is canceled. Editing only
 an image's inspector Height preserves its aspect ratio and refreshes both size fields.

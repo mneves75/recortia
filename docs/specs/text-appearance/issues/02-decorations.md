@@ -5,7 +5,7 @@ and monospaced-boxed text, preserving editing, geometry, export and privacy beha
 
 **Blocked by:** None; ticket01 verified-development. Follow ../implementation-plan.md.
 
-**Status:** ready-for-agent
+**Status:** in-progress (backend outlined-pixel tracer and native input feasibility)
 
 - [ ] Four decorations have independently checked glyph/box output, padding and outside bounds.
 - [ ] Background color/alpha controls describe actual defaults and remain effective.

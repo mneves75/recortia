@@ -14,7 +14,12 @@ installed build 27A9275 is Xcode 27.1 RC.
 
 - Standard, rounded and monospaced text appearances with native selected-state controls,
   independent undo, shared layout metrics and consistent native editing/export fonts. Native
-  editing now retains wrapping constraints at zoom. Four decorated appearances remain planned.
+  editing now retains wrapping constraints at zoom.
+- Outlined, boxed, rounded-boxed and monospaced-boxed text, with shared padding/ink geometry,
+  explicit background color/alpha and Reset to automatic white. Native text input retains its
+  decoration and composition through zoom; final qualification is in progress.
+- Clip the canvas and its native text overlays to their viewport at high zoom, keeping image
+  content out of the object list and toolbar.
 
 - Explicit saved annotation colors: one local palette of up to 12 colors shared by editors,
   with native Save/Apply/Remove controls, HEX labels and undoable application. Preference schema

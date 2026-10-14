@@ -364,7 +364,8 @@ extension EditorModel {
 
     private func beginNewText(at p: Point<DocumentSpace>) {
         textEditing = EditorTextEditing(
-            annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize, color: style.stroke,
+            annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize,
+            annotationStyle: style.textAnnotationStyle,
             maxWidth: nil, appearance: style.textAppearance)
     }
 
@@ -378,7 +379,7 @@ extension EditorModel {
         loadSelectedTextAppearance()
         textEditing = EditorTextEditing(
             annotationID: id, origin: text.origin, initialString: text.string, fontSize: text.fontSize,
-            color: annotation.style.stroke, maxWidth: text.maxWidth, appearance: text.resolvedAppearance)
+            annotationStyle: annotation.style, maxWidth: text.maxWidth, appearance: text.resolvedAppearance)
     }
 
     /// Ends text editing with the text view's final string: one undo step. An empty new text adds
@@ -407,7 +408,7 @@ extension EditorModel {
                 Annotation.TextContent(
                     origin: editing.origin, string: string, fontSize: editing.fontSize, maxWidth: editing.maxWidth,
                     appearance: editing.appearance)),
-            style: style.annotationStyle)
+            style: editing.annotationStyle)
         if edit("Text", { $0.annotations.append(text) }) { selection = [.annotation(text.id)] }
     }
 

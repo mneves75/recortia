@@ -320,6 +320,16 @@ private struct StyleSection: View {
     let model: EditorModel
     let coalescer: ChangeCoalescer
 
+    private var showsTextBackground: Bool {
+        if model.tool == .text, model.style.textAppearance.isBoxed { return true }
+        return model.document.annotations.contains { annotation in
+            guard model.selection.contains(.annotation(annotation.id)), case .text(let text) = annotation.kind else {
+                return false
+            }
+            return text.resolvedAppearance.isBoxed
+        }
+    }
+
     var body: some View {
         let style = model.style
         Section {
@@ -327,15 +337,35 @@ private struct StyleSection: View {
                 String(localized: "Color", table: "Editor"),
                 selection: colorBinding({ style.stroke }, { c in coalescer.run(model) { model.setStrokeColor(c) } }),
                 supportsOpacity: false)
-            Toggle(
-                String(localized: "Fill", table: "Editor"),
-                isOn: Binding(
-                    get: { style.fill != nil },
-                    set: { model.setFillColor($0 ? RGBA.white.withAlpha(255) : nil) }))
-            if let fill = style.fill {
+            if showsTextBackground {
                 ColorPicker(
-                    String(localized: "Fill Color", table: "Editor"),
-                    selection: colorBinding({ fill }, { c in coalescer.run(model) { model.setFillColor(c) } }))
+                    String(localized: "Background Color", table: "Editor"),
+                    selection: colorBinding(
+                        { style.textBackgroundColor ?? .white },
+                        { c in coalescer.run(model) { model.setTextBackgroundColor(c) } })
+                )
+                .accessibilityIdentifier("textBackground.color")
+                .disabled(!model.canSetTextAppearance)
+                .help(
+                    String(
+                        localized: "Reset restores white. A transparent color keeps the background clear.",
+                        table: "Editor"))
+                Button(String(localized: "Reset Background", table: "Editor")) {
+                    model.setTextBackgroundColor(nil)
+                }
+                .accessibilityIdentifier("textBackground.reset")
+                .disabled(!model.canSetTextAppearance || style.textBackgroundColor == nil)
+            } else {
+                Toggle(
+                    String(localized: "Fill", table: "Editor"),
+                    isOn: Binding(
+                        get: { style.fill != nil },
+                        set: { model.setFillColor($0 ? RGBA.white.withAlpha(255) : nil) }))
+                if let fill = style.fill {
+                    ColorPicker(
+                        String(localized: "Fill Color", table: "Editor"),
+                        selection: colorBinding({ fill }, { c in coalescer.run(model) { model.setFillColor(c) } }))
+                }
             }
             UndoableSlider(
                 title: String(localized: "Line Width", table: "Editor"), value: style.lineWidth,

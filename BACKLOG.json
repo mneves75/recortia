@@ -11,7 +11,7 @@
     "date": "2026-10-14",
     "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines/saved colors; broader reference parity remains unfinished.",
     "status": "additional_slice_in_progress_release_blocked",
-    "verification": "Saved colors/undo correction: development gate624 tests/two Debug builds/590 strings; independent focused19 tests pass. Fresh source-blind native acceptance on e6c259c passed828 assertions across both languages. Full dd3c615 E2E EN43/43, PT-BR42/43 failed replacement-overlay keyboard ownership, two activation checks skipped each. Stable CI passed21e712f, dd3c615 ande6c259c. Full parity and local stable release qualification remain blocked. See per-slice review evidence and acceptance verdicts.",
+    "verification": "Text font designs ticket01 accepted on f1852b7: development gate640 tests/two Debug builds/596 strings; independent code/security41 focused tests; fresh source-blind native6/6. Full native45/45 per language includes3 activation checks skipped. Earlier PT replacement-overlay keyboard failure did not reproduce; no focus fix or root cause claimed. Stable CI passed a3ad94e on Xcode27.0/27A266a. Ticket02 decorations in progress. Full parity and local stable release qualification remain blocked. See per-slice review evidence and acceptance verdicts.",
     "evidence_paths": [
       "docs/specs/feature-discovery/acceptance-verdict.md",
       "docs/specs/feature-discovery/review-evidence.md",
@@ -1197,7 +1197,7 @@
       "deliverables": ["docs/specs/text-appearance/spec.md", "model/render/native-control regressions"],
       "completion_contract": "Both tickets require source-red regressions, measured geometry, development gates and fresh independent code/native acceptance. Physical and stable release qualification remain separate.",
       "evidence": [".scratch/text-font-feasibility-20261014/evidence.md", "docs/specs/text-appearance/acceptance-verdict.md", "docs/specs/text-appearance/review-evidence.md"],
-      "progress_note": "Ticket01 three-font slice verified-development on f1852b7: gate640, independent code/security41, source-blind native6/6, full native45/45 per language with3activation checks skipped. Ticket02 decorations pending; whole FP-033 remains in_progress."
+      "progress_note": "Ticket01 three-font slice verified-development on f1852b7: gate640, independent code/security41, source-blind native6/6, full native45/45 per language with3activation checks skipped; stable CI a3ad94e passed. Ticket02 decorations in progress with rendering/model tracers and native input integration pending; whole FP-033 remains in_progress."
     }
   ],
   "deferred_scope": [

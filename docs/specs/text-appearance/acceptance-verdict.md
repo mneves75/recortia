@@ -29,8 +29,13 @@ Criterion 7 — Required development checks: PASS — verifier personally ran 41
 (20 Imaging / 18 Features / 3 Domain), exit0. It read the corrected full gate's 640-test,
 two-build, localization PASS; it did not rerun that whole gate.
 Remaining uncertainty: configured model identities are not runtime-attested. Physical
-IME/VoiceOver/Spaces, macOS15 runtime, stable-Xcode qualification, signed install/release and
+IME/VoiceOver/Spaces, macOS15 runtime, signed install/release and
 actual forced font-unavailability remain unqualified.
+
+Hosted stable-Xcode gate subsequently passed on a3ad94e (the same accepted source plus its
+acceptance documentation): run38637746132 used Xcode27.0/27A266a and passed all640 tests and
+the complete unsigned gate. This supplements the independent verdict; it does not qualify a
+signed installation or the unimplemented decorations. Proof: `.scratch/text-font-ci-proof.log`.
 
 Verifier command:
 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development swift test --package-path Packages/RecortiaKit --filter 'TextAppearanceTests|EditorTextAppearanceTests|TextAppearanceExportTests|QRDecodingTests.imagingSourcesHaveNoSideEffectAPIs|AnnotationRendererTests|EditorCanvasRendererTests|ExportContainerTests|RedactionTests'`

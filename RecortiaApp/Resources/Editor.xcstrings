@@ -1,6 +1,48 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Background Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Background Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor do fundo" } }
+      }
+    },
+    "Reset Background": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset Background" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Redefinir fundo" } }
+      }
+    },
+    "Reset restores white. A transparent color keeps the background clear.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset restores white. A transparent color keeps the background clear." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Redefinir restaura o branco. Uma cor transparente mantém o fundo sem preenchimento." } }
+      }
+    },
+    "Outlined": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Outlined" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Contornado" } }
+      }
+    },
+    "Boxed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Boxed" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Com caixa" } }
+      }
+    },
+    "Rounded Box": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rounded Box" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Caixa arredondada" } }
+      }
+    },
+    "Monospaced Box": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Monospaced Box" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Caixa monoespaçada" } }
+      }
+    },
     "Text Style": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Text Style" } },

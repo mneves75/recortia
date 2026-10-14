@@ -216,6 +216,16 @@ property provides the native editing width constraint. Its official Markdown doc
 was read directly after the browser fetch could not retrieve it. No proprietary font or
 reference-product asset is included in Recortia.
 
+For ticket02, Apple's [Core Text stroke-width attribute](https://developer.apple.com/documentation/coretext/kctstrokewidthattributename)
+documents font-size percentages and negative values for stroke plus fill. That describes an
+API, not proof of exact joins, glyph bounds or color-emoji rendering; actual export controls
+are required. An isolated NSTextView probe compiled with strict Swift6 for macOS15 and ran on
+the local macOS27.2 host. Negative stroke/white-fill typing attributes survived plaintext
+Unicode insertion, font scaling and a programmatic marked-text lifecycle, retaining marked
+and selected ranges. Evidence: `.scratch/text-decoration-native-20261014/InputProbe.swift`
+and `input-probe.log`. This supports the planned native integration but does not qualify
+physical IME, a live rounded box or final export geometry.
+
 ## External assertions not made
 
 No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

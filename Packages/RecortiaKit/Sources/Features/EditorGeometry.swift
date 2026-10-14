@@ -12,7 +12,7 @@ enum EditorGeometry {
     /// Selection frame of an annotation. Text uses the same Core Text layout as the renderer.
     static func frame(of annotation: Annotation) -> Rect<DocumentSpace>? {
         if case .text(let text) = annotation.kind {
-            return try? TextLayout.metrics(for: text).frame
+            return try? TextLayout.metrics(for: text, style: annotation.style).frame
         }
         return annotation.bounds
     }

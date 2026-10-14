@@ -181,10 +181,12 @@ public struct EditorStyle: Hashable, Sendable {
     public var opacity: Double
     public var fontSize: Double
     public var textAppearance: TextAppearance
+    /// Local future boxed-text fill; nil means automatic white. Shape/plain-text fill is separate.
+    public var textBackgroundColor: RGBA?
 
     public init(
         stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24,
-        textAppearance: TextAppearance = .standard
+        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil
     ) {
         self.stroke = stroke
         self.fill = fill
@@ -192,6 +194,7 @@ public struct EditorStyle: Hashable, Sendable {
         self.opacity = opacity
         self.fontSize = fontSize
         self.textAppearance = textAppearance
+        self.textBackgroundColor = textBackgroundColor
     }
 
     public static let lineWidthRange: ClosedRange<Double> = 1...40
@@ -200,6 +203,12 @@ public struct EditorStyle: Hashable, Sendable {
 
     var annotationStyle: Annotation.Style {
         Annotation.Style(stroke: stroke, fill: fill, lineWidth: lineWidth, opacity: opacity)
+    }
+
+    var textAnnotationStyle: Annotation.Style {
+        var result = annotationStyle
+        if textAppearance.isBoxed { result.fill = textBackgroundColor }
+        return result
     }
 
     /// Highlighter strokes are wide and translucent, derived from the same color.
@@ -226,7 +235,8 @@ public struct EditorTextEditing: Hashable, Sendable {
     public let origin: Point<DocumentSpace>
     public let initialString: String
     public let fontSize: Double
-    public let color: RGBA
+    public let annotationStyle: Annotation.Style
+    public var color: RGBA { annotationStyle.stroke }
     public let maxWidth: Double?
     public let appearance: TextAppearance
 }

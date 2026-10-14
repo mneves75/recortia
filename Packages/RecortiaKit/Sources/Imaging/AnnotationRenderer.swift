@@ -9,6 +9,22 @@ import Foundation
 /// The context must already map document space with a top-left origin and y growing downward.
 /// Font smoothing is disabled while drawing so the output does not depend on the display.
 public enum AnnotationRenderer {
+    /// Paints only the passive decoration, in document space, with the annotation's opacity.
+    public static func drawTextBackground(
+        _ text: Annotation.TextContent, style: Annotation.Style, in context: CGContext
+    ) throws(RenderError) {
+        let layout: TextLayout.Operation
+        do { layout = try TextLayout.operation(for: text, style: style) } catch {
+            throw .textLayoutFailed(error)
+        }
+        guard !text.string.isEmpty, style.opacity > 0 else { return }
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.setShouldAntialias(true)
+        context.setAlpha(min(style.opacity, 1))
+        drawTextBackground(text, style: style, metrics: layout.metrics, in: context)
+    }
+
     public static func draw(_ annotations: [Annotation], in context: CGContext) throws(RenderError) {
         for annotation in annotations {
             guard isDrawable(annotation) else {
@@ -48,7 +64,7 @@ public enum AnnotationRenderer {
     private static func draw(_ annotation: Annotation, in context: CGContext) throws(RenderError) {
         let textLayout: TextLayout.Operation?
         if case .text(let text) = annotation.kind {
-            do { textLayout = try TextLayout.operation(for: text, color: annotation.style.stroke) } catch {
+            do { textLayout = try TextLayout.operation(for: text, style: annotation.style) } catch {
                 throw .textLayoutFailed(error)
             }
         } else {
@@ -78,10 +94,7 @@ public enum AnnotationRenderer {
         switch annotation.kind {
         case .text(let text):
             if !text.string.isEmpty, let textLayout {
-                if let fill = style.fill {
-                    context.setFillColor(fill.cgColor)
-                    context.fill(textLayout.metrics.contentFrame.cg)
-                }
+                drawTextBackground(text, style: style, metrics: textLayout.metrics, in: context)
                 textLayout.draw(in: context)
             }
         case .arrow(let start, let end):
@@ -99,6 +112,24 @@ public enum AnnotationRenderer {
             drawStep(center: center.cg, number: number, radius: annotation.stepRadius, style: style, in: context)
         }
 
+    }
+
+    private static func drawTextBackground(
+        _ text: Annotation.TextContent, style: Annotation.Style, metrics: TextLayoutMetrics, in context: CGContext
+    ) {
+        guard let background = metrics.backgroundFrame,
+            let fill = style.fill ?? (text.resolvedAppearance.isBoxed ? .white : nil)
+        else { return }
+        context.setFillColor(fill.cgColor)
+        if metrics.cornerRadius > 0 {
+            context.addPath(
+                CGPath(
+                    roundedRect: background.cg, cornerWidth: metrics.cornerRadius,
+                    cornerHeight: metrics.cornerRadius, transform: nil))
+            context.fillPath()
+        } else {
+            context.fill(background.cg)
+        }
     }
 
     private static func drawShape(_ path: CGPath, style: Annotation.Style, in context: CGContext) {

@@ -13,25 +13,38 @@ public enum TextLayoutError: Error, Equatable, Sendable {
 
 /// Geometry only: Core Text objects remain local to each measurement or drawing operation.
 public struct TextLayoutMetrics: Hashable, Sendable {
+    /// Conservative painted bounds, including glyph fallback, outline and antialiasing fringes.
     public let frame: Rect<DocumentSpace>
+    /// The unchanged text origin and wrapping constraint, excluding decoration padding.
     public let contentFrame: Rect<DocumentSpace>
+    /// The exact fill geometry; nil when the appearance and style have no background.
+    public let backgroundFrame: Rect<DocumentSpace>?
+    /// Background corner radius in document units.
+    public let cornerRadius: Double
 }
 
 /// Stateless public-system-font resolution shared by native editing, selection and export.
 public enum TextLayout {
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont {
-        guard size.isFinite, size > 0 else { throw .invalidGeometry }
+        // Two-sided ink/decorations must have a representable extent before resolving a font.
+        guard size.isFinite, size > 0, (size * 2).isFinite else { throw .invalidGeometry }
         let base = NSFont.systemFont(ofSize: size)
-        guard appearance != .standard else { return base }
-        let design: NSFontDescriptor.SystemDesign = appearance == .rounded ? .rounded : .monospaced
+        let design: NSFontDescriptor.SystemDesign
+        switch appearance {
+        case .standard, .outlined, .boxed: return base
+        case .rounded, .roundedBoxed: design = .rounded
+        case .monospaced, .monospacedBoxed: design = .monospaced
+        }
         guard let descriptor = base.fontDescriptor.withDesign(design),
             let font = NSFont(descriptor: descriptor, size: size)
         else { throw .unavailableFont(appearance) }
         return font
     }
 
-    public static func metrics(for text: Annotation.TextContent) throws(TextLayoutError) -> TextLayoutMetrics {
-        try operation(for: text, color: .black).metrics
+    public static func metrics(for text: Annotation.TextContent, style: Annotation.Style) throws(TextLayoutError)
+        -> TextLayoutMetrics
+    {
+        try operation(for: text, style: style).metrics
     }
 
     struct Operation {
@@ -49,14 +62,31 @@ public enum TextLayout {
         }
     }
 
-    static func operation(for text: Annotation.TextContent, color: RGBA) throws(TextLayoutError) -> Operation {
-        guard text.origin.isFinite, text.maxWidth.map({ $0.isFinite && $0 > 0 }) ?? true else {
+    static func operation(for text: Annotation.TextContent, style: Annotation.Style) throws(TextLayoutError)
+        -> Operation
+    {
+        guard text.origin.isFinite, text.maxWidth.map({ $0.isFinite && $0 > 0 }) ?? true,
+            style.lineWidth.isFinite, style.lineWidth >= 0, style.opacity.isFinite
+        else {
             throw .invalidGeometry
         }
+        let outlined = text.resolvedAppearance == .outlined
+        let percentage = outlined ? style.lineWidth / text.fontSize * 100 : 0
+        // A full line width conservatively covers round outline joins and fallback glyphs;
+        // image bounds alone omit the outside stroke. Export-pixel tests cover wide strokes.
+        let inkPadding = outlined ? style.lineWidth + 1 : 1
+        guard percentage.isFinite, (inkPadding * 2).isFinite else { throw .invalidGeometry }
         let font = try nativeFont(for: text.resolvedAppearance, size: text.fontSize) as CTFont
-        let attributes: [CFString: Any] = [
-            kCTFontAttributeName: font, kCTForegroundColorAttributeName: color.cgColor,
+        var attributes: [CFString: Any] = [
+            kCTFontAttributeName: font, kCTForegroundColorAttributeName: style.stroke.cgColor,
         ]
+        if outlined {
+            // Core Text's negative percentage requests stroke plus fill; its magnitude is
+            // a percentage of font size, rather than a document-space width.
+            attributes[kCTForegroundColorAttributeName] = RGBA.white.cgColor
+            attributes[kCTStrokeColorAttributeName] = style.stroke.cgColor
+            attributes[kCTStrokeWidthAttributeName] = -percentage
+        }
         guard let attributed = CFAttributedStringCreate(nil, text.string as CFString, attributes as CFDictionary)
         else { throw .unmeasurableText }
         let framesetter = CTFramesetterCreateWithAttributedString(attributed)
@@ -85,10 +115,36 @@ public enum TextLayout {
                 throw .unmeasurableText
             }
             let painted = Rect<DocumentSpace>(
-                x: content.minX + origin.x + ink.minX - 1,
-                y: content.maxY - origin.y - ink.maxY - 1, width: ink.width + 2, height: ink.height + 2)
+                x: content.minX + origin.x + ink.minX - inkPadding,
+                y: content.maxY - origin.y - ink.maxY - inkPadding,
+                width: ink.width + inkPadding * 2, height: ink.height + inkPadding * 2)
+            guard painted.minX.isFinite, painted.minY.isFinite, painted.maxX.isFinite, painted.maxY.isFinite else {
+                throw .unmeasurableText
+            }
             bounds = bounds.union(painted)
         }
-        return Operation(frame: frame, metrics: TextLayoutMetrics(frame: bounds, contentFrame: content))
+        let background: Rect<DocumentSpace>?
+        if text.resolvedAppearance.isBoxed {
+            let horizontal = text.fontSize * 0.25, vertical = text.fontSize * 0.16
+            background = Rect(
+                x: content.minX - horizontal, y: content.minY - vertical,
+                width: content.width + horizontal * 2, height: content.height + vertical * 2)
+        } else {
+            background = style.fill == nil ? nil : content
+        }
+        if let background {
+            guard background.minX.isFinite, background.minY.isFinite,
+                background.maxX.isFinite, background.maxY.isFinite
+            else { throw .unmeasurableText }
+            let antialiasedBackground = Rect<DocumentSpace>(
+                x: background.minX - 1, y: background.minY - 1,
+                width: background.width + 2, height: background.height + 2)
+            bounds = bounds.union(antialiasedBackground)
+        }
+        return Operation(
+            frame: frame,
+            metrics: TextLayoutMetrics(
+                frame: bounds, contentFrame: content, backgroundFrame: background,
+                cornerRadius: text.resolvedAppearance == .roundedBoxed ? text.fontSize * 0.2 : 0))
     }
 }
