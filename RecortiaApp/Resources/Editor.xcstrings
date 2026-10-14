@@ -1,6 +1,66 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Remove Current Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Current Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor atual" } }
+      }
+    },
+    "Remove the current annotation color from saved colors. Existing annotations keep their color.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove the current annotation color from saved colors. Existing annotations keep their color." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remova a cor atual da paleta. As anotações existentes mantêm sua cor." } }
+      }
+    },
+    "Save Current Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save Current Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar cor atual" } }
+      }
+    },
+    "Save up to 12 distinct annotation colors. Duplicate colors are already saved.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save up to 12 distinct annotation colors. Duplicate colors are already saved." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salve até 12 cores de anotação diferentes. Cores repetidas já estão salvas." } }
+      }
+    },
+    "Saved colors are unavailable while newer preferences are protected.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saved colors are unavailable while newer preferences are protected." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "As cores salvas ficam indisponíveis enquanto as preferências de uma versão mais recente estão protegidas." } }
+      }
+    },
+    "Save a color to reuse it in any editor. Only colors you choose are stored.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save a color to reuse it in any editor. Only colors you choose are stored." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salve uma cor para reutilizá-la em qualquer editor. Apenas as cores que você escolher serão armazenadas." } }
+      }
+    },
+    "Selected": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Selected" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Selecionada" } }
+      }
+    },
+    "Remove Saved Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Saved Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor salva" } }
+      }
+    },
+    "Apply this annotation color. Use the context menu to remove it.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply this annotation color. Use the context menu to remove it." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplique esta cor à anotação. Use o menu de contexto para removê-la." } }
+      }
+    },
+    "Saved Colors": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saved Colors" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cores salvas" } }
+      }
+    },
     "1×1 — Single pixel": {
       "comment": "Color-picker menu choice. The sample is one image pixel.",
       "localizations": {

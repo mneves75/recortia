@@ -20,6 +20,7 @@ struct EditorInspectorView: View {
             if model.tool.usesStyle
                 || model.selection.contains(where: { if case .annotation = $0 { true } else { false } })
             {
+                SavedColorsSection(model: model)
                 StyleSection(model: model, coalescer: coalescer)
             }
             RedactionSection(model: model, actions: actions, coalescer: coalescer)
@@ -317,6 +318,93 @@ private struct StyleSection: View {
 }
 
 // MARK: - Redaction
+
+private struct SavedColorsSection: View {
+    let model: EditorModel
+
+    private var isUnavailable: Bool {
+        if case .unsupportedSchema = model.environment.settings.loadIssue { return true }
+        return model.isClosed
+    }
+
+    var body: some View {
+        Section {
+            Button(String(localized: "Save Current Color", table: "Editor")) {
+                model.saveCurrentStrokeColor()
+            }
+            .accessibilityIdentifier("palette.save")
+            .disabled(!model.canSaveStrokeColor)
+            .help(
+                String(
+                    localized: "Save up to 12 distinct annotation colors. Duplicate colors are already saved.",
+                    table: "Editor"))
+            if isUnavailable {
+                Text(
+                    String(
+                        localized: "Saved colors are unavailable while newer preferences are protected.",
+                        table: "Editor")
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else if model.savedAnnotationColors.isEmpty {
+                Text(
+                    String(
+                        localized: "Save a color to reuse it in any editor. Only colors you choose are stored.",
+                        table: "Editor")
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
+                ForEach(model.savedAnnotationColors, id: \.self) { color in
+                    Button {
+                        model.applySavedColor(color)
+                    } label: {
+                        HStack(spacing: 5) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color(cgColor: color.cgColor))
+                                .overlay(RoundedRectangle(cornerRadius: 3).stroke(.secondary, lineWidth: 1))
+                                .frame(width: 14, height: 14)
+                            Text(color.hex).font(.caption.monospaced())
+                            if color == model.style.stroke.withAlpha(255) {
+                                Image(systemName: "checkmark").font(.caption2)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .accessibilityIdentifier("palette.apply.\(color.hex.dropFirst())")
+                    .accessibilityLabel(color.hex)
+                    .accessibilityValue(
+                        color == model.style.stroke.withAlpha(255)
+                            ? String(localized: "Selected", table: "Editor") : ""
+                    )
+                    .disabled(isUnavailable)
+                    .contextMenu {
+                        Button(String(localized: "Remove Saved Color", table: "Editor")) {
+                            model.removeSavedColor(color)
+                        }
+                    }
+                    .help(
+                        String(
+                            localized: "Apply this annotation color. Use the context menu to remove it.",
+                            table: "Editor"))
+                }
+            }
+            Button(String(localized: "Remove Current Color", table: "Editor")) {
+                model.removeSavedColor(model.style.stroke)
+            }
+            .accessibilityIdentifier("palette.remove")
+            .disabled(isUnavailable || !model.savedAnnotationColors.contains(model.style.stroke.withAlpha(255)))
+            .help(
+                String(
+                    localized:
+                        "Remove the current annotation color from saved colors. Existing annotations keep their color.",
+                    table: "Editor"))
+        } header: {
+            Text(String(localized: "Saved Colors", table: "Editor"))
+        }
+    }
+}
 
 private struct RedactionSection: View {
     let model: EditorModel

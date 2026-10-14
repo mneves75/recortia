@@ -11,6 +11,72 @@
     enum EditorScenarios {
         static let accentedText = "Revisão: ação, coração ✅ 👋🏽\nSegunda linha — café"
 
+        static func savedColors(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let controller = try await E2EActions.captureRegion(
+                harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)
+            let model = controller.model
+            model.selectTool(.rectangle)
+            let root = try context.unwrap("editor content", controller.contentRoot)
+            let document = model.document
+            let preferences = harness.settings.preferences
+            let consentID = harness.settings.githubUploadConsentID
+            let snapshots = harness.exportGate.snapshotCount
+            let clipboardChanges = harness.clipboard.pasteboard.changeCount
+            let textClipboardChanges = harness.textPasteboard.changeCount
+            await E2EActions.snapshotEditor(controller, context, shot: "palette-before-save")
+            context.check("the saved palette starts empty", model.savedAnnotationColors.isEmpty)
+            for color in [RGBA.red, .black, .white] {
+                model.setStrokeColor(color)
+                await E2ESnapshot.settle(root)
+                try E2EAccessibilityControl.press("palette.save", in: root, context)
+                let saved = await E2EWait.until { model.savedAnnotationColors.contains(color) }
+                try context.require("the native Save Color button stores \(color.hex)", saved)
+            }
+            context.check("saved colors keep insertion order", model.savedAnnotationColors == [.red, .black, .white])
+            context.check("duplicate color cannot be saved", !model.canSaveStrokeColor)
+            context.check("saving leaves the document and undo unchanged", model.document == document && !model.canUndo)
+            context.check(
+                "saving preserves upload consent identity", harness.settings.githubUploadConsentID == consentID)
+            var expectedPreferences = preferences
+            expectedPreferences.annotationPalette = harness.settings.preferences.annotationPalette
+            context.check(
+                "saving only changes palette preferences", harness.settings.preferences == expectedPreferences)
+
+            E2EActions.drag(model, .rectangle, from: E2EActions.point(20, 20), to: E2EActions.point(120, 100))
+            let beforeApply = model.document
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.press("palette.apply.E53935", in: root, context)
+            let applied = await E2EWait.until { model.document.annotations.first?.style.stroke == .red }
+            try context.require("the native saved swatch applies its color", applied)
+            model.undo()
+            context.check("applying a saved color is undoable", model.document == beforeApply)
+            model.redo()
+            context.check("redo reapplies the saved color", model.document.annotations.first?.style.stroke == .red)
+            let beforeRemoval = model.document
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.press("palette.remove", in: root, context)
+            try context.require(
+                "the native Remove Current Color button removes the saved color",
+                await E2EWait.until { model.savedAnnotationColors == [.black, .white] })
+            context.check("removing a saved color leaves annotations unchanged", model.document == beforeRemoval)
+            await E2EActions.snapshotEditor(controller, context, shot: "palette")
+            if let window = controller.window {
+                window.setContentSize(NSSize(width: 980, height: 560))
+                window.appearance = NSAppearance(named: .darkAqua)
+                await E2ESnapshot.settle(root)
+                context.check("palette fits the minimum editor width", abs(root.bounds.width - 980) < 1)
+                context.snapshot(root, shot: "palette-compact-dark")
+            }
+            context.check("palette actions create no export snapshot", harness.exportGate.snapshotCount == snapshots)
+            context.check(
+                "palette actions leave the image clipboard unchanged",
+                harness.clipboard.pasteboard.changeCount == clipboardChanges)
+            context.check(
+                "palette actions leave the text clipboard unchanged",
+                harness.textPasteboard.changeCount == textClipboardChanges)
+            context.check("palette actions make no upload", harness.github.snapshots.isEmpty)
+        }
+
         /// Real canvas input with synthetic events; no global keyboard, TCC, or personal pixels.
         static func canvasFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             for transition in [

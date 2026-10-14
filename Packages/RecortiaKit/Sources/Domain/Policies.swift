@@ -207,7 +207,7 @@ public enum ExportFormatKind: String, Hashable, Sendable, Codable, CaseIterable 
 /// User preferences. No screenshots, OCR text, or other content is ever stored here (SPEC.md §7).
 /// Every side-effect toggle defaults to off.
 public struct Preferences: Hashable, Sendable, Codable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion = Preferences.currentSchemaVersion
     public var hasCompletedOnboarding = false
@@ -226,6 +226,7 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var pinDefaultOpacity = 1.0
     public var preferredSaveFolderBookmark: Data?
     public var githubUpload: GitHubUploadPreferences?
+    public var annotationPalette: SavedAnnotationPalette?
 
     public init() {}
 

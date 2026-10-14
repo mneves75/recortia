@@ -9,9 +9,9 @@
     "app_version": "0.12.0",
     "build": 19,
     "date": "2026-10-14",
-    "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight-line work; broader reference parity remains unfinished.",
+    "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines/saved colors; broader reference parity remains unfinished.",
     "status": "additional_slice_in_progress_release_blocked",
-    "verification": "Final scripts/check.sh --unsigned passed: 589 tests, two unsigned Debug builds, 578 translated strings. Final corrected bilingual onboarding and pixel-tools passed; full E2E40/42 each and isolated rerun retain capture-focus/editor-presentation failures. Independent focused tests37 passed; acceptance BLOCKED by full parity, UI failures and missing stable Xcode. See acceptance-verdict.md and review-evidence.md.",
+    "verification": "Straight-line correction: development gate605 tests/two Debug builds/580 strings; hosted stable CI SUCCESS at7efadda. Full EN E2E41/42 failed onboarding replay, PT-BR42/42, two activation checks skipped each; isolated replay passed without establishing cause. Saved-color package622 tests passed; native palette/onboarding AX lookups currently fail, final development gate pending regenerated-project commit. Full parity and local stable release qualification remain blocked. See per-slice review evidence and acceptance verdicts.",
     "evidence_paths": [
       "docs/specs/feature-discovery/acceptance-verdict.md",
       "docs/specs/feature-discovery/review-evidence.md",
@@ -28,7 +28,7 @@
       "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
       "No new tag, merge, archive/export, Mac installation, notarization or public distribution.",
       "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
-      "Straight-line annotation and stable/development toolchain separation are being implemented; earlier checks do not qualify their new source."
+      "Saved-color native interaction remains unqualified; package tests do not replace the failed accessibility control checks."
     ]
   },
   "previous_release_0_10_1": {
@@ -1161,14 +1161,28 @@
       "title": "Editable straight-line annotations",
       "milestone": "M2",
       "authorization": "owner_approved_2026-10-14_reference_feature_request",
-      "status": "in_progress",
+      "status": "awaiting_manual_validation",
       "depends_on": ["FP-007"],
       "requirement_ids": ["FR-05"],
       "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
       "scope": "Distinct line endpoints, Shift45 constraint, stroke-only shared renderer and native EN/PT-BR toolbar/shortcut D; no new external data paths.",
       "deliverables": ["docs/specs/straight-line/spec.md", "geometry/model/render regressions", "native bilingual annotations E2E"],
       "completion_contract": "Source-red regressions, focused suites, full development gate and independent code acceptance; stable/physical qualification remains explicit.",
-      "evidence": [".scratch/straight-line-app-red.log"]
+      "evidence": ["docs/specs/straight-line/review-evidence.md", "docs/specs/straight-line/acceptance-verdict.md", ".scratch/continuation-corrected-check.log"]
+    },
+    {
+      "id": "FP-032",
+      "title": "Explicit shared saved annotation colors",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "in_progress",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05", "FR-14"],
+      "acceptance_test_ids": ["EDIT-01", "PRIV-01", "NET-01"],
+      "scope": "Bounded12-color sealed palette, explicit native Save/Apply/Remove, undoable stroke application; no automatic history or system favorites.",
+      "deliverables": ["docs/specs/saved-colors/spec.md", "domain/settings/editor regressions", "native bilingual saved-colors E2E"],
+      "completion_contract": "Package and development gates, independently reviewed source and native enabled/disabled control acceptance; current AX blocker cannot be waived.",
+      "evidence": ["docs/specs/saved-colors/review-evidence.md", ".scratch/saved-colors-20261014/backend-evidence.md"]
     }
   ],
   "deferred_scope": [

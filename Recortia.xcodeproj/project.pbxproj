@@ -101,6 +101,7 @@
 		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		BE76CF85696B2F1702597E5C /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = CB78FDBEC0994FB58607CBEA /* Imaging */; };
 		C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */; };
+		C18E4C204D233AC24C4CB33B /* E2EAccessibilityControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */; };
 		C2A57D9C43AF679DD4D6E079 /* E2EPanelProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 813F933C20216A19D93FA9D7 /* E2EPanelProbe.swift */; };
 		C3548A1EA9AE3031E2C9F1CE /* PinPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E65B31A931DA8F9BA987BB /* PinPanels.swift */; };
 		C4B185E0117961F2B3801409 /* SystemEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */; };
@@ -217,6 +218,7 @@
 		DFCE525587D4EDB1319159B1 /* Scenarios+EditorFixes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+EditorFixes.swift"; sourceTree = "<group>"; };
 		E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscapeHotKey.swift; sourceTree = "<group>"; };
 		E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEventMonitor.swift; sourceTree = "<group>"; };
+		E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EAccessibilityControl.swift; sourceTree = "<group>"; };
 		E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureUIController.swift; sourceTree = "<group>"; };
 		E33BB654473B6F3033727605 /* E2EScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EScenarios.swift; sourceTree = "<group>"; };
 		E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticImages.swift; sourceTree = "<group>"; };
@@ -381,6 +383,7 @@
 		87CFEA756CC7CE92B4A515B1 /* E2E */ = {
 			isa = PBXGroup;
 			children = (
+				E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */,
 				9A00D2B63EC9352383E5AA0C /* E2EActions.swift */,
 				8E0B4F72D48030816743075C /* E2EHarness.swift */,
 				813F933C20216A19D93FA9D7 /* E2EPanelProbe.swift */,
@@ -622,6 +625,7 @@
 				DC503AD5774349C919DCEB51 /* CaptureWindowVisibility.swift in Sources */,
 				78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */,
 				1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */,
+				C18E4C204D233AC24C4CB33B /* E2EAccessibilityControl.swift in Sources */,
 				0F90D2EFEC42BB978F9DF91A /* E2EActions.swift in Sources */,
 				0157A19E6F03E20435EB72DD /* E2EHarness.swift in Sources */,
 				C2A57D9C43AF679DD4D6E079 /* E2EPanelProbe.swift in Sources */,

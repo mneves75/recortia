@@ -80,6 +80,13 @@ For straight lines, exercise shortcut D through the native canvas, endpoint hand
 constraint, canceled draft and one-step undo/redo. Literal exported pixels show stroke only,
 without an arrowhead; an opaque redaction covers line pixels in the final artifact.
 
+For saved colors, press native Save/Apply/Remove controls in EN and PT-BR. Verify explicit
+insertion order, duplicate/full disabled states, selected HEX labels, apply undo/redo, cross-editor
+persistence and legacy sealed consent preservation. Future incompatible schemas and closed
+editors refuse actions without writing bytes. Save/remove cannot alter annotations, export
+settings, consent identity, clipboard or network sinks. The `saved-colors` scenario is required;
+an unavailable accessibility tree is a blocked UI criterion, never a passing model substitute.
+
 Start an image move immediately after a color/opacity adjustment. The adjustment's delayed completion
 cannot split the move's undo group or revert the adjustment when the move is canceled. Editing only
 an image's inspector Height preserves its aspect ratio and refreshes both size fields.

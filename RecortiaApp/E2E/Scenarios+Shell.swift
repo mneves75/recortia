@@ -96,6 +96,7 @@
             let replayPreferences = harness.settings.preferences
             let consentID = harness.settings.githubUploadConsentID
             harness.app.perform(.featureTour)
+            let immediateReplayStep = onboarding.step
             let replayWindow = try context.unwrap(
                 "replay has a window",
                 NSApp.windows.first {
@@ -105,7 +106,9 @@
             E2ESnapshot.park(replayWindow)
             let replayRoot = try context.unwrap("replay has content", replayWindow.contentView)
             await E2ESnapshot.settle(replayRoot)
-            context.check("replaying starts at the first page", onboarding.step == .localProcessing)
+            context.check(
+                "replaying starts at the first page", onboarding.step == .localProcessing,
+                "immediate: \(immediateReplayStep); settled: \(onboarding.step); visible: \(replayWindow.isVisible)")
             context.check("replaying preserves completion", !onboarding.shouldPresent)
             try pressTourControl("tour.skip", in: replayRoot, context)
             context.check("Skip closes the replay window", !replayWindow.isVisible)
@@ -138,51 +141,7 @@
         }
 
         private static func pressTourControl(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
-            let control = try context.unwrap("\(identifier) is accessible", tourControl(identifier, in: root))
-            if let modern = control as? any NSAccessibilityProtocol {
-                try context.require("\(identifier) responds to Press", modern.accessibilityPerformPress())
-            } else {
-                let window = try context.unwrap("tour control has a window", root.window)
-                try context.require(
-                    "tour control exposes its frame", control.responds(to: NSSelectorFromString("accessibilityFrame")))
-                let value = try context.unwrap(
-                    "tour control frame", control.value(forKey: "accessibilityFrame") as? NSValue)
-                let frame = value.rectValue
-                try context.require("tour control frame is nonempty", frame.width > 0 && frame.height > 0)
-                let point = window.convertPoint(fromScreen: NSPoint(x: frame.midX, y: frame.midY))
-                for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-                    let event = try context.unwrap(
-                        "tour mouse event",
-                        NSEvent.mouseEvent(
-                            with: type, location: point, modifierFlags: [],
-                            timestamp: ProcessInfo.processInfo.systemUptime,
-                            windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)
-                    )
-                    window.sendEvent(event)
-                }
-            }
-        }
-
-        private static func tourControl(_ identifier: String, in element: Any) -> NSObject? {
-            guard let object = element as? NSObject else { return nil }
-            if object.responds(to: NSSelectorFromString("accessibilityIdentifier")),
-                object.value(forKey: "accessibilityIdentifier") as? String == identifier
-            {
-                return object
-            }
-            if object.responds(to: NSSelectorFromString("accessibilityChildren")),
-                let children = object.value(forKey: "accessibilityChildren") as? [Any]
-            {
-                for child in children {
-                    if let control = tourControl(identifier, in: child) { return control }
-                }
-            }
-            if let view = element as? NSView {
-                for child in view.subviews {
-                    if let control = tourControl(identifier, in: child) { return control }
-                }
-            }
-            return nil
+            try E2EAccessibilityControl.press(identifier, in: root, context)
         }
 
         static func menu(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

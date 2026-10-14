@@ -53,6 +53,8 @@
                 run: CaptureVisibilityScenarios.admission),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(
+                id: "saved-colors", title: "Explicit saved annotation colors", run: EditorScenarios.savedColors),
+            E2EScenario(
                 id: "canvas-focus", title: "Space pan ends when keyboard ownership changes",
                 run: EditorScenarios.canvasFocus),
             E2EScenario(

@@ -12,6 +12,10 @@ installed build 27A9275 is Xcode 27.1 RC.
 
 ### Added
 
+- Explicit saved annotation colors: one local palette of up to 12 colors shared by editors,
+  with native Save/Apply/Remove controls, HEX labels and undoable application. Preference schema
+  2 preserves sealed legacy consent and protects incompatible future-schema bytes.
+
 - Straight-line annotations: distinct editable endpoints, stroke-only rendering and native
   Line / D controls. Horizontal/vertical lines remain editable when their bounds change axis;
   the native toolbar uses compact controls at the minimum editor width.

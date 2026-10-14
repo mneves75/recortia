@@ -131,6 +131,11 @@ The straight-line tool draws a segment without arrowheads, with the same documen
 endpoint editing and creation-drag Shift 45-degree constraint as arrows. Shortcut D selects it only outside
 text input. A canceled drag or click without a meaningful segment adds no annotation.
 
+The annotation inspector offers an explicit shared palette of at most 12 distinct opaque RGB
+colors. Save/remove change only sealed palette preferences; apply uses the normal undoable
+stroke command. Legacy preferences preserve consent; unsupported future schemas remain
+untouched. No automatic color history, image content or system color favorites are stored.
+
 ### FR-06 — Redaction
 
 **The promise is about pixels in the new exported artifact, not about deleting every earlier copy or detecting every secret.** Blur and pixelation are cosmetic obfuscation, not secure redaction. Pixelation can retain recoverable text information. [S10]

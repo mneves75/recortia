@@ -3,7 +3,10 @@
 **Development candidate:** 0.12.0 (build 19), intended label `0.12.0-beta1`, is source work and has
 not been tagged, installed or distributed. The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
-[straight-line annotation tool](docs/specs/straight-line/spec.md). This is phased work; it does
+[straight-line annotation tool](docs/specs/straight-line/spec.md) and
+[explicit saved annotation colors](docs/specs/saved-colors/spec.md). Native palette control
+acceptance remains blocked by the current synthetic SwiftUI accessibility lookup failure.
+This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
 toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.
 
