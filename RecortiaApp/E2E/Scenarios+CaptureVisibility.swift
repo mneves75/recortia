@@ -235,7 +235,12 @@
             context.check(
                 "replacement selection preserves the foreground application",
                 NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
-            context.check("replacement selection still receives keyboard input", repeatedWindow.isKeyWindow)
+            context.check(
+                "replacement selection still receives keyboard input", repeatedWindow.isKeyWindow,
+                "visible=\(repeatedWindow.isVisible); keyWindowMatches=\(NSApp.keyWindow === repeatedWindow); "
+                    + "responderMatches=\(repeatedWindow.firstResponder === repeatedWindow.selectionView); "
+                    + "isActive=\(NSApp.isActive); policy=\(NSApp.activationPolicy().rawValue); "
+                    + "foregroundUnchanged=\(NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)")
             overlay.onSwitchToWindow = { harness.features.capture.switchToWindowSelection() }
             harness.app.perform(.captureRegion)
             try sendKey(49, characters: " ", to: repeatedWindow)

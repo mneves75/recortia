@@ -44,4 +44,6 @@ permission request, clipboard or network transfer is used in validation. Run the
 development gate and independent adversarial review. Physical and stable-release qualification
 remain separate. No installation, merge, beta tag or distribution is implied by source work.
 
-Status: implementation in progress; backend regressions pass, native controls await validation.
+Status: source and native synthetic acceptance passed. Independent backend19 and native828
+assertions qualify e6c259c; the development gate passes624 tests/590 strings/two builds. Exact-head
+CI also passed e6c259c; the broader capture-focus failure and physical/release qualification remain separate.

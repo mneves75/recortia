@@ -37,7 +37,9 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue.
+New feature specs and tickets follow the owner override above: local tracked files under
+`docs/specs/<feature>/`, with `ready-for-agent` status. GitHub remains the tracker for bugs and
+existing external requests. Do not publish a new feature issue in place of the local spec.
 
 ## When a skill says "fetch the relevant ticket"
 

@@ -65,6 +65,28 @@ the ongoing group and a stale coalescer being unable to end a newer group
 (`.scratch/saved-colors-undo-boundary-green.log`). This latest correction needs its own full
 gate and independent backend recheck; earlier native acceptance remains artifact-specific.
 
+Final correction acceptance: independent backend19 tests PASS and full development gate624
+tests/590 strings/two Debug builds PASS. Source-blind native recheck on e6c259c also PASS:
+`.scratch/e2e/20261014-140646/{en,pt-BR}/report.json`, 828 assertions/32 images, eight freshly
+inspected renders. No backend findings remain; exact-head hosted CI is still pending at this
+record. Supplemental complexity: `.scratch/saved-colors-complexity.json`, cccc1.8.0, five files,
+218 functions, zero parse errors. Metrics do not prove behavior.
+
+Later exact-head CI confirmation for e6c259c: SUCCESS,
+https://github.com/mneves75/recortia/actions/runs/38603845235. This updates the earlier pending
+CI record and does not resolve the full Portuguese capture-focus failure or qualify installation.
+
+Capture-focus followup: diagnostics now include only the synthetic replacement window's
+visibility, own key-window/responder match, own activation policy and unchanged-foreground
+comparison. The predicate is unchanged. Isolated `20261014-142724` passed1/1 both languages,
+each with the activation positive control skipped. This does not establish why the full run
+failed; `.scratch/capture-focus-replacement-diagnostic.log` preserves that limitation.
+
+Task-owned failed-build result bundle28KB remains at
+`/private/var/folders/x_/ll566vlj2q72ssm7jsrt66f00000gn/T/ResultBundle_2026-14-10_13-52-0027.xcresult`:
+the cleanup guard rejected its system-path deletion; no bypass was attempted. Native runners
+exited and released their leases. Small cited synthetic evidence remains in scratch.
+
 The initial app test had invalid fake-service names and failed compilation; these were corrected
 before the meaningful native source-red run. The first full gate failed one formatting line;
 it was corrected before rerunning. Logs are retained rather than reported as successful runs.

@@ -11,7 +11,7 @@
     "date": "2026-10-14",
     "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines/saved colors; broader reference parity remains unfinished.",
     "status": "additional_slice_in_progress_release_blocked",
-    "verification": "Straight-line correction: development gate605 tests/two Debug builds/580 strings; hosted stable CI SUCCESS at7efadda. Full EN E2E41/42 failed onboarding replay, PT-BR42/42, two activation checks skipped each; isolated replay passed without establishing cause. Saved-color package622 tests passed; native palette/onboarding AX lookups currently fail, final development gate pending regenerated-project commit. Full parity and local stable release qualification remain blocked. See per-slice review evidence and acceptance verdicts.",
+    "verification": "Saved colors/undo correction: development gate624 tests/two Debug builds/590 strings; independent focused19 tests pass. Fresh source-blind native acceptance on e6c259c passed828 assertions across both languages. Full dd3c615 E2E EN43/43, PT-BR42/43 failed replacement-overlay keyboard ownership, two activation checks skipped each. Stable CI passed21e712f, dd3c615 ande6c259c. Full parity and local stable release qualification remain blocked. See per-slice review evidence and acceptance verdicts.",
     "evidence_paths": [
       "docs/specs/feature-discovery/acceptance-verdict.md",
       "docs/specs/feature-discovery/review-evidence.md",
@@ -28,7 +28,7 @@
       "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
       "No new tag, merge, archive/export, Mac installation, notarization or public distribution.",
       "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
-      "Saved-color native interaction remains unqualified; package tests do not replace the failed accessibility control checks."
+      "Saved-color native interaction now independently passes; the broader capture-focus keyboard failure and physical qualification remain open."
     ]
   },
   "previous_release_0_10_1": {
@@ -1175,7 +1175,7 @@
       "title": "Explicit shared saved annotation colors",
       "milestone": "M2",
       "authorization": "owner_approved_2026-10-14_reference_feature_request",
-      "status": "in_progress",
+      "status": "awaiting_manual_validation",
       "depends_on": ["FP-007"],
       "requirement_ids": ["FR-05", "FR-14"],
       "acceptance_test_ids": ["EDIT-01", "PRIV-01", "NET-01"],

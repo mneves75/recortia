@@ -2,6 +2,11 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
+For Recortia, `SPEC.md`, `ACCEPTANCE_TESTS.md`, `BACKLOG.json` and the ADRs are the current
+domain sources. Use ImageAsset, Annotation, ShareSnapshot, EditorTextEditing and explicit
+SavedAnnotationPalette consistently with their public types. Text appearance is planned in
+`docs/specs/text-appearance/`; a planned style is not an implemented capability.
+
 ## Before exploring, read these
 
 - **`CONTEXT.md`** at the repo root, or

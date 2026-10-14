@@ -6,7 +6,8 @@ tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candid
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). Native palette control
 checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
-final independent UI acceptance remains pending.
+fresh independent native acceptance passes on e6c259c. The full Portuguese suite still has a
+capture-focus keyboard failure, so this does not qualify a release.
 This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
 toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.
