@@ -586,7 +586,13 @@ public final class EditorModel {
         case .annotation(let id):
             guard let index = document.annotations.firstIndex(where: { $0.id == id }) else { return }
             let annotation = document.annotations[index]
-            document.annotations[index] = annotation.resized(from: EditorGeometry.frame(of: annotation), to: rect)
+            let resized = annotation.resized(from: EditorGeometry.frame(of: annotation), to: rect)
+            if case .line(let start, let end) = resized.kind {
+                guard start.isFinite, end.isFinite, EditorGeometry.isFinite(resized.bounds) else {
+                    throw DocumentError.invalidGeometry
+                }
+            }
+            document.annotations[index] = resized
         case .layer(let id):
             guard let index = document.layers.firstIndex(where: { $0.id == id }),
                 let asset = document.assets[document.layers[index].assetID]
