@@ -42,9 +42,10 @@ struct RenderRaster {
     }
 
     /// Runs `body` with a bitmap context over this raster (Core Graphics default: y up, pixel units).
-    mutating func withContext(_ body: (CGContext) -> Void) throws(RenderError) {
+    mutating func withContext(_ body: (CGContext) throws(RenderError) -> Void) throws(RenderError) {
         let (w, h) = (width, height)
         var created = false
+        var failure: RenderError?
         bytes.withUnsafeMutableBytes { buffer in
             // Invariant: the context points into `bytes` storage and must not outlive this closure.
             guard let base = buffer.baseAddress, let space = Self.colorSpace,
@@ -53,18 +54,19 @@ struct RenderRaster {
                     bitmapInfo: Self.bitmapInfo)
             else { return }
             created = true
-            body(context)
+            do throws(RenderError) { try body(context) } catch { failure = error }
         }
         guard created else { throw RenderError.allocationFailed }
+        if let failure { throw failure }
     }
 
     /// Like `withContext`, with a top-left origin and y growing downward.
-    mutating func withTopLeftContext(_ body: (CGContext) -> Void) throws(RenderError) {
+    mutating func withTopLeftContext(_ body: (CGContext) throws(RenderError) -> Void) throws(RenderError) {
         let h = CGFloat(height)
-        try withContext { context in
+        try withContext { (context: CGContext) throws(RenderError) in
             context.translateBy(x: 0, y: h)
             context.scaleBy(x: 1, y: -1)
-            body(context)
+            try body(context)
         }
     }
 

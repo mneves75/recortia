@@ -202,6 +202,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         let canvas = viewport.viewRect(shownRect).cg
         drawCheckerboard(in: canvas, context)
 
+        var renderFailed = false
         context.saveGState()
         context.translateBy(x: viewport.offset.x, y: viewport.offset.y)
         context.scaleBy(x: viewport.zoom, y: viewport.zoom)
@@ -217,11 +218,25 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             }
             var draftAnnotation: Annotation?
             if case .annotation(let annotation) = model.draft { draftAnnotation = annotation }
-            EditorCanvasRenderer.draw(
-                drawn, base: model.baseImage, calloutBase: model.calloutBaseImage, draft: draftAnnotation,
-                baseInterpolation: model.zoomPercent >= 100 ? .none : .high, in: context)
+            do {
+                try EditorCanvasRenderer.draw(
+                    drawn, base: model.baseImage, calloutBase: model.calloutBaseImage, draft: draftAnnotation,
+                    baseInterpolation: model.zoomPercent >= 100 ? .none : .high, in: context)
+            } catch {
+                renderFailed = true
+            }
         }
         context.restoreGState()
+
+        if renderFailed {
+            context.saveGState()
+            context.setBlendMode(.copy)
+            context.setFillColor(NSColor.underPageBackgroundColor.cgColor)
+            context.fill(bounds)
+            context.restoreGState()
+            model.reportCanvasRenderFailure()
+            return
+        }
 
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()
@@ -666,12 +681,34 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         let viewport = model.viewport
         let zoom = viewport.zoom
         let color = editing.color
-        textView.font = NSFont.systemFont(ofSize: max(1, editing.fontSize * zoom))
+        let wrappingWidth = editing.maxWidth.map { $0 * zoom }
+        do {
+            if let wrappingWidth, !wrappingWidth.isFinite || wrappingWidth <= 0 {
+                throw TextLayoutError.invalidGeometry
+            }
+            textView.font = try TextLayout.nativeFont(for: editing.appearance, size: editing.fontSize * zoom)
+        } catch {
+            textView.isHidden = true
+            textView.isEditable = false
+            model.reportCanvasRenderFailure()
+            return
+        }
+        textView.isHidden = false
+        textView.isEditable = true
         textView.textColor = NSColor(
             srgbRed: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255, blue: CGFloat(color.b) / 255, alpha: 1)
         textView.insertionPointColor = .labelColor
         let origin = viewport.viewPoint(editing.origin)
-        textView.minSize = NSSize(width: max(24, editing.fontSize * zoom), height: editing.fontSize * zoom * 1.3)
+        let height = editing.fontSize * zoom * 1.3
+        textView.isHorizontallyResizable = wrappingWidth == nil
+        textView.minSize = NSSize(width: wrappingWidth ?? max(24, editing.fontSize * zoom), height: height)
+        textView.maxSize = NSSize(
+            width: wrappingWidth ?? CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.containerSize = NSSize(
+            width: wrappingWidth ?? CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        if let wrappingWidth {
+            textView.setFrameSize(NSSize(width: wrappingWidth, height: max(height, textView.frame.height)))
+        }
         textView.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
         textView.sizeToFit()
     }

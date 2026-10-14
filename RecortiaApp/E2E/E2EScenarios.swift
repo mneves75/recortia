@@ -55,6 +55,12 @@
             E2EScenario(
                 id: "saved-colors", title: "Explicit saved annotation colors", run: EditorScenarios.savedColors),
             E2EScenario(
+                id: "text-font-designs", title: "Native editable text font designs",
+                run: TextAppearanceScenarios.fontDesigns),
+            E2EScenario(
+                id: "text-layout-failure", title: "Text render failure clears partial canvas output",
+                run: TextAppearanceScenarios.layoutFailure),
+            E2EScenario(
                 id: "canvas-focus", title: "Space pan ends when keyboard ownership changes",
                 run: EditorScenarios.canvasFocus),
             E2EScenario(

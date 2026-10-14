@@ -4,7 +4,9 @@
 not been tagged, installed or distributed. The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
-[explicit saved annotation colors](docs/specs/saved-colors/spec.md). Native palette control
+[explicit saved annotation colors](docs/specs/saved-colors/spec.md). Three editable
+[text font designs](docs/specs/text-appearance/spec.md) have local model/export/native
+regressions; full gate and independent acceptance are pending for that slice. Native palette control
 checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
 fresh independent native acceptance passes on e6c259c. The full Portuguese suite still has a
 capture-focus keyboard failure, so this does not qualify a release.

@@ -49,6 +49,10 @@ beta compilation does not replace the stable-toolchain release gates.
   resample or effect (RED suite with planted controls); async results are accepted only while
   request identity, revision, and privacy epoch still match.
 - Contracts between modules: `docs/architecture/module-contracts.md`. Decisions: `docs/adr/`.
+- Text appearance: `Imaging.TextLayout` shares public system fonts/geometry across selection,
+  native editing and export. Only its exact two font-class AppKit imports are allowed in Imaging.
+  Propagate typed text-layout failures; clear partial native canvas output before reporting.
+  Keep `text-font-designs` and `text-layout-failure` in bilingual E2E.
 - Region-selection panels receive keyboard focus without activating the app; synthetic
   foreground/activation checks supplement the physical shortcut/Space matrix (CAP-01).
 - Capture completion shows an ordinary fullscreen-auxiliary editor even when cooperative

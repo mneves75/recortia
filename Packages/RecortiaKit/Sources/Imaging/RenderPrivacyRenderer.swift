@@ -5,6 +5,7 @@ import Foundation
 public enum RenderError: Error, Equatable, Sendable {
     case invalidScale
     case invalidGeometry
+    case textLayoutFailed(TextLayoutError)
     case unknownAsset
     /// A layer references an asset whose pixels are not in the store.
     case missingPixels

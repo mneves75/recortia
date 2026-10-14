@@ -200,6 +200,22 @@ Sources: [Developer Forums 826308](https://developer.apple.com/forums/thread/826
 [NSWindow.CollectionBehavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct),
 installed SDK header `AppKit.framework/Headers/NSWindow.h`.
 
+## Text appearance investigation (2026-10-14)
+
+CleanShot's [public feature page](https://cleanshot.com/features) and its linked text preview
+show distinct standard, rounded, monospaced, outlined and boxed treatments. Recortia's
+[text appearance spec](docs/specs/text-appearance/spec.md) implements its own seven appearances
+in two tickets; font-size presets alone would not deliver that capability.
+
+Public Apple [NSFontDescriptor.withDesign](https://developer.apple.com/documentation/appkit/nsfontdescriptor/withdesign(_:))
+resolves the rounded and monospaced system designs. A strict Swift 6 feasibility probe on the
+local macOS host resolved all three designs off the main thread, observed different metrics
+and equal monospaced i/W advances; this is local API evidence, not minimum-OS runtime coverage.
+The [NSTextContainer.containerSize](https://developer.apple.com/documentation/appkit/nstextcontainer/containersize)
+property provides the native editing width constraint. Its official Markdown documentation
+was read directly after the browser fetch could not retrieve it. No proprietary font or
+reference-product asset is included in Recortia.
+
 ## External assertions not made
 
 No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

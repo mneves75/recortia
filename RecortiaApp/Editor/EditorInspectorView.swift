@@ -23,6 +23,17 @@ struct EditorInspectorView: View {
                 SavedColorsSection(model: model)
                 StyleSection(model: model, coalescer: coalescer)
             }
+            if model.tool == .text
+                || model.selection.contains(where: { item in
+                    guard case .annotation(let id) = item else { return false }
+                    return model.document.annotations.contains { annotation in
+                        guard annotation.id == id, case .text = annotation.kind else { return false }
+                        return true
+                    }
+                })
+            {
+                TextAppearanceSection(model: model)
+            }
             RedactionSection(model: model, actions: actions, coalescer: coalescer)
             if [.loupe, .colorPicker, .ruler].contains(model.tool) {
                 PixelToolsSection(model: model)
@@ -37,6 +48,37 @@ struct EditorInspectorView: View {
 }
 
 // MARK: - Helpers
+
+private struct TextAppearanceSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            ForEach(TextAppearance.allCases, id: \.self) { appearance in
+                Button {
+                    model.setTextAppearance(appearance)
+                } label: {
+                    HStack {
+                        Text(EditorStrings.name(appearance))
+                        Spacer()
+                        if model.style.textAppearance == appearance {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                .accessibilityIdentifier("textAppearance.\(appearance.rawValue)")
+                .accessibilityLabel(EditorStrings.name(appearance))
+                .accessibilityValue(
+                    model.style.textAppearance == appearance ? String(localized: "Selected", table: "Editor") : ""
+                )
+                .disabled(!model.canSetTextAppearance)
+                .help(String(localized: "Finish editing text before changing its style.", table: "Editor"))
+            }
+        } header: {
+            Text(String(localized: "Text Style", table: "Editor"))
+        }
+    }
+}
 
 /// Groups rapid changes (color panel drags) into one undo step: the group ends after a pause.
 final class ChangeCoalescer {

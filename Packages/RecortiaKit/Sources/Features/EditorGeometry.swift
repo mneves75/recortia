@@ -1,7 +1,7 @@
 import CoreGraphics
-import CoreText
 import Domain
 import Foundation
+import Imaging
 
 /// Pure document-space geometry for the editor: frames, hit testing, handles, and resizing.
 /// Every tolerance is passed in document units, so callers convert view distances through the
@@ -10,39 +10,17 @@ enum EditorGeometry {
     // MARK: Frames
 
     /// Selection frame of an annotation. Text uses the same Core Text layout as the renderer.
-    static func frame(of annotation: Annotation) -> Rect<DocumentSpace> {
+    static func frame(of annotation: Annotation) -> Rect<DocumentSpace>? {
         if case .text(let text) = annotation.kind {
-            let size = textSize(text)
-            return Rect(origin: text.origin, size: size)
+            return try? TextLayout.metrics(for: text).frame
         }
         return annotation.bounds
-    }
-
-    /// Mirrors `AnnotationRenderer`'s text frame: system font, framesetter-suggested size.
-    static func textSize(_ text: Annotation.TextContent) -> Size<DocumentSpace> {
-        let fallback = Size<DocumentSpace>(width: text.fontSize * 0.6, height: text.fontSize * 1.25)
-        guard !text.string.isEmpty, text.fontSize.isFinite, text.fontSize > 0 else { return fallback }
-        let font =
-            CTFontCreateUIFontForLanguage(.system, text.fontSize, nil)
-            ?? CTFontCreateWithName("Helvetica" as CFString, text.fontSize, nil)
-        let attributes: [CFString: Any] = [kCTFontAttributeName: font]
-        guard let attributed = CFAttributedStringCreate(nil, text.string as CFString, attributes as CFDictionary)
-        else { return fallback }
-        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
-        let unbounded = CGFloat.greatestFiniteMagnitude
-        let constraint = CGSize(width: text.maxWidth.map { CGFloat($0) } ?? unbounded, height: unbounded)
-        let suggested = CTFramesetterSuggestFrameSizeWithConstraints(
-            framesetter, CFRange(location: 0, length: 0), nil, constraint, nil)
-        let width = text.maxWidth ?? Double(suggested.width.rounded(.up) + 1)
-        let height = Double(suggested.height.rounded(.up) + 1)
-        guard width.isFinite, height.isFinite, width > 0, height > 0 else { return fallback }
-        return Size(width: width, height: height)
     }
 
     static func frame(of item: EditorItemID, in document: Document) -> Rect<DocumentSpace>? {
         switch item {
         case .annotation(let id):
-            return document.annotations.first { $0.id == id }.map(frame(of:))
+            return document.annotations.first { $0.id == id }.flatMap(frame(of:))
         case .layer(let id):
             guard let layer = document.layers.first(where: { $0.id == id }),
                 let asset = document.assets[layer.assetID]
@@ -95,7 +73,8 @@ enum EditorGeometry {
         let reach = tolerance + annotation.style.lineWidth / 2
         switch annotation.kind {
         case .text, .step:
-            return containsInclusive(expanded(frame(of: annotation), by: tolerance), p)
+            guard let frame = frame(of: annotation) else { return false }
+            return containsInclusive(expanded(frame, by: tolerance), p)
         case .rectangle(let rect):
             guard containsInclusive(expanded(rect, by: reach), p) else { return false }
             if annotation.style.fill != nil { return true }

@@ -41,7 +41,11 @@ public struct PrivacyRenderer: Sendable {
     public func renderBase(_ document: Document, scale: Double) async throws -> CGImage
 }
 public enum AnnotationRenderer {                  // shared by editor canvas and export
-    public static func draw(_ annotations: [Annotation], in context: CGContext)   // context already in document space
+    public static func draw(_ annotations: [Annotation], in context: CGContext) throws(RenderError)
+}
+public enum TextLayout {                          // stateless; text origin/content width in document space
+    public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont
+    public static func metrics(for text: Annotation.TextContent) throws(TextLayoutError) -> TextLayoutMetrics
 }
 public struct ExportPipeline: Sendable {
     public init(renderer: PrivacyRenderer)
@@ -51,6 +55,14 @@ public enum PixelSampler {
     public static func color(atX x: Int, y: Int, in image: CGImage) -> RGBA?   // nearest pixel, sRGB
 }
 ```
+
+`TextLayoutMetrics.frame` includes painted glyph/fallback extents; `contentFrame` retains the
+wrapping constraint. Core Text objects remain local to each operation. The only permitted
+AppKit imports in Imaging are the two exact `NSFont`/`NSFontDescriptor` class declarations in
+`TextLayout.swift`; they resolve public system font designs, not windows or system actions.
+The source scanner is a regression guard, not a capability sandbox. Rendering propagates
+`RenderError.textLayoutFailed`; the native canvas must clear partial drawing before reporting
+the failure. UI drawing stays on its existing actor; asynchronous export rendering runs off it.
 
 ## Imaging (T2: OCR, QR, scroll stitching)
 

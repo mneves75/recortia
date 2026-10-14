@@ -136,6 +136,13 @@ colors. Save/remove change only sealed palette preferences; apply uses the norma
 stroke command. Legacy preferences preserve consent; unsupported future schemas remain
 untouched. No automatic color history, image content or system color favorites are stored.
 
+Text appearance is per text annotation. Standard is the legacy default; Rounded and Monospaced
+use public system-font designs shared by native editing, selection geometry and export.
+Explicit appearance changes affect selected text only, form a separate undo step and refuse
+while native text input is active. Native editing retains content-width constraints at zoom.
+Failed text layout is an explicit error; a failed canvas draw clears partial pixels. The
+remaining outlined/boxed appearances are tracked separately in the text-appearance spec.
+
 ### FR-06 — Redaction
 
 **The promise is about pixels in the new exported artifact, not about deleting every earlier copy or detecting every secret.** Blur and pixelation are cosmetic obfuscation, not secure redaction. Pixelation can retain recoverable text information. [S10]

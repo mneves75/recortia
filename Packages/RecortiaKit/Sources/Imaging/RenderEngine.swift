@@ -40,10 +40,10 @@ enum RenderEngine {
             throw RenderError.invalidGeometry
         }
         try composeBase(into: &raster, document, images: images, map: map, clip: content, pixelClip: contentBounds)
-        try raster.withTopLeftContext { context in
+        try raster.withTopLeftContext { (context: CGContext) throws(RenderError) in
             context.concatenate(map)
             context.clip(to: content.cg)
-            AnnotationRenderer.draw(document.annotations, in: context)
+            try AnnotationRenderer.draw(document.annotations, in: context)
         }
         applyOutputMasks(&raster, document, map: map, pixelClip: contentBounds)
         try drawCallouts(&raster, document, images: images, map: map, content: content, pixelClip: contentBounds)

@@ -65,7 +65,7 @@ struct EditorCanvasRendererTests {
         let base = try await renderer.renderBase(session.document, scale: 1)
 
         let context = try Self.context(width: 96, height: 64)
-        EditorCanvasRenderer.draw(session.document, base: base, calloutBase: base, in: context)
+        try EditorCanvasRenderer.draw(session.document, base: base, calloutBase: base, in: context)
         let canvas = try #require(context.makeImage())
         #expect(try Self.maxChannelDifference(canvas, exported) <= 1)
     }
@@ -95,7 +95,7 @@ struct EditorCanvasRendererTests {
         // without interpolation, so only content (not edge resampling) is compared here.
         let base = try await renderer.renderBase(session.document, scale: 1)
         let context = try Self.context(width: 64, height: 64)
-        EditorCanvasRenderer.draw(session.document, base: base, calloutBase: base, in: context)
+        try EditorCanvasRenderer.draw(session.document, base: base, calloutBase: base, in: context)
         let canvas = try #require(context.makeImage())
         let pixels = try ContainerInspector.pixels(of: canvas)
         // Inside the magnifier, the black annotation is absent and the mask (black, 2×) is present.
@@ -117,7 +117,7 @@ struct EditorCanvasRendererTests {
                     source: Rect(x: 2, y: 2, width: 4, height: 4), destination: Rect(x: 8, y: 8, width: 8, height: 8)))
         ]
         let context = try Self.context(width: 16, height: 16)
-        EditorCanvasRenderer.draw(document, base: nil, calloutBase: nil, in: context)
+        try EditorCanvasRenderer.draw(document, base: nil, calloutBase: nil, in: context)
         let pixels = try ContainerInspector.pixels(of: try #require(context.makeImage()))
         #expect(pixels.pixel(x: 3, y: 3).a == 255)
         #expect(pixels.pixel(x: 12, y: 12).a == 0)

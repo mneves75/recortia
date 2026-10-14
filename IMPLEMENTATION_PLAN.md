@@ -6,6 +6,11 @@ Owner-authorized feature discovery/reference research (2026-10-14) uses the deta
 export side effects; unfinished competitor capabilities remain explicit rather than being
 advertised as implemented. Existing qualification and deferred-task records are preserved.
 
+FR-05 text appearance is tracked as FP-033 in `docs/specs/text-appearance/spec.md`: ticket01
+adds three system-font designs with shared geometry and native editing; ticket02 adds the
+four outlined/boxed treatments. Each vertical ticket has its own regressions and independent
+acceptance. The first ticket cannot close the complete seven-appearance feature.
+
 **Status:** The approved v1 milestones have a beta implementation. BACKLOG.json records current
 task status, signed local-install evidence, and outstanding manual qualification; this file defines
 task contracts rather than a build log. Local installation does not complete notarized distribution

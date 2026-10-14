@@ -1183,6 +1183,20 @@
       "deliverables": ["docs/specs/saved-colors/spec.md", "domain/settings/editor regressions", "native bilingual saved-colors E2E"],
       "completion_contract": "Package and development gates, independently reviewed source and native enabled/disabled control acceptance; current AX blocker cannot be waived.",
       "evidence": ["docs/specs/saved-colors/review-evidence.md", ".scratch/saved-colors-20261014/backend-evidence.md"]
+    },
+    {
+      "id": "FP-033",
+      "title": "Editable text font designs and decorations",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "in_progress",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Seven independently implemented appearances in two vertical tickets: three public system font designs, then four decorations. Preserve native text editing, wrapping, undo and secure exports.",
+      "deliverables": ["docs/specs/text-appearance/spec.md", "model/render/native-control regressions"],
+      "completion_contract": "Both tickets require source-red regressions, measured geometry, development gates and fresh independent code/native acceptance. Physical and stable release qualification remain separate.",
+      "evidence": [".scratch/text-font-feasibility-20261014/evidence.md"]
     }
   ],
   "deferred_scope": [

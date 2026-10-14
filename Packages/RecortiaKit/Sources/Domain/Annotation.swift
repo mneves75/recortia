@@ -20,12 +20,33 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         public var fontSize: Double
         /// Wrap width in document units; nil means no wrapping.
         public var maxWidth: Double?
+        public var appearance: TextAppearance? {
+            didSet { if appearance == .standard { appearance = nil } }
+        }
 
-        public init(origin: Point<DocumentSpace>, string: String, fontSize: Double = 24, maxWidth: Double? = nil) {
+        public var resolvedAppearance: TextAppearance { appearance ?? .standard }
+
+        public init(
+            origin: Point<DocumentSpace>, string: String, fontSize: Double = 24, maxWidth: Double? = nil,
+            appearance: TextAppearance? = nil
+        ) {
             self.origin = origin
             self.string = string
             self.fontSize = fontSize
             self.maxWidth = maxWidth
+            self.appearance = appearance == .standard ? nil : appearance
+        }
+
+        private enum CodingKeys: String, CodingKey { case origin, string, fontSize, maxWidth, appearance }
+
+        public init(from decoder: any Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(
+                origin: try values.decode(Point<DocumentSpace>.self, forKey: .origin),
+                string: try values.decode(String.self, forKey: .string),
+                fontSize: try values.decode(Double.self, forKey: .fontSize),
+                maxWidth: try values.decodeIfPresent(Double.self, forKey: .maxWidth),
+                appearance: try values.decodeIfPresent(TextAppearance.self, forKey: .appearance))
         }
     }
 
@@ -71,7 +92,7 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
     /// Radius of a numbered step marker, derived from line width so it scales with style.
     public var stepRadius: Double { max(14, style.lineWidth * 4) }
 
-    /// Geometric bounds before stroke outset; text bounds are approximated by the renderer.
+    /// Platform-independent estimate; authoritative text layout belongs to Imaging.TextLayout.
     public var bounds: Rect<DocumentSpace> {
         switch kind {
         case .text(let text):

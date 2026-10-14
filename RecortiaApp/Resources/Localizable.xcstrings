@@ -111,12 +111,12 @@
         }
       }
     },
-    "Choose text, arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor.": {
+    "Choose text, arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Choose Standard, Rounded or Monospaced in Text Style. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor.": {
       "localizations": {
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escolha texto, setas, linhas, retângulos, elipses, desenho livre, marca-texto ou etapas numeradas no editor. Selecione uma anotação para mover, redimensionar, duplicar ou reordenar; Desfazer e Refazer recuperam alterações. Salve cores de anotação no inspetor para reutilizá-las em qualquer editor."
+            "value": "Escolha texto, setas, linhas, retângulos, elipses, desenho livre, marca-texto ou etapas numeradas no editor. Em Estilo do texto, escolha Padrão, Arredondado ou Monoespaçado. Selecione uma anotação para mover, redimensionar, duplicar ou reordenar; Desfazer e Refazer recuperam alterações. Salve cores de anotação no inspetor para reutilizá-las em qualquer editor."
           }
         }
       }

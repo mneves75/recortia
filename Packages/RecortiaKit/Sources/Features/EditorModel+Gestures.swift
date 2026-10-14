@@ -93,6 +93,7 @@ extension EditorModel {
             draft = .marquee(rect)
             let hits = listItems.filter { $0.frame.intersects(rect) }.map(\.id)
             selection = initial.union(hits)
+            loadSelectedTextAppearance()
         case .ruler(let start):
             ruler = measurement(from: start, to: Self.snapped(p))
         case .sample:
@@ -154,6 +155,7 @@ extension EditorModel {
                 guard selection.contains(hit) else { return }
             } else if !selection.contains(hit) {
                 selection = [hit]
+                loadSelectedTextAppearance()
             }
             session.beginGroup("Move")
             gesture = .move(items: orderedSelection, start: p, original: document)
@@ -363,7 +365,7 @@ extension EditorModel {
     private func beginNewText(at p: Point<DocumentSpace>) {
         textEditing = EditorTextEditing(
             annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize, color: style.stroke,
-            maxWidth: nil)
+            maxWidth: nil, appearance: style.textAppearance)
     }
 
     /// Starts editing an existing text annotation (double-click, Return on a selected text).
@@ -373,9 +375,10 @@ extension EditorModel {
         else { return }
         cancelGesture()
         selection = [.annotation(id)]
+        loadSelectedTextAppearance()
         textEditing = EditorTextEditing(
             annotationID: id, origin: text.origin, initialString: text.string, fontSize: text.fontSize,
-            color: annotation.style.stroke, maxWidth: text.maxWidth)
+            color: annotation.style.stroke, maxWidth: text.maxWidth, appearance: text.resolvedAppearance)
     }
 
     /// Ends text editing with the text view's final string: one undo step. An empty new text adds
@@ -400,7 +403,10 @@ extension EditorModel {
         }
         guard !isBlank else { return }
         let text = Annotation(
-            kind: .text(Annotation.TextContent(origin: editing.origin, string: string, fontSize: editing.fontSize)),
+            kind: .text(
+                Annotation.TextContent(
+                    origin: editing.origin, string: string, fontSize: editing.fontSize, maxWidth: editing.maxWidth,
+                    appearance: editing.appearance)),
             style: style.annotationStyle)
         if edit("Text", { $0.annotations.append(text) }) { selection = [.annotation(text.id)] }
     }

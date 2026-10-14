@@ -20,6 +20,13 @@ ACCEPTANCE_TESTS.md IO-01/EDIT-02. Keep `import-admission` and `canvas-focus` sy
 E2E regressions in the stable gate evidence; they do not replace live IME/VoiceOver/TCC
 qualification.
 
+Text appearance uses stateless `Imaging.TextLayout` for native fonts, selection metrics and
+exports. Domain remains free of AppKit. Imaging permits only the reviewed exact `NSFont` and
+`NSFontDescriptor` class imports in `TextLayout.swift`; keep the side-effect scanner's planted
+controls. Layout errors propagate explicitly and the native canvas clears partial pixels.
+Keep `text-font-designs` and `text-layout-failure` in bilingual synthetic E2E; these do not
+qualify physical text composition or VoiceOver.
+
 Region overlays use nonactivating panels so a shortcut does not activate an editor in another
 Space. CAP-01 synthetic evidence must verify an external foreground application and keyboard
 ownership; physical shortcut/display/Space qualification remains separate. NET-01 pending

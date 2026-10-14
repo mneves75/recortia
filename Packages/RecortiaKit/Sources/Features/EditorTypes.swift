@@ -180,15 +180,18 @@ public struct EditorStyle: Hashable, Sendable {
     public var lineWidth: Double
     public var opacity: Double
     public var fontSize: Double
+    public var textAppearance: TextAppearance
 
     public init(
-        stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24
+        stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24,
+        textAppearance: TextAppearance = .standard
     ) {
         self.stroke = stroke
         self.fill = fill
         self.lineWidth = lineWidth
         self.opacity = opacity
         self.fontSize = fontSize
+        self.textAppearance = textAppearance
     }
 
     public static let lineWidthRange: ClosedRange<Double> = 1...40
@@ -225,6 +228,7 @@ public struct EditorTextEditing: Hashable, Sendable {
     public let fontSize: Double
     public let color: RGBA
     public let maxWidth: Double?
+    public let appearance: TextAppearance
 }
 
 // MARK: - Recognition, pixel tools, notices

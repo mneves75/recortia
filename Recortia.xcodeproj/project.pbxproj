@@ -129,6 +129,7 @@
 		F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */; };
 		F13BED59D44D9F2EEF670478 /* Scenarios+Desktops.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8105CD4BFB83087E563EDD04 /* Scenarios+Desktops.swift */; };
 		F19CF04F5B64D1385390483B /* ObservationLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */; };
+		F24989E79F912C5D586F81CE /* Scenarios+TextAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1054033F6519FF4F5EECEDA7 /* Scenarios+TextAppearance.swift */; };
 		F42EBFAC336DDBFD742F2784 /* EditorRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D5324EB9E2AA47D945093A /* EditorRootView.swift */; };
 		F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
 		F54C69AE574623D0E81BCF97 /* CaptureUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A7D67F34929E9870BB78F5 /* CaptureUIController.swift */; };
@@ -153,6 +154,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1054033F6519FF4F5EECEDA7 /* Scenarios+TextAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+TextAppearance.swift"; sourceTree = "<group>"; };
 		1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Recortia-LICENSE.txt"; sourceTree = "<group>"; };
 		12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shortcuts.swift"; sourceTree = "<group>"; };
 		143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+AutomaticExport.swift"; sourceTree = "<group>"; };
@@ -405,6 +407,7 @@
 				414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */,
 				12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */,
 				CE69FEA380523086B4D11CEE /* Scenarios+Spaces.swift */,
+				1054033F6519FF4F5EECEDA7 /* Scenarios+TextAppearance.swift */,
 				E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */,
 				D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */,
 			);
@@ -673,6 +676,7 @@
 				01DD6F970229DB8FA2B2DA21 /* Scenarios+Shell.swift in Sources */,
 				0E0419D54894668574BBA599 /* Scenarios+Shortcuts.swift in Sources */,
 				FDBFBB3327828B197282BDE9 /* Scenarios+Spaces.swift in Sources */,
+				F24989E79F912C5D586F81CE /* Scenarios+TextAppearance.swift in Sources */,
 				12EB55C49634E5E3F58A096D /* ScreenChoice.swift in Sources */,
 				652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */,
 				D24EE0E8714F0274DE8B1AEC /* ScrollViews.swift in Sources */,

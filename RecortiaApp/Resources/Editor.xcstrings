@@ -1,6 +1,36 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Text Style": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Text Style" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Estilo do texto" } }
+      }
+    },
+    "Standard": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Standard" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Padrão" } }
+      }
+    },
+    "Rounded": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rounded" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Arredondado" } }
+      }
+    },
+    "Monospaced": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Monospaced" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Monoespaçado" } }
+      }
+    },
+    "Finish editing text before changing its style.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Finish editing text before changing its style." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Conclua a edição do texto antes de alterar seu estilo." } }
+      }
+    },
     "Remove Current Color": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Remove Current Color" } },

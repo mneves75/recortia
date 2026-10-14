@@ -6,6 +6,14 @@ import Imaging
 /// User-visible names for editor values. Every string lives in the "Editor" table
 /// (Editor.xcstrings) with English and pt-BR translations.
 enum EditorStrings {
+    static func name(_ appearance: TextAppearance) -> String {
+        switch appearance {
+        case .standard: String(localized: "Standard", table: "Editor")
+        case .rounded: String(localized: "Rounded", table: "Editor")
+        case .monospaced: String(localized: "Monospaced", table: "Editor")
+        }
+    }
+
     static func name(_ tool: EditorTool) -> String {
         switch tool {
         case .select: String(localized: "Select", table: "Editor")

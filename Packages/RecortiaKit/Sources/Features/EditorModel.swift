@@ -242,6 +242,7 @@ public final class EditorModel {
         environment.export.invalidatePendingDrag(documentID: session.document.id)
         let existing = Set(allItemIDs)
         selection = selection.filter(existing.contains)
+        loadSelectedTextAppearance()
         if session.privacyEpoch != epoch {
             privacyEpochChanged()
         } else if invalidateCompletedRecognition() {
@@ -407,12 +408,14 @@ public final class EditorModel {
         } else {
             selection = [item]
         }
+        loadSelectedTextAppearance()
     }
 
     /// Replaces the selection (object list); unknown items are ignored.
     public func setSelection(_ items: Set<EditorItemID>) {
         let existing = Set(allItemIDs)
         selection = items.filter(existing.contains)
+        loadSelectedTextAppearance()
     }
 
     public func selectAll() { selection = Set(allItemIDs) }
@@ -586,7 +589,9 @@ public final class EditorModel {
         case .annotation(let id):
             guard let index = document.annotations.firstIndex(where: { $0.id == id }) else { return }
             let annotation = document.annotations[index]
-            let resized = annotation.resized(from: EditorGeometry.frame(of: annotation), to: rect)
+            guard let original = EditorGeometry.frame(of: annotation) else { throw DocumentError.invalidGeometry }
+            let resized = annotation.resized(from: original, to: rect)
+            guard EditorGeometry.frame(of: resized) != nil else { throw DocumentError.invalidGeometry }
             if case .line(let start, let end) = resized.kind {
                 guard start.isFinite, end.isFinite, EditorGeometry.isFinite(resized.bounds) else {
                     throw DocumentError.invalidGeometry

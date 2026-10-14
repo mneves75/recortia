@@ -87,6 +87,15 @@ editors refuse actions without writing bytes. Save/remove cannot alter annotatio
 settings, consent identity, clipboard or network sinks. The `saved-colors` scenario is required;
 an unavailable accessibility tree is a blocked UI criterion, never a passing model substitute.
 
+For text designs, operate Standard/Rounded/Monospaced native controls in both languages and
+verify selected values, one-step undo/redo, new-text defaults, native reopen/confirm/cancel,
+Unicode preservation, wrapping and 25%/200% zoom. Controls refuse during active native input
+with an explanation. The `text-font-designs` and `text-layout-failure` scenarios are required.
+The latter must paint a valid annotation before a finite-overflow text failure and prove that
+the actual canvas clears those partial pixels and exposes a render notice. Export failures
+must propagate rather than omit text. Minimum-width dark rendering and the RED family remain
+required; these synthetic checks do not qualify physical IME/VoiceOver behavior.
+
 Start an image move immediately after a color/opacity adjustment. The adjustment's delayed completion
 cannot split the move's undo group or revert the adjustment when the move is canceled. Editing only
 an image's inspector Height preserves its aspect ratio and refreshes both size fields.

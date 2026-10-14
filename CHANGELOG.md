@@ -12,6 +12,10 @@ installed build 27A9275 is Xcode 27.1 RC.
 
 ### Added
 
+- Standard, rounded and monospaced text appearances with native selected-state controls,
+  independent undo, shared layout metrics and consistent native editing/export fonts. Native
+  editing now retains wrapping constraints at zoom. Four decorated appearances remain planned.
+
 - Explicit saved annotation colors: one local palette of up to 12 colors shared by editors,
   with native Save/Apply/Remove controls, HEX labels and undoable application. Preference schema
   2 preserves sealed legacy consent and protects incompatible future-schema bytes.
@@ -31,6 +35,10 @@ installed build 27A9275 is Xcode 27.1 RC.
   adversarial implementation plan. No proprietary assets or undocumented optimizations are copied.
 
 ### Fixed
+
+- A text layout failure clears partial canvas pixels and reports the existing preview error;
+  exports propagate the typed failure. Imaging admits only the two reviewed public font-class
+  imports in its layout helper, with regression controls against broader side-effect APIs.
 
 - Applying a saved annotation color closes a pending color-well adjustment first, so Undo
   restores the pre-application state without erasing that earlier gesture. A rejected unsaved

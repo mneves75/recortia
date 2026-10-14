@@ -8,11 +8,22 @@ import Testing
 
 @Suite("AnnotationRenderer: deterministic drawing shared by editor and export")
 struct AnnotationRendererTests {
+    @Test("Invalid text geometry refuses explicitly instead of silently omitting the text")
+    func invalidTextRefuses() throws {
+        #expect(throws: RenderError.textLayoutFailed(.invalidGeometry)) {
+            _ = try draw([
+                Annotation(
+                    kind: .text(.init(origin: Point(x: 10, y: 10), string: "Text", fontSize: .nan)),
+                    style: .default)
+            ])
+        }
+    }
+
     private func draw(_ annotations: [Annotation], width: Int = 120, height: Int = 80) throws -> DecodedPixels {
         let context = try #require(ChartFixture.context(width: width, height: height))
         context.translateBy(x: 0, y: CGFloat(height))
         context.scaleBy(x: 1, y: -1)  // document space: top-left origin, y down
-        AnnotationRenderer.draw(annotations, in: context)
+        try AnnotationRenderer.draw(annotations, in: context)
         return try pixels(try #require(context.makeImage()))
     }
 

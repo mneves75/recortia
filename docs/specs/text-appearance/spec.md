@@ -28,7 +28,7 @@ this reference gap: CleanShot's public preview shows different font and decorati
 
 ## Solution
 
-Offer a native localized Text Style picker for text creation and selected text. The first
+Offer a native localized Text Style selector for text creation and selected text. The first
 vertical slice adds the three font designs. The second adds four decorations. Changing a style
 is one explicit undo action; it preserves text, origin, size, wrapping and unrelated annotations.
 The chosen appearance applies to new text in that editor and remains editable on existing text.
@@ -45,7 +45,7 @@ The chosen appearance applies to new text in that editor and remains editable on
 8. As a screenshot author, I want the selected style to carry into my next text annotation.
 9. As a screenshot author, I want Undo and Redo to restore appearance independently of a prior
    color-well gesture, without losing text or other edits.
-10. As a keyboard user, I want native picker navigation, readable names and selected values.
+10. As a keyboard user, I want native controls, readable names and selected values.
 11. As a Portuguese user, I want localized controls and tour guidance at the minimum editor size.
 12. As a user entering accented, multiline or composed text, I want style controls to preserve
     my unfinished input rather than force a commit or cancel it.
@@ -112,7 +112,7 @@ placement, scaling, masks and magnifiers. Final ink must fit the advertised text
 Unknown decoded appearance values reject explicitly. Backend work must demonstrate background
 pixel rendering and contain font/layout objects within each operation.
 
-Native EN/PT-BR tests must operate the picker and observe selection/new text/undo. Inspect
+Native EN/PT-BR tests must operate the selector and observe selection/new text/undo. Inspect
 actual standard and minimum-width dark renders. Then run the full development gate, focused
 adversarial code review and fresh independent native acceptance. Stable release, physical
 VoiceOver/IME/Spaces and signed installation are separately qualified.
@@ -131,11 +131,19 @@ with a rich-text framework adds state and export/privacy obligations the request
 Five years later, a small typed value, native controls and export proof are easier to maintain
 than copied assets or a second rendering engine.
 
+The initial SwiftUI radio-group selector was visible but neither its accessibility Press nor
+a self-window event at its fresh accessibility frame changed the binding in the synthetic
+runner. Explicit native choice buttons with checkmarks and selected accessibility values
+passed the same model/undo acceptance. That is the chosen control; keyboard tab/activation and
+physical assistive-technology qualification remain distinct from synthetic Press evidence.
+
 Primary reference verified 2026-10-14: [CleanShot features](https://cleanshot.com/features),
 including its public seven-style preview. Marketing security/performance statements are not
 Recortia evidence. Existing styles are not promised until their own pixel and native tests pass.
 
-Status: ready-for-agent; no text-appearance implementation has begun.
+Status: ticket01 in progress. Model and export tracer regressions passed after failing before
+implementation. Native picker acceptance is being exercised; ticket02 has not begun. No
+text-appearance release, complete seven-style qualification or installation is claimed.
 
 API feasibility evidence: `.scratch/text-font-feasibility-20261014/evidence.md`. The strict
 Swift6/macOS15 prototype resolves fonts through public NSFontDescriptor APIs without actor
