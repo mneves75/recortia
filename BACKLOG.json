@@ -1198,6 +1198,21 @@
       "completion_contract": "Both tickets require source-red regressions, measured geometry, development gates and fresh independent code/native acceptance. Physical and stable release qualification remain separate.",
       "evidence": [".scratch/text-font-feasibility-20261014/evidence.md", "docs/specs/text-appearance/acceptance-verdict.md", "docs/specs/text-appearance/review-evidence.md"],
       "progress_note": "All seven styles independently accepted at development scope on2df6387 after one raster-evidence correction/fresh full reverify. Gate656tests/604translations and stable CI pass; independent native run has122images/1948assertions. Expanded full native run failed initial capture-focus key ownership: English45/46, Portuguese46/46, before text scenarios. Isolated6/6, adjacent-overlay6/6, complete-prefix3/3,50-cycle and a later full-English46/46 diagnostic run did not reproduce it. No production fix or host attribution is established. Integration/physical focus qualification remains pending; source work may continue without releasing this candidate."
+    },
+    {
+      "id": "FP-034",
+      "title": "Editable curved arrows",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "in_progress",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Optional quadratic control on arrows, shared painted geometry, creation/default, visible bend handle and native numeric fields, atomic undo/refusal and sanitized exports. Other arrowhead styles remain gaps.",
+      "deliverables": ["docs/specs/curved-arrows/spec.md", "docs/specs/curved-arrows/implementation-plan.md", "model/geometry/export/native regressions"],
+      "completion_contract": "Observed source-red tracer regressions, head-junction feasibility, development gates, two-axis review and fresh independent code/native acceptance; no full-parity or physical qualification claim.",
+      "evidence": [],
+      "progress_note": "Plan advisor review applied before implementation. Existing CAP-01 integration failure remains a separate release blocker."
     }
   ],
   "deferred_scope": [

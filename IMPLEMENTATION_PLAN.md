@@ -11,6 +11,11 @@ adds three system-font designs with shared geometry and native editing; ticket02
 four outlined/boxed treatments. Each vertical ticket has its own regressions and independent
 acceptance. The first ticket cannot close the complete seven-appearance feature.
 
+FR-05 curved arrows are tracked as FP-034 in `docs/specs/curved-arrows/spec.md` and its detailed
+implementation plan. One functional ticket covers shared curve/head geometry, creation,
+selection/bend editing, native keyboard fields, undo and sanitized exports. Geometry feasibility
+precedes UI integration; the unrelated unresolved CAP-01 failure still blocks candidate delivery.
+
 **Status:** The approved v1 milestones have a beta implementation. BACKLOG.json records current
 task status, signed local-install evidence, and outstanding manual qualification; this file defines
 task contracts rather than a build log. Local installation does not complete notarized distribution

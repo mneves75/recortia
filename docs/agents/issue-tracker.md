@@ -9,7 +9,7 @@ New feature specs/tickets use the local paths above. Existing bug/external-reque
 GitHub issues through `gh`; do not duplicate local feature tickets there.
 
 Repository: `mneves75/recortia` (remote `origin`). Planned milestone work stays in
-`BACKLOG.json` (currently FP-001…FP-033); GitHub issues hold bugs, triage, and external requests, not copies of
+`BACKLOG.json` (currently FP-001…FP-034); GitHub issues hold bugs, triage, and external requests, not copies of
 those tasks. Issue forms in `.github/ISSUE_TEMPLATE/` apply `needs-triage` automatically.
 Screenshots attached to issues must be synthetic (AGENTS.md: no real captures).
 

@@ -5,6 +5,18 @@ Implementation is under verification, not accepted or installed. Candidate metad
 0.12.0/build19. All native inputs are generated fixtures with isolated settings and private
 pasteboards; no real screen capture, TCC changes, personal content or network transfer.
 
+## Capture diagnostic source review — 6cf21bc
+
+Matt Pocock Standards and Spec lanes independently reviewed `9b3a9dd...6cf21bc` read-only;
+neither found a blocking violation. Standards noted optional duplication of synthetic window
+setup, retained locally because the diagnostic factories have different observation behavior.
+Both confirmed FAIL is fixed before recovery observation, key observers are object-scoped and
+removed, the event buffer is bounded, and the repeat scenario is named-only. They did not run
+tests or qualify the failure-only recovery branch; supplied gate results are not their own
+execution. Main had already run the full gate and bilingual targeted native checks. The
+reviewed commit was pushed to the existing working branch; no production focus fix, full-suite
+acceptance or physical qualification is implied.
+
 ## Backend
 
 The disjoint backend worker used the approved public seams and incremental red/green tracers.
