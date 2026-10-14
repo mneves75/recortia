@@ -97,6 +97,17 @@ must supply a stable toolchain/authorize an outside-repo toolchain change before
 
 ## Cleanup boundary
 
+## Hosted CI
+
+[Draft PR #16](https://github.com/mneves75/recortia/pull/16) points to the pushed feature branch.
+[CI run 38511010581](https://github.com/mneves75/recortia/actions/runs/38511010581) failed before
+compilation: runner Xcode build 27A266a at /Applications/Xcode_27.app differs from
+TOOLCHAIN.json 27A9275. The gate correctly rejected this mismatch; no pin/check was weakened.
+The final documentation-only commit does not change that mismatch. Hosted compilation/tests
+have therefore not passed for this candidate.
+
+## Cleanup result
+
 No worktree, simulator or persistent server was created. Existing dependency/build directories
 and the preexisting untracked docs/handoffs directory are preserved. Evidence cited above is
 retained. scratch clean --dry-run refused these task-owned older nested E2E directories because
@@ -104,3 +115,6 @@ they are not directly under .scratch; the guard was not bypassed:
 `.scratch/e2e/20261014-003224`, `20261014-003431`, `20261014-003509`,
 `20261014-003815`, `20261014-003920`, `20261014-004042`, `20261014-004148`
 (about 7 MiB combined). Their removal remains for the owner under the supported cleanup policy.
+The temporary PR body was deleted. The task's Xcode-beta workspace was closed; the previously
+open unrelated workspace was preserved. The task-owned gh log cache was cleaned after its
+failure text was recorded here. No branch/worktree was removed because the branch is unmerged.
