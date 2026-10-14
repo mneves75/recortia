@@ -4,8 +4,10 @@ How the engineering skills should consume this repo's domain documentation when 
 
 For Recortia, `SPEC.md`, `ACCEPTANCE_TESTS.md`, `BACKLOG.json` and the ADRs are the current
 domain sources. Use ImageAsset, Annotation, ShareSnapshot, EditorTextEditing and explicit
-SavedAnnotationPalette consistently with their public types. Text appearance is planned in
-`docs/specs/text-appearance/`; a planned style is not an implemented capability.
+SavedAnnotationPalette and TextAppearance consistently with their public types. Seven text
+appearances are implemented; independent development acceptance is recorded in
+`docs/specs/text-appearance/decoration-acceptance-verdict.md`. Physical/runtime/release limits
+remain separate. The reference matrix distinguishes remaining planned capabilities from code.
 
 ## Before exploring, read these
 

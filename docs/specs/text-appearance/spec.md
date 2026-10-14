@@ -142,9 +142,11 @@ including its public seven-style preview. Marketing security/performance stateme
 Recortia evidence. Existing styles are not promised until their own pixel and native tests pass.
 
 Status: ticket01 verified-development on f1852b7 with full gate and fresh independent
-code/security/native acceptance. Ticket02 is in progress; native input feasibility passes
-but its four appearances are not accepted yet. No
-text-appearance release, complete seven-style qualification or installation is claimed.
+code/security/native acceptance. Ticket02's seven-style development criteria passed fresh
+independent reverify on2df6387 (see decoration-acceptance-verdict.md). Complete integration is
+blocked by a subsequent English capture-focus keyboard-ownership failure before text scenarios;
+its cause remains under diagnosis. No physical qualification, text-appearance release or
+installation is claimed.
 
 API feasibility evidence: `.scratch/text-font-feasibility-20261014/evidence.md`. The strict
 Swift6/macOS15 prototype resolves fonts through public NSFontDescriptor APIs without actor

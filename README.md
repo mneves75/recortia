@@ -7,17 +7,19 @@ tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candid
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). Three editable
 [text font designs](docs/specs/text-appearance/spec.md) passed the 640-test development gate and
 [independent code/security and native acceptance](docs/specs/text-appearance/acceptance-verdict.md)
-on f1852b7. Outlined, Boxed, Rounded Box and Monospaced Box are now implemented and under
-qualification, with background color/reset and passive decoration during native input. Native palette control
+on f1852b7. Outlined, Boxed, Rounded Box and Monospaced Box are implemented with background
+color/reset and passive decoration during native input; all seven passed
+[fresh independent development acceptance](docs/specs/text-appearance/decoration-acceptance-verdict.md)
+on 2df6387. Native palette control
 checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
 fresh independent native acceptance passes on e6c259c. On 2276817 the full development gate
 passes 656 tests and 604 translations; the full native run passes 46/46 scenarios in each
 language, 190 screenshots, with four host-activation checks explicitly skipped. Native wrapped
 text now paints every line and restores composed characters to the current zoom font size;
 mixed-selection background controls show selected fills and retain Reset/undo eligibility.
-Fresh independent seven-style native acceptance remains pending.
-The earlier intermittent Portuguese capture-focus keyboard failure did not reproduce; its
-cause remains unproven. This does not qualify a release.
+The subsequent expanded full run on 2df6387 failed capture-focus keyboard ownership in English
+(45/46; Portuguese46/46), before any text scenario ran. Its cause remains unproven; narrow
+reproduction is in progress. Passing isolated reruns do not erase that failure or qualify a release.
 This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
 toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.

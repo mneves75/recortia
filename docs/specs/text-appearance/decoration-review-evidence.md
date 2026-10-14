@@ -244,6 +244,39 @@ language and122 images at `.scratch/e2e/20261014-192629/{en,pt-BR}/report.json`,
 were inspected; the glyphs are present. This builder run addresses the missing artifact but
 does not replace the required fresh independent full reverify.
 
+The correction's full development gate passed, exit0, at
+`.scratch/text-decoration-visible-zoom-full-check.log`:656 package tests,604 translated strings,
+strict format, freshness, doctor/isolation and both unsigned Debug builds. Hosted stable
+Xcode27.0/27A266a CI on2df6387 also passed the entire gate, run38648035602/job116139683263;
+actual job-log proof is `.scratch/text-decoration-ci-2df6387.log`.
+
+Both Matt Pocock source axes reviewed a3ad94e...2df6387 and the incremental correction.
+Spec: no confirmed remaining source finding or scope creep. Standards: no documented violation;
+the existing optional three-expression outline-percentage duplication remains nonblocking.
+Neither source reviewer substituted test-source adequacy for runtime acceptance.
+
+Fresh full independent reverify is now recorded in
+`decoration-acceptance-verdict.md`. Code/security criteria1/2/3/5/6 passed with independently
+executed focused tests; its source-only native-runtime BLOCKED portion is fulfilled by the
+separate fresh source-blind native PASS. That verifier drove its own four-scenario EN/PT run
+and inspected every native-input and viewport image at25%/200% for all seven styles.
+Its own evidence is `.scratch/e2e/20261014-193057/{en,pt-BR}/report.json`:974 assertions and61
+PNGs per language, exit0. The missing25% raster finding is fixed as an evidence gap; no product
+defect was inferred at that zoom. No acceptance criterion was waived. The final complete-suite
+run with the expanded fixtures is still pending; primary physical/release limits remain.
+
+Final expanded full suite did not pass overall: English45/46, Portuguese46/46,126 images per
+language at `.scratch/e2e/20261014-193451/{en,pt-BR}/report.json`, log
+`.scratch/text-decoration-visible-zoom-full-native.log`, exit1. The English capture-focus
+scenario failed its first `window.isKeyWindow` assertion; replacement selection and other
+foreground/responder assertions passed. This scenario runs before all text scenarios, so the
+new seven-style fixtures had not run when it failed. The earlier intermittent keyboard-owner
+failure has recurred; no root cause, host classification or product fix is established.
+All text/tour scenarios passed, and their separate fresh independent acceptance remains valid,
+but the complete integration gate is FAIL until this existing capture failure is resolved or
+its precise protected host limitation is independently established. A narrow unchanged
+capture-focus reproduction loop is being prepared; no assertion has been weakened.
+
 ## Gate and remaining qualification
 
 Full development gate on15dd74f passed:
