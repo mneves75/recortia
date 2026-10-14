@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Mixed backgrounds": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed backgrounds" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Fundos diferentes" } }
+      }
+    },
     "Background Color": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Background Color" } },

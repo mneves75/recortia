@@ -54,7 +54,10 @@ Different model used: yes
 Criterion 1 — Real controls, selected state, undo, future text and Cmd+A: PASS — fresh bilingual
 reports and personally inspected Standard/Rounded/Monospaced render states/checkmarks.
 Criterion 2 — Native input/font/wrapping: PASS — real NSTextView insertion, reopen, cancel,
-confirm, Unicode/multiline, 25%/200% zoom and input-safe disabled controls with help.
+confirm, Unicode/multiline, viewport scales0.25/2.0 and input-safe disabled controls with help.
+Terminology correction during ticket02: on the Retina host those scales were displayed as
+50%/400%. Final ticket02 wrapping tests now target and assert displayed25%/200% explicitly;
+the historical ticket01 report alone did not prove those displayed percentages.
 Criterion 3 — Render failure clearing: PASS — nine checks per language and personally viewed
 blank opaque canvas with localized error.
 Criterion 4 — Bilingual standard/minimum dark layout: PASS — full labels, checkmarks and

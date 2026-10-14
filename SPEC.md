@@ -146,7 +146,9 @@ Rounded Box and Monospaced Box retain the content origin/wrapping width and add 
 backgrounds. Nil background means automatic white; explicit transparent color remains clear.
 Background Color changes selected boxed text and a separate local future-text default;
 Reset restores white with its own undo step. Native input uses the same font and passive
-background geometry without replacing marked text. The canvas and its input overlays stay
+background geometry without replacing marked text. The inspector reflects selected boxed
+fills, describes different backgrounds explicitly and keeps Reset available for custom fills
+in mixed selections independently of the future default. The canvas and its input overlays stay
 clipped to the viewport at high zoom. Qualification is tracked in the text-appearance spec.
 
 ### FR-06 — Redaction

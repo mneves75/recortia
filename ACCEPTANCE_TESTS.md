@@ -99,7 +99,11 @@ required; these synthetic checks do not qualify physical IME/VoiceOver behavior.
 The `text-decorations` scenario additionally operates Outlined/Boxed/Rounded Box/Monospaced
 Box, verifies selected values and native fonts, white-fill/stroke input attributes, Unicode
 insertion and marked-text preservation during zoom, literal live padding pixels and native
-Reset with independent undo/redo. Background controls refuse during input. Check standard
+Reset with independent undo/redo. Background controls refuse during input. Exercise sole
+and mixed selections: actual selected fill drives the color well, custom selected fills keep
+Reset available even with a nil future default, and differing fills have an explicit mixed
+description that returns through undo. Exercise all four decorated appearances with narrow
+native wrapping and marked Unicode/RTL input at both zoom extremes. Check standard
 and minimum-width dark layouts in both languages. High-zoom canvas/input drawing must not
 change a pixel in the adjacent object-list surface. Actual exports prove all-seven-style
 glyph/background bounds, transparent/custom/automatic fills, final group opacity and paired

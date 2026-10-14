@@ -320,9 +320,8 @@ private struct StyleSection: View {
     let model: EditorModel
     let coalescer: ChangeCoalescer
 
-    private var showsTextBackground: Bool {
-        if model.tool == .text, model.style.textAppearance.isBoxed { return true }
-        return model.document.annotations.contains { annotation in
+    private var selectedBoxedText: [Annotation] {
+        model.document.annotations.filter { annotation in
             guard model.selection.contains(.annotation(annotation.id)), case .text(let text) = annotation.kind else {
                 return false
             }
@@ -332,16 +331,19 @@ private struct StyleSection: View {
 
     var body: some View {
         let style = model.style
+        let boxedText = selectedBoxedText
+        let backgroundColor = if let first = boxedText.first { first.style.fill } else { style.textBackgroundColor }
+        let canResetBackground = style.textBackgroundColor != nil || boxedText.contains { $0.style.fill != nil }
         Section {
             ColorPicker(
                 String(localized: "Color", table: "Editor"),
                 selection: colorBinding({ style.stroke }, { c in coalescer.run(model) { model.setStrokeColor(c) } }),
                 supportsOpacity: false)
-            if showsTextBackground {
+            if !boxedText.isEmpty || (model.tool == .text && style.textAppearance.isBoxed) {
                 ColorPicker(
                     String(localized: "Background Color", table: "Editor"),
                     selection: colorBinding(
-                        { style.textBackgroundColor ?? .white },
+                        { backgroundColor ?? .white },
                         { c in coalescer.run(model) { model.setTextBackgroundColor(c) } })
                 )
                 .accessibilityIdentifier("textBackground.color")
@@ -350,11 +352,17 @@ private struct StyleSection: View {
                     String(
                         localized: "Reset restores white. A transparent color keeps the background clear.",
                         table: "Editor"))
+                if boxedText.contains(where: { $0.style.fill != backgroundColor }) {
+                    Text(String(localized: "Mixed backgrounds", table: "Editor"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("textBackground.mixed")
+                }
                 Button(String(localized: "Reset Background", table: "Editor")) {
                     model.setTextBackgroundColor(nil)
                 }
                 .accessibilityIdentifier("textBackground.reset")
-                .disabled(!model.canSetTextAppearance || style.textBackgroundColor == nil)
+                .disabled(!model.canSetTextAppearance || !canResetBackground)
             } else {
                 Toggle(
                     String(localized: "Fill", table: "Editor"),

@@ -226,6 +226,16 @@ and selected ranges. Evidence: `.scratch/text-decoration-native-20261014/InputPr
 and `input-probe.log`. This supports the planned native integration but does not qualify
 physical IME, a live rounded box or final export geometry.
 
+Wrapped native integration exposed a limitation that the small probe did not cover: TextKit 2
+could report multiline bounds while painting only its original line. The public
+[NSTextView initializer](https://developer.apple.com/documentation/appkit/nstextview/init(usingtextlayoutmanager:))
+selects the backing engine at creation (available since macOS12 in the installed SDK).
+Recortia selects TextKit 1 for this same plaintext widget; no runtime compatibility switch or
+custom input renderer is used. Apple's NSTextView documentation warns that accessing
+layoutManager on a TextKit 2 view switches it into compatibility mode, so diagnostic tests
+must inspect textLayoutManager first. Public layout invalidation was tested before this
+decision; failed and successful pixel evidence is recorded in the decoration review evidence.
+
 ## External assertions not made
 
 No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

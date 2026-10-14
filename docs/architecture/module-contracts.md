@@ -42,10 +42,13 @@ public struct PrivacyRenderer: Sendable {
 }
 public enum AnnotationRenderer {                  // shared by editor canvas and export
     public static func draw(_ annotations: [Annotation], in context: CGContext) throws(RenderError)
+    public static func drawTextBackground(_ text: Annotation.TextContent, style: Annotation.Style,
+                                          in context: CGContext) throws(RenderError)
 }
 public enum TextLayout {                          // stateless; text origin/content width in document space
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont
-    public static func metrics(for text: Annotation.TextContent) throws(TextLayoutError) -> TextLayoutMetrics
+    public static func metrics(for text: Annotation.TextContent,
+                               style: Annotation.Style) throws(TextLayoutError) -> TextLayoutMetrics
 }
 public struct ExportPipeline: Sendable {
     public init(renderer: PrivacyRenderer)
@@ -56,8 +59,13 @@ public enum PixelSampler {
 }
 ```
 
-`TextLayoutMetrics.frame` includes painted glyph/fallback extents; `contentFrame` retains the
-wrapping constraint. Core Text objects remain local to each operation. The only permitted
+`TextLayoutMetrics.frame` includes painted glyph/fallback, outline and background extents;
+`contentFrame` retains the wrapping constraint. Optional `backgroundFrame` and `cornerRadius`
+describe the actual passive decoration separately. The real annotation style is mandatory;
+defaulting it would lose outline width during admission/selection. The background-only renderer
+honors opacity without painting glyphs. Native input carries an immutable Annotation.Style
+snapshot; its passive view owns neither input nor pixels. Core Text objects remain local to
+each operation. The only permitted
 AppKit imports in Imaging are the two exact `NSFont`/`NSFontDescriptor` class declarations in
 `TextLayout.swift`; they resolve public system font designs, not windows or system actions.
 The source scanner is a regression guard, not a capability sandbox. Rendering propagates

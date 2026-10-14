@@ -41,8 +41,20 @@ slice. This plan and its reviewed spec authorize the public seams below without 
   reopen/cancel/confirm; editing does not mutate the annotation on every keystroke.
 - Use public native text attributes for editable outlines only after a focused feasibility
   check. Initialize storage/typing attributes before input begins, retain plaintext paste, and
-  avoid rewriting marked ranges during viewport updates. Preserve caret/selection visibility;
+  avoid replacing strings, selections or whole attribute dictionaries during viewport updates.
+  Apply only the presentation font across the existing storage, preserving outline attributes.
+  AppKit can restore pre-composition font attributes when marking ends; reapply the current
+  presentation font after native unmark/insertion without replacing input or undo records.
+  Preserve caret/selection visibility;
   do not fade the whole NSTextView to apply annotation opacity.
+- Select TextKit 1 once when constructing the same native NSTextView. A real glyph-pixel
+  regression found TextKit 2's rendering surfaces stuck at their initial single-line height
+  after wrapped input resized; layout bounds alone passed. Public invalidation, viewport
+  layout and view invalidation did not restore the missing glyphs. Do not switch engines
+  during composition or keep a fallback branch. The strongest alternative is retaining
+  TextKit 2 with a small public fix, but the tested fixes failed. A single reversible native
+  constructor choice and visible-line regression are cheaper to maintain five years later
+  than a recovery chain or custom editing renderer. Core Text canvas/export stays unchanged.
 - For padding/rounded boxes, prefer a small noninteractive decoration view behind the existing
   text view, using the same background renderer and geometry. It owns no input, tracking,
   windows, raw pixels or exports. If native live decoration cannot preserve composition,

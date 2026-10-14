@@ -654,7 +654,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             textView?.removeFromSuperview()
             textDecorationView?.removeFromSuperview()
             textDecorationView = nil
-            let view = EditorTextView(frame: .zero)
+            // Fix the native engine at creation: TextKit 2 left resized wrapped glyph surfaces stale.
+            let view = EditorTextView(usingTextLayoutManager: false)
             view.delegate = self
             view.string = editing.initialString
             view.isRichText = false
@@ -721,7 +722,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
                 let percentage = editing.annotationStyle.lineWidth / editing.fontSize * 100
                 guard percentage.isFinite, percentage >= 0 else { throw TextLayoutError.invalidGeometry }
             }
-            textView.font = try TextLayout.nativeFont(for: editing.appearance, size: editing.fontSize * zoom)
+            textView.setPresentationFont(
+                try TextLayout.nativeFont(for: editing.appearance, size: editing.fontSize * zoom))
         } catch {
             textView.isHidden = true
             textView.isEditable = false
@@ -845,6 +847,32 @@ nonisolated final class EditorAccessibilityElement: NSAccessibilityElement {
 /// or not a main menu provides them, and ends editing on Escape or ⌘Return.
 final class EditorTextView: NSTextView {
     var onFinish: (() -> Void)?
+    private var presentationFont: NSFont?
+
+    func setPresentationFont(_ font: NSFont) {
+        presentationFont = font
+        self.font = font
+        restorePresentationFont()
+    }
+
+    private func restorePresentationFont() {
+        guard let presentationFont else { return }
+        textStorage?.addAttribute(
+            .font, value: presentationFont, range: NSRange(location: 0, length: string.utf16.count))
+        typingAttributes[.font] = presentationFont
+        sizeToFit()
+    }
+
+    override func unmarkText() {
+        super.unmarkText()
+        // AppKit restores pre-composition attributes, which may predate a viewport zoom.
+        restorePresentationFont()
+    }
+
+    override func insertText(_ insertString: Any, replacementRange: NSRange) {
+        super.insertText(insertString, replacementRange: replacementRange)
+        restorePresentationFont()
+    }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard window?.firstResponder === self,

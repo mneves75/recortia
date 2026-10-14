@@ -125,13 +125,18 @@
                 "native editing retains the document content-width constraint",
                 abs(container.containerSize.width - 90 * wrappedController.model.viewport.zoom) < 0.001)
             for zoom in [0.25, 2.0] {
-                wrappedController.model.setZoom(zoom)
+                let viewportZoom = zoom / wrappedController.model.backingScale
+                wrappedController.model.setZoom(viewportZoom)
                 await E2ESnapshot.settle(wrappedController.contentRoot)
                 context.check(
-                    "native wrapping follows zoom \(zoom)", abs(container.containerSize.width - 90 * zoom) < 0.001)
+                    "the native zoom indicator reaches \(zoom * 100)%",
+                    abs(wrappedController.model.zoomPercent - zoom * 100) < 0.001)
+                context.check(
+                    "native wrapping follows zoom \(zoom)",
+                    abs(container.containerSize.width - 90 * viewportZoom) < 0.001)
                 context.check(
                     "native monospaced font follows zoom \(zoom)",
-                    wrappedEditor.font == (try TextLayout.nativeFont(for: .monospaced, size: 24 * zoom)))
+                    wrappedEditor.font == (try TextLayout.nativeFont(for: .monospaced, size: 24 * viewportZoom)))
             }
             let replacement = EditorScenarios.accentedText + "\nRevisão final"
             wrappedEditor.insertText(replacement, replacementRange: wrappedEditor.selectedRange())

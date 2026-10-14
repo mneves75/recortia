@@ -24,8 +24,12 @@ Text appearance uses stateless `Imaging.TextLayout` for native fonts, selection 
 exports. Domain remains free of AppKit. Imaging permits only the reviewed exact `NSFont` and
 `NSFontDescriptor` class imports in `TextLayout.swift`; keep the side-effect scanner's planted
 controls. Layout errors propagate explicitly and the native canvas clears partial pixels.
-Keep `text-font-designs` and `text-layout-failure` in bilingual synthetic E2E; these do not
+Keep `text-font-designs`, `text-decorations` and `text-layout-failure` in bilingual synthetic E2E; these do not
 qualify physical text composition or VoiceOver.
+Measure decorated text with its actual Annotation.Style. Native input uses the same font and
+passive background renderer; keep marked ranges intact and the entire canvas/input clipped to
+its viewport. Boxed background controls derive selected values, identify mixed fills and keep
+Reset eligible for selected explicit fills independently of the local future-text default.
 
 Region overlays use nonactivating panels so a shortcut does not activate an editor in another
 Space. CAP-01 synthetic evidence must verify an external foreground application and keyboard
