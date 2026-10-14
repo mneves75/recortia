@@ -7,6 +7,12 @@ pasteboards; no real screen capture, TCC changes, personal content or network tr
 
 ## Capture diagnostic source review — 6cf21bc
 
+Finishing documentation moves FP-033 to `awaiting_manual_validation`: both text tickets have
+scoped development acceptance, while the independent integration FAIL and physical/release
+gates remain explicit. Removed this task's two completed local ticket files per the owner
+workflow; their specifications and full acceptance/evidence records remain tracked. This
+does not mark FP-033 complete or qualify the candidate for installation.
+
 Matt Pocock Standards and Spec lanes independently reviewed `9b3a9dd...6cf21bc` read-only;
 neither found a blocking violation. Standards noted optional duplication of synthetic window
 setup, retained locally because the diagnostic factories have different observation behavior.

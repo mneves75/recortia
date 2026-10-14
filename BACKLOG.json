@@ -1189,7 +1189,7 @@
       "title": "Editable text font designs and decorations",
       "milestone": "M2",
       "authorization": "owner_approved_2026-10-14_reference_feature_request",
-      "status": "in_progress",
+      "status": "awaiting_manual_validation",
       "depends_on": ["FP-007"],
       "requirement_ids": ["FR-05"],
       "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
