@@ -22,7 +22,10 @@ extension EditorModel {
                 _ = try TextLayout.metrics(for: text)
                 changes[annotation.id] = text
             }
-        } catch { return false }
+        } catch {
+            reportCanvasRenderFailure()
+            return false
+        }
         endContinuousChange()
         if !changes.isEmpty {
             guard

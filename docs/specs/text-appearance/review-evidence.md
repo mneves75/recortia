@@ -74,3 +74,38 @@ are separate unresolved qualification evidence; this work does not waive them.
 
 No worktrees, watchers, dependency installs or shared-cache cleanup were created. Small test
 artifacts remain as cited evidence. The preexisting untracked docs/handoffs directory is preserved.
+
+## First full gate and review corrections
+
+Commit e72816d passed
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned`:
+639 package tests (134 MacPlatform / 150 Imaging / 295 Features / 60 Domain), 596 app strings,
+two unsigned Debug builds, doctor/isolation/format/project checks. Log:
+`.scratch/text-font-ticket01-check.log`. This is development qualification on the RC toolchain.
+
+The two fresh Matt Pocock review axes were configured as gpt-6.1-sol/xhigh:
+
+- Standards: one P2 documented breach. Layout/font admission caught an error and returned
+  false, but the native button discarded that result, leaving no visible refusal. The
+  possible scattered-selection-synchronization smell was a judgement, not a hard standard.
+- Spec: one P2 defect. Select All bypassed text-style loading for a sole text annotation,
+  leaving an incorrect selected-style indicator. The spec axis did not classify the notice
+  issue as its own confirmed spec defect. Neither axis executed tests or native actions.
+
+Both findings were reproduced before correction: `.scratch/text-font-refusal-notice-red.log`
+failed on a nil notice; `.scratch/text-font-select-all-red.log` failed on stale appearance and
+size. The first now posts the existing preview notice before refusing, while keeping admission
+ahead of document/history mutations. Select All now uses the existing setSelection boundary.
+`.scratch/text-font-review-corrections-green.log` passed all eight model tests.
+
+The corrected native run included the updated tour and a real canvas Cmd+A key-equivalent
+check of the selected AX value:
+`scripts/e2e.sh --lang all --only text-font-designs,text-layout-failure,onboarding --unsigned`
+with the same explicit development environment passed six scenario executions and 34 images
+at `.scratch/e2e/20261014-175412/{en,pt-BR}/report.json`. Log:
+`.scratch/text-font-review-corrected-native.log`. Full corrected gate and independent
+source/behavior verdicts remain pending at this checkpoint.
+
+Correction metrics use the same cccc1.8.0 policy and flags: four explicitly named changed
+Swift files, 145 functions, zero parse errors; output `.scratch/text-font-correction-complexity.json`
+and `.stderr`, exit0. The earlier 27-file metrics retain their RenderEngine parse limitation.

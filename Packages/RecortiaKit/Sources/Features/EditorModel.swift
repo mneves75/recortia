@@ -418,7 +418,7 @@ public final class EditorModel {
         loadSelectedTextAppearance()
     }
 
-    public func selectAll() { selection = Set(allItemIDs) }
+    public func selectAll() { setSelection(Set(allItemIDs)) }
 
     public func clearSelection() { selection = [] }
 

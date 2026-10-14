@@ -184,6 +184,49 @@
                 context.check("text styles fit minimum editor width", abs(wrappedRoot.bounds.width - 980) < 1)
                 context.snapshot(wrappedRoot, shot: "text-styles-compact-dark")
             }
+            try await selectAllStyle(harness, document: model.document, context)
+        }
+
+        private static func selectAllStyle(
+            _ harness: E2EHarness, document: Document, _ context: ScenarioContext
+        ) async throws {
+            var document = document
+            let annotation = Annotation(
+                kind: .text(
+                    .init(
+                        origin: E2EActions.point(60, 40), string: "Selecionar tudo🙂",
+                        fontSize: 40, appearance: .rounded)), style: .default)
+            document.layers = []
+            document.annotations = [annotation]
+            let controller = harness.editors.open(DocumentSession(document: document))
+            controller.window?.orderFront(nil)
+            let canvas = try context.unwrap("Select All canvas", controller.canvasView)
+            let root = try context.unwrap("Select All editor", controller.contentRoot)
+            let model = controller.model
+            model.clearSelection()
+            model.setTextAppearance(.standard)
+            let before = model.document
+            let undoCount = model.session.undoCount
+            try context.require(
+                "the synthetic canvas accepts keyboard ownership", controller.window?.makeFirstResponder(canvas) == true
+            )
+            let event = try context.unwrap(
+                "Select All key equivalent",
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0,
+                    windowNumber: controller.window?.windowNumber ?? 0, context: nil,
+                    characters: "a", charactersIgnoringModifiers: "a", isARepeat: false, keyCode: 0))
+            context.check("the native canvas handles Select All", canvas.performKeyEquivalent(with: event))
+            context.check("Select All loads the selected text's actual font", model.style.textAppearance == .rounded)
+            context.check(
+                "Select All preserves content and undo history",
+                model.document == before && model.session.undoCount == undoCount)
+            await E2EActions.scrollInspector(controller, to: 0.35)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "Select All exposes the actual selected style in native controls",
+                try E2EAccessibilityControl.text(.value, for: "textAppearance.rounded", in: root, context)
+                    == String(localized: "Selected", table: "Editor"))
         }
     }
 #endif

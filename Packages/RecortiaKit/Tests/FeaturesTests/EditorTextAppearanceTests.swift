@@ -9,6 +9,36 @@ import Testing
 @Suite("Native text font designs (FR-05)")
 @MainActor
 struct EditorTextAppearanceTests {
+    @Test("Select All loads the sole text's actual appearance and size without editing it")
+    func selectAllLoadsTextStyle() throws {
+        var session = EditorFixtures.session()
+        let annotation = Annotation(
+            kind: .text(
+                .init(
+                    origin: Point(x: 20, y: 30), string: "Selecionar tudo🙂",
+                    fontSize: 40, appearance: .rounded)), style: .default)
+        try session.perform("Text-only fixture") {
+            $0.layers = []
+            $0.annotations = [annotation]
+        }
+        let h = EditorHarness(session: session)
+        defer { h.model.close() }
+        let model = h.model
+        model.clearSelection()
+        #expect(model.setTextAppearance(.standard))
+        model.setFontSize(24)
+        let before = model.document
+        let revision = model.session.revision
+        let undoCount = model.session.undoCount
+        model.selectAll()
+        #expect(model.selection == [.annotation(annotation.id)])
+        #expect(model.style.textAppearance == .rounded)
+        #expect(model.style.fontSize == 40)
+        #expect(model.document == before)
+        #expect(model.session.revision == revision)
+        #expect(model.session.undoCount == undoCount)
+    }
+
     @Test("Canvas reports layout failure explicitly and restores caller drawing state")
     func canvasFailure() throws {
         var document = EditorFixtures.session().document
@@ -94,6 +124,7 @@ struct EditorTextAppearanceTests {
         let style = model.style
         #expect(model.frame(of: .annotation(text.id)) == nil)
         #expect(!model.setTextAppearance(.rounded))
+        #expect(model.notice == .previewFailed)
         #expect(model.document == before)
         #expect(model.style == style)
         #expect(model.session.revision == revision)
