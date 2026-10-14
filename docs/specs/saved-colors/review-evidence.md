@@ -43,6 +43,28 @@ builds (`.scratch/saved-colors-committed-check.log`); hosted stable CI passed on
 https://github.com/mneves75/recortia/actions/runs/38598585844. The final harness correction requires
 its own gate; these earlier checks do not qualify uncommitted source.
 
+### Independent native acceptance and undo correction
+
+A fresh source-blind GPT-6 Astra/high verifier independently drove the actual synthetic runner
+at `dd3c615`, inspected six palette and twelve tour renders, and passed 828 assertions (4/4
+scenario/language combinations). Own evidence: `.scratch/e2e/20261014-135250/{en,pt-BR}/report.json`.
+The configured model differs from the builder; runtime identity is not exposed. Native scope
+does not include cross-editor/relaunch persistence (independently covered by package tests),
+physical VoiceOver/IME/Spaces, TCC, signing or release.
+
+The full run at dd3c615 (`20261014-134637`) passed EN43/43 and PT-BR42/43. PT-BR failed
+capture-focus's replacement-selection keyboard ownership assertion; cause remains unresolved.
+Both languages recorded two activation-dependent skipped checks. No waiver or release claim.
+Stable CI passed dd3c615: https://github.com/mneves75/recortia/actions/runs/38601175555.
+
+A further adversarial check found that applying a saved color while a color-well adjustment
+was pending merged the two actions into one undo group. Public-seam regression failed four
+assertions (`.scratch/saved-colors-undo-boundary-red.log`); ending the prior continuous change
+only after admission corrected it. Nineteen focused tests now pass, including refusal retaining
+the ongoing group and a stale coalescer being unable to end a newer group
+(`.scratch/saved-colors-undo-boundary-green.log`). This latest correction needs its own full
+gate and independent backend recheck; earlier native acceptance remains artifact-specific.
+
 The initial app test had invalid fake-service names and failed compilation; these were corrected
 before the meaningful native source-red run. The first full gate failed one formatting line;
 it was corrected before rerunning. Logs are retained rather than reported as successful runs.

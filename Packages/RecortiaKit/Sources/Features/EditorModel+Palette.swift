@@ -31,6 +31,7 @@ extension EditorModel {
     @discardableResult
     public func applySavedColor(_ color: RGBA) -> Bool {
         guard canChangeAnnotationPalette, annotationPalette.contains(color) else { return false }
+        endContinuousChange()
         setStrokeColor(color.withAlpha(255))
         return true
     }

@@ -32,6 +32,10 @@ installed build 27A9275 is Xcode 27.1 RC.
 
 ### Fixed
 
+- Applying a saved annotation color closes a pending color-well adjustment first, so Undo
+  restores the pre-application state without erasing that earlier gesture. A rejected unsaved
+  color leaves the ongoing gesture intact.
+
 - Onboarding now explains that automatic exports precede redaction and later edits cannot
   recall earlier clipboard, file or remote copies.
 

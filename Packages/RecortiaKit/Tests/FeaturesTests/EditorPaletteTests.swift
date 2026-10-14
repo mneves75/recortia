@@ -151,6 +151,57 @@ struct EditorPaletteTests {
         #expect(h.model.session.undoCount == undoCount + 1)
     }
 
+    @Test("Applying a saved color is separate from a preceding color-well adjustment")
+    func applyEndsPrecedingContinuousChange() {
+        let storage = MemoryPreferenceStorage()
+        let settings = SettingsStore(storage: storage)
+        var palette = SavedAnnotationPalette()
+        palette.insert(.yellow)
+        settings.update { $0.annotationPalette = palette }
+        let h = EditorHarness(settings: settings)
+        defer { h.model.close() }
+        h.model.selectTool(.rectangle)
+        h.drag((20, 30), (80, 90))
+        let initial = h.model.document
+        let priorChange = h.model.beginContinuousChange()
+        h.model.setStrokeColor(.black)
+        let adjusted = h.model.document
+        #expect(h.model.applySavedColor(.yellow))
+        let applied = h.model.document
+        #expect(!h.model.session.isGrouping)
+        h.model.undo()
+        #expect(h.model.document == adjusted)
+        h.model.undo()
+        #expect(h.model.document == initial)
+        h.model.redo()
+        #expect(h.model.document == adjusted)
+        h.model.redo()
+        #expect(h.model.document == applied)
+        let nextChange = h.model.beginContinuousChange()
+        #expect(nextChange != priorChange)
+        h.model.endContinuousChange(priorChange)
+        #expect(h.model.session.isGrouping, "a stale coalescer cannot end a newer gesture")
+        h.model.endContinuousChange(nextChange)
+    }
+
+    @Test("Rejecting an unsaved color leaves the ongoing color-well gesture intact")
+    func rejectedApplyPreservesContinuousChange() {
+        let h = EditorHarness()
+        defer { h.model.close() }
+        h.model.selectTool(.rectangle)
+        h.drag((20, 30), (80, 90))
+        let change = h.model.beginContinuousChange()
+        h.model.setStrokeColor(.black)
+        let document = h.model.document
+        let revision = h.model.session.revision
+        #expect(!h.model.applySavedColor(.yellow))
+        #expect(h.model.document == document)
+        #expect(h.model.session.revision == revision)
+        #expect(h.model.session.isGrouping)
+        #expect(h.model.beginContinuousChange() == change)
+        h.model.endContinuousChange(change)
+    }
+
     @Test("Closed editors refuse every palette action, including applying a known color")
     func closedEditorRefusesPaletteActions() {
         let storage = MemoryPreferenceStorage()
