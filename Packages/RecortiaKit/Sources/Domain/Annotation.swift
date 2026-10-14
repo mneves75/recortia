@@ -6,6 +6,7 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
     public enum Kind: Hashable, Sendable, Codable {
         case text(TextContent)
         case arrow(start: Point<DocumentSpace>, end: Point<DocumentSpace>)
+        case line(start: Point<DocumentSpace>, end: Point<DocumentSpace>)
         case rectangle(Rect<DocumentSpace>)
         case ellipse(Rect<DocumentSpace>)
         case freehand([Point<DocumentSpace>])
@@ -63,7 +64,7 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         case .text(let text): return base + text.string.utf8.count * 2
         case .freehand(let points), .highlighter(let points):
             return base + points.count * MemoryLayout<Point<DocumentSpace>>.stride
-        case .arrow, .rectangle, .ellipse, .step: return base
+        case .arrow, .line, .rectangle, .ellipse, .step: return base
         }
     }
 
@@ -77,7 +78,7 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             let width = text.maxWidth ?? Double(max(1, text.string.count)) * text.fontSize * 0.6
             let lines = Double(max(1, text.string.split(separator: "\n", omittingEmptySubsequences: false).count))
             return Rect(origin: text.origin, size: Size(width: width, height: lines * text.fontSize * 1.25))
-        case .arrow(let start, let end):
+        case .arrow(let start, let end), .line(let start, let end):
             return Rect(spanning: start, end)
         case .rectangle(let rect), .ellipse(let rect):
             return rect
@@ -109,6 +110,8 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             copy.kind = .text(text)
         case .arrow(let start, let end):
             copy.kind = .arrow(start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy))
+        case .line(let start, let end):
+            copy.kind = .line(start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy))
         case .rectangle(let rect):
             copy.kind = .rectangle(rect.offsetBy(dx: dx, dy: dy))
         case .ellipse(let rect):
@@ -142,6 +145,15 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             copy.kind = .text(text)
         case .arrow(let start, let end):
             copy.kind = .arrow(start: map(start), end: map(end))
+        case .line(let start, let end):
+            func mapEndpoint(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
+                // An axis-aligned segment has no extent on one axis; use progress along the
+                // other axis when the new frame gives it extent, preserving endpoint order.
+                let xFraction = old.width > 0 ? (p.x - old.minX) / old.width : (p.y - old.minY) / old.height
+                let yFraction = old.height > 0 ? (p.y - old.minY) / old.height : (p.x - old.minX) / old.width
+                return Point(x: new.minX + xFraction * new.width, y: new.minY + yFraction * new.height)
+            }
+            copy.kind = .line(start: mapEndpoint(start), end: mapEndpoint(end))
         case .rectangle:
             copy.kind = .rectangle(new)
         case .ellipse:

@@ -76,6 +76,10 @@ with the synthetic `import-admission` E2E scenario.
 
 Replay a fixed script creating each annotation, editing text, dragging/resizing/duplicating, changing z-order, cropping, and resizing the document. Undo every operation, redo it, and verify model equality and expected render. A complete pointer gesture is one undo group. Exercise the undo-budget boundary without breaking remaining commands.
 
+For straight lines, exercise shortcut D through the native canvas, endpoint handles, Shift
+constraint, canceled draft and one-step undo/redo. Literal exported pixels show stroke only,
+without an arrowhead; an opaque redaction covers line pixels in the final artifact.
+
 Start an image move immediately after a color/opacity adjustment. The adjustment's delayed completion
 cannot split the move's undo group or revert the adjustment when the move is canceled. Editing only
 an image's inspector Height preserves its aspect ratio and refreshes both size fields.

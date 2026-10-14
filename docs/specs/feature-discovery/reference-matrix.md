@@ -34,11 +34,11 @@ test. The full repository gate must recheck it; manual qualification remains in 
 | Automatic copy/save and opt-in upload | Both | Settings / AppModel and GitHubUploader | NET-01, automatic-export | Sharing / GitHub only, before later edits |
 | Shortcuts and native settings | Both | Menu / shortcut recorder and SettingsWindowController | UX-01, PERM | Shortcuts / existing |
 | Curved/styled arrows | Both | Annotation currently stores start/end only | No implementation gate yet | Gap: not implemented; requires geometry and export/redaction tests |
-| Straight line tool without arrowheads | CleanShot | No separate line annotation/tool verified | EDIT/GEO/RED needed | Gap: not implemented; freehand is not equivalent |
+| Straight line tool without arrowheads | CleanShot | Distinct endpoint-based line annotation, shared renderer, native toolbar/shortcut D | EDIT/GEO/RED focused regressions and bilingual annotations E2E pass | Source implemented; final acceptance pending |
 | Predefined text styles and saved color palette | CleanShot | Text size/color editing exists, presets/palette do not | EDIT/settings storage needed | Gap: not implemented |
 | Hand-drawn annotation style | Shottr | Explicitly deferred in SPEC | Not implemented | Gap: not implemented |
 | Smart capture selection/snapping, frozen capture selection and capture aspect constraints | Both | No equivalent verified in capture; editor constraints already exist | CAP/GEO extension needed | Gap: not implemented in capture |
-| Average-area color | Shottr | Color-picker inspector 1×1/3×3/5×5, encoded sRGB mean of the current sanitized preview; @concurrent bounded tile | PIX-01 extension, pending integrated E2E | Recognition / implemented source, qualification in progress |
+| Average-area color | Shottr | Color-picker inspector 1×1/3×3/5×5, encoded sRGB mean of the current sanitized preview; @concurrent bounded tile | PIX-01 extension and bilingual integrated E2E pass | Recognition / source verified; physical qualification pending |
 | Text color, OKLCH, APCA contrast | Shottr | No equivalent verified | PIX extension needed | Gap: not implemented; APCA must not be mislabeled WCAG AA |
 | Horizontal scroll | CleanShot | Vertical-only contract | New SCR/GEO corpus needed | Gap: not implemented |
 | Stroke smoothing / smart highlighter | CleanShot | Current freehand renderer | EDIT/RED corpus needed | Gap: not implemented |

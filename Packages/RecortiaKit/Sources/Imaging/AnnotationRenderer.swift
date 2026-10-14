@@ -26,7 +26,7 @@ public enum AnnotationRenderer {
                 return false
             }
             points = [text.origin]
-        case .arrow(let start, let end):
+        case .arrow(let start, let end), .line(let start, let end):
             points = [start, end]
         case .rectangle(let rect), .ellipse(let rect):
             guard rect.size.width.isFinite, rect.size.height.isFinite, rect.width >= 0, rect.height >= 0 else {
@@ -67,6 +67,9 @@ public enum AnnotationRenderer {
             drawText(text, style: style, in: context)
         case .arrow(let start, let end):
             drawArrow(from: start.cg, to: end.cg, lineWidth: style.lineWidth, in: context)
+        case .line(let start, let end):
+            context.addLines(between: [start.cg, end.cg])
+            context.strokePath()
         case .rectangle(let rect):
             drawShape(CGPath(rect: rect.cg, transform: nil), style: style, in: context)
         case .ellipse(let rect):

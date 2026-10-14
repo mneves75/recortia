@@ -12,6 +12,9 @@ installed build 27A9275 is Xcode 27.1 RC.
 
 ### Added
 
+- Straight-line annotations: distinct editable endpoints, stroke-only rendering and native
+  Line / D controls. Horizontal/vertical lines remain editable when their bounds change axis;
+  the native toolbar uses compact controls at the minimum editor width.
 - Color Picker sample sizes: 1×1 (the existing default), 3×3 and 5×5. Area samples use one
   bounded sanitized tile off the UI actor, alpha-weighted encoded sRGB averaging, and stale
   completion checks. Changing size, redacting or closing prevents copying an obsolete sample.

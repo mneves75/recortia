@@ -70,6 +70,9 @@ struct EditorReplayTests {
         m.beginEditingText(textID)
         m.commitTextEditing("Olá, edição")
         record()
+        m.selectTool(.line)
+        h.drag((20, 200), (120, 200))
+        record()
 
         // Move the arrow by its shaft, then resize the rectangle by a corner handle.
         m.selectTool(.select)
@@ -116,7 +119,7 @@ struct EditorReplayTests {
         #expect(m.session.undoCount == snapshots.count - 1)
 
         let kinds = Set(m.document.annotations.map { EditorItemKind($0.kind) })
-        #expect(kinds == [.arrow, .rectangle, .ellipse, .freehand, .highlighter, .step, .text])
+        #expect(kinds == [.arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .text])
         #expect(m.document.masks.count == 1)
         #expect(m.document.obfuscations.count == 1)
 

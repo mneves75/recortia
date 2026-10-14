@@ -13,6 +13,7 @@ enum EditorStrings {
         case .crop: String(localized: "Crop", table: "Editor")
         case .text: String(localized: "Text", table: "Editor")
         case .arrow: String(localized: "Arrow", table: "Editor")
+        case .line: String(localized: "Line", table: "Editor")
         case .rectangle: String(localized: "Rectangle", table: "Editor")
         case .ellipse: String(localized: "Ellipse", table: "Editor")
         case .freehand: String(localized: "Pen", table: "Editor")
@@ -36,6 +37,7 @@ enum EditorStrings {
         case .crop: "crop"
         case .text: "textformat"
         case .arrow: "arrow.up.right"
+        case .line: "line.diagonal"
         case .rectangle: "rectangle"
         case .ellipse: "circle"
         case .freehand: "scribble"
@@ -62,6 +64,7 @@ enum EditorStrings {
         switch kind {
         case .text: String(localized: "Text", table: "Editor")
         case .arrow: String(localized: "Arrow", table: "Editor")
+        case .line: String(localized: "Line", table: "Editor")
         case .rectangle: String(localized: "Rectangle", table: "Editor")
         case .ellipse: String(localized: "Ellipse", table: "Editor")
         case .freehand: String(localized: "Drawing", table: "Editor")
@@ -80,6 +83,7 @@ enum EditorStrings {
         switch kind {
         case .text: "textformat"
         case .arrow: "arrow.up.right"
+        case .line: "line.diagonal"
         case .rectangle: "rectangle"
         case .ellipse: "circle"
         case .freehand: "scribble"

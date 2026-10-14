@@ -115,6 +115,8 @@ enum EditorGeometry {
             let head = max(annotation.style.lineWidth * 3, 9)
             return distance(from: p, toSegment: start, end) <= reach
                 || hypot(p.x - end.x, p.y - end.y) <= head + tolerance
+        case .line(let start, let end):
+            return distance(from: p, toSegment: start, end) <= reach
         case .freehand(let points), .highlighter(let points):
             return polylineDistance(from: p, points) <= reach
         }

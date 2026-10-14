@@ -92,7 +92,7 @@ struct EditorToolbarView: View {
 
     static let groups: [[EditorTool]] = [
         [.select, .hand, .crop],
-        [.text, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .step],
+        [.text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step],
         [.redact],
         [.blur, .pixelate],
         [.spotlight, .magnifier],
@@ -100,6 +100,15 @@ struct EditorToolbarView: View {
     ]
 
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            contents.controlSize(.regular)
+            contents.controlSize(.small)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+    }
+
+    private var contents: some View {
         HStack(spacing: 6) {
             ForEach(Array(Self.groups.enumerated()), id: \.offset) { index, group in
                 if index > 0 { Divider().frame(height: 20) }
@@ -133,9 +142,6 @@ struct EditorToolbarView: View {
                 ExportButtons(model: model, actions: actions).labelStyle(.iconOnly)
             }
         }
-        .controlSize(.regular)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
     }
 }
 

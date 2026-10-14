@@ -165,9 +165,38 @@
             E2EActions.click(model, .step, at: p(1220, 120))
             E2EActions.click(model, .step, at: p(1220, 220))
 
+            let lineKey = try context.unwrap(
+                "Line shortcut event",
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: controller.window?.windowNumber ?? 0, context: nil,
+                    characters: "d", charactersIgnoringModifiers: "d", isARepeat: false, keyCode: 2))
+            canvas.keyDown(with: lineKey)
+            context.check("D selects Line through the native canvas", model.tool == .line)
+            E2EActions.drag(model, .line, from: p(120, 740), to: p(700, 740))
+            let line = try context.unwrap("line annotation", model.document.annotations.last)
+            context.check(
+                "line keeps document-space endpoints without arrowheads",
+                line.kind == .line(start: p(120, 740), end: p(700, 740)))
+            context.check("line has two endpoint handles", model.selectionHandles.count == 2)
+            context.check(
+                "line has a native toolbar symbol",
+                NSImage(systemSymbolName: EditorStrings.symbol(EditorTool.line), accessibilityDescription: nil) != nil)
+            await E2EActions.snapshotEditor(controller, context, shot: "line")
+            if let window = controller.window, let root = controller.contentRoot {
+                window.setContentSize(NSSize(width: 980, height: 560))
+                await E2ESnapshot.settle(root)
+                context.check(
+                    "the full toolbar fits the minimum editor width",
+                    abs(root.bounds.width - 980) < 1, "actual content width: \(root.bounds.width)")
+                context.snapshot(root, shot: "line-compact")
+                window.setContentSize(E2ESnapshot.editorSize)
+                await E2ESnapshot.settle(root)
+            }
+
             let kinds = model.listItems.reversed().map(\.kind).filter { $0 != .image }
             let expectedKinds: [EditorItemKind] = [
-                .text, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .step, .step,
+                .text, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .step, .step, .line,
             ]
             context.check("one annotation per tool, in order", kinds == expectedKinds, "\(kinds.map(\.rawValue))")
             if case .text(let text)? = model.document.annotations.first?.kind {
@@ -183,7 +212,7 @@
             }
             context.check("numbered steps count 1, 2", steps == [1, 2], "\(steps)")
             context.check(
-                "each gesture is one undo step", model.session.undoCount == 8, "undo steps: \(model.session.undoCount)")
+                "each gesture is one undo step", model.session.undoCount == 9, "undo steps: \(model.session.undoCount)")
 
             // Select the rectangle by clicking its stroke with the select tool.
             E2EActions.click(model, .select, at: p(480, 200))
@@ -221,7 +250,7 @@
                 redos += 1
             }
             context.check("redo-all restores every annotation", model.document == final, "\(redos) redos")
-            context.check("undo and redo counts match", undos == redos && undos == 8, "\(undos)/\(redos)")
+            context.check("undo and redo counts match", undos == redos && undos == 9, "\(undos)/\(redos)")
 
             let layer = try context.unwrap("image layer", model.document.layers.first)
             let coalescer = ChangeCoalescer()

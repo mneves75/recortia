@@ -1649,6 +1649,22 @@
         }
       }
     },
+    "Line": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Line"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linha"
+          }
+        }
+      }
+    },
     "Line Width": {
       "localizations": {
         "en": {

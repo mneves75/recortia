@@ -48,7 +48,7 @@ extension EditorModel {
             let anchor = Self.snapped(p)
             ruler = measurement(from: anchor, to: anchor)
             gesture = .ruler(start: anchor)
-        case .crop, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .redact, .blur, .pixelate, .spotlight,
+        case .crop, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .redact, .blur, .pixelate, .spotlight,
             .magnifier:
             gesture = .create(tool: tool, start: p, points: [p])
             updateDraft(tool: tool, start: p, points: [p], current: p, modifiers: modifiers)
@@ -179,12 +179,20 @@ extension EditorModel {
         to p: Point<DocumentSpace>, modifiers: EditorModifiers
     ) throws {
         if case .annotation(let id) = item, handle == .start || handle == .end,
-            let index = document.annotations.firstIndex(where: { $0.id == id }),
-            case .arrow(let start, let end) = document.annotations[index].kind
+            let index = document.annotations.firstIndex(where: { $0.id == id })
         {
-            document.annotations[index].kind =
-                handle == .start ? .arrow(start: p, end: end) : .arrow(start: start, end: p)
-            return
+            switch document.annotations[index].kind {
+            case .arrow(let start, let end):
+                document.annotations[index].kind =
+                    handle == .start ? .arrow(start: p, end: end) : .arrow(start: start, end: p)
+                return
+            case .line(let start, let end):
+                document.annotations[index].kind =
+                    handle == .start ? .line(start: p, end: end) : .line(start: start, end: p)
+                return
+            default:
+                break
+            }
         }
         var keepAspect = modifiers.contains(.shift)
         switch item {
@@ -211,6 +219,11 @@ extension EditorModel {
             draft = .annotation(
                 Annotation(
                     kind: .arrow(start: start, end: Self.constrainedEnd(start, current, modifiers)),
+                    style: style.annotationStyle))
+        case .line:
+            draft = .annotation(
+                Annotation(
+                    kind: .line(start: start, end: Self.constrainedEnd(start, current, modifiers)),
                     style: style.annotationStyle))
         case .rectangle:
             draft = .annotation(
@@ -258,11 +271,15 @@ extension EditorModel {
         let isClick = rect.width < slop && rect.height < slop
         var created: EditorItemID?
         switch tool {
-        case .arrow:
+        case .arrow, .line:
             let tip = Self.constrainedEnd(start, end, modifiers)
             guard hypot(tip.x - start.x, tip.y - start.y) >= slop else { return }
-            let arrow = Annotation(kind: .arrow(start: start, end: tip), style: style.annotationStyle)
-            if edit("Arrow", { $0.annotations.append(arrow) }) { created = .annotation(arrow.id) }
+            let segment = Annotation(
+                kind: tool == .arrow ? .arrow(start: start, end: tip) : .line(start: start, end: tip),
+                style: style.annotationStyle)
+            if edit(tool == .arrow ? "Arrow" : "Line", { $0.annotations.append(segment) }) {
+                created = .annotation(segment.id)
+            }
         case .rectangle, .ellipse:
             guard !isClick else { return }
             let shape = Annotation(

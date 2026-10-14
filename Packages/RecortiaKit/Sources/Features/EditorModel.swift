@@ -380,7 +380,7 @@ public final class EditorModel {
         case .annotation(let id):
             guard let annotation = d.annotations.first(where: { $0.id == id }) else { return [] }
             switch annotation.kind {
-            case .arrow(let start, let end): return [(.start, start), (.end, end)]
+            case .arrow(let start, let end), .line(let start, let end): return [(.start, start), (.end, end)]
             case .step: return []
             case .text: return EditorGeometry.handles(for: frame, cornersOnly: true)
             default: return EditorGeometry.handles(for: frame, cornersOnly: false)
@@ -574,8 +574,13 @@ public final class EditorModel {
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).
     /// Image layers keep their aspect ratio: the width decides the uniform scale.
     static func setFrame(_ document: inout Document, item: EditorItemID, to rect: Rect<DocumentSpace>) throws {
-        guard EditorGeometry.isFinite(rect), rect.width > 0, rect.height > 0 else {
+        guard EditorGeometry.isFinite(rect), rect.width >= 0, rect.height >= 0 else {
             throw DocumentError.invalidGeometry
+        }
+        if rect.width == 0 || rect.height == 0 {
+            guard rect.width > 0 || rect.height > 0, case .annotation(let id) = item,
+                let annotation = document.annotations.first(where: { $0.id == id }), case .line = annotation.kind
+            else { throw DocumentError.invalidGeometry }
         }
         switch item {
         case .annotation(let id):

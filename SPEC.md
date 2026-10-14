@@ -49,7 +49,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-02 | Region, display, selectable-window, delayed, and repeat-region capture | 0.1 | CAP / GEO |
 | FR-03 | Open PNG/JPEG, paste an image, and drop an image into the editor | 0.1 | IO / PRIV |
 | FR-04 | Crop, zoom, pan, resize; select, move, delete, duplicate; undo/redo | 0.1 | EDIT / GEO |
-| FR-05 | Text, arrow, rectangle, ellipse, freehand, highlighter, numbered steps | 0.1 | EDIT |
+| FR-05 | Text, arrow, straight line, rectangle, ellipse, freehand, highlighter, numbered steps | 0.1 | EDIT |
 | FR-06 | Solid secure redaction; cosmetic blur/pixelation clearly distinguished | 0.1 | RED |
 | FR-07 | Flattened PNG/JPEG save, PNG clipboard copy, safe drag-out | 0.1 | EXP / RED |
 | FR-08 | On-device OCR and QR decoding, EN and PT-BR workflows | 0.1 | OCR |
@@ -126,6 +126,10 @@ An editor document stores immutable raster assets plus editable annotation comma
 Tools MUST support consistent selection handles, hit testing, move, resize, duplicate, delete, stroke/fill/opacity, z-order, and keyboard nudging. Text editing MUST handle multiline input, Unicode, accents, emoji, bidirectional text, and input-method composition without dispatching editor shortcuts into text input. Numbered steps remain editable and have an explicit renumber command.
 
 Provide fit, actual-pixel, zoom-in/out, selection zoom, and Space-drag pan. Basic arrows precede curved arrows; decoration is not a dependency of correct capture or export. No drawn object may change position merely because the editor zoom changed.
+
+The straight-line tool draws a segment without arrowheads, with the same document-space
+endpoint editing and creation-drag Shift 45-degree constraint as arrows. Shortcut D selects it only outside
+text input. A canceled drag or click without a meaningful segment adds no annotation.
 
 ### FR-06 — Redaction
 

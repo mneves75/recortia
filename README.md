@@ -2,7 +2,8 @@
 
 **Development candidate:** 0.12.0 (build 19), intended label `0.12.0-beta1`, is source work and has
 not been tagged, installed or distributed. The replayable first-run feature tour and reference-feature inventory are
-tracked in [feature discovery](docs/specs/feature-discovery/spec.md). This is phased work; it does
+tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
+[straight-line annotation tool](docs/specs/straight-line/spec.md). This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
 toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.
 
@@ -145,9 +146,10 @@ Provider-level retries preserve their intent ID; a new capture creates a new int
 
 ## Build from source
 
-Stable Xcode 27.0 (see `TOOLCHAIN.json`) and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
-If `xcode-select` points to a beta, prefix commands with
-`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+Stable Xcode 27.0 (27A266a, `stable_xcode_baseline` in `TOOLCHAIN.json`) and
+[XcodeGen](https://github.com/yonaskolb/XcodeGen). Select its installed path per command with
+`DEVELOPER_DIR`; an application named `Xcode.app` can still contain a prerelease build.
+`scripts/doctor.sh` checks the exact version/build against the stable baseline by default.
 
 ```sh
 scripts/check.sh --unsigned    # toolchain doctor, format lint, project freshness, tests, app build
@@ -156,6 +158,17 @@ scripts/release.sh             # maintainer only: Developer ID archive, checks, 
 ```
 
 Run one test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
+
+The recorded local Xcode 27.1 RC (27A9275) is available for development checks only:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned
+```
+
+This mode accepts only that recorded release candidate and labels its evidence as development,
+not release qualification. Beta and unknown builds are rejected. CI uses the stable baseline;
+`scripts/release.sh`, including `--dry-run`, requires it regardless of an inherited development
+mode. A stable OS remains necessary for release and performance qualification (ADR-001).
 
 `project.yml` owns the base version and build number; regenerate the Xcode project with
 `xcodegen generate` after changing them. Beta candidate names also appear in this status,
