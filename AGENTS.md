@@ -110,7 +110,9 @@ No credentials or real screenshots in source control, logs, prompts, issues, or 
 
 ## Verification commands and evidence
 
-The repository gates (stable Xcode via `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`):
+The repository gates default to the exact reviewed `stable_xcode_baseline` in `TOOLCHAIN.json`
+(Xcode 27.0, 27A266a). Select the installed stable toolchain with `DEVELOPER_DIR`; the path name
+`Xcode.app` does not prove its release channel:
 
 ```sh
 scripts/check.sh              # doctor/isolation regressions, format lint, project freshness, tests, signed Debug build
@@ -120,6 +122,12 @@ scripts/release.sh            # owner-only, on a v<version>[-betaN] tag: fresh c
 scripts/release.sh --dry-run  # untagged local build of the same pipeline without gate or notarization
 swift test --package-path Packages/RecortiaKit --filter <Test>   # one test or suite
 ```
+
+The recorded local Xcode 27.1 RC (27A9275) is development-only. Run its gate explicitly with
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned`.
+Doctor labels that evidence as development, rejects beta/unknown builds, and never treats it as
+stable qualification. `scripts/release.sh` calls `doctor.sh --release` before creating artifacts,
+including in `--dry-run`; inherited development mode cannot bypass the stable baseline.
 
 Record the exact commands used. UI tests need a suitable GUI session and test configuration; a successful unsigned compilation is not a signing, TCC, UI, or release test. Use separate unsigned PR checks and protected signed release checks.
 

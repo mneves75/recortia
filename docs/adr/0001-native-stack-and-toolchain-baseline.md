@@ -15,6 +15,13 @@ Two observations change how that baseline is applied:
 - The host runs macOS 27.2 (26B5091g). Its software-update catalog is `index-27seed`, so it is a seed
   (pre-release) OS.
 
+The observations above are the 2026-09-26 preflight. On 2026-10-14, `/Applications/Xcode.app`
+contains Xcode 27.1 RC (27A9275), and the host is macOS 27.2 seed (26B5112a). Apple's
+[release list](https://developer.apple.com/news/releases/) records the stable Xcode 27 build
+27A266a published on 2026-09-14; its [27.1 RC entry](https://developer.apple.com/news/releases/?id=10052026g)
+identifies 27A9275 as a release candidate. Local observations therefore cannot replace the
+stable baseline used by CI or qualify a release.
+
 ## Decision
 
 1. **Language and UI:** Swift 6.4 compiler in Swift 6 language mode. SwiftUI for settings and chrome;
@@ -24,10 +31,15 @@ Two observations change how that baseline is applied:
 3. **Deployment target:** macOS 15.0, arm64 only. The installed SDK supports every capture and OCR
    primitive the 0.1 scope needs at that target (table below). Newer APIs are availability-gated,
    never a reason to raise the target.
-4. **Toolchain:** stable Xcode 27.0 (27A266a), selected per command with
-   `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. The global `xcode-select` setting is
-   left unchanged because other projects on this Mac use it. FP-004's `scripts/doctor.sh` must fail
-   when the active Xcode build differs from `TOOLCHAIN.json`.
+4. **Toolchain:** stable Xcode 27.0 (27A266a), recorded separately as `stable_xcode_baseline` in
+   `TOOLCHAIN.json` and selected per command with `DEVELOPER_DIR`. The global `xcode-select`
+   setting is left unchanged because other projects on this Mac use it. FP-004's
+   `scripts/doctor.sh` checks the exact stable version/build by default. The named
+   `RECORTIA_TOOLCHAIN_MODE=development` override accepts only the recorded local release
+   candidate, with an explicit development-only evidence label. Beta and unknown builds remain
+   rejected; inconsistent release-channel/major policy fails closed. `doctor.sh --release`
+   requires the stable baseline regardless of the inherited mode. `scripts/release.sh` runs
+   that guard before Git/artifact operations, including `--dry-run`.
 5. **Evidence boundary:** compile and deterministic test results from this seed-OS host count.
    Performance (SPEC §10) and signed-release evidence must come from a stable-OS host.
 6. **Dependencies:** KeyboardShortcuts is the only M1 dependency candidate. Sparkle waits for M6.
@@ -61,8 +73,13 @@ macOS 15.2 or newer", which shows the typecheck enforces availability.
 
 ## Consequences
 
-- Every documented build or test command sets `DEVELOPER_DIR`. An agent that runs a bare
-  `xcodebuild` builds with the beta and produces evidence that doesn't count.
+- Every documented build or test command selects `DEVELOPER_DIR`. Neither the path name nor
+  `actual_*` observations qualify a stable build. Development checks on the recorded RC remain
+  useful compilation/test evidence but do not qualify stable-toolchain releases.
+- The CI and release baseline remains an exact reviewed stable pin, rather than a combined
+  stable/RC allowlist. Accepting both in the default gate was rejected because it would let
+  prerelease development tools qualify a release. Future baseline changes require reviewed
+  primary release evidence and gate results.
 - A stable-OS benchmark host is needed before FP-023. Options: a macOS VM on this Mac, a second Mac,
   or moving this Mac off the seed program.
 - Support claims for macOS 15 and 26 need test hosts running them (SPEC §2). None exist yet.

@@ -11,6 +11,12 @@
   "swift_language_mode": "6",
   "documented_build_host_minimum": "macOS 26.6",
   "allow_beta_toolchains_for_release": false,
+  "stable_xcode_baseline": {
+    "version": "27.0",
+    "build": "27A266a",
+    "release_channel": "stable",
+    "source": "https://developer.apple.com/news/releases/ (Xcode 27, 27A266a, published 2026-09-14; rechecked 2026-10-14)"
+  },
   "actual_xcode_version": "27.1",
   "actual_xcode_build": "27A9275",
   "actual_swift_version_output": "swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
@@ -23,13 +29,13 @@
   "actual_xcode_release_channel": "release_candidate",
   "stable_release_qualification": "blocked",
   "observation_notes": [
-    "2026-10-14: Apple lists installed 27A9275 as Xcode 27.1 RC (https://developer.apple.com/news/releases/?id=10052026g), not stable. The existing pin is retained for development checks, but stable-toolchain release qualification is BLOCKED. Xcode-beta is 27.2 beta 2 (27B5028f); the host is macOS 27.2 seed 26B5112a. No toolchain installation or system selection was changed.",
-    "xcode-select points to /Applications/Xcode-beta.app (Xcode 27.2, 27B5019j, macOS SDK 27.2 26B5086k). Every build/test command must export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; see docs/adr/0001-native-stack-and-toolchain-baseline.md.",
+    "2026-10-14: Apple lists installed 27A9275 as Xcode 27.1 RC (https://developer.apple.com/news/releases/?id=10052026g), not stable. The local observation is development-only via RECORTIA_TOOLCHAIN_MODE=development; CI and releases use the separate stable_xcode_baseline 27A266a. Stable-toolchain release qualification on this Mac is BLOCKED. Xcode-beta is 27.2 beta 2 (27B5028f); the host is macOS 27.2 seed 26B5112a. No toolchain installation or system selection was changed.",
+    "2026-09-26 observation: xcode-select points to /Applications/Xcode-beta.app (Xcode 27.2, 27B5019j, macOS SDK 27.2 26B5086k). Select DEVELOPER_DIR per command and run doctor to verify its release channel/build; see docs/adr/0001-native-stack-and-toolchain-baseline.md.",
     "Build host is a seed OS. Compilation evidence is valid; performance and release evidence from this host is not (SPEC.md section 10 requires a stable OS).",
     "Host hardware: Mac17,9, Apple M5 Pro, 64 GB, one built-in 3024x1964 Retina display, no external display (observed 2026-09-26).",
     "2026-09-30: stable Xcode 27.0 and Swift 6.4 rechecked; the gate passed 494 package tests and both Debug builds. KeyboardShortcuts checkout HEAD matches Package.resolved revision 772133d9dbe800fdac0473226822994c5c162c58 (3.1.0); its MIT notice matches the repository notice byte for byte.",
     "Supplemental owner-requested Xcode-beta MCP BuildProject succeeded on 2026-09-30. Beta diagnostics are not distribution or stable-host qualification.",
-    "2026-10-07: stable Xcode updated to 27.1 (27A9275) with the same Swift 6.4 driver (swiftlang-6.4.0.34.1); scripts/doctor.sh failed against the old 27A266a pin until this record was updated."
+    "2026-10-07: /Applications/Xcode.app updated to 27.1 (27A9275) with the same Swift 6.4 driver (swiftlang-6.4.0.34.1); scripts/doctor.sh failed against the old 27A266a pin until this record was updated. That build was originally called stable here; Apple's 2026-10-05 release entry identifies it as RC, corrected on 2026-10-14."
   ],
   "source": "S05 in SOURCES.md; observed values from FP-001 preflight commands recorded in docs/plans/M0-plan.md",
   "instructions": "Replace only observed fields after an actual Mac preflight. Record toolchain updates through review; never fill null values with guesses."
