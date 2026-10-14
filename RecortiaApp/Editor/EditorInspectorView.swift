@@ -398,10 +398,25 @@ private struct RedactionSection: View {
 // MARK: - Pixel tools
 
 private struct PixelToolsSection: View {
-    let model: EditorModel
+    @Bindable var model: EditorModel
 
     var body: some View {
         Section {
+            if model.tool == .colorPicker {
+                Picker(selection: $model.colorSampleSize) {
+                    Text("1×1 — Single pixel", tableName: "Editor").tag(PixelSampleSize.singlePixel)
+                    Text("3×3 — Average", tableName: "Editor").tag(PixelSampleSize.threeByThree)
+                    Text("5×5 — Average", tableName: "Editor").tag(PixelSampleSize.fiveByFive)
+                } label: {
+                    Text("Sample area", tableName: "Editor")
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("color-sample-size")
+                Text("Area picks average sRGB colors and alpha. Samples stop at image edges.", tableName: "Editor")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             let sample = model.tool == .colorPicker ? model.pickedColor : model.inspection
             if let sample {
                 LabeledContent(String(localized: "Pixel", table: "Editor")) {

@@ -1,6 +1,40 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "1×1 — Single pixel": {
+      "comment": "Color-picker menu choice. The sample is one image pixel.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "1×1 — Single pixel" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "1×1 — Pixel único" } }
+      }
+    },
+    "3×3 — Average": {
+      "comment": "Color-picker menu choice. Average a square of up to nine image pixels.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "3×3 — Average" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "3×3 — Média" } }
+      }
+    },
+    "5×5 — Average": {
+      "comment": "Color-picker menu choice. Average a square of up to 25 image pixels.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "5×5 — Average" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "5×5 — Média" } }
+      }
+    },
+    "Sample area": {
+      "comment": "Label of the color-picker neighborhood-size menu.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sample area" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Área da amostra" } }
+      }
+    },
+    "Area picks average sRGB colors and alpha. Samples stop at image edges.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Area picks average sRGB colors and alpha. Samples stop at image edges." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "A amostragem de área calcula a média das cores sRGB e do alfa. As amostras respeitam as bordas da imagem." } }
+      }
+    },
     "Another image is still being opened. Try again when it finishes.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Another image is still being opened. Try again when it finishes." } },

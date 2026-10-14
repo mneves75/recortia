@@ -3,7 +3,7 @@ import Domain
 import Foundation
 import Imaging
 
-// Pixel tools (FR-11, PIX-01): nearest-pixel color sampling in sRGB, a nearest-neighbor loupe, and
+// Pixel tools (FR-11, PIX-01): bounded color sampling in sRGB, a nearest-neighbor loupe, and
 // a ruler in document pixels. They sample only the sanitized base, and only while it is current,
 // so they can never read a pixel a redaction covers. Results do not depend on zoom.
 extension EditorModel {
@@ -45,14 +45,20 @@ extension EditorModel {
             post(.previewNotReady)
             return nil
         }
-        let canvas = session.document.canvasSize
-        let sx = canvas.width > 0 ? Double(base.width) / canvas.width : 1
-        let sy = canvas.height > 0 ? Double(base.height) / canvas.height : 1
-        guard let px = Int(exactly: (Double(x) * sx).rounded(.down)),
-            let py = Int(exactly: (Double(y) * sy).rounded(.down)),
-            let color = PixelSampler.color(atX: px, y: py, in: base)
+        guard let pixel = basePixel(x: x, y: y, in: base),
+            let color = PixelSampler.color(atX: pixel.x, y: pixel.y, in: base)
         else { return nil }
         return EditorColorSample(x: x, y: y, color: color)
+    }
+
+    private func basePixel(x: Int, y: Int, in base: CGImage) -> (x: Int, y: Int)? {
+        let canvas = session.document.canvasSize
+        guard canvas.width > 0, canvas.height > 0 else { return nil }
+        let sx = Double(base.width) / canvas.width, sy = Double(base.height) / canvas.height
+        guard let px = Int(exactly: (Double(x) * sx).rounded(.down)),
+            let py = Int(exactly: (Double(y) * sy).rounded(.down))
+        else { return nil }
+        return (px, py)
     }
 
     /// Loupe hover: records the pixel and color under `p`.
@@ -66,14 +72,50 @@ extension EditorModel {
 
     /// Color picker click: keeps the sampled color for display and explicit copy.
     public func pickColor(at p: Point<DocumentSpace>) {
-        guard let pixel = pixel(at: p) else { return }
-        if let picked = sample(x: pixel.x, y: pixel.y) { pickedColor = picked }
+        guard !isClosed, let pixel = pixel(at: p) else { return }
+        invalidateColorPick()
+        let size = colorSampleSize
+        if size == .singlePixel {
+            pickedColor = sample(x: pixel.x, y: pixel.y)
+            return
+        }
+        guard isBaseCurrent, let base = baseImage else {
+            post(.previewNotReady)
+            return
+        }
+        guard let source = basePixel(x: pixel.x, y: pixel.y, in: base) else { return }
+        let identity = session.requestIdentity(), key = currentBaseKey, request = UUID()
+        colorPickRequest = request
+        colorPickTask = Task { [weak self] in
+            let color = await PixelSampler.averageColor(atX: source.x, y: source.y, in: base, radius: size.radius)
+            guard let self, self.colorPickRequest == request else { return }
+            self.colorPickTask = nil
+            self.colorPickRequest = nil
+            guard !Task.isCancelled, !self.isClosed, self.session.accepts(identity), self.isBaseCurrent,
+                self.currentBaseKey == key, self.baseImage === base, self.colorSampleSize == size, let color
+            else { return }
+            self.pickedColor = EditorColorSample(x: pixel.x, y: pixel.y, color: color)
+        }
+    }
+
+    /// A different neighborhood requires a new deliberate pick.
+    public func setColorSampleSize(_ size: PixelSampleSize) {
+        guard !isClosed, size != colorSampleSize else { return }
+        invalidateColorPick()
+        storedColorSampleSize = size
+    }
+
+    func invalidateColorPick() {
+        colorPickTask?.cancel()
+        colorPickTask = nil
+        colorPickRequest = nil
+        pickedColor = nil
     }
 
     /// Copies the picked color as "#RRGGBB" or "R G B" plain text (explicit action only).
     @discardableResult
     public func copyPickedColor(asHex: Bool = true) -> Bool {
-        guard let picked = pickedColor else { return false }
+        guard !isClosed, isBaseCurrent, let picked = pickedColor else { return false }
         return copyText(asHex ? picked.hex : picked.rgbText, success: .colorCopied)
     }
 

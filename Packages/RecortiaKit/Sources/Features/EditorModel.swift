@@ -48,6 +48,11 @@ public final class EditorModel {
     // Pixel tools (EditorModel+PixelTools.swift)
     public internal(set) var inspection: EditorColorSample?
     public internal(set) var pickedColor: EditorColorSample?
+    var storedColorSampleSize: PixelSampleSize = .singlePixel
+    public var colorSampleSize: PixelSampleSize {
+        get { storedColorSampleSize }
+        set { setColorSampleSize(newValue) }
+    }
     public internal(set) var ruler: EditorMeasurement?
 
     @ObservationIgnored public let environment: EditorEnvironment
@@ -66,6 +71,8 @@ public final class EditorModel {
     @ObservationIgnored var recognitionRequest: UUID?
     @ObservationIgnored var recognizedResult: OCRResult?
     @ObservationIgnored var qrRequest: UUID?
+    @ObservationIgnored var colorPickTask: Task<Void, Never>?
+    @ObservationIgnored var colorPickRequest: UUID?
 
     enum Gesture {
         case idle
@@ -229,6 +236,7 @@ public final class EditorModel {
     func didChange(from before: Document, epoch: UInt64) {
         noteUndoEvictionIfNeeded()
         guard session.document != before || session.privacyEpoch != epoch else { return }
+        invalidateColorPick()
         releaseUnreachableAssets()
         // A drag offered for the previous state must not deliver it (RED-03, EXP-02).
         environment.export.invalidatePendingDrag(documentID: session.document.id)
