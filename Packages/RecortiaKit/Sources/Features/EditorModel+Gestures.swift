@@ -416,7 +416,6 @@ extension EditorModel {
             case .text(let text) = annotation.kind
         else { return }
         cancelGesture()
-        endContinuousChange()
         selection = [.annotation(id)]
         loadSelectedTextAppearance()
         textEditing = EditorTextEditing(
@@ -431,6 +430,7 @@ extension EditorModel {
         textEditing = nil
         let isBlank = string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if let id = editing.annotationID {
+            endContinuousChange()
             if isBlank {
                 edit("Delete Text") { $0.annotations.removeAll { $0.id == id } }
                 return

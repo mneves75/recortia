@@ -65,7 +65,7 @@ struct EditorHistoryBoundaryTests {
     }
 
     @Test(
-        "Text replacement, deletion and cancellation close an admitted color adjustment",
+        "Committed text isolates history; canceled text preserves the color adjustment",
         arguments: ["replace", "delete", "cancel"])
     func textAfterAdjustment(action: String) throws {
         var document = EditorFixtures.session().document
@@ -84,10 +84,16 @@ struct EditorHistoryBoundaryTests {
         if action == "cancel" {
             m.cancelTextEditing()
             #expect(m.document == adjusted)
-            m.nudgeSelection(dx: 1, dy: 0)
-        } else {
-            m.commitTextEditing(action == "delete" ? "" : "After")
+            #expect(m.session.isGrouping)
+            #expect(m.session.undoCount == 0)
+            m.setStrokeColor(.white)
+            m.endContinuousChange()
+            #expect(m.session.undoCount == 1)
+            m.undo()
+            #expect(m.document == document)
+            return
         }
+        m.commitTextEditing(action == "delete" ? "" : "After")
         #expect(m.session.undoCount == 2)
         m.undo()
         #expect(m.document == adjusted)
