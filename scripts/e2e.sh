@@ -3,7 +3,7 @@
 # `-RecortiaE2E <dir>` per language, and prints each report. Synthetic inputs only: no screen
 # capture, TCC prompt, general clipboard, or user settings are touched.
 # Usage: scripts/e2e.sh [--lang en|pt-BR|all] [--only id,id] [--unsigned] [--no-build]
-# Output: .scratch/e2e/<timestamp>/<lang>/{report.json,report.md,NN-*.png}
+# Output: .scratch/e2e/<timestamp>-<pid>/<lang>/{report.json,report.md,provenance.json,NN-*.png}
 # Exit: 0 when every scenario passed in every language; 1 on a failed scenario, crash, missing
 # report, or timeout; 2 on bad arguments or a failed build.
 set -euo pipefail
@@ -41,8 +41,14 @@ derived=.build/dd
 provenance="$derived-e2e-provenance.json"
 # Compare the source and the doctor-approved compiler, including its selected installation.
 current_provenance=$(python3 - "$source_commit" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" <<'PY'
-import json, sys
-print(json.dumps(dict(zip(("git_sha", "toolchain_mode", "developer_dir", "xcode_version"), sys.argv[1:])), sort_keys=True))
+import hashlib, json, subprocess, sys
+record = dict(zip(("git_sha", "toolchain_mode", "developer_dir", "xcode_version"), sys.argv[1:]))
+fingerprint = hashlib.sha256()
+for arguments in (("status", "--porcelain=v1", "--untracked-files=all"), ("diff", "HEAD", "--binary")):
+    fingerprint.update(subprocess.check_output(["git", *arguments]))
+    fingerprint.update(b"\0")
+record["working_tree_fingerprint"] = fingerprint.hexdigest()
+print(json.dumps(record, sort_keys=True))
 PY
 )
 app="$derived/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"

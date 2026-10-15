@@ -28,8 +28,23 @@ class E2EToolchainTests(unittest.TestCase):
         (self.bin / "python3").symlink_to(sys.executable)
         self.tool("xcodegen", "#!/bin/sh\nexit 0\n")
         self.tool("xcrun", "#!/bin/sh\necho 'Swift fixture compiler'\n")
-        self.tool("git", "#!/bin/sh\ncat .fixture-sha\n")
+        self.tool("git", f"#!{sys.executable}\n" + '''import difflib, pathlib, sys
+args = sys.argv[1:]
+if args == ['rev-parse', 'HEAD']:
+    print(pathlib.Path('.fixture-sha').read_text().strip())
+elif args == ['status', '--porcelain=v1', '--untracked-files=all']:
+    if pathlib.Path('Tracked.swift').read_bytes() != pathlib.Path('.fixture-original').read_bytes():
+        print(' M Tracked.swift')
+elif args == ['diff', 'HEAD', '--binary']:
+    before = pathlib.Path('.fixture-original').read_text().splitlines(keepends=True)
+    after = pathlib.Path('Tracked.swift').read_text().splitlines(keepends=True)
+    sys.stdout.writelines(difflib.unified_diff(before, after, fromfile='a/Tracked.swift', tofile='b/Tracked.swift'))
+else:
+    sys.exit(f'unexpected git arguments: {args}')
+''')
         (self.root / ".fixture-sha").write_text("a" * 40 + "\n")
+        for name in ("Tracked.swift", ".fixture-original"):
+            (self.root / name).write_text("let value = 1\n")
         app = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
         app.parent.mkdir(parents=True)
         app.write_text('#!/bin/sh\ntouch launch-reached\nprintf \'[{"passed":true,"screenshots":[]}]\' > "$2/report.json"\n')
@@ -88,6 +103,30 @@ class E2EToolchainTests(unittest.TestCase):
         changed = self.run_e2e("--no-build")
         self.assertNotEqual(0, changed.returncode)
         self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_no_build_rejects_tracked_edits_before_build_or_launch(self) -> None:
+        initial = self.run_e2e()
+        self.assertEqual(0, initial.returncode, initial.stdout + initial.stderr)
+        provenance = self.root / ".build/dd-e2e-provenance.json"
+        previous = json.loads(provenance.read_text())
+        # The second edit keeps the same dirty status; its diff contents must still invalidate reuse.
+        for value in (2, 3):
+            (self.root / "Tracked.swift").write_text(f"let value = {value}\n")
+            for marker in ("build-reached", "launch-reached"):
+                (self.root / marker).unlink()
+            refused = self.run_e2e("--no-build")
+            self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+            self.assertIn("provenance", refused.stderr)
+            self.assertFalse((self.root / "build-reached").exists())
+            self.assertFalse((self.root / "launch-reached").exists())
+            rebuilt = self.run_e2e()
+            self.assertEqual(0, rebuilt.returncode, rebuilt.stdout + rebuilt.stderr)
+            current = json.loads(provenance.read_text())
+            self.assertEqual(previous["git_sha"], current["git_sha"])
+            self.assertNotEqual(previous["working_tree_fingerprint"], current["working_tree_fingerprint"])
+            reused = self.run_e2e("--no-build")
+            self.assertEqual(0, reused.returncode, reused.stdout + reused.stderr)
+            previous = current
 
     def test_development_mode_is_explicit_and_recorded(self) -> None:
         result = self.run_e2e(version="27.1", build="27A9275", mode="development")
