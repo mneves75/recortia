@@ -14,7 +14,13 @@ acceptance. The first ticket cannot close the complete seven-appearance feature.
 FR-05 curved arrows are tracked as FP-034 in `docs/specs/curved-arrows/spec.md` and its detailed
 implementation plan. One functional ticket covers shared curve/head geometry, creation,
 selection/bend editing, native keyboard fields, undo and sanitized exports. Geometry feasibility
-precedes UI integration; the unrelated unresolved CAP-01 failure still blocks candidate delivery.
+precedes UI integration; historical CAP-01 failures remain separate from physical/release qualification.
+
+Controlled native focus qualification is tracked in
+`docs/specs/native-window-qualification/implementation-plan.md`. Its0.12.1/build20 source
+acceptance passes the stable gate, full bilingual native suite and fresh different-model
+verification, including required-call omission controls and50 overlay cycles per language.
+Exact-head CI and merge remain separate integration steps; installed0.12.0 evidence is preserved.
 
 **Status:** The approved v1 milestones have a beta implementation. BACKLOG.json records current
 task status, signed local-install evidence, and outstanding manual qualification; this file defines
