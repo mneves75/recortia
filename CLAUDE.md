@@ -60,6 +60,8 @@ beta compilation does not replace the stable-toolchain release gates.
 - Capture completion shows an ordinary fullscreen-auxiliary editor even when cooperative
   activation is delayed or declined. Layout precedes canvas focus. Keep `editor-presentation`
   in bilingual native E2E; its synthetic window state does not qualify physical Spaces.
+  The experimental owned-foreground control remains blocked; preserve its failed readiness
+  evidence in `docs/specs/native-window-qualification/` and do not count it as acceptance.
 - Window presence (ADR-007): `RecortiaApp/App/AppPresence.swift` makes the app regular while a
   switchable window (normal/modal level, shown or minimized; pins included) exists and accessory
   otherwise. Present ordinary windows through `AppPresence.activate()`; pins are normal-level

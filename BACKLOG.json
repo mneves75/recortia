@@ -27,6 +27,7 @@
     "limitations": [
       "Stable Xcode27.0/27A266a is now installed alongside the existing RC/beta; signed stable gate passes683 tests/617 translations. Fresh full native E2E fails capture-focus and editor-presentation in both languages (45/47 each); candidate qualification remains blocked. See docs/specs/curved-arrows/local-installation.md.",
       "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
+      "Controlled native investigation on2026-10-15 remains blocked: both the experimental owned foreground fixture and the previously successful minimal normal-app prototype now fail key/activation/foreground readiness. Product assertions and final mutation controls are not qualified; no version bump or merge. See docs/specs/native-window-qualification/acceptance-verdict.md.",
       "Developer ID archive/export from cf87796 with stable27A266a installed locally on2026-10-15 after explicit owner authorization despite current native FAILs; previous0.11.0/build18 preserved without app launch/termination. No new tag, merge, notarization or public distribution. Xcode installation is recorded separately.",
       "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
       "Saved-color native interaction now independently passes; the broader capture-focus keyboard failure and physical qualification remain open."

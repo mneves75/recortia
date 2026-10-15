@@ -34,6 +34,10 @@ Xcode 27.0 (`27A266a`) is now installed at `/Applications/Xcode_27.app`; its sig
 with `capture-focus` and `editor-presentation` failures. The owner explicitly authorized local
 test installation despite these failures; candidate qualification remains blocked;
 see the [installation record](docs/specs/curved-arrows/local-installation.md).
+The [controlled native qualification investigation](docs/specs/native-window-qualification/implementation-plan.md)
+preserves the failed controls and experimental owned-foreground fixture. Its latest minimal
+normal-app control could not obtain foreground/key ownership; this blocks final native
+acceptance and merge. The source candidate and installed version remain 0.12.0/build19.
 
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
@@ -187,7 +191,8 @@ scripts/release.sh             # maintainer only: Developer ID archive, checks, 
 
 Run one test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
 
-The optional `capture-focus-repeat` scenario runs 50 synthetic offscreen overlay cycles and is
+The optional `capture-focus-repeat` scenario runs 50 synthetic onscreen overlay cycles against
+an owned foreground helper and is
 excluded from the default suite. Capture-focus reports retain bounded own-window key-event
 timelines and record recovery only after FAIL; they do not relax the keyboard-ownership check
 or qualify physical focus/Space behavior. With the recorded local development toolchain:

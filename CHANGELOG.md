@@ -13,6 +13,10 @@ or termination. No notarization or distribution is claimed. Stable Xcode 27.0
 language; `capture-focus` and `editor-presentation` failures still block candidate qualification.
 The owner explicitly authorized this test installation despite those failures.
 Existing Xcodes and global toolchain selection are preserved.
+The controlled native-window investigation adds an experimental test-only foreground host.
+Its current startup controls fail before product assertions; neither the experiment nor the
+documentation changes qualify a new version, final acceptance or merge. See
+`docs/specs/native-window-qualification/review-evidence.md`.
 
 ### Added
 
