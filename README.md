@@ -4,7 +4,11 @@
 not been tagged, installed or distributed. The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
-[explicit saved annotation colors](docs/specs/saved-colors/spec.md). Three editable
+[explicit saved annotation colors](docs/specs/saved-colors/spec.md). The
+[curved-arrow extension](docs/specs/curved-arrows/spec.md) adds editable bends, native coordinate
+fields and a distinct future default, with shared sanitized rendering. Its focused model,
+export and bilingual native checks pass; [full gate and independent acceptance remain pending](docs/specs/curved-arrows/review-evidence.md).
+Three editable
 [text font designs](docs/specs/text-appearance/spec.md) passed the 640-test development gate and
 [independent code/security and native acceptance](docs/specs/text-appearance/acceptance-verdict.md)
 on f1852b7. Outlined, Boxed, Rounded Box and Monospaced Box are implemented with background

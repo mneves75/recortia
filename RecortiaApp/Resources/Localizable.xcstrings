@@ -111,12 +111,12 @@
         }
       }
     },
-    "Choose text, arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Text Style includes Standard, Rounded, Monospaced, Outlined, Boxed, Rounded Box and Monospaced Box. Background Color changes boxed text; Reset restores white. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor.": {
+    "Choose text, straight or curved arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Bend arrows with the middle handle or Bend X/Y fields. Text Style includes Standard, Rounded, Monospaced, Outlined, Boxed, Rounded Box and Monospaced Box. Background Color changes boxed text; Reset restores white. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor.": {
       "localizations": {
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escolha texto, setas, linhas, retângulos, elipses, desenho livre, marca-texto ou etapas numeradas no editor. Estilo do texto inclui Padrão, Arredondado, Monoespaçado, Contornado, Com caixa, Caixa arredondada e Caixa monoespaçada. Cor do fundo altera textos com caixa; Redefinir restaura o branco. Selecione uma anotação para mover, redimensionar, duplicar ou reordenar; Desfazer e Refazer recuperam alterações. Salve cores de anotação no inspetor para reutilizá-las em qualquer editor."
+            "value": "Escolha texto, setas retas ou curvas, linhas, retângulos, elipses, desenho livre, marca-texto ou etapas numeradas no editor. Curve setas pelo ponto central ou pelos campos X/Y da curvatura. Estilo do texto inclui Padrão, Arredondado, Monoespaçado, Contornado, Com caixa, Caixa arredondada e Caixa monoespaçada. Cor do fundo altera textos com caixa; Redefinir restaura o branco. Selecione uma anotação para mover, redimensionar, duplicar ou reordenar; Desfazer e Refazer recuperam alterações. Salve cores de anotação no inspetor para reutilizá-las em qualquer editor."
           }
         }
       }

@@ -55,6 +55,7 @@
                 id: "capture-admission", title: "One capture session across modes",
                 run: CaptureVisibilityScenarios.admission),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
+            E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(
                 id: "saved-colors", title: "Explicit saved annotation colors", run: EditorScenarios.savedColors),
             E2EScenario(

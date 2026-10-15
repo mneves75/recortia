@@ -145,9 +145,9 @@ public struct EditorListItem: Hashable, Sendable, Identifiable {
     public let stepNumber: Int?
 }
 
-/// Selection handles; `start`/`end` are arrow and line endpoints.
+/// Selection handles; `bend` lies halfway along a curved arrow.
 public enum EditorHandle: Hashable, Sendable, CaseIterable {
-    case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left, start, end
+    case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left, start, end, bend
 
     public var isCorner: Bool { [.topLeft, .topRight, .bottomRight, .bottomLeft].contains(self) }
 }
@@ -183,10 +183,11 @@ public struct EditorStyle: Hashable, Sendable {
     public var textAppearance: TextAppearance
     /// Local future boxed-text fill; nil means automatic white. Shape/plain-text fill is separate.
     public var textBackgroundColor: RGBA?
+    public var curvedArrows: Bool
 
     public init(
         stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24,
-        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil
+        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false
     ) {
         self.stroke = stroke
         self.fill = fill
@@ -195,6 +196,7 @@ public struct EditorStyle: Hashable, Sendable {
         self.fontSize = fontSize
         self.textAppearance = textAppearance
         self.textBackgroundColor = textBackgroundColor
+        self.curvedArrows = curvedArrows
     }
 
     public static let lineWidthRange: ClosedRange<Double> = 1...40
@@ -324,6 +326,7 @@ public enum EditorNotice: Hashable, Sendable {
     /// The sanitized preview is not current yet; try again in a moment.
     case previewNotReady
     case previewFailed
+    case arrowGeometryRefused
     case redactionRefused
     case importFailed(ImportFailure)
     case pinned

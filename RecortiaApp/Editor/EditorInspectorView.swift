@@ -17,6 +17,7 @@ struct EditorInspectorView: View {
             if !model.selection.isEmpty {
                 SelectionSection(model: model, coalescer: coalescer)
             }
+            ArrowCurveSection(model: model)
             if model.tool.usesStyle
                 || model.selection.contains(where: { if case .annotation = $0 { true } else { false } })
             {
@@ -48,6 +49,113 @@ struct EditorInspectorView: View {
 }
 
 // MARK: - Helpers
+
+private struct ArrowCurveSection: View {
+    let model: EditorModel
+
+    private var selectedStates: [Bool] {
+        model.document.annotations.compactMap { annotation in
+            guard model.selection.contains(.annotation(annotation.id)), case .arrow(_, _, let control) = annotation.kind
+            else { return nil }
+            return control != nil
+        }
+    }
+
+    private var state: Bool? {
+        let states = selectedStates
+        guard !states.isEmpty else { return model.style.curvedArrows }
+        guard states.allSatisfy({ $0 == states[0] }) else { return nil }
+        return states[0]
+    }
+
+    var body: some View {
+        if model.tool == .arrow || !selectedStates.isEmpty {
+            Section {
+                choice(false)
+                choice(true)
+                if state == nil {
+                    Text("Mixed arrow shapes", tableName: "Editor")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("arrow.mixed")
+                }
+                Group {
+                    if model.style.curvedArrows {
+                        Text("New arrows: Curved", tableName: "Editor")
+                    } else {
+                        Text("New arrows: Straight", tableName: "Editor")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("arrow.futureDefault")
+                if let bend = model.selectedArrowBend {
+                    ArrowBendFields(point: bend) { model.setArrowBend($0) }
+                        .id(model.selection)
+                }
+            } header: {
+                Text("Arrow", tableName: "Editor")
+            }
+            .disabled(!model.canSetArrowCurve)
+            .help(
+                model.canSetArrowCurve
+                    ? String(localized: "Applies to selected arrows and new arrows in this editor.", table: "Editor")
+                    : String(localized: "Finish editing text before changing the arrow.", table: "Editor"))
+        }
+    }
+
+    private func choice(_ curved: Bool) -> some View {
+        let title =
+            curved
+            ? LocalizedStringResource("Curved", table: "Editor")
+            : LocalizedStringResource("Straight", table: "Editor")
+        return Button {
+            model.setArrowCurved(curved)
+        } label: {
+            HStack {
+                Text(title)
+                Spacer()
+                if state == curved { Image(systemName: "checkmark") }
+            }
+        }
+        .accessibilityIdentifier(curved ? "arrow.curved" : "arrow.straight")
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(state == curved ? String(localized: "Selected", table: "Editor") : "")
+    }
+}
+
+private struct ArrowBendFields: View {
+    let point: Point<DocumentSpace>
+    let onCommit: (Point<DocumentSpace>) -> Bool
+    @State private var x = 0.0
+    @State private var y = 0.0
+
+    var body: some View {
+        Group {
+            TextField(value: $x, format: .number.precision(.fractionLength(0...2))) {
+                Text("Bend X", tableName: "Editor")
+            }
+            .accessibilityIdentifier("arrow.bendX")
+            TextField(value: $y, format: .number.precision(.fractionLength(0...2))) {
+                Text("Bend Y", tableName: "Editor")
+            }
+            .accessibilityIdentifier("arrow.bendY")
+        }
+        .monospacedDigit()
+        .help(String(localized: "Document pixels. Press Return to apply.", table: "Editor"))
+        .onSubmit(commit)
+        .onAppear(perform: load)
+        .onChange(of: point) { load() }
+    }
+
+    private func load() {
+        x = point.x
+        y = point.y
+    }
+
+    private func commit() {
+        if !onCommit(Point(x: x, y: y)) { load() }
+    }
+}
 
 private struct TextAppearanceSection: View {
     let model: EditorModel

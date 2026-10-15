@@ -71,8 +71,8 @@ duplicate, Undo and Redo retain the same annotation identity and privacy pipelin
   are explicit refusals. Existing degenerate straight behavior stays unchanged. Collinear,
   very short and extreme controls require deterministic tested outcomes. Admission precedes
   document/default/history mutations, including ending any prior continuous adjustment.
-- The future default is independent of Undo for existing document edits, as existing text
-  appearance defaults are. Selecting an arrow may load its curve state; mixed selection must
+- The future default is independent of Undo for existing document edits. Selecting an arrow
+  loads selected-state feedback without replacing the future default; mixed selection must
   expose mixed state rather than pretend every selected arrow matches the future default.
 - Native controls are disabled during text input and after close. Rejected commands preserve
   selection, redo, active composition and an unrelated continuous adjustment.

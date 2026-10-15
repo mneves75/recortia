@@ -36,6 +36,12 @@ Space. CAP-01 synthetic evidence must verify an external foreground application 
 ownership; physical shortcut/display/Space qualification remains separate. NET-01 pending
 uploads must retain their original consent identity across every asynchronous batch step.
 
+Curved arrows retain the existing arrow kind with an optional control; `ArrowCurve` maps the
+visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. Keep the
+`curved-arrows` bilingual native gate: real numeric commits, mixed/future defaults, zoom pixels
+and marked-input refusal. Geometry/style admission must precede document/history/default
+mutations. This feature does not qualify CAP-01 or add reference-product head-style parity.
+
 Capture completion must exercise the real editor presentation path (`editor-presentation`),
 not only the offscreen editor host. Keep editor visibility independent of cooperative app
 activation; lay out the hosted canvas before assigning its responder.

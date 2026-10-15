@@ -1,6 +1,66 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Applies to selected arrows and new arrows in this editor.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Applies to selected arrows and new arrows in this editor." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplica-se às setas selecionadas e às novas setas neste editor." } }
+      }
+    },
+    "Bend X": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bend X" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "X da curvatura" } }
+      }
+    },
+    "Bend Y": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bend Y" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Y da curvatura" } }
+      }
+    },
+    "Straight": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Straight" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Reta" } }
+      }
+    },
+    "Curved": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Curved" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Curva" } }
+      }
+    },
+    "Mixed arrow shapes": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed arrow shapes" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Formatos de seta diferentes" } }
+      }
+    },
+    "New arrows: Curved": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New arrows: Curved" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Novas setas: curvas" } }
+      }
+    },
+    "New arrows: Straight": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New arrows: Straight" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Novas setas: retas" } }
+      }
+    },
+    "Finish editing text before changing the arrow.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Finish editing text before changing the arrow." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Conclua a edição do texto antes de alterar a seta." } }
+      }
+    },
+    "That arrow change could not be applied. Try another bend, endpoint or line width.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "That arrow change could not be applied. Try another bend, endpoint or line width." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Não foi possível aplicar essa alteração à seta. Tente outra curvatura, extremidade ou espessura." } }
+      }
+    },
     "Mixed backgrounds": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Mixed backgrounds" } },

@@ -14,6 +14,9 @@ enum EditorGeometry {
         if case .text(let text) = annotation.kind {
             return try? TextLayout.metrics(for: text, style: annotation.style).frame
         }
+        if case .arrow(_, _, .some) = annotation.kind {
+            guard (try? ArrowLayout.make(for: annotation)) != nil else { return nil }
+        }
         return annotation.bounds
     }
 
@@ -90,7 +93,10 @@ enum EditorGeometry {
             guard value(rx + reach, ry + reach) <= 1 else { return false }
             if annotation.style.fill != nil { return true }
             return rx - reach <= 0 || ry - reach <= 0 || value(rx - reach, ry - reach) >= 1
-        case .arrow(let start, let end):
+        case .arrow(let start, let end, let control):
+            if control != nil {
+                return (try? ArrowLayout.make(for: annotation))?.hitTest(p, tolerance: tolerance) ?? false
+            }
             let head = max(annotation.style.lineWidth * 3, 9)
             return distance(from: p, toSegment: start, end) <= reach
                 || hypot(p.x - end.x, p.y - end.y) <= head + tolerance
@@ -132,7 +138,7 @@ enum EditorGeometry {
         case .bottom: y1 = p.y
         case .bottomLeft: (x0, y1) = (p.x, p.y)
         case .left: x0 = p.x
-        case .start, .end: return original
+        case .start, .end, .bend: return original
         }
         if keepAspect, handle.isCorner, original.width > 0, original.height > 0 {
             let fixedX = handle == .topLeft || handle == .bottomLeft ? original.maxX : original.minX

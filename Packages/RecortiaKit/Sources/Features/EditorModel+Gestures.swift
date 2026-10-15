@@ -77,6 +77,7 @@ extension EditorModel {
             do {
                 try Self.translate(&moved, items: items, dx: dx, dy: dy)
             } catch {
+                if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
             }
             replaceDocumentInGesture("Move", with: moved)
@@ -85,6 +86,7 @@ extension EditorModel {
             do {
                 try resize(&resized, item: item, handle: handle, frame: frame, to: p, modifiers: modifiers)
             } catch {
+                if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
             }
             replaceDocumentInGesture("Resize", with: resized)
@@ -180,13 +182,26 @@ extension EditorModel {
         _ document: inout Document, item: EditorItemID, handle: EditorHandle, frame: Rect<DocumentSpace>,
         to p: Point<DocumentSpace>, modifiers: EditorModifiers
     ) throws {
-        if case .annotation(let id) = item, handle == .start || handle == .end,
+        if case .annotation(let id) = item, handle == .start || handle == .end || handle == .bend,
             let index = document.annotations.firstIndex(where: { $0.id == id })
         {
             switch document.annotations[index].kind {
-            case .arrow(let start, let end):
-                document.annotations[index].kind =
-                    handle == .start ? .arrow(start: p, end: end) : .arrow(start: start, end: p)
+            case .arrow(let start, let end, let control):
+                var changed = document.annotations[index]
+                if handle == .bend {
+                    guard control != nil else { return }
+                    changed.kind = .arrow(
+                        start: start, end: end, control: ArrowCurve.control(start: start, end: end, bend: p))
+                } else {
+                    let original = handle == .start ? start : end
+                    let movedControl = control?.offset(dx: p.x / 2 - original.x / 2, dy: p.y / 2 - original.y / 2)
+                    changed.kind =
+                        handle == .start
+                        ? .arrow(start: p, end: end, control: movedControl)
+                        : .arrow(start: start, end: p, control: movedControl)
+                }
+                try Self.validateArrowCurve(changed)
+                document.annotations[index] = changed
                 return
             case .line(let start, let end):
                 document.annotations[index].kind =
@@ -220,7 +235,7 @@ extension EditorModel {
         case .arrow:
             draft = .annotation(
                 Annotation(
-                    kind: .arrow(start: start, end: Self.constrainedEnd(start, current, modifiers)),
+                    kind: arrowKind(from: start, to: Self.constrainedEnd(start, current, modifiers)),
                     style: style.annotationStyle))
         case .line:
             draft = .annotation(
@@ -277,8 +292,12 @@ extension EditorModel {
             let tip = Self.constrainedEnd(start, end, modifiers)
             guard hypot(tip.x - start.x, tip.y - start.y) >= slop else { return }
             let segment = Annotation(
-                kind: tool == .arrow ? .arrow(start: start, end: tip) : .line(start: start, end: tip),
+                kind: tool == .arrow ? arrowKind(from: start, to: tip) : .line(start: start, end: tip),
                 style: style.annotationStyle)
+            do { try Self.validateArrowCurve(segment) } catch {
+                post(.arrowGeometryRefused)
+                return
+            }
             if edit(tool == .arrow ? "Arrow" : "Line", { $0.annotations.append(segment) }) {
                 created = .annotation(segment.id)
             }
@@ -325,6 +344,12 @@ extension EditorModel {
             return
         }
         if let created { selection = [created] }
+    }
+
+    private func arrowKind(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) -> Annotation.Kind {
+        .arrow(
+            start: start, end: end,
+            control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil)
     }
 
     public static let defaultBlurRadius = 12.0

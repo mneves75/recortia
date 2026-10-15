@@ -50,6 +50,12 @@ public enum TextLayout {                          // stateless; text origin/cont
     public static func metrics(for text: Annotation.TextContent,
                                style: Annotation.Style) throws(TextLayoutError) -> TextLayoutMetrics
 }
+public struct ArrowLayout {                       // operation-local; no shared mutable path cache
+    public static func make(for annotation: Annotation) throws(RenderError) -> ArrowLayout
+    public let shaftPath, shaftInkPath, headPath, inkPath: CGPath
+    public let inkBounds: Rect<DocumentSpace>
+    public func hitTest(_ point: Point<DocumentSpace>, tolerance: Double) -> Bool
+}
 public struct ExportPipeline: Sendable {
     public init(renderer: PrivacyRenderer)
     public func snapshot(of session: DocumentSession, options: ExportOptions, date: Date) async throws -> ShareSnapshot
@@ -58,6 +64,14 @@ public enum PixelSampler {
     public static func color(atX x: Int, y: Int, in image: CGImage) -> RGBA?   // nearest pixel, sRGB
 }
 ```
+
+`Domain.ArrowCurve` converts between the stored quadratic control and visible B(0.5) bend,
+and provides the deterministic initial control. Nil arrow controls preserve legacy straight
+encoding/rendering. `ArrowLayout` provides exact-prefix shaft and filled-head union ink;
+construction refuses invalid geometry. Editor mutation admission uses it before committing,
+while the canvas/export renderer paints the same ink. Geometric centerline frame bounds remain
+separate from ink bounds and screen-space selection tolerance. Paths never cross operations
+through a global cache; this introduces no external pixel sink or actor boundary.
 
 `TextLayoutMetrics.frame` includes painted glyph/fallback, outline and background extents;
 `contentFrame` retains the wrapping constraint. Optional `backgroundFrame` and `cornerRadius`

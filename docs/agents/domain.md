@@ -9,6 +9,12 @@ appearances are implemented; independent development acceptance is recorded in
 `docs/specs/text-appearance/decoration-acceptance-verdict.md`. Physical/runtime/release limits
 remain separate. The reference matrix distinguishes remaining planned capabilities from code.
 
+An arrow's optional control defines a quadratic curve; nil retains the legacy straight arrow.
+`ArrowCurve` maps the visible bend at B(0.5), and operation-local `ArrowLayout` provides actual
+shaft/head ink for rendering and selection. Future curved-arrow defaults belong to one editor;
+selected-state feedback is independent. FP-034 remains under qualification in
+`docs/specs/curved-arrows/`; source checks do not close CAP-01 or release gates.
+
 ## Before exploring, read these
 
 - **`CONTEXT.md`** at the repo root, or

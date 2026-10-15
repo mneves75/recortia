@@ -1211,8 +1211,8 @@
       "scope": "Optional quadratic control on arrows, shared painted geometry, creation/default, visible bend handle and native numeric fields, atomic undo/refusal and sanitized exports. Other arrowhead styles remain gaps.",
       "deliverables": ["docs/specs/curved-arrows/spec.md", "docs/specs/curved-arrows/implementation-plan.md", "model/geometry/export/native regressions"],
       "completion_contract": "Observed source-red tracer regressions, head-junction feasibility, development gates, two-axis review and fresh independent code/native acceptance; no full-parity or physical qualification claim.",
-      "evidence": [],
-      "progress_note": "Plan advisor review applied before implementation. Existing CAP-01 integration failure remains a separate release blocker."
+      "evidence": ["docs/specs/curved-arrows/review-evidence.md", ".scratch/curved-arrows-backend-20261014/evidence.md"],
+      "progress_note": "Geometry/export/editor tracers implemented with observed regressions and fixes. Native EN/PT-BR controls, rapid coordinate commits, mixed state, real25%/200% pixels, compact dark and composition refusal pass at20261014-204622 (146 assertions/11 PNGs per language). Final gate, broader native integration and fresh independent acceptance are pending. Existing CAP-01 integration failure remains a separate release blocker."
     }
   ],
   "deferred_scope": [

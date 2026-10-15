@@ -5,7 +5,7 @@ import Foundation
 public struct Annotation: Identifiable, Hashable, Sendable, Codable {
     public enum Kind: Hashable, Sendable, Codable {
         case text(TextContent)
-        case arrow(start: Point<DocumentSpace>, end: Point<DocumentSpace>)
+        case arrow(start: Point<DocumentSpace>, end: Point<DocumentSpace>, control: Point<DocumentSpace>? = nil)
         case line(start: Point<DocumentSpace>, end: Point<DocumentSpace>)
         case rectangle(Rect<DocumentSpace>)
         case ellipse(Rect<DocumentSpace>)
@@ -99,7 +99,10 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             let width = text.maxWidth ?? Double(max(1, text.string.count)) * text.fontSize * 0.6
             let lines = Double(max(1, text.string.split(separator: "\n", omittingEmptySubsequences: false).count))
             return Rect(origin: text.origin, size: Size(width: width, height: lines * text.fontSize * 1.25))
-        case .arrow(let start, let end), .line(let start, let end):
+        case .arrow(let start, let end, let control):
+            return control.map { ArrowCurve.bounds(start: start, end: end, control: $0) }
+                ?? Rect(spanning: start, end)
+        case .line(let start, let end):
             return Rect(spanning: start, end)
         case .rectangle(let rect), .ellipse(let rect):
             return rect
@@ -129,8 +132,10 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         case .text(var text):
             text.origin = text.origin.offset(dx: dx, dy: dy)
             copy.kind = .text(text)
-        case .arrow(let start, let end):
-            copy.kind = .arrow(start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy))
+        case .arrow(let start, let end, let control):
+            copy.kind = .arrow(
+                start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy),
+                control: control?.offset(dx: dx, dy: dy))
         case .line(let start, let end):
             copy.kind = .line(start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy))
         case .rectangle(let rect):
@@ -164,8 +169,8 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             text.fontSize = max(6, text.fontSize * sy)
             if let width = text.maxWidth { text.maxWidth = width * sx }
             copy.kind = .text(text)
-        case .arrow(let start, let end):
-            copy.kind = .arrow(start: map(start), end: map(end))
+        case .arrow(let start, let end, let control):
+            copy.kind = .arrow(start: map(start), end: map(end), control: control.map(map))
         case .line(let start, let end):
             func mapEndpoint(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
                 // An axis-aligned segment has no extent on one axis; use progress along the

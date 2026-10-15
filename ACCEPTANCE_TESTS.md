@@ -80,6 +80,18 @@ For straight lines, exercise shortcut D through the native canvas, endpoint hand
 constraint, canceled draft and one-step undo/redo. Literal exported pixels show stroke only,
 without an arrowhead; an opaque redaction covers line pixels in the final artifact.
 
+For curved arrows, retain exact legacy straight JSON/rendering and round-trip the optional
+control. Exercise actual filled-head/shaft connection, alpha, extreme/short/collinear curves,
+zero-width ink and malformed rejection. Native `curved-arrows` evidence must operate
+Curved/Straight, distinguish mixed selection from the local future default, and commit Bend
+X then Y through the real native field editor without losing X. Drag endpoints and the visible
+midpoint, cancel, duplicate, resize, Undo/Redo and select painted ink rather than the empty
+chord. Refuse invalid creation/bend/width/frame/movement before mutations; preserve Redo and
+an unrelated continuous adjustment. Inspect actual curve pixels at displayed25%/200%,
+minimum-width dark controls and marked-input refusal in both languages. Export paired-secret
+PNG/JPEG with transformed source layers, magnifiers and masks, plus unmasked source/curve
+positive controls. These tests do not qualify physical keyboard/VoiceOver/Spaces behavior.
+
 For saved colors, press native Save/Apply/Remove controls in EN and PT-BR. Verify explicit
 insertion order, duplicate/full disabled states, selected HEX labels, apply undo/redo, cross-editor
 persistence and legacy sealed consent preservation. Future incompatible schemas and closed

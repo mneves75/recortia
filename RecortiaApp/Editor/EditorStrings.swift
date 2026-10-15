@@ -188,6 +188,10 @@ enum EditorStrings {
         case .colorCopied: String(localized: "Color copied.", table: "Editor")
         case .previewNotReady: String(localized: "The preview is updating. Try again in a moment.", table: "Editor")
         case .previewFailed: String(localized: "The preview could not be rendered.", table: "Editor")
+        case .arrowGeometryRefused:
+            String(
+                localized: "That arrow change could not be applied. Try another bend, endpoint or line width.",
+                table: "Editor")
         case .redactionRefused:
             String(
                 localized: "This redaction cannot be mapped onto the image safely, so it was not added.",

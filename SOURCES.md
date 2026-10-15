@@ -200,6 +200,20 @@ Sources: [Developer Forums 826308](https://developer.apple.com/forums/thread/826
 [NSWindow.CollectionBehavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct),
 installed SDK header `AppKit.framework/Headers/NSWindow.h`.
 
+## Curved-arrow investigation (2026-10-14)
+
+[CleanShot features](https://cleanshot.com/features) identifies four arrow styles including
+curves. [Shottr's early-access notes](https://shottr.cc/kb/earlyaccessprogram) describe bending
+its arrow types. These sources establish the capability, not a proprietary representation or
+complete head-style parity. Recortia uses its own optional quadratic control.
+
+The selected SDK's CoreGraphics `CGPath.h` and Swift interface declare quadratic paths,
+stroked outlines and `CGPath.union(_:using:)` (macOS13+, compatible with target15). The
+implementation unions shaft/head ink before filling once, because independent raster tests
+found winding cancellation with compound filling and doubled alpha with separate fills.
+Local compilation/pixel/export evidence is recorded in the curved-arrow spec/evidence;
+minimum-OS runtime, performance and physical qualification remain separate.
+
 ## Text appearance investigation (2026-10-14)
 
 CleanShot's [public feature page](https://cleanshot.com/features) and its linked text preview

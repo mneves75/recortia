@@ -129,6 +129,16 @@ public final class EditorModel {
     public func setLineWidth(_ width: Double) {
         guard width.isFinite else { return }
         let value = min(max(width, EditorStyle.lineWidthRange.lowerBound), EditorStyle.lineWidthRange.upperBound)
+        do {
+            for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
+                var proposed = annotation
+                proposed.style.lineWidth = value
+                try Self.validateArrowCurve(proposed)
+            }
+        } catch {
+            post(.arrowGeometryRefused)
+            return
+        }
         style.lineWidth = value
         restyleSelection("Line Width") { $0.lineWidth = value }
     }
@@ -217,7 +227,11 @@ public final class EditorModel {
         do {
             try session.perform(label, change)
         } catch {
-            if error is DocumentError { post(.redactionRefused) }
+            if error is ArrowGeometryFailure {
+                post(.arrowGeometryRefused)
+            } else if error is DocumentError {
+                post(.redactionRefused)
+            }
             return false
         }
         didChange(from: before, epoch: epoch)
@@ -381,7 +395,11 @@ public final class EditorModel {
         case .annotation(let id):
             guard let annotation = d.annotations.first(where: { $0.id == id }) else { return [] }
             switch annotation.kind {
-            case .arrow(let start, let end), .line(let start, let end): return [(.start, start), (.end, end)]
+            case .arrow(let start, let end, let control):
+                let endpoints: [(EditorHandle, Point<DocumentSpace>)] = [(.start, start), (.end, end)]
+                guard let control else { return endpoints }
+                return endpoints + [(.bend, ArrowCurve.bend(start: start, end: end, control: control))]
+            case .line(let start, let end): return [(.start, start), (.end, end)]
             case .step: return []
             case .text: return EditorGeometry.handles(for: frame, cornersOnly: true)
             default: return EditorGeometry.handles(for: frame, cornersOnly: false)
@@ -553,7 +571,9 @@ public final class EditorModel {
             document.obfuscations[index].rect = document.obfuscations[index].rect.offsetBy(dx: dx, dy: dy)
         }
         for index in document.annotations.indices where set.contains(.annotation(document.annotations[index].id)) {
-            document.annotations[index] = document.annotations[index].translated(dx: dx, dy: dy)
+            let moved = document.annotations[index].translated(dx: dx, dy: dy)
+            try validateArrowCurve(moved)
+            document.annotations[index] = moved
         }
         for index in document.callouts.indices where set.contains(.callout(document.callouts[index].id)) {
             document.callouts[index].kind = translated(
@@ -628,7 +648,21 @@ public final class EditorModel {
 
     /// Keyboard-editable geometry for the inspector (UX-01).
     public func setFrame(_ rect: Rect<DocumentSpace>, for item: EditorItemID) {
-        edit("Set Frame") { try Self.setFrame(&$0, item: item, to: rect) }
+        let isCurve: Bool
+        if case .annotation(let id) = item,
+            let annotation = document.annotations.first(where: { $0.id == id }),
+            case .arrow(_, _, .some) = annotation.kind
+        {
+            isCurve = true
+        } else {
+            isCurve = false
+        }
+        edit("Set Frame") { document in
+            do { try Self.setFrame(&document, item: item, to: rect) } catch {
+                if isCurve { throw ArrowGeometryFailure.invalid }
+                throw error
+            }
+        }
     }
 
     /// Moves a magnifier's source rectangle (what it magnifies) without moving the callout.

@@ -27,6 +27,7 @@
 		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
 		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
 		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
+		2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */; };
 		2D8C368CE36FD821F3E7C2DC /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		2DD16A3919445D7FAA908F82 /* E2ERunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */; };
 		302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
@@ -238,6 +239,7 @@
 		F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRecognition.swift; sourceTree = "<group>"; };
 		F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ERunner.swift; sourceTree = "<group>"; };
 		F902EF52885BED5F7982DA2C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+CurvedArrows.swift"; sourceTree = "<group>"; };
 		FBEF619B471E0C3284F9AED2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Editor.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -401,6 +403,7 @@
 				143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */,
 				7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */,
 				4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */,
+				F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */,
 				8105CD4BFB83087E563EDD04 /* Scenarios+Desktops.swift */,
 				D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */,
 				DFCE525587D4EDB1319159B1 /* Scenarios+EditorFixes.swift */,
@@ -673,6 +676,7 @@
 				662B5EEB1979FE8CB55404C3 /* Scenarios+AutomaticExport.swift in Sources */,
 				C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */,
 				DA848AED2EE99F81FCDFF4D4 /* Scenarios+CaptureVisibility.swift in Sources */,
+				2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */,
 				F13BED59D44D9F2EEF670478 /* Scenarios+Desktops.swift in Sources */,
 				3AC080957ABB8147960886B8 /* Scenarios+Editor.swift in Sources */,
 				E65AC2695767655A13BF576E /* Scenarios+EditorFixes.swift in Sources */,

@@ -142,7 +142,7 @@ private struct EditingTourStep: View {
             TourFeature(
                 symbol: "pencil.tip", title: "Annotate and adjust",
                 detail:
-                    "Choose text, arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Text Style includes Standard, Rounded, Monospaced, Outlined, Boxed, Rounded Box and Monospaced Box. Background Color changes boxed text; Reset restores white. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor."
+                    "Choose text, straight or curved arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Bend arrows with the middle handle or Bend X/Y fields. Text Style includes Standard, Rounded, Monospaced, Outlined, Boxed, Rounded Box and Monospaced Box. Background Color changes boxed text; Reset restores white. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor."
             )
             TourFeature(
                 symbol: "crop", title: "Crop, resize and navigate",

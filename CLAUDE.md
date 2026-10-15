@@ -97,6 +97,10 @@ Feature discovery specs/tickets are tracked in `docs/specs/feature-discovery/`; 
 contract in AGENTS.md defines replay, real-control E2E and reference-evidence boundaries. New
 feature specs stay in tracked `docs/specs/<feature>/`; GitHub continues to handle bug triage.
 
+FP-034 curved-arrow implementation/qualification is tracked in `docs/specs/curved-arrows/`.
+Follow its canonical geometry and native-gate rules in AGENTS.md. Preserve the separately
+unresolved capture-focus FAIL; passing curve checks does not qualify release or installation.
+
 ### Issue tracker
 
 GitHub Issues in `mneves75/recortia` via `gh`; planned FP-xxx tasks stay in `BACKLOG.json`. See `docs/agents/issue-tracker.md`.

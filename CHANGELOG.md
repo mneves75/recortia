@@ -12,6 +12,12 @@ installed build 27A9275 is Xcode 27.1 RC.
 
 ### Added
 
+- Editable curved arrows with native Curved/Straight controls, a visible bend handle and
+  keyboard-editable Bend X/Y fields. Selected and future-arrow states remain distinct through
+  Undo; rapid numeric commits retain both coordinates. Shared painted geometry preserves
+  connected heads, stroke alpha, ink selection and sanitized PNG/JPEG exports. Unsupported
+  curves and invalid geometry/style changes refuse without replacing the valid annotation.
+  Full integration and independent acceptance remain pending.
 - Standard, rounded and monospaced text appearances with native selected-state controls,
   independent undo, shared layout metrics and consistent native editing/export fonts. Native
   editing now retains wrapping constraints at zoom.

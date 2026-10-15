@@ -29,6 +29,7 @@ public enum AnnotationRenderer {
         for annotation in annotations {
             guard isDrawable(annotation) else {
                 if case .text = annotation.kind { throw .textLayoutFailed(.invalidGeometry) }
+                if case .arrow(_, _, .some) = annotation.kind { throw .invalidGeometry }
                 continue
             }
             try draw(annotation, in: context)
@@ -46,7 +47,10 @@ public enum AnnotationRenderer {
                 return false
             }
             points = [text.origin]
-        case .arrow(let start, let end), .line(let start, let end):
+        case .arrow(let start, let end, let control):
+            if control != nil, (try? ArrowLayout.make(for: annotation)) == nil { return false }
+            points = [start, end] + (control.map { [$0] } ?? [])
+        case .line(let start, let end):
             points = [start, end]
         case .rectangle(let rect), .ellipse(let rect):
             guard rect.size.width.isFinite, rect.size.height.isFinite, rect.width >= 0, rect.height >= 0 else {
@@ -97,8 +101,14 @@ public enum AnnotationRenderer {
                 drawTextBackground(text, style: style, metrics: textLayout.metrics, in: context)
                 textLayout.draw(in: context)
             }
-        case .arrow(let start, let end):
-            drawArrow(from: start.cg, to: end.cg, lineWidth: style.lineWidth, in: context)
+        case .arrow(let start, let end, let control):
+            if control != nil {
+                let layout = try ArrowLayout.make(for: annotation)
+                context.addPath(layout.inkPath)
+                context.fillPath()
+            } else {
+                drawArrow(from: start.cg, to: end.cg, lineWidth: style.lineWidth, in: context)
+            }
         case .line(let start, let end):
             context.addLines(between: [start.cg, end.cg])
             context.strokePath()

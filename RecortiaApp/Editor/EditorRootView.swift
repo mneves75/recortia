@@ -56,7 +56,7 @@ struct EditorNoticePresentation {
     static func persists(_ notice: EditorNotice) -> Bool {
         switch notice {
         case .copyFailed, .recognitionFailed, .linkNotAllowed, .previewFailed, .redactionRefused, .importFailed,
-            .pinFailed, .noPreferredFolder:
+            .pinFailed, .noPreferredFolder, .arrowGeometryRefused:
             true
         case .exported(let outcome): persists(outcome)
         case .noTextFound, .recognitionLanguagesUnavailable, .textCopied, .recognitionDiscarded,

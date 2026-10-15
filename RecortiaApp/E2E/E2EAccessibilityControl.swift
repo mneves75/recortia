@@ -41,6 +41,42 @@
                 "\(identifier) enabled state", control.value(forKey: "accessibilityEnabled") as? Bool)
         }
 
+        /// Uses only this synthetic window's field editor and Return event, never global input.
+        static func enterNumber(_ identifier: String, text: String, in root: NSView, _ context: ScenarioContext)
+            async throws
+        {
+            let element = try control(identifier, in: root, context)
+            let window = try context.unwrap("numeric field window", root.window)
+            let focusBefore = element.value(forKey: "accessibilityFocused") as? Bool
+            try context.require("\(identifier) is enabled for input", try isEnabled(identifier, in: root, context))
+            if let modern = element as? any NSAccessibilityProtocol {
+                modern.setAccessibilityFocused(true)
+            } else {
+                try pressFrame(element, in: root, context)
+            }
+            try context.require(
+                "\(identifier) owns a native field editor",
+                await E2EWait.until {
+                    (element.value(forKey: "accessibilityFocused") as? Bool) == true
+                        && (window.firstResponder as? NSTextView)?.isFieldEditor == true
+                })
+            let editor = try context.unwrap("native numeric field editor", window.firstResponder as? NSTextView)
+            E2ERunner.log(
+                "number field \(identifier): focusedBefore=\(String(describing: focusBefore)); focusedAfterRequest=\(String(describing: element.value(forKey: "accessibilityFocused") as? Bool)); previousText=\(editor.string)"
+            )
+            editor.selectAll(nil)
+            editor.insertText(text, replacementRange: editor.selectedRange())
+            try context.require("native number insertion reaches the field editor", editor.string == text)
+            let event = try context.unwrap(
+                "numeric Return event",
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber, context: nil, characters: "\r",
+                    charactersIgnoringModifiers: "\r",
+                    isARepeat: false, keyCode: 36))
+            window.sendEvent(event)
+        }
+
         private static func control(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws
             -> NSObject
         {
