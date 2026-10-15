@@ -10,7 +10,7 @@ extension EditorModel {
 
     public func pointerDown(at p: Point<DocumentSpace>, modifiers: EditorModifiers = []) {
         guard !isClosed, textEditing == nil, p.isFinite else { return }
-        endContinuousChange()
+        if tool != .select && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
         cancelGesture()
         switch tool {
         case .hand:
@@ -48,7 +48,7 @@ extension EditorModel {
             let anchor = Self.snapped(p)
             ruler = measurement(from: anchor, to: anchor)
             gesture = .ruler(start: anchor)
-        case .crop, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .redact, .blur, .pixelate, .spotlight,
+        case .crop, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .redact, .blur, .pixelate, .spotlight,
             .magnifier:
             gesture = .create(tool: tool, start: p, points: [p])
             updateDraft(tool: tool, start: p, points: [p], current: p, modifiers: modifiers)
@@ -77,6 +77,7 @@ extension EditorModel {
             do {
                 try Self.translate(&moved, items: items, dx: dx, dy: dy)
             } catch {
+                if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
             }
             replaceDocumentInGesture("Move", with: moved)
@@ -85,6 +86,7 @@ extension EditorModel {
             do {
                 try resize(&resized, item: item, handle: handle, frame: frame, to: p, modifiers: modifiers)
             } catch {
+                if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
             }
             replaceDocumentInGesture("Resize", with: resized)
@@ -93,6 +95,7 @@ extension EditorModel {
             draft = .marquee(rect)
             let hits = listItems.filter { $0.frame.intersects(rect) }.map(\.id)
             selection = initial.union(hits)
+            loadSelectedTextAppearance()
         case .ruler(let start):
             ruler = measurement(from: start, to: Self.snapped(p))
         case .sample:
@@ -110,9 +113,11 @@ extension EditorModel {
         case .create(let tool, let start, let points):
             commitCreation(tool: tool, start: start, points: points, end: p.isFinite ? p : start, modifiers: modifiers)
         case .move, .resize:
-            session.endGroup()
-            releaseUnreachableAssets()
-            noteUndoEvictionIfNeeded()
+            if continuousChangeID == nil {
+                session.endGroup()
+                releaseUnreachableAssets()
+                noteUndoEvictionIfNeeded()
+            }
         case .idle, .marquee, .ruler, .sample:
             break
         }
@@ -131,6 +136,7 @@ extension EditorModel {
         draft = nil
         switch current {
         case .move, .resize:
+            guard continuousChangeID == nil else { return }
             let before = session.document, epoch = session.privacyEpoch
             session.cancelGroup()
             noteUndoEvictionIfNeeded()
@@ -144,7 +150,6 @@ extension EditorModel {
 
     private func beginSelectGesture(at p: Point<DocumentSpace>, modifiers: EditorModifiers) {
         if let handle = handle(at: p), let item = selection.first, let frame = frame(of: item) {
-            session.beginGroup("Resize")
             gesture = .resize(item: item, handle: handle, frame: frame, original: document)
             return
         }
@@ -154,8 +159,8 @@ extension EditorModel {
                 guard selection.contains(hit) else { return }
             } else if !selection.contains(hit) {
                 selection = [hit]
+                loadSelectedTextAppearance()
             }
-            session.beginGroup("Move")
             gesture = .move(items: orderedSelection, start: p, original: document)
             return
         }
@@ -165,6 +170,9 @@ extension EditorModel {
     }
 
     private func replaceDocumentInGesture(_ label: String, with updated: Document) {
+        guard updated != document else { return }
+        endContinuousChange()
+        session.beginGroup(label)
         let before = session.document, epoch = session.privacyEpoch
         do {
             try session.perform(label) { $0 = updated }
@@ -178,13 +186,34 @@ extension EditorModel {
         _ document: inout Document, item: EditorItemID, handle: EditorHandle, frame: Rect<DocumentSpace>,
         to p: Point<DocumentSpace>, modifiers: EditorModifiers
     ) throws {
-        if case .annotation(let id) = item, handle == .start || handle == .end,
-            let index = document.annotations.firstIndex(where: { $0.id == id }),
-            case .arrow(let start, let end) = document.annotations[index].kind
+        if case .annotation(let id) = item, handle == .start || handle == .end || handle == .bend,
+            let index = document.annotations.firstIndex(where: { $0.id == id })
         {
-            document.annotations[index].kind =
-                handle == .start ? .arrow(start: p, end: end) : .arrow(start: start, end: p)
-            return
+            switch document.annotations[index].kind {
+            case .arrow(let start, let end, let control):
+                var changed = document.annotations[index]
+                if handle == .bend {
+                    guard control != nil else { return }
+                    changed.kind = .arrow(
+                        start: start, end: end, control: ArrowCurve.control(start: start, end: end, bend: p))
+                } else {
+                    let original = handle == .start ? start : end
+                    let movedControl = control?.offset(dx: p.x / 2 - original.x / 2, dy: p.y / 2 - original.y / 2)
+                    changed.kind =
+                        handle == .start
+                        ? .arrow(start: p, end: end, control: movedControl)
+                        : .arrow(start: start, end: p, control: movedControl)
+                }
+                try Self.validateArrowCurve(changed)
+                document.annotations[index] = changed
+                return
+            case .line(let start, let end):
+                document.annotations[index].kind =
+                    handle == .start ? .line(start: p, end: end) : .line(start: start, end: p)
+                return
+            default:
+                break
+            }
         }
         var keepAspect = modifiers.contains(.shift)
         switch item {
@@ -210,7 +239,12 @@ extension EditorModel {
         case .arrow:
             draft = .annotation(
                 Annotation(
-                    kind: .arrow(start: start, end: Self.constrainedEnd(start, current, modifiers)),
+                    kind: arrowKind(from: start, to: Self.constrainedEnd(start, current, modifiers)),
+                    style: style.annotationStyle))
+        case .line:
+            draft = .annotation(
+                Annotation(
+                    kind: .line(start: start, end: Self.constrainedEnd(start, current, modifiers)),
                     style: style.annotationStyle))
         case .rectangle:
             draft = .annotation(
@@ -258,11 +292,20 @@ extension EditorModel {
         let isClick = rect.width < slop && rect.height < slop
         var created: EditorItemID?
         switch tool {
-        case .arrow:
+        case .arrow, .line:
             let tip = Self.constrainedEnd(start, end, modifiers)
             guard hypot(tip.x - start.x, tip.y - start.y) >= slop else { return }
-            let arrow = Annotation(kind: .arrow(start: start, end: tip), style: style.annotationStyle)
-            if edit("Arrow", { $0.annotations.append(arrow) }) { created = .annotation(arrow.id) }
+            let segment = Annotation(
+                kind: tool == .arrow ? arrowKind(from: start, to: tip) : .line(start: start, end: tip),
+                style: style.annotationStyle)
+            do { try Self.validateArrowCurve(segment) } catch {
+                post(.arrowGeometryRefused)
+                return
+            }
+            endContinuousChange()
+            if edit(tool == .arrow ? "Arrow" : "Line", { $0.annotations.append(segment) }) {
+                created = .annotation(segment.id)
+            }
         case .rectangle, .ellipse:
             guard !isClick else { return }
             let shape = Annotation(
@@ -308,6 +351,12 @@ extension EditorModel {
         if let created { selection = [created] }
     }
 
+    private func arrowKind(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) -> Annotation.Kind {
+        .arrow(
+            start: start, end: end,
+            control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil)
+    }
+
     public static let defaultBlurRadius = 12.0
     public static let defaultPixelBlock = 12.0
     public static let defaultSpotlightDim = 0.55
@@ -345,8 +394,9 @@ extension EditorModel {
 
     private func beginNewText(at p: Point<DocumentSpace>) {
         textEditing = EditorTextEditing(
-            annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize, color: style.stroke,
-            maxWidth: nil)
+            annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize,
+            annotationStyle: style.textAnnotationStyle,
+            maxWidth: nil, appearance: style.textAppearance)
     }
 
     /// Starts editing an existing text annotation (double-click, Return on a selected text).
@@ -356,9 +406,10 @@ extension EditorModel {
         else { return }
         cancelGesture()
         selection = [.annotation(id)]
+        loadSelectedTextAppearance()
         textEditing = EditorTextEditing(
             annotationID: id, origin: text.origin, initialString: text.string, fontSize: text.fontSize,
-            color: annotation.style.stroke, maxWidth: text.maxWidth)
+            annotationStyle: annotation.style, maxWidth: text.maxWidth, appearance: text.resolvedAppearance)
     }
 
     /// Ends text editing with the text view's final string: one undo step. An empty new text adds
@@ -383,8 +434,11 @@ extension EditorModel {
         }
         guard !isBlank else { return }
         let text = Annotation(
-            kind: .text(Annotation.TextContent(origin: editing.origin, string: string, fontSize: editing.fontSize)),
-            style: style.annotationStyle)
+            kind: .text(
+                Annotation.TextContent(
+                    origin: editing.origin, string: string, fontSize: editing.fontSize, maxWidth: editing.maxWidth,
+                    appearance: editing.appearance)),
+            style: editing.annotationStyle)
         if edit("Text", { $0.annotations.append(text) }) { selection = [.annotation(text.id)] }
     }
 

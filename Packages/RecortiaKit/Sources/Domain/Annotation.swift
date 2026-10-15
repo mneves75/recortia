@@ -5,7 +5,8 @@ import Foundation
 public struct Annotation: Identifiable, Hashable, Sendable, Codable {
     public enum Kind: Hashable, Sendable, Codable {
         case text(TextContent)
-        case arrow(start: Point<DocumentSpace>, end: Point<DocumentSpace>)
+        case arrow(start: Point<DocumentSpace>, end: Point<DocumentSpace>, control: Point<DocumentSpace>? = nil)
+        case line(start: Point<DocumentSpace>, end: Point<DocumentSpace>)
         case rectangle(Rect<DocumentSpace>)
         case ellipse(Rect<DocumentSpace>)
         case freehand([Point<DocumentSpace>])
@@ -19,12 +20,33 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         public var fontSize: Double
         /// Wrap width in document units; nil means no wrapping.
         public var maxWidth: Double?
+        public var appearance: TextAppearance? {
+            didSet { if appearance == .standard { appearance = nil } }
+        }
 
-        public init(origin: Point<DocumentSpace>, string: String, fontSize: Double = 24, maxWidth: Double? = nil) {
+        public var resolvedAppearance: TextAppearance { appearance ?? .standard }
+
+        public init(
+            origin: Point<DocumentSpace>, string: String, fontSize: Double = 24, maxWidth: Double? = nil,
+            appearance: TextAppearance? = nil
+        ) {
             self.origin = origin
             self.string = string
             self.fontSize = fontSize
             self.maxWidth = maxWidth
+            self.appearance = appearance == .standard ? nil : appearance
+        }
+
+        private enum CodingKeys: String, CodingKey { case origin, string, fontSize, maxWidth, appearance }
+
+        public init(from decoder: any Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(
+                origin: try values.decode(Point<DocumentSpace>.self, forKey: .origin),
+                string: try values.decode(String.self, forKey: .string),
+                fontSize: try values.decode(Double.self, forKey: .fontSize),
+                maxWidth: try values.decodeIfPresent(Double.self, forKey: .maxWidth),
+                appearance: try values.decodeIfPresent(TextAppearance.self, forKey: .appearance))
         }
     }
 
@@ -63,21 +85,24 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         case .text(let text): return base + text.string.utf8.count * 2
         case .freehand(let points), .highlighter(let points):
             return base + points.count * MemoryLayout<Point<DocumentSpace>>.stride
-        case .arrow, .rectangle, .ellipse, .step: return base
+        case .arrow, .line, .rectangle, .ellipse, .step: return base
         }
     }
 
     /// Radius of a numbered step marker, derived from line width so it scales with style.
     public var stepRadius: Double { max(14, style.lineWidth * 4) }
 
-    /// Geometric bounds before stroke outset; text bounds are approximated by the renderer.
+    /// Platform-independent estimate; authoritative text layout belongs to Imaging.TextLayout.
     public var bounds: Rect<DocumentSpace> {
         switch kind {
         case .text(let text):
             let width = text.maxWidth ?? Double(max(1, text.string.count)) * text.fontSize * 0.6
             let lines = Double(max(1, text.string.split(separator: "\n", omittingEmptySubsequences: false).count))
             return Rect(origin: text.origin, size: Size(width: width, height: lines * text.fontSize * 1.25))
-        case .arrow(let start, let end):
+        case .arrow(let start, let end, let control):
+            return control.map { ArrowCurve.bounds(start: start, end: end, control: $0) }
+                ?? Rect(spanning: start, end)
+        case .line(let start, let end):
             return Rect(spanning: start, end)
         case .rectangle(let rect), .ellipse(let rect):
             return rect
@@ -107,8 +132,12 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         case .text(var text):
             text.origin = text.origin.offset(dx: dx, dy: dy)
             copy.kind = .text(text)
-        case .arrow(let start, let end):
-            copy.kind = .arrow(start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy))
+        case .arrow(let start, let end, let control):
+            copy.kind = .arrow(
+                start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy),
+                control: control?.offset(dx: dx, dy: dy))
+        case .line(let start, let end):
+            copy.kind = .line(start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy))
         case .rectangle(let rect):
             copy.kind = .rectangle(rect.offsetBy(dx: dx, dy: dy))
         case .ellipse(let rect):
@@ -133,6 +162,12 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         func map(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
             Point(x: new.minX + (p.x - old.minX) * sx, y: new.minY + (p.y - old.minY) * sy)
         }
+        func mapSegmentPoint(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
+            // A segment with one empty axis gains extent using progress along its other axis.
+            let xFraction = old.width > 0 ? (p.x - old.minX) / old.width : (p.y - old.minY) / old.height
+            let yFraction = old.height > 0 ? (p.y - old.minY) / old.height : (p.x - old.minX) / old.width
+            return Point(x: new.minX + xFraction * new.width, y: new.minY + yFraction * new.height)
+        }
         var copy = self
         switch kind {
         case .text(var text):
@@ -140,8 +175,11 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             text.fontSize = max(6, text.fontSize * sy)
             if let width = text.maxWidth { text.maxWidth = width * sx }
             copy.kind = .text(text)
-        case .arrow(let start, let end):
-            copy.kind = .arrow(start: map(start), end: map(end))
+        case .arrow(let start, let end, let control):
+            copy.kind = .arrow(
+                start: mapSegmentPoint(start), end: mapSegmentPoint(end), control: control.map(mapSegmentPoint))
+        case .line(let start, let end):
+            copy.kind = .line(start: mapSegmentPoint(start), end: mapSegmentPoint(end))
         case .rectangle:
             copy.kind = .rectangle(new)
         case .ellipse:

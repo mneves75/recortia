@@ -16,7 +16,7 @@ public enum EditorCanvasRenderer {
     public static func draw(
         _ document: Document, base: CGImage?, calloutBase: CGImage?, draft: Annotation? = nil,
         baseInterpolation: CGInterpolationQuality = .none, in context: CGContext
-    ) {
+    ) throws(RenderError) {
         let canvas = document.canvasRect.cg
         if let base {
             context.saveGState()
@@ -27,9 +27,11 @@ public enum EditorCanvasRenderer {
         var annotations = document.annotations
         if let draft { annotations.append(draft) }
         context.saveGState()
-        context.clip(to: canvas)
-        AnnotationRenderer.draw(annotations, in: context)
-        context.restoreGState()
+        do {
+            defer { context.restoreGState() }
+            context.clip(to: canvas)
+            try AnnotationRenderer.draw(annotations, in: context)
+        }
 
         // Output-space coverage over vectors, text, and callouts (a mask over a magnifier's
         // destination hides it), rounded outward like the export.

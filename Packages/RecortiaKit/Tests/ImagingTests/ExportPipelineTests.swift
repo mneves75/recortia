@@ -106,7 +106,7 @@ struct ExportPipelineTests {
         context.draw(base, in: CGRect(x: 0, y: 0, width: base.width, height: base.height))
         context.translateBy(x: 0, y: CGFloat(base.height))
         context.scaleBy(x: scale, y: -scale)
-        AnnotationRenderer.draw(document.annotations, in: context)
+        try AnnotationRenderer.draw(document.annotations, in: context)
         let preview = try #require(context.makeImage())
         #expect(try pixels(preview) == pixels(exported))
     }

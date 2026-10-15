@@ -80,6 +80,7 @@ extension EditorModel {
         textEditing = nil
         isClosed = true
         environment.export.invalidatePendingDrag(documentID: session.document.id)
+        invalidateColorPick()
         baseTask?.cancel()
         outputTask?.cancel()
         baseTask = nil

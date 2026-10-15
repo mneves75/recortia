@@ -49,7 +49,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-02 | Region, display, selectable-window, delayed, and repeat-region capture | 0.1 | CAP / GEO |
 | FR-03 | Open PNG/JPEG, paste an image, and drop an image into the editor | 0.1 | IO / PRIV |
 | FR-04 | Crop, zoom, pan, resize; select, move, delete, duplicate; undo/redo | 0.1 | EDIT / GEO |
-| FR-05 | Text, arrow, rectangle, ellipse, freehand, highlighter, numbered steps | 0.1 | EDIT |
+| FR-05 | Text, straight/curved arrows, straight line, rectangle, ellipse, freehand, highlighter, numbered steps | 0.1 | EDIT |
 | FR-06 | Solid secure redaction; cosmetic blur/pixelation clearly distinguished | 0.1 | RED |
 | FR-07 | Flattened PNG/JPEG save, PNG clipboard copy, safe drag-out | 0.1 | EXP / RED |
 | FR-08 | On-device OCR and QR decoding, EN and PT-BR workflows | 0.1 | OCR |
@@ -126,6 +126,39 @@ An editor document stores immutable raster assets plus editable annotation comma
 Tools MUST support consistent selection handles, hit testing, move, resize, duplicate, delete, stroke/fill/opacity, z-order, and keyboard nudging. Text editing MUST handle multiline input, Unicode, accents, emoji, bidirectional text, and input-method composition without dispatching editor shortcuts into text input. Numbered steps remain editable and have an explicit renumber command.
 
 Provide fit, actual-pixel, zoom-in/out, selection zoom, and Space-drag pan. Basic arrows precede curved arrows; decoration is not a dependency of correct capture or export. No drawn object may change position merely because the editor zoom changed.
+
+The straight-line tool draws a segment without arrowheads, with the same document-space
+endpoint editing and creation-drag Shift 45-degree constraint as arrows. Shortcut D selects it only outside
+text input. A canceled drag or click without a meaningful segment adds no annotation.
+
+The approved reference-feature extension adds an optional quadratic control to arrows.
+Curved/Straight changes selected arrows and an independent editor-local future default; the
+inspector distinguishes their states after Undo. A visible midpoint handle and native Bend
+X/Y fields edit the same point. Endpoint dragging preserves its midpoint-relative bend vector.
+Exact painted shaft/head geometry drives rendering and hit testing. Unconstructible curves,
+overflow and invalid style/frame changes refuse before document/history/default mutations,
+with a persistent localized notice. Existing straight rendering and legacy encoding remain
+unchanged. Curves do not add other arrowhead styles, persistence or external export paths.
+
+The annotation inspector offers an explicit shared palette of at most 12 distinct opaque RGB
+colors. Save/remove change only sealed palette preferences; apply uses the normal undoable
+stroke command. Legacy preferences preserve consent; unsupported future schemas remain
+untouched. No automatic color history, image content or system color favorites are stored.
+
+Text appearance is per text annotation. Standard is the legacy default; Rounded and Monospaced
+use public system-font designs shared by native editing, selection geometry and export.
+Explicit appearance changes affect selected text only, form a separate undo step and refuse
+while native text input is active. Native editing retains content-width constraints at zoom.
+Failed text layout is an explicit error; a failed canvas draw clears partial pixels. The
+Outlined uses white monochrome glyph interiors and the chosen stroke color/width. Boxed,
+Rounded Box and Monospaced Box retain the content origin/wrapping width and add padded
+backgrounds. Nil background means automatic white; explicit transparent color remains clear.
+Background Color changes selected boxed text and a separate local future-text default;
+Reset restores white with its own undo step. Native input uses the same font and passive
+background geometry without replacing marked text. The inspector reflects selected boxed
+fills, describes different backgrounds explicitly and keeps Reset available for custom fills
+in mixed selections independently of the future default. The canvas and its input overlays stay
+clipped to the viewport at high zoom. Qualification is tracked in the text-appearance spec.
 
 ### FR-06 — Redaction
 

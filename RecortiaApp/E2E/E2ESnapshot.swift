@@ -3,7 +3,8 @@
     import SwiftUI
 
     /// Offscreen hosting and content-only rendering. Windows are parked far outside every display
-    /// and never ordered front; pixels come from `cacheDisplay`, never from a screen capture API.
+    /// while native-input cases may order their own window. Pixels come from `cacheDisplay`,
+    /// never from a screen capture API.
     @MainActor
     enum E2ESnapshot {
         /// Far outside any plausible desktop arrangement.

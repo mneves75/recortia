@@ -147,7 +147,10 @@ extension EditorModel {
                 guard let asset = document.assets[layer.assetID] else { continue }
                 union = union.union(layer.documentBounds(assetSize: asset.pixelSize))
             }
-            for annotation in document.annotations { union = union.union(EditorGeometry.frame(of: annotation)) }
+            for annotation in document.annotations {
+                guard let frame = EditorGeometry.frame(of: annotation) else { throw DocumentError.invalidGeometry }
+                union = union.union(frame)
+            }
             for callout in document.callouts {
                 if let frame = EditorGeometry.frame(of: .callout(callout.id), in: document) {
                     union = union.union(frame)
@@ -181,7 +184,11 @@ extension EditorModel {
             document.layers[index].placement.translation =
                 document.layers[index].placement.translation.offset(dx: dx, dy: dy)
         }
-        document.annotations = document.annotations.map { $0.translated(dx: dx, dy: dy) }
+        document.annotations = try document.annotations.map {
+            let translated = $0.translated(dx: dx, dy: dy)
+            try validateArrowCurve(translated)
+            return translated
+        }
         for index in document.masks.indices {
             document.masks[index].outputRect = document.masks[index].outputRect.offsetBy(dx: dx, dy: dy)
         }

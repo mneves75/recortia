@@ -1,5 +1,16 @@
 # Research sources and verification boundaries
 
+**2026-10-14 supplement:** [Reference inventory](docs/specs/feature-discovery/reference-matrix.md)
+records installed Shottr 1.9.3/build 137 and CleanShot X Setapp 5.0.1, current official feature
+pages, and read-only resource enumeration. Earlier research/version statements below are
+historical. Resource presence does not prove runtime behavior or proprietary algorithms.
+Current UI guidance: [Apple onboarding](https://developer.apple.com/design/human-interface-guidelines/onboarding),
+[Xcode 27.2 beta release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
+Repository-pinned Xcode 27.1 (27A9275), Swift 6.4 and macOS SDK 27.0 remain the local development
+gates. [Apple identifies 27A9275 as RC](https://developer.apple.com/news/releases/?id=10052026g):
+the existing pin therefore does not satisfy the specification's stable-toolchain release
+qualification. Xcode 27.2 beta (27B5028f) diagnostics supplement source checks only.
+
 **Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Shottr or Apple uses that implementation.
 
 No Shottr binary or Mac hardware was tested. Some Apple symbol-documentation pages exposed a JavaScript-only view; where that prevented inspection, readable official WWDC transcripts and Apple's support table were used instead. Exact symbol availability and build settings still require M0 verification in the selected installed SDK.
@@ -154,6 +165,11 @@ from activation. `activate()` is an asynchronous request and is not guaranteed t
 `fullScreenPrimary` and `fullScreenAuxiliary` are mutually exclusive. The editor remains an
 ordinary normal-level window; only region selection uses a nonactivating panel.
 
+Qualification refinement (2026-10-15): [occlusion state](https://developer.apple.com/documentation/appkit/nswindow/occlusionstate-swift.property)
+and [key ownership](https://developer.apple.com/documentation/appkit/nswindow/makekey())
+are separate observations. A known opaque overlap plus an observed foreground control makes
+the synthetic ordering assertion discriminating; it does not qualify physical input or Spaces.
+
 Sources: [cooperative activation](https://developer.apple.com/documentation/appkit/passing-control-from-one-app-to-another-with-cooperative-activation),
 [window ordering](https://developer.apple.com/documentation/appkit/nswindow/orderfrontregardless()),
 [fullscreen auxiliary](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/fullscreenauxiliary),
@@ -188,6 +204,56 @@ reused), so 0.10.2 constructs Settings in AppKit. Real-app checks supplement the
 Sources: [Developer Forums 826308](https://developer.apple.com/forums/thread/826308),
 [NSWindow.CollectionBehavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct),
 installed SDK header `AppKit.framework/Headers/NSWindow.h`.
+
+## Curved-arrow investigation (2026-10-14)
+
+[CleanShot features](https://cleanshot.com/features) identifies four arrow styles including
+curves. [Shottr's early-access notes](https://shottr.cc/kb/earlyaccessprogram) describe bending
+its arrow types. These sources establish the capability, not a proprietary representation or
+complete head-style parity. Recortia uses its own optional quadratic control.
+
+The selected SDK's CoreGraphics `CGPath.h` and Swift interface declare quadratic paths,
+stroked outlines and `CGPath.union(_:using:)` (macOS13+, compatible with target15). The
+implementation unions shaft/head ink before filling once, because independent raster tests
+found winding cancellation with compound filling and doubled alpha with separate fills.
+Local compilation/pixel/export evidence is recorded in the curved-arrow spec/evidence;
+minimum-OS runtime, performance and physical qualification remain separate.
+
+## Text appearance investigation (2026-10-14)
+
+CleanShot's [public feature page](https://cleanshot.com/features) and its linked text preview
+show distinct standard, rounded, monospaced, outlined and boxed treatments. Recortia's
+[text appearance spec](docs/specs/text-appearance/spec.md) implements its own seven appearances
+in two tickets; font-size presets alone would not deliver that capability.
+
+Public Apple [NSFontDescriptor.withDesign](https://developer.apple.com/documentation/appkit/nsfontdescriptor/withdesign(_:))
+resolves the rounded and monospaced system designs. A strict Swift 6 feasibility probe on the
+local macOS host resolved all three designs off the main thread, observed different metrics
+and equal monospaced i/W advances; this is local API evidence, not minimum-OS runtime coverage.
+The [NSTextContainer.containerSize](https://developer.apple.com/documentation/appkit/nstextcontainer/containersize)
+property provides the native editing width constraint. Its official Markdown documentation
+was read directly after the browser fetch could not retrieve it. No proprietary font or
+reference-product asset is included in Recortia.
+
+For ticket02, Apple's [Core Text stroke-width attribute](https://developer.apple.com/documentation/coretext/kctstrokewidthattributename)
+documents font-size percentages and negative values for stroke plus fill. That describes an
+API, not proof of exact joins, glyph bounds or color-emoji rendering; actual export controls
+are required. An isolated NSTextView probe compiled with strict Swift6 for macOS15 and ran on
+the local macOS27.2 host. Negative stroke/white-fill typing attributes survived plaintext
+Unicode insertion, font scaling and a programmatic marked-text lifecycle, retaining marked
+and selected ranges. Evidence: `.scratch/text-decoration-native-20261014/InputProbe.swift`
+and `input-probe.log`. This supports the planned native integration but does not qualify
+physical IME, a live rounded box or final export geometry.
+
+Wrapped native integration exposed a limitation that the small probe did not cover: TextKit 2
+could report multiline bounds while painting only its original line. The public
+[NSTextView initializer](https://developer.apple.com/documentation/appkit/nstextview/init(usingtextlayoutmanager:))
+selects the backing engine at creation (available since macOS12 in the installed SDK).
+Recortia selects TextKit 1 for this same plaintext widget; no runtime compatibility switch or
+custom input renderer is used. Apple's NSTextView documentation warns that accessing
+layoutManager on a TextKit 2 view switches it into compatibility mode, so diagnostic tests
+must inspect textLayoutManager first. Public layout invalidation was tested before this
+decision; failed and successful pixel evidence is recorded in the decoration review evidence.
 
 ## External assertions not made
 

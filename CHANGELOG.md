@@ -6,6 +6,80 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+Source candidate: 0.12.1/build20 (`0.12.1-beta1`, untagged). Native focus tests now own a
+separate synthetic foreground application and require positive activation and opaque-overlap
+controls. Both focused scenarios pass in English/Portuguese and reject omitted key/ordering
+calls. The stable unsigned gate passes683 tests/617 translations and full native EN/PT-BR
+passes47/47 per language (2222 assertions/138 PNGs each,zero skips). Fresh different-model
+source-blind acceptance passes3/3 focused scenarios per language, including50 overlay cycles.
+The installed local-test artifact remains0.12.0/build19; physical and release qualification
+remain separate.
+
+Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). Installed
+locally for owner-authorized testing on2026-10-15, preserving0.11.0/build18 without app launch
+or termination. No notarization or distribution is claimed. Stable Xcode 27.0
+(`27A266a`) passed the signed 683-test gate. Its installation-time native E2E passed45/47
+scenarios per language; the preserved focus/presentation failures do not become passes retroactively.
+The owner explicitly authorized this test installation despite those failures.
+Existing Xcodes and global toolchain selection are preserved.
+The controlled native-window investigation preserves earlier failed foreground controls.
+The resumed session supplies the required control; final acceptance is recorded separately. See
+`docs/specs/native-window-qualification/review-evidence.md`.
+
+### Added
+
+- Editable curved arrows with native Curved/Straight controls, a visible bend handle and
+  keyboard-editable Bend X/Y fields. Selected and future-arrow states remain distinct through
+  Undo; rapid numeric commits retain both coordinates. Shared painted geometry preserves
+  connected heads, stroke alpha, ink selection and sanitized PNG/JPEG exports. Unsupported
+  curves and invalid geometry/style changes refuse without replacing the valid annotation.
+  The 683-test development gate, exact-source stable CI and independent code/security and
+  bilingual native acceptance pass. Physical input and distribution remain unqualified.
+- Standard, rounded and monospaced text appearances with native selected-state controls,
+  independent undo, shared layout metrics and consistent native editing/export fonts. Native
+  editing now retains wrapping constraints at zoom.
+- Outlined, boxed, rounded-boxed and monospaced-boxed text, with shared padding/ink geometry,
+  explicit background color/alpha and Reset to automatic white. Native text input retains its
+  decoration and composition through zoom; final qualification is in progress.
+- Clip the canvas and its native text overlays to their viewport at high zoom, keeping image
+  content out of the object list and toolbar.
+
+- Explicit saved annotation colors: one local palette of up to 12 colors shared by editors,
+  with native Save/Apply/Remove controls, HEX labels and undoable application. Preference schema
+  2 preserves sealed legacy consent and protects incompatible future-schema bytes.
+
+- Straight-line annotations: distinct editable endpoints, stroke-only rendering and native
+  Line / D controls. Horizontal/vertical lines remain editable when their bounds change axis;
+  the native toolbar uses compact controls at the minimum editor width.
+- Color Picker sample sizes: 1×1 (the existing default), 3×3 and 5×5. Area samples use one
+  bounded sanitized tile off the UI actor, alpha-weighted encoded sRGB averaging, and stale
+  completion checks. Changing size, redacting or closing prevents copying an obsolete sample.
+- A seven-page, skippable first-run feature tour in English and Portuguese, explaining capture,
+  editing/redaction, recognition and pixel tools, composition/pins, exports and shortcuts.
+- **Feature Tour** in the menu-bar menu reopens the introduction without resetting preferences,
+  shortcut assignments or first-run completion. Navigation remains available when content scrolls
+  at the minimum window size; the tour follows the existing Space policy.
+- A versioned read-only Shottr/CleanShot resource inventory, explicit parity gaps and an
+  adversarial implementation plan. No proprietary assets or undocumented optimizations are copied.
+
+### Fixed
+
+- Wrapped native text paints all lines after resizing and zoom, with the current presentation
+  font restored when composition ends. Keep one native text engine selected at construction.
+- Boxed-text background controls show selected fills and mixed values; Reset remains available
+  for custom fills in mixed selections independently of the future-text default, including undo.
+
+- A text layout failure clears partial canvas pixels and reports the existing preview error;
+  exports propagate the typed failure. Imaging admits only the two reviewed public font-class
+  imports in its layout helper, with regression controls against broader side-effect APIs.
+
+- Applying a saved annotation color closes a pending color-well adjustment first, so Undo
+  restores the pre-application state without erasing that earlier gesture. A rejected unsaved
+  color leaves the ongoing gesture intact.
+
+- Onboarding now explains that automatic exports precede redaction and later edits cannot
+  recall earlier clipboard, file or remote copies.
+
 ## [0.11.0] - 2026-10-08
 
 Released as build 18 (notarized; Homebrew `mneves75/tap/recortia`). The physical AltTab, ⌘Tab

@@ -11,6 +11,118 @@
     enum EditorScenarios {
         static let accentedText = "Revisão: ação, coração ✅ 👋🏽\nSegunda linha — café"
 
+        static func savedColors(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let controller = try await E2EActions.captureRegion(
+                harness, CGRect(x: 180, y: 120, width: 200, height: 150), context)
+            let model = controller.model
+            controller.window?.orderFront(nil)
+            model.selectTool(.rectangle)
+            let root = try context.unwrap("editor content", controller.contentRoot)
+            let document = model.document
+            let preferences = harness.settings.preferences
+            defer { harness.settings.update { $0.annotationPalette = preferences.annotationPalette } }
+            let consentID = harness.settings.githubUploadConsentID
+            let snapshots = harness.exportGate.snapshotCount
+            let clipboardChanges = harness.clipboard.pasteboard.changeCount
+            let textClipboardChanges = harness.textPasteboard.changeCount
+            await E2EActions.snapshotEditor(controller, context, shot: "palette-before-save")
+            context.check("the saved palette starts empty", model.savedAnnotationColors.isEmpty)
+            for color in [RGBA.red, .black, .white] {
+                model.setStrokeColor(color)
+                await E2ESnapshot.settle(root)
+                try E2EAccessibilityControl.press("palette.save", in: root, context)
+                let saved = await E2EWait.until { model.savedAnnotationColors.contains(color) }
+                try context.require("the native Save Color button stores \(color.hex)", saved)
+            }
+            context.check("saved colors keep insertion order", model.savedAnnotationColors == [.red, .black, .white])
+            context.check("duplicate color cannot be saved", !model.canSaveStrokeColor)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "the native Save button is disabled for a duplicate",
+                try !E2EAccessibilityControl.isEnabled("palette.save", in: root, context))
+            context.check(
+                "disabled Save exposes its palette limit and duplicate explanation",
+                try E2EAccessibilityControl.text(.help, for: "palette.save", in: root, context)
+                    == String(
+                        localized: "Save up to 12 distinct annotation colors. Duplicate colors are already saved.",
+                        table: "Editor"))
+            for index in 1...9 {
+                let color = RGBA(r: UInt8(index * 20), g: 80, b: 120)
+                model.setStrokeColor(color)
+                await E2ESnapshot.settle(root)
+                try E2EAccessibilityControl.press("palette.save", in: root, context)
+                try context.require(
+                    "native Save fills palette slot \(index + 3)",
+                    await E2EWait.until { model.savedAnnotationColors.contains(color) })
+            }
+            model.setStrokeColor(.yellow)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "the native Save button is disabled for a full palette",
+                try !E2EAccessibilityControl.isEnabled("palette.save", in: root, context))
+            context.check(
+                "the native Remove button is disabled for an unsaved color",
+                try !E2EAccessibilityControl.isEnabled("palette.remove", in: root, context))
+            context.check(
+                "disabled Remove explains preservation of existing annotations",
+                try E2EAccessibilityControl.text(.help, for: "palette.remove", in: root, context)
+                    == String(
+                        localized:
+                            "Remove the current annotation color from saved colors. Existing annotations keep their color.",
+                        table: "Editor"))
+            model.setStrokeColor(.white)
+            context.check("saving leaves the document and undo unchanged", model.document == document && !model.canUndo)
+            context.check(
+                "saving preserves upload consent identity", harness.settings.githubUploadConsentID == consentID)
+            var expectedPreferences = preferences
+            expectedPreferences.annotationPalette = harness.settings.preferences.annotationPalette
+            context.check(
+                "saving only changes palette preferences", harness.settings.preferences == expectedPreferences)
+
+            E2EActions.drag(model, .rectangle, from: E2EActions.point(20, 20), to: E2EActions.point(120, 100))
+            let beforeApply = model.document
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.press("palette.apply.E53935", in: root, context)
+            let applied = await E2EWait.until { model.document.annotations.first?.style.stroke == .red }
+            try context.require("the native saved swatch applies its color", applied)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "the saved swatch exposes selected state without relying on color",
+                try E2EAccessibilityControl.text(.value, for: "palette.apply.E53935", in: root, context)
+                    == String(localized: "Selected", table: "Editor"))
+            model.undo()
+            context.check("applying a saved color is undoable", model.document == beforeApply)
+            model.redo()
+            context.check("redo reapplies the saved color", model.document.annotations.first?.style.stroke == .red)
+            let beforeRemoval = model.document
+            let remainingColors = model.savedAnnotationColors.filter { $0 != .red }
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.press("palette.remove", in: root, context)
+            try context.require(
+                "the native Remove Current Color button removes the saved color",
+                await E2EWait.until { model.savedAnnotationColors == remainingColors })
+            context.check("removing a saved color leaves annotations unchanged", model.document == beforeRemoval)
+            await E2EActions.snapshotEditor(controller, context, shot: "palette")
+            if let window = controller.window {
+                window.setContentSize(NSSize(width: 980, height: 560))
+                window.appearance = NSAppearance(named: .darkAqua)
+                await E2ESnapshot.settle(root)
+                await E2EActions.scrollInspector(controller, to: 0.15)
+                model.zoomToFit()
+                await E2ESnapshot.settle(root)
+                context.check("palette fits the minimum editor width", abs(root.bounds.width - 980) < 1)
+                context.snapshot(root, shot: "palette-compact-dark")
+            }
+            context.check("palette actions create no export snapshot", harness.exportGate.snapshotCount == snapshots)
+            context.check(
+                "palette actions leave the image clipboard unchanged",
+                harness.clipboard.pasteboard.changeCount == clipboardChanges)
+            context.check(
+                "palette actions leave the text clipboard unchanged",
+                harness.textPasteboard.changeCount == textClipboardChanges)
+            context.check("palette actions make no upload", harness.github.snapshots.isEmpty)
+        }
+
         /// Real canvas input with synthetic events; no global keyboard, TCC, or personal pixels.
         static func canvasFocus(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             for transition in [
@@ -165,9 +277,38 @@
             E2EActions.click(model, .step, at: p(1220, 120))
             E2EActions.click(model, .step, at: p(1220, 220))
 
+            let lineKey = try context.unwrap(
+                "Line shortcut event",
+                NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: controller.window?.windowNumber ?? 0, context: nil,
+                    characters: "d", charactersIgnoringModifiers: "d", isARepeat: false, keyCode: 2))
+            canvas.keyDown(with: lineKey)
+            context.check("D selects Line through the native canvas", model.tool == .line)
+            E2EActions.drag(model, .line, from: p(120, 740), to: p(700, 740))
+            let line = try context.unwrap("line annotation", model.document.annotations.last)
+            context.check(
+                "line keeps document-space endpoints without arrowheads",
+                line.kind == .line(start: p(120, 740), end: p(700, 740)))
+            context.check("line has two endpoint handles", model.selectionHandles.count == 2)
+            context.check(
+                "line has a native toolbar symbol",
+                NSImage(systemSymbolName: EditorStrings.symbol(EditorTool.line), accessibilityDescription: nil) != nil)
+            await E2EActions.snapshotEditor(controller, context, shot: "line")
+            if let window = controller.window, let root = controller.contentRoot {
+                window.setContentSize(NSSize(width: 980, height: 560))
+                await E2ESnapshot.settle(root)
+                context.check(
+                    "the full toolbar fits the minimum editor width",
+                    abs(root.bounds.width - 980) < 1, "actual content width: \(root.bounds.width)")
+                context.snapshot(root, shot: "line-compact")
+                window.setContentSize(E2ESnapshot.editorSize)
+                await E2ESnapshot.settle(root)
+            }
+
             let kinds = model.listItems.reversed().map(\.kind).filter { $0 != .image }
             let expectedKinds: [EditorItemKind] = [
-                .text, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .step, .step,
+                .text, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .step, .step, .line,
             ]
             context.check("one annotation per tool, in order", kinds == expectedKinds, "\(kinds.map(\.rawValue))")
             if case .text(let text)? = model.document.annotations.first?.kind {
@@ -183,7 +324,7 @@
             }
             context.check("numbered steps count 1, 2", steps == [1, 2], "\(steps)")
             context.check(
-                "each gesture is one undo step", model.session.undoCount == 8, "undo steps: \(model.session.undoCount)")
+                "each gesture is one undo step", model.session.undoCount == 9, "undo steps: \(model.session.undoCount)")
 
             // Select the rectangle by clicking its stroke with the select tool.
             E2EActions.click(model, .select, at: p(480, 200))
@@ -221,7 +362,7 @@
                 redos += 1
             }
             context.check("redo-all restores every annotation", model.document == final, "\(redos) redos")
-            context.check("undo and redo counts match", undos == redos && undos == 8, "\(undos)/\(redos)")
+            context.check("undo and redo counts match", undos == redos && undos == 9, "\(undos)/\(redos)")
 
             let layer = try context.unwrap("image layer", model.document.layers.first)
             let coalescer = ChangeCoalescer()
@@ -473,6 +614,33 @@
                 harness.textPasteboard.string(forType: .string) == "#1A2B3C",
                 String(describing: harness.textPasteboard.string(forType: .string)))
             await E2EActions.snapshotEditor(controller, context, shot: "color-picker")
+
+            // The neighborhood crosses a literal red/green fixture boundary: this distinguishes
+            // an average from the existing nearest-pixel result (#00FF00).
+            for (size, expected) in [(PixelSampleSize.threeByThree, "#55AA00"), (.fiveByFive, "#669900")] {
+                model.setColorSampleSize(size)
+                context.check("changing sample size clears the prior pick", model.pickedColor == nil)
+                E2EActions.click(model, .colorPicker, at: p(96, 48))
+                try context.require("area color sampling completes", await E2EWait.until { model.pickedColor != nil })
+                context.check(
+                    "\(size) averages encoded sRGB across the boundary", model.pickedColor?.hex == expected,
+                    "\(String(describing: model.pickedColor?.hex))")
+                context.check("area HEX copy succeeds", model.copyPickedColor())
+                context.check(
+                    "the private pasteboard holds the area result",
+                    harness.textPasteboard.string(forType: .string) == expected)
+                await E2EActions.snapshotEditor(controller, context, shot: "color-average-\(size.rawValue)")
+            }
+            E2EActions.drag(model, .redact, from: p(90, 40), to: p(104, 56))
+            context.check("redaction clears the picked area color", model.pickedColor == nil)
+            context.check("the old area color cannot be copied", !model.copyPickedColor())
+            try context.require("the sanitized preview refreshes", await E2EWait.until { model.isBaseCurrent })
+            E2EActions.click(model, .colorPicker, at: p(96, 48))
+            try context.require("masked area sampling completes", await E2EWait.until { model.pickedColor != nil })
+            context.check(
+                "area sampling reads the solid mask, not the underlying colors", model.pickedColor?.hex == "#000000",
+                "\(String(describing: model.pickedColor?.hex))")
+            await E2EActions.snapshotEditor(controller, context, shot: "color-average-redacted")
         }
 
         static func composition(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

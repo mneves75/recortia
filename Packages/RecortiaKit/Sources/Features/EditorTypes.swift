@@ -13,6 +13,7 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
     case crop
     case text
     case arrow
+    case line
     case rectangle
     case ellipse
     case freehand
@@ -38,6 +39,7 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
         case .crop: "c"
         case .text: "t"
         case .arrow: "a"
+        case .line: "d"
         case .rectangle: "r"
         case .ellipse: "o"
         case .freehand: "p"
@@ -68,7 +70,7 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
     /// Tools whose drag creates a new object in the document.
     public var createsObject: Bool {
         switch self {
-        case .text, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
+        case .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
             .spotlight, .magnifier:
             true
         case .select, .hand, .crop, .loupe, .ruler, .colorPicker:
@@ -79,7 +81,7 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
     /// Whether the tool uses stroke/fill/width/opacity style controls.
     public var usesStyle: Bool {
         switch self {
-        case .text, .arrow, .rectangle, .ellipse, .freehand, .highlighter, .step, .select: true
+        case .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .select: true
         default: false
         }
     }
@@ -100,6 +102,7 @@ public enum EditorItemID: Hashable, Sendable {
 public enum EditorItemKind: String, Hashable, Sendable, CaseIterable {
     case text
     case arrow
+    case line
     case rectangle
     case ellipse
     case freehand
@@ -120,6 +123,7 @@ public enum EditorItemKind: String, Hashable, Sendable, CaseIterable {
         switch kind {
         case .text: self = .text
         case .arrow: self = .arrow
+        case .line: self = .line
         case .rectangle: self = .rectangle
         case .ellipse: self = .ellipse
         case .freehand: self = .freehand
@@ -141,9 +145,9 @@ public struct EditorListItem: Hashable, Sendable, Identifiable {
     public let stepNumber: Int?
 }
 
-/// Selection handles; `start`/`end` are arrow endpoints.
+/// Selection handles; `bend` lies halfway along a curved arrow.
 public enum EditorHandle: Hashable, Sendable, CaseIterable {
-    case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left, start, end
+    case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left, start, end, bend
 
     public var isCorner: Bool { [.topLeft, .topRight, .bottomRight, .bottomLeft].contains(self) }
 }
@@ -176,15 +180,23 @@ public struct EditorStyle: Hashable, Sendable {
     public var lineWidth: Double
     public var opacity: Double
     public var fontSize: Double
+    public var textAppearance: TextAppearance
+    /// Local future boxed-text fill; nil means automatic white. Shape/plain-text fill is separate.
+    public var textBackgroundColor: RGBA?
+    public var curvedArrows: Bool
 
     public init(
-        stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24
+        stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24,
+        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false
     ) {
         self.stroke = stroke
         self.fill = fill
         self.lineWidth = lineWidth
         self.opacity = opacity
         self.fontSize = fontSize
+        self.textAppearance = textAppearance
+        self.textBackgroundColor = textBackgroundColor
+        self.curvedArrows = curvedArrows
     }
 
     public static let lineWidthRange: ClosedRange<Double> = 1...40
@@ -193,6 +205,12 @@ public struct EditorStyle: Hashable, Sendable {
 
     var annotationStyle: Annotation.Style {
         Annotation.Style(stroke: stroke, fill: fill, lineWidth: lineWidth, opacity: opacity)
+    }
+
+    var textAnnotationStyle: Annotation.Style {
+        var result = annotationStyle
+        if textAppearance.isBoxed { result.fill = textBackgroundColor }
+        return result
     }
 
     /// Highlighter strokes are wide and translucent, derived from the same color.
@@ -219,8 +237,10 @@ public struct EditorTextEditing: Hashable, Sendable {
     public let origin: Point<DocumentSpace>
     public let initialString: String
     public let fontSize: Double
-    public let color: RGBA
+    public let annotationStyle: Annotation.Style
+    public var color: RGBA { annotationStyle.stroke }
     public let maxWidth: Double?
+    public let appearance: TextAppearance
 }
 
 // MARK: - Recognition, pixel tools, notices
@@ -306,6 +326,7 @@ public enum EditorNotice: Hashable, Sendable {
     /// The sanitized preview is not current yet; try again in a moment.
     case previewNotReady
     case previewFailed
+    case arrowGeometryRefused
     case redactionRefused
     case importFailed(ImportFailure)
     case pinned

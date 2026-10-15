@@ -20,14 +20,35 @@ ACCEPTANCE_TESTS.md IO-01/EDIT-02. Keep `import-admission` and `canvas-focus` sy
 E2E regressions in the stable gate evidence; they do not replace live IME/VoiceOver/TCC
 qualification.
 
+Text appearance uses stateless `Imaging.TextLayout` for native fonts, selection metrics and
+exports. Domain remains free of AppKit. Imaging permits only the reviewed exact `NSFont` and
+`NSFontDescriptor` class imports in `TextLayout.swift`; keep the side-effect scanner's planted
+controls. Layout errors propagate explicitly and the native canvas clears partial pixels.
+Keep `text-font-designs`, `text-decorations` and `text-layout-failure` in bilingual synthetic E2E; these do not
+qualify physical text composition or VoiceOver.
+Measure decorated text with its actual Annotation.Style. Native input uses the same font and
+passive background renderer; keep marked ranges intact and the entire canvas/input clipped to
+its viewport. Boxed background controls derive selected values, identify mixed fills and keep
+Reset eligible for selected explicit fills independently of the local future-text default.
+
 Region overlays use nonactivating panels so a shortcut does not activate an editor in another
 Space. CAP-01 synthetic evidence must verify an external foreground application and keyboard
 ownership; physical shortcut/display/Space qualification remains separate. NET-01 pending
 uploads must retain their original consent identity across every asynchronous batch step.
 
+Curved arrows retain the existing arrow kind with an optional control; `ArrowCurve` maps the
+visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. Keep the
+`curved-arrows` bilingual native gate: real numeric commits, mixed/future defaults, zoom pixels
+and marked-input refusal. Geometry/style admission must precede document/history/default
+mutations. This feature does not qualify CAP-01 or add reference-product head-style parity.
+
 Capture completion must exercise the real editor presentation path (`editor-presentation`),
 not only the offscreen editor host. Keep editor visibility independent of cooperative app
 activation; lay out the hosted canvas before assigning its responder.
+The E2E foreground host must establish its own active/key/visible state before
+focus or ordering assertions qualify. Missing readiness is a failed control, never a silent
+skip or a product diagnosis. Keep cooperative activation separate from inactive presentation;
+see `docs/specs/native-window-qualification/implementation-plan.md` for the controls and evidence.
 
 Every window Recortia shows needs a Space policy from `SpacePolicy` (FR-01). Ordinary windows
 (editor, Settings, onboarding, scrolling review, alerts) follow the active Space with fullscreen-auxiliary
@@ -70,6 +91,14 @@ Use stable Xcode 27 / bundled Swift 6.4 / Swift 6 mode as the researched baselin
 
 ## Work unit and completion discipline
 
+Feature discovery (2026-10-14): specs and tickets for this owner-authorized work are tracked in
+`docs/specs/feature-discovery/` (not disposable scratch). Review the reference matrix when a
+capability changes; keep the tour truthful about existing features and qualification gaps. The
+tour requests no permission and starts no export. Replay preserves completion and preferences;
+closing an unfinished first run does not finish it. Keep the bilingual `onboarding` real-control
+E2E gate; `SpacePolicy` and `AppPresence` still own its ordinary window. Current comparison
+metadata does not verify proprietary internals or authorize protected recording/cloud behavior.
+
 Implement one task or coherent small group from the approved milestone. State the requirement IDs, expected behavior, failure behavior, and test cases before editing. Prefer a failing regression test when fixing a bug. Build the smallest end-to-end vertical slice before adding extra abstraction.
 
 Treat BACKLOG.json as a planned task contract. Change a task from not_started only when work actually begins. completed requires attached verification, not just source files. Use blocked or awaiting_manual_validation when appropriate. Never mark physical-device checks passed from a mock.
@@ -102,7 +131,9 @@ No credentials or real screenshots in source control, logs, prompts, issues, or 
 
 ## Verification commands and evidence
 
-The repository gates (stable Xcode via `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`):
+The repository gates default to the exact reviewed `stable_xcode_baseline` in `TOOLCHAIN.json`
+(Xcode 27.0, 27A266a). Select the installed stable toolchain with `DEVELOPER_DIR`; the path name
+`Xcode.app` does not prove its release channel:
 
 ```sh
 scripts/check.sh              # doctor/isolation regressions, format lint, project freshness, tests, signed Debug build
@@ -112,6 +143,12 @@ scripts/release.sh            # owner-only, on a v<version>[-betaN] tag: fresh c
 scripts/release.sh --dry-run  # untagged local build of the same pipeline without gate or notarization
 swift test --package-path Packages/RecortiaKit --filter <Test>   # one test or suite
 ```
+
+The recorded local Xcode 27.1 RC (27A9275) is development-only. Run its gate explicitly with
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned`.
+Doctor labels that evidence as development, rejects beta/unknown builds, and never treats it as
+stable qualification. `scripts/release.sh` calls `doctor.sh --release` before creating artifacts,
+including in `--dry-run`; inherited development mode cannot bypass the stable baseline.
 
 Record the exact commands used. UI tests need a suitable GUI session and test configuration; a successful unsigned compilation is not a signing, TCC, UI, or release test. Use separate unsigned PR checks and protected signed release checks.
 

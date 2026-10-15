@@ -141,9 +141,10 @@ struct QRDecodingTests {
         #expect(files.count >= 3)
         for file in files {
             let source = try String(contentsOf: file, encoding: .utf8)
+            let relativePath = "Sources/Imaging/\(file.lastPathComponent)"
             #expect(
-                ForbiddenAPIScan.findings(in: source).isEmpty,
-                "\(file.lastPathComponent): \(ForbiddenAPIScan.findings(in: source))")
+                ForbiddenAPIScan.findings(in: source, relativePath: relativePath).isEmpty,
+                "\(file.lastPathComponent): \(ForbiddenAPIScan.findings(in: source, relativePath: relativePath))")
         }
         // Failing control: the scan must catch each planted call, or a clean result means nothing.
         let planted = [
@@ -152,9 +153,32 @@ struct QRDecodingTests {
             "UIApplication.shared.open(url)", "LSOpenCFURLRef(url, nil)",
             "posix_spawn(&pid, path, nil, nil, argv, nil)",
             "import AppKit", "WKWebView(frame: .zero)", "NSURLConnection(request: r, delegate: nil)",
+            #"let u = "https://example.invalid"; NSWorkspace.shared.open(u)"#,
         ]
         for snippet in planted {
             #expect(!ForbiddenAPIScan.findings(in: "func f() {\n    \(snippet)\n}").isEmpty, "scan missed \(snippet)")
+        }
+        let fontImports = "import class AppKit.NSFont\nimport class AppKit.NSFontDescriptor"
+        let fontPath = "Sources/Imaging/TextLayout.swift"
+        #expect(ForbiddenAPIScan.findings(in: fontImports, relativePath: fontPath).isEmpty)
+        #expect(!ForbiddenAPIScan.findings(in: fontImports).isEmpty)
+        for wrongPath in [
+            "TextLayout.swift", "Sources/Imaging/Other.swift", "Other/Sources/Imaging/TextLayout.swift",
+            "Sources/Imaging/TextLayout.swift.bak", "./Sources/Imaging/TextLayout.swift",
+        ] {
+            #expect(!ForbiddenAPIScan.findings(in: fontImports, relativePath: wrongPath).isEmpty)
+        }
+        for rejected in [
+            "import AppKit", "import class AppKit.NSWorkspace", "import class AppKit.NSFontManager",
+            "import class AppKit.NSTextView", "import struct AppKit.NSFont", "import class AppKit.NSFont.Other",
+            "@preconcurrency import class AppKit.NSFont", "import class AppKit.NSFont; import AppKit",
+            "import class AppKit.NSFont; NSWorkspace.shared.open(url)", "import class\nAppKit.NSFont",
+            "import /* gap */ class AppKit.NSFont", fontImports + "\nNSWorkspace.shared.open(url)",
+            "import class AppKit.NSFont // approved?", " import class AppKit.NSFont",
+            "import class AppKit.NSFont\nimport class AppKit.NSFont", "importclass AppKit.NSFont",
+            "// AppKit", "let value = AppKit.NSFontManager.shared",
+        ] {
+            #expect(!ForbiddenAPIScan.findings(in: rejected, relativePath: fontPath).isEmpty, "missed \(rejected)")
         }
         #expect(
             ForbiddenAPIScan.findings(
@@ -172,11 +196,20 @@ enum ForbiddenAPIScan {
         #"\bWKWebView\b"#, #"\bNetwork\.\b|\bimport\s+Network\b"#,
     ]
 
-    static func findings(in source: String) -> [String] {
-        let code = source.split(separator: "\n", omittingEmptySubsequences: false)
+    /// An accidental-regression guard, not a sandbox or a proof against deliberate evasion.
+    static func findings(in source: String, relativePath: String? = nil) -> [String] {
+        var permittedImports: Set<String> =
+            relativePath == "Sources/Imaging/TextLayout.swift"
+            ? ["import class AppKit.NSFont", "import class AppKit.NSFontDescriptor"] : []
+        let remaining = source.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { permittedImports.remove(String($0)) == nil }
+            .joined(separator: "\n")
+        if remaining.range(of: #"\bAppKit\b"#, options: .regularExpression) != nil { return ["AppKit"] }
+        let code = remaining.split(separator: "\n", omittingEmptySubsequences: false)
             .map { line -> Substring in
                 guard let range = line.range(of: "//") else { return line }
-                return line[..<range.lowerBound]
+                let prefix = line[..<range.lowerBound]
+                return prefix.contains("\"") ? line : prefix
             }
             .joined(separator: "\n")
         return patterns.filter { code.range(of: $0, options: .regularExpression) != nil }

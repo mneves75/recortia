@@ -5,43 +5,35 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
-    "version": "0.11.0",
-    "build": 18,
-    "date": "2026-10-08",
-    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
-    "status": "released",
-    "verification": "scripts/check.sh passed at 4a32aed and in the release pipeline at c346017; bilingual E2E 42/42; independent reviewer and adversarial reviewer findings fixed; mneves-verify (gpt-6-astra) at 728688d: criteria 1-8 and 10 PASS, criterion 9 (physical desktop) BLOCKED, not run by owner's choice.",
+    "version": "0.12.1-beta1",
+    "app_version": "0.12.1",
+    "build": 20,
+    "date": "2026-10-15",
+    "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines, saved colors, text appearances and curved arrows; broader reference parity remains unfinished.",
+    "status": "source_accepted_physical_release_unqualified",
+    "verification": "0.12.1/build20: stable Xcode27.0/27A266a unsigned gate passes683 tests,617 translations and both app builds. Full native EN/PT-BR passes47/47 per language,2222 assertions/138 PNGs each,zero skips. Omitting makeKey or orderFrontRegardless produces the expected native regression failures; restored production code is unchanged. Fresh different-model source-blind acceptance passes all10 criteria,3/3 focused scenarios and265 assertions per language,including50 overlay cycles. Exact-head CI remains a separate merge gate. Earlier FP-034 code/security/native acceptance remains in its own verdict; historical CAP-01 and text-font CI incidents are not retroactively erased.",
     "evidence_paths": [
-      ".scratch/check-3.log"
+      "docs/specs/native-window-qualification/acceptance-verdict.md",
+      "docs/specs/native-window-qualification/review-evidence.md",
+      "docs/specs/curved-arrows/acceptance-verdict.md",
+      "docs/specs/feature-discovery/acceptance-verdict.md",
+      "docs/specs/feature-discovery/review-evidence.md",
+      ".scratch/feature-discovery-final-check.log",
+      ".scratch/onboarding-replay-green.log",
+      ".scratch/area-color-sampling/15-binding-green.log",
+      ".scratch/e2e/20261014-005643/en/report.json",
+      ".scratch/e2e/20261014-005643/pt-BR/report.json",
+      ".scratch/e2e/20261014-005816/en/report.json",
+      ".scratch/e2e/20261014-005816/pt-BR/report.json"
     ],
     "limitations": [
-      "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
-      "Physical Space and AltTab checks of the build have not run.",
-      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`).",
-      "Physical AltTab (pins, editor), ⌘Tab and fullscreen-Space checks were not run for this release."
-    ],
-    "local_installation": {
-      "date": "2026-10-07",
-      "commit": "5b4c1ef",
-      "build_command": "scripts/release.sh --dry-run (fresh worktree, Release archive, developer-id export; no gate, no notarization)",
-      "checks": "release-script checks passed (codesign --verify --deep --strict, version 0.11.0 (17), distribution entitlements with access group Q96FUTC5G8.dev.mvneves.Recortia, embedded provisioning profile, Hardened Runtime, no test-only markers); installed bundle identical to the export (diff -r); spctl accepted (Developer ID); launched as UIElement with no window.",
-      "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
-      "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
-      "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
-    },
-    "production_release": {
-      "tag": "v0.11.0",
-      "commit": "c34601790c9715a6aafce3cd3d7c9a448ef66e0d",
-      "build": 18,
-      "url": "https://github.com/mneves75/recortia/releases/tag/v0.11.0",
-      "dmg_sha256": "423bb95e39c818edaeef9eb89241034e091d1472a6aa51f7df61618c811e9fb4",
-      "notarization": [
-        "app b5a2f65d-52f1-4ad3-8cd6-5157dd5cdf46 Accepted",
-        "dmg 98db4d7b-c91c-4a80-8264-9a6e6888af27 Accepted"
-      ],
-      "homebrew": "mneves75/homebrew-tap 0f4daa0 recortia: 0.11.0",
-      "installed": "2026-10-08 via brew upgrade --cask recortia on the maintainer's Mac: 0.11.0 (18), strict signature, stapled, Notarized Developer ID; opening it showed Settings and made it Foreground."
-    }
+      "The earlier0.12.0 signed stable gate passed683 tests/617 translations, but its installation-time native E2E passed45/47 per language with focus/presentation failures. Preserve that installed artifact and its historical evidence separately from0.12.1 source acceptance. See docs/specs/curved-arrows/local-installation.md.",
+      "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
+      "Earlier2026-10-15 graphical-session controls failed readiness. The resumed session passes both focus scenarios bilingually and rejects omitted key/ordering calls; version0.12.1/build20 final synthetic native acceptance passes. Preserve the earlier failures in docs/specs/native-window-qualification/acceptance-verdict.md.",
+      "Developer ID archive/export from cf87796 with stable27A266a installed locally on2026-10-15 after explicit owner authorization despite current native FAILs; previous0.11.0/build18 preserved without app launch/termination. No new tag, merge, notarization or public distribution. Xcode installation is recorded separately.",
+      "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
+      "Saved-color native interaction independently passes. Historical capture-focus failure remains unattributed; physical keyboard/IME/VoiceOver/Spaces and production qualification remain separate and unrun."
+    ]
   },
   "previous_release_0_10_1": {
     "version": "0.10.1",
@@ -110,6 +102,26 @@
     ]
   },
   "current_local_installation": {
+    "candidate": "0.12.0 local test (untagged)",
+    "app_version": "0.12.0",
+    "build": 19,
+    "date": "2026-10-15",
+    "source_commit": "cf877963a49fdef461a07cad068514c282fc5ed5",
+    "installed_path": "/Applications/Recortia.app",
+    "backup_path": ".scratch/local-install-readiness-20261015/previous-0.11.0-build18.app",
+    "executable_sha256": "c4aecb8207593e0b80afc30a3312683644116a4fc963829600b4067c8556664b",
+    "installed_equals_export": true,
+    "backup_equals_previous": true,
+    "launched": false,
+    "notarized": false,
+    "authorization": "Explicit owner sim to local test installation despite current capture-focus and editor-presentation FAILs; preserve previous app and no launch/restart.",
+    "evidence_path": ".scratch/local-install-readiness-20261015/installation.json",
+    "independent_verdict": "PASS (authorized local test installation only)",
+    "independent_verification": "Fresh different-model verifier confirmed all59 installed entries equal export and all30 backup entries equal prior0.11.0/build18; both strict signatures pass. Independent215-sample process audit spans replacement, no Recortia PID observed, maximum gap0.438s; finite-sampling limit stated. No app launch/termination. Current native readiness remains FAIL.",
+    "independent_evidence_path": ".scratch/local-install-verifier-20261015/installation-verdict.md",
+    "qualification": "Artifact independently PASS; current native readiness FAIL (45/47 per language). Local test installation does not qualify release or physical behavior."
+  },
+  "previous_local_installation_build12": {
     "candidate": "0.10.0-beta3",
     "app_version": "0.10.0",
     "build": 12,
@@ -1108,6 +1120,123 @@
       ],
       "completion_contract": "report.json medians under 50 ms for each window in EN and PT-BR; audit has no open finding.",
       "status_note": "Owner chose to record and defer the editor and first-open Settings latency; onboarding and pins are borderline (they exceed 50 ms in some runs) and are not covered by that decision. A fix needs pre-built windows (a separate approved plan)."
+    },
+    {
+      "id": "FP-029",
+      "title": "Replayable first-run feature discovery",
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-14_no_interview",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-007"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-01",
+        "PERM-01"
+      ],
+      "scope": "Seven native localized pages, skip/back/continue/done, real controller replay, preserved completion/preferences/consent and no permission/export side effects.",
+      "deliverables": [
+        "docs/specs/feature-discovery/spec.md",
+        "real-control bilingual onboarding E2E"
+      ],
+      "completion_contract": "Pinned development gate and independent onboarding acceptance pass; stable release/physical qualification remains explicit.",
+      "evidence": [
+        ".scratch/e2e/20261014-005643/en/report.json",
+        ".scratch/e2e/20261014-005643/pt-BR/report.json"
+      ]
+    },
+    {
+      "id": "FP-030",
+      "title": "Bounded average-area sRGB color picking",
+      "milestone": "M5",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-019"
+      ],
+      "requirement_ids": [
+        "FR-11"
+      ],
+      "acceptance_test_ids": [
+        "PIX-01",
+        "RED-02",
+        "RED-03"
+      ],
+      "scope": "1x1/3x3/5x5 samples from sanitized current base; encoded premultiplied sRGB mean off MainActor, bounded allocation, cancellation and stale-result rejection.",
+      "deliverables": [
+        "docs/specs/area-color-sampling/spec.md",
+        "sampler/editor regressions",
+        "native sample-size picker and bilingual E2E"
+      ],
+      "completion_contract": "Literal-color/alpha/edge/stale/close tests and integrated E2E pass; independent privacy acceptance attached.",
+      "evidence": [
+        ".scratch/area-color-sampling/06-sampler-final.log",
+        ".scratch/area-color-sampling/15-binding-green.log",
+        ".scratch/e2e/20261014-005643/en/report.json",
+        ".scratch/e2e/20261014-005643/pt-BR/report.json"
+      ]
+    },
+    {
+      "id": "FP-031",
+      "title": "Editable straight-line annotations",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Distinct line endpoints, Shift45 constraint, stroke-only shared renderer and native EN/PT-BR toolbar/shortcut D; no new external data paths.",
+      "deliverables": ["docs/specs/straight-line/spec.md", "geometry/model/render regressions", "native bilingual annotations E2E"],
+      "completion_contract": "Source-red regressions, focused suites, full development gate and independent code acceptance; stable/physical qualification remains explicit.",
+      "evidence": ["docs/specs/straight-line/review-evidence.md", "docs/specs/straight-line/acceptance-verdict.md", ".scratch/continuation-corrected-check.log"]
+    },
+    {
+      "id": "FP-032",
+      "title": "Explicit shared saved annotation colors",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05", "FR-14"],
+      "acceptance_test_ids": ["EDIT-01", "PRIV-01", "NET-01"],
+      "scope": "Bounded12-color sealed palette, explicit native Save/Apply/Remove, undoable stroke application; no automatic history or system favorites.",
+      "deliverables": ["docs/specs/saved-colors/spec.md", "domain/settings/editor regressions", "native bilingual saved-colors E2E"],
+      "completion_contract": "Package and development gates, independently reviewed source and native enabled/disabled control acceptance; current AX blocker cannot be waived.",
+      "evidence": ["docs/specs/saved-colors/review-evidence.md", ".scratch/saved-colors-20261014/backend-evidence.md"]
+    },
+    {
+      "id": "FP-033",
+      "title": "Editable text font designs and decorations",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Seven independently implemented appearances in two vertical tickets: three public system font designs, then four decorations. Preserve native text editing, wrapping, undo and secure exports.",
+      "deliverables": ["docs/specs/text-appearance/spec.md", "model/render/native-control regressions"],
+      "completion_contract": "Both tickets require source-red regressions, measured geometry, development gates and fresh independent code/native acceptance. Physical and stable release qualification remain separate.",
+      "evidence": [".scratch/text-font-feasibility-20261014/evidence.md", "docs/specs/text-appearance/acceptance-verdict.md", "docs/specs/text-appearance/review-evidence.md"],
+      "progress_note": "All seven styles independently accepted at development scope on2df6387 after one raster-evidence correction/fresh full reverify. Gate656tests/604translations and stable CI pass; independent native run has122images/1948assertions. Expanded full native run failed initial capture-focus key ownership: English45/46, Portuguese46/46, before text scenarios. Isolated6/6, adjacent-overlay6/6, complete-prefix3/3,50-cycle and a later full-English46/46 diagnostic run did not reproduce it. No production fix or host attribution is established. Integration/physical focus qualification remains pending; source work may continue without releasing this candidate."
+    },
+    {
+      "id": "FP-034",
+      "title": "Editable curved arrows",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "completed",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Optional quadratic control on arrows, shared painted geometry, creation/default, visible bend handle and native numeric fields, atomic undo/refusal and sanitized exports. Other arrowhead styles remain gaps.",
+      "deliverables": ["docs/specs/curved-arrows/spec.md", "docs/specs/curved-arrows/implementation-plan.md", "model/geometry/export/native regressions"],
+      "completion_contract": "Observed source-red tracer regressions, head-junction feasibility, development gates, two-axis review and fresh independent code/native acceptance; no full-parity or physical qualification claim.",
+      "evidence": ["docs/specs/curved-arrows/acceptance-verdict.md", "docs/specs/curved-arrows/review-evidence.md", ".scratch/curved-arrows-backend-20261014/evidence.md"],
+      "progress_note": "Development acceptance complete on3db91b7:683-test full gate,617 translations,both unsigned builds,stable CI38660460749,different-model code/security67 tests,source-blind bilingual native criteria PASS,and final full47/47 per language (2217 assertions/138 images each). All five confirmed review findings fixed with fresh regressions. Physical input/VoiceOver/Spaces and release are excluded; historical CAP-01 remains unattributed and current activation-control skips do not qualify it. Completed ticket removed; approved spec and acceptance retained."
     }
   ],
   "deferred_scope": [
@@ -1170,6 +1299,45 @@
       ],
       "homebrew": "mneves75/homebrew-tap d0f179b recortia: 0.10.2",
       "installed": "2026-10-04 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.2 (16), strict signature, stapled, Notarized Developer ID. Installed-app check over a fullscreen host Space: 0/2 Space switches (fresh and existing Settings), valid baselines; reopening shows Settings without opening the menu first (R3-F9 disproved)."
+    }
+  },
+  "previous_release_0_11_0": {
+    "version": "0.11.0",
+    "build": 18,
+    "date": "2026-10-08",
+    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
+    "status": "released",
+    "verification": "scripts/check.sh passed at 4a32aed and in the release pipeline at c346017; bilingual E2E 42/42; independent reviewer and adversarial reviewer findings fixed; mneves-verify (gpt-6-astra) at 728688d: criteria 1-8 and 10 PASS, criterion 9 (physical desktop) BLOCKED, not run by owner's choice.",
+    "evidence_paths": [
+      ".scratch/check-3.log"
+    ],
+    "limitations": [
+      "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
+      "Physical Space and AltTab checks of the build have not run.",
+      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`).",
+      "Physical AltTab (pins, editor), ⌘Tab and fullscreen-Space checks were not run for this release."
+    ],
+    "local_installation": {
+      "date": "2026-10-07",
+      "commit": "5b4c1ef",
+      "build_command": "scripts/release.sh --dry-run (fresh worktree, Release archive, developer-id export; no gate, no notarization)",
+      "checks": "release-script checks passed (codesign --verify --deep --strict, version 0.11.0 (17), distribution entitlements with access group Q96FUTC5G8.dev.mvneves.Recortia, embedded provisioning profile, Hardened Runtime, no test-only markers); installed bundle identical to the export (diff -r); spctl accepted (Developer ID); launched as UIElement with no window.",
+      "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
+      "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
+      "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
+    },
+    "production_release": {
+      "tag": "v0.11.0",
+      "commit": "c34601790c9715a6aafce3cd3d7c9a448ef66e0d",
+      "build": 18,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.11.0",
+      "dmg_sha256": "423bb95e39c818edaeef9eb89241034e091d1472a6aa51f7df61618c811e9fb4",
+      "notarization": [
+        "app b5a2f65d-52f1-4ad3-8cd6-5157dd5cdf46 Accepted",
+        "dmg 98db4d7b-c91c-4a80-8264-9a6e6888af27 Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap 0f4daa0 recortia: 0.11.0",
+      "installed": "2026-10-08 via brew upgrade --cask recortia on the maintainer's Mac: 0.11.0 (18), strict signature, stapled, Notarized Developer ID; opening it showed Settings and made it Foreground."
     }
   }
 }

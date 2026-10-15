@@ -125,7 +125,7 @@ final class EditorHarness {
     let drag = FakeDragSink()
     let folders = FakeSaveFolders()
     let clock = ManualClock()
-    let settings = SettingsStore(storage: MemoryPreferenceStorage())
+    let settings: SettingsStore
     let recognizer = EditorFakeTextRecognition()
     let qr = EditorFakeQRDecoder()
     let assets = FakeAssetService()
@@ -136,14 +136,19 @@ final class EditorHarness {
     let pins: PinsModel
     let model: EditorModel
 
-    init(session: DocumentSession = EditorFixtures.session(), configure: (EditorHarness) -> Void = { _ in }) {
+    init(
+        session: DocumentSession = EditorFixtures.session(), settings: SettingsStore? = nil,
+        configure: (EditorHarness) -> Void = { _ in }
+    ) {
+        self.settings = settings ?? SettingsStore(storage: MemoryPreferenceStorage())
         export = ExportCoordinator(
             exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: settings)
-        pins = PinsModel(renderer: renderer, settings: settings, export: export)
+            settings: self.settings)
+        pins = PinsModel(renderer: renderer, settings: self.settings, export: export)
         let environment = EditorEnvironment(
             renderer: renderer, export: export, folders: folders, textRecognition: recognizer, qrDecoder: qr,
-            assets: assets, input: input, pins: pins, textClipboard: textClipboard, links: links, settings: settings)
+            assets: assets, input: input, pins: pins, textClipboard: textClipboard, links: links,
+            settings: self.settings)
         // Configure before the model's first render request.
         model = EditorModel(session: session, environment: environment)
         configure(self)

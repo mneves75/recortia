@@ -38,6 +38,9 @@
             E2EScenario(
                 id: "capture-focus", title: "Shortcut selection preserves the current application and Space",
                 run: CaptureVisibilityScenarios.shortcutFocus),
+            E2EScenario(
+                id: "capture-focus-repeat", title: "Repeated shortcut overlays own the keyboard",
+                run: CaptureVisibilityScenarios.repeatedShortcutFocus, runsOnlyWhenNamed: true),
             E2EScenario(id: "space-window", title: "Space switches to a window", run: ShortcutScenarios.spaceForWindow),
             E2EScenario(id: "window-chooser", title: "Window chooser", run: CaptureScenarios.windowChooser),
             E2EScenario(id: "countdown", title: "Delayed capture countdown", run: CaptureScenarios.countdown),
@@ -52,6 +55,18 @@
                 id: "capture-admission", title: "One capture session across modes",
                 run: CaptureVisibilityScenarios.admission),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
+            E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
+            E2EScenario(
+                id: "saved-colors", title: "Explicit saved annotation colors", run: EditorScenarios.savedColors),
+            E2EScenario(
+                id: "text-font-designs", title: "Native editable text font designs",
+                run: TextAppearanceScenarios.fontDesigns),
+            E2EScenario(
+                id: "text-layout-failure", title: "Text render failure clears partial canvas output",
+                run: TextAppearanceScenarios.layoutFailure),
+            E2EScenario(
+                id: "text-decorations", title: "Native outlined and boxed text",
+                run: TextDecorationScenarios.decorations),
             E2EScenario(
                 id: "canvas-focus", title: "Space pan ends when keyboard ownership changes",
                 run: EditorScenarios.canvasFocus),

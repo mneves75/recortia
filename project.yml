@@ -19,8 +19,8 @@ settings:
     DEAD_CODE_STRIPPING: YES
     DEVELOPMENT_TEAM: Q96FUTC5G8
     CODE_SIGN_STYLE: Manual
-    MARKETING_VERSION: 0.11.0
-    CURRENT_PROJECT_VERSION: 18
+    MARKETING_VERSION: 0.12.1
+    CURRENT_PROJECT_VERSION: 20
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     SWIFT_EMIT_LOC_STRINGS: YES
     ENABLE_HARDENED_RUNTIME: YES
@@ -88,6 +88,8 @@ targets:
     platform: macOS
     sources:
       - path: RecortiaApp
+        excludes:
+          - "E2E/ForegroundHost/**"
     info:
       path: RecortiaApp/Info.plist
       properties: *appInfo
@@ -117,6 +119,26 @@ targets:
       - package: KeyboardShortcuts
       - package: RecortiaKit
         product: RecortiaFixtures
+      - target: RecortiaE2EForegroundHost
+        link: false
+        embed: false
+  RecortiaE2EForegroundHost:
+    type: application
+    platform: macOS
+    sources:
+      - path: RecortiaApp/E2E/ForegroundHost
+      - path: RecortiaApp/E2E/E2EForegroundState.swift
+      - path: RecortiaApp/App/SpacePolicy.swift
+      - path: RecortiaApp/App/AppPresence.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia.E2E.ForegroundHost
+        PRODUCT_NAME: RecortiaE2EForegroundHost
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_FOREGROUND_HOST
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: NO
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
   RecortiaUITests:
     type: bundle.ui-testing
     platform: macOS

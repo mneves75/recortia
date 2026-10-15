@@ -8,8 +8,9 @@ and `BACKLOG.json`, and the matching requirements and cases in `SPEC.md` and `AC
 ## Commands
 
 Every command needs the stable toolchain: `xcode-select` on the maintainer's Mac points to
-Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`
-(`scripts/*.sh` default to it). Xcode-beta MCP diagnostics may supplement a requested review;
+Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer`
+and `RECORTIA_TOOLCHAIN_MODE=stable` on this host. Script defaults alone do not select the
+verified stable installation. Xcode-beta MCP diagnostics may supplement a requested review;
 beta compilation does not replace the stable-toolchain release gates.
 
 - Full gate: `scripts/check.sh` (doctor, E2E-isolation and parsed Release-entitlement regression controls, strict `swift format lint`, generated-project freshness,
@@ -49,11 +50,19 @@ beta compilation does not replace the stable-toolchain release gates.
   resample or effect (RED suite with planted controls); async results are accepted only while
   request identity, revision, and privacy epoch still match.
 - Contracts between modules: `docs/architecture/module-contracts.md`. Decisions: `docs/adr/`.
+- Text appearance: `Imaging.TextLayout` shares public system fonts/geometry across selection,
+  native editing and export. Only its exact two font-class AppKit imports are allowed in Imaging.
+  Propagate typed text-layout failures; clear partial native canvas output before reporting.
+  Measure with the actual annotation style and use the shared passive background during input.
+  Keep `text-font-designs`, `text-decorations` and `text-layout-failure` in bilingual E2E;
+  AGENTS.md owns the clipping, composition and mixed-background control invariants.
 - Region-selection panels receive keyboard focus without activating the app; synthetic
   foreground/activation checks supplement the physical shortcut/Space matrix (CAP-01).
 - Capture completion shows an ordinary fullscreen-auxiliary editor even when cooperative
   activation is delayed or declined. Layout precedes canvas focus. Keep `editor-presentation`
   in bilingual native E2E; its synthetic window state does not qualify physical Spaces.
+  The owned-foreground control must pass before native qualification; preserve historical
+  failures and current acceptance separately in `docs/specs/native-window-qualification/`.
 - Window presence (ADR-007): `RecortiaApp/App/AppPresence.swift` makes the app regular while a
   switchable window (normal/modal level, shown or minimized; pins included) exists and accessory
   otherwise. Present ordinary windows through `AppPresence.activate()`; pins are normal-level
@@ -86,6 +95,14 @@ beta compilation does not replace the stable-toolchain release gates.
 - `docs/handoff/` is the frozen original handoff; do not update it.
 
 ## Agent skills
+
+Feature discovery specs/tickets are tracked in `docs/specs/feature-discovery/`; the canonical
+contract in AGENTS.md defines replay, real-control E2E and reference-evidence boundaries. New
+feature specs stay in tracked `docs/specs/<feature>/`; GitHub continues to handle bug triage.
+
+FP-034 curved-arrow implementation/qualification is tracked in `docs/specs/curved-arrows/`.
+Follow its canonical geometry and native-gate rules in AGENTS.md. Preserve the separately
+unresolved capture-focus FAIL; passing curve checks does not qualify release or installation.
 
 ### Issue tracker
 

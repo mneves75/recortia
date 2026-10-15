@@ -9,9 +9,30 @@ import Foundation
 /// The context must already map document space with a top-left origin and y growing downward.
 /// Font smoothing is disabled while drawing so the output does not depend on the display.
 public enum AnnotationRenderer {
-    public static func draw(_ annotations: [Annotation], in context: CGContext) {
-        for annotation in annotations where isDrawable(annotation) {
-            draw(annotation, in: context)
+    /// Paints only the passive decoration, in document space, with the annotation's opacity.
+    public static func drawTextBackground(
+        _ text: Annotation.TextContent, style: Annotation.Style, in context: CGContext
+    ) throws(RenderError) {
+        let layout: TextLayout.Operation
+        do { layout = try TextLayout.operation(for: text, style: style) } catch {
+            throw .textLayoutFailed(error)
+        }
+        guard !text.string.isEmpty, style.opacity > 0 else { return }
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.setShouldAntialias(true)
+        context.setAlpha(min(style.opacity, 1))
+        drawTextBackground(text, style: style, metrics: layout.metrics, in: context)
+    }
+
+    public static func draw(_ annotations: [Annotation], in context: CGContext) throws(RenderError) {
+        for annotation in annotations {
+            guard isDrawable(annotation) else {
+                if case .text = annotation.kind { throw .textLayoutFailed(.invalidGeometry) }
+                if case .arrow(_, _, .some) = annotation.kind { throw .invalidGeometry }
+                continue
+            }
+            try draw(annotation, in: context)
         }
     }
 
@@ -26,7 +47,10 @@ public enum AnnotationRenderer {
                 return false
             }
             points = [text.origin]
-        case .arrow(let start, let end):
+        case .arrow(let start, let end, let control):
+            if control != nil, (try? ArrowLayout.make(for: annotation)) == nil { return false }
+            points = [start, end] + (control.map { [$0] } ?? [])
+        case .line(let start, let end):
             points = [start, end]
         case .rectangle(let rect), .ellipse(let rect):
             guard rect.size.width.isFinite, rect.size.height.isFinite, rect.width >= 0, rect.height >= 0 else {
@@ -41,7 +65,15 @@ public enum AnnotationRenderer {
         return points.allSatisfy(\.isFinite)
     }
 
-    private static func draw(_ annotation: Annotation, in context: CGContext) {
+    private static func draw(_ annotation: Annotation, in context: CGContext) throws(RenderError) {
+        let textLayout: TextLayout.Operation?
+        if case .text(let text) = annotation.kind {
+            do { textLayout = try TextLayout.operation(for: text, style: annotation.style) } catch {
+                throw .textLayoutFailed(error)
+            }
+        } else {
+            textLayout = nil
+        }
         let style = annotation.style
         let opacity = min(max(style.opacity, 0), 1)
         guard opacity > 0 else { return }
@@ -55,6 +87,7 @@ public enum AnnotationRenderer {
             context.setAlpha(opacity)
             context.beginTransparencyLayer(auxiliaryInfo: nil)
         }
+        defer { if layered { context.endTransparencyLayer() } }
         let stroke = style.stroke.cgColor
         context.setStrokeColor(stroke)
         context.setFillColor(stroke)
@@ -64,9 +97,21 @@ public enum AnnotationRenderer {
 
         switch annotation.kind {
         case .text(let text):
-            drawText(text, style: style, in: context)
-        case .arrow(let start, let end):
-            drawArrow(from: start.cg, to: end.cg, lineWidth: style.lineWidth, in: context)
+            if !text.string.isEmpty, let textLayout {
+                drawTextBackground(text, style: style, metrics: textLayout.metrics, in: context)
+                textLayout.draw(in: context)
+            }
+        case .arrow(let start, let end, let control):
+            if control != nil {
+                let layout = try ArrowLayout.make(for: annotation)
+                context.addPath(layout.inkPath)
+                context.fillPath()
+            } else {
+                drawArrow(from: start.cg, to: end.cg, lineWidth: style.lineWidth, in: context)
+            }
+        case .line(let start, let end):
+            context.addLines(between: [start.cg, end.cg])
+            context.strokePath()
         case .rectangle(let rect):
             drawShape(CGPath(rect: rect.cg, transform: nil), style: style, in: context)
         case .ellipse(let rect):
@@ -77,7 +122,24 @@ public enum AnnotationRenderer {
             drawStep(center: center.cg, number: number, radius: annotation.stepRadius, style: style, in: context)
         }
 
-        if layered { context.endTransparencyLayer() }
+    }
+
+    private static func drawTextBackground(
+        _ text: Annotation.TextContent, style: Annotation.Style, metrics: TextLayoutMetrics, in context: CGContext
+    ) {
+        guard let background = metrics.backgroundFrame,
+            let fill = style.fill ?? (text.resolvedAppearance.isBoxed ? .white : nil)
+        else { return }
+        context.setFillColor(fill.cgColor)
+        if metrics.cornerRadius > 0 {
+            context.addPath(
+                CGPath(
+                    roundedRect: background.cg, cornerWidth: metrics.cornerRadius,
+                    cornerHeight: metrics.cornerRadius, transform: nil))
+            context.fillPath()
+        } else {
+            context.fill(background.cg)
+        }
     }
 
     private static func drawShape(_ path: CGPath, style: Annotation.Style, in context: CGContext) {
@@ -157,41 +219,6 @@ public enum AnnotationRenderer {
         return CTLineCreateWithAttributedString(attributed)
     }
 
-    /// Multiline Core Text layout: Unicode, emoji (font fallback), and bidirectional text are
-    /// handled by the typesetter; alignment is natural for the paragraph's direction.
-    private static func drawText(_ text: Annotation.TextContent, style: Annotation.Style, in context: CGContext) {
-        guard !text.string.isEmpty else { return }
-        let font =
-            CTFontCreateUIFontForLanguage(.system, text.fontSize, nil)
-            ?? CTFontCreateWithName("Helvetica" as CFString, text.fontSize, nil)
-        let attributes: [CFString: Any] = [
-            kCTFontAttributeName: font, kCTForegroundColorAttributeName: style.stroke.cgColor,
-        ]
-        guard let attributed = CFAttributedStringCreate(nil, text.string as CFString, attributes as CFDictionary)
-        else { return }
-        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
-        let unbounded = CGFloat.greatestFiniteMagnitude
-        let constraint = CGSize(width: text.maxWidth.map { CGFloat($0) } ?? unbounded, height: unbounded)
-        let suggested = CTFramesetterSuggestFrameSizeWithConstraints(
-            framesetter, CFRange(location: 0, length: 0), nil, constraint, nil)
-        let width = text.maxWidth.map { CGFloat($0) } ?? (suggested.width.rounded(.up) + 1)
-        let height = suggested.height.rounded(.up) + 1
-        guard width.isFinite, height.isFinite, width > 0, height > 0 else { return }
-
-        if let fill = style.fill {
-            context.setFillColor(fill.cgColor)
-            context.fill(CGRect(x: text.origin.x, y: text.origin.y, width: width, height: height))
-        }
-        let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: height), transform: nil)
-        let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
-        context.saveGState()
-        // Core Text lays out with y up; flip locally so the first line sits at `origin`.
-        context.translateBy(x: text.origin.x, y: text.origin.y + height)
-        context.scaleBy(x: 1, y: -1)
-        context.textMatrix = .identity
-        CTFrameDraw(frame, context)
-        context.restoreGState()
-    }
 }
 
 extension Point {

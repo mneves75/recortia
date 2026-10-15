@@ -1,6 +1,238 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Applies to selected arrows and new arrows in this editor.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Applies to selected arrows and new arrows in this editor." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplica-se às setas selecionadas e às novas setas neste editor." } }
+      }
+    },
+    "Bend X": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bend X" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "X da curvatura" } }
+      }
+    },
+    "Bend Y": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bend Y" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Y da curvatura" } }
+      }
+    },
+    "Straight": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Straight" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Reta" } }
+      }
+    },
+    "Curved": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Curved" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Curva" } }
+      }
+    },
+    "Mixed arrow shapes": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed arrow shapes" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Formatos de seta diferentes" } }
+      }
+    },
+    "New arrows: Curved": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New arrows: Curved" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Novas setas: curvas" } }
+      }
+    },
+    "New arrows: Straight": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New arrows: Straight" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Novas setas: retas" } }
+      }
+    },
+    "Finish editing text before changing the arrow.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Finish editing text before changing the arrow." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Conclua a edição do texto antes de alterar a seta." } }
+      }
+    },
+    "That arrow change could not be applied. Try another bend, endpoint or line width.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "That arrow change could not be applied. Try another bend, endpoint or line width." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Não foi possível aplicar essa alteração à seta. Tente outra curvatura, extremidade ou espessura." } }
+      }
+    },
+    "Mixed backgrounds": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed backgrounds" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Fundos diferentes" } }
+      }
+    },
+    "Background Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Background Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor do fundo" } }
+      }
+    },
+    "Reset Background": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset Background" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Redefinir fundo" } }
+      }
+    },
+    "Reset restores white. A transparent color keeps the background clear.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset restores white. A transparent color keeps the background clear." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Redefinir restaura o branco. Uma cor transparente mantém o fundo sem preenchimento." } }
+      }
+    },
+    "Outlined": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Outlined" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Contornado" } }
+      }
+    },
+    "Boxed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Boxed" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Com caixa" } }
+      }
+    },
+    "Rounded Box": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rounded Box" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Caixa arredondada" } }
+      }
+    },
+    "Monospaced Box": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Monospaced Box" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Caixa monoespaçada" } }
+      }
+    },
+    "Text Style": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Text Style" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Estilo do texto" } }
+      }
+    },
+    "Standard": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Standard" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Padrão" } }
+      }
+    },
+    "Rounded": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rounded" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Arredondado" } }
+      }
+    },
+    "Monospaced": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Monospaced" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Monoespaçado" } }
+      }
+    },
+    "Finish editing text before changing its style.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Finish editing text before changing its style." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Conclua a edição do texto antes de alterar seu estilo." } }
+      }
+    },
+    "Remove Current Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Current Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor atual" } }
+      }
+    },
+    "Remove the current annotation color from saved colors. Existing annotations keep their color.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove the current annotation color from saved colors. Existing annotations keep their color." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remova a cor atual da paleta. As anotações existentes mantêm sua cor." } }
+      }
+    },
+    "Save Current Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save Current Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar cor atual" } }
+      }
+    },
+    "Save up to 12 distinct annotation colors. Duplicate colors are already saved.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save up to 12 distinct annotation colors. Duplicate colors are already saved." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salve até 12 cores de anotação diferentes. Cores repetidas já estão salvas." } }
+      }
+    },
+    "Saved colors are unavailable while newer preferences are protected.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saved colors are unavailable while newer preferences are protected." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "As cores salvas ficam indisponíveis enquanto as preferências de uma versão mais recente estão protegidas." } }
+      }
+    },
+    "Save a color to reuse it in any editor. Only colors you choose are stored.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save a color to reuse it in any editor. Only colors you choose are stored." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salve uma cor para reutilizá-la em qualquer editor. Apenas as cores que você escolher serão armazenadas." } }
+      }
+    },
+    "Selected": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Selected" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Selecionada" } }
+      }
+    },
+    "Remove Saved Color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Saved Color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor salva" } }
+      }
+    },
+    "Apply this annotation color. Use the context menu to remove it.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply this annotation color. Use the context menu to remove it." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplique esta cor à anotação. Use o menu de contexto para removê-la." } }
+      }
+    },
+    "Saved Colors": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saved Colors" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cores salvas" } }
+      }
+    },
+    "1×1 — Single pixel": {
+      "comment": "Color-picker menu choice. The sample is one image pixel.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "1×1 — Single pixel" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "1×1 — Pixel único" } }
+      }
+    },
+    "3×3 — Average": {
+      "comment": "Color-picker menu choice. Average a square of up to nine image pixels.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "3×3 — Average" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "3×3 — Média" } }
+      }
+    },
+    "5×5 — Average": {
+      "comment": "Color-picker menu choice. Average a square of up to 25 image pixels.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "5×5 — Average" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "5×5 — Média" } }
+      }
+    },
+    "Sample area": {
+      "comment": "Label of the color-picker neighborhood-size menu.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sample area" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Área da amostra" } }
+      }
+    },
+    "Area picks average sRGB colors and alpha. Samples stop at image edges.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Area picks average sRGB colors and alpha. Samples stop at image edges." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "A amostragem de área calcula a média das cores sRGB e do alfa. As amostras respeitam as bordas da imagem." } }
+      }
+    },
     "Another image is still being opened. Try again when it finishes.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Another image is still being opened. Try again when it finishes." } },
@@ -1611,6 +1843,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Manter quebras de linha"
+          }
+        }
+      }
+    },
+    "Line": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Line"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linha"
           }
         }
       }

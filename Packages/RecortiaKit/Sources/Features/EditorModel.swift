@@ -48,6 +48,11 @@ public final class EditorModel {
     // Pixel tools (EditorModel+PixelTools.swift)
     public internal(set) var inspection: EditorColorSample?
     public internal(set) var pickedColor: EditorColorSample?
+    var storedColorSampleSize: PixelSampleSize = .singlePixel
+    public var colorSampleSize: PixelSampleSize {
+        get { storedColorSampleSize }
+        set { setColorSampleSize(newValue) }
+    }
     public internal(set) var ruler: EditorMeasurement?
 
     @ObservationIgnored public let environment: EditorEnvironment
@@ -66,6 +71,8 @@ public final class EditorModel {
     @ObservationIgnored var recognitionRequest: UUID?
     @ObservationIgnored var recognizedResult: OCRResult?
     @ObservationIgnored var qrRequest: UUID?
+    @ObservationIgnored var colorPickTask: Task<Void, Never>?
+    @ObservationIgnored var colorPickRequest: UUID?
 
     enum Gesture {
         case idle
@@ -122,6 +129,16 @@ public final class EditorModel {
     public func setLineWidth(_ width: Double) {
         guard width.isFinite else { return }
         let value = min(max(width, EditorStyle.lineWidthRange.lowerBound), EditorStyle.lineWidthRange.upperBound)
+        do {
+            for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
+                var proposed = annotation
+                proposed.style.lineWidth = value
+                try Self.validateArrowCurve(proposed)
+            }
+        } catch {
+            post(.arrowGeometryRefused)
+            return
+        }
         style.lineWidth = value
         restyleSelection("Line Width") { $0.lineWidth = value }
     }
@@ -210,7 +227,11 @@ public final class EditorModel {
         do {
             try session.perform(label, change)
         } catch {
-            if error is DocumentError { post(.redactionRefused) }
+            if error is ArrowGeometryFailure {
+                post(.arrowGeometryRefused)
+            } else if error is DocumentError {
+                post(.redactionRefused)
+            }
             return false
         }
         didChange(from: before, epoch: epoch)
@@ -229,11 +250,13 @@ public final class EditorModel {
     func didChange(from before: Document, epoch: UInt64) {
         noteUndoEvictionIfNeeded()
         guard session.document != before || session.privacyEpoch != epoch else { return }
+        invalidateColorPick()
         releaseUnreachableAssets()
         // A drag offered for the previous state must not deliver it (RED-03, EXP-02).
         environment.export.invalidatePendingDrag(documentID: session.document.id)
         let existing = Set(allItemIDs)
         selection = selection.filter(existing.contains)
+        loadSelectedTextAppearance()
         if session.privacyEpoch != epoch {
             privacyEpochChanged()
         } else if invalidateCompletedRecognition() {
@@ -372,7 +395,11 @@ public final class EditorModel {
         case .annotation(let id):
             guard let annotation = d.annotations.first(where: { $0.id == id }) else { return [] }
             switch annotation.kind {
-            case .arrow(let start, let end): return [(.start, start), (.end, end)]
+            case .arrow(let start, let end, let control):
+                let endpoints: [(EditorHandle, Point<DocumentSpace>)] = [(.start, start), (.end, end)]
+                guard let control else { return endpoints }
+                return endpoints + [(.bend, ArrowCurve.bend(start: start, end: end, control: control))]
+            case .line(let start, let end): return [(.start, start), (.end, end)]
             case .step: return []
             case .text: return EditorGeometry.handles(for: frame, cornersOnly: true)
             default: return EditorGeometry.handles(for: frame, cornersOnly: false)
@@ -399,15 +426,17 @@ public final class EditorModel {
         } else {
             selection = [item]
         }
+        loadSelectedTextAppearance()
     }
 
     /// Replaces the selection (object list); unknown items are ignored.
     public func setSelection(_ items: Set<EditorItemID>) {
         let existing = Set(allItemIDs)
         selection = items.filter(existing.contains)
+        loadSelectedTextAppearance()
     }
 
-    public func selectAll() { selection = Set(allItemIDs) }
+    public func selectAll() { setSelection(Set(allItemIDs)) }
 
     public func clearSelection() { selection = [] }
 
@@ -448,6 +477,7 @@ public final class EditorModel {
             }
             for annotation in document.annotations where items.contains(.annotation(annotation.id)) {
                 var copy = annotation.translated(dx: offset, dy: offset)
+                try Self.validateArrowCurve(copy)
                 copy.id = AnnotationID()
                 document.annotations.append(copy)
                 created.insert(.annotation(copy.id))
@@ -542,7 +572,9 @@ public final class EditorModel {
             document.obfuscations[index].rect = document.obfuscations[index].rect.offsetBy(dx: dx, dy: dy)
         }
         for index in document.annotations.indices where set.contains(.annotation(document.annotations[index].id)) {
-            document.annotations[index] = document.annotations[index].translated(dx: dx, dy: dy)
+            let moved = document.annotations[index].translated(dx: dx, dy: dy)
+            try validateArrowCurve(moved)
+            document.annotations[index] = moved
         }
         for index in document.callouts.indices where set.contains(.callout(document.callouts[index].id)) {
             document.callouts[index].kind = translated(
@@ -566,14 +598,31 @@ public final class EditorModel {
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).
     /// Image layers keep their aspect ratio: the width decides the uniform scale.
     static func setFrame(_ document: inout Document, item: EditorItemID, to rect: Rect<DocumentSpace>) throws {
-        guard EditorGeometry.isFinite(rect), rect.width > 0, rect.height > 0 else {
+        guard EditorGeometry.isFinite(rect), rect.width >= 0, rect.height >= 0 else {
             throw DocumentError.invalidGeometry
+        }
+        if rect.width == 0 || rect.height == 0 {
+            guard rect.width > 0 || rect.height > 0, case .annotation(let id) = item,
+                let annotation = document.annotations.first(where: { $0.id == id })
+            else { throw DocumentError.invalidGeometry }
+            switch annotation.kind {
+            case .line, .arrow: break
+            default: throw DocumentError.invalidGeometry
+            }
         }
         switch item {
         case .annotation(let id):
             guard let index = document.annotations.firstIndex(where: { $0.id == id }) else { return }
             let annotation = document.annotations[index]
-            document.annotations[index] = annotation.resized(from: EditorGeometry.frame(of: annotation), to: rect)
+            guard let original = EditorGeometry.frame(of: annotation) else { throw DocumentError.invalidGeometry }
+            let resized = annotation.resized(from: original, to: rect)
+            guard EditorGeometry.frame(of: resized) != nil else { throw DocumentError.invalidGeometry }
+            if case .line(let start, let end) = resized.kind {
+                guard start.isFinite, end.isFinite, EditorGeometry.isFinite(resized.bounds) else {
+                    throw DocumentError.invalidGeometry
+                }
+            }
+            document.annotations[index] = resized
         case .layer(let id):
             guard let index = document.layers.firstIndex(where: { $0.id == id }),
                 let asset = document.assets[document.layers[index].assetID]
@@ -604,7 +653,21 @@ public final class EditorModel {
 
     /// Keyboard-editable geometry for the inspector (UX-01).
     public func setFrame(_ rect: Rect<DocumentSpace>, for item: EditorItemID) {
-        edit("Set Frame") { try Self.setFrame(&$0, item: item, to: rect) }
+        let isCurve: Bool
+        if case .annotation(let id) = item,
+            let annotation = document.annotations.first(where: { $0.id == id }),
+            case .arrow(_, _, .some) = annotation.kind
+        {
+            isCurve = true
+        } else {
+            isCurve = false
+        }
+        edit("Set Frame") { document in
+            do { try Self.setFrame(&document, item: item, to: rect) } catch {
+                if isCurve { throw ArrowGeometryFailure.invalid }
+                throw error
+            }
+        }
     }
 
     /// Moves a magnifier's source rectangle (what it magnifies) without moving the callout.

@@ -134,7 +134,7 @@ struct SettingsStoreTests {
 @Suite("OnboardingModel (FR-01)")
 @MainActor
 struct OnboardingModelTests {
-    @Test("First launch walks local processing → shortcuts → done and persists completion")
+    @Test("First launch walks every feature page before persisting completion")
     func flow() {
         let storage = MemoryPreferenceStorage()
         let settings = SettingsStore(storage: storage)
@@ -143,11 +143,17 @@ struct OnboardingModelTests {
         #expect(model.step == .localProcessing)
         #expect(model.canGoBack == false)
         model.next()
-        #expect(model.step == .shortcuts)
+        #expect(String(describing: model.step) == "capture")
         #expect(model.canGoBack)
         model.back()
         #expect(model.step == .localProcessing)
-        model.next()
+        let pages = ["capture", "editing", "recognition", "composition", "sharing", "shortcuts"]
+        for page in pages {
+            model.next()
+            #expect(String(describing: model.step) == page)
+            #expect(model.shouldPresent)
+            #expect(!settings.preferences.hasCompletedOnboarding)
+        }
         model.next()
         #expect(model.step == .done)
         #expect(settings.preferences.hasCompletedOnboarding)
@@ -161,5 +167,52 @@ struct OnboardingModelTests {
         model.finish()
         #expect(model.step == .done)
         #expect(model.shouldPresent == false)
+    }
+
+    @Test("Replaying a completed tour preserves preferences and login completion")
+    func replay() {
+        let storage = MemoryPreferenceStorage()
+        let settings = SettingsStore(storage: storage)
+        settings.update {
+            $0.autoCopy = true
+            $0.autoSave = true
+            $0.automaticScrollingEnabled = true
+            $0.captureDelaySeconds = 4
+            $0.githubUpload = GitHubUploadPreferences(
+                destination: GitHubDestination(owner: "fixture", repository: "private-captures"), automatic: true)
+        }
+        let model = OnboardingModel(settings: settings)
+        model.finish()
+        let before = settings.preferences
+        model.beginTour()
+        #expect(model.step == .localProcessing)
+        #expect(!model.shouldPresent)
+        #expect(settings.preferences == before)
+        model.back()
+        #expect(model.step == .localProcessing)
+        model.next()
+        model.back()
+        #expect(model.step == .localProcessing)
+        model.finish()
+        #expect(settings.preferences == before)
+        #expect(!OnboardingModel(settings: SettingsStore(storage: storage)).shouldPresent)
+        model.next()
+        model.back()
+        #expect(model.step == .done)
+    }
+
+    @Test("Skipping from any feature page completes the tour without enabling side effects")
+    func skipEveryPage() {
+        for page in 0..<7 {
+            let storage = MemoryPreferenceStorage()
+            let settings = SettingsStore(storage: storage)
+            let model = OnboardingModel(settings: settings)
+            for _ in 0..<page { model.next() }
+            model.finish()
+            #expect(!OnboardingModel(settings: SettingsStore(storage: storage)).shouldPresent)
+            var expected = Preferences()
+            expected.hasCompletedOnboarding = true
+            #expect(settings.preferences == expected)
+        }
     }
 }

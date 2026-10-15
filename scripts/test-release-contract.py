@@ -25,6 +25,54 @@ class ReleaseContractTests(unittest.TestCase):
     app: pathlib.Path
     checkout: pathlib.Path
 
+    def test_release_entry_point_requires_stable_toolchain_before_git_or_artifacts(self) -> None:
+        scratch = ROOT / ".scratch"
+        scratch.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as directory:
+            root = pathlib.Path(directory)
+            (root / "scripts").mkdir()
+            for name in ("release.sh", "doctor.sh"):
+                script = root / "scripts" / name
+                script.write_bytes((ROOT / "scripts" / name).read_bytes())
+                script.chmod(0o755)
+            (root / "TOOLCHAIN.json").write_bytes((ROOT / "TOOLCHAIN.json").read_bytes())
+            binaries = root / "bin"
+            binaries.mkdir()
+            for name, source in {
+                "git": '#!/bin/sh\necho "git boundary reached (mode=$RECORTIA_TOOLCHAIN_MODE)" >&2\nexit 87\n',
+                "xcodegen": "#!/bin/sh\nexit 0\n",
+                "xcrun": "#!/bin/sh\necho 'Swift fixture compiler'\n",
+            }.items():
+                executable = binaries / name
+                executable.write_text(source)
+                executable.chmod(0o755)
+            (binaries / "python3").symlink_to(sys.executable)
+            xcodebuild = binaries / "xcodebuild"
+            xcodebuild.write_text("#!/bin/sh\nprintf 'Xcode 27.1\\nBuild version 27A9275\\n'\n")
+            xcodebuild.chmod(0o755)
+            environment = {
+                "PATH": f"{binaries}:/usr/bin:/bin",
+                "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer",
+                "RECORTIA_TOOLCHAIN_MODE": "development",
+            }
+            for arguments in ((), ("--dry-run",)):
+                with self.subTest(arguments=arguments):
+                    result = subprocess.run(
+                        ["/bin/zsh", str(root / "scripts/release.sh"), *arguments],
+                        cwd=root, env=environment, capture_output=True, text=True, timeout=15,
+                    )
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("stable baseline", result.stderr)
+                    self.assertNotIn("git boundary reached", result.stderr)
+                    self.assertFalse((root / ".build").exists())
+            xcodebuild.write_text("#!/bin/sh\nprintf 'Xcode 27.0\\nBuild version 27A266a\\n'\n")
+            control = subprocess.run(
+                ["/bin/zsh", str(root / "scripts/release.sh"), "--dry-run"],
+                cwd=root, env=environment, capture_output=True, text=True, timeout=15,
+            )
+            self.assertIn("stable baseline", control.stdout)
+            self.assertIn("git boundary reached (mode=stable)", control.stderr)
+
     def test_manifest_source_is_frozen_before_build(self) -> None:
         script = RELEASE.read_text()
         for expected in (

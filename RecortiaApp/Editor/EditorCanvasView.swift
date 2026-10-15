@@ -17,6 +17,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     private var loop: ObservationLoop?
     private var textView: EditorTextView?
+    private var textDecorationView: EditorTextDecorationView?
     private var editingSnapshot: EditorTextEditing?
     private var isSpaceDown = false
     private var panAnchor: NSPoint?
@@ -27,6 +28,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     init(model: EditorModel) {
         self.model = model
         super.init(frame: .zero)
+        clipsToBounds = true
         setAccessibilityRole(.group)
         setAccessibilityLabel(String(localized: "Canvas", table: "Editor"))
         setAccessibilityHelp(
@@ -202,6 +204,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         let canvas = viewport.viewRect(shownRect).cg
         drawCheckerboard(in: canvas, context)
 
+        var renderFailed = false
         context.saveGState()
         context.translateBy(x: viewport.offset.x, y: viewport.offset.y)
         context.scaleBy(x: viewport.zoom, y: viewport.zoom)
@@ -217,11 +220,25 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             }
             var draftAnnotation: Annotation?
             if case .annotation(let annotation) = model.draft { draftAnnotation = annotation }
-            EditorCanvasRenderer.draw(
-                drawn, base: model.baseImage, calloutBase: model.calloutBaseImage, draft: draftAnnotation,
-                baseInterpolation: model.zoomPercent >= 100 ? .none : .high, in: context)
+            do {
+                try EditorCanvasRenderer.draw(
+                    drawn, base: model.baseImage, calloutBase: model.calloutBaseImage, draft: draftAnnotation,
+                    baseInterpolation: model.zoomPercent >= 100 ? .none : .high, in: context)
+            } catch {
+                renderFailed = true
+            }
         }
         context.restoreGState()
+
+        if renderFailed {
+            context.saveGState()
+            context.setBlendMode(.copy)
+            context.setFillColor(NSColor.underPageBackgroundColor.cgColor)
+            context.fill(bounds)
+            context.restoreGState()
+            model.reportCanvasRenderFailure()
+            return
+        }
 
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()
@@ -627,13 +644,18 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             if let textView {
                 self.textView = nil
                 editingSnapshot = nil
+                textDecorationView?.removeFromSuperview()
+                textDecorationView = nil
                 textView.removeFromSuperview()
             }
             return
         }
         if textView == nil || editingSnapshot != editing {
             textView?.removeFromSuperview()
-            let view = EditorTextView(frame: .zero)
+            textDecorationView?.removeFromSuperview()
+            textDecorationView = nil
+            // Fix the native engine at creation: TextKit 2 left resized wrapped glyph surfaces stale.
+            let view = EditorTextView(usingTextLayoutManager: false)
             view.delegate = self
             view.string = editing.initialString
             view.isRichText = false
@@ -651,9 +673,34 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             view.setAccessibilityLabel(String(localized: "Text annotation", table: "Editor"))
             view.onFinish = { [weak self] in self?.finishTextEditing(commit: true) }
             addSubview(view)
+            if editing.appearance.isBoxed {
+                let decoration = EditorTextDecorationView(frame: .zero)
+                decoration.onRenderFailure = { [weak self] in
+                    self?.textView?.isHidden = true
+                    self?.textDecorationView?.isHidden = true
+                    self?.model.reportCanvasRenderFailure()
+                }
+                addSubview(decoration, positioned: .below, relativeTo: view)
+                textDecorationView = decoration
+            }
             textView = view
             editingSnapshot = editing
             positionTextView()
+            if editing.appearance == .outlined, !view.isHidden, let font = view.font {
+                let color = editing.color
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: font,
+                    .foregroundColor: NSColor.white,
+                    .strokeColor: NSColor(
+                        srgbRed: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255,
+                        blue: CGFloat(color.b) / 255, alpha: CGFloat(color.a) / 255),
+                    .strokeWidth: -editing.annotationStyle.lineWidth / editing.fontSize * 100,
+                ]
+                // Initialize once before input; replacing attributes during zoom would disturb IME composition.
+                view.textStorage?.addAttributes(
+                    attributes, range: NSRange(location: 0, length: view.string.utf16.count))
+                view.typingAttributes = attributes
+            }
             window?.makeFirstResponder(view)
             view.selectAll(nil)
         } else {
@@ -666,18 +713,66 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         let viewport = model.viewport
         let zoom = viewport.zoom
         let color = editing.color
-        textView.font = NSFont.systemFont(ofSize: max(1, editing.fontSize * zoom))
-        textView.textColor = NSColor(
-            srgbRed: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255, blue: CGFloat(color.b) / 255, alpha: 1)
+        let wrappingWidth = editing.maxWidth.map { $0 * zoom }
+        do {
+            if let wrappingWidth, !wrappingWidth.isFinite || wrappingWidth <= 0 {
+                throw TextLayoutError.invalidGeometry
+            }
+            if editing.appearance == .outlined {
+                let percentage = editing.annotationStyle.lineWidth / editing.fontSize * 100
+                guard percentage.isFinite, percentage >= 0 else { throw TextLayoutError.invalidGeometry }
+            }
+            textView.setPresentationFont(
+                try TextLayout.nativeFont(for: editing.appearance, size: editing.fontSize * zoom))
+        } catch {
+            textView.isHidden = true
+            textView.isEditable = false
+            textDecorationView?.isHidden = true
+            model.reportCanvasRenderFailure()
+            return
+        }
+        textView.isHidden = false
+        textView.isEditable = true
+        textView.textColor =
+            editing.appearance == .outlined
+            ? .white
+            : NSColor(
+                srgbRed: CGFloat(color.r) / 255, green: CGFloat(color.g) / 255, blue: CGFloat(color.b) / 255, alpha: 1)
         textView.insertionPointColor = .labelColor
         let origin = viewport.viewPoint(editing.origin)
-        textView.minSize = NSSize(width: max(24, editing.fontSize * zoom), height: editing.fontSize * zoom * 1.3)
+        let height = editing.fontSize * zoom * 1.3
+        textView.isHorizontallyResizable = wrappingWidth == nil
+        textView.minSize = NSSize(width: wrappingWidth ?? max(24, editing.fontSize * zoom), height: height)
+        textView.maxSize = NSSize(
+            width: wrappingWidth ?? CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.containerSize = NSSize(
+            width: wrappingWidth ?? CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        if let wrappingWidth {
+            textView.setFrameSize(NSSize(width: wrappingWidth, height: max(height, textView.frame.height)))
+        }
         textView.setFrameOrigin(NSPoint(x: origin.x, y: origin.y))
         textView.sizeToFit()
+        positionTextDecoration()
+    }
+
+    private func positionTextDecoration() {
+        guard let textDecorationView, let textView, let editing = editingSnapshot else { return }
+        let text = Annotation.TextContent(
+            origin: editing.origin, string: textView.string, fontSize: editing.fontSize,
+            maxWidth: editing.maxWidth, appearance: editing.appearance)
+        do {
+            try textDecorationView.update(text, style: editing.annotationStyle, viewport: model.viewport)
+        } catch {
+            textDecorationView.isHidden = true
+            textView.isHidden = true
+            textView.isEditable = false
+            model.reportCanvasRenderFailure()
+        }
     }
 
     func textDidChange(_ notification: Notification) {
         textView?.sizeToFit()
+        positionTextDecoration()
     }
 
     func textDidEndEditing(_ notification: Notification) {
@@ -690,6 +785,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         let string = textView.string
         self.textView = nil
         editingSnapshot = nil
+        textDecorationView?.removeFromSuperview()
+        textDecorationView = nil
         textView.removeFromSuperview()
         if commit { model.commitTextEditing(string) } else { model.cancelTextEditing() }
         window?.makeFirstResponder(self)
@@ -750,6 +847,32 @@ nonisolated final class EditorAccessibilityElement: NSAccessibilityElement {
 /// or not a main menu provides them, and ends editing on Escape or ⌘Return.
 final class EditorTextView: NSTextView {
     var onFinish: (() -> Void)?
+    private var presentationFont: NSFont?
+
+    func setPresentationFont(_ font: NSFont) {
+        presentationFont = font
+        self.font = font
+        restorePresentationFont()
+    }
+
+    private func restorePresentationFont() {
+        guard let presentationFont else { return }
+        textStorage?.addAttribute(
+            .font, value: presentationFont, range: NSRange(location: 0, length: string.utf16.count))
+        typingAttributes[.font] = presentationFont
+        sizeToFit()
+    }
+
+    override func unmarkText() {
+        super.unmarkText()
+        // AppKit restores pre-composition attributes, which may predate a viewport zoom.
+        restorePresentationFont()
+    }
+
+    override func insertText(_ insertString: Any, replacementRange: NSRange) {
+        super.insertText(insertString, replacementRange: replacementRange)
+        restorePresentationFont()
+    }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard window?.firstResponder === self,

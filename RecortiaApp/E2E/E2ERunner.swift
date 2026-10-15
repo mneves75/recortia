@@ -73,6 +73,9 @@
                     context.check("scenario ran to completion", false, "\(error)")
                 }
                 harness.reset()
+                if scenario.id == "region-overlay" {
+                    log("capture-focus predecessor reset at uptime=\(ProcessInfo.processInfo.systemUptime)")
+                }
                 let elapsed = ContinuousClock.now - started
                 let milliseconds = Int(
                     elapsed.components.seconds * 1000 + elapsed.components.attoseconds / 1_000_000_000_000_000)

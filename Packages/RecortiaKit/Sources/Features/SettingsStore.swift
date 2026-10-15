@@ -73,15 +73,22 @@ public final class SettingsStore {
         from storage: any PreferenceStorage, integrity: any PreferenceIntegrityService
     ) -> (Preferences, LoadIssue?) {
         guard let data = storage.preferenceData(forKey: storageKey) else { return (Preferences(), nil) }
-        guard let decoded = try? JSONDecoder().decode(Preferences.self, from: data) else {
+        guard let schema = try? JSONDecoder().decode(StoredSchema.self, from: data) else {
             return (Preferences(), .corrupted)
         }
-        guard decoded.schemaVersion <= Preferences.currentSchemaVersion else {
-            return (Preferences(), .unsupportedSchema(decoded.schemaVersion))
+        guard schema.schemaVersion <= Preferences.currentSchemaVersion else {
+            return (Preferences(), .unsupportedSchema(schema.schemaVersion))
+        }
+        guard let decoded = try? JSONDecoder().decode(Preferences.self, from: data) else {
+            return (Preferences(), .corrupted)
         }
         let sealed = storage.preferenceData(forKey: sealKey).map { integrity.verify(data, seal: $0) } ?? false
         guard !sealed, decoded.grantsSideEffects else { return (sanitized(decoded), nil) }
         return (sanitized(decoded.withoutSideEffectConsent), .unverifiedConsent)
+    }
+
+    private struct StoredSchema: Decodable {
+        let schemaVersion: Int
     }
 
     /// Clamps every numeric preference into its documented range; invalid values become defaults.

@@ -1,5 +1,49 @@
 # Recortia
 
+**Development candidate:** 0.12.1 (build 20), intended label `0.12.1-beta1`, adds controlled
+native focus qualification with independent acceptance passed. The installed local-test artifact
+remains 0.12.0/build19. Neither candidate has been tagged, notarized or distributed.
+The replayable first-run feature tour and reference-feature inventory are
+tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
+[straight-line annotation tool](docs/specs/straight-line/spec.md) and
+[explicit saved annotation colors](docs/specs/saved-colors/spec.md). The
+[curved-arrow extension](docs/specs/curved-arrows/spec.md) adds editable bends, native coordinate
+fields and a distinct future default, with shared sanitized rendering. Its 683-test development
+gate, exact-source stable CI and [independent code/security and bilingual native acceptance](docs/specs/curved-arrows/acceptance-verdict.md)
+pass. Physical input and release qualification remain separate.
+Three editable
+[text font designs](docs/specs/text-appearance/spec.md) passed the 640-test development gate and
+[independent code/security and native acceptance](docs/specs/text-appearance/acceptance-verdict.md)
+on f1852b7. Outlined, Boxed, Rounded Box and Monospaced Box are implemented with background
+color/reset and passive decoration during native input; all seven passed
+[fresh independent development acceptance](docs/specs/text-appearance/decoration-acceptance-verdict.md)
+on 2df6387. Native palette control
+checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
+fresh independent native acceptance passes on e6c259c. On 2276817 the full development gate
+passes 656 tests and 604 translations; the full native run passes 46/46 scenarios in each
+language, 190 screenshots, with four host-activation checks explicitly skipped. Native wrapped
+text now paints every line and restores composed characters to the current zoom font size;
+mixed-selection background controls show selected fills and retain Reset/undo eligibility.
+The subsequent expanded full run on 2df6387 failed capture-focus keyboard ownership in English
+(45/46; Portuguese46/46), before any text scenario ran. Isolated, complete-prefix, 50-cycle
+and one full-English diagnostic replay passed without reproducing it. The cause remains
+unattributed and controlled focus qualification is pending; these passes do not erase the failure.
+This is phased work; it does
+not establish full Shottr/CleanShot parity or replace the qualification limits below.
+Xcode 27.0 (`27A266a`) is installed at `/Applications/Xcode_27.app`; the earlier signed gate
+passed 683 tests and 617 translations. The 0.12.0 installation run passed 45/47 native scenarios
+per language, with `capture-focus` and `editor-presentation` failures. The owner explicitly
+authorized that local test installation despite these failures; it remains historical evidence;
+see the [installation record](docs/specs/curved-arrows/local-installation.md).
+The [controlled native qualification investigation](docs/specs/native-window-qualification/implementation-plan.md)
+preserves the failed controls and owned-foreground fixture. On the resumed graphical session,
+both focus scenarios pass in both languages; omitting required key/ordering calls makes each
+regression fail. The 0.12.1 stable unsigned gate passes 683 tests and 617 translations; full
+native EN/PT-BR passes 47/47 per language, with 2,222 assertions, 138 images and zero skips.
+Independent different-model acceptance passes, including 50 overlay cycles per language.
+The installed version remains 0.12.0/build19; source acceptance does not qualify physical input
+or distribution.
+
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
 
@@ -66,6 +110,14 @@ Earlier build-10 installation and build-11 verification evidence remains histori
 
 ## What it does
 
+- **Learn on first launch.** A skippable tour explains capture/import/scrolling, annotations and
+  secure redaction, OCR/QR and pixel tools, composition and pins, exports and optional sharing,
+  then shortcuts. Open **Feature Tour** from the menu-bar menu to replay it. Back/Continue and
+  Skip/Done use native controls; replay preserves preferences and first-run completion. No
+  screen permission is requested by the tour. Automatic exports happen before later edits:
+  disable automatic copy/save/upload before sensitive captures; later redaction cannot recall
+  copies already made.
+
 - **Capture** a region, a display, or a chosen window; delayed capture; repeat the last region.
   Recortia's own windows are excluded; regions stay on one display. Starting another capture hides
   existing Recortia windows during selection and capture, then restores them without closing
@@ -91,6 +143,8 @@ Earlier build-10 installation and build-11 verification evidence remains histori
   only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch. A live
   session stops if its source window, an unrelated foreground app, or its display changes.
 - **Pixel tools**: nearest-neighbor loupe, ruler, and sRGB color picker (HEX/RGB).
+  The development candidate adds 1×1, 3×3 and 5×5 color-picker samples. Area choices average
+  encoded sRGB pixels from the sanitized preview off the UI actor; the loupe remains nearest-pixel.
 - **Compose and present**: multiple images on one canvas, side-by-side, background, padding,
   rounded corners, shadow, spotlight, and magnifier callouts.
 - English and Brazilian Portuguese; keyboard-accessible, with VoiceOver labels.
@@ -129,9 +183,10 @@ Provider-level retries preserve their intent ID; a new capture creates a new int
 
 ## Build from source
 
-Stable Xcode 27.0 (see `TOOLCHAIN.json`) and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
-If `xcode-select` points to a beta, prefix commands with
-`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+Stable Xcode 27.0 (27A266a, `stable_xcode_baseline` in `TOOLCHAIN.json`) and
+[XcodeGen](https://github.com/yonaskolb/XcodeGen). Select its installed path per command with
+`DEVELOPER_DIR`; an application named `Xcode.app` can still contain a prerelease build.
+`scripts/doctor.sh` checks the exact version/build against the stable baseline by default.
 
 ```sh
 scripts/check.sh --unsigned    # toolchain doctor, format lint, project freshness, tests, app build
@@ -140,6 +195,27 @@ scripts/release.sh             # maintainer only: Developer ID archive, checks, 
 ```
 
 Run one test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
+
+The optional `capture-focus-repeat` scenario runs 50 synthetic onscreen overlay cycles against
+an owned foreground helper and is
+excluded from the default suite. Capture-focus reports retain bounded own-window key-event
+timelines and record recovery only after FAIL; they do not relax the keyboard-ownership check
+or qualify physical focus/Space behavior. With the verified stable toolchain on this host:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=stable scripts/e2e.sh --lang all --only capture-focus,capture-focus-repeat --unsigned
+```
+
+The recorded local Xcode 27.1 RC (27A9275) is available for development checks only:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned
+```
+
+This mode accepts only that recorded release candidate and labels its evidence as development,
+not release qualification. Beta and unknown builds are rejected. CI uses the stable baseline;
+`scripts/release.sh`, including `--dry-run`, requires it regardless of an inherited development
+mode. A stable OS remains necessary for release and performance qualification (ADR-001).
 
 `project.yml` owns the base version and build number; regenerate the Xcode project with
 `xcodegen generate` after changing them. Beta candidate names also appear in this status,

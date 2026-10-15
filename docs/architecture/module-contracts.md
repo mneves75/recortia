@@ -41,7 +41,20 @@ public struct PrivacyRenderer: Sendable {
     public func renderBase(_ document: Document, scale: Double) async throws -> CGImage
 }
 public enum AnnotationRenderer {                  // shared by editor canvas and export
-    public static func draw(_ annotations: [Annotation], in context: CGContext)   // context already in document space
+    public static func draw(_ annotations: [Annotation], in context: CGContext) throws(RenderError)
+    public static func drawTextBackground(_ text: Annotation.TextContent, style: Annotation.Style,
+                                          in context: CGContext) throws(RenderError)
+}
+public enum TextLayout {                          // stateless; text origin/content width in document space
+    public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont
+    public static func metrics(for text: Annotation.TextContent,
+                               style: Annotation.Style) throws(TextLayoutError) -> TextLayoutMetrics
+}
+public struct ArrowLayout {                       // operation-local; no shared mutable path cache
+    public static func make(for annotation: Annotation) throws(RenderError) -> ArrowLayout
+    public let shaftPath, shaftInkPath, headPath, inkPath: CGPath
+    public let inkBounds: Rect<DocumentSpace>
+    public func hitTest(_ point: Point<DocumentSpace>, tolerance: Double) -> Bool
 }
 public struct ExportPipeline: Sendable {
     public init(renderer: PrivacyRenderer)
@@ -51,6 +64,27 @@ public enum PixelSampler {
     public static func color(atX x: Int, y: Int, in image: CGImage) -> RGBA?   // nearest pixel, sRGB
 }
 ```
+
+`Domain.ArrowCurve` converts between the stored quadratic control and visible B(0.5) bend,
+and provides the deterministic initial control. Nil arrow controls preserve legacy straight
+encoding/rendering. `ArrowLayout` provides exact-prefix shaft and filled-head union ink;
+construction refuses invalid geometry. Editor mutation admission uses it before committing,
+while the canvas/export renderer paints the same ink. Geometric centerline frame bounds remain
+separate from ink bounds and screen-space selection tolerance. Paths never cross operations
+through a global cache; this introduces no external pixel sink or actor boundary.
+
+`TextLayoutMetrics.frame` includes painted glyph/fallback, outline and background extents;
+`contentFrame` retains the wrapping constraint. Optional `backgroundFrame` and `cornerRadius`
+describe the actual passive decoration separately. The real annotation style is mandatory;
+defaulting it would lose outline width during admission/selection. The background-only renderer
+honors opacity without painting glyphs. Native input carries an immutable Annotation.Style
+snapshot; its passive view owns neither input nor pixels. Core Text objects remain local to
+each operation. The only permitted
+AppKit imports in Imaging are the two exact `NSFont`/`NSFontDescriptor` class declarations in
+`TextLayout.swift`; they resolve public system font designs, not windows or system actions.
+The source scanner is a regression guard, not a capability sandbox. Rendering propagates
+`RenderError.textLayoutFailed`; the native canvas must clear partial drawing before reporting
+the failure. UI drawing stays on its existing actor; asynchronous export rendering runs off it.
 
 ## Imaging (T2: OCR, QR, scroll stitching)
 

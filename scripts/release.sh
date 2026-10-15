@@ -15,6 +15,10 @@ export DEVELOPER_DIR
 dry_run=0
 [[ "${1:-}" == "--dry-run" ]] && dry_run=1
 
+# Development mode cannot qualify an archive, including a release-pipeline dry run.
+scripts/doctor.sh --release
+export RECORTIA_TOOLCHAIN_MODE=stable
+
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "release: the working tree is dirty; release only a committed state" >&2
   exit 1

@@ -6,6 +6,18 @@ import Imaging
 /// User-visible names for editor values. Every string lives in the "Editor" table
 /// (Editor.xcstrings) with English and pt-BR translations.
 enum EditorStrings {
+    static func name(_ appearance: TextAppearance) -> String {
+        switch appearance {
+        case .standard: String(localized: "Standard", table: "Editor")
+        case .rounded: String(localized: "Rounded", table: "Editor")
+        case .monospaced: String(localized: "Monospaced", table: "Editor")
+        case .outlined: String(localized: "Outlined", table: "Editor")
+        case .boxed: String(localized: "Boxed", table: "Editor")
+        case .roundedBoxed: String(localized: "Rounded Box", table: "Editor")
+        case .monospacedBoxed: String(localized: "Monospaced Box", table: "Editor")
+        }
+    }
+
     static func name(_ tool: EditorTool) -> String {
         switch tool {
         case .select: String(localized: "Select", table: "Editor")
@@ -13,6 +25,7 @@ enum EditorStrings {
         case .crop: String(localized: "Crop", table: "Editor")
         case .text: String(localized: "Text", table: "Editor")
         case .arrow: String(localized: "Arrow", table: "Editor")
+        case .line: String(localized: "Line", table: "Editor")
         case .rectangle: String(localized: "Rectangle", table: "Editor")
         case .ellipse: String(localized: "Ellipse", table: "Editor")
         case .freehand: String(localized: "Pen", table: "Editor")
@@ -36,6 +49,7 @@ enum EditorStrings {
         case .crop: "crop"
         case .text: "textformat"
         case .arrow: "arrow.up.right"
+        case .line: "line.diagonal"
         case .rectangle: "rectangle"
         case .ellipse: "circle"
         case .freehand: "scribble"
@@ -62,6 +76,7 @@ enum EditorStrings {
         switch kind {
         case .text: String(localized: "Text", table: "Editor")
         case .arrow: String(localized: "Arrow", table: "Editor")
+        case .line: String(localized: "Line", table: "Editor")
         case .rectangle: String(localized: "Rectangle", table: "Editor")
         case .ellipse: String(localized: "Ellipse", table: "Editor")
         case .freehand: String(localized: "Drawing", table: "Editor")
@@ -80,6 +95,7 @@ enum EditorStrings {
         switch kind {
         case .text: "textformat"
         case .arrow: "arrow.up.right"
+        case .line: "line.diagonal"
         case .rectangle: "rectangle"
         case .ellipse: "circle"
         case .freehand: "scribble"
@@ -172,6 +188,10 @@ enum EditorStrings {
         case .colorCopied: String(localized: "Color copied.", table: "Editor")
         case .previewNotReady: String(localized: "The preview is updating. Try again in a moment.", table: "Editor")
         case .previewFailed: String(localized: "The preview could not be rendered.", table: "Editor")
+        case .arrowGeometryRefused:
+            String(
+                localized: "That arrow change could not be applied. Try another bend, endpoint or line width.",
+                table: "Editor")
         case .redactionRefused:
             String(
                 localized: "This redaction cannot be mapped onto the image safely, so it was not added.",

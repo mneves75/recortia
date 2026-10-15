@@ -45,6 +45,13 @@ window level, active-Space/fullscreen-auxiliary policy, and canvas ownership aft
 layout when activation succeeds (`editor-presentation`). Visibility cannot depend on activation
 being immediate or guaranteed. Qualify actual fullscreen/Space/display transitions separately.
 
+Synthetic focus qualification requires an owned normal-app foreground control that is active,
+key and compositor-visible on the active Space. Missing readiness fails the scenario. An opaque
+owned cover must fully occlude the editor before inactive presentation reveals it. Omission
+controls for panel `makeKey()` and editor `orderFrontRegardless()` must fail; restore production
+code before final gates. Cooperative activation is a separate positive control. App-local key
+events do not qualify physical keyboard routing, IME or VoiceOver.
+
 Every window Recortia constructs follows the active Space or joins all Spaces, and framework
 windows are adopted before activation (`space-policy`); capture suspension leaves windows on
 other Spaces untouched (`other-spaces`); screens are chosen by capture display, then pointer,
@@ -75,6 +82,51 @@ with the synthetic `import-admission` E2E scenario.
 ### EDIT-01 — Deterministic editor replay
 
 Replay a fixed script creating each annotation, editing text, dragging/resizing/duplicating, changing z-order, cropping, and resizing the document. Undo every operation, redo it, and verify model equality and expected render. A complete pointer gesture is one undo group. Exercise the undo-budget boundary without breaking remaining commands.
+
+For straight lines, exercise shortcut D through the native canvas, endpoint handles, Shift
+constraint, canceled draft and one-step undo/redo. Literal exported pixels show stroke only,
+without an arrowhead; an opaque redaction covers line pixels in the final artifact.
+
+For curved arrows, retain exact legacy straight JSON/rendering and round-trip the optional
+control. Exercise actual filled-head/shaft connection, alpha, extreme/short/collinear curves,
+zero-width ink and malformed rejection. Native `curved-arrows` evidence must operate
+Curved/Straight, distinguish mixed selection from the local future default, and commit Bend
+X then Y through the real native field editor without losing X. Drag endpoints and the visible
+midpoint, cancel, duplicate, resize, Undo/Redo and select painted ink rather than the empty
+chord. Refuse invalid creation/bend/width/frame/movement before mutations; preserve Redo and
+an unrelated continuous adjustment. Inspect actual curve pixels at displayed25%/200%,
+minimum-width dark controls and marked-input refusal in both languages. Export paired-secret
+PNG/JPEG with transformed source layers, magnifiers and masks, plus unmasked source/curve
+positive controls. These tests do not qualify physical keyboard/VoiceOver/Spaces behavior.
+
+For saved colors, press native Save/Apply/Remove controls in EN and PT-BR. Verify explicit
+insertion order, duplicate/full disabled states, selected HEX labels, apply undo/redo, cross-editor
+persistence and legacy sealed consent preservation. Future incompatible schemas and closed
+editors refuse actions without writing bytes. Save/remove cannot alter annotations, export
+settings, consent identity, clipboard or network sinks. The `saved-colors` scenario is required;
+an unavailable accessibility tree is a blocked UI criterion, never a passing model substitute.
+
+For text designs, operate Standard/Rounded/Monospaced native controls in both languages and
+verify selected values, one-step undo/redo, new-text defaults, native reopen/confirm/cancel,
+Unicode preservation, wrapping and 25%/200% zoom. Controls refuse during active native input
+with an explanation. The `text-font-designs` and `text-layout-failure` scenarios are required.
+The latter must paint a valid annotation before a finite-overflow text failure and prove that
+the actual canvas clears those partial pixels and exposes a render notice. Export failures
+must propagate rather than omit text. Minimum-width dark rendering and the RED family remain
+required; these synthetic checks do not qualify physical IME/VoiceOver behavior.
+
+The `text-decorations` scenario additionally operates Outlined/Boxed/Rounded Box/Monospaced
+Box, verifies selected values and native fonts, white-fill/stroke input attributes, Unicode
+insertion and marked-text preservation during zoom, literal live padding pixels and native
+Reset with independent undo/redo. Background controls refuse during input. Exercise sole
+and mixed selections: actual selected fill drives the color well, custom selected fills keep
+Reset available even with a nil future default, and differing fills have an explicit mixed
+description that returns through undo. Exercise all four decorated appearances with narrow
+native wrapping and marked Unicode/RTL input at both zoom extremes. Check standard
+and minimum-width dark layouts in both languages. High-zoom canvas/input drawing must not
+change a pixel in the adjacent object-list surface. Actual exports prove all-seven-style
+glyph/background bounds, transparent/custom/automatic fills, final group opacity and paired
+secret source independence with transformed PNG/JPEG, topmost masks and magnifiers.
 
 Start an image move immediately after a color/opacity adjustment. The adjustment's delayed completion
 cannot split the move's undo group or revert the adjustment when the move is canceled. Editing only
@@ -175,6 +227,16 @@ Combine at least three images with scaling, opacity, overlap, a background, roun
 ## UX, privacy, performance, and release
 
 ### UX-01 — Keyboard, accessibility, and localization
+
+First launch presents a skippable feature tour covering local processing, capture/import/scrolling,
+editing/redaction, recognition/pixel tools, composition/pins, sharing and shortcuts in EN/PT-BR.
+Continue walks every page without marking completion early; Back cannot leave the first page;
+Skip on any page and final Done persist completion. The menu-bar Feature tour command reopens
+the first page without resetting completion, shortcuts, automatic exports, upload consent or
+permissions. Closing without Skip/Done leaves an unfinished first run unfinished. The actual
+onboarding window follows SpacePolicy; all text is reachable by scrolling and controls by
+keyboard. The tour performs no capture, export or permission request. Synthetic `onboarding`
+evidence covers navigation and rendering; physical VoiceOver and TCC remain separate.
 
 Verify essential flows using the keyboard; inspect VoiceOver labels and the annotation list; test Reduce Motion/Transparency, increased contrast, focus visibility, and dark/light appearance. Test EN/PT-BR including longer strings and error messages. No control is icon/color-only without an accessible name. The custom canvas exposes deliberate accessibility elements.
 

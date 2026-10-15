@@ -2,6 +2,7 @@
     import AppKit
     import Domain
     import Features
+    import KeyboardShortcuts
     import SwiftUI
 
     /// App shell: first launch, the menu-bar menu, and Settings (FR-01, FR-14).
@@ -12,28 +13,135 @@
             context.check("fresh settings present onboarding", onboarding.shouldPresent)
             context.check(
                 "starts on the local-processing step", onboarding.step == .localProcessing, "\(onboarding.step)")
-            let view = OnboardingView(onboarding: onboarding, shortcutStatus: harness.app.shortcutStatus, onClose: {})
-            let window = NSWindow(contentViewController: NSHostingController(rootView: view))
-            window.styleMask = [.titled, .closable]
-            window.isReleasedWhenClosed = false
+            let preferences = harness.settings.preferences
+            let clipboardChanges = harness.clipboard.pasteboard.changeCount
+            let textClipboardChanges = harness.textPasteboard.changeCount
+            let originalShortcuts = ShortcutBinding.all.map { KeyboardShortcuts.getShortcut(for: $0.name) }
+            let permissionGranted = harness.permission.isGranted
+            let accessibilityTrusted = harness.accessibility.isTrusted
+            harness.permission.isGranted = false
+            harness.accessibility.isTrusted = false
+            KeyboardShortcuts.setShortcut(.init(.f12, modifiers: [.control, .option]), for: .captureText)
+            let shortcuts = ShortcutBinding.all.map { KeyboardShortcuts.getShortcut(for: $0.name) }
+            defer {
+                harness.permission.isGranted = permissionGranted
+                harness.accessibility.isTrusted = accessibilityTrusted
+                for (binding, shortcut) in zip(ShortcutBinding.all, originalShortcuts) {
+                    KeyboardShortcuts.setShortcut(shortcut, for: binding.name)
+                }
+            }
+            harness.app.perform(.featureTour)
+            let window = try context.unwrap(
+                "the tour command shows the real onboarding window",
+                NSApp.windows.first { $0.identifier?.rawValue == "recortia.onboarding" && $0.isVisible })
+            context.check("onboarding follows the active Space", window.collectionBehavior.contains(.moveToActiveSpace))
+            context.check("onboarding supports fullscreen", window.collectionBehavior.contains(.fullScreenAuxiliary))
             E2ESnapshot.park(window)
             defer { window.close() }
             let root = try context.unwrap("onboarding window has content", window.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "local-processing")
 
-            onboarding.next()
-            context.check("Continue moves to shortcuts", onboarding.step == .shortcuts, "\(onboarding.step)")
-            context.check("Back is available on the shortcuts step", onboarding.canGoBack)
+            try pressTourControl("tour.next", in: root, context)
             await E2ESnapshot.settle(root)
-            context.snapshot(root, shot: "shortcuts")
+            context.check("the unfinished tour progresses before closing", onboarding.step == .capture)
+            window.close()
+            context.check("closing an unfinished tour preserves first-run status", onboarding.shouldPresent)
+            harness.app.perform(.featureTour)
+            context.check("reopening an unfinished tour starts at the first page", onboarding.step == .localProcessing)
+            await E2ESnapshot.settle(root)
 
-            onboarding.finish()
+            let pages: [OnboardingModel.Step] = [.capture, .editing, .recognition, .composition, .sharing, .shortcuts]
+            for page in pages {
+                try pressTourControl("tour.next", in: root, context)
+                await E2ESnapshot.settle(root)
+                context.check("Continue reaches \(page)", onboarding.step == page, "\(onboarding.step)")
+                context.check(
+                    "completion is not written at \(page)", !harness.settings.preferences.hasCompletedOnboarding)
+                context.check("Back is available at \(page)", onboarding.canGoBack)
+                await E2ESnapshot.settle(root)
+                context.snapshot(root, shot: "\(page)")
+                window.setContentSize(NSSize(width: 540, height: 480))
+                window.appearance = NSAppearance(named: .darkAqua)
+                await E2ESnapshot.settle(root)
+                context.snapshot(root, shot: "\(page)-compact-dark")
+                try pressTourControl("tour.back", in: root, context)
+                await E2ESnapshot.settle(root)
+                try pressTourControl("tour.next", in: root, context)
+                await E2ESnapshot.settle(root)
+                context.check("Back and Continue return to \(page)", onboarding.step == page)
+                window.setContentSize(NSSize(width: 580, height: 640))
+                window.appearance = NSAppearance(named: .aqua)
+                await E2ESnapshot.settle(root)
+            }
+
+            harness.app.perform(.featureTour)
+            context.check("repeating the command preserves the open page", onboarding.step == .shortcuts)
+            context.check(
+                "the tour owns one visible window",
+                NSApp.windows.filter {
+                    $0.identifier?.rawValue == "recortia.onboarding" && $0.isVisible
+                }.count == 1)
+
+            try pressTourControl("tour.done", in: root, context)
             context.check("Done completes onboarding", harness.settings.preferences.hasCompletedOnboarding)
+            context.check("Done closes the tour window", !window.isVisible)
             context.check("onboarding is not shown again", !onboarding.shouldPresent)
+            harness.settings.update {
+                $0.autoCopy = true
+                $0.autoSave = true
+                $0.githubUpload = GitHubUploadPreferences(
+                    destination: GitHubDestination(owner: "fixture", repository: "private-captures"), automatic: true)
+            }
+            let replayPreferences = harness.settings.preferences
+            let consentID = harness.settings.githubUploadConsentID
+            harness.app.perform(.featureTour)
+            let immediateReplayStep = onboarding.step
+            let replayWindow = try context.unwrap(
+                "replay has a window",
+                NSApp.windows.first {
+                    $0.identifier?.rawValue == "recortia.onboarding" && $0.isVisible
+                })
+            defer { replayWindow.close() }
+            E2ESnapshot.park(replayWindow)
+            let replayRoot = try context.unwrap("replay has content", replayWindow.contentView)
+            await E2ESnapshot.settle(replayRoot)
+            context.check(
+                "replaying starts at the first page", onboarding.step == .localProcessing,
+                "immediate: \(immediateReplayStep); settled: \(onboarding.step); visible: \(replayWindow.isVisible)")
+            context.check("replaying preserves completion", !onboarding.shouldPresent)
+            try pressTourControl("tour.skip", in: replayRoot, context)
+            context.check("Skip closes the replay window", !replayWindow.isVisible)
+            context.check(
+                "replay preserves export preferences and upload consent",
+                harness.settings.preferences == replayPreferences)
+            context.check(
+                "replay preserves the original upload consent identity",
+                harness.settings.githubUploadConsentID == consentID)
+            context.check(
+                "the tour preserves shortcut assignments",
+                ShortcutBinding.all.map {
+                    KeyboardShortcuts.getShortcut(for: $0.name)
+                } == shortcuts)
+            context.check(
+                "the tour does not copy an image", harness.clipboard.pasteboard.changeCount == clipboardChanges)
+            context.check("the tour does not start scrolling", harness.scrollFrames.startCount == 0)
+            context.check("the tour does not upload", harness.github.snapshots.isEmpty)
+            context.check("the tour does not capture", harness.capture.captures.isEmpty)
+            context.check("the tour does not export any snapshot", harness.exportGate.snapshotCount == 0)
+            context.check("the tour does not drag a file", harness.drag.deliveredFiles.isEmpty)
+            context.check("the tour does not copy text", harness.textPasteboard.changeCount == textClipboardChanges)
+            context.check("the tour does not request Accessibility", harness.accessibility.requestCount == 0)
             context.check(
                 "onboarding requested no Screen Recording permission", harness.permission.requestCount == 0,
                 "requests: \(harness.permission.requestCount)")
+            var completedPreferences = preferences
+            completedPreferences.hasCompletedOnboarding = true
+            harness.settings.update { $0 = completedPreferences }
+        }
+
+        private static func pressTourControl(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
+            try E2EAccessibilityControl.press(identifier, in: root, context)
         }
 
         static func menu(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
@@ -43,7 +151,7 @@
                 .repeatLastRegion: false, .scrollingCapture: true, .captureText: true, .captureMenu: true,
                 .openImage: true,
                 .pasteImage: true, .bringPinsForward: false, .closeAllPins: false, .settings: true, .about: true,
-                .quit: true,
+                .featureTour: true, .quit: true,
             ]
             for command in AppCommand.allCases {
                 let enabled = app.isEnabled(command)

@@ -1,15 +1,21 @@
-# Issue tracker: GitHub
+# Issue tracker: local feature tickets and GitHub triage
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+Owner workflow override (2026-10-14): new feature specs and implementation tickets are tracked
+locally at `docs/specs/<feature>/`, in English. Delete completed ticket files in the finishing
+commit and keep their acceptance/evidence in the spec and BACKLOG.json. Existing GitHub bug
+triage and milestone FP-xxx records remain as described below.
+
+New feature specs/tickets use the local paths above. Existing bug/external-request triage uses
+GitHub issues through `gh`; do not duplicate local feature tickets there.
 
 Repository: `mneves75/recortia` (remote `origin`). Planned milestone work stays in
-`BACKLOG.json` (FP-001…FP-025); GitHub issues hold bugs, triage, and new requests, not copies of
+`BACKLOG.json` (currently FP-001…FP-034); GitHub issues hold bugs, triage, and external requests, not copies of
 those tasks. Issue forms in `.github/ISSUE_TEMPLATE/` apply `needs-triage` automatically.
 Screenshots attached to issues must be synthetic (AGENTS.md: no real captures).
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Create an authorized bug issue**: `gh issue create --title "..." --body-file <file>`. Write the exact multiline body to a task-owned file first.
 - **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
@@ -32,15 +38,20 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue.
+New feature specs and tickets follow the owner override above: local tracked files under
+`docs/specs/<feature>/`, with `ready-for-agent` status. GitHub remains the tracker for bugs and
+existing external requests. Do not publish a new feature issue in place of the local spec.
 
 ## When a skill says "fetch the relevant ticket"
 
-Run `gh issue view <number> --comments`.
+Read the local ticket for new feature work; use `gh issue view <number> --comments` for an
+existing GitHub bug/external request.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+New `/wayfinder` feature maps/tickets follow the owner override: tracked local files under
+`docs/specs/`. The following operations apply only to an existing authorized GitHub map.
+Its **map** is a single issue with **child** issues as tickets.
 
 - **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map`.
 - **Child ticket**: an issue linked to the map as a GitHub sub-issue (`gh api` on the sub-issues endpoint). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.

@@ -1,5 +1,27 @@
 # Implementation plan and task contracts
 
+Owner-authorized feature discovery/reference research (2026-10-14) uses the detailed plan in
+`docs/specs/feature-discovery/implementation-plan.md` and the current comparison in
+`reference-matrix.md`. The first vertical slice extends FR-01 onboarding without permission or
+export side effects; unfinished competitor capabilities remain explicit rather than being
+advertised as implemented. Existing qualification and deferred-task records are preserved.
+
+FR-05 text appearance is tracked as FP-033 in `docs/specs/text-appearance/spec.md`: ticket01
+adds three system-font designs with shared geometry and native editing; ticket02 adds the
+four outlined/boxed treatments. Each vertical ticket has its own regressions and independent
+acceptance. The first ticket cannot close the complete seven-appearance feature.
+
+FR-05 curved arrows are tracked as FP-034 in `docs/specs/curved-arrows/spec.md` and its detailed
+implementation plan. One functional ticket covers shared curve/head geometry, creation,
+selection/bend editing, native keyboard fields, undo and sanitized exports. Geometry feasibility
+precedes UI integration; historical CAP-01 failures remain separate from physical/release qualification.
+
+Controlled native focus qualification is tracked in
+`docs/specs/native-window-qualification/implementation-plan.md`. Its0.12.1/build20 source
+acceptance passes the stable gate, full bilingual native suite and fresh different-model
+verification, including required-call omission controls and50 overlay cycles per language.
+Exact-head CI and merge remain separate integration steps; installed0.12.0 evidence is preserved.
+
 **Status:** The approved v1 milestones have a beta implementation. BACKLOG.json records current
 task status, signed local-install evidence, and outstanding manual qualification; this file defines
 task contracts rather than a build log. Local installation does not complete notarized distribution
