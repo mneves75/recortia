@@ -9,10 +9,11 @@
     "app_version": "0.12.0",
     "build": 19,
     "date": "2026-10-14",
-    "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines/saved colors; broader reference parity remains unfinished.",
-    "status": "additional_slice_in_progress_release_blocked",
-    "verification": "Text font designs ticket01 accepted on f1852b7: development gate640 tests/two Debug builds/596 strings; independent code/security41 focused tests; fresh source-blind native6/6. Full native45/45 per language includes3 activation checks skipped. Earlier PT replacement-overlay keyboard failure did not reproduce; no focus fix or root cause claimed. Stable CI passed a3ad94e on Xcode27.0/27A266a. Ticket02 decorations in progress. Full parity and local stable release qualification remain blocked. See per-slice review evidence and acceptance verdicts.",
+    "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines, saved colors, text appearances and curved arrows; broader reference parity remains unfinished.",
+    "status": "curved_arrow_slice_accepted_release_blocked",
+    "verification": "FP-034 accepted on 3db91b7: development gate683 tests/two unsigned builds/617 translations; exact-source stable Xcode27.0 CI38660460749; independent different-model code/security67 tests and source-blind bilingual native acceptance. Final full native47/47 per language,2217 assertions/138 images each, includes a capture-focus activation-control skip per language. Historical CAP-01 and text-font CI failures remain unattributed; physical input/Spaces/VoiceOver, local stable release and distribution remain unqualified. Earlier slice evidence is retained below.",
     "evidence_paths": [
+      "docs/specs/curved-arrows/acceptance-verdict.md",
       "docs/specs/feature-discovery/acceptance-verdict.md",
       "docs/specs/feature-discovery/review-evidence.md",
       ".scratch/feature-discovery-final-check.log",
@@ -1204,15 +1205,15 @@
       "title": "Editable curved arrows",
       "milestone": "M2",
       "authorization": "owner_approved_2026-10-14_reference_feature_request",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["FP-007"],
       "requirement_ids": ["FR-05"],
       "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
       "scope": "Optional quadratic control on arrows, shared painted geometry, creation/default, visible bend handle and native numeric fields, atomic undo/refusal and sanitized exports. Other arrowhead styles remain gaps.",
       "deliverables": ["docs/specs/curved-arrows/spec.md", "docs/specs/curved-arrows/implementation-plan.md", "model/geometry/export/native regressions"],
       "completion_contract": "Observed source-red tracer regressions, head-junction feasibility, development gates, two-axis review and fresh independent code/native acceptance; no full-parity or physical qualification claim.",
-      "evidence": ["docs/specs/curved-arrows/review-evidence.md", ".scratch/curved-arrows-backend-20261014/evidence.md"],
-      "progress_note": "Geometry/export/editor tracers implemented with observed regressions and fixes. Native EN/PT-BR controls, rapid coordinate commits, mixed state, real25%/200% pixels, compact dark and composition refusal pass at20261014-204622 (146 assertions/11 PNGs per language). Final gate, broader native integration and fresh independent acceptance are pending. Existing CAP-01 integration failure remains a separate release blocker."
+      "evidence": ["docs/specs/curved-arrows/acceptance-verdict.md", "docs/specs/curved-arrows/review-evidence.md", ".scratch/curved-arrows-backend-20261014/evidence.md"],
+      "progress_note": "Development acceptance complete on3db91b7:683-test full gate,617 translations,both unsigned builds,stable CI38660460749,different-model code/security67 tests,source-blind bilingual native criteria PASS,and final full47/47 per language (2217 assertions/138 images each). All five confirmed review findings fixed with fresh regressions. Physical input/VoiceOver/Spaces and release are excluded; historical CAP-01 remains unattributed and current activation-control skips do not qualify it. Completed ticket removed; approved spec and acceptance retained."
     }
   ],
   "deferred_scope": [

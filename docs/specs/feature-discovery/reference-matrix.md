@@ -33,7 +33,7 @@ test. The full repository gate must recheck it; manual qualification remains in 
 | PNG clipboard, PNG/JPEG atomic Save, Drag Out | Both | Editor / ExportCoordinator and ShareSnapshot | EXP, RED | Sharing / existing |
 | Automatic copy/save and opt-in upload | Both | Settings / AppModel and GitHubUploader | NET-01, automatic-export | Sharing / GitHub only, before later edits |
 | Shortcuts and native settings | Both | Menu / shortcut recorder and SettingsWindowController | UX-01, PERM | Shortcuts / existing |
-| Curved arrows | Both | Optional quadratic control, shared painted geometry, native Curved/Straight and Bend X/Y | Focused EDIT/GEO/RED and bilingual native checks pass; FP-034 full/independent gates pending | Implemented source under qualification; see curved-arrows/spec.md |
+| Curved arrows | Both | Optional quadratic control, shared painted geometry, native Curved/Straight and Bend X/Y | 683-test development gate, stable CI and independent code/security + bilingual native acceptance pass | Development acceptance; physical input/release excluded; see curved-arrows/acceptance-verdict.md |
 | Additional arrowhead styles | Both | Existing filled head retained | No implementation gate yet | Gap: not implemented; curves do not establish all four CleanShot styles |
 | Straight line tool without arrowheads | CleanShot | Distinct endpoint-based line annotation, shared renderer, native toolbar/shortcut D | EDIT/GEO/RED focused regressions and bilingual annotations E2E pass | Source implemented; final acceptance pending |
 | Saved annotation colors | CleanShot | Bounded sealed palette and native inspector controls | EDIT-01 / palette regressions | Bilingual native controls pass; final independent acceptance pending |

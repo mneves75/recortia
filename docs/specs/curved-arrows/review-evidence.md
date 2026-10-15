@@ -182,3 +182,25 @@ they do not qualify physical pointer/keyboard events. Final rebuilt acceptance f
 Stable Xcode CI passed on `08ec884`:
 https://github.com/mneves75/recortia/actions/runs/38659153698.
 This evidence predates the duplication correction and does not replace its final gate.
+
+## Final accepted candidate
+
+`3db91b7` passed the complete unsigned development gate (`duplicate-corrected-full-check.log`):
+134 MacPlatform,167 Imaging,320 Features and62 Domain tests (683 total),617 translated strings,
+doctor/isolation and release controls, strict formatting, project freshness and both app builds.
+Exact-source stable Xcode27.0 CI passed run38660460749. The different-model independent full
+reverify passed67 focused code/privacy tests; all five confirmed findings are fixed.
+
+Fresh source-blind native acceptance passed all six frozen criteria in both languages at
+`.scratch/e2e/20261014-213826/`:395 assertions and25 images each. The final full native run
+at `.scratch/e2e/20261014-213931/` passed47/47 scenarios per language,2,217 assertions and138
+images each. Both commands used development mode, the explicit developer directory, unsigned
+and `--no-build`; the focused command additionally selected `curved-arrows,onboarding`.
+Binary hashes were unchanged. Current capture-focus activation controls were skipped in both
+languages; passing scenarios do not close the historical unattributed CAP-01 failure.
+
+The final [acceptance verdict](acceptance-verdict.md) preserves exact commands, limits and
+independent evidence. FP-034 is completed under its development contract; the completed ticket
+is removed and the approved spec retained. Physical qualification and release remain separate.
+Cleanup preserved all evidence and unrelated `docs/handoffs/`; only the old247MB probe compiler
+cache was moved to Trash after broader deletion was rejected. Trash was not emptied.

@@ -6,8 +6,9 @@ tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candid
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). The
 [curved-arrow extension](docs/specs/curved-arrows/spec.md) adds editable bends, native coordinate
-fields and a distinct future default, with shared sanitized rendering. Its focused model,
-export and bilingual native checks pass; [full gate and independent acceptance remain pending](docs/specs/curved-arrows/review-evidence.md).
+fields and a distinct future default, with shared sanitized rendering. Its 683-test development
+gate, exact-source stable CI and [independent code/security and bilingual native acceptance](docs/specs/curved-arrows/acceptance-verdict.md)
+pass. Physical input and release qualification remain separate.
 Three editable
 [text font designs](docs/specs/text-appearance/spec.md) passed the 640-test development gate and
 [independent code/security and native acceptance](docs/specs/text-appearance/acceptance-verdict.md)
