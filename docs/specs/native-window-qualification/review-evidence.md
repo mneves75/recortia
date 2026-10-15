@@ -64,3 +64,20 @@ ordinary activation to the owned synthetic control. No force activation, timeout
 TCC change, personal screen read or production focus change was attempted. The helper and
 scenario changes remain an experimental candidate; final mutation controls, full gates and
 final independent acceptance remain unrun. No new version, merge or release is justified.
+
+## Preserved candidate and cleanup
+
+The experimental source was committed and pushed on the existing draft working branch;
+it changes only the test target and test scenarios, not production focus/presentation code.
+Strict Swift formatting, `git diff --check`, the five E2E-isolation script controls and six
+project-freshness script controls passed. Staged secret scans found no leaks. These checks
+do not replace the blocked native behavior or final full gate.
+
+All native reports were moved from the task worktree to
+`.scratch/native-window-review-20261015/native-runs/`, retaining their timestamp/language
+subdirectories. Original logs still contain their historical worktree paths. The committed
+task worktree was removed, including approximately405 MB of its temporary build products;
+the8.8 MB native evidence was preserved. No synthetic test process remained in the scoped
+process check. Preexisting build caches, installed app/backup, archives and unrelated
+`docs/handoffs/` were preserved. The visible branch remains `feat/onboarding-feature-guide`;
+PR16 remains draft, with final acceptance pending.
