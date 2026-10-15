@@ -88,6 +88,8 @@ targets:
     platform: macOS
     sources:
       - path: RecortiaApp
+        excludes:
+          - "E2E/ForegroundHost/**"
     info:
       path: RecortiaApp/Info.plist
       properties: *appInfo
@@ -117,6 +119,26 @@ targets:
       - package: KeyboardShortcuts
       - package: RecortiaKit
         product: RecortiaFixtures
+      - target: RecortiaE2EForegroundHost
+        link: false
+        embed: false
+  RecortiaE2EForegroundHost:
+    type: application
+    platform: macOS
+    sources:
+      - path: RecortiaApp/E2E/ForegroundHost
+      - path: RecortiaApp/E2E/E2EForegroundState.swift
+      - path: RecortiaApp/App/SpacePolicy.swift
+      - path: RecortiaApp/App/AppPresence.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia.E2E.ForegroundHost
+        PRODUCT_NAME: RecortiaE2EForegroundHost
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_FOREGROUND_HOST
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: NO
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
   RecortiaUITests:
     type: bundle.ui-testing
     platform: macOS

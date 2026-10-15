@@ -48,6 +48,7 @@
 		3BEF040F1072DF3D8A1DBE98 /* RecortiaFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 411B40D8A69F69633A9FDF64 /* RecortiaFixtures */; };
 		3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
 		3D6140BA1D228918E1B4AE7F /* LiveGitHubUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6610A99F1B386ECA2E10FF6C /* LiveGitHubUpload.swift */; };
+		3F3F7EB473A4432C63C14AF6 /* E2EForegroundState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E65BE730BC431A6770FF18A /* E2EForegroundState.swift */; };
 		41302BAADF8304A81FE45EC9 /* LiveRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */; };
 		4234F4D2B14EDC9B3CC7D889 /* CaptureMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */; };
 		431E9CB9AF92D4539FFE3FBF /* CaptureWindowVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */; };
@@ -57,6 +58,7 @@
 		4D7C3D84B8C8BB582C432AC6 /* EditorWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */; };
 		4EC666D8B2EF6F97E6C3EFED /* LiveRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */; };
 		5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
+		55BAD47DF14454678FB1B355 /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
 		56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
 		6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
 		6470C535C3CBC2B70DF471A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
@@ -85,6 +87,8 @@
 		86C00E2E2FFA0E88047FA20A /* MessagePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */; };
 		8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
 		903193BD2B60CF8D8B4E2E84 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */; };
+		9325096169A5F984CE9D27C6 /* HostMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 157FFAAB86E949F9B49035CB /* HostMain.swift */; };
+		9B66009877EDC38A4359066A /* E2EForegroundState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E65BE730BC431A6770FF18A /* E2EForegroundState.swift */; };
 		9B89A1BC56B6C7226ED6FB51 /* Scenarios+TextDecorations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB5F8BBE3C3ECB34B0C587E /* Scenarios+TextDecorations.swift */; };
 		9CB38D928DC1ACE86AE42098 /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
 		9DFE06BFFEDA1701F0319C70 /* GitHubUploadSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E42652874A3A93FCB17228 /* GitHubUploadSettings.swift */; };
@@ -114,6 +118,7 @@
 		CB41D288F549F14A5DD8BED4 /* LaunchKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */; };
 		CF14A9DD112EE6655C40C9E9 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
 		D06F657E1ACE66C9015FA699 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8692E975D9E5A251D35D00 /* KeyboardShortcuts */; };
+		D1154909207D2BC2CBEEE4F6 /* E2EForegroundFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DCF5452C8392723EB823CFA /* E2EForegroundFixture.swift */; };
 		D24EE0E8714F0274DE8B1AEC /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
 		D4334677906AB4980AD4EE0D /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
@@ -142,12 +147,20 @@
 		F719870225B18848414BD58A /* LiveServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A32821DBE9F97E4B468E29 /* LiveServices.swift */; };
 		F92B254B4F2A5021F338BAFF /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */; };
 		FAE0B9FA6ACC12AFC7DF5B20 /* EditorStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */; };
+		FBDA8674578171D6D8703A0C /* SpacePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6606E40D90DE7108819150A3 /* SpacePolicy.swift */; };
 		FC936A982CD8C0C69D3F0824 /* SpacePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6606E40D90DE7108819150A3 /* SpacePolicy.swift */; };
 		FDBFBB3327828B197282BDE9 /* Scenarios+Spaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE69FEA380523086B4D11CEE /* Scenarios+Spaces.swift */; };
 		FE2480051AAABD8F447CE848 /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = 2644079D7FD5B30329793F53 /* Imaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		088B47AE1118DBE31DD54662 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 77236CF3D202B5857BE97F0A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 17668980554C494E982FC148;
+			remoteInfo = RecortiaE2EForegroundHost;
+		};
 		ECA87F9C57348C7DA0E5EDF2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 77236CF3D202B5857BE97F0A /* Project object */;
@@ -163,6 +176,7 @@
 		12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shortcuts.swift"; sourceTree = "<group>"; };
 		143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+AutomaticExport.swift"; sourceTree = "<group>"; };
 		15116A7454558F3FA0807632 /* EditorCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCanvasView.swift; sourceTree = "<group>"; };
+		157FFAAB86E949F9B49035CB /* HostMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostMain.swift; sourceTree = "<group>"; };
 		1A4B3763DE55CA83F21962CF /* Recortia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Recortia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1FCF94E91512C394BD839071 /* EditorPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPreview.swift; sourceTree = "<group>"; };
 		293033569B29300AB2B89925 /* E2ESnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ESnapshot.swift; sourceTree = "<group>"; };
@@ -174,6 +188,7 @@
 		37E3B5628385CE0D560B7AC3 /* KeyboardShortcuts-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "KeyboardShortcuts-LICENSE.txt"; sourceTree = "<group>"; };
 		38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagePresenter.swift; sourceTree = "<group>"; };
 		3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2E.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3DCF5452C8392723EB823CFA /* E2EForegroundFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EForegroundFixture.swift; sourceTree = "<group>"; };
 		3F28E2BD01C5C58B01ED7275 /* Recortia-Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Recortia-Release.entitlements"; sourceTree = "<group>"; };
 		414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shell.swift"; sourceTree = "<group>"; };
 		451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSidebarView.swift; sourceTree = "<group>"; };
@@ -182,6 +197,7 @@
 		4A87968B857C53E0F4335F82 /* ScrollViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollViews.swift; sourceTree = "<group>"; };
 		4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMenu.swift; sourceTree = "<group>"; };
 		4E084E166124DB22614616F5 /* ChooserViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChooserViews.swift; sourceTree = "<group>"; };
+		4E65BE730BC431A6770FF18A /* E2EForegroundState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EForegroundState.swift; sourceTree = "<group>"; };
 		4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWindowVisibility.swift; sourceTree = "<group>"; };
 		5E4F6B9E7DA4239CD17642B8 /* Recortia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Recortia.entitlements; sourceTree = "<group>"; };
 		61D5324EB9E2AA47D945093A /* EditorRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorRootView.swift; sourceTree = "<group>"; };
@@ -238,6 +254,7 @@
 		F0DF83ABF11B31DAAABA963C /* E2EReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EReport.swift; sourceTree = "<group>"; };
 		F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRecognition.swift; sourceTree = "<group>"; };
 		F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ERunner.swift; sourceTree = "<group>"; };
+		F6F75F17F28F9F2CBD1E4D14 /* RecortiaE2EForegroundHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2EForegroundHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F902EF52885BED5F7982DA2C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+CurvedArrows.swift"; sourceTree = "<group>"; };
 		FBEF619B471E0C3284F9AED2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -336,6 +353,7 @@
 			children = (
 				1A4B3763DE55CA83F21962CF /* Recortia.app */,
 				3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */,
+				F6F75F17F28F9F2CBD1E4D14 /* RecortiaE2EForegroundHost.app */,
 				9C6AABCCCF1691C1818B8DB7 /* RecortiaUITests.xctest */,
 			);
 			name = Products;
@@ -394,6 +412,8 @@
 			children = (
 				E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */,
 				9A00D2B63EC9352383E5AA0C /* E2EActions.swift */,
+				3DCF5452C8392723EB823CFA /* E2EForegroundFixture.swift */,
+				4E65BE730BC431A6770FF18A /* E2EForegroundState.swift */,
 				8E0B4F72D48030816743075C /* E2EHarness.swift */,
 				813F933C20216A19D93FA9D7 /* E2EPanelProbe.swift */,
 				F0DF83ABF11B31DAAABA963C /* E2EReport.swift */,
@@ -419,6 +439,7 @@
 				8CB5F8BBE3C3ECB34B0C587E /* Scenarios+TextDecorations.swift */,
 				E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */,
 				D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */,
+				BBB4E1E8AFCE71B3B564906B /* ForegroundHost */,
 			);
 			path = E2E;
 			sourceTree = "<group>";
@@ -450,6 +471,14 @@
 			path = RecortiaUITests;
 			sourceTree = "<group>";
 		};
+		BBB4E1E8AFCE71B3B564906B /* ForegroundHost */ = {
+			isa = PBXGroup;
+			children = (
+				157FFAAB86E949F9B49035CB /* HostMain.swift */,
+			);
+			path = ForegroundHost;
+			sourceTree = "<group>";
+		};
 		E70B2C6B17C7BBEEEE2B5577 /* Pins */ = {
 			isa = PBXGroup;
 			children = (
@@ -478,6 +507,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		17668980554C494E982FC148 /* RecortiaE2EForegroundHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4F196CB7CEF6F540A8007D24 /* Build configuration list for PBXNativeTarget "RecortiaE2EForegroundHost" */;
+			buildPhases = (
+				5D31091A981778C306BAF8A7 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RecortiaE2EForegroundHost;
+			packageProductDependencies = (
+			);
+			productName = RecortiaE2EForegroundHost;
+			productReference = F6F75F17F28F9F2CBD1E4D14 /* RecortiaE2EForegroundHost.app */;
+			productType = "com.apple.product-type.application";
+		};
 		8EEE5AB1272098105E9C9370 /* RecortiaE2E */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 162E4D2B3A25E112380DFEBF /* Build configuration list for PBXNativeTarget "RecortiaE2E" */;
@@ -489,6 +535,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				F84BAC5920D602C54319CD5A /* PBXTargetDependency */,
 			);
 			name = RecortiaE2E;
 			packageProductDependencies = (
@@ -556,6 +603,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					17668980554C494E982FC148 = {
+						DevelopmentTeam = Q96FUTC5G8;
+						ProvisioningStyle = Manual;
+					};
 					8EEE5AB1272098105E9C9370 = {
 						DevelopmentTeam = Q96FUTC5G8;
 						ProvisioningStyle = Manual;
@@ -592,6 +643,7 @@
 			targets = (
 				F269FDB9D9FEBE500AD8219F /* Recortia */,
 				8EEE5AB1272098105E9C9370 /* RecortiaE2E */,
+				17668980554C494E982FC148 /* RecortiaE2EForegroundHost */,
 				D5C5C8B1F81388A8A495314D /* RecortiaUITests */,
 			);
 		};
@@ -625,6 +677,17 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		5D31091A981778C306BAF8A7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				55BAD47DF14454678FB1B355 /* AppPresence.swift in Sources */,
+				3F3F7EB473A4432C63C14AF6 /* E2EForegroundState.swift in Sources */,
+				9325096169A5F984CE9D27C6 /* HostMain.swift in Sources */,
+				FBDA8674578171D6D8703A0C /* SpacePolicy.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AB95C0653BB8A75A7B389897 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -640,6 +703,8 @@
 				1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */,
 				C18E4C204D233AC24C4CB33B /* E2EAccessibilityControl.swift in Sources */,
 				0F90D2EFEC42BB978F9DF91A /* E2EActions.swift in Sources */,
+				D1154909207D2BC2CBEEE4F6 /* E2EForegroundFixture.swift in Sources */,
+				9B66009877EDC38A4359066A /* E2EForegroundState.swift in Sources */,
 				0157A19E6F03E20435EB72DD /* E2EHarness.swift in Sources */,
 				C2A57D9C43AF679DD4D6E079 /* E2EPanelProbe.swift in Sources */,
 				AF3F7784F944B8399EA0F17E /* E2EReport.swift in Sources */,
@@ -770,9 +835,34 @@
 			target = F269FDB9D9FEBE500AD8219F /* Recortia */;
 			targetProxy = ECA87F9C57348C7DA0E5EDF2 /* PBXContainerItemProxy */;
 		};
+		F84BAC5920D602C54319CD5A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 17668980554C494E982FC148 /* RecortiaE2EForegroundHost */;
+			targetProxy = 088B47AE1118DBE31DD54662 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0535EBF419080DD27A04D2C8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia.E2E.ForegroundHost;
+				PRODUCT_NAME = RecortiaE2EForegroundHost;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) RECORTIA_FOREGROUND_HOST";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+			};
+			name = Release;
+		};
 		0A61EA98340BF5784CCA98B3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1014,6 +1104,26 @@
 			};
 			name = Debug;
 		};
+		C03E5B1858E514C0D47365C4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia.E2E.ForegroundHost;
+				PRODUCT_NAME = RecortiaE2EForegroundHost;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) RECORTIA_FOREGROUND_HOST";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+			};
+			name = Debug;
+		};
 		D9B4687AF9B69154E071BD6D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1042,6 +1152,15 @@
 			buildConfigurations = (
 				D9B4687AF9B69154E071BD6D /* Debug */,
 				735504CEE6668A4E5B04CFED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4F196CB7CEF6F540A8007D24 /* Build configuration list for PBXNativeTarget "RecortiaE2EForegroundHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C03E5B1858E514C0D47365C4 /* Debug */,
+				0535EBF419080DD27A04D2C8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
