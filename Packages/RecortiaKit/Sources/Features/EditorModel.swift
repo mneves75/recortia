@@ -477,6 +477,7 @@ public final class EditorModel {
             }
             for annotation in document.annotations where items.contains(.annotation(annotation.id)) {
                 var copy = annotation.translated(dx: offset, dy: offset)
+                try Self.validateArrowCurve(copy)
                 copy.id = AnnotationID()
                 document.annotations.append(copy)
                 created.insert(.annotation(copy.id))

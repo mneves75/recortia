@@ -81,6 +81,7 @@
             let root = try context.unwrap("curve qualification content", controller.contentRoot)
             let canvas = try context.unwrap("curve canvas", controller.canvasView)
             let curved = try context.unwrap("curve to qualify", model.document.annotations.last)
+            qualifyGesturesAndAdmission(model, curved: curved, context)
             model.duplicateSelection()
             let duplicate = try context.unwrap("duplicate curve", model.document.annotations.last)
             context.check(
@@ -180,6 +181,56 @@
                 model.document == before && model.notice == .arrowGeometryRefused)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "arrow-refused-compact-dark")
+        }
+
+        private static func qualifyGesturesAndAdmission(
+            _ model: EditorModel, curved: Annotation, _ context: ScenarioContext
+        ) {
+            model.selectTool(.select)
+            model.select(.annotation(curved.id))
+            let before = model.document
+            model.pointerDown(at: Point(x: 400, y: 100))
+            model.pointerDragged(to: Point(x: 420, y: 120))
+            model.pointerUp(at: Point(x: 420, y: 120))
+            context.check(
+                "operator endpoint drag preserves the relative curve bend",
+                model.document.annotations.last?.kind
+                    == .arrow(
+                        start: Point(x: 70, y: 100), end: Point(x: 420, y: 120), control: Point(x: 335, y: 250)))
+            let dragged = model.document
+            model.undo()
+            context.check("curve endpoint drag has one Undo", model.document == before)
+            model.redo()
+            context.check("curve endpoint drag has Redo", model.document == dragged)
+            model.undo()
+            model.pointerDown(at: Point(x: 280, y: 170))
+            model.pointerDragged(to: Point(x: 300, y: 190))
+            model.pointerUp(at: Point(x: 300, y: 190))
+            context.check(
+                "operator bend drag moves the visible midpoint", model.selectedArrowBend == Point(x: 300, y: 190))
+            model.undo()
+            context.check("curve bend drag has one Undo", model.document == before)
+            let undoCount = model.session.undoCount
+            model.pointerDown(at: Point(x: 400, y: 100))
+            model.pointerDragged(to: Point(x: 420, y: 120))
+            model.cancelGesture()
+            context.check(
+                "operator curve Escape cancellation restores geometry and history",
+                model.document == before && model.session.undoCount == undoCount)
+            context.check("operator can make the curve collinear", model.setArrowBend(Point(x: 235, y: 100)))
+            let tiny = Rect<DocumentSpace>(x: 0, y: 0, width: 1e-16, height: 0)
+            model.setFrame(tiny, for: .annotation(curved.id))
+            context.check(
+                "operator admits a valid tiny collinear frame", model.frame(of: .annotation(curved.id)) == tiny)
+            let admitted = model.document, selection = model.selection, revision = model.session.revision
+            model.duplicateSelection()
+            context.check(
+                "operator duplicate refuses collapsed curve endpoints atomically",
+                model.notice == .arrowGeometryRefused && model.document == admitted
+                    && model.selection == selection && model.session.revision == revision)
+            model.undo()
+            model.undo()
+            context.check("operator admission probe restores the original curve", model.document == before)
         }
 
         private static func verifyBendInk(_ canvas: NSView, model: EditorModel, _ context: ScenarioContext) throws {

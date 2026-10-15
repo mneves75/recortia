@@ -158,3 +158,27 @@ The earlier plan-only hosted run `38652457209` failed three assertions in the te
 creation/reopening test (`earlier-plan-ci-failure.log`); the later `03c2a67` run passed.
 No causal diagnosis or fix is established by that later success. Preserve this incident separately
 from CAP-01 and the curved-arrow focused evidence.
+
+## Final independent duplication correction
+
+Fresh different-model code/security acceptance on `08ec884` reproduced a duplication admission
+gap: a valid collinear curve with endpoints separated by `1e-16` at the origin loses that
+separation after the ten-point duplicate offset. The original six near-ULP fixtures did not
+reproduce it; the smaller fixture did. Preserve the initial FAIL in
+`.scratch/curved-arrows-final-acceptance-20261014/verdict-initial.md`.
+
+The public `EditorCurvedArrowTests.duplicateAdmission` tracer reached the tiny curve through
+frame editing and observed seven failed expectations in `duplicate-admission-behavior-red.log`.
+The earlier `duplicate-admission-red.log` is only a sandbox manifest failure. Duplication now
+validates the translated curve inside the atomic edit before appending it or changing selection.
+`duplicate-admission-green.log` passed 43 curve/replay/composition tests, including retained
+Redo and an ordinary-size duplicate/Undo positive control.
+
+The native operator scenario now explicitly reports curve endpoint/bend drags, Undo/Redo,
+Escape-equivalent cancellation and the tiny-curve duplicate refusal. Those gesture calls are
+synthetic public editor inputs, distinct from the real native control/field-editor actions;
+they do not qualify physical pointer/keyboard events. Final rebuilt acceptance follows.
+
+Stable Xcode CI passed on `08ec884`:
+https://github.com/mneves75/recortia/actions/runs/38659153698.
+This evidence predates the duplication correction and does not replace its final gate.

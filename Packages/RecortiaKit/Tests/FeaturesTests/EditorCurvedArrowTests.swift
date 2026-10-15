@@ -6,6 +6,43 @@ import Testing
 @Suite("Editable curved arrows (FR-05, EDIT-01, EDIT-02)")
 @MainActor
 struct EditorCurvedArrowTests {
+    @Test("Duplication refuses collapsed curve endpoints without discarding selection or Redo")
+    func duplicateAdmission() {
+        let arrow = Annotation(
+            kind: .arrow(start: Point(x: 0, y: 0), end: Point(x: 160, y: 0), control: Point(x: 80, y: 0)),
+            style: .default)
+        var document = EditorFixtures.session().document
+        document.annotations = [arrow]
+        let h = EditorHarness(session: DocumentSession(document: document))
+        let m = h.model
+        m.select(.annotation(arrow.id))
+        let tiny = Rect<DocumentSpace>(x: 0, y: 0, width: 1e-16, height: 0)
+        m.setFrame(tiny, for: .annotation(arrow.id))
+        #expect(m.frame(of: .annotation(arrow.id)) == tiny)
+        m.nudgeSelection(dx: 0, dy: 1)
+        let redo = m.document
+        m.undo()
+        let before = m.document, revision = m.session.revision
+        let selection = m.selection, undoCount = m.session.undoCount, redoLabel = m.session.redoLabel
+        m.duplicateSelection()
+        #expect(m.notice == .arrowGeometryRefused)
+        #expect(m.document == before && m.session.revision == revision)
+        #expect(m.selection == selection && m.session.undoCount == undoCount && m.session.redoLabel == redoLabel)
+        m.redo()
+        #expect(m.document == redo)
+        m.undo()
+        m.undo()
+        m.duplicateSelection()
+        #expect(m.document.annotations.count == 2)
+        #expect(m.document.annotations.last?.id != arrow.id)
+        #expect(
+            m.document.annotations.last?.kind
+                == .arrow(
+                    start: Point(x: 10, y: 10), end: Point(x: 170, y: 10), control: Point(x: 90, y: 10)))
+        m.undo()
+        #expect(m.document == document)
+    }
+
     @Test("Refused curve creation keeps the preceding adjustment open")
     func refusedCreationPreservesAdjustment() {
         let h = EditorHarness()
