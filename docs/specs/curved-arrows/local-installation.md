@@ -3,7 +3,9 @@
 The owner requested installation on this Mac after completion, a durable note, and Git
 add/commit/push. This authorizes the scoped 0.12.0/build19 candidate's local installation at
 `/Applications/Recortia.app` once its required gates pass. It does not authorize a merge,
-tag, release, publication, toolchain installation, or bypassing qualification gates.
+tag, release, publication, or bypassing qualification gates. The subsequent owner reply
+`autorizado` also authorizes installing the reviewed stable Xcode27.0 at
+`/Applications/Xcode_27.app`, preserving the existing Xcodes and system selection.
 
 ## Actual state
 
@@ -39,3 +41,28 @@ Record local installation separately from notarization, clean-user launch and pr
 
 Only this task-owned note is staged. Existing untracked `docs/handoffs/` is unrelated and is
 preserved. No version bump represents an installation.
+
+## Authorized toolchain preparation
+
+Apple's official release entry confirms Xcode27 (`27A266a`):
+https://developer.apple.com/news/releases/?id=09142026h.
+Installed `xcodes`2.1.0 also lists the exact stable build. The external SSD was confirmed
+mounted, with572GiB available; the internal disk had139GiB available at preflight. The archive
+download destination is `/Volumes/MARCUS_S7/ARCHIVE/dev-scratch/recortia/xcode-27-install-20261015`.
+
+`xcodes download 27.0 --no-aria2 --directory <destination>` with noninteractive stdin
+exited1 at Apple authentication; no credentials were supplied or extracted. A credential-free
+request to the catalog's official Apple archive URL redirected to an HTML account/download
+surface, not an XIP payload. No archive or new Xcode bundle was created.
+
+The next protected step is the owner's Apple login/2FA in their own Terminal:
+
+```sh
+xcodes download 27.0 --no-aria2 --directory /Volumes/MARCUS_S7/ARCHIVE/dev-scratch/recortia/xcode-27-install-20261015
+```
+
+After the archive exists, reuse the recorded toolchain and app-install authorizations. Verify
+the Apple-signed archive and exact extracted build, install at the approved path without
+selecting it globally, then run the outstanding gates. No password, verification code or
+session cookie should be sent to an assistant. Toolchain installation and Recortia
+installation remain pending; the existing app and Xcodes are unchanged.
