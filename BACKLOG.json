@@ -5,12 +5,12 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
-    "version": "0.12.0-beta1",
-    "app_version": "0.12.0",
-    "build": 19,
-    "date": "2026-10-14",
+    "version": "0.12.1-beta1",
+    "app_version": "0.12.1",
+    "build": 20,
+    "date": "2026-10-15",
     "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines, saved colors, text appearances and curved arrows; broader reference parity remains unfinished.",
-    "status": "curved_arrow_slice_accepted_release_blocked",
+    "status": "native_window_final_acceptance_in_progress",
     "verification": "FP-034 accepted on 3db91b7: development gate683 tests/two unsigned builds/617 translations; exact-source stable Xcode27.0 CI38660460749; independent different-model code/security67 tests and source-blind bilingual native acceptance. Final full native47/47 per language,2217 assertions/138 images each, includes a capture-focus activation-control skip per language. Historical CAP-01 and text-font CI failures remain unattributed; physical input/Spaces/VoiceOver, local stable release and distribution remain unqualified. Earlier slice evidence is retained below.",
     "evidence_paths": [
       "docs/specs/curved-arrows/acceptance-verdict.md",

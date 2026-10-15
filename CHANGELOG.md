@@ -6,6 +6,11 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
+Source candidate: 0.12.1/build20 (`0.12.1-beta1`, untagged). Native focus tests now own a
+separate synthetic foreground application and require positive activation and opaque-overlap
+controls. Both focused scenarios pass in English/Portuguese and reject omitted key/ordering
+calls. Final gates are pending; the installed local-test artifact remains0.12.0/build19.
+
 Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). Installed
 locally for owner-authorized testing on2026-10-15, preserving0.11.0/build18 without app launch
 or termination. No notarization or distribution is claimed. Stable Xcode 27.0
@@ -13,9 +18,8 @@ or termination. No notarization or distribution is claimed. Stable Xcode 27.0
 language; `capture-focus` and `editor-presentation` failures still block candidate qualification.
 The owner explicitly authorized this test installation despite those failures.
 Existing Xcodes and global toolchain selection are preserved.
-The controlled native-window investigation adds an experimental test-only foreground host.
-Its current startup controls fail before product assertions; neither the experiment nor the
-documentation changes qualify a new version, final acceptance or merge. See
+The controlled native-window investigation preserves earlier failed foreground controls.
+The resumed session supplies the required control; final acceptance is recorded separately. See
 `docs/specs/native-window-qualification/review-evidence.md`.
 
 ### Added

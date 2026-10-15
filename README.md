@@ -1,8 +1,9 @@
 # Recortia
 
-**Development candidate:** 0.12.0 (build 19), intended label `0.12.0-beta1`, is installed locally
-for owner-authorized testing despite the current focus/editor-presentation failures. It has not
-been tagged, notarized or distributed. The replayable first-run feature tour and reference-feature inventory are
+**Development candidate:** 0.12.1 (build 20), intended label `0.12.1-beta1`, adds controlled
+native focus qualification; final acceptance is in progress. The installed local-test artifact
+remains 0.12.0/build19. Neither candidate has been tagged, notarized or distributed.
+The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). The
@@ -35,9 +36,9 @@ with `capture-focus` and `editor-presentation` failures. The owner explicitly au
 test installation despite these failures; candidate qualification remains blocked;
 see the [installation record](docs/specs/curved-arrows/local-installation.md).
 The [controlled native qualification investigation](docs/specs/native-window-qualification/implementation-plan.md)
-preserves the failed controls and experimental owned-foreground fixture. Its latest minimal
-normal-app control could not obtain foreground/key ownership; this blocks final native
-acceptance and merge. The source candidate and installed version remain 0.12.0/build19.
+preserves the failed controls and owned-foreground fixture. On the resumed graphical session,
+both focus scenarios pass in both languages; omitting required key/ordering calls makes each
+regression fail. Final gates remain pending. The installed version remains 0.12.0/build19.
 
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
