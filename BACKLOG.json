@@ -27,7 +27,7 @@
     "limitations": [
       "Stable Xcode27.0/27A266a is now installed alongside the existing RC/beta; signed stable gate passes683 tests/617 translations. Fresh full native E2E fails capture-focus and editor-presentation in both languages (45/47 each); candidate qualification remains blocked. See docs/specs/curved-arrows/local-installation.md.",
       "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
-      "Developer ID archive/export prepared from cf87796 with stable27A266a; app replacement blocked by current native FAILs. No new tag, merge, Mac app installation, notarization or public distribution. Xcode installation is recorded separately.",
+      "Developer ID archive/export from cf87796 with stable27A266a installed locally on2026-10-15 after explicit owner authorization despite current native FAILs; previous0.11.0/build18 preserved without app launch/termination. No new tag, merge, notarization or public distribution. Xcode installation is recorded separately.",
       "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
       "Saved-color native interaction now independently passes; the broader capture-focus keyboard failure and physical qualification remain open."
     ]
@@ -99,6 +99,26 @@
     ]
   },
   "current_local_installation": {
+    "candidate": "0.12.0 local test (untagged)",
+    "app_version": "0.12.0",
+    "build": 19,
+    "date": "2026-10-15",
+    "source_commit": "cf877963a49fdef461a07cad068514c282fc5ed5",
+    "installed_path": "/Applications/Recortia.app",
+    "backup_path": ".scratch/local-install-readiness-20261015/previous-0.11.0-build18.app",
+    "executable_sha256": "c4aecb8207593e0b80afc30a3312683644116a4fc963829600b4067c8556664b",
+    "installed_equals_export": true,
+    "backup_equals_previous": true,
+    "launched": false,
+    "notarized": false,
+    "authorization": "Explicit owner sim to local test installation despite current capture-focus and editor-presentation FAILs; preserve previous app and no launch/restart.",
+    "evidence_path": ".scratch/local-install-readiness-20261015/installation.json",
+    "independent_verdict": "PASS (authorized local test installation only)",
+    "independent_verification": "Fresh different-model verifier confirmed all59 installed entries equal export and all30 backup entries equal prior0.11.0/build18; both strict signatures pass. Independent215-sample process audit spans replacement, no Recortia PID observed, maximum gap0.438s; finite-sampling limit stated. No app launch/termination. Current native readiness remains FAIL.",
+    "independent_evidence_path": ".scratch/local-install-verifier-20261015/installation-verdict.md",
+    "qualification": "Artifact independently PASS; current native readiness FAIL (45/47 per language). Local test installation does not qualify release or physical behavior."
+  },
+  "previous_local_installation_build12": {
     "candidate": "0.10.0-beta3",
     "app_version": "0.10.0",
     "build": 12,

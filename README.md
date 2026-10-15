@@ -1,7 +1,8 @@
 # Recortia
 
-**Development candidate:** 0.12.0 (build 19), intended label `0.12.0-beta1`, is source work and has
-not been tagged, installed or distributed. The replayable first-run feature tour and reference-feature inventory are
+**Development candidate:** 0.12.0 (build 19), intended label `0.12.0-beta1`, is installed locally
+for owner-authorized testing despite the current focus/editor-presentation failures. It has not
+been tagged, notarized or distributed. The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
 [explicit saved annotation colors](docs/specs/saved-colors/spec.md). The
@@ -30,7 +31,8 @@ This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below.
 Xcode 27.0 (`27A266a`) is now installed at `/Applications/Xcode_27.app`; its signed gate passes
 683 tests and 617 translations. The fresh full native run passes 45/47 scenarios per language,
-with `capture-focus` and `editor-presentation` failures. Local app replacement remains blocked;
+with `capture-focus` and `editor-presentation` failures. The owner explicitly authorized local
+test installation despite these failures; candidate qualification remains blocked;
 see the [installation record](docs/specs/curved-arrows/local-installation.md).
 
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —

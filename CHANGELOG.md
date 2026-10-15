@@ -6,11 +6,13 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
-Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). No local
-installation, notarization or distribution is claimed. The newly installed stable Xcode 27.0
+Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). Installed
+locally for owner-authorized testing on2026-10-15, preserving0.11.0/build18 without app launch
+or termination. No notarization or distribution is claimed. Stable Xcode 27.0
 (`27A266a`) passes the signed 683-test gate. Fresh native E2E passes 45/47 scenarios in each
-language; `capture-focus` and `editor-presentation` failures block app replacement and candidate
-qualification. Existing Xcodes and global toolchain selection are preserved.
+language; `capture-focus` and `editor-presentation` failures still block candidate qualification.
+The owner explicitly authorized this test installation despite those failures.
+Existing Xcodes and global toolchain selection are preserved.
 
 ### Added
 

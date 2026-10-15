@@ -2,7 +2,7 @@
 
 ## Current result after the owner's download
 
-**Xcode is installed; Recortia replacement is blocked by current native failures.**
+**Xcode and Recortia0.12.0/build19 are installed for local testing. Native qualification remains FAIL.**
 The earlier state below is historical and is superseded by this section.
 
 The owner downloaded the Apple-signed `Xcode-27.0.0+27A266a.xip` (2,014,229,334 bytes) to
@@ -51,21 +51,36 @@ Export has59 entries/33 regular files. Executable/dSYM UUID:
 Independent different-model artifact verification passes: metadata, strict signature/runtime,
 profile/entitlements, locked dependency/licenses, binary isolation and matching dSYM UUID.
 A copied pristine app passes signature verification; mutating a sealed resource fails.
-Three invalid entitlement controls are rejected. The installed0.11.0/build18 still matches
+Three invalid entitlement controls are rejected. Before replacement,0.11.0/build18 matched
 all30 independently captured baseline entries (bytes, modes and symlinks); strict signature
-passes. Observations are retained in
+passed. Observations are retained in
 `.scratch/local-install-verifier-20261015/{artifact-observation,controls-and-preservation}.json`.
 Fresh different-model readiness assessment is **FAIL** on current native acceptance; see
 `.scratch/local-install-verifier-20261015/stable-native-readiness-addendum.md`.
-`/Applications/Recortia.app` remains0.11.0/build18; no app launch, termination, replacement,
-document/settings modification or TCC change occurred.
+The owner subsequently replied `sim` to the explicit question authorizing this local test
+installation despite both current failures, preserving the previous app and without launch/restart.
+At2026-10-15T05:09:24Z the verified staging bundle replaced `/Applications/Recortia.app`
+using same-volume renames with rollback on failure. Main-session checks confirm installed
+0.12.0/build19 equals all59 export entries; the preserved0.11.0/build18 equals all30 baseline
+entries. Both strict signatures pass. No app launch, termination, document/settings modification
+or TCC change was performed.
+
+Rollback bundle: `.scratch/local-install-readiness-20261015/previous-0.11.0-build18.app`.
+Installation interval and checks: `.scratch/local-install-readiness-20261015/installation.json`.
+Independent different-model installation verdict is **PASS**, restricted to the explicit local-test
+authorization: `.scratch/local-install-verifier-20261015/installation-verdict.md`.
+All59 installed entries/33 files equal the export; all30 backup entries/19 files equal the
+baseline; both strict signatures pass. Its215 process samples cover before/during/after
+replacement without an observed Recortia PID. The maximum sampling gap was0.438 seconds;
+sampling cannot exclude a process existing entirely between samples. The observer exited0
+and was stopped. Artifact/local-install PASS does not change native-readiness FAIL.
 
 The owner's installation request was conditioned on completion. The specific contract
 separates artifact/local-install evidence from UI/notarization; it does not waive required
-native E2E or `IMPLEMENTATION_PLAN.md:17`'s CAP-01 candidate-delivery block. Substitution needs
-a verified correction/disproof, or explicit owner authorization to install this test candidate
-despite the named current FAILs. Preserve the old bundle and independently audit process
-identity before any later replacement. Physical input/Spaces/VoiceOver/TCC, clean-user launch,
+native E2E or `IMPLEMENTATION_PLAN.md:17`'s CAP-01 candidate-delivery block. The later explicit
+owner decision permits only local test substitution despite the named FAILs; it does not mark
+them fixed or qualify release. The old bundle is retained, with independent process observation
+covering the installation. Physical input/Spaces/VoiceOver/TCC, clean-user launch,
 stable-host performance and distribution remain unqualified on this seed macOS host.
 
 Cleanup: the task-owned worktree and1.25GB of isolated builds were removed after independent
