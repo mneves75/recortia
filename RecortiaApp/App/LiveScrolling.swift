@@ -4,17 +4,38 @@ import Domain
 import Features
 import MacPlatform
 
+struct ScrollWindowBinding: Equatable {
+    let sessionID: UUID
+    let windowID: CGWindowID
+}
+
+@MainActor
+protocol AutoScrollDriving: AnyObject {
+    func start() throws(AutoScrollError)
+    func scrollDown(byPixels pixels: Int) -> AutoScrollStepResult
+    func stop(reason: AutoScrollStopReason)
+}
+
+extension AutoScroller: AutoScrollDriving {}
+
 /// Adapts MacPlatform's single-use `ScrollFrameSource` to the session protocol: each `start`
 /// builds a new bounded stream for the chosen region; frames after `stop()` throw `.canceled`.
 final class LiveScrollFrames: ScrollFrameSourceService {
     private var source: ScrollFrameSource?
     private var iterator: AsyncStream<CGImage>.AsyncIterator?
+    private var sessionID = UUID()
+
+    var boundWindowBinding: ScrollWindowBinding? {
+        guard let windowID = source?.boundWindowID else { return nil }
+        return ScrollWindowBinding(sessionID: sessionID, windowID: windowID)
+    }
 
     func start(_ target: CaptureTarget) async throws(CaptureError) {
         stopSynchronously()
         guard let (region, display) = Self.region(for: target) else { throw .targetUnavailable }
         let source = ScrollFrameSource(region: region, display: display)
         self.source = source
+        sessionID = UUID()
         iterator = source.frames.makeAsyncIterator()
         try await source.start()
     }
@@ -61,27 +82,76 @@ final class LiveScrollFrames: ScrollFrameSourceService {
 }
 
 /// Targeted automatic scrolling (FR-10, ADR-002). The scroller is created on the first step for
-/// the frontmost other-app window under the capture region, and stops on any focus/target change.
+/// the frame source's bound window, and stops on any focus/target change.
 final class LiveAutoScroll: AutoScrollService {
     /// Points per step: less than a typical viewport so consecutive frames overlap for matching.
     static let stepPoints = 240
 
-    private let capture: ScreenCaptureService
-    private var scroller: AutoScroller?
+    private let binding: @MainActor () -> ScrollWindowBinding?
+    private let windows: @MainActor () async throws(CaptureError) -> [WindowInfo]
+    private let frontmost: @MainActor (Point<DesktopSpace>) -> CGWindowID?
+    private let makeDriver:
+        @MainActor (WindowInfo, DisplayInfo, Point<DesktopSpace>) throws(AutoScrollError) -> any AutoScrollDriving
+    private var scroller: (any AutoScrollDriving)?
+    private var scrollerBinding: ScrollWindowBinding?
+    private var generation = UUID()
 
-    init(capture: ScreenCaptureService = ScreenCaptureService()) {
-        self.capture = capture
+    convenience init(frames: LiveScrollFrames) {
+        self.init(binding: { frames.boundWindowBinding })
+    }
+
+    init(
+        binding: @escaping @MainActor () -> ScrollWindowBinding?,
+        windows: @escaping @MainActor () async throws(CaptureError) -> [WindowInfo] = {
+            try await ScreenCaptureService().windows()
+        },
+        frontmost: @escaping @MainActor (Point<DesktopSpace>) -> CGWindowID? = LiveAutoScroll.frontmostWindowID,
+        makeDriver:
+            @escaping @MainActor (WindowInfo, DisplayInfo, Point<DesktopSpace>) throws(AutoScrollError) ->
+            any AutoScrollDriving = {
+                try AutoScroller(target: $0, display: $1, scrollPoint: $2)
+            }
+    ) {
+        self.binding = binding
+        self.windows = windows
+        self.frontmost = frontmost
+        self.makeDriver = makeDriver
     }
 
     func step(_ target: CaptureTarget) async -> AutoScrollStep {
+        guard let expected = binding(), !Task.isCancelled else {
+            stop()
+            return .targetLost
+        }
+        if case .window(let chosen) = target, chosen.id != expected.windowID {
+            stop()
+            return .targetLost
+        }
+        guard let (region, _) = LiveScrollFrames.region(for: target),
+            frontmost(Point(x: region.midX, y: region.midY)) == expected.windowID
+        else {
+            stop()
+            return .targetLost
+        }
         if scroller == nil {
-            guard let created = await makeScroller(for: target) else { return .targetLost }
-            // The session may have ended while the window list loaded; never keep a scroller then.
-            guard !Task.isCancelled else { return .targetLost }
+            let request = generation
+            guard let created = await makeScroller(for: target, binding: expected, generation: request) else {
+                return .targetLost
+            }
+            guard generation == request, !Task.isCancelled, binding() == expected,
+                frontmost(Point(x: region.midX, y: region.midY)) == expected.windowID
+            else {
+                created.stop(reason: .requested)
+                return .targetLost
+            }
             do { try created.start() } catch { return .targetLost }
             scroller = created
+            scrollerBinding = expected
         }
-        guard let scroller else { return .targetLost }
+        guard let scroller, scrollerBinding == expected else {
+            stop()
+            return .targetLost
+        }
         switch scroller.scrollDown(byPixels: Self.stepPoints) {
         case .scrolled: return .scrolled
         case .notRunning, .stopped: return .targetLost
@@ -89,8 +159,10 @@ final class LiveAutoScroll: AutoScrollService {
     }
 
     func stop() {
-        scroller?.stop()
+        generation = UUID()
+        scroller?.stop(reason: .requested)
         scroller = nil
+        scrollerBinding = nil
     }
 
     /// Reads the vertical scroll bar of the scroll area under the capture region's center through
@@ -126,18 +198,17 @@ final class LiveAutoScroll: AutoScrollService {
         return unsafeDowncast(value as AnyObject, to: AXUIElement.self)
     }
 
-    private func makeScroller(for target: CaptureTarget) async -> AutoScroller? {
+    private func makeScroller(
+        for target: CaptureTarget, binding expected: ScrollWindowBinding, generation request: UUID
+    ) async -> (any AutoScrollDriving)? {
         guard let (region, display) = LiveScrollFrames.region(for: target) else { return nil }
         let center = Point<DesktopSpace>(x: region.midX, y: region.midY)
-        let window: WindowInfo?
-        if case .window(let chosen) = target {
-            window = chosen
-        } else {
-            let candidates = (try? await capture.windows()) ?? []
-            window = Self.frontmostWindowID(containing: center).flatMap { id in candidates.first { $0.id == id } }
-        }
-        guard let window else { return nil }
-        return try? AutoScroller(target: window, display: display, scrollPoint: center)
+        let candidates = (try? await windows()) ?? []
+        guard generation == request, !Task.isCancelled, binding() == expected,
+            frontmost(center) == expected.windowID,
+            let window = candidates.first(where: { $0.id == expected.windowID })
+        else { return nil }
+        return try? makeDriver(window, display, center)
     }
 
     /// `CGWindowListCopyWindowInfo` documents front-to-back ordering (ScreenCaptureKit does not), and

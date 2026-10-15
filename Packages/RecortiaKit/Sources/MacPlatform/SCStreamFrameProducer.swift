@@ -26,6 +26,8 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
     private let ownProcessID: pid_t
     private let sampleQueue = DispatchQueue(label: "recortia.scroll-frames", qos: .userInitiated)
     private var session: Session?
+    private var generation: UUID? = UUID()
+    private var pendingOutput: StreamOutput?
 
     /// Scrolling needs steady frames, not video: 15 fps keeps work and memory bounded.
     private static let framesPerSecond: Int32 = 15
@@ -46,13 +48,21 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
     func start(
         deliver: @escaping @Sendable (CGImage) -> Void, ended: @escaping @Sendable (CaptureError) -> Void
     ) async throws(CaptureError) {
-        guard session == nil else { throw .canceled }
+        guard let request = generation, session == nil, pendingOutput == nil else { throw .canceled }
         guard let sourceRect else { throw .targetUnavailable }
+        let output = StreamOutput(deliver: deliver, ended: ended)
+        pendingOutput = output
         do {
             let made = try await Self.makeSession(
                 displayID: displayID, sourceRect: sourceRect, expectedScale: expectedScale,
                 excludedWindowIDs: Set(excludedWindowIDs), ownProcessID: ownProcessID, sampleQueue: sampleQueue,
-                output: StreamOutput(deliver: deliver, ended: ended))
+                output: output)
+            guard generation == request, !Task.isCancelled else {
+                made.output.detach()
+                // Preparation added an output, but this superseded stream must never start.
+                try? made.stream.removeStreamOutput(made.output, type: .screen)
+                throw CaptureError.canceled
+            }
             session = made
             let stream = made.stream
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
@@ -60,6 +70,13 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
                     if let error { continuation.resume(throwing: error) } else { continuation.resume() }
                 }
             }
+            guard generation == request, !Task.isCancelled else {
+                // Stop may have completed before the outstanding start callback. Stop this exact
+                // stream again now that start has returned, even though `session` was cleared.
+                await stopCapture(stream)
+                throw CaptureError.canceled
+            }
+            pendingOutput = nil
         } catch {
             await stop()
             throw ScreenCaptureService.map(error)
@@ -67,6 +84,9 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
     }
 
     func stop() async {
+        generation = nil
+        pendingOutput?.detach()
+        pendingOutput = nil
         guard let current = session else { return }
         session = nil
         current.output.detach()
@@ -75,6 +95,10 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
         // (for example, the system stopped it) the stop callback reports an error that changes nothing:
         // the handlers are detached above and the stream is released with `current`.
         try? stream.removeStreamOutput(current.output, type: .screen)
+        await stopCapture(stream)
+    }
+
+    private func stopCapture(_ stream: SCStream) async {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             stream.stopCapture { @Sendable _ in continuation.resume() }
         }

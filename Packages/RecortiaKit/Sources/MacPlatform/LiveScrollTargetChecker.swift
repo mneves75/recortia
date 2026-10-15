@@ -15,6 +15,7 @@ final class LiveScrollTargetChecker: ScrollTargetChecking {
     private let point: CGPoint
     private let display: DisplayInfo
     private var boundWindow: Window?
+    var boundWindowID: CGWindowID? { boundWindow?.id }
 
     init(region: Rect<DesktopSpace>, display: DisplayInfo) {
         point = CGPoint(x: region.midX, y: region.midY)

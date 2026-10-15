@@ -90,6 +90,9 @@
                 id: "window-latency", title: "Each window opens in under 50 ms", run: LatencyScenarios.windowLatency,
                 runsOnlyWhenNamed: true),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
+            E2EScenario(
+                id: "scroll-target-binding", title: "Automatic scrolling stays bound through discovery and Stop",
+                run: ScrollScenarios.automaticTarget),
             E2EScenario(id: "import", title: "Import and import errors", run: OutputScenarios.importFiles),
             E2EScenario(
                 id: "import-admission", title: "One import read/decode across documents and layers",
