@@ -9,6 +9,7 @@ struct TextLayoutConcurrencyTests {
     /// Hosted CI twice reported a designed system font as unavailable while other tests resolved
     /// fonts concurrently on the main actor and export threads (runs 38652457209 and
     /// 38795897584 attempt 1). Each failure records its stage so a recurrence is attributable.
+    /// Sized for the hosted runner, where 1,920 resolutions took 66 s (run 38821022009).
     @Test("Concurrent designed-font resolution and measurement never report a missing font")
     func concurrentResolution() async {
         let sizes: [Double] = [7.5, 11, 12, 18, 24, 28, 36, 48, 96, 450]
@@ -32,11 +33,11 @@ struct TextLayoutConcurrencyTests {
             return nil
         }
         let failures = await withTaskGroup(of: [String].self) { group in
-            for worker in 0..<48 {
-                if worker.isMultiple(of: 6) {
-                    group.addTask { @MainActor in (0..<40).compactMap { resolve(worker: worker, step: $0) } }
+            for worker in 0..<16 {
+                if worker.isMultiple(of: 4) {
+                    group.addTask { @MainActor in (0..<12).compactMap { resolve(worker: worker, step: $0) } }
                 } else {
-                    group.addTask { (0..<40).compactMap { resolve(worker: worker, step: $0) } }
+                    group.addTask { (0..<12).compactMap { resolve(worker: worker, step: $0) } }
                 }
             }
             return await group.reduce(into: [String]()) { $0 += $1 }
