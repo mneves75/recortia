@@ -81,3 +81,10 @@ the8.8 MB native evidence was preserved. No synthetic test process remained in t
 process check. Preexisting build caches, installed app/backup, archives and unrelated
 `docs/handoffs/` were preserved. The visible branch remains `feat/onboarding-feature-guide`;
 PR16 remains draft, with final acceptance pending.
+
+The bounded follow-up Standards/Spec review of `0781aed..f6f8623` found zero confirmed
+actionable defects in the experimental delta. It performed source review only. The reviewer
+confirmed that missing readiness fails explicitly, cooperative activation is separate, and
+production sources exclude the E2E helper. This does not qualify runtime behavior.
+`complexity-candidate.json` covers exactly four Swift files/89 functions with zero parse
+errors and empty stderr; coverage is partial and supplies no behavioral acceptance.
