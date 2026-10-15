@@ -184,7 +184,11 @@ extension EditorModel {
             document.layers[index].placement.translation =
                 document.layers[index].placement.translation.offset(dx: dx, dy: dy)
         }
-        document.annotations = document.annotations.map { $0.translated(dx: dx, dy: dy) }
+        document.annotations = try document.annotations.map {
+            let translated = $0.translated(dx: dx, dy: dy)
+            try validateArrowCurve(translated)
+            return translated
+        }
         for index in document.masks.indices {
             document.masks[index].outputRect = document.masks[index].outputRect.offsetBy(dx: dx, dy: dy)
         }

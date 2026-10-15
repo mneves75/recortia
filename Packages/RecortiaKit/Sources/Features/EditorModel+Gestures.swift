@@ -10,7 +10,7 @@ extension EditorModel {
 
     public func pointerDown(at p: Point<DocumentSpace>, modifiers: EditorModifiers = []) {
         guard !isClosed, textEditing == nil, p.isFinite else { return }
-        endContinuousChange()
+        if tool != .select && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
         cancelGesture()
         switch tool {
         case .hand:
@@ -113,9 +113,11 @@ extension EditorModel {
         case .create(let tool, let start, let points):
             commitCreation(tool: tool, start: start, points: points, end: p.isFinite ? p : start, modifiers: modifiers)
         case .move, .resize:
-            session.endGroup()
-            releaseUnreachableAssets()
-            noteUndoEvictionIfNeeded()
+            if continuousChangeID == nil {
+                session.endGroup()
+                releaseUnreachableAssets()
+                noteUndoEvictionIfNeeded()
+            }
         case .idle, .marquee, .ruler, .sample:
             break
         }
@@ -134,6 +136,7 @@ extension EditorModel {
         draft = nil
         switch current {
         case .move, .resize:
+            guard continuousChangeID == nil else { return }
             let before = session.document, epoch = session.privacyEpoch
             session.cancelGroup()
             noteUndoEvictionIfNeeded()
@@ -147,7 +150,6 @@ extension EditorModel {
 
     private func beginSelectGesture(at p: Point<DocumentSpace>, modifiers: EditorModifiers) {
         if let handle = handle(at: p), let item = selection.first, let frame = frame(of: item) {
-            session.beginGroup("Resize")
             gesture = .resize(item: item, handle: handle, frame: frame, original: document)
             return
         }
@@ -159,7 +161,6 @@ extension EditorModel {
                 selection = [hit]
                 loadSelectedTextAppearance()
             }
-            session.beginGroup("Move")
             gesture = .move(items: orderedSelection, start: p, original: document)
             return
         }
@@ -169,6 +170,9 @@ extension EditorModel {
     }
 
     private func replaceDocumentInGesture(_ label: String, with updated: Document) {
+        guard updated != document else { return }
+        endContinuousChange()
+        session.beginGroup(label)
         let before = session.document, epoch = session.privacyEpoch
         do {
             try session.perform(label) { $0 = updated }
@@ -298,6 +302,7 @@ extension EditorModel {
                 post(.arrowGeometryRefused)
                 return
             }
+            endContinuousChange()
             if edit(tool == .arrow ? "Arrow" : "Line", { $0.annotations.append(segment) }) {
                 created = .annotation(segment.id)
             }

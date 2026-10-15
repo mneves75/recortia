@@ -122,3 +122,39 @@ curve commands, removing a duplicate Imaging import/check. No semantic contract 
 `shared-admission-refactor-green.log` passed all eleven editor tests. Full gate/independent
 acceptance follow on the frozen code candidate; this final smoke predates that small helper
 consolidation, while the later required full native run must cover the final candidate.
+
+## Adversarial source review and corrections
+
+The two fresh, read-only Sol 6.1/xhigh review contexts examined `03c2a67…d0326ba`:
+Spec found collinear frame refusal and premature adjustment closure on refused endpoint drags;
+Standards found canvas expansion admitting a translated curve whose endpoints collapse through
+floating-point precision. Neither reviewer executed tests or the app.
+
+The frozen `d0326ba` unsigned development gate passed (`full-check.log`): 134 MacPlatform,
+167 Imaging, 315 Features and 62 Domain tests (678 total), 617 translated strings, app and E2E
+target builds. This predates the corrections below and is not final-candidate acceptance.
+
+- `collinear-frame-behavior-red.log`: ten failed expectations across horizontal/vertical,
+  reversed-endpoint frame edits. An earlier test draft failed compilation for an omitted
+  style argument (`collinear-frame-red.log`); only the corrected run demonstrates the defect.
+  `collinear-frame-green.log`: 22 editor tests pass. Segment progress on the nonempty axis
+  now gives collinear arrows extent, matching existing lines instead of silently ignoring it.
+- `canvas-shift-red.log`: six failures prove invalid geometry committed and discarded Redo.
+  `canvas-shift-green.log`: 14 curve/composition tests pass after shifted curves are admitted
+  inside the atomic document transaction. Ordinary 40-point growth and Undo are positive controls.
+- `gesture-adjustment-red.log`: three failures prove a refused/cancelled endpoint drag closed
+  the previous adjustment. `gesture-adjustment-green.log`: 45 editor gesture tests pass.
+  Move/resize groups now start on the first admitted document change; refusing or cancelling
+  before that point preserves the open adjustment. An admitted drag remains a separate Undo.
+- `creation-adjustment-red.log`: one failure exposes the same premature closure on curved
+  creation. Creation now ends the preceding adjustment only after geometry admission.
+  `creation-adjustment-green.log`: 46 editor gesture tests pass.
+
+Standards also raised an unconfirmed resource-risk question about Core Graphics stroking/union
+on very large finite coordinates. Bounded solver iterations alone do not qualify framework
+resource usage; do not describe that risk as a reproduced failure or a measured performance pass.
+
+The earlier plan-only hosted run `38652457209` failed three assertions in the text appearance
+creation/reopening test (`earlier-plan-ci-failure.log`); the later `03c2a67` run passed.
+No causal diagnosis or fix is established by that later success. Preserve this incident separately
+from CAP-01 and the curved-arrow focused evidence.

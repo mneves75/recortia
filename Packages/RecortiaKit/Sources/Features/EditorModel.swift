@@ -602,8 +602,12 @@ public final class EditorModel {
         }
         if rect.width == 0 || rect.height == 0 {
             guard rect.width > 0 || rect.height > 0, case .annotation(let id) = item,
-                let annotation = document.annotations.first(where: { $0.id == id }), case .line = annotation.kind
+                let annotation = document.annotations.first(where: { $0.id == id })
             else { throw DocumentError.invalidGeometry }
+            switch annotation.kind {
+            case .line, .arrow: break
+            default: throw DocumentError.invalidGeometry
+            }
         }
         switch item {
         case .annotation(let id):

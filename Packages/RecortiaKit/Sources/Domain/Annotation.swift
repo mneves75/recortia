@@ -162,6 +162,12 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         func map(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
             Point(x: new.minX + (p.x - old.minX) * sx, y: new.minY + (p.y - old.minY) * sy)
         }
+        func mapSegmentPoint(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
+            // A segment with one empty axis gains extent using progress along its other axis.
+            let xFraction = old.width > 0 ? (p.x - old.minX) / old.width : (p.y - old.minY) / old.height
+            let yFraction = old.height > 0 ? (p.y - old.minY) / old.height : (p.x - old.minX) / old.width
+            return Point(x: new.minX + xFraction * new.width, y: new.minY + yFraction * new.height)
+        }
         var copy = self
         switch kind {
         case .text(var text):
@@ -170,16 +176,10 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             if let width = text.maxWidth { text.maxWidth = width * sx }
             copy.kind = .text(text)
         case .arrow(let start, let end, let control):
-            copy.kind = .arrow(start: map(start), end: map(end), control: control.map(map))
+            copy.kind = .arrow(
+                start: mapSegmentPoint(start), end: mapSegmentPoint(end), control: control.map(mapSegmentPoint))
         case .line(let start, let end):
-            func mapEndpoint(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
-                // An axis-aligned segment has no extent on one axis; use progress along the
-                // other axis when the new frame gives it extent, preserving endpoint order.
-                let xFraction = old.width > 0 ? (p.x - old.minX) / old.width : (p.y - old.minY) / old.height
-                let yFraction = old.height > 0 ? (p.y - old.minY) / old.height : (p.x - old.minX) / old.width
-                return Point(x: new.minX + xFraction * new.width, y: new.minY + yFraction * new.height)
-            }
-            copy.kind = .line(start: mapEndpoint(start), end: mapEndpoint(end))
+            copy.kind = .line(start: mapSegmentPoint(start), end: mapSegmentPoint(end))
         case .rectangle:
             copy.kind = .rectangle(new)
         case .ellipse:
