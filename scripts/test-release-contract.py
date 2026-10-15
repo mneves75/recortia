@@ -5,6 +5,7 @@ import argparse
 import json
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,54 @@ RESOLVED = ROOT / "Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/P
 NOTICE = "KeyboardShortcuts-LICENSE.txt"
 
 
+class ReleaseFixture:
+    """Run the real release entry point, stopping at the gate or archive boundary."""
+
+    def __init__(self, root: pathlib.Path) -> None:
+        self.root = root
+        (root / "scripts").mkdir()
+        for name in ("release.sh", "doctor.sh"):
+            shutil.copy(ROOT / "scripts" / name, root / "scripts" / name)
+        shutil.copy(ROOT / "TOOLCHAIN.json", root / "TOOLCHAIN.json")
+        self.bin = root / "bin"
+        self.bin.mkdir()
+        self.write_tool("xcodegen", "#!/bin/sh\nexit 0\n")
+        self.write_tool("xcrun", "#!/bin/sh\necho 'Swift fixture compiler'\n")
+        (self.bin / "python3").symlink_to(sys.executable)
+        self.write_tool("xcodebuild", "#!/bin/sh\n"
+                        "if [ \"$1\" = -version ]; then printf 'Xcode 27.0\\nBuild version 27A266a\\n'; "
+                        "else touch archive-reached; exit 89; fi\n")
+        self.write_tool("git", f"#!{sys.executable}\n" + '''import pathlib, shutil, sys
+root = pathlib.Path(__file__).resolve().parent.parent
+args = sys.argv[1:]
+if args[:2] == ['rev-parse', 'HEAD']:
+    print('a' * 40)
+elif args[0] == 'show':
+    print('MARKETING_VERSION: 0.12.2\\nCURRENT_PROJECT_VERSION: 21')
+elif args[0] == 'describe':
+    print('v0.12.2')
+elif args[:2] == ['worktree', 'add']:
+    target = pathlib.Path(args[-2])
+    shutil.copytree(root / 'gate', target)
+''')
+        (root / "gate/scripts").mkdir(parents=True)
+        gate = root / "gate/scripts/check.sh"
+        gate.write_text("#!/bin/sh\ntouch gate-reached\nexit 23\n")
+        gate.chmod(0o755)
+
+    def write_tool(self, name: str, source: str) -> None:
+        tool = self.bin / name
+        tool.write_text(source)
+        tool.chmod(0o755)
+
+    def run(self, *arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["/bin/zsh", str(self.root / "scripts/release.sh"), *arguments], cwd=self.root,
+            env={"PATH": f"{self.bin}:/usr/bin:/bin", "RECORTIA_TOOLCHAIN_MODE": "stable"},
+            capture_output=True, text=True, timeout=15,
+        )
+
+
 def git(*args: str, cwd: pathlib.Path) -> str:
     return subprocess.check_output(["git", *args], cwd=cwd, text=True).strip()
 
@@ -24,6 +73,77 @@ def git(*args: str, cwd: pathlib.Path) -> str:
 class ReleaseContractTests(unittest.TestCase):
     app: pathlib.Path
     checkout: pathlib.Path
+
+    def fixture(self) -> ReleaseFixture:
+        scratch = ROOT / ".scratch"
+        scratch.mkdir(exist_ok=True)
+        directory = tempfile.TemporaryDirectory(dir=scratch)
+        self.addCleanup(directory.cleanup)
+        return ReleaseFixture(pathlib.Path(directory.name))
+
+    def test_existing_tagged_artifacts_survive_every_rerun(self) -> None:
+        fixture = self.fixture()
+        out = fixture.root / ".build/release/0.12.2"
+        sentinels = {
+            out / "Recortia.xcarchive/archive": b"original archive\x00",
+            out / "Recortia.xcarchive/dSYMs/Recortia.dSYM/symbols": b"original symbols\xff",
+            out / "Recortia-0.12.2.dmg": b"original notarized image",
+        }
+        for path, content in sentinels.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        for _ in range(2):
+            result = fixture.run()
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn(str(out), result.stderr)
+            for path, content in sentinels.items():
+                self.assertTrue(path.exists(), f"retained artifact deleted: {path}")
+                self.assertEqual(content, path.read_bytes())
+            self.assertFalse((out / "src").exists(), "reservation must fail before the gate")
+            self.assertFalse((fixture.root / "archive-reached").exists())
+
+    def test_failed_gate_keeps_reservation_and_second_invocation_refuses_it(self) -> None:
+        fixture = self.fixture()
+        first = fixture.run()
+        self.assertIn("the gate failed", first.stderr)
+        out = fixture.root / ".build/release/0.12.2"
+        (out / "reserved").write_bytes(b"first invocation")
+        second = fixture.run()
+        self.assertNotEqual(0, second.returncode)
+        self.assertIn("already exists", second.stderr)
+        self.assertEqual(b"first invocation", (out / "reserved").read_bytes())
+        self.assertFalse((fixture.root / "archive-reached").exists())
+
+    def test_dry_runs_reserve_unique_directories_and_preserve_older_output(self) -> None:
+        fixture = self.fixture()
+        older = fixture.root / ".build/release/0.12.2-dev"
+        older.mkdir(parents=True)
+        (older / "retained").write_bytes(b"older dry run")
+        for _ in range(2):
+            result = fixture.run("--dry-run")
+            self.assertNotEqual(0, result.returncode)  # fixture stops at archive, before signing
+        self.assertEqual(b"older dry run", (older / "retained").read_bytes())
+        fresh = list(older.parent.glob("0.12.2-dev-*"))
+        self.assertEqual(2, len(fresh), "each dry run needs its own reservation")
+        self.assertTrue((fixture.root / "archive-reached").exists(), "dry run control reaches archive")
+
+    def test_missing_xcodegen_fails_release_gate_before_archive(self) -> None:
+        fixture = self.fixture()
+        (fixture.bin / "xcodegen").unlink()
+        gate = fixture.root / "gate"
+        shutil.copy(ROOT / "scripts/check.sh", gate / "scripts/check.sh")
+        for name in ("doctor.sh", "check-project-fresh.sh"):
+            shutil.copy(ROOT / "scripts" / name, gate / "scripts" / name)
+        shutil.copy(ROOT / "TOOLCHAIN.json", gate / "TOOLCHAIN.json")
+        # Earlier gate tests are independently exercised by their own suites.
+        for name in re.findall(r"python3 scripts/(test-[\w-]+\.py)", (ROOT / "scripts/check.sh").read_text()):
+            (gate / "scripts" / name).write_text("")
+        fixture.write_tool("swift", "#!/bin/sh\nexit 0\n")
+        result = fixture.run()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("the gate failed", result.stderr)
+        self.assertFalse((fixture.root / "archive-reached").exists(), "no archive after a failed freshness gate")
+        self.assertFalse(list((fixture.root / ".build/release").rglob("archive-reached")))
 
     def test_release_entry_point_requires_stable_toolchain_before_git_or_artifacts(self) -> None:
         scratch = ROOT / ".scratch"

@@ -33,10 +33,23 @@ case "$lang" in
   *) echo "e2e: --lang must be en, pt-BR, or all" >&2; exit 2 ;;
 esac
 
+scripts/doctor.sh
+toolchain_mode="${RECORTIA_TOOLCHAIN_MODE:-stable}"
+xcode_version=$(xcodebuild -version)
+source_commit=$(git rev-parse HEAD)
 derived=.build/dd
+provenance="$derived-e2e-provenance.json"
+# Compare the source and the doctor-approved compiler, including its selected installation.
+current_provenance=$(python3 - "$source_commit" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" <<'PY'
+import json, sys
+print(json.dumps(dict(zip(("git_sha", "toolchain_mode", "developer_dir", "xcode_version"), sys.argv[1:])), sort_keys=True))
+PY
+)
 app="$derived/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
 mkdir -p .build
 if (( build )); then
+  # A failed rebuild must not leave a previous build's qualification attached to partial output.
+  rm -f "$provenance"
   echo "== build Debug"
   if ! xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug \
     -destination 'platform=macOS' -derivedDataPath "$derived" "${sign_args[@]}" build >"$derived-e2e-build.log" 2>&1; then
@@ -44,14 +57,19 @@ if (( build )); then
     echo "e2e: build failed (full log: $derived-e2e-build.log)" >&2
     exit 2
   fi
+  print -r -- "$current_provenance" > "$provenance"
+elif [[ ! -f "$provenance" ]] || [[ "$(cat "$provenance")" != "$current_provenance" ]]; then
+  echo "e2e: missing or mismatched build provenance at $provenance; rebuild with the selected toolchain" >&2
+  exit 2
 fi
 [[ -x "$app" ]] || { echo "e2e: $app not found; build first" >&2; exit 2; }
 
-run_root="$PWD/.scratch/e2e/$(date +%Y%m%d-%H%M%S)"
+run_root="$PWD/.scratch/e2e/$(date +%Y%m%d-%H%M%S)-$$"
 rc=0
 for language in $languages; do
   out="$run_root/$language"
   mkdir -p "$out"
+  cp "$provenance" "$out/provenance.json"
   echo "== run $language → $out"
   args=(-RecortiaE2E "$out" -AppleLanguages "($language)" -AppleLocale "${language/-/_}")
   [[ -n "$only" ]] && args+=(-RecortiaE2EOnly "$only")

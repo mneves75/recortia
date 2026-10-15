@@ -8,12 +8,8 @@ set -euo pipefail
 cd "${0:A:h}/.."
 
 if ! command -v xcodegen >/dev/null; then
-  if [[ -n "${CI:-}" ]]; then
-    echo "check: xcodegen is missing, so the generated-project freshness gate cannot run in CI" >&2
-    exit 1
-  fi
-  echo "check: xcodegen is missing; skipping the generated-project freshness gate"
-  exit 0
+  echo "check: xcodegen is missing, so the required generated-project freshness gate cannot run" >&2
+  exit 1
 fi
 
 xcodegen generate --quiet

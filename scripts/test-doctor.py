@@ -3,12 +3,98 @@
 
 import json
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+class E2EToolchainTests(unittest.TestCase):
+    def setUp(self) -> None:
+        scratch = ROOT / ".scratch"
+        scratch.mkdir(exist_ok=True)
+        temporary = tempfile.TemporaryDirectory(dir=scratch)
+        self.addCleanup(temporary.cleanup)
+        self.root = pathlib.Path(temporary.name)
+        (self.root / "scripts").mkdir()
+        for name in ("e2e.sh", "doctor.sh"):
+            shutil.copy(ROOT / "scripts" / name, self.root / "scripts" / name)
+        shutil.copy(ROOT / "TOOLCHAIN.json", self.root / "TOOLCHAIN.json")
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        (self.bin / "python3").symlink_to(sys.executable)
+        self.tool("xcodegen", "#!/bin/sh\nexit 0\n")
+        self.tool("xcrun", "#!/bin/sh\necho 'Swift fixture compiler'\n")
+        self.tool("git", "#!/bin/sh\ncat .fixture-sha\n")
+        (self.root / ".fixture-sha").write_text("a" * 40 + "\n")
+        app = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
+        app.parent.mkdir(parents=True)
+        app.write_text('#!/bin/sh\ntouch launch-reached\nprintf \'[{"passed":true,"screenshots":[]}]\' > "$2/report.json"\n')
+        app.chmod(0o755)
+
+    def tool(self, name: str, source: str) -> None:
+        executable = self.bin / name
+        executable.write_text(source)
+        executable.chmod(0o755)
+
+    def run_e2e(self, *arguments: str, version: str = "27.0", build: str = "27A266a", mode: str = "stable") -> subprocess.CompletedProcess[str]:
+        self.tool("xcodebuild", "#!/bin/sh\n"
+                  f"if [ \"$1\" = -version ]; then printf 'Xcode {version}\\nBuild version {build}\\n'; "
+                  "else touch build-reached; fi\n")
+        return subprocess.run(
+            ["/bin/zsh", str(self.root / "scripts/e2e.sh"), "--lang", "en", *arguments],
+            cwd=self.root, capture_output=True, text=True, timeout=15,
+            env={"PATH": f"{self.bin}:/usr/bin:/bin", "RECORTIA_TOOLCHAIN_MODE": mode,
+                 "DEVELOPER_DIR": "/fixture/Xcode/Contents/Developer", "E2E_TIMEOUT": "1"},
+        )
+
+    def test_unreviewed_toolchain_never_builds_or_launches(self) -> None:
+        result = self.run_e2e(version="27.9", build="unreviewed")
+        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse((self.root / "build-reached").exists())
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_no_build_requires_matching_provenance_before_launch(self) -> None:
+        result = self.run_e2e("--no-build")
+        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("provenance", result.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_build_records_provenance_and_matching_no_build_reuses_it(self) -> None:
+        result = self.run_e2e()
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        provenance = self.root / ".build/dd-e2e-provenance.json"
+        self.assertTrue(provenance.exists(), "successful builds need provenance next to derived data")
+        record = json.loads(provenance.read_text())
+        self.assertEqual("stable", record["toolchain_mode"])
+        self.assertEqual("a" * 40, record["git_sha"])
+        self.assertIn("27A266a", record["xcode_version"])
+        runs = list((self.root / ".scratch/e2e").glob("*/en/provenance.json"))
+        self.assertEqual(1, len(runs))
+        self.assertEqual(record, json.loads(runs[0].read_text()))
+        reused = self.run_e2e("--no-build")
+        self.assertEqual(0, reused.returncode, reused.stdout + reused.stderr)
+
+    def test_no_build_rejects_different_toolchain_or_source(self) -> None:
+        self.assertEqual(0, self.run_e2e().returncode)
+        (self.root / "launch-reached").unlink()
+        changed = self.run_e2e("--no-build", version="27.1", build="27A9275", mode="development")
+        self.assertNotEqual(0, changed.returncode)
+        self.assertFalse((self.root / "launch-reached").exists())
+        (self.root / ".fixture-sha").write_text("b" * 40 + "\n")
+        changed = self.run_e2e("--no-build")
+        self.assertNotEqual(0, changed.returncode)
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_development_mode_is_explicit_and_recorded(self) -> None:
+        result = self.run_e2e(version="27.1", build="27A9275", mode="development")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("DEVELOPMENT", result.stdout)
+        record = json.loads((self.root / ".build/dd-e2e-provenance.json").read_text())
+        self.assertEqual("development", record["toolchain_mode"])
 
 
 class DoctorTests(unittest.TestCase):
