@@ -270,6 +270,7 @@ final class FakeAssetService: ImageAssetService {
 
 @MainActor
 final class FakeImageInput: ImageInputService {
+    var pendingRead: Pending<Void>?
     var files: [URL: Result<Data, ImportError>] = [:]
     var pasteboardData: Data?
     private(set) var pasteboardReads = 0
@@ -277,6 +278,7 @@ final class FakeImageInput: ImageInputService {
 
     func readFile(at url: URL) async throws(ImportError) -> Data {
         fileReads.append(url)
+        if let pendingRead { await pendingRead.wait() }
         guard let result = files[url] else { throw .unreadable }
         return try result.get()
     }

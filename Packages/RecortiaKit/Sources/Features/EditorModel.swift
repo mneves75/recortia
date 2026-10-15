@@ -222,6 +222,7 @@ public final class EditorModel {
     @discardableResult
     func edit(_ label: String, _ change: (inout Document) throws -> Void) -> Bool {
         guard !isClosed else { return false }
+        settleTransformGesture()
         let before = session.document
         let epoch = session.privacyEpoch
         do {

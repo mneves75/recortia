@@ -107,18 +107,29 @@ extension EditorModel {
         guard !isClosed else { return }
         if p.isFinite { pointerDragged(to: p, modifiers: modifiers) }
         let finished = gesture
+        settleTransformGesture()
         gesture = .idle
         draft = nil
         switch finished {
         case .create(let tool, let start, let points):
             commitCreation(tool: tool, start: start, points: points, end: p.isFinite ? p : start, modifiers: modifiers)
+        case .move, .resize, .idle, .marquee, .ruler, .sample:
+            break
+        }
+    }
+
+    /// Commits the progress so far and retires this drag before an independent edit can land.
+    func settleTransformGesture() {
+        switch gesture {
         case .move, .resize:
+            gesture = .idle
+            draft = nil
             if continuousChangeID == nil {
                 session.endGroup()
                 releaseUnreachableAssets()
                 noteUndoEvictionIfNeeded()
             }
-        case .idle, .marquee, .ruler, .sample:
+        default:
             break
         }
     }
@@ -405,6 +416,7 @@ extension EditorModel {
             case .text(let text) = annotation.kind
         else { return }
         cancelGesture()
+        endContinuousChange()
         selection = [.annotation(id)]
         loadSelectedTextAppearance()
         textEditing = EditorTextEditing(
