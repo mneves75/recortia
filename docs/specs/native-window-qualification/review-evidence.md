@@ -2,6 +2,9 @@
 
 Candidate base: `0781aedcbf4e743fd25b87b71356cbb5391aa86b`.
 Environment: Xcode 27.0 (`27A266a`), Swift 6.4, macOS 27.2 seed host.
+Current source candidate: 0.12.1/build20. Earlier BLOCKED observations below are historical;
+the resumed graphical session now supplies the positive control. Final acceptance follows
+the resumed evidence, not a reinterpretation of those failed runs.
 All commands select `/Applications/Xcode_27.app/Contents/Developer` and
 `RECORTIA_TOOLCHAIN_MODE=stable`. The installed 0.12.0/build19 remains unchanged.
 
@@ -88,3 +91,43 @@ confirmed that missing readiness fails explicitly, cooperative activation is sep
 production sources exclude the E2E helper. This does not qualify runtime behavior.
 `complexity-candidate.json` covers exactly four Swift files/89 functions with zero parse
 errors and empty stderr; coverage is partial and supplies no behavioral acceptance.
+
+## Resumed graphical qualification
+
+Evidence root: `.scratch/native-window-resume-20261015/`.
+
+- `host-ready.json`: the same minimal normal-app control now reports active/key/foreground/
+  visible/onActiveSpace/ready true, with occlusion8194. It exits automatically.
+- Hosted stable CI38758599281 passed the exact earlier head643c04c. Its result did not waive
+  native qualification and is not the later final-candidate CI.
+- `focused-ready.log`, native run `20261015-161450`: capture-focus and editor-presentation
+  pass in both languages, with two synthetic screenshots per language.
+- `mutation-missing-key.log`, run `20261015-161512`: omitting only the required panel
+  `makeKey()` call fails keyboard ownership and the dependent keyboard-transition assertions.
+- `mutation-missing-ordering.log`, run `20261015-161558`: omitting only the editor's
+  `orderFrontRegardless()` fallback fails the controlled overlap assertion: occlusion8192,
+  active=false, key=false. The editor remains behind the known opaque cover.
+
+Both production calls were restored exactly: `git diff --exit-code HEAD --
+RecortiaApp/Capture/RegionOverlay.swift RecortiaApp/Editor/EditorWindowManager.swift` passed.
+The correction is the test fixture/oracle, not a newly diagnosed production focus defect.
+Version0.12.1/build20 and the regenerated project were committed before final gates.
+The installed0.12.0/build19 executable still hashes to
+`c4aecb8207593e0b80afc30a3312683644116a4fc963829600b4067c8556664b`.
+
+Final `full-check.log` passed on executable source380a029:683 package tests,617 translated
+strings, strict formatting/project freshness, app build and E2E-target build. No compiler
+warnings or errors were found. `full-native.log` exited0 with47/47 scenarios,2222 assertions,
+138 PNGs and zero skipped assertions per language (`20261015-161900`). Main inspected the
+English selection overlay and both language editor-presentation renders.
+
+Fresh different-model `mneves-verify` returned PASS for all ten frozen criteria. Its own
+`20261015-162537` run passed3/3 scenarios and265 assertions per language, including the named
+50-cycle overlay regression and editor reopening/cover/cooperative controls. It independently
+inspected all four affected synthetic PNGs and verified the unchanged installed artifact.
+The final receipt is in `acceptance-verdict.md`; exact-head CI remains the separate merge gate.
+
+All runtime source, package configuration, project.yml and generated project are unchanged
+since380a029; subsequent edits are documentation only. After evidence relocation, all current
+native reports live under `.scratch/native-window-resume-20261015/native-runs/` with their
+original timestamp/language subdirectories. The original logs retain historical worktree paths.

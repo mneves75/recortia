@@ -10,9 +10,11 @@
     "build": 20,
     "date": "2026-10-15",
     "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines, saved colors, text appearances and curved arrows; broader reference parity remains unfinished.",
-    "status": "native_window_final_acceptance_in_progress",
-    "verification": "FP-034 accepted on 3db91b7: development gate683 tests/two unsigned builds/617 translations; exact-source stable Xcode27.0 CI38660460749; independent different-model code/security67 tests and source-blind bilingual native acceptance. Final full native47/47 per language,2217 assertions/138 images each, includes a capture-focus activation-control skip per language. Historical CAP-01 and text-font CI failures remain unattributed; physical input/Spaces/VoiceOver, local stable release and distribution remain unqualified. Earlier slice evidence is retained below.",
+    "status": "source_accepted_physical_release_unqualified",
+    "verification": "0.12.1/build20: stable Xcode27.0/27A266a unsigned gate passes683 tests,617 translations and both app builds. Full native EN/PT-BR passes47/47 per language,2222 assertions/138 PNGs each,zero skips. Omitting makeKey or orderFrontRegardless produces the expected native regression failures; restored production code is unchanged. Fresh different-model source-blind acceptance passes all10 criteria,3/3 focused scenarios and265 assertions per language,including50 overlay cycles. Exact-head CI remains a separate merge gate. Earlier FP-034 code/security/native acceptance remains in its own verdict; historical CAP-01 and text-font CI incidents are not retroactively erased.",
     "evidence_paths": [
+      "docs/specs/native-window-qualification/acceptance-verdict.md",
+      "docs/specs/native-window-qualification/review-evidence.md",
       "docs/specs/curved-arrows/acceptance-verdict.md",
       "docs/specs/feature-discovery/acceptance-verdict.md",
       "docs/specs/feature-discovery/review-evidence.md",
@@ -25,12 +27,12 @@
       ".scratch/e2e/20261014-005816/pt-BR/report.json"
     ],
     "limitations": [
-      "Stable Xcode27.0/27A266a is now installed alongside the existing RC/beta; signed stable gate passes683 tests/617 translations. Fresh full native E2E fails capture-focus and editor-presentation in both languages (45/47 each); candidate qualification remains blocked. See docs/specs/curved-arrows/local-installation.md.",
+      "The earlier0.12.0 signed stable gate passed683 tests/617 translations, but its installation-time native E2E passed45/47 per language with focus/presentation failures. Preserve that installed artifact and its historical evidence separately from0.12.1 source acceptance. See docs/specs/curved-arrows/local-installation.md.",
       "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
-      "Controlled native investigation on2026-10-15 remains blocked: both the experimental owned foreground fixture and the previously successful minimal normal-app prototype now fail key/activation/foreground readiness. Product assertions and final mutation controls are not qualified; no version bump or merge. See docs/specs/native-window-qualification/acceptance-verdict.md.",
+      "Earlier2026-10-15 graphical-session controls failed readiness. The resumed session passes both focus scenarios bilingually and rejects omitted key/ordering calls; version0.12.1/build20 final synthetic native acceptance passes. Preserve the earlier failures in docs/specs/native-window-qualification/acceptance-verdict.md.",
       "Developer ID archive/export from cf87796 with stable27A266a installed locally on2026-10-15 after explicit owner authorization despite current native FAILs; previous0.11.0/build18 preserved without app launch/termination. No new tag, merge, notarization or public distribution. Xcode installation is recorded separately.",
       "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
-      "Saved-color native interaction now independently passes; the broader capture-focus keyboard failure and physical qualification remain open."
+      "Saved-color native interaction independently passes. Historical capture-focus failure remains unattributed; physical keyboard/IME/VoiceOver/Spaces and production qualification remain separate and unrun."
     ]
   },
   "previous_release_0_10_1": {

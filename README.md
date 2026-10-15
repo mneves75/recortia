@@ -1,7 +1,7 @@
 # Recortia
 
 **Development candidate:** 0.12.1 (build 20), intended label `0.12.1-beta1`, adds controlled
-native focus qualification; final acceptance is in progress. The installed local-test artifact
+native focus qualification with independent acceptance passed. The installed local-test artifact
 remains 0.12.0/build19. Neither candidate has been tagged, notarized or distributed.
 The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
@@ -30,15 +30,19 @@ and one full-English diagnostic replay passed without reproducing it. The cause 
 unattributed and controlled focus qualification is pending; these passes do not erase the failure.
 This is phased work; it does
 not establish full Shottr/CleanShot parity or replace the qualification limits below.
-Xcode 27.0 (`27A266a`) is now installed at `/Applications/Xcode_27.app`; its signed gate passes
-683 tests and 617 translations. The fresh full native run passes 45/47 scenarios per language,
-with `capture-focus` and `editor-presentation` failures. The owner explicitly authorized local
-test installation despite these failures; candidate qualification remains blocked;
+Xcode 27.0 (`27A266a`) is installed at `/Applications/Xcode_27.app`; the earlier signed gate
+passed 683 tests and 617 translations. The 0.12.0 installation run passed 45/47 native scenarios
+per language, with `capture-focus` and `editor-presentation` failures. The owner explicitly
+authorized that local test installation despite these failures; it remains historical evidence;
 see the [installation record](docs/specs/curved-arrows/local-installation.md).
 The [controlled native qualification investigation](docs/specs/native-window-qualification/implementation-plan.md)
 preserves the failed controls and owned-foreground fixture. On the resumed graphical session,
 both focus scenarios pass in both languages; omitting required key/ordering calls makes each
-regression fail. Final gates remain pending. The installed version remains 0.12.0/build19.
+regression fail. The 0.12.1 stable unsigned gate passes 683 tests and 617 translations; full
+native EN/PT-BR passes 47/47 per language, with 2,222 assertions, 138 images and zero skips.
+Independent different-model acceptance passes, including 50 overlay cycles per language.
+The installed version remains 0.12.0/build19; source acceptance does not qualify physical input
+or distribution.
 
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
@@ -196,10 +200,10 @@ The optional `capture-focus-repeat` scenario runs 50 synthetic onscreen overlay 
 an owned foreground helper and is
 excluded from the default suite. Capture-focus reports retain bounded own-window key-event
 timelines and record recovery only after FAIL; they do not relax the keyboard-ownership check
-or qualify physical focus/Space behavior. With the recorded local development toolchain:
+or qualify physical focus/Space behavior. With the verified stable toolchain on this host:
 
 ```sh
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/e2e.sh --lang all --only capture-focus,capture-focus-repeat --unsigned
+DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=stable scripts/e2e.sh --lang all --only capture-focus,capture-focus-repeat --unsigned
 ```
 
 The recorded local Xcode 27.1 RC (27A9275) is available for development checks only:

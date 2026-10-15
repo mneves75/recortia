@@ -83,22 +83,22 @@ Avoid introducing a generic window framework or a new dependency for this correc
   Passively observe the already-foreground PID; never drive that application. If controlled
   foreground setup is essential, use an explicitly owned synthetic fixture or request an
   owner-prepared desktop. Observation spans presentation through dismissal/restoration.
-- [ ] 6. Write one failing behavioral regression at the existing real-controller/native-window
+- [x] 6. Write one failing behavioral regression at the existing real-controller/native-window
   seam. Implement the smallest verified change. Keep known-good and deliberately invalid
   controls, foreground/activation observations, keyboard transitions and minimized reopening.
   Never weaken a failing contract: require adversarial review of any changed test oracle.
-- [ ] 7. Review any confirmed non-focus findings, and fix only those with a failing behavioral
+- [x] 7. Review any confirmed non-focus findings, and fix only those with a failing behavioral
   regression. Do not implement optional roadmap ideas, wholesale redesign or speculative cleanup.
-- [ ] 8. Before final gates, bump a demonstrated correction to0.12.1/build20 in project.yml,
+- [x] 8. Before final gates, bump a demonstrated correction to0.12.1/build20 in project.yml,
   regenerate the project and update candidate docs while preserving installed0.12.0 evidence.
   Run focused red/green regressions, appropriate RED checks for any imaging/geometry
   change, strict formatting, project freshness and full stable unsigned gate. Run full native
   EN/PT-BR integration on the final code, inspecting affected synthetic renders. Record skips
   distinctly from completed qualification; do not label physical/TCC/Spaces tests passed.
-- [ ] 9. Run Matt Pocock Standards/Spec adversarial review against origin/main's fixed base;
+- [x] 9. Run Matt Pocock Standards/Spec adversarial review against origin/main's fixed base;
   include complexity coverage/parse diagnostics. Correct confirmed findings, then run a fresh
   `mneves-verify` context against frozen acceptance, using a different model where required.
-- [ ] 10. Reconcile README, CHANGELOG, BACKLOG, relevant specs and agent guidance with actual
+- [x] 10. Reconcile README, CHANGELOG, BACKLOG, relevant specs and agent guidance with actual
   final outcomes. A documentation-only result does not justify inventing a source correction.
 - [ ] 11. Explicit-path stage, secret scan, Conventional Commit, push, update PR16 and require
   successful exact-head CI. The owner explicitly authorizes merge to main in this request;
@@ -111,6 +111,10 @@ Avoid introducing a generic window framework or a new dependency for this correc
 - [ ] 12. Restore visible main, verify remote/local history and status, remove only task-owned
   worktrees/processes/unused scratch. Preserve cited evidence, archives/dSYMs, installed backup,
   preexisting caches and unrelated handoffs. Record sizes and what remains.
+
+Steps11–12 are post-commit integration operations. Their completion is recorded by the live
+PR16 state and `.scratch/native-window-resume-20261015/integration-result.json`; this tracked
+checkpoint does not preclaim a future merge or cleanup.
 
 ## Commands, ownership and stopping conditions
 

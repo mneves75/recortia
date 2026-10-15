@@ -8,8 +8,9 @@ and `BACKLOG.json`, and the matching requirements and cases in `SPEC.md` and `AC
 ## Commands
 
 Every command needs the stable toolchain: `xcode-select` on the maintainer's Mac points to
-Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`
-(`scripts/*.sh` default to it). Xcode-beta MCP diagnostics may supplement a requested review;
+Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer`
+and `RECORTIA_TOOLCHAIN_MODE=stable` on this host. Script defaults alone do not select the
+verified stable installation. Xcode-beta MCP diagnostics may supplement a requested review;
 beta compilation does not replace the stable-toolchain release gates.
 
 - Full gate: `scripts/check.sh` (doctor, E2E-isolation and parsed Release-entitlement regression controls, strict `swift format lint`, generated-project freshness,
@@ -60,8 +61,8 @@ beta compilation does not replace the stable-toolchain release gates.
 - Capture completion shows an ordinary fullscreen-auxiliary editor even when cooperative
   activation is delayed or declined. Layout precedes canvas focus. Keep `editor-presentation`
   in bilingual native E2E; its synthetic window state does not qualify physical Spaces.
-  The experimental owned-foreground control remains blocked; preserve its failed readiness
-  evidence in `docs/specs/native-window-qualification/` and do not count it as acceptance.
+  The owned-foreground control must pass before native qualification; preserve historical
+  failures and current acceptance separately in `docs/specs/native-window-qualification/`.
 - Window presence (ADR-007): `RecortiaApp/App/AppPresence.swift` makes the app regular while a
   switchable window (normal/modal level, shown or minimized; pins included) exists and accessory
   otherwise. Present ordinary windows through `AppPresence.activate()`; pins are normal-level

@@ -9,13 +9,17 @@ All notable changes to Recortia are documented here. The format follows
 Source candidate: 0.12.1/build20 (`0.12.1-beta1`, untagged). Native focus tests now own a
 separate synthetic foreground application and require positive activation and opaque-overlap
 controls. Both focused scenarios pass in English/Portuguese and reject omitted key/ordering
-calls. Final gates are pending; the installed local-test artifact remains0.12.0/build19.
+calls. The stable unsigned gate passes683 tests/617 translations and full native EN/PT-BR
+passes47/47 per language (2222 assertions/138 PNGs each,zero skips). Fresh different-model
+source-blind acceptance passes3/3 focused scenarios per language, including50 overlay cycles.
+The installed local-test artifact remains0.12.0/build19; physical and release qualification
+remain separate.
 
 Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). Installed
 locally for owner-authorized testing on2026-10-15, preserving0.11.0/build18 without app launch
 or termination. No notarization or distribution is claimed. Stable Xcode 27.0
-(`27A266a`) passes the signed 683-test gate. Fresh native E2E passes 45/47 scenarios in each
-language; `capture-focus` and `editor-presentation` failures still block candidate qualification.
+(`27A266a`) passed the signed 683-test gate. Its installation-time native E2E passed45/47
+scenarios per language; the preserved focus/presentation failures do not become passes retroactively.
 The owner explicitly authorized this test installation despite those failures.
 Existing Xcodes and global toolchain selection are preserved.
 The controlled native-window investigation preserves earlier failed foreground controls.

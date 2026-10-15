@@ -45,10 +45,10 @@ mutations. This feature does not qualify CAP-01 or add reference-product head-st
 Capture completion must exercise the real editor presentation path (`editor-presentation`),
 not only the offscreen editor host. Keep editor visibility independent of cooperative app
 activation; lay out the hosted canvas before assigning its responder.
-The experimental E2E foreground host must establish its own active/key/visible state before
+The E2E foreground host must establish its own active/key/visible state before
 focus or ordering assertions qualify. Missing readiness is a failed control, never a silent
 skip or a product diagnosis. Keep cooperative activation separate from inactive presentation;
-see `docs/specs/native-window-qualification/implementation-plan.md` for the pending controls.
+see `docs/specs/native-window-qualification/implementation-plan.md` for the controls and evidence.
 
 Every window Recortia shows needs a Space policy from `SpacePolicy` (FR-01). Ordinary windows
 (editor, Settings, onboarding, scrolling review, alerts) follow the active Space with fullscreen-auxiliary

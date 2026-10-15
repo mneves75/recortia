@@ -45,6 +45,13 @@ window level, active-Space/fullscreen-auxiliary policy, and canvas ownership aft
 layout when activation succeeds (`editor-presentation`). Visibility cannot depend on activation
 being immediate or guaranteed. Qualify actual fullscreen/Space/display transitions separately.
 
+Synthetic focus qualification requires an owned normal-app foreground control that is active,
+key and compositor-visible on the active Space. Missing readiness fails the scenario. An opaque
+owned cover must fully occlude the editor before inactive presentation reveals it. Omission
+controls for panel `makeKey()` and editor `orderFrontRegardless()` must fail; restore production
+code before final gates. Cooperative activation is a separate positive control. App-local key
+events do not qualify physical keyboard routing, IME or VoiceOver.
+
 Every window Recortia constructs follows the active Space or joins all Spaces, and framework
 windows are adopted before activation (`space-policy`); capture suspension leaves windows on
 other Spaces untouched (`other-spaces`); screens are chosen by capture display, then pointer,

@@ -165,6 +165,11 @@ from activation. `activate()` is an asynchronous request and is not guaranteed t
 `fullScreenPrimary` and `fullScreenAuxiliary` are mutually exclusive. The editor remains an
 ordinary normal-level window; only region selection uses a nonactivating panel.
 
+Qualification refinement (2026-10-15): [occlusion state](https://developer.apple.com/documentation/appkit/nswindow/occlusionstate-swift.property)
+and [key ownership](https://developer.apple.com/documentation/appkit/nswindow/makekey())
+are separate observations. A known opaque overlap plus an observed foreground control makes
+the synthetic ordering assertion discriminating; it does not qualify physical input or Spaces.
+
 Sources: [cooperative activation](https://developer.apple.com/documentation/appkit/passing-control-from-one-app-to-another-with-cooperative-activation),
 [window ordering](https://developer.apple.com/documentation/appkit/nswindow/orderfrontregardless()),
 [fullscreen auxiliary](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/fullscreenauxiliary),
