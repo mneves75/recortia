@@ -1,5 +1,80 @@
 # Local installation request — 2026-10-15
 
+## Current result after the owner's download
+
+**Xcode is installed; Recortia replacement is blocked by current native failures.**
+The earlier state below is historical and is superseded by this section.
+
+The owner downloaded the Apple-signed `Xcode-27.0.0+27A266a.xip` (2,014,229,334 bytes) to
+`/Volumes/MARCUS_S7/ARCHIVE/dev-scratch/recortia/xcode-27-install-20261015/`.
+`pkgutil --check-signature` verified Apple Software signing. `xip --expand` extracted into
+the task-owned `/Applications/.recortia-xcode27-install-20261015`; exact version/build and
+`codesign --verify --deep --strict` passed before moving to `/Applications/Xcode_27.app`.
+The empty staging directory was removed. `xcodebuild -checkFirstLaunchStatus` and
+`scripts/doctor.sh --release` pass. Existing Xcode27.1 RC and27.2 beta remain intact;
+global `xcode-select` still points to `/Applications/Xcode-beta.app/Contents/Developer`.
+No credentials were supplied to the assistant.
+
+Source is `cf877963a49fdef461a07cad068514c282fc5ed5` (implementation `3db91b7`, later
+documentation only), built from clean detached `.scratch/wt-local-install-20261015`.
+All commands explicitly selected `DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer`.
+
+- `RECORTIA_TOOLCHAIN_MODE=stable scripts/check.sh`: exit0,683 tests
+  (134 MacPlatform/167 Imaging/320 Features/62 Domain),617 translations, strict formatting,
+  project freshness, scanner/isolation controls and both signed Debug builds.
+- `RECORTIA_TOOLCHAIN_MODE=stable scripts/e2e.sh --lang all --no-build`: exit1,
+  **45/47 scenarios per language**,2217 assertions and138 PNGs each. Both languages fail
+  `capture-focus` keyboard ownership and `editor-presentation` inactive editor occlusion.
+  Activation controls skip; that alone does not explain the failures. Earlier green/idle
+  runs do not erase these current FAILs. CAP-01 remains unresolved.
+- Release archive and Developer ID export: both exit0, using the exact archive/export
+  arguments and ExportOptions from `scripts/release.sh`, with isolated task build directories,
+  frozen Package.resolved and no tag/notarization/publication. Xcode logged a stale-account
+  warning but exported using installed signing material; no credential repair was attempted.
+
+Retained artifact directory:
+`/Volumes/MARCUS_S7/ARCHIVE/dev-scratch/recortia/local-install-0.12.0-build19-20261015-cf87796`.
+It contains `Recortia.xcarchive` with matching dSYMs, `export/Recortia.app` and
+`native-e2e-20261015-014055/{en,pt-BR}` reports/images. Logs, exact ExportOptions and the
+export manifest are in `.scratch/local-install-readiness-20261015/`.
+
+Main-session artifact checks pass:0.12.0/build19,arm64,min15.0; strict Developer ID
+signature/teamQ96FUTC5G8 and Hardened Runtime; parsed exact Keychain group and no debug
+entitlements; valid matching embedded profile (expires2044-09-21); no test-only Mach-O
+markers; both licenses match reviewed source and the locked dependency. The profile permits
+the exact app entitlement through its team wildcard. An initial ad hoc equality assertion
+mistakenly expected an exact profile group; corrected compatibility checking passes.
+Export has59 entries/33 regular files. Executable/dSYM UUID:
+`1FB063A5-4886-38C0-9003-6CF1150B7695`; executable SHA-256:
+`c4aecb8207593e0b80afc30a3312683644116a4fc963829600b4067c8556664b`.
+
+Independent different-model artifact verification passes: metadata, strict signature/runtime,
+profile/entitlements, locked dependency/licenses, binary isolation and matching dSYM UUID.
+A copied pristine app passes signature verification; mutating a sealed resource fails.
+Three invalid entitlement controls are rejected. The installed0.11.0/build18 still matches
+all30 independently captured baseline entries (bytes, modes and symlinks); strict signature
+passes. Observations are retained in
+`.scratch/local-install-verifier-20261015/{artifact-observation,controls-and-preservation}.json`.
+Fresh different-model readiness assessment is **FAIL** on current native acceptance; see
+`.scratch/local-install-verifier-20261015/stable-native-readiness-addendum.md`.
+`/Applications/Recortia.app` remains0.11.0/build18; no app launch, termination, replacement,
+document/settings modification or TCC change occurred.
+
+The owner's installation request was conditioned on completion. The specific contract
+separates artifact/local-install evidence from UI/notarization; it does not waive required
+native E2E or `IMPLEMENTATION_PLAN.md:17`'s CAP-01 candidate-delivery block. Substitution needs
+a verified correction/disproof, or explicit owner authorization to install this test candidate
+despite the named current FAILs. Preserve the old bundle and independently audit process
+identity before any later replacement. Physical input/Spaces/VoiceOver/TCC, clean-user launch,
+stable-host performance and distribution remain unqualified on this seed macOS host.
+
+Cleanup: the task-owned worktree and1.25GB of isolated builds were removed after independent
+inspection and hash comparison of all354 externally copied native-evidence files. The archive,
+dSYMs, exported app and94MB external evidence remain available. The owner's XIP is retained.
+No shared cache or preexisting build output was removed; unrelated `docs/handoffs/` is preserved.
+
+## Historical state before the owner's completed download
+
 The owner requested installation on this Mac after completion, a durable note, and Git
 add/commit/push. This authorizes the scoped 0.12.0/build19 candidate's local installation at
 `/Applications/Recortia.app` once its required gates pass. It does not authorize a merge,

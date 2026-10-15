@@ -27,8 +27,11 @@ The subsequent expanded full run on 2df6387 failed capture-focus keyboard owners
 and one full-English diagnostic replay passed without reproducing it. The cause remains
 unattributed and controlled focus qualification is pending; these passes do not erase the failure.
 This is phased work; it does
-not establish full Shottr/CleanShot parity or replace the qualification limits below. The installed
-toolchain is Xcode 27.1 RC, so stable-toolchain release qualification is blocked.
+not establish full Shottr/CleanShot parity or replace the qualification limits below.
+Xcode 27.0 (`27A266a`) is now installed at `/Applications/Xcode_27.app`; its signed gate passes
+683 tests and 617 translations. The fresh full native run passes 45/47 scenarios per language,
+with `capture-focus` and `editor-presentation` failures. Local app replacement remains blocked;
+see the [installation record](docs/specs/curved-arrows/local-installation.md).
 
 A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
 from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.

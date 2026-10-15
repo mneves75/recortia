@@ -28,6 +28,19 @@
   "observation_date": "2026-10-14",
   "actual_xcode_release_channel": "release_candidate",
   "stable_release_qualification": "blocked",
+  "installed_stable_observation": {
+    "date": "2026-10-15",
+    "version": "27.0",
+    "build": "27A266a",
+    "developer_dir": "/Applications/Xcode_27.app/Contents/Developer",
+    "archive_apple_signature_verified": true,
+    "bundle_deep_strict_signature_verified": true,
+    "release_doctor": "passed",
+    "signed_gate": "passed: 683 package tests, 617 translations, both Debug targets",
+    "native_e2e": "failed: 45/47 scenarios per language; capture-focus and editor-presentation",
+    "global_xcode_select_changed": false,
+    "evidence": "docs/specs/curved-arrows/local-installation.md"
+  },
   "observation_notes": [
     "2026-10-14: Apple lists installed 27A9275 as Xcode 27.1 RC (https://developer.apple.com/news/releases/?id=10052026g), not stable. The local observation is development-only via RECORTIA_TOOLCHAIN_MODE=development; CI and releases use the separate stable_xcode_baseline 27A266a. Stable-toolchain release qualification on this Mac is BLOCKED. Xcode-beta is 27.2 beta 2 (27B5028f); the host is macOS 27.2 seed 26B5112a. No toolchain installation or system selection was changed.",
     "2026-09-26 observation: xcode-select points to /Applications/Xcode-beta.app (Xcode 27.2, 27B5019j, macOS SDK 27.2 26B5086k). Select DEVELOPER_DIR per command and run doctor to verify its release channel/build; see docs/adr/0001-native-stack-and-toolchain-baseline.md.",

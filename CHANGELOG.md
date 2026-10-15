@@ -7,8 +7,10 @@ All notable changes to Recortia are documented here. The format follows
 ## [Unreleased]
 
 Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). No local
-installation, notarization or distribution is claimed. Stable-toolchain qualification is blocked:
-installed build 27A9275 is Xcode 27.1 RC.
+installation, notarization or distribution is claimed. The newly installed stable Xcode 27.0
+(`27A266a`) passes the signed 683-test gate. Fresh native E2E passes 45/47 scenarios in each
+language; `capture-focus` and `editor-presentation` failures block app replacement and candidate
+qualification. Existing Xcodes and global toolchain selection are preserved.
 
 ### Added
 
