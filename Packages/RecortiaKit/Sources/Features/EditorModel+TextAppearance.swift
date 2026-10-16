@@ -1,0 +1,90 @@
+import Domain
+import Imaging
+
+extension EditorModel {
+    public func reportCanvasRenderFailure() {
+        guard !isClosed, notice != .previewFailed else { return }
+        post(.previewFailed)
+    }
+
+    public var canSetTextAppearance: Bool { !isClosed && textEditing == nil }
+
+    /// Nil restores automatic white; explicit transparent colors remain explicit.
+    @discardableResult
+    public func setTextBackgroundColor(_ color: RGBA?) -> Bool {
+        guard canSetTextAppearance else { return false }
+        var changes: [AnnotationID: Annotation.Style] = [:]
+        do {
+            for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
+                guard case .text(let text) = annotation.kind, text.resolvedAppearance.isBoxed else { continue }
+                var proposed = annotation.style
+                proposed.fill = color
+                _ = try TextLayout.metrics(for: text, style: proposed)
+                changes[annotation.id] = proposed
+            }
+        } catch {
+            reportCanvasRenderFailure()
+            return false
+        }
+        if color == nil { endContinuousChange() }
+        if !changes.isEmpty {
+            guard
+                edit(
+                    "Text Background",
+                    { document in
+                        for index in document.annotations.indices {
+                            if let proposed = changes[document.annotations[index].id] {
+                                document.annotations[index].style = proposed
+                            }
+                        }
+                    })
+            else { return false }
+        }
+        style.textBackgroundColor = color
+        return true
+    }
+
+    /// Admission precedes mutations and closing the previous adjustment's undo group.
+    @discardableResult
+    public func setTextAppearance(_ appearance: TextAppearance) -> Bool {
+        guard canSetTextAppearance else { return false }
+        var changes: [AnnotationID: Annotation.TextContent] = [:]
+        do {
+            _ = try TextLayout.nativeFont(for: appearance, size: style.fontSize)
+            for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
+                guard case .text(var text) = annotation.kind else { continue }
+                text.appearance = appearance
+                _ = try TextLayout.metrics(for: text, style: annotation.style)
+                changes[annotation.id] = text
+            }
+        } catch {
+            reportCanvasRenderFailure()
+            return false
+        }
+        endContinuousChange()
+        if !changes.isEmpty {
+            guard
+                edit(
+                    "Text Style",
+                    { document in
+                        for index in document.annotations.indices {
+                            if let text = changes[document.annotations[index].id] {
+                                document.annotations[index].kind = .text(text)
+                            }
+                        }
+                    })
+            else { return false }
+        }
+        style.textAppearance = appearance
+        return true
+    }
+
+    func loadSelectedTextAppearance() {
+        guard selection.count == 1, let item = selection.first, case .annotation(let id) = item,
+            let annotation = document.annotations.first(where: { $0.id == id }), case .text(let text) = annotation.kind
+        else { return }
+        style.textAppearance = text.resolvedAppearance
+        style.fontSize = text.fontSize
+        if text.resolvedAppearance.isBoxed { style.textBackgroundColor = annotation.style.fill }
+    }
+}

@@ -1,0 +1,269 @@
+import AppKit
+import Domain
+import Features
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// What the chrome (toolbar, inspector) and the canvas ask of their window.
+protocol EditorWindowActions: AnyObject {
+    func copyImage()
+    func saveImage()
+    func saveToPreferredFolder()
+    func pin()
+    func addImageFromFile()
+    func pasteImageLayer()
+    /// Ends any in-progress text editing (before a toolbar action changes the tool or document).
+    func commitPendingText()
+    /// Drag-out through the export pipeline: `ExportCoordinator`'s drag action hands the
+    /// sanitized snapshot to the app's drag sink, which offers it to other apps.
+    func dragOut()
+}
+
+enum EditorInitialAction {
+    case none
+    /// Capture Text: open the editor and recognize text right away.
+    case recognizeText
+}
+
+/// Opens one editor window per document (FR-04). The composition root calls
+/// `open(_:environment:)` for every new document; closing a window releases its model and the
+/// asset pixels it held.
+final class EditorWindowManager {
+    private var controllers: [DocumentID: EditorWindowController] = [:]
+
+    init() {}
+
+    /// Opens `session` in a new window, or brings its existing window forward.
+    @discardableResult
+    func open(
+        _ session: DocumentSession, environment: EditorEnvironment, initialAction: EditorInitialAction = .none
+    ) -> EditorModel {
+        let id = session.document.id
+        if let existing = controllers[id] {
+            existing.present()
+            return existing.model
+        }
+        let model = EditorModel(session: session, environment: environment)
+        let controller = EditorWindowController(model: model)
+        controller.onClosed = { [weak self] in self?.controllers[id] = nil }
+        controllers[id] = controller
+        controller.present()
+        if initialAction == .recognizeText {
+            Task { await model.recognizeText() }
+        }
+        return model
+    }
+
+    var openDocumentIDs: [DocumentID] { Array(controllers.keys) }
+
+    /// Editors whose edits were never copied, saved, dragged, or pinned.
+    var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
+
+    func model(for id: DocumentID) -> EditorModel? { controllers[id]?.model }
+}
+
+/// One editor window: hosts the SwiftUI chrome around the AppKit canvas, asks before discarding
+/// unexported edits, and closes the model when the window closes.
+final class EditorWindowController: NSWindowController, NSWindowDelegate, EditorWindowActions {
+    let model: EditorModel
+    var onClosed: (() -> Void)?
+    private let canvas: EditorCanvasView
+    private var discardConfirmed = false
+
+    init(model: EditorModel, noticePresentation: EditorNoticePresentation = EditorNoticePresentation()) {
+        self.model = model
+        canvas = EditorCanvasView(model: model)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.title = String(localized: "Recortia Editor", table: "Editor")
+        // The capture result follows the current Space, including another app's fullscreen
+        // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
+        window.collectionBehavior = SpacePolicy.followsActiveSpace
+        window.contentMinSize = NSSize(
+            width: EditorWindowSizing.minimumContentSize.width, height: EditorWindowSizing.minimumContentSize.height)
+        window.tabbingMode = .disallowed
+        super.init(window: window)
+        window.delegate = self
+        canvas.actions = self
+        let root = EditorRootView(
+            model: model, canvas: canvas, actions: self, noticePresentation: noticePresentation)
+        window.contentViewController = NSHostingController(rootView: root)
+        window.initialFirstResponder = canvas
+        let visible = targetScreen()?.visibleFrame.size ?? NSSize(width: 1440, height: 900)
+        let size = EditorWindowSizing.initialContentSize(
+            remembered: model.environment.settings.preferences.editorContentSize,
+            visibleFrame: Size(width: visible.width, height: visible.height))
+        window.setContentSize(NSSize(width: size.width, height: size.height))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
+    func present() {
+        guard let window else { return }
+        if NSApp.isHidden { NSApp.unhideWithoutActivation() }
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        if !window.isVisible, let visible = targetScreen()?.visibleFrame {
+            let size = window.frame.size
+            window.setFrameOrigin(NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
+        }
+        AppPresence.shared.activate()
+        window.makeKeyAndOrderFront(nil)
+        // SwiftUI attaches the canvas lazily. It must belong to this window before AppKit
+        // can accept it as first responder, including on the first capture after launch.
+        window.contentView?.layoutSubtreeIfNeeded()
+        window.makeFirstResponder(canvas)
+        // Cooperative activation is asynchronous and can be declined. A completed, explicit
+        // capture must still show its result; normal-level ordering does not force activation.
+        if !NSApp.isActive { window.orderFrontRegardless() }
+    }
+
+    private func targetScreen() -> NSScreen? {
+        let assets = model.document.assets.values
+        var displayID: CGDirectDisplayID?
+        if assets.count == 1, case .captured(let geometry)? = assets.first?.origin {
+            displayID =
+                switch geometry.source {
+                case .display(let id): id
+                case .window(_, let id): id
+                case .region(let id): id
+                }
+        }
+        return ScreenChoice.screen(displayID: displayID)
+    }
+
+    /// Commits in-progress text first, so typed text counts as an edit.
+    func hasUnexportedEdits() -> Bool {
+        canvas.finishTextEditing(commit: true)
+        return model.isDirty && !model.isClosed
+    }
+
+    // MARK: NSWindowDelegate
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        canvas.finishTextEditing(commit: true)
+        guard model.isDirty, !discardConfirmed else { return true }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Discard your edits?", table: "Editor")
+        alert.informativeText = String(
+            localized: "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them.",
+            table: "Editor")
+        let discard = alert.addButton(withTitle: String(localized: "Discard", table: "Editor"))
+        discard.hasDestructiveAction = true
+        alert.addButton(withTitle: String(localized: "Cancel", table: "Editor"))
+        alert.beginSheetModal(for: sender) { [weak self] response in
+            guard response == .alertFirstButtonReturn, let self else { return }
+            self.discardConfirmed = true
+            self.window?.close()
+        }
+        return false
+    }
+
+    /// A size the user dragged to becomes every new editor's size.
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard let window else { return }
+        let content = window.contentRect(forFrameRect: window.frame).size
+        let size = Size<DesktopSpace>(width: content.width, height: content.height)
+        model.environment.settings.update { $0.editorContentSize = EditorWindowSizing.rememberable(size) }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        model.close()
+        window?.contentViewController = nil
+        onClosed?()
+        onClosed = nil
+    }
+
+    // MARK: EditorWindowActions
+
+    func copyImage() {
+        commitPendingText()
+        Task { await model.export(.copy) }
+    }
+
+    func saveImage() {
+        commitPendingText()
+        guard let window else { return }
+        let format = model.environment.export.exportOptions(for: .saveToFolder(FileManager.default.temporaryDirectory))
+            .format
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
+        panel.nameFieldStringValue = ExportFilename.make(for: Date(), format: format)
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url, let self else { return }
+            Task { await self.saveImage(to: url) }
+        }
+    }
+
+    /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent.
+    @discardableResult
+    func saveImage(to url: URL, confirmReplacement: (() async -> Bool)? = nil) async -> ExportOutcome {
+        let outcome = await model.export(.save(url, overwriteConfirmed: false))
+        guard outcome == .failed(.destinationExists) else { return outcome }
+        model.dismissNotice()
+        let confirmed: Bool
+        if let confirmReplacement {
+            confirmed = await confirmReplacement()
+        } else {
+            confirmed = await self.confirmReplacement()
+        }
+        guard confirmed else { return .canceled }
+        return await model.export(.save(url, overwriteConfirmed: true))
+    }
+
+    private func confirmReplacement() async -> Bool {
+        guard let window else { return false }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Replace Existing File?", table: "Editor")
+        alert.informativeText = String(localized: "A file exists at this destination. Replace it?", table: "Editor")
+        alert.addButton(withTitle: String(localized: "Replace", table: "Editor")).hasDestructiveAction = true
+        alert.addButton(withTitle: String(localized: "Cancel", table: "Editor"))
+        return await withCheckedContinuation { continuation in
+            alert.beginSheetModal(for: window) { continuation.resume(returning: $0 == .alertFirstButtonReturn) }
+        }
+    }
+
+    func saveToPreferredFolder() {
+        commitPendingText()
+        Task { await model.export(.saveToPreferredFolder) }
+    }
+
+    func pin() {
+        commitPendingText()
+        Task { await model.pin() }
+    }
+
+    func addImageFromFile() {
+        commitPendingText()
+        guard let window else { return }
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.png, .jpeg]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url, let self else { return }
+            Task { await self.model.addImageLayer(from: .file(url)) }
+        }
+    }
+
+    func pasteImageLayer() {
+        commitPendingText()
+        Task { await model.addImageLayer(from: .pasteboard) }
+    }
+
+    func commitPendingText() {
+        canvas.finishTextEditing(commit: true)
+    }
+
+    func dragOut() {
+        commitPendingText()
+        Task { await model.export(.drag) }
+    }
+}

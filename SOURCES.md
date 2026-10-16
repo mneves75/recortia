@@ -1,0 +1,235 @@
+# Research sources and verification boundaries
+
+**2026-10-14 supplement:** The [capability gap inventory](docs/specs/feature-discovery/reference-matrix.md)
+lists common screenshot-utility capabilities and Recortia's status for each. Earlier
+research/version statements below are historical.
+Current UI guidance: [Apple onboarding](https://developer.apple.com/design/human-interface-guidelines/onboarding),
+[Xcode 27.2 beta release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
+Stable Xcode 27.0 (27A266a) is the release and CI baseline (`TOOLCHAIN.json`). Xcode 27.1
+(27A9275) is accepted only for development checks: [Apple identifies 27A9275 as RC](https://developer.apple.com/news/releases/?id=10052026g),
+so it does not satisfy the specification's stable-toolchain release qualification. Xcode 27.2 beta (27B5028f) diagnostics supplement source checks only.
+
+**Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Apple or any other product uses that implementation.
+
+No third-party screenshot app or Mac hardware was tested. Some Apple symbol-documentation pages exposed a JavaScript-only view; where that prevented inspection, readable official WWDC transcripts and Apple's support table were used instead. Exact symbol availability and build settings still require M0 verification in the selected installed SDK.
+
+## S01–S04 — Withdrawn
+
+These identifiers cited third-party product pages and are no longer used. They are not
+reassigned.
+
+## S05 — Apple Xcode SDK and system requirements
+
+URL: `https://developer.apple.com/xcode/system-requirements`
+
+Apple's current table lists Xcode 27 with Swift 6.4, Swift 6 language mode, and a macOS 26.6-or-later build host. The table also distinguishes beta versions. The exact installed Xcode/SDK build is not known from this research and must be recorded locally. Support claims concern Apple's table, not a tested Recortia build.
+
+## S06 — Apple: What's new in ScreenCaptureKit, WWDC23
+
+URL: `https://developer.apple.com/videos/play/wwdc2023/10136/`
+
+Readable official explanation of ScreenCaptureKit screenshot capture, SCScreenshotManager, content filtering/configuration, and the distinction between still capture and streaming. This is a stable foundational API source, not a claim that a 2023 session describes every 2026 addition.
+
+## S07 — Apple: Discover Swift enhancements in the Vision framework, WWDC24
+
+URL: `https://developer.apple.com/videos/play/wwdc2024/10163/`
+
+Readable official discussion of Vision's Swift/concurrency-oriented API. Individual request/language capabilities must be checked against the selected SDK and at runtime; the spec does not infer every supported language from this session.
+
+## S08 — Swift.org: Swift 6.2 Released
+
+URL: `https://www.swift.org/blog/swift-6.2-released/`
+
+Supports the concurrency caveat about caller isolation, the explicit @concurrent option, and testing evidence features. It is intentionally used for language semantics introduced earlier, not as the latest Swift version. The selected 2026 toolchain is based on S05.
+
+## S09 — KeyboardShortcuts upstream repository
+
+URL: `https://github.com/sindresorhus/KeyboardShortcuts`
+
+Supports the dependency's user-customizable global shortcut interface and its statement that it
+does not produce permission dialogs. Package.resolved pins 3.1.0 at
+`772133d9dbe800fdac0473226822994c5c162c58`. On 2026-09-29,
+scripts/test-release-contract.py verified the checkout revision and the bundled MIT notices
+against the source and actual unsigned app bundles.
+
+## S10 — Bishop Fox: Unredacter
+
+URL: `https://github.com/BishopFox/unredacter`
+
+Primary research implementation demonstrating why pixelation is unsuitable as a secure-redaction guarantee. Recortia does not need to import this code or its dependencies. Its own opaque-mask and export tests are independently specified.
+
+## S11 — Apple: Signing your apps for Gatekeeper
+
+URL: `https://developer.apple.com/developer-id/`
+
+Readable official guidance on Developer ID, Hardened Runtime, notarization, and notarytool/stapler. This informs a proposed distribution gate; it is not evidence that the current documentation bundle contains a signed application.
+
+## S12 — Sparkle documentation
+
+URL: `https://sparkle-project.org/documentation/`
+
+Supports using the project's supported update integration and EdDSA signing procedure. Resolve the current stable version and applicable configuration in the release milestone. Do not invent a signature, feed URL, public key, or recovery result.
+
+## S13 — GitHub Actions: Secure use reference
+
+URL: `https://docs.github.com/en/actions/reference/security/secure-use`
+
+Primary guidance for CI trust separation and dependency/workflow security. The proposed Recortia release process is not an existing workflow and must be validated independently.
+
+## S14 — Open Source Initiative: MIT license
+
+URL: `https://opensource.org/license/mit`
+
+Supports identifying MIT as an open-source license option. Final ownership, third-party compatibility, notices, and any needed legal review remain maintainer responsibilities. This specification does not grant rights to any other product's assets or to Apple's proprietary frameworks.
+
+## S15 — Apple: NSPasteboard.clearContents()
+
+URL: `https://developer.apple.com/documentation/appkit/nspasteboard/clearcontents()`
+
+Consulted on 2026-09-29 using Apple's Markdown documentation. Clearing the pasteboard removes
+its previous contents before a later write; failure copy must not promise preservation once
+that step has occurred. Encoding failures still occur before the sink clears anything.
+
+## S16 — Swift Evolution: Structured concurrency (SE-0304)
+
+URL: `https://github.com/swiftlang/swift-evolution/blob/main/proposals/0304-structured-concurrency.md`
+
+The proposal by John McCall, Joe Groff, Doug Gregor and Konrad Malawski explains cooperative
+cancellation. Consulted on 2026-09-29: cancellation does not replace request/session identity
+checks when asynchronous work resumes. The scrolling regression suspends an old step and verifies
+that it cannot block or clear ownership belonging to a replacement session.
+
+## S17 — Apple: NSWindow ordering
+
+URLs: `https://developer.apple.com/documentation/appkit/nswindow/orderout(_:)`,
+`https://developer.apple.com/documentation/appkit/nswindow/orderback(_:)`
+
+Consulted through Xcode-beta MCP DocumentationSearch on 2026-09-29. `orderOut` preserves the
+window's resources but separately ordering out a child detaches it from its parent. `orderBack`
+restores visibility without changing the key/main window. Recortia hides top-level windows and
+lets AppKit preserve their child relationships; the recapture E2E checks that relationship.
+
+## S18 — Public screenshot-utility workflows
+
+Public documentation of other screenshot utilities was reviewed on 2026-09-29. It informed the
+comparison of hiding, minimizing, closing, transparent windows, and app-wide hiding. Temporary
+top-level window ordering preserves the existing editing session with the smallest behavioral
+change. No parity or benchmark claim follows from documentation research.
+
+## S19 — Review and user-control guidance
+
+URLs: `https://martinfowler.com/articles/preparatory-refactoring-example.html`,
+`https://www.nngroup.com/articles/user-control-and-freedom/`
+
+Reviewed on 2026-09-29: small test-backed corrections and reversible workflows informed the
+implementation. This is published guidance, not a personal consultation with either author.
+
+## S20 — Apple: Inside Code Signing, provisioning profiles (TN3125)
+
+URL: `https://developer.apple.com/documentation/technotes/tn3125-inside-code-signing-provisioning-profiles`
+
+Consulted on 2026-09-30 for the local Developer ID export. A profile's Keychain group wildcard
+allows an app to claim a specific group with that prefix. The exported Recortia bundle claims
+the exact `Q96FUTC5G8.dev.mvneves.Recortia` group; the profile's `Q96FUTC5G8.*` allowlist is not
+an entitlement claimed by the app. Actual bundle entitlements still undergo the parsed gate.
+
+## S21 — Capture-result window presentation (consulted 2026-10-02)
+
+Apple's current documentation and installed stable Xcode 27.0 headers separate window ordering
+from activation. `activate()` is an asynchronous request and is not guaranteed to succeed;
+`orderFrontRegardless()` orders within the existing level without changing key/main status.
+`fullScreenPrimary` and `fullScreenAuxiliary` are mutually exclusive. The editor remains an
+ordinary normal-level window; only region selection uses a nonactivating panel.
+
+Qualification refinement (2026-10-15): [occlusion state](https://developer.apple.com/documentation/appkit/nswindow/occlusionstate-swift.property)
+and [key ownership](https://developer.apple.com/documentation/appkit/nswindow/makekey())
+are separate observations. A known opaque overlap plus an observed foreground control makes
+the synthetic ordering assertion discriminating; it does not qualify physical input or Spaces.
+
+Sources: [cooperative activation](https://developer.apple.com/documentation/appkit/passing-control-from-one-app-to-another-with-cooperative-activation),
+[window ordering](https://developer.apple.com/documentation/appkit/nswindow/orderfrontregardless()),
+[fullscreen auxiliary](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/fullscreenauxiliary),
+[unhide without activation](https://developer.apple.com/documentation/appkit/nsapplication/unhidewithoutactivation()).
+
+Original expert analysis: [Phil Zakharchenko on nonactivating panels](https://philz.blog/nspanel-nonactivating-style-mask-flag/)
+explains why activation and keyboard ownership differ. His style-mask mutation defect does not
+apply to Recortia's fixed-style overlay. Published guidance and an independent read-only agent
+advisory are not personal consultation with Apple or the author. These older API explanations
+remain applicable to the verified 2026 SDK; no future-year behavior is claimed.
+
+## S22 — Window Spaces and fullscreen Spaces (consulted 2026-10-03)
+
+The installed stable Xcode 27.0 `NSWindow.h` allows at most one of `fullScreenPrimary`,
+`fullScreenAuxiliary` and `fullScreenNone`, and at most one of `primary`, `auxiliary` and
+`canJoinAllApplications` ("join other apps' sets and full screen spaces when eligible").
+An Apple DTS engineer's answer on the Developer Forums (thread 826308, May 2026) recommends an
+accessory activation policy and a nonactivating `NSPanel` for windows over other apps'
+fullscreen Spaces, and reports `.floating` below fullscreen content in their test.
+
+Recortia's own measurement (`scripts/space-probe/run.sh`, macOS 27, one display, n=3 per
+variant, 2026-10-03) decided the policy: activating an accessory app switched the user's Space
+to a window without a Space policy every time (3/3, including out of a fullscreen Space), and
+never with `[.moveToActiveSpace, .fullScreenAuxiliary]` (0/6, either activation order);
+nonactivating `.floating` panels with `[.canJoinAllSpaces, .fullScreenAuxiliary]` were listed
+above the fullscreen window. SPEC §FR-09 keeps pins off the screen-saver level, so the DTS
+level advice is not adopted. Measured on one Mac and display; other OS versions and multiple
+physical displays are not claimed. The probe covers windows whose policy is set at construction;
+on the installed 0.10.1 app, SwiftUI's Settings-scene window still switched Spaces (fresh and
+reused), so 0.10.2 constructs Settings in AppKit. Real-app checks supplement the probe.
+
+Sources: [Developer Forums 826308](https://developer.apple.com/forums/thread/826308),
+[NSWindow.CollectionBehavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct),
+installed SDK header `AppKit.framework/Headers/NSWindow.h`.
+
+## Curved-arrow investigation (2026-10-14)
+
+Public feature pages of other screenshot utilities show curved and bendable arrows. They
+establish the capability, not a proprietary representation or complete head-style parity.
+Recortia uses its own optional quadratic control.
+
+The selected SDK's CoreGraphics `CGPath.h` and Swift interface declare quadratic paths,
+stroked outlines and `CGPath.union(_:using:)` (macOS13+, compatible with target15). The
+implementation unions shaft/head ink before filling once, because independent raster tests
+found winding cancellation with compound filling and doubled alpha with separate fills.
+Local compilation/pixel/export evidence is recorded in the curved-arrow spec/evidence;
+minimum-OS runtime, performance and physical qualification remain separate.
+
+## Text appearance investigation (2026-10-14)
+
+Public feature pages of other screenshot utilities show distinct standard, rounded,
+monospaced, outlined and boxed text treatments. Recortia's
+[text appearance spec](docs/specs/text-appearance/spec.md) implements its own seven appearances
+in two tickets; font-size presets alone would not deliver that capability.
+
+Public Apple [NSFontDescriptor.withDesign](https://developer.apple.com/documentation/appkit/nsfontdescriptor/withdesign(_:))
+resolves the rounded and monospaced system designs. A strict Swift 6 feasibility probe on the
+local macOS host resolved all three designs off the main thread, observed different metrics
+and equal monospaced i/W advances; this is local API evidence, not minimum-OS runtime coverage.
+The [NSTextContainer.containerSize](https://developer.apple.com/documentation/appkit/nstextcontainer/containersize)
+property provides the native editing width constraint. Its official Markdown documentation
+was read directly after the browser fetch could not retrieve it. No proprietary font or
+reference-product asset is included in Recortia.
+
+For ticket02, Apple's [Core Text stroke-width attribute](https://developer.apple.com/documentation/coretext/kctstrokewidthattributename)
+documents font-size percentages and negative values for stroke plus fill. That describes an
+API, not proof of exact joins, glyph bounds or color-emoji rendering; actual export controls
+are required. An isolated NSTextView probe compiled with strict Swift6 for macOS15 and ran on
+the local macOS27.2 host. Negative stroke/white-fill typing attributes survived plaintext
+Unicode insertion, font scaling and a programmatic marked-text lifecycle, retaining marked
+and selected ranges. Evidence: `.scratch/text-decoration-native-20261014/InputProbe.swift`
+and `input-probe.log`. This supports the planned native integration but does not qualify
+physical IME, a live rounded box or final export geometry.
+
+Wrapped native integration exposed a limitation that the small probe did not cover: TextKit 2
+could report multiline bounds while painting only its original line. The public
+[NSTextView initializer](https://developer.apple.com/documentation/appkit/nstextview/init(usingtextlayoutmanager:))
+selects the backing engine at creation (available since macOS12 in the installed SDK).
+Recortia selects TextKit 1 for this same plaintext widget; no runtime compatibility switch or
+custom input renderer is used. Apple's NSTextView documentation warns that accessing
+layoutManager on a TextKit 2 view switches it into compatibility mode, so diagnostic tests
+must inspect textLayoutManager first. Public layout invalidation was tested before this
+decision; failed and successful pixel evidence is recorded in the decoration review evidence.
+
+## External assertions not made
+
+No claim is made about a cleared product name/domain, a published repository, the internal behavior of any other product, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

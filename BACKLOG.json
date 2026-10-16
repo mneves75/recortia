@@ -1,0 +1,1422 @@
+{
+  "schema_version": 1,
+  "document_version": "1.0",
+  "research_date": "2026-09-26",
+  "status": "beta_implemented_awaiting_manual_validation",
+  "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
+  "current_candidate": {
+    "version": "0.12.2-beta1",
+    "app_version": "0.12.2",
+    "build": 21,
+    "date": "2026-10-16",
+    "release": {"tag": "v0.12.2-beta1", "commit": "682297430ef2d8c139d6f116a8a33776059fb54f", "url": "https://github.com/mneves75/recortia/releases/tag/v0.12.2-beta1", "prerelease": true, "republished": {"date": "2026-10-16", "reason": "repository history squashed into one root commit; all earlier tags and releases deleted at the owner's request", "tag_target": "the squashed root commit (same app source as the build commit above; docs differ)", "prerelease": false, "latest": true, "dmg": "same notarized disk image, same SHA-256", "homebrew": "cask mneves75/tap/recortia moved from 0.11.0 to 0.12.2-beta1", "backup": "/Volumes/MARCUS_S7/ARCHIVE/dev-scratch/recortia/main-pre-squash-20261016.bundle plus release assets under release-assets-pre-squash-20261016/"}, "notarization_submissions": {"app": "0392616a-06d3-48b7-8022-e1b66d711a8d", "dmg": "83399fba-f4ca-426f-a3f5-8a58ad044615"}, "dmg_sha256": "8b28f6df380c62dbe955a46184008f1fb1354dd6036c06721218aaacbbb4a942", "homebrew": "not updated at first publication; see republished", "security_gate": "WAIVED (SEC-17 until 2026-11-15, SEC-18 until 2027-04-16); record .scratch/security-gate/682297430ef2d8c139d6f116a8a33776059fb54f/production.json"},
+    "scope": "Full-source review fixes on top of 0.12.1: gesture/history integrity, scroll capture lifecycle and bound-window automatic scrolling, fail-closed mask geometry and scroll memory admission, editor-close export cancellation, release/E2E script gates, and attributable font resolution with a bounded retry of transient nil results; every editor window opens at one remembered or default size; tests reduced to checks that fail when a break matters (779 to 553 functions).",
+    "status": "released_prerelease_physical_unqualified",
+    "verification": "1b31c3f: stable Xcode 27.0/27A266a unsigned gate passes 511 package tests, 42 script controls, 617 translations and both builds; full native EN/PT-BR 48/49 per language, editor-presentation failed for environmental reasons (preserved) and passed 31/31 per language on a rerun of the same app bundle; hosted CI 38858778587 success on ab02bec; GPT-6 Astra review findings fixed and re-review approved. Earlier full-source fixes: 002f8b8 passed 720 tests, 48/48 native per language and different-model verification. See docs/specs/test-reduction/README.md and docs/specs/native-window-qualification/review-evidence.md.",
+    "evidence_paths": ["docs/specs/test-reduction/README.md", "docs/specs/native-window-qualification/review-evidence.md", ".scratch/e2e/20261016-083024-82851/en/report.json", ".scratch/e2e/20261016-084609-5369/en/report.json", "docs/specs/full-source-review/plan.md", "docs/specs/full-source-review/acceptance-verdict.md", ".scratch/e2e/20261015-235920-72780/en/report.json", ".scratch/e2e/20261015-235920-72780/pt-BR/report.json"],
+    "limitations": [
+      "F-1 (transient nil font results) was reproduced in the Codex sandbox but its cause is not established; a bounded retry recovered every observed nil (3 in 100 runs), which is a mitigation, not a root-cause fix.",
+      "Physical keyboard/IME/VoiceOver/TCC/Spaces and minimum-macOS runtime remain unqualified; signing, notarization and the published asset were verified for v0.12.2-beta1.",
+      "Installed on the maintainer's Mac from the published disk image; the running 0.12.0 process was not terminated, so a relaunch is needed to run 0.12.2."
+    ]
+  },
+  "previous_source_candidate_0_12_1": {
+    "version": "0.12.1-beta1",
+    "app_version": "0.12.1",
+    "build": 20,
+    "date": "2026-10-15",
+    "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines, saved colors, text appearances and curved arrows; broader reference parity remains unfinished.",
+    "status": "source_accepted_physical_release_unqualified",
+    "verification": "0.12.1/build20: stable Xcode 27.0/27A266a unsigned gate passes 683 tests, 617 translations and both app builds. Full native EN/PT-BR passes 47/47 per language, 2222 assertions/138 PNGs each, zero skips. Omitting makeKey or orderFrontRegardless produces the expected native regression failures; restored production code is unchanged. Fresh different-model source-blind acceptance passes all 10 criteria, 3/3 focused scenarios and 265 assertions per language, including 50 overlay cycles. Exact-head CI remains a separate merge gate. Earlier FP-034 code/security/native acceptance remains in its own verdict; historical CAP-01 and text-font CI incidents are not retroactively erased.",
+    "evidence_paths": [
+      "docs/specs/native-window-qualification/acceptance-verdict.md",
+      "docs/specs/native-window-qualification/review-evidence.md",
+      "docs/specs/curved-arrows/acceptance-verdict.md",
+      "docs/specs/feature-discovery/acceptance-verdict.md",
+      "docs/specs/feature-discovery/review-evidence.md",
+      ".scratch/feature-discovery-final-check.log",
+      ".scratch/onboarding-replay-green.log",
+      ".scratch/area-color-sampling/15-binding-green.log",
+      ".scratch/e2e/20261014-005643/en/report.json",
+      ".scratch/e2e/20261014-005643/pt-BR/report.json",
+      ".scratch/e2e/20261014-005816/en/report.json",
+      ".scratch/e2e/20261014-005816/pt-BR/report.json"
+    ],
+    "limitations": [
+      "The earlier 0.12.0 signed stable gate passed 683 tests/617 translations, but its installation-time native E2E passed 45/47 per language with focus/presentation failures. Preserve that installed artifact and its historical evidence separately from 0.12.1 source acceptance. See docs/specs/curved-arrows/local-installation.md.",
+      "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
+      "Earlier 2026-10-15 graphical-session controls failed readiness. The resumed session passes both focus scenarios bilingually and rejects omitted key/ordering calls; version 0.12.1/build20 final synthetic native acceptance passes. Preserve the earlier failures in docs/specs/native-window-qualification/acceptance-verdict.md.",
+      "Developer ID archive/export from cf87796 with stable 27A266a installed locally on 2026-10-15 after explicit owner authorization despite current native FAILs; previous 0.11.0/build18 preserved without app launch/termination. No new tag, merge, notarization or public distribution. Xcode installation is recorded separately.",
+      "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
+      "Saved-color native interaction independently passes. Historical capture-focus failure remains unattributed; physical keyboard/IME/VoiceOver/Spaces and production qualification remain separate and unrun."
+    ]
+  },
+  "previous_release_0_10_1": {
+    "version": "0.10.1",
+    "build": 14,
+    "date": "2026-10-03",
+    "scope": "FR-01/FR-02/FR-04/FR-09 on every desktop (other Spaces, other apps' fullscreen Spaces, multiple displays) plus fixes from a full-source review: Space policy for every window, framework-window adoption before activation, capture-display/pointer screen choice, capture suspension limited to the active Space, Quit confirmation, capture geometry from the captured snapshot, crop/scroll-memory/chroma/pins/scroll-Stop fixes, IO-01 synchronous drop admission, persistent announced notices, GitHub token cleanup, stale folder bookmarks, release-script hardening.",
+    "status": "released",
+    "verification": "Branch fix/all-desktops-0.10.1 at f49c247: scripts/check.sh passed (548 package tests, 31 script controls, 526 pt-BR strings, project freshness, strict lint, signed Debug and E2E builds). scripts/e2e.sh --lang all: 40/40 scenarios, 843 assertions, 59 screenshots per language; two activation-dependent checks were recorded SKIPPED because this host declined activation. Physical probe scripts/space-probe/run.sh stale (FORCE=1, one display, 2026-10-03): windows without a Space policy switched the active Space in 6/6 runs; the six configurations Recortia uses switched it in 0/18. Reviews: four module-slice reviews (Codex x2, Claude x2), Standards/Spec two-axis review, independent Codex autoreview (one P2 found and fixed red-first). capture-focus is environment-sensitive on a busy desktop: 5/6 at the 9dc25fa baseline and 7/8 at HEAD.",
+    "evidence_paths": [
+      ".scratch/check-f49c247.log",
+      ".scratch/e2e/20261003-195723/en/report.json",
+      ".scratch/e2e/20261003-195723/pt-BR/report.json",
+      ".scratch/space-probe-0.10.1/stale.jsonl",
+      ".scratch/head-cf.log"
+    ],
+    "limitations": [
+      "Multiple physical displays, mixed DPI and Stage Manager were not exercised physically; display choice is verified with synthetic two-display layouts.",
+      "The probe measures window configurations equivalent to Recortia's, not Recortia's own windows; activation was forced to stand in for a user's hotkey or menu click.",
+      "Physical hotkeys, TCC prompting, clean-user launch and live GitHub upload remain owner checks.",
+      "The editor no longer enters its own fullscreen Space (fullscreen-auxiliary and fullscreen-primary are mutually exclusive)."
+    ],
+    "beta_release": {
+      "tag": "v0.10.1-beta1",
+      "commit": "ddf483c67da3f0bc443663972d563f852743745f",
+      "build": 13,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.1-beta1",
+      "dmg_sha256": "fb58e6eaebb905e75ab83789f6dc57a8582f7c68fbabbf6d564399bd20a2c1f8",
+      "notarization": [
+        "app 229447f7-c1f4-48ed-8cf2-2268a0569ee2 Accepted",
+        "dmg fd63f729-e8fc-4227-a67d-4b8fbedbdd26 Accepted"
+      ],
+      "checks": "scripts/release.sh gate passed in a fresh checkout; app and DMG stapled; spctl Notarized Developer ID; mounted app 0.10.1 (13), strict signature, no get-task-allow; served asset hash matches."
+    },
+    "production_release": {
+      "tag": "v0.10.1",
+      "commit": "68f3f40bf517ca35056a80d179ed1e26fe527b0b",
+      "build": 14,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.1",
+      "dmg_sha256": "3466c6a87e3d1ce39de09f196e440c1dfcbcbfcded5081701555409019cca69c",
+      "notarization": [
+        "app 9193be88-7ac8-43fd-b335-076fd961610c Accepted",
+        "dmg 3b691634-ed79-486b-93f7-c16c82f2450c Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap 047a16e recortia: 0.10.1",
+      "installed": "2026-10-03 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.1 (14), strict signature, stapled, Notarized Developer ID; previous 0.10.0 (12) bundle backed up under .scratch/installed-backup."
+    },
+    "known_issue": "On the installed app, reopening Recortia or opening Settings while another app's fullscreen Space was visible switched to a desktop Space for both a fresh and an existing SwiftUI Settings window (3/3 and 1/1 runs; the host app was visible but not frontmost). Fixed in 0.10.2."
+  },
+  "previous_shortcut_candidate": {
+    "version": "0.10.0-beta3",
+    "build": 12,
+    "date": "2026-10-01",
+    "scope": "FR-02 shortcut region selection without foreground activation; FR-15 permanent invalidation of revoked pending upload consent.",
+    "status": "locally_installed_awaiting_manual_validation",
+    "verification": "Test-first synthetic regressions reproduced the activating overlay/key-ownership defect and upload consent revocation ABA. Corrected targeted EN/PT-BR suite passed all five scenarios and 157 assertions per language. Final stable signed scripts/check.sh exited0:517 package tests, 12 Python controls, 517 translated strings,strict formatting/project freshness and both Debug targets. A fresh different-model behavior verifier executed the full synthetic suite once, exit 0:27/27 scenarios, 672 assertions and 56 reported screenshots per language; every assertion passed and all reported PNGs were valid. Fresh Standards/security and Spec reviews accepted external foreground identity and activation notifications as the synthetic selection oracle; NSApp.isActive is recorded diagnostically. Both resolved Debug bundles are 0.10.0/build12/min15.0. Correctly staged autoreview returned scoped-clean/P2; CI36955190485 passed on 2069d91. Developer ID archive/export of that commit and local installation passed on 2026-10-02: all 33 installed files match export and all 33 previous build10 files were preserved. No app launch or termination occurred. Physical hotkeys, actual monitor/Space/fullscreen transitions, live credentials/provider transfers and notarized distribution remain unrun. Build-11 evidence is retained separately below.",
+    "evidence_paths": [
+      ".scratch/e2e/20261001-224940/en/report.json",
+      ".scratch/e2e/20261001-225137/en/report.json",
+      ".scratch/e2e/20261001-225901/en/report.json",
+      ".scratch/e2e/20261001-230208/en/report.json",
+      ".scratch/e2e/20261001-230208/pt-BR/report.json",
+      ".scratch/capture-shortcut-build12-20261001/check.log",
+      ".scratch/e2e/20261001-230940/en/report.json",
+      ".scratch/e2e/20261001-230940/pt-BR/report.json",
+      ".scratch/local-install-build12-20261002/installation.json"
+    ]
+  },
+  "current_local_installation": {
+    "candidate": "0.12.2-beta1 notarized pre-release",
+    "app_version": "0.12.2",
+    "build": 21,
+    "date": "2026-10-16",
+    "source_commit": "682297430ef2d8c139d6f116a8a33776059fb54f",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "published DMG (sha256 8b28f6df380c62dbe955a46184008f1fb1354dd6036c06721218aaacbbb4a942, downloaded from the GitHub release)",
+    "backup_path": ".scratch/local-install-0.12.2-20261016/previous-0.12.0-build19.app",
+    "executable_sha256": "3e6c5b312071d3155fc2400f411e5ff174bf72bc05fbbdade949096a3942a623",
+    "installed_equals_export": true,
+    "backup_equals_previous": true,
+    "launched": false,
+    "notarized": true,
+    "authorization": "Owner request 2026-10-16: fix the window size and, when done, approved release, install on this Mac.",
+    "verification": "codesign --verify --deep --strict passes; spctl: Notarized Developer ID; Hardened Runtime; profile Recortia Developer ID; keychain-access-groups Q96FUTC5G8.dev.mvneves.Recortia; no get-task-allow; no ATS exceptions; installed bundle identical (diff -rq) to the published disk image's app. The previous 0.12.0 process kept running and was not terminated; the old bundle went to the Trash after a verified ditto backup.",
+    "qualification": "Release artifact verified; physical Spaces, keyboard and TCC behaviour of this build not run."
+  },
+  "previous_local_installation_0_12_0": {
+    "candidate": "0.12.0 local test (untagged)",
+    "app_version": "0.12.0",
+    "build": 19,
+    "date": "2026-10-15",
+    "source_commit": "cf877963a49fdef461a07cad068514c282fc5ed5",
+    "installed_path": "/Applications/Recortia.app",
+    "backup_path": ".scratch/local-install-readiness-20261015/previous-0.11.0-build18.app",
+    "executable_sha256": "c4aecb8207593e0b80afc30a3312683644116a4fc963829600b4067c8556664b",
+    "installed_equals_export": true,
+    "backup_equals_previous": true,
+    "launched": false,
+    "notarized": false,
+    "authorization": "Explicit owner sim to local test installation despite current capture-focus and editor-presentation FAILs; preserve previous app and no launch/restart.",
+    "evidence_path": ".scratch/local-install-readiness-20261015/installation.json",
+    "independent_verdict": "PASS (authorized local test installation only)",
+    "independent_verification": "Fresh different-model verifier confirmed all 59 installed entries equal export and all 30 backup entries equal prior0.11.0/build18; both strict signatures pass. Independent215-sample process audit spans replacement, no Recortia PID observed, maximum gap0.438s; finite-sampling limit stated. No app launch/termination. Current native readiness remains FAIL.",
+    "independent_evidence_path": ".scratch/local-install-verifier-20261015/installation-verdict.md",
+    "qualification": "Artifact independently PASS; current native readiness FAIL (45/47 per language). Local test installation does not qualify release or physical behavior."
+  },
+  "previous_local_installation_build12": {
+    "candidate": "0.10.0-beta3",
+    "app_version": "0.10.0",
+    "build": 12,
+    "date": "2026-10-02",
+    "source_commit": "2069d91674c2c69f119c3d87b0404844a2765c90",
+    "installed_path": "/Applications/Recortia.app",
+    "backup_path": ".scratch/local-install-build12-20261002/previous-build10.app",
+    "executable_sha256": "0e379d88a7108bd78c6d6232ba2d8c2ce348584111e497487617aef3d276d34e",
+    "installed_equals_export": true,
+    "backup_equals_previous": true,
+    "launched": false,
+    "notarized": false,
+    "evidence_path": ".scratch/local-install-build12-20261002/installation.json",
+    "independent_verdict": "BLOCKED",
+    "independent_verification": "Fresh different-model verifier passed provenance, version, strict signature, runtime, parsed entitlements/profile, licenses and all 60 installed entries compared with export; all 33 backup files match the pre-install manifest. Overall verdict is BLOCKED solely by absent independent process audit of the installation interval. No artifact defect was found; no launch or termination command was issued by the installer.",
+    "independent_evidence_path": ".scratch/local-install-build12-20261002/verification.md"
+  },
+  "previous_source_candidate": {
+    "version": "0.10.0-beta2",
+    "build": 11,
+    "date": "2026-10-01",
+    "scope": "FR-03/FR-12 shared import admission and cancellation; FR-04 canvas keyboard ownership reset. Includes the prior approved FR-07/FR-15 changes.",
+    "status": "local_gates_passed_release_validation_blocked",
+    "verification": "Regressions were red before import/cancellation/focus fixes; a provider-counting canvas regression then reproduced and closed eager drop reads. Final stable Xcode 27 signed scripts/check.sh exited0:517 package tests, 12 Python controls, 517 translated strings,format/project freshness and both Debug targets. Independent full E2E exited0:26/26 scenarios, 603 assertions, 55 screenshots per language. A separate fresh different-model behavior context passed 159 focused assertions per language and inspected all 22 renders. Independent Standards and Spec correction reruns found zero remaining confirmed findings; resolved app/E2E versions are 0.10.0/build11/min15.0. Dedicated security execution is BLOCKED because this host cannot enforce sandbox memory limits; source security inspection found no confirmed defect. Live Keychain/GitHub transfer, IME/VoiceOver,TCC/clean-user launch,stable-host performance,notarization and public beta/production release remain unrun. No build11 installation is claimed.",
+    "evidence_paths": [
+      "/private/tmp/recortia-fix-20261001-import-red.log",
+      "/private/tmp/recortia-fix-20261001-cancel-red.log",
+      "/private/tmp/recortia-fix-20261001-import-green.log",
+      ".scratch/e2e/20261001-164809/en/report.json",
+      ".scratch/e2e/20261001-164845/en/report.json",
+      ".scratch/e2e/20261001-164845/pt-BR/report.json",
+      ".scratch/e2e/20261001-170535/en/report.json",
+      ".scratch/e2e/20261001-170712/en/report.json",
+      ".scratch/e2e/20261001-170712/pt-BR/report.json",
+      "/private/tmp/recortia-fix-20261001-check-final.log",
+      ".scratch/e2e/20261001-171230/en/report.json",
+      ".scratch/e2e/20261001-171230/pt-BR/report.json",
+      ".scratch/e2e/20261001-171639/en/report.json",
+      ".scratch/e2e/20261001-171639/pt-BR/report.json"
+    ]
+  },
+  "previous_verified_candidate": {
+    "version": "0.10.0-beta1",
+    "build": 10,
+    "date": "2026-10-01",
+    "scope": "FR-07 automatic export cancellation and busy reporting; owner-authorized FR-15 optional private GitHub auto-upload (ADR-006).",
+    "status": "source_verified_locally_installed_awaiting_manual_validation",
+    "verification": "Red regressions preceded all five confirmed fixes. Stable Xcode 27 scripts/check.sh --unsigned exited 0: 514 package tests, 12 Python controls, 513 translated strings and both Debug targets. Final synthetic E2E exited 0: 24/24 scenarios, 444 assertions and 44 screenshots per language. Fresh different-model security reverify passed 47 focused tests and closed all three additional findings. Final Developer ID archive/export and strict signature/runtime/parsed entitlements/profile checks passed; version 0.10.0 build10 installed with matching executable SHA256 and build9 backup. PID6408 remains on build9. Xcode-beta MCP follow-up succeeded: four affected app files report zero diagnostics; initial Settings timeout resolved on retry. Real GitHub transfers, credential/Keychain interaction, TCC and clean-user launch remain unrun; no notarization/public release.",
+    "evidence_paths": [
+      "/private/tmp/recortia-autoupload-red.log",
+      "/private/tmp/recortia-autoupload-busy-red.log",
+      "/private/tmp/recortia-github-first-green.log",
+      "/private/tmp/recortia-github-final-check.log",
+      "/private/tmp/recortia-independent-final-review.log",
+      ".scratch/e2e/20261001-013242/en/report.json",
+      ".scratch/e2e/20261001-013242/pt-BR/report.json",
+      ".scratch/local-install-github-build10-final-20261001/verification.txt",
+      ".scratch/local-install-github-build10-final-20261001/installation.txt"
+    ]
+  },
+  "prior_verified_candidate": {
+    "version": "0.9.1-beta3",
+    "build": 9,
+    "date": "2026-09-30",
+    "scope": "Approved FR-01 through FR-14 corrections: recapture window visibility, capture admission, scrolling cancellation/occlusion, editor geometry/undo/preview/pixel bounds, and parsed Release entitlements.",
+    "status": "source_verified_awaiting_manual_validation",
+    "signed_gate_verification": "Stable Xcode 27.0 scripts/check.sh also passed, exit 0, on 2026-09-30: same 494 package tests, 12 Python controls and 477 translated strings, with both Debug targets signed. Only documentation changed after those gates; the signed local artifact remains bound to source commit 49047c7.",
+    "verification": "Final stable Xcode 27.0 scripts/check.sh --unsigned passed, exit 0: 494 package tests, 12 Python controls, two Debug targets and 477 translated strings. Final synthetic E2E at 20260930-013025 passed, exit 0: 23/23 scenarios, 407 assertions and 41 screenshots per language. Queued scrolling admission and held permission await now reject overlapping commands; granted access checks the per-operation prompt delta (before=3, after=3). AppModel defaults to native messages; the harness records permission denial instead of blocking in NSAlert. The earlier full run 20260930-012132 timed out in that modal boundary and is retained as failed evidence. Different-model independent source/security reverify passed 266 focused tests and seven Python release controls, reconciled the final reports, and found no remaining confirmed source defect. Fully independent final UI execution is BLOCKED because a fresh agent context was refused by the server's thread limit; the final synthetic UI run was driven by the integrator. Real alerts/TCC, hardware, stable-host performance, clean-user launch and production qualification remain pending. Signed beta3 installation is independently verified in local_installation; no public distribution is claimed.",
+    "evidence_paths": [
+      ".scratch/beta3-signed-check.log",
+      ".scratch/beta3-message-boundary-check.log",
+      ".scratch/beta3-message-boundary-e2e.log",
+      ".scratch/e2e/20260930-013025/en/report.json",
+      ".scratch/e2e/20260930-013025/pt-BR/report.json",
+      ".scratch/final-code-reverify-tests.log",
+      ".scratch/beta3-fresh-ui-reverify.log",
+      ".scratch/capture-admission-queued-green.log",
+      ".scratch/beta3-final-check.log",
+      ".scratch/editor-regressions-green.log",
+      ".scratch/e2e/20260929-235623/en/report.json",
+      ".scratch/e2e/20260929-235623/pt-BR/report.json",
+      ".scratch/e2e/20260930-000651/en/report.json",
+      ".scratch/e2e/20260930-000457/en/report.json",
+      ".scratch/e2e/20260930-000457/pt-BR/report.json",
+      ".scratch/beta3-reverify-sandbox-build.log"
+    ]
+  },
+  "previous_candidate": {
+    "version": "0.9.1-beta2",
+    "build": 8,
+    "date": "2026-09-29",
+    "scope": "Documentation and build-number follow-up; application behavior unchanged from beta1.",
+    "verification": "Stable Xcode 27.0 scripts/check.sh --unsigned passed: generated project current, 486 package tests, seven Python gate regressions, both Debug targets and 477 translated strings. Both built Info.plists resolve to 0.9.1 build 8 with macOS 15.0 minimum. Earlier native E2E and independent source/security evidence remain attached to beta1; E2E scenarios were not rerun for this metadata/docs-only follow-up.",
+    "evidence_paths": [
+      ".scratch/full-review/beta2-docs-check.log"
+    ]
+  },
+  "prepared_local_artifact": {
+    "candidate": "0.9.1-beta3",
+    "app_version": "0.9.1",
+    "build": 9,
+    "date": "2026-09-30",
+    "source_commit": "49047c7889f0a14e4f20ea5c8617f32f85c76be2",
+    "executable_sha256": "6379ff7410e419e2e00c960eb30210fafad44b0bf0abd533861714ad5619e5f0",
+    "verification": "Stable Xcode 27.0 archive and Developer ID export succeeded, exit 0. Strict signature, Hardened Runtime, version/build/minimum OS, profile compatibility and actual Keychain access group passed. Debug entitlements absent; Release test-marker isolation and bundled license/provenance checks passed, with a Debug binary correctly rejected as a failing control.",
+    "distribution_status": "Prepared from source commit 49047c7 and subsequently installed locally; see local_installation. Not notarized, tagged or publicly distributed. Different-model independent artifact verification passed strict signing/runtime, exact executable hash, profile signer certificate and group compatibility, actual entitlements with adversarial debug controls, binary isolation with a rejected Debug control, and both bundled licenses. Preparation and installation are recorded separately; neither proves production qualification.",
+    "pull_request": "https://github.com/mneves75/recortia/pull/5",
+    "ci_evidence": [
+      "https://github.com/mneves75/recortia/actions/runs/36669782062"
+    ],
+    "evidence_paths": [
+      ".scratch/local-install-beta3-20260930/archive.log",
+      ".scratch/local-install-beta3-20260930/export.log",
+      ".scratch/local-install-beta3-20260930/manifest.json"
+    ]
+  },
+  "local_installation": {
+    "candidate": "0.9.1-beta3",
+    "app_version": "0.9.1",
+    "build": 9,
+    "date": "2026-09-30",
+    "source_commit": "49047c7889f0a14e4f20ea5c8617f32f85c76be2",
+    "merged_commit_with_identical_application_source": "f7bdf52097593743d65d305d49996f5aaa242233",
+    "executable_sha256": "6379ff7410e419e2e00c960eb30210fafad44b0bf0abd533861714ad5619e5f0",
+    "verification": "Owner authorized merge and installation explicitly after reviewing the prepared artifact. Installed /Applications/Recortia.app independently matches the approved export: 33 regular files, 59 entries, no symlinks, version 0.9.1/build 9/minimum 15.0 and exact executable hash. Strict Developer ID signature, Hardened Runtime and actual entitlements passed; debug entitlements absent. Original build 7 preserved with byte equality against its backup. No process was terminated and the app was not launched.",
+    "distribution_status": "Signed local installation; not notarized, tagged or publicly distributed. Launch, clean-user/offline behavior, TCC and live qualification unrun. Production remains blocked.",
+    "pull_request": "https://github.com/mneves75/recortia/pull/5",
+    "ci_evidence": [
+      "https://github.com/mneves75/recortia/actions/runs/36670599953",
+      "https://github.com/mneves75/recortia/actions/runs/36697604111"
+    ],
+    "evidence_paths": [
+      ".scratch/local-install-beta3-20260930/archive.log",
+      ".scratch/local-install-beta3-20260930/export.log",
+      ".scratch/local-install-beta3-20260930/installation.json"
+    ]
+  },
+  "previous_local_installation": {
+    "candidate": "0.9.1-beta1",
+    "app_version": "0.9.1",
+    "build": 7,
+    "date": "2026-09-29",
+    "source_commit": "ce385b36381a2e1d3865c7778f06ae25ca01d2ff",
+    "merged_commit_with_identical_source_tree": "014c86eb1da1ba3ea6d1bab13c117deb337d1a89",
+    "executable_sha256": "5d183a1eaf02a8bef2e55fb7504c174e741be7870421237d34fd37a13642205e",
+    "verification": "Stable Xcode 27.0 archive and Developer ID export succeeded. Installed bundle equals the export; strict signature, Hardened Runtime, embedded profile and Keychain group verified; get-task-allow absent. Existing running session preserved.",
+    "distribution_status": "Signed local build; not notarized or published. Relaunch, clean-user/offline behavior, TCC and live qualification unrun.",
+    "ci_evidence": [
+      "https://github.com/mneves75/recortia/actions/runs/36648693031",
+      "https://github.com/mneves75/recortia/actions/runs/36652083895"
+    ],
+    "evidence_paths": [
+      ".scratch/local-install/archive.log",
+      ".scratch/local-install/export.log"
+    ]
+  },
+  "corrective_candidate": {
+    "version": "0.9.1-beta1",
+    "build": 7,
+    "date": "2026-09-29",
+    "scope": "Source/security review corrections within approved FR-01 through FR-14; manual qualification remains pending.",
+    "verification": "Stable Xcode 27.0: scripts/check.sh --unsigned passed (486 package tests); scripts/e2e.sh --lang all --unsigned --no-build passed 20/20 scenarios per language. Unsigned Release build, binary isolation, localization and license/provenance checks passed. Fresh independent GPT-6 Astra source/security reverify: PASS, no remaining P0-P2 finding. Manual qualification unchanged.",
+    "evidence_paths": [
+      ".scratch/full-review/final-check.log",
+      ".scratch/full-review/final-e2e.log",
+      ".scratch/full-review/release-build.log",
+      ".scratch/e2e/20260929-175152/en/report.json",
+      ".scratch/e2e/20260929-175152/pt-BR/report.json"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "FP-001",
+      "milestone": "M0",
+      "title": "Inventory repository and freeze verified toolchain",
+      "status": "implemented",
+      "depends_on": [],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-01"
+      ],
+      "scope": "Read the real repository, preserve existing work, record the Mac/toolchain/SDK state, and identify proposed versus existing paths.",
+      "deliverables": [
+        "Repository audit",
+        "Observed TOOLCHAIN.json fields",
+        "ADR-001 native stack and deployment baseline"
+      ],
+      "completion_contract": "An owner-reviewed plan distinguishes verified facts, unsupported environment checks, and genuinely blocking decisions. No application edits before approval.",
+      "evidence": [
+        "docs/plans/M0-plan.md (repository audit, verified facts vs assumptions, blocked checks, owner decisions D1-D7)",
+        "TOOLCHAIN.json observed fields (Xcode 27.0 27A266a, Swift 6.4, macOS SDK 27.0 26A425, seed host macOS 27.2 26B5091g)",
+        "docs/adr/0001-native-stack-and-toolchain-baseline.md (Proposed; API availability typecheck with negative control)",
+        "Awaiting owner review of the M0 plan; FP-001 completion contract requires it"
+      ],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-002",
+      "milestone": "M0",
+      "title": "Prove capture, geometry, and permission feasibility",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-001"
+      ],
+      "requirement_ids": [
+        "FR-02",
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "PERM-01",
+        "CAP-01",
+        "GEO-01"
+      ],
+      "scope": "After approval and explicit live-test consent, build a minimal capture spike against a synthetic test desktop and investigate the selected permission/sandbox profile.",
+      "deliverables": [
+        "Disposable capture spike",
+        "Per-display geometry observations",
+        "ADR-002 permission and sandbox decision"
+      ],
+      "completion_contract": "Record real still-capture results, app-window exclusion, a mixed-DPI test or explicit hardware block, and a reasoned choice about non-sandboxed automatic scrolling.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented; live capture on 1×/mixed-DPI displays and macOS 15/26 hosts (GEO-01) still needs hardware validation."
+    },
+    {
+      "id": "FP-003",
+      "milestone": "M0",
+      "title": "Prove privacy rendering and scroll-matching risks",
+      "status": "implemented",
+      "depends_on": [
+        "FP-001"
+      ],
+      "requirement_ids": [
+        "FR-06",
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "RED-01",
+        "SCR-01",
+        "SCR-02"
+      ],
+      "scope": "Use synthetic images to prototype pre-filter opaque masking and a minimal overlap matcher before investing in UI polish.",
+      "deliverables": [
+        "Independent secret-region fixture generator",
+        "Scroll frame corpus seed",
+        "Risk/feasibility report"
+      ],
+      "completion_contract": "Demonstrate the intended redaction information-dependence test and show both a successful and an intentionally rejected ambiguous stitch; report any unrun code honestly.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-004",
+      "milestone": "M1",
+      "title": "Create the approved native project and test entrypoints",
+      "status": "implemented",
+      "depends_on": [
+        "FP-002",
+        "FP-003"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-01"
+      ],
+      "scope": "Create or adapt the approved app target, local package targets, shared schemes, formatting configuration, and unsigned CI entrypoints.",
+      "deliverables": [
+        "Recortia.xcodeproj or approved existing equivalent",
+        "Packages/RecortiaKit",
+        "scripts/doctor.sh and scripts/check.sh",
+        "Read-only PR workflow"
+      ],
+      "completion_contract": "A clean Mac checkout builds the skeleton and runs a real domain test without release credentials. Dependency locks and exact script behavior are documented.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-005",
+      "milestone": "M1",
+      "title": "Implement typed geometry and domain contracts",
+      "status": "implemented",
+      "depends_on": [
+        "FP-004"
+      ],
+      "requirement_ids": [
+        "FR-02",
+        "FR-04",
+        "FR-06"
+      ],
+      "acceptance_test_ids": [
+        "GEO-02",
+        "EDIT-01"
+      ],
+      "scope": "Implement coordinate-space types, safe transforms, request/revision identity, limits, document values, and explicit state transitions.",
+      "deliverables": [
+        "Domain geometry/model/state files",
+        "Parameterized geometry and transition tests"
+      ],
+      "completion_contract": "Round-trip, outward mask rounding, invalid-input, overflow, and illegal-transition tests pass without UI dependencies.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-006",
+      "milestone": "M1",
+      "title": "Build the menu bar, settings foundation, and shortcuts",
+      "status": "implemented",
+      "depends_on": [
+        "FP-004"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "PERM-01",
+        "UX-01"
+      ],
+      "scope": "Create the native lifecycle, menu commands, onboarding, shortcut recorder with macOS-style defaults (ADR-005), localization foundation, and settings.",
+      "deliverables": [
+        "App composition root",
+        "Menu/settings/onboarding UI",
+        "String Catalog",
+        "Reviewed shortcut dependency resolution"
+      ],
+      "completion_contract": "The app launches without intrusive permission prompts, exposes keyboard-accessible commands, reports shortcut registration failure and shortcuts macOS still uses, and starts with no automatic side effects beyond writing the default shortcuts once.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-007",
+      "milestone": "M1",
+      "title": "Implement the still-capture vertical slice",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-005",
+        "FP-006"
+      ],
+      "requirement_ids": [
+        "FR-02"
+      ],
+      "acceptance_test_ids": [
+        "CAP-01",
+        "CAP-02",
+        "PERM-02",
+        "GEO-01"
+      ],
+      "scope": "Implement ScreenCaptureKit still capture, source choice, overlays, delay/repeat, exclusion, and cancellation through to a simple image preview.",
+      "deliverables": [
+        "Capture adapter and permission state",
+        "Selection overlays/HUD",
+        "Capture coordinator tests"
+      ],
+      "completion_contract": "Real capture works for the declared modes and source geometry, with one active request, no idle stream, no self-overlay contamination, and safe late-callback handling.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented and E2E-verified with synthetic capture; live ScreenCaptureKit capture on hardware still needs owner validation (TCC grant)."
+    },
+    {
+      "id": "FP-008",
+      "milestone": "M1",
+      "title": "Implement bounded local image import",
+      "status": "implemented",
+      "depends_on": [
+        "FP-005",
+        "FP-006"
+      ],
+      "requirement_ids": [
+        "FR-03"
+      ],
+      "acceptance_test_ids": [
+        "IO-01",
+        "PRIV-01"
+      ],
+      "scope": "Implement explicit PNG/JPEG file, paste, and drop-in actions using bounded decoding and canonical image orientation/color.",
+      "deliverables": [
+        "Image decoder/import adapter",
+        "Input budget enforcement",
+        "Corrupt/oversized fixtures"
+      ],
+      "completion_contract": "Valid imports render; unsafe/unsupported inputs fail before uncontrolled allocation. No clipboard polling, remote fetch, or original-file mutation occurs.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-009",
+      "milestone": "M2",
+      "title": "Build the document editor and command undo",
+      "status": "implemented",
+      "depends_on": [
+        "FP-007",
+        "FP-008"
+      ],
+      "requirement_ids": [
+        "FR-04"
+      ],
+      "acceptance_test_ids": [
+        "EDIT-01",
+        "EDIT-02",
+        "GEO-02"
+      ],
+      "scope": "Implement the native canvas, document/view transforms, crop/resize/zoom/pan, selection, and bounded command-based undo.",
+      "deliverables": [
+        "Editor canvas and controller",
+        "Command history",
+        "Deterministic editor replay tests"
+      ],
+      "completion_contract": "Undo/redo and geometry remain correct at all specified zooms, and one gesture produces one bounded undo group.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-010",
+      "milestone": "M2",
+      "title": "Add essential annotation tools",
+      "status": "implemented",
+      "depends_on": [
+        "FP-009"
+      ],
+      "requirement_ids": [
+        "FR-05"
+      ],
+      "acceptance_test_ids": [
+        "EDIT-01",
+        "EDIT-02",
+        "UX-01"
+      ],
+      "scope": "Implement text, arrow, rectangle, ellipse, freehand, highlighter, and numbered-step tools with accessible controls.",
+      "deliverables": [
+        "Typed annotation payloads and renderer",
+        "Tool inspector",
+        "Unicode and input-method tests"
+      ],
+      "completion_contract": "Each supported tool creates/edits/replays deterministically, honors focus/input composition, and has no stub or inaccessible essential action.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-011",
+      "milestone": "M2",
+      "title": "Implement secure rendering and redaction",
+      "status": "implemented",
+      "depends_on": [
+        "FP-009",
+        "FP-010"
+      ],
+      "requirement_ids": [
+        "FR-06"
+      ],
+      "acceptance_test_ids": [
+        "RED-01",
+        "RED-02",
+        "RED-03",
+        "RED-04"
+      ],
+      "scope": "Implement source-bound masks, output coverage, privacy epochs, effect ordering, and flattened render snapshots. Label cosmetic effects separately.",
+      "deliverables": [
+        "Privacy-aware render pipeline",
+        "Mask geometry and cache invalidation",
+        "Redaction regression suite"
+      ],
+      "completion_contract": "All available sink-independent redaction tests pass; changing only covered source pixels cannot alter sanitized rendered pixels. No superficial overlay qualifies.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-012",
+      "milestone": "M2",
+      "title": "Implement safe save, clipboard, and drag-out",
+      "status": "implemented",
+      "depends_on": [
+        "FP-011"
+      ],
+      "requirement_ids": [
+        "FR-07"
+      ],
+      "acceptance_test_ids": [
+        "EXP-01",
+        "EXP-02",
+        "RED-01",
+        "RED-02",
+        "PRIV-01"
+      ],
+      "scope": "Create ShareSnapshot encoding, metadata/type allowlists, explicit export commits, atomic file handling, and file-promise lifetime management.",
+      "deliverables": [
+        "PNG/JPEG encoder",
+        "Clipboard/file/drag adapters",
+        "Failure injection and metadata-inspection tests"
+      ],
+      "completion_contract": "Every sink accepts only sanitized snapshot bytes. Failed work preserves existing destinations/clipboard where applicable and never reports false success.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-013",
+      "milestone": "M2",
+      "title": "Implement bounded reference pins",
+      "status": "implemented",
+      "depends_on": [
+        "FP-012"
+      ],
+      "requirement_ids": [
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "PIN-01",
+        "RED-03"
+      ],
+      "scope": "Add visible floating references with lifecycle, opacity/zoom, budget enforcement, and privacy-epoch invalidation.",
+      "deliverables": [
+        "Pin panel/controller",
+        "Snapshot retention policy",
+        "Pin lifecycle tests"
+      ],
+      "completion_contract": "Five-pin and budget limits work; pins remain closeable and do not silently intercept unrelated interactions or leak stale exports.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-014",
+      "milestone": "M3",
+      "title": "Implement local OCR and QR",
+      "status": "implemented",
+      "depends_on": [
+        "FP-012"
+      ],
+      "requirement_ids": [
+        "FR-08"
+      ],
+      "acceptance_test_ids": [
+        "OCR-01",
+        "OCR-02",
+        "RED-03",
+        "PERM-01"
+      ],
+      "scope": "Integrate Vision behind the tested adapter, query supported languages, preserve raw-text semantics, and treat QR payloads as untrusted.",
+      "deliverables": [
+        "OCR/QR service and review UI",
+        "Versioned EN/PT corpus",
+        "Revision-aware result handling"
+      ],
+      "completion_contract": "Recognition works offline in the validated environment, aligns boxes correctly, respects masks/cancellation, and never performs a QR-triggered action automatically.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-015",
+      "milestone": "M3",
+      "title": "Qualify the useful 0.1 release candidate",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-013",
+        "FP-014"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-02",
+        "FR-03",
+        "FR-04",
+        "FR-05",
+        "FR-06",
+        "FR-07",
+        "FR-08",
+        "FR-09",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-01",
+        "PRIV-01",
+        "PERF-01",
+        "REL-01",
+        "REL-02"
+      ],
+      "scope": "Review the 0.1 scope, perform baseline accessibility/privacy/performance checks, establish licensing/build docs, and prepare a signed candidate only with the required consent.",
+      "deliverables": [
+        "0.1 requirement/evidence matrix",
+        "Initial OSS policy files",
+        "Protected signing/notarization procedure",
+        "Known limitations"
+      ],
+      "completion_contract": "All 0.1 gates pass or the scope is visibly reduced through review. Signing checks are real or marked blocked; public publishing remains a separate action.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "0.9.0-beta1 candidate built; qualification on stable macOS and hardware is pending."
+    },
+    {
+      "id": "FP-016",
+      "milestone": "M4",
+      "title": "Implement manual scrolling capture",
+      "status": "implemented",
+      "depends_on": [
+        "FP-015"
+      ],
+      "requirement_ids": [
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "SCR-01",
+        "SCR-02",
+        "SCR-04",
+        "CAP-02"
+      ],
+      "scope": "Integrate a bounded user-visible capture stream, frame stability, overlap estimation, confidence gating, seam preview, and partial-result review.",
+      "deliverables": [
+        "Manual scroll session/coordinator",
+        "Bounded matching/assembly pipeline",
+        "Fixture-driven stitch diagnostics"
+      ],
+      "completion_contract": "Known sequences reconstruct correctly; ambiguous matches pause/reject instead of fabricating success. Stop and resource limits remain responsive.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-017",
+      "milestone": "M4",
+      "title": "Add separately consented automatic scrolling",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-016"
+      ],
+      "requirement_ids": [
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "PERM-01",
+        "PERM-02",
+        "SCR-03"
+      ],
+      "scope": "Implement minimal targeted scrolling only within the approved permission/sandbox design, preserving manual fallback.",
+      "deliverables": [
+        "Automatic-scroll adapter",
+        "Accessibility explanation and denial flow",
+        "Target/focus safety checks"
+      ],
+      "completion_contract": "No Accessibility request occurs before choosing automatic mode. Target changes stop control; denial keeps manual mode usable. No typing/global event logging is added.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented with separate consent; real-app runs need the owner's Accessibility grant."
+    },
+    {
+      "id": "FP-018",
+      "milestone": "M4",
+      "title": "Qualify scrolling compatibility and failure behavior",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-017"
+      ],
+      "requirement_ids": [
+        "FR-10"
+      ],
+      "acceptance_test_ids": [
+        "SCR-01",
+        "SCR-02",
+        "SCR-03",
+        "SCR-04",
+        "PERF-01"
+      ],
+      "scope": "Validate supported browsers/native fixtures, fixed bands, lazy reflow, duplicate rows, direction changes, and scroll-modifier failure cases.",
+      "deliverables": [
+        "Versioned real-app compatibility matrix",
+        "Held-out matching evaluation",
+        "Documented manual recovery flow"
+      ],
+      "completion_contract": "Publish only evidence-backed supported targets. Every corrupted/uncertain case is rejected, paused, or explicitly marked partial; resource tests include final encoding.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Stitcher calibration and failure behavior are automated; the real-app compatibility matrix (SCR-03) is pending."
+    },
+    {
+      "id": "FP-019",
+      "milestone": "M5",
+      "title": "Implement loupe, measurements, and sRGB inspection",
+      "status": "implemented",
+      "depends_on": [
+        "FP-015"
+      ],
+      "requirement_ids": [
+        "FR-11"
+      ],
+      "acceptance_test_ids": [
+        "PIX-01",
+        "GEO-01",
+        "GEO-02"
+      ],
+      "scope": "Add a nearest-neighbor loupe, labeled pixel/point dimensions, ruler anchors, and canonical sRGB HEX/RGB copy.",
+      "deliverables": [
+        "Pixel inspector/ruler UI",
+        "Known-color/geometry fixtures",
+        "Source-space sampling tests"
+      ],
+      "completion_contract": "Measurements and colors match declared fixture values independently of editor zoom; imported images never get fabricated screen scaling.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-020",
+      "milestone": "M5",
+      "title": "Implement multiple-image composition",
+      "status": "implemented",
+      "depends_on": [
+        "FP-015"
+      ],
+      "requirement_ids": [
+        "FR-12"
+      ],
+      "acceptance_test_ids": [
+        "COMP-01",
+        "RED-01",
+        "RED-03",
+        "EDIT-01"
+      ],
+      "scope": "Add image layers, stable transforms, z-order, transparency, side-by-side layout, and source-mask propagation across duplicate asset references.",
+      "deliverables": [
+        "Image-layer commands and composite renderer",
+        "Transform mapping tests",
+        "Composite privacy regressions"
+      ],
+      "completion_contract": "Composites preserve aspect ratio, geometry, undo, and masks. Unsupported mappings fail safely before any export.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-021",
+      "milestone": "M5",
+      "title": "Add presentation effects and safe magnifiers",
+      "status": "implemented",
+      "depends_on": [
+        "FP-020"
+      ],
+      "requirement_ids": [
+        "FR-13"
+      ],
+      "acceptance_test_ids": [
+        "COMP-01",
+        "RED-01",
+        "RED-02",
+        "RED-03",
+        "PERF-01"
+      ],
+      "scope": "Implement backgrounds/padding/corners/shadows and then spotlight/magnifier, reusing the approved sanitized render graph.",
+      "deliverables": [
+        "Effect models and native inspectors",
+        "Cycle checks and cache rules",
+        "Per-effect export/privacy fixtures"
+      ],
+      "completion_contract": "Every derived effect samples sanitized sources, rejects cycles, matches the preview, and stays within the resource budget.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Implemented in 0.9.0-beta1; verified by scripts/check.sh package suites and scripts/e2e.sh (17 scenarios, en + pt-BR) on 2026-09-26."
+    },
+    {
+      "id": "FP-022",
+      "milestone": "M6",
+      "title": "Finish accessibility, localization, and native interaction",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-018",
+        "FP-019",
+        "FP-021"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-01",
+        "EDIT-02",
+        "PIN-01"
+      ],
+      "scope": "Audit all completed surfaces for keyboard/VoiceOver use, input methods, adaptive appearance, multi-window focus, and EN/PT-BR strings.",
+      "deliverables": [
+        "Accessibility audit with actual evidence",
+        "Complete String Catalog translations",
+        "Native interaction regression list"
+      ],
+      "completion_contract": "Essential workflows are usable through the stated accessibility paths. Remaining limitations are disclosed rather than labeled fully accessible.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "English and pt-BR localization done; VoiceOver and input-method passes on hardware pending."
+    },
+    {
+      "id": "FP-023",
+      "milestone": "M6",
+      "title": "Qualify resource, lifecycle, and privacy budgets",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-022"
+      ],
+      "requirement_ids": [
+        "FR-02",
+        "FR-06",
+        "FR-07",
+        "FR-10",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "PERF-01",
+        "PRIV-01",
+        "PERM-02",
+        "RED-01",
+        "RED-02",
+        "SCR-04"
+      ],
+      "scope": "Run physical-Mac performance/soak tests and inspect egress, app-controlled persistence, retained objects, diagnostics, and failure boundaries.",
+      "deliverables": [
+        "Performance and memory report",
+        "Privacy evidence",
+        "Resolved or reviewed release-blocking defects"
+      ],
+      "completion_contract": "Record p50/p95/sample counts and exact environments. No fabricated hardware results, silent budget changes, live capture archive, or content-bearing logs.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Budgets enforced in code and tests; measurement on a stable-OS Mac (PERF-01) pending."
+    },
+    {
+      "id": "FP-024",
+      "milestone": "M6",
+      "title": "Implement and stage the signed updater",
+      "status": "not_started",
+      "depends_on": [
+        "FP-022"
+      ],
+      "requirement_ids": [
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-02",
+        "PRIV-01"
+      ],
+      "scope": "Integrate a reviewed stable Sparkle build, opt-in update checks, signed archives, compatibility filtering, and an actual staging recovery procedure.",
+      "deliverables": [
+        "Updater adapter/settings",
+        "Protected update signing procedure",
+        "Tamper/interruption/compatibility evidence"
+      ],
+      "completion_contract": "Invalid updates are rejected, default installs remain offline, and the working app survives failure. No release/update key is exposed to untrusted jobs.",
+      "evidence": [],
+      "authorization": "requires_approved_milestone",
+      "status_note": "In-app updater not built; updates ship through Homebrew."
+    },
+    {
+      "id": "FP-025",
+      "milestone": "M6",
+      "title": "Complete open-source handoff and 1.0 release qualification",
+      "status": "in_progress",
+      "depends_on": [
+        "FP-023",
+        "FP-024"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-02",
+        "FR-03",
+        "FR-04",
+        "FR-05",
+        "FR-06",
+        "FR-07",
+        "FR-08",
+        "FR-09",
+        "FR-10",
+        "FR-11",
+        "FR-12",
+        "FR-13",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-01",
+        "REL-02",
+        "UX-01",
+        "PRIV-01"
+      ],
+      "scope": "Assemble the reviewed source tag, license/notice inventory, reproducible inputs, SBOM, contributor/security docs, final compatibility matrix, and clean-install evidence.",
+      "deliverables": [
+        "1.0 traceability and evidence matrix",
+        "OSS documentation",
+        "Signed/notarized candidate and artifact hashes when authorized",
+        "Release checklist"
+      ],
+      "completion_contract": "The release candidate meets its named scope without fake parity/security claims. The maintainer approves any publish action separately; unrun gates remain visibly unrun.",
+      "evidence": [
+        "scripts/test-release-contract.py verifies source commit binding and bundled MIT notices in an unsigned Release app",
+        "BACKLOG.json local_installation records signed 0.9.1 build 9 archive/export and independently verified installed-bundle equality, profile and entitlements; previous_local_installation preserves the build 7 evidence"
+      ],
+      "authorization": "requires_approved_milestone",
+      "status_note": "Release-contract and signed local-install checks pass for 0.9.1 build 9; independent verification confirms the installed files and preserved build 7. PR #5 and post-merge CI passed. Notarized/public distribution, clean-user launch, stable-host and live-capture validation, the updater, and 1.0 qualification remain pending."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [
+        "window-presence E2E 22/22 (EN and PT-BR, .scratch/e2e/20261007-165531)",
+        "scripts/check.sh passed at 6ae23e0"
+      ],
+      "id": "FP-026",
+      "title": "Window presence: pins and Recortia in window switchers",
+      "status": "awaiting_manual_validation",
+      "depends_on": [],
+      "requirement_ids": [
+        "FR-01",
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "UX-02",
+        "PIN-01"
+      ],
+      "scope": "Pins become normal-level windows so AltTab lists them; Recortia is regular while a switchable window exists and accessory otherwise (ADR-007).",
+      "deliverables": [
+        "AppPresence",
+        "normal-level pins",
+        "window-presence E2E scenario",
+        "space probe dynamic mode"
+      ],
+      "completion_contract": "window-presence passes in EN and PT-BR; installed app listed by AltTab (editor, Settings, pins) and ⌘Tab, with no Space switch over a fullscreen Space.",
+      "status_note": "Released in 0.11.0 without the physical AltTab/⌘Tab/fullscreen-Space checks (owner's choice, 2026-10-08); the installed app's Settings window was listed by AltTab and the app was Foreground."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [
+        "PinsExportTests, PinnedExportTests, PinsExportReviewTests, PinnedExportReviewTests",
+        "pins E2E: pin copy equals the editor 1x copy; drag-out file equal bytes (EN and PT-BR)"
+      ],
+      "id": "FP-027",
+      "title": "Pin copy and drag-out through the export pipeline",
+      "status": "completed",
+      "depends_on": [
+        "FP-026"
+      ],
+      "requirement_ids": [
+        "FR-07",
+        "FR-09"
+      ],
+      "acceptance_test_ids": [
+        "PIN-02",
+        "RED-01",
+        "RED-02",
+        "EXP-02"
+      ],
+      "scope": "Copy and Drag Out on pins via ExportCoordinator and ExportPipeline; only document-rendered pins export; close/invalidate revokes pending offers.",
+      "deliverables": [
+        "PinsModel export",
+        "ExportPipeline pin snapshot",
+        "pin controls",
+        "RED and coordinator tests",
+        "E2E pin export"
+      ],
+      "completion_contract": "Package tests and pin E2E prove sanitized bytes equal the editor's 1x export, refusal of raw pins, and revocation on close/invalidate."
+    },
+    {
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-07",
+      "evidence": [
+        "scripts/e2e.sh --only window-latency: editor median 229.4 ms, Settings first open 105.4 ms (fail); Settings reopened 6.8, onboarding 35.8, pin 25.8 ms (pass)",
+        "Security review of the 0.11.0 diff: no open finding after the reviewer fixes",
+        "Independent verifier run (gpt-6-astra, fresh worktree, bilingual): editor 478.5/514.4 ms, Settings first open 238.4/199.3 ms, onboarding 57.1/66.4 ms; results vary with machine load.",
+        "Verifier run at 728688d (gpt-6-astra): editor 506.9/640.4 ms, first-open Settings 191.3/248.2 ms; English onboarding 57.0 ms and pin 52.5 ms over budget, PT-BR 41.4/31.0 ms."
+      ],
+      "id": "FP-028",
+      "title": "Window-open latency budget and security audit",
+      "status": "blocked",
+      "depends_on": [
+        "FP-026",
+        "FP-027"
+      ],
+      "requirement_ids": [
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "PERF-02"
+      ],
+      "scope": "Time each window open in E2E (editor from capture/import, Settings, onboarding, pin); keep medians under 50 ms; audit the changed surface for security findings.",
+      "deliverables": [
+        "latency metrics in report.json",
+        "optimizations",
+        "audit report"
+      ],
+      "completion_contract": "report.json medians under 50 ms for each window in EN and PT-BR; audit has no open finding.",
+      "status_note": "Owner chose to record and defer the editor and first-open Settings latency; onboarding and pins are borderline (they exceed 50 ms in some runs) and are not covered by that decision. A fix needs pre-built windows (a separate approved plan)."
+    },
+    {
+      "id": "FP-029",
+      "title": "Replayable first-run feature discovery",
+      "milestone": "M6",
+      "authorization": "owner_approved_2026-10-14_no_interview",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-007"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-01",
+        "PERM-01"
+      ],
+      "scope": "Seven native localized pages, skip/back/continue/done, real controller replay, preserved completion/preferences/consent and no permission/export side effects.",
+      "deliverables": [
+        "docs/specs/feature-discovery/spec.md",
+        "real-control bilingual onboarding E2E"
+      ],
+      "completion_contract": "Pinned development gate and independent onboarding acceptance pass; stable release/physical qualification remains explicit.",
+      "evidence": [
+        ".scratch/e2e/20261014-005643/en/report.json",
+        ".scratch/e2e/20261014-005643/pt-BR/report.json"
+      ]
+    },
+    {
+      "id": "FP-030",
+      "title": "Bounded average-area sRGB color picking",
+      "milestone": "M5",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-019"
+      ],
+      "requirement_ids": [
+        "FR-11"
+      ],
+      "acceptance_test_ids": [
+        "PIX-01",
+        "RED-02",
+        "RED-03"
+      ],
+      "scope": "1x1/3x3/5x5 samples from sanitized current base; encoded premultiplied sRGB mean off MainActor, bounded allocation, cancellation and stale-result rejection.",
+      "deliverables": [
+        "docs/specs/area-color-sampling/spec.md",
+        "sampler/editor regressions",
+        "native sample-size picker and bilingual E2E"
+      ],
+      "completion_contract": "Literal-color/alpha/edge/stale/close tests and integrated E2E pass; independent privacy acceptance attached.",
+      "evidence": [
+        ".scratch/area-color-sampling/06-sampler-final.log",
+        ".scratch/area-color-sampling/15-binding-green.log",
+        ".scratch/e2e/20261014-005643/en/report.json",
+        ".scratch/e2e/20261014-005643/pt-BR/report.json"
+      ]
+    },
+    {
+      "id": "FP-031",
+      "title": "Editable straight-line annotations",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Distinct line endpoints, Shift45 constraint, stroke-only shared renderer and native EN/PT-BR toolbar/shortcut D; no new external data paths.",
+      "deliverables": ["docs/specs/straight-line/spec.md", "geometry/model/render regressions", "native bilingual annotations E2E"],
+      "completion_contract": "Source-red regressions, focused suites, full development gate and independent code acceptance; stable/physical qualification remains explicit.",
+      "evidence": ["docs/specs/straight-line/review-evidence.md", "docs/specs/straight-line/acceptance-verdict.md", ".scratch/continuation-corrected-check.log"]
+    },
+    {
+      "id": "FP-032",
+      "title": "Explicit shared saved annotation colors",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05", "FR-14"],
+      "acceptance_test_ids": ["EDIT-01", "PRIV-01", "NET-01"],
+      "scope": "Bounded12-color sealed palette, explicit native Save/Apply/Remove, undoable stroke application; no automatic history or system favorites.",
+      "deliverables": ["docs/specs/saved-colors/spec.md", "domain/settings/editor regressions", "native bilingual saved-colors E2E"],
+      "completion_contract": "Package and development gates, independently reviewed source and native enabled/disabled control acceptance; current AX blocker cannot be waived.",
+      "evidence": ["docs/specs/saved-colors/review-evidence.md", ".scratch/saved-colors-20261014/backend-evidence.md"]
+    },
+    {
+      "id": "FP-033",
+      "title": "Editable text font designs and decorations",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "awaiting_manual_validation",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Seven independently implemented appearances in two vertical tickets: three public system font designs, then four decorations. Preserve native text editing, wrapping, undo and secure exports.",
+      "deliverables": ["docs/specs/text-appearance/spec.md", "model/render/native-control regressions"],
+      "completion_contract": "Both tickets require source-red regressions, measured geometry, development gates and fresh independent code/native acceptance. Physical and stable release qualification remain separate.",
+      "evidence": [".scratch/text-font-feasibility-20261014/evidence.md", "docs/specs/text-appearance/acceptance-verdict.md", "docs/specs/text-appearance/review-evidence.md"],
+      "progress_note": "All seven styles independently accepted at development scope on 2df6387 after one raster-evidence correction/fresh full reverify. Gate656tests/604translations and stable CI pass; independent native run has122images/1948assertions. Expanded full native run failed initial capture-focus key ownership: English45/46, Portuguese46/46, before text scenarios. Isolated6/6, adjacent-overlay6/6, complete-prefix3/3,50-cycle and a later full-English46/46 diagnostic run did not reproduce it. No production fix or host attribution is established. Integration/physical focus qualification remains pending; source work may continue without releasing this candidate."
+    },
+    {
+      "id": "FP-034",
+      "title": "Editable curved arrows",
+      "milestone": "M2",
+      "authorization": "owner_approved_2026-10-14_reference_feature_request",
+      "status": "completed",
+      "depends_on": ["FP-007"],
+      "requirement_ids": ["FR-05"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-02", "RED-03"],
+      "scope": "Optional quadratic control on arrows, shared painted geometry, creation/default, visible bend handle and native numeric fields, atomic undo/refusal and sanitized exports. Other arrowhead styles remain gaps.",
+      "deliverables": ["docs/specs/curved-arrows/spec.md", "docs/specs/curved-arrows/implementation-plan.md", "model/geometry/export/native regressions"],
+      "completion_contract": "Observed source-red tracer regressions, head-junction feasibility, development gates, two-axis review and fresh independent code/native acceptance; no full-parity or physical qualification claim.",
+      "evidence": ["docs/specs/curved-arrows/acceptance-verdict.md", "docs/specs/curved-arrows/review-evidence.md", ".scratch/curved-arrows-backend-20261014/evidence.md"],
+      "progress_note": "Development acceptance complete on 3db91b7:683-test full gate, 617 translations,both unsigned builds,stable CI38660460749,different-model code/security67 tests,source-blind bilingual native criteria PASS,and final full47/47 per language (2217 assertions/138 images each). All five confirmed review findings fixed with fresh regressions. Physical input/VoiceOver/Spaces and release are excluded; historical CAP-01 remains unattributed and current activation-control skips do not qualify it. Completed ticket removed; approved spec and acceptance retained."
+    },
+    {
+      "id": "FP-035",
+      "title": "Full-source review and test-first fixes (0.12.2)",
+      "milestone": "M2",
+      "authorization": "owner_request_2026-10-15_full_source_review_fix_merge",
+      "status": "completed",
+      "depends_on": ["FP-034"],
+      "requirement_ids": ["FR-04", "FR-05", "FR-06", "FR-07", "FR-10"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-03", "RED-04", "SCR-04", "REL-01"],
+      "scope": "Four partitioned read-only reviews plus the hosted-CI font incident: fix confirmed P0-P2 findings test-first (B-1, B-3, B-4, B-5, A-2, A-3, C-1, C-2, D-1, D-3, D-4, F-1); record P3 findings as FP-036.",
+      "deliverables": ["docs/specs/full-source-review/plan.md", "regressions per finding", "0.12.2/build21"],
+      "completion_contract": "Red run on unfixed code and green run per deterministic finding; stable gate; full bilingual native E2E; code-review, reviewer and different-model verification; exact-head CI.",
+      "evidence": ["docs/specs/full-source-review/plan.md", "docs/specs/full-source-review/acceptance-verdict.md"],
+      "progress_note": "11 findings fixed and F-1 mitigated, plus two review cycles; red/green per finding, stable gate, full bilingual native E2E and different-model verification PASS on 002f8b8. Physical/release qualification excluded."
+    },
+    {
+      "id": "FP-036",
+      "title": "Full-source review P3 proposals",
+      "milestone": "M2",
+      "authorization": "proposal_requires_owner_approval",
+      "status": "not_started",
+      "depends_on": ["FP-035"],
+      "requirement_ids": ["FR-05", "FR-07", "FR-10"],
+      "acceptance_test_ids": [],
+      "scope": "A-1 block-mean colour signatures can miss within-block permutations in scroll stationarity; B-2 caller-task cancellation is not propagated into ExportCoordinator.run (no caller cancels today); D-2 native text editing ignores annotation opacity; closing a pin does not cancel its snapshot; a Pause during the first automatic step's window discovery can still post one scroll (reviewer observations without a demonstrating test).",
+      "deliverables": [],
+      "completion_contract": "Each proposal needs a concrete trigger or owner approval before implementation.",
+      "evidence": ["docs/specs/full-source-review/plan.md"],
+      "progress_note": "Recorded by the 2026-10 full-source review; not scheduled."
+    },
+    {
+      "id": "FP-037",
+      "title": "Consistent editor window size and test reduction (0.12.2)",
+      "milestone": "M2",
+      "authorization": "owner_request_2026-10-16_window_size_fix_test_reduction_release",
+      "status": "completed",
+      "depends_on": ["FP-035"],
+      "requirement_ids": ["FR-04", "FR-14"],
+      "acceptance_test_ids": ["EDIT-01", "REL-01"],
+      "scope": "Editors open at the last live-resized size or 1100x720, clamped to the screen; keep only tests that fail when a break matters to a user, data or security (owner target 40%, reached 29.0%).",
+      "deliverables": ["Features/EditorWindowSizing.swift", "E2E editor-window-size", "docs/specs/test-reduction/README.md"],
+      "completion_contract": "Red/green E2E for the size; 55-mutation net caught by the reduced suite; stable gate; bilingual native E2E; different-model review; exact-head CI.",
+      "evidence": ["docs/specs/test-reduction/README.md", "docs/specs/native-window-qualification/review-evidence.md"],
+      "progress_note": "Delivered by PR #18; released as the v0.12.2-beta1 pre-release and installed on the maintainer's Mac on 2026-10-16."
+    }
+  ],
+  "deferred_scope": [
+    {
+      "requirement_id": "FR-15",
+      "title": "Optional user-controlled GitHub upload (ADR-006); S3 remains deferred",
+      "status": "awaiting_manual_validation",
+      "authorization": "Owner requested GitHub auto-upload and local test installation on 2026-10-01",
+      "verification": [
+        "NET-01",
+        "EXP-02",
+        "RED-01",
+        "RED-02",
+        "RED-03"
+      ]
+    },
+    {
+      "requirement_id": "FR-16",
+      "title": "Local automation and optional on-device writing assistance",
+      "status": "requires_separate_design_and_approval"
+    }
+  ],
+  "previous_release_0_10_2": {
+    "version": "0.10.2",
+    "build": 16,
+    "date": "2026-10-03",
+    "scope": "FR-01/FR-14: Settings becomes a Recortia-owned AppKit window (native toolbar tabs) carrying the follow-the-active-Space policy from construction; the SwiftUI Settings scene and its openSettings closure are removed.",
+    "status": "released",
+    "verification": "scripts/check.sh passed at 08333a0 (main 5f5d57e has an identical tree); E2E 40/40 in EN and PT-BR; independent Codex review of the delta scoped-clean. Real-app A/B over a fullscreen host Space with valid baselines: 0.10.1 switched Spaces 4/4 (fresh and existing Settings), 0.10.2-beta1 0/4; probe controls in the same session 0/5.",
+    "evidence_paths": [
+      ".scratch/check-08333a0.log",
+      ".scratch/e2e/20261003-204708/en/report.json",
+      ".scratch/e2e/20261003-204708/pt-BR/report.json",
+      ".scratch/real-app-0.10.2/ab.txt"
+    ],
+    "limitations": [
+      "The toolbar tab strip does not render in offscreen snapshots; it is checked on the installed beta.",
+      "The About panel is not exercised by the real-app A/B (no menu automation); it relies on the adoption safety net and the probe's fresh-window result."
+    ],
+    "beta_release": {
+      "tag": "v0.10.2-beta1",
+      "commit": "5f5d57e",
+      "build": 15,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2-beta1",
+      "dmg_sha256": "560cbb04a61d482f248853553b60bb6a10314e63173444ae184b8ba8cf3a3fd7",
+      "notarization": [
+        "app 8fd72e34-b631-48af-b599-21b6b5ef9755 Accepted",
+        "dmg bb1eaea6-a4af-484f-8b61-b0a26d523f4c Accepted"
+      ]
+    },
+    "production_release": {
+      "tag": "v0.10.2",
+      "commit": "c0a169844292751a8292bc4b0f3efdc6c66b63b2",
+      "build": 16,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.10.2",
+      "dmg_sha256": "7a1371d9433ee3faafbaa7ce55c44e5d0b49e14c206fbaa0ece04d89b17bb441",
+      "notarization": [
+        "app 0a1a6a16-f36d-40f0-9df2-630fc972f41c Accepted",
+        "dmg 1118109a-a8c9-40d6-950b-cc8c598b16cf Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap d0f179b recortia: 0.10.2",
+      "installed": "2026-10-04 via brew upgrade --cask recortia on the maintainer's Mac: 0.10.2 (16), strict signature, stapled, Notarized Developer ID. Installed-app check over a fullscreen host Space: 0/2 Space switches (fresh and existing Settings), valid baselines; reopening shows Settings without opening the menu first (R3-F9 disproved)."
+    }
+  },
+  "previous_release_0_11_0": {
+    "version": "0.11.0",
+    "build": 18,
+    "date": "2026-10-08",
+    "scope": "FR-01/FR-09 (ADR-007): pins are normal-level windows listed by AltTab; Recortia is regular while a switchable window exists; pin Copy and Drag Out through ExportPipeline. Opening the app shows onboarding or Settings; Open at login stays silent.",
+    "status": "released",
+    "verification": "scripts/check.sh passed at 4a32aed and in the release pipeline at c346017; bilingual E2E 42/42; independent reviewer and adversarial reviewer findings fixed; mneves-verify (gpt-6-astra) at 728688d: criteria 1-8 and 10 PASS, criterion 9 (physical desktop) BLOCKED, not run by owner's choice.",
+    "evidence_paths": [
+      ".scratch/check-3.log"
+    ],
+    "limitations": [
+      "Editor (229-640 ms) and first-open Settings (105-248 ms) miss the 50 ms PERF-02 budget (FP-028, deferred by the owner); onboarding (31-66 ms) and pins (14-53 ms) are borderline.",
+      "Physical Space and AltTab checks of the build have not run.",
+      "A real login with Open at login enabled has not been observed: if macOS does not mark it, Settings opens at login (check `log show --predicate 'subsystem == \"dev.mvneves.Recortia\" AND category == \"launch\"'`).",
+      "Physical AltTab (pins, editor), ⌘Tab and fullscreen-Space checks were not run for this release."
+    ],
+    "local_installation": {
+      "date": "2026-10-07",
+      "commit": "5b4c1ef",
+      "build_command": "scripts/release.sh --dry-run (fresh worktree, Release archive, developer-id export; no gate, no notarization)",
+      "checks": "release-script checks passed (codesign --verify --deep --strict, version 0.11.0 (17), distribution entitlements with access group Q96FUTC5G8.dev.mvneves.Recortia, embedded provisioning profile, Hardened Runtime, no test-only markers); installed bundle identical to the export (diff -r); spctl accepted (Developer ID); launched as UIElement with no window.",
+      "previous_bundle": "0.10.2 build 16 copied with ditto to .scratch/local-install-0.11.0-20261007/Recortia-0.10.2-build16.app (signature verified) before installing",
+      "notes": "The install merged into the existing bundle folder; the old notarization ticket Contents/CodeResources and the folder's quarantine attribute were removed afterwards. Not notarized; Homebrew still records 0.10.2.",
+      "not_verified": "AltTab listing of real pins and editor, ⌘Tab with a window open, and fullscreen-Space behavior on the installed app."
+    },
+    "production_release": {
+      "tag": "v0.11.0",
+      "commit": "c34601790c9715a6aafce3cd3d7c9a448ef66e0d",
+      "build": 18,
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.11.0",
+      "dmg_sha256": "423bb95e39c818edaeef9eb89241034e091d1472a6aa51f7df61618c811e9fb4",
+      "notarization": [
+        "app b5a2f65d-52f1-4ad3-8cd6-5157dd5cdf46 Accepted",
+        "dmg 98db4d7b-c91c-4a80-8264-9a6e6888af27 Accepted"
+      ],
+      "homebrew": "mneves75/homebrew-tap 0f4daa0 recortia: 0.11.0",
+      "installed": "2026-10-08 via brew upgrade --cask recortia on the maintainer's Mac: 0.11.0 (18), strict signature, stapled, Notarized Developer ID; opening it showed Settings and made it Foreground."
+    }
+  }
+}
