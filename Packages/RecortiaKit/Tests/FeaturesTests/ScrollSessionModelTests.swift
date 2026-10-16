@@ -212,6 +212,15 @@ struct ScrollSessionModelTests {
         #expect(h.frames.stopCount >= 1)
     }
 
+    @Test("Denied screen permission keeps the session idle and explains")
+    func screenPermissionDenied() async {
+        let h = ScrollHarness(screenGranted: false)
+        #expect(await h.model.begin() == false)
+        #expect(h.model.state == .idle)
+        #expect(h.model.notice == .screenPermissionDenied)
+        #expect(h.frames.startCount == 0)
+    }
+
     @Test("An assembly failure keeps the review open so the user can discard")
     func assemblyFailure() async {
         let h = ScrollHarness()

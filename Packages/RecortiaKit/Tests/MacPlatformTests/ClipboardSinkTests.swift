@@ -9,15 +9,17 @@ import Testing
 @Suite("Clipboard sink: one sanitized PNG representation only (FR-07, EXP-02, RED-02)")
 struct ClipboardSinkTests {
 
-    @Test("A successful write replaces earlier contents")
+    @Test("A successful write replaces earlier contents with the snapshot's exact PNG bytes")
     func replacesPriorContents() throws {
         let pasteboard = TestSupport.privatePasteboard()
         defer { pasteboard.releaseGlobally() }
         pasteboard.clearContents()
         pasteboard.setString("prior", forType: .string)
-        try ClipboardSink(pasteboard: pasteboard).write(TestSupport.snapshot())
+        let snapshot = TestSupport.snapshot()
+        try ClipboardSink(pasteboard: pasteboard).write(snapshot)
         #expect(pasteboard.string(forType: .string) == nil)
         #expect(pasteboard.pasteboardItems?.first?.types == [.png])
+        #expect(pasteboard.pasteboardItems?.first?.data(forType: .png) == snapshot.bytes)
     }
 
     @Test(
