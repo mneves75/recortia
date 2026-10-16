@@ -107,6 +107,7 @@ else:
         self.assertIn("27A266a", record["xcode_version"])
         self.assertEqual("27.0", record.get("sdk_version"))
         self.assertEqual("27A123", record.get("sdk_build_version"))
+        self.assertRegex(record.get("app_bundle_sha256", ""), r"^[0-9a-f]{64}$")
         runs = list((self.root / ".scratch/e2e").glob("*/en/provenance.json"))
         self.assertEqual(1, len(runs))
         self.assertEqual(record, json.loads(runs[0].read_text()))
@@ -210,6 +211,80 @@ else:
         self.assertIn("DEVELOPMENT", result.stdout)
         record = json.loads((self.root / ".build/dd-e2e-provenance.json").read_text())
         self.assertEqual("development", record["toolchain_mode"])
+
+    def test_no_build_rejects_bundle_resource_changes(self) -> None:
+        bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app"
+        for change in ("contents", "path", "added", "removed", "file-link", "directory-link"):
+            with self.subTest(change=change):
+                resources = bundle / "Contents/Resources" / change
+                resources.mkdir(parents=True)
+                resource = resources / "fixture.txt"
+                resource.write_text("before")
+                link = resources / "link"
+                if change.endswith("-link"):
+                    link.symlink_to("missing-before", target_is_directory=change == "directory-link")
+                built = self.run_e2e()
+                self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+                for marker in ("build-reached", "launch-reached"):
+                    (self.root / marker).unlink()
+                if change == "contents":
+                    resource.write_text("after!")
+                elif change == "path":
+                    resource.rename(resources / "renamed.txt")
+                elif change == "added":
+                    (resources / "added.txt").write_text("added")
+                elif change == "removed":
+                    resource.unlink()
+                else:
+                    link.unlink()
+                    link.symlink_to("missing-after", target_is_directory=change == "directory-link")
+                refused = self.run_e2e("--no-build")
+                self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+                self.assertIn("provenance", refused.stderr)
+                self.assertFalse((self.root / "build-reached").exists())
+                self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_bundle_hash_does_not_follow_external_symlinks(self) -> None:
+        bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app"
+        resources = bundle / "Contents/Resources"
+        resources.mkdir()
+        external = self.root / "external"
+        external.mkdir()
+        contents = external / "fixture.txt"
+        contents.write_text("before")
+        (resources / "file-link").symlink_to(contents)
+        (resources / "directory-link").symlink_to(external, target_is_directory=True)
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        contents.write_text("after")
+        (external / "added.txt").write_text("outside the bundle")
+        reused = self.run_e2e("--no-build")
+        self.assertEqual(0, reused.returncode, reused.stdout + reused.stderr)
+
+    def test_no_build_rejects_a_binary_rebuilt_outside_e2e(self) -> None:
+        # check.sh builds the same scheme into the same derived data and never touches the E2E
+        # provenance, so a gate run (any toolchain mode, any working tree) replaces the binary.
+        check = (ROOT / "scripts/check.sh").read_text()
+        e2e = (ROOT / "scripts/e2e.sh").read_text()
+        self.assertIn("derived=.build/dd\n", e2e)
+        self.assertRegex(check, r"-scheme RecortiaE2E [^\n]*\\\n[^\n]*-derivedDataPath \.build/dd ")
+        self.assertNotIn("e2e-provenance", check)
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        provenance = self.root / ".build/dd-e2e-provenance.json"
+        recorded = provenance.read_text()
+        for marker in ("build-reached", "launch-reached"):
+            (self.root / marker).unlink()
+        app = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
+        app.write_text('#!/bin/sh\ntouch foreign-binary-launched\n'
+                       'printf \'[{"passed":true,"screenshots":[]}]\' > "$2/report.json"\n')
+        reused = self.run_e2e("--no-build")
+        self.assertEqual(recorded, provenance.read_text(), "the provenance still describes the replaced build")
+        self.assertFalse(
+            (self.root / "foreign-binary-launched").exists(),
+            "--no-build qualified a binary that the recorded provenance does not describe",
+        )
+        self.assertNotEqual(0, reused.returncode, reused.stdout + reused.stderr)
 
 
 class DoctorTests(unittest.TestCase):

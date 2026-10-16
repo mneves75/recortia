@@ -67,7 +67,8 @@ record["working_tree_fingerprint"] = fingerprint.hexdigest()
 print(json.dumps(record, sort_keys=True))
 PY
 )
-app="$derived/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
+bundle="$derived/Build/Products/Debug/RecortiaE2E.app"
+app="$bundle/Contents/MacOS/RecortiaE2E"
 mkdir -p .build
 if (( build )); then
   # A failed rebuild must not leave a previous build's qualification attached to partial output.
@@ -79,12 +80,48 @@ if (( build )); then
     echo "e2e: build failed (full log: $derived-e2e-build.log)" >&2
     exit 2
   fi
+fi
+[[ -x "$app" ]] || { echo "e2e: $app not found; build first" >&2; exit 2; }
+# Bind the qualification to the entire built bundle, even when another script rebuilt it.
+if ! current_provenance=$(python3 - "$current_provenance" "$bundle" <<'PY'
+import hashlib, json, os, pathlib, sys
+record = json.loads(sys.argv[1])
+bundle = pathlib.Path(sys.argv[2])
+if bundle.is_symlink() or not bundle.is_dir():
+    sys.exit("e2e: expected a regular app bundle directory")
+def walk_error(error):
+    raise error
+entries = []
+for directory, directories, files in os.walk(bundle, followlinks=False, onerror=walk_error):
+    for name in directories + files:
+        path = pathlib.Path(directory) / name
+        if path.is_symlink() or path.is_file():
+            entries.append(path)
+fingerprint = hashlib.sha256()
+for path in sorted(entries, key=lambda path: os.fsencode(path.relative_to(bundle))):
+    name = os.fsencode(path.relative_to(bundle))
+    fingerprint.update(len(name).to_bytes(8, "big") + name)
+    if path.is_symlink():
+        target = os.fsencode(os.readlink(path))
+        fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
+    else:
+        fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as contents:
+            while chunk := contents.read(64 * 1024):
+                fingerprint.update(chunk)
+record["app_bundle_sha256"] = fingerprint.hexdigest()
+print(json.dumps(record, sort_keys=True))
+PY
+); then
+  echo "e2e: could not fingerprint app bundle for build provenance; rebuild with the selected toolchain" >&2
+  exit 2
+fi
+if (( build )); then
   print -r -- "$current_provenance" > "$provenance"
 elif [[ ! -f "$provenance" ]] || [[ "$(cat "$provenance")" != "$current_provenance" ]]; then
   echo "e2e: missing or mismatched build provenance at $provenance; rebuild with the selected toolchain" >&2
   exit 2
 fi
-[[ -x "$app" ]] || { echo "e2e: $app not found; build first" >&2; exit 2; }
 
 run_root="$PWD/.scratch/e2e/$(date +%Y%m%d-%H%M%S)-$$"
 rc=0

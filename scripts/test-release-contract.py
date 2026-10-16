@@ -114,6 +114,28 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertEqual(b"first invocation", (out / "reserved").read_bytes())
         self.assertFalse((fixture.root / "archive-reached").exists())
 
+    def test_concurrent_invocations_reserve_the_tag_exactly_once(self) -> None:
+        fixture = self.fixture()
+        gate = fixture.root / "gate/scripts/check.sh"
+        # The winner holds its reservation inside the gate while the other invocation arrives.
+        gate.write_text("#!/bin/sh\nsleep 2\ntouch gate-reached\nexit 23\n")
+        environment = {"PATH": f"{fixture.bin}:/usr/bin:/bin", "RECORTIA_TOOLCHAIN_MODE": "stable"}
+        processes = [
+            subprocess.Popen(
+                ["/bin/zsh", str(fixture.root / "scripts/release.sh")], cwd=fixture.root, env=environment,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            for _ in range(2)
+        ]
+        errors = [process.communicate(timeout=30)[1] for process in processes]
+        self.assertTrue(all(process.returncode != 0 for process in processes))
+        self.assertEqual(1, sum("already exists" in error for error in errors), errors)
+        self.assertEqual(1, sum("the gate failed" in error for error in errors), errors)
+        release = fixture.root / ".build/release"
+        self.assertEqual([release / "0.12.2"], sorted(release.iterdir()))
+        self.assertEqual(1, len(list(release.rglob("gate-reached"))), "exactly one invocation may run the gate")
+        self.assertFalse((fixture.root / "archive-reached").exists())
+
     def test_dry_runs_reserve_unique_directories_and_preserve_older_output(self) -> None:
         fixture = self.fixture()
         older = fixture.root / ".build/release/0.12.2-dev"
