@@ -9,10 +9,10 @@
     "app_version": "0.12.2",
     "build": 21,
     "date": "2026-10-15",
-    "scope": "Full-source review fixes on top of 0.12.1: gesture/history integrity, scroll capture lifecycle and bound-window automatic scrolling, fail-closed mask geometry and scroll memory admission, editor-close export cancellation, release/E2E script gates, and attributable font resolution with a bounded retry of transient nil results.",
+    "scope": "Full-source review fixes on top of 0.12.1: gesture/history integrity, scroll capture lifecycle and bound-window automatic scrolling, fail-closed mask geometry and scroll memory admission, editor-close export cancellation, release/E2E script gates, and attributable font resolution with a bounded retry of transient nil results; every editor window opens at one remembered or default size; tests reduced to checks that fail when a break matters (779 to 553 functions).",
     "status": "source_accepted_physical_release_unqualified",
-    "verification": "002f8b8: stable Xcode 27.0/27A266a gate passes 720 package tests, 617 translations and both builds; full native EN/PT-BR passes 48/48 per language (2,247 assertions/138 PNGs each); hosted CI 38842296882 success; different-model independent verification (gpt-6-astra) PASS on all seven frozen criteria. See docs/specs/full-source-review/plan.md and acceptance-verdict.md.",
-    "evidence_paths": ["docs/specs/full-source-review/plan.md", "docs/specs/full-source-review/acceptance-verdict.md", ".scratch/e2e/20261015-235920-72780/en/report.json", ".scratch/e2e/20261015-235920-72780/pt-BR/report.json"],
+    "verification": "1b31c3f: stable Xcode 27.0/27A266a unsigned gate passes 511 package tests, 42 script controls, 617 translations and both builds; full native EN/PT-BR 48/49 per language, editor-presentation failed for environmental reasons (preserved) and passed 31/31 per language on a rerun of the same app bundle; hosted CI 38858778587 success on ab02bec; GPT-6 Astra review findings fixed and re-review approved. Earlier full-source fixes: 002f8b8 passed 720 tests, 48/48 native per language and different-model verification. See docs/specs/test-reduction/README.md and docs/specs/native-window-qualification/review-evidence.md.",
+    "evidence_paths": ["docs/specs/test-reduction/README.md", "docs/specs/native-window-qualification/review-evidence.md", ".scratch/e2e/20261016-083024-82851/en/report.json", ".scratch/e2e/20261016-084609-5369/en/report.json", "docs/specs/full-source-review/plan.md", "docs/specs/full-source-review/acceptance-verdict.md", ".scratch/e2e/20261015-235920-72780/en/report.json", ".scratch/e2e/20261015-235920-72780/pt-BR/report.json"],
     "limitations": [
       "F-1 (transient nil font results) was reproduced in the Codex sandbox but its cause is not established; a bounded retry recovered every observed nil (3 in 100 runs), which is a mitigation, not a root-cause fix.",
       "Physical keyboard/IME/VoiceOver/TCC/Spaces, minimum-macOS runtime, signing/notarization and distribution remain unqualified.",
@@ -1282,6 +1282,21 @@
       "completion_contract": "Each proposal needs a concrete trigger or owner approval before implementation.",
       "evidence": ["docs/specs/full-source-review/plan.md"],
       "progress_note": "Recorded by the 2026-10 full-source review; not scheduled."
+    },
+    {
+      "id": "FP-037",
+      "title": "Consistent editor window size and test reduction (0.12.2)",
+      "milestone": "M2",
+      "authorization": "owner_request_2026-10-16_window_size_fix_test_reduction_release",
+      "status": "completed",
+      "depends_on": ["FP-035"],
+      "requirement_ids": ["FR-04", "FR-14"],
+      "acceptance_test_ids": ["EDIT-01", "REL-01"],
+      "scope": "Editors open at the last live-resized size or 1100x720, clamped to the screen; keep only tests that fail when a break matters to a user, data or security (owner target 40%, reached 29.0%).",
+      "deliverables": ["Features/EditorWindowSizing.swift", "E2E editor-window-size", "docs/specs/test-reduction/README.md"],
+      "completion_contract": "Red/green E2E for the size; 55-mutation net caught by the reduced suite; stable gate; bilingual native E2E; different-model review; exact-head CI.",
+      "evidence": ["docs/specs/test-reduction/README.md", "docs/specs/native-window-qualification/review-evidence.md"],
+      "progress_note": "Delivered by PR #18; release v0.12.2-beta1 follows the security gate."
     }
   ],
   "deferred_scope": [

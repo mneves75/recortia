@@ -131,3 +131,23 @@ All runtime source, package configuration, project.yml and generated project are
 since380a029; subsequent edits are documentation only. After evidence relocation, all current
 native reports live under `.scratch/native-window-resume-20261015/native-runs/` with their
 original timestamp/language subdirectories. The original logs retain historical worktree paths.
+
+## 0.12.2 editor window size candidate (1b31c3f)
+
+Editors now open at one remembered or default size (1100×720 pt) instead of each capture's size.
+The full bilingual native run on 1b31c3f (`.scratch/e2e/20261016-083024-82851`, app-bundle SHA-256
+`d2ac1a66…53259fd`, console unlocked and idle 128 s at start, two displays attached) passed 48/49
+scenarios per language (2,263 EN and 2,260 PT-BR assertions). `editor-presentation` failed in
+both languages, for two different reasons:
+
+- EN: the cover reported containing the padded editor frame, but the negative visibility control
+  (`!window.occlusionState.contains(.visible)`) did not settle.
+- PT-BR: the owned foreground fixture, launched on the secondary display at (394, −1169), never
+  became foreground (`owned foreground fixture state timed out for sequence 1`).
+
+These failures are preserved. A rerun of the same app bundle in the same two-display layout
+(`.scratch/e2e/20261016-084609-5369`, `--only editor-presentation --no-build`, idle 135 s) passed
+31/31 assertions in each language. The comparison run on main without the size change was not
+needed and did not run. This rerun does not qualify physical Spaces or the earlier failures.
+Logs: `.scratch/editor-window-size-20261016/e2e-full-dfba173.log` (the run is on 1b31c3f; the
+filename predates the last commits) and `e2e-ab-editor-presentation.log`.
