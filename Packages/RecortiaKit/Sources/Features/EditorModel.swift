@@ -447,6 +447,7 @@ public final class EditorModel {
     public func deleteSelection() {
         let items = selection
         guard !items.isEmpty else { return }
+        endContinuousChange()
         edit("Delete") { document in
             document.annotations.removeAll { items.contains(.annotation($0.id)) }
             document.layers.removeAll { items.contains(.layer($0.id)) }
@@ -465,6 +466,7 @@ public final class EditorModel {
         guard !items.isEmpty else { return }
         var created: Set<EditorItemID> = []
         let offset = Self.duplicateOffset
+        endContinuousChange()
         let ok = edit("Duplicate") { document in
             created = []
             for index in document.layers.indices where items.contains(.layer(document.layers[index].id)) {
@@ -506,12 +508,14 @@ public final class EditorModel {
     public func nudgeSelection(dx: Double, dy: Double) {
         let items = orderedSelection
         guard !items.isEmpty, dx.isFinite, dy.isFinite, dx != 0 || dy != 0 else { return }
+        endContinuousChange()
         edit("Nudge") { document in try Self.translate(&document, items: items, dx: dx, dy: dy) }
     }
 
     public func reorderSelection(_ order: EditorZOrder) {
         let items = selection
         guard !items.isEmpty else { return }
+        endContinuousChange()
         edit("Arrange") { document in
             Self.reorder(&document.layers, order) { items.contains(.layer($0.id)) }
             Self.reorder(&document.obfuscations, order) { items.contains(.obfuscation($0.id)) }
@@ -523,6 +527,7 @@ public final class EditorModel {
 
     /// Renumbers numbered steps 1…n in z-order (explicit command, FR-05).
     public func renumberSteps() {
+        endContinuousChange()
         edit("Renumber Steps") { $0.annotations = $0.annotations.renumberingSteps() }
     }
 
@@ -690,6 +695,7 @@ public final class EditorModel {
     /// Reversible crop (FR-04), rounded outward to cover selected pixels and clipped to the canvas.
     public func setCrop(_ rect: Rect<DocumentSpace>?) {
         guard let rect else {
+            endContinuousChange()
             edit("Reset Crop") { $0.crop = nil }
             return
         }
@@ -697,6 +703,7 @@ public final class EditorModel {
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard let clipped = snapped.intersection(session.document.canvasRect), clipped.width >= 1, clipped.height >= 1
         else { return }
+        endContinuousChange()
         edit("Crop") { $0.crop = clipped == $0.canvasRect ? nil : clipped }
     }
 

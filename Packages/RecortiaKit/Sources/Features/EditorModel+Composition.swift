@@ -115,6 +115,7 @@ extension EditorModel {
     public func toggleTransparencyComparison() {
         guard document.layers.count >= 2 else { return }
         let comparing = isComparingTransparency
+        endContinuousChange()
         edit("Compare") { document in
             guard let last = document.layers.indices.last else { return }
             document.layers[last].opacity = comparing ? 1 : Self.comparisonOpacity
@@ -125,6 +126,7 @@ extension EditorModel {
     /// left to right with `spacing`, and the canvas resized to fit them exactly.
     public func arrangeSideBySide(spacing: Double = sideBySideSpacing) {
         guard document.layers.count >= 2, spacing.isFinite, spacing >= 0 else { return }
+        endContinuousChange()
         edit("Side by Side") { document in
             guard let first = document.layers.first, let firstAsset = document.assets[first.assetID] else { return }
             let targetHeight = first.documentBounds(assetSize: firstAsset.pixelSize).height
@@ -149,6 +151,7 @@ extension EditorModel {
     /// Grows the canvas to contain every layer and object, shifting everything when content
     /// extends past the top or left edge. Never shrinks it.
     public func fitCanvasToContent() {
+        endContinuousChange()
         edit("Fit Canvas") { document in
             var union = document.canvasRect
             for layer in document.layers {
@@ -177,6 +180,7 @@ extension EditorModel {
         let margins = [top, left, bottom, right]
         guard margins.allSatisfy({ $0.isFinite && $0 >= 0 }), margins.contains(where: { $0 > 0 }) else { return }
         let t = top.rounded(), l = left.rounded(), b = bottom.rounded(), r = right.rounded()
+        endContinuousChange()
         edit("Expand Canvas") { document in
             try Self.shiftContent(&document, dx: l, dy: t)
             document.canvasSize = Size(
@@ -216,6 +220,7 @@ extension EditorModel {
         guard let first = frames.first else { return }
         let reference =
             frames.count == 1 ? document.canvasRect : frames.dropFirst().reduce(first.1) { $0.union($1.1) }
+        endContinuousChange()
         edit("Align") { document in
             for (item, frame) in frames {
                 let dx: Double, dy: Double
