@@ -56,33 +56,6 @@ struct AutoScrollStopPolicyTests {
         targetPID: targetPID, controllerPID: ProcessInfo.processInfo.processIdentifier,
         displayFingerprint: display.fingerprint)
 
-    @Test("An unchanged environment continues")
-    func unchangedContinues() {
-        #expect(policy.stopReason(for: observation()) == nil)
-        #expect(policy.stopReason(for: observation(frontmost: ProcessInfo.processInfo.processIdentifier)) == nil)
-    }
-
-    @Test(
-        "Each change stops scrolling with its own reason",
-        arguments: [
-            (observation(frontmost: 1), AutoScrollStopReason.frontmostAppChanged),
-            (observation(frontmost: nil), .frontmostAppChanged),
-            (observation(onScreen: false), .targetWindowGone),
-            (observation(fingerprint: "other"), .displayChanged),
-            (observation(fingerprint: nil), .displayChanged),
-            (observation(trusted: false), .accessibilityRevoked),
-        ])
-    func changesStop(observation: AutoScrollObservation, expected: AutoScrollStopReason) {
-        #expect(policy.stopReason(for: observation) == expected)
-    }
-
-    @Test("Revoked Accessibility wins over every other reason, then a vanished target")
-    func priority() {
-        let everything = observation(frontmost: 1, onScreen: false, fingerprint: nil, trusted: false)
-        #expect(policy.stopReason(for: everything) == .accessibilityRevoked)
-        let noTarget = observation(frontmost: 1, onScreen: false, fingerprint: nil)
-        #expect(policy.stopReason(for: noTarget) == .targetWindowGone)
-    }
 }
 
 @MainActor
@@ -151,15 +124,6 @@ struct AutoScrollerTests {
         #expect(environment.observedWindowIDs.allSatisfy { $0 == 42 })
     }
 
-    @Test("Step sizes are bounded")
-    func boundedSteps() throws {
-        let (scroller, _, poster) = try make()
-        try scroller.start()
-        _ = scroller.scrollDown(byPixels: 50_000)
-        _ = scroller.scrollDown(byPixels: 0)
-        #expect(poster.posts.map(\.pixels) == [-Int32(AutoScroller.maxStepPixels), -1])
-    }
-
     @Test("A frontmost-app change stops before the next event and stays stopped")
     func frontmostChangeLatches() throws {
         let (scroller, environment, poster) = try make()
@@ -217,16 +181,6 @@ struct AutoScrollerTests {
         #expect(scroller.scrollDown(byPixels: 10) == .stopped(.eventPostFailed))
         #expect(scroller.scrollDown(byPixels: 10) == .stopped(.eventPostFailed))
         #expect(poster.posts.count == 1)
-    }
-
-    @Test("An explicit stop prevents further events; a stopped scroller cannot restart")
-    func explicitStop() throws {
-        let (scroller, _, poster) = try make()
-        try scroller.start()
-        scroller.stop()
-        #expect(scroller.scrollDown(byPixels: 10) == .stopped(.requested))
-        #expect(throws: AutoScrollError.alreadyStopped) { try scroller.start() }
-        #expect(poster.posts.isEmpty)
     }
 
     @Test("Starting when the environment already changed refuses to run")

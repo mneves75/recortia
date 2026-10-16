@@ -42,6 +42,10 @@ visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. 
 and marked-input refusal. Geometry/style admission must precede document/history/default
 mutations. This feature does not qualify CAP-01 or add reference-product head-style parity.
 
+Editor windows open at one size (`EditorWindowSizing`): the last user-resized content size,
+stored as the `editorContentSize` preference, or the default, limited to the target screen; never
+the captured image's size. Keep the bilingual `editor-window-size` E2E scenario.
+
 Full-source review invariants (2026-10, `docs/specs/full-source-review/plan.md`): every
 independent document edit settles an active move/resize first (`settleTransformGesture`), so a
 drag never overwrites it; a committed text edit closes an open adjustment, while beginning or
@@ -187,6 +191,7 @@ candidate label in README, CHANGELOG and BACKLOG consistent, but preserve older 
 and evidence. Do not mark a previously installed app as upgraded by a source-only version bump.
 
 Run the task's unit/regression tests, compile the affected app, and check formatting and warnings. For imaging changes, compare actual exported files at the pixel/metadata level. For security-sensitive changes, exercise denial, cancellation, malformed input, stale callbacks, and memory-limit paths. Do not remove or weaken a failing test without explaining why its contract is wrong and obtaining review.
+Keep a unit test only if it fails when the code breaks in a way that matters to a user, to data or to security: no detail checks, duplicates, or parameter variants that take no new branch. Where a bilingual native E2E scenario already asserts the same outcome on the same path, the unit test may go, but hosted CI runs no E2E, so data-loss, privacy and security guards keep a unit test.
 
 End every implementation report with:
 

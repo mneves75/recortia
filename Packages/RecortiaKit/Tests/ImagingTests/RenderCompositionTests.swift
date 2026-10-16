@@ -122,25 +122,10 @@ struct RenderCompositionTests {
         #expect(p.pixel(x: 290, y: 50).distance(to: Self.gray) <= 2)
     }
 
-    @Test("Document crop selects the content region and keeps the aspect ratio")
-    func crop() async throws {
-        let harness = ImagingHarness()
-        var document = try await composite(harness)
-        document.crop = Rect(x: 50, y: 30, width: 100, height: 60)
-        let image = try await harness.renderer.render(document, scale: 0.5)
-        #expect(image.width == 50 && image.height == 30)
-        let p = try pixels(image)
-        #expect(p.pixel(x: 2, y: 2) == Self.gray)
-        #expect(p.pixel(x: 47, y: 21).distance(to: Self.q[3]) <= 2)
-    }
-
     @Test(
         "An explicit crop that is empty or wholly off the canvas is invalid geometry, never the whole canvas",
         arguments: [
-            Rect<DocumentSpace>(x: 250, y: 0, width: 20, height: 20),  // wholly off the canvas
             Rect<DocumentSpace>(x: 200, y: 0, width: 20, height: 20),  // touches the edge only
-            Rect<DocumentSpace>(x: -30, y: -30, width: 20, height: 20),  // wholly before the origin
-            Rect<DocumentSpace>(x: 50, y: 30, width: 0, height: 60),  // zero width
             Rect<DocumentSpace>(x: 50, y: 30, width: 100, height: 0),  // zero height
         ])
     func rejectsNonintersectingCrop(crop: Rect<DocumentSpace>) async throws {

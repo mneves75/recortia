@@ -14,19 +14,6 @@ struct ImageImporterAdmissionTests {
 
     private func importer() -> ImageImporter { ImageImporter(input: input, assets: assets) }
 
-    @Test("Admission reads the source once, synchronously, and holds the slot")
-    func admissionReadsOnceAndHolds() throws {
-        let importer = importer()
-        var reads = 0
-        let admission = try importer.admit {
-            reads += 1
-            return .droppedData(Data([1, 2, 3]))
-        }
-        #expect(reads == 1)
-        #expect(importer.isImporting)
-        #expect(admission.source == .droppedData(Data([1, 2, 3])))
-    }
-
     @Test("A second admission while the slot is held is busy and never reads")
     func busyAdmissionNeverReads() throws {
         let importer = importer()
@@ -39,17 +26,6 @@ struct ImageImporterAdmissionTests {
             }
         }
         #expect(reads == 0)
-    }
-
-    @Test("Importing an admission decodes it and frees the slot")
-    func importingFreesTheSlot() async throws {
-        let importer = importer()
-        let admission = try importer.admit { .droppedData(Data(repeating: 7, count: 5)) }
-        let info = try await importer.importImage(admission)
-        #expect(info.origin == .imported)
-        #expect(assets.imported.map(\.byteCount) == [5])
-        #expect(!importer.isImporting)
-        _ = try importer.admit { .droppedData(Data([1])) }  // control: the slot is free again
     }
 
     @Test("Releasing an unused admission frees the slot without decoding")
@@ -70,22 +46,4 @@ struct ImageImporterAdmissionTests {
         #expect(!importer.isImporting)
     }
 
-    @Test("An admission is refused while another import is decoding, without reading")
-    func admissionDuringDecodeIsBusy() async throws {
-        let importer = importer()
-        let pending = Pending<Void>()
-        assets.pendingImport = pending
-        let first = Task { try await importer.importImage(from: .droppedData(Data([1]))) }
-        await waitFor("the first import holds the slot") { importer.isImporting }
-        var reads = 0
-        #expect(throws: ImportFailure.busy) {
-            _ = try importer.admit {
-                reads += 1
-                return .droppedData(Data([2]))
-            }
-        }
-        #expect(reads == 0)
-        pending.resolve(())
-        _ = try await first.value
-    }
 }

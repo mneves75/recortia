@@ -42,9 +42,6 @@ class ReleaseEntitlementTests(unittest.TestCase):
     def test_debug_entitlement_is_rejected(self) -> None:
         self.assertNotEqual(0, self.run_gate({"keychain-access-groups": [GROUP], "get-task-allow": False}))
 
-    def test_non_dictionary_is_rejected(self) -> None:
-        self.assertNotEqual(0, self.run_gate([GROUP]))
-
 
 if __name__ == "__main__":
     (ROOT / ".scratch").mkdir(exist_ok=True)

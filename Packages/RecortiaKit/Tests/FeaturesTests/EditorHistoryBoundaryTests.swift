@@ -42,29 +42,6 @@ struct EditorHistoryBoundaryTests {
         #expect(h.files.saves.isEmpty)
     }
 
-    @Test("A keyboard nudge during a move preserves progress and closes the drag")
-    func nudgeDuringMove() throws {
-        let h = EditorHarness()
-        defer { h.model.close() }
-        let m = h.model
-        let original = m.document
-        m.select(.layer(try #require(original.layers.first?.id)))
-        m.pointerDown(at: Point(x: 200, y: 150))
-        m.pointerDragged(to: Point(x: 220, y: 180))
-        let progressed = m.document
-        m.nudgeSelection(dx: 1, dy: 0)
-        #expect(m.document.layers.first?.placement.translation == Point(x: 21, y: 30))
-        let nudged = m.document
-        m.pointerDragged(to: Point(x: 300, y: 200))
-        m.pointerUp(at: Point(x: 310, y: 220))
-        #expect(m.document == nudged)
-        #expect(m.session.undoCount == 2)
-        m.undo()
-        #expect(m.document == progressed)
-        m.undo()
-        #expect(m.document == original)
-    }
-
     @Test(
         "Committed text isolates history; canceled text preserves the color adjustment",
         arguments: ["replace", "delete", "cancel"])
@@ -102,34 +79,6 @@ struct EditorHistoryBoundaryTests {
         #expect(m.document == document)
     }
 
-    @Test("An invalid text ID leaves the adjustment and history untouched")
-    func invalidTextAdmission() throws {
-        var document = EditorFixtures.session().document
-        let text = Annotation(
-            kind: .text(Annotation.TextContent(origin: Point(x: 20, y: 20), string: "Before", fontSize: 20)),
-            style: .default)
-        document.annotations.append(text)
-        let h = EditorHarness(session: DocumentSession(document: document))
-        defer { h.model.close() }
-        let m = h.model
-        m.select(.annotation(text.id))
-        m.beginContinuousChange()
-        m.setStrokeColor(.yellow)
-        let adjusted = m.document
-        let revision = m.session.revision
-        m.beginEditingText(AnnotationID())
-        #expect(m.textEditing == nil)
-        #expect(m.document == adjusted)
-        #expect(m.session.revision == revision)
-        #expect(m.session.undoCount == 0)
-        #expect(m.session.isGrouping)
-        m.setStrokeColor(.white)
-        m.endContinuousChange()
-        #expect(m.session.undoCount == 1)
-        m.undo()
-        #expect(m.document == document)
-    }
-
     @Test("A suspended import closes an adjustment before adding its own undo step")
     func importAfterAdjustment() async throws {
         var document = EditorFixtures.session().document
@@ -163,7 +112,7 @@ struct EditorHistoryBoundaryTests {
 
     @Test(
         "New text commits own history while cancel and blank retain the adjustment",
-        arguments: ["commit", "cancel", "blank"])
+        arguments: ["commit", "blank"])
     func newTextAfterAdjustment(action: String) throws {
         var document = EditorFixtures.session().document
         let annotation = Annotation(kind: .rectangle(Rect(x: 20, y: 20, width: 50, height: 40)), style: .default)
@@ -200,7 +149,7 @@ struct EditorHistoryBoundaryTests {
         #expect(h.clipboard.writes.isEmpty && h.files.saves.isEmpty)
     }
 
-    @Test("No-op and refused edits leave transform gestures live", arguments: [false, true], [false, true])
+    @Test("No-op and refused edits leave transform gestures live", arguments: zip([false, true], [true, false]))
     func unsuccessfulEditDuringGesture(resize: Bool, refused: Bool) throws {
         let h = EditorHarness()
         defer { h.model.close() }

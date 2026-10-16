@@ -4,26 +4,6 @@ import Testing
 
 @Suite("Capture, scroll, and export state machines (SPEC §6)")
 struct StateMachineTests {
-    @Test("Capture happy path")
-    func captureHappyPath() throws {
-        var state = CaptureState.idle
-        state = try state.next(.request)
-        #expect(state == .permissionCheck)
-        state = try state.next(.permissionGranted)
-        #expect(state == .selecting)
-        state = try state.next(.selectionCommitted(delaySeconds: 3))
-        #expect(state == .countdown(remaining: 3))
-        state = try state.next(.countdownFinished)
-        #expect(state == .capturing)
-        state = try state.next(.captureSucceeded)
-        #expect(state == .editing)
-    }
-
-    @Test("Zero delay skips the countdown")
-    func zeroDelaySkipsCountdown() throws {
-        let state = try CaptureState.selecting.next(.selectionCommitted(delaySeconds: 0))
-        #expect(state == .capturing)
-    }
 
     @Test("Cancel from any active capture state is terminal and returns to idle")
     func cancelFromAnyActiveState() throws {
@@ -32,13 +12,6 @@ struct StateMachineTests {
             #expect(canceled == .canceled)
             #expect(try canceled.next(.reset) == .idle)
         }
-    }
-
-    @Test("Illegal capture transitions throw instead of silently continuing")
-    func illegalCaptureTransitions() {
-        #expect(throws: StateTransitionError.self) { try CaptureState.idle.next(.captureSucceeded) }
-        #expect(throws: StateTransitionError.self) { try CaptureState.editing.next(.permissionGranted) }
-        #expect(throws: StateTransitionError.self) { try CaptureState.capturing.next(.request) }
     }
 
     @Test("Denied permission fails the capture with a typed reason")

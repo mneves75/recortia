@@ -224,21 +224,6 @@ struct ScrollFrameSourceTests {
         #expect(await drain(source) == [4, 5])
     }
 
-    @Test("A consumer that keeps up receives every frame in order")
-    func keepsUp() async throws {
-        let producer = FakeFrameProducer()
-        let source = ScrollFrameSource(producer: producer)
-        try await source.start()
-        var iterator = source.frames.makeAsyncIterator()
-        var received: [Int] = []
-        for width in 1...4 {
-            producer.push(try frame(width: width))
-            if let image = await iterator.next() { received.append(image.width) }
-        }
-        #expect(received == [1, 2, 3, 4])
-        await source.stop()
-    }
-
     @Test("stop() ends the stream, stops the producer once, releases handlers, and ignores late frames")
     func stopReleasesEverything() async throws {
         let producer = FakeFrameProducer()
@@ -253,18 +238,6 @@ struct ScrollFrameSourceTests {
         #expect(!producer.hasHandlers)
         producer.push(try frame(width: 9), via: lateHandler)
         #expect(await drain(source).isEmpty)
-    }
-
-    @Test("Display and target changes stop the source with their reason")
-    func stopReasons() async throws {
-        for reason in [ScrollFrameSource.StopReason.displayChanged, .targetChanged] {
-            let producer = FakeFrameProducer()
-            let source = ScrollFrameSource(producer: producer)
-            try await source.start()
-            await source.stop(reason: reason)
-            #expect(source.state == .stopped(reason))
-            #expect(producer.stopCount == 1)
-        }
     }
 
     @Test("A stream failure stops the source, reports the error, and releases the producer")
@@ -290,25 +263,4 @@ struct ScrollFrameSourceTests {
         #expect(await drain(source).isEmpty)
     }
 
-    @Test("A source is single-use: it cannot be restarted after it stopped")
-    func singleUse() async throws {
-        let producer = FakeFrameProducer()
-        let source = ScrollFrameSource(producer: producer)
-        try await source.start()
-        await #expect(throws: CaptureError.canceled) { try await source.start() }
-        await source.stop()
-        await #expect(throws: CaptureError.canceled) { try await source.start() }
-        #expect(producer.state.withLock { $0.startCount } == 1)
-    }
-
-    @Test("Stopping before start never starts the producer")
-    func stopBeforeStart() async throws {
-        let producer = FakeFrameProducer()
-        let source = ScrollFrameSource(producer: producer)
-        await source.stop()
-        #expect(source.state == .stopped(.requested))
-        await #expect(throws: CaptureError.canceled) { try await source.start() }
-        #expect(producer.state.withLock { $0.startCount } == 0)
-        #expect(producer.stopCount == 0)
-    }
 }

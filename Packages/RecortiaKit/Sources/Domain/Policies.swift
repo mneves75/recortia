@@ -227,6 +227,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var preferredSaveFolderBookmark: Data?
     public var githubUpload: GitHubUploadPreferences?
     public var annotationPalette: SavedAnnotationPalette?
+    /// The editor window content size the user last chose; nil until they resize an editor.
+    public var editorContentSize: Size<DesktopSpace>?
 
     public init() {}
 

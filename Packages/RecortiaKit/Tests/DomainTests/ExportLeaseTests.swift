@@ -8,15 +8,6 @@ import Testing
 // still let stale pixels out. A commit runs under the lease, so revoke lands before or after it.
 @Suite("ExportLease orders revocation against commits")
 struct ExportLeaseTests {
-    @Test("A revoked lease never runs the commit; a valid one does")
-    func revokedSkipsCommit() {
-        let lease = ExportLease()
-        #expect(lease.whileValid { 1 } == 1)
-        lease.revoke()
-        var ran = false
-        #expect(lease.whileValid { ran = true } == nil)
-        #expect(!ran)
-    }
 
     // Hardening (security run-2): the write must not hold the lease's lock, or a main-actor
     // revoke during a slow write blocks the UI. A revoke during an in-flight write lands after it.

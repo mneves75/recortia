@@ -31,13 +31,6 @@ struct SettingsIntegrityTests {
         #expect(store.loadIssue == .unverifiedConsent)
     }
 
-    @Test("A blob written by another process without a seal loses its consent")
-    func unsealedBlob() throws {
-        let storage = MemoryPreferenceStorage()
-        storage.values[SettingsStore.storageKey] = try JSONEncoder().encode(consenting())
-        expectConsentDropped(SettingsStore(storage: storage, integrity: FixedKeyPreferenceIntegrity()))
-    }
-
     @Test("A seal copied from other bytes does not verify")
     func mismatchedSeal() throws {
         let storage = MemoryPreferenceStorage()
@@ -66,27 +59,4 @@ struct SettingsIntegrityTests {
         expectConsentDropped(SettingsStore(storage: storage, integrity: integrity))
     }
 
-    @Test("Control: consent Recortia saved itself reloads intact")
-    func sealedConsentReloads() {
-        let storage = MemoryPreferenceStorage()
-        let integrity = FixedKeyPreferenceIntegrity()
-        SettingsStore(storage: storage, integrity: integrity).update { $0 = consenting() }
-        let reloaded = SettingsStore(storage: storage, integrity: integrity)
-        #expect(reloaded.preferences.autoCopy)
-        #expect(reloaded.preferences.autoSave)
-        #expect(reloaded.preferences.automaticScrollingEnabled)
-        #expect(reloaded.preferences.preferredSaveFolderBookmark == Data([1, 2, 3]))
-        #expect(reloaded.loadIssue == nil)
-    }
-
-    @Test("An unsealed blob without consent loads without an issue")
-    func unsealedWithoutConsent() throws {
-        let storage = MemoryPreferenceStorage()
-        var plain = Preferences()
-        plain.captureDelaySeconds = 2
-        storage.values[SettingsStore.storageKey] = try JSONEncoder().encode(plain)
-        let store = SettingsStore(storage: storage, integrity: FixedKeyPreferenceIntegrity())
-        #expect(store.preferences.captureDelaySeconds == 2)
-        #expect(store.loadIssue == nil)
-    }
 }

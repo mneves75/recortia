@@ -49,6 +49,9 @@
                 id: "editor-presentation", title: "Capture completion presents the real editor",
                 run: CaptureVisibilityScenarios.editorPresentation),
             E2EScenario(
+                id: "editor-window-size", title: "Editors open at one consistent size",
+                run: EditorWindowSizeScenarios.consistentSize),
+            E2EScenario(
                 id: "recapture", title: "Hide existing windows during recapture",
                 run: CaptureVisibilityScenarios.recapture),
             E2EScenario(

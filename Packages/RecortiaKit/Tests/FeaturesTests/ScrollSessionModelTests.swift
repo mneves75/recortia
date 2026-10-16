@@ -69,33 +69,6 @@ struct ScrollSessionModelTests {
         h.model.cancel()
     }
 
-    @Test("Manual collection accepts frames and records seams, then reviews and accepts")
-    func manualHappyPath() async {
-        let h = ScrollHarness()
-        await h.startCollecting()
-        #expect(h.model.mode == .manual)
-
-        h.frames.deliver()
-        await waitFor("frame 1") { h.model.acceptedFrames == 1 && h.frames.frames.waiterCount == 1 }
-        h.frames.deliver()
-        await waitFor("frame 2") { h.model.acceptedFrames == 2 && h.frames.frames.waiterCount == 1 }
-        #expect(h.model.seams == [100])
-        #expect(h.model.outputSize.height == 140)
-
-        h.model.stop()
-        #expect(h.model.state == .reviewing)
-        #expect(h.frames.stopCount >= 1)
-        #expect(h.model.partialReason == nil)
-        await waitFor("preview") { h.model.preview != nil }
-
-        await h.model.accept()
-        #expect(h.model.state == .accepted)
-        #expect(h.accepted.count == 1)
-        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil))
-        #expect(h.accessibility.promptCount == 0)
-        #expect(h.scroller.stepCount == 0)
-    }
-
     @Test("Automatic mode requires both the preference and Accessibility trust")
     func automaticModeGate() async {
         let off = ScrollHarness(trusted: true, automaticPreference: false)
@@ -143,24 +116,6 @@ struct ScrollSessionModelTests {
         #expect(h.scroller.stopCount >= 1)
         #expect(h.stitcher.resetCount > resetsBefore)
         #expect(h.model.acceptedFrames == 0)
-    }
-
-    @Test("A new session stops any auto scroller left over from the previous one before scrolling")
-    func newSessionStopsPreviousScroller() async {
-        let h = ScrollHarness(trusted: true, automaticPreference: true)
-        await h.startCollecting()
-        h.model.cancel()
-        // A step still in flight at cancel time may leave a scroller behind for the old target.
-        let afterCancel = h.scroller.stopCount
-        #expect(await h.model.begin())
-        #expect(h.scroller.stopCount > afterCancel)
-        h.model.chooseTarget(h.target)
-        let beforeStart = h.scroller.stopCount
-        let stepsBefore = h.scroller.stepCount
-        h.model.start()
-        #expect(h.scroller.stopCount > beforeStart)
-        #expect(h.scroller.stepCount == stepsBefore)
-        h.model.cancel()
     }
 
     @Test("Canceling before collection begins never starts a capture stream (security audit)")
@@ -229,18 +184,6 @@ struct ScrollSessionModelTests {
         #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: .ambiguous(.ambiguousMatch)))
     }
 
-    @Test("Resume after a pause continues collecting")
-    func resumeAfterPause() async {
-        let h = ScrollHarness()
-        await h.startCollecting()
-        h.model.pause()
-        #expect(h.model.state == .paused(.userPaused))
-        h.model.resume()
-        await waitFor("collecting") { h.model.state == .collecting && h.frames.frames.waiterCount >= 1 }
-        h.frames.deliver()
-        await waitFor("frame") { h.model.acceptedFrames == 1 }
-    }
-
     @Test("A reached limit ends collection into review with a partial reason (SCR-04)")
     func limitReached() async {
         let h = ScrollHarness()
@@ -252,32 +195,6 @@ struct ScrollSessionModelTests {
         await waitFor("reviewing") { h.model.state == .reviewing }
         #expect(h.model.partialReason == .limit(.height))
         #expect(h.frames.stopCount >= 1)
-    }
-
-    @Test("Stop is immediate and drops a frame that arrives afterwards")
-    func stopDropsLateFrames() async {
-        let h = ScrollHarness()
-        await h.startCollecting()
-        h.model.stop()
-        #expect(h.model.state == .failed(.noFrames))
-        #expect(h.frames.deliver() == false)  // the stream was stopped; nobody waits any more
-        await drain()
-        #expect(h.stitcher.appendCount == 0)
-    }
-
-    @Test("Cancel discards the stitch and stops the stream")
-    func cancelDiscards() async {
-        let h = ScrollHarness()
-        await h.startCollecting()
-        h.frames.deliver()
-        await waitFor("frame 1") { h.model.acceptedFrames == 1 }
-        let resetsBefore = h.stitcher.resetCount
-        h.model.cancel()
-        #expect(h.model.state == .canceled)
-        #expect(h.frames.stopCount >= 1)
-        #expect(h.stitcher.resetCount > resetsBefore)
-        await drain()
-        #expect(h.accepted.isEmpty)
     }
 
     @Test(
@@ -292,15 +209,6 @@ struct ScrollSessionModelTests {
         await h.startCollecting()
         h.frames.frames.resolve(.failure(error))
         await waitFor("failed") { h.model.state == .failed(expected) }
-        #expect(h.frames.stopCount >= 1)
-    }
-
-    @Test("An externally reported target loss stops immediately")
-    func externalTargetLoss() async {
-        let h = ScrollHarness()
-        await h.startCollecting()
-        h.model.targetLost()
-        #expect(h.model.state == .failed(.targetLost))
         #expect(h.frames.stopCount >= 1)
     }
 
@@ -329,13 +237,4 @@ struct ScrollSessionModelTests {
         #expect(h.model.state == .canceled)
     }
 
-    @Test("Elapsed time from the injected clock reaches the stitcher")
-    func elapsedFromClock() async {
-        let h = ScrollHarness()
-        await h.startCollecting()
-        h.clock.advance(bySeconds: 5)
-        h.frames.deliver()
-        await waitFor("frame 1") { h.model.acceptedFrames == 1 }
-        #expect(h.stitcher.lastElapsed == .seconds(5))
-    }
 }

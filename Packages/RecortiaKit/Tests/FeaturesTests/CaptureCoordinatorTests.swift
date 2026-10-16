@@ -43,23 +43,6 @@ final class CaptureHarness {
 @Suite("CaptureCoordinator (FR-02, CAP-01/02, PERM-01/02)")
 @MainActor
 struct CaptureCoordinatorTests {
-    @Test("Region capture with permission goes selecting → capturing → editing")
-    func regionHappyPath() async {
-        let h = CaptureHarness()
-        #expect(h.coordinator.start(.region) == .started)
-        #expect(h.coordinator.state == .selecting)
-        #expect(h.coordinator.selectionContext == .region([TestFixtures.primaryDisplay]))
-
-        h.coordinator.commitRegion(h.regionRect, on: TestFixtures.primaryDisplay)
-        await waitFor("editing") { h.coordinator.state == .editing }
-
-        #expect(h.capture.captureCalls == [.region(h.regionRect, display: TestFixtures.primaryDisplay)])
-        #expect(h.completions.count == 1)
-        #expect(h.completions.first?.purpose == .edit)
-        #expect(h.assets.registeredCaptures.count == 1)
-        #expect(h.permission.requestCount == 0)
-        #expect(h.coordinator.selectionContext == nil)
-    }
 
     @Test("Creating the coordinator never asks for Screen Recording (PERM-01)")
     func noPermissionRequestAtLaunch() async {
@@ -78,15 +61,6 @@ struct CaptureCoordinatorTests {
         #expect(h.permission.requestCount == 1)
         #expect(h.capture.captureCalls.isEmpty)
         #expect(h.completions.isEmpty)
-    }
-
-    @Test("Granting permission on request continues to selection")
-    func permissionGrantedOnRequest() async {
-        let h = CaptureHarness(permissionGranted: false)
-        h.permission.grantOnRequest = true
-        h.coordinator.start(.region)
-        #expect(h.coordinator.state == .permissionCheck)
-        await waitFor("selecting") { h.coordinator.state == .selecting }
     }
 
     @Test("A permission answer for a replaced request is ignored")
@@ -141,29 +115,6 @@ struct CaptureCoordinatorTests {
         #expect(h.coordinator.state.isActive == false)
     }
 
-    @Test("Canceled capture completing before a replacement produces nothing (PERM-02)")
-    func lateCompletionBeforeReplacement() async {
-        let h = CaptureHarness()
-        let pending = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
-        h.capture.pendingCapture = pending
-        h.coordinator.start(.region)
-        h.coordinator.commitRegion(h.regionRect, on: TestFixtures.primaryDisplay)
-        await waitFor("capturing") { pending.waiterCount == 1 }
-
-        h.coordinator.cancel()
-        #expect(h.coordinator.state == .canceled)
-
-        guard let image = makeImage() else { return }
-        let target = CaptureTarget.region(h.regionRect, display: TestFixtures.primaryDisplay)
-        pending.resolve(.success((image, TestFixtures.geometry(for: target))))
-        await drain()
-
-        #expect(h.coordinator.state == .canceled)
-        #expect(h.completions.isEmpty)
-        #expect(h.assets.registeredCaptures.isEmpty)
-        #expect(h.coordinator.hasRepeatRegion == false)
-    }
-
     @Test("Canceled capture completing after a replacement request produces nothing (PERM-02)")
     func lateCompletionAfterReplacement() async {
         let h = CaptureHarness()
@@ -194,27 +145,6 @@ struct CaptureCoordinatorTests {
         #expect(h.assets.registeredCaptures.count == 1)
     }
 
-    @Test("Delay counts down one second at a time through the injected clock")
-    func countdown() async {
-        let h = CaptureHarness()
-        h.coordinator.start(.region, delaySeconds: 3)
-        h.coordinator.commitRegion(h.regionRect, on: TestFixtures.primaryDisplay)
-        #expect(h.coordinator.state == .countdown(remaining: 3))
-
-        await waitFor("sleep 1") { h.clock.pendingSleepCount == 1 }
-        h.clock.advance(bySeconds: 1)
-        await waitFor("2 left") { h.coordinator.state == .countdown(remaining: 2) }
-        await waitFor("sleep 2") { h.clock.pendingSleepCount == 1 }
-        h.clock.advance(bySeconds: 1)
-        await waitFor("1 left") { h.coordinator.state == .countdown(remaining: 1) }
-        #expect(h.capture.captureCalls.isEmpty)
-        await waitFor("sleep 3") { h.clock.pendingSleepCount == 1 }
-        h.clock.advance(bySeconds: 1)
-        await waitFor("editing") { h.coordinator.state == .editing }
-        #expect(h.capture.captureCalls.count == 1)
-        #expect(h.clock.sleepRequests == [.seconds(1), .seconds(1), .seconds(1)])
-    }
-
     @Test("A replaced countdown never fires its capture later")
     func replacedCountdownDoesNotCapture() async {
         let h = CaptureHarness()
@@ -228,22 +158,6 @@ struct CaptureCoordinatorTests {
         await drain()
         #expect(h.capture.captureCalls.isEmpty)
         #expect(h.coordinator.state == .selecting)
-    }
-
-    @Test("Escape during selection cancels without side effects")
-    func cancelDuringSelection() async {
-        let h = CaptureHarness()
-        h.coordinator.start(.region)
-        h.coordinator.cancel()
-        #expect(h.coordinator.state == .canceled)
-        #expect(h.coordinator.selectionContext == nil)
-        await drain()
-        #expect(h.capture.captureCalls.isEmpty)
-        #expect(h.completions.isEmpty)
-
-        let idle = CaptureHarness()
-        idle.coordinator.cancel()
-        #expect(idle.coordinator.state == .idle)
     }
 
     @Test("Capture options come from preferences; the cursor is hidden by default")
@@ -353,16 +267,6 @@ struct CaptureCoordinatorTests {
                 == false)
         #expect(h.coordinator.state == .selecting)
         #expect(h.capture.captureCalls.isEmpty)
-    }
-
-    @Test("Window mode lists windows for the chooser, then captures the chosen one")
-    func windowMode() async {
-        let h = CaptureHarness()
-        h.coordinator.start(.window)
-        await waitFor("windows listed") { h.coordinator.selectionContext == .window([TestFixtures.window]) }
-        h.coordinator.commitSelection(.window(TestFixtures.window))
-        await waitFor("editing") { h.coordinator.state == .editing }
-        #expect(h.capture.captureCalls == [.window(TestFixtures.window)])
     }
 
     @Test("Space during a region selection switches the same request to a window, keeping its delay")

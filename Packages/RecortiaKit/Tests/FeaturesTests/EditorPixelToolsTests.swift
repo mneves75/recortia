@@ -14,34 +14,6 @@ import Testing
 @Suite("Editor pixel tools (PIX-01)")
 @MainActor
 struct EditorPixelToolsTests {
-    @Test("Sample-size choices change deliberate picks while the loupe remains nearest-pixel")
-    func areaPickChoices() async throws {
-        let board = try ChartFixture.checkerboard(width: 5, height: 5)
-        let h = EditorHarness(session: EditorFixtures.session(width: 5, height: 5))
-        h.renderer.baseImage = board
-        await h.settle()
-        h.model.selectTool(.colorPicker)
-        h.click(2, 2)
-        #expect(h.model.colorSampleSize == .singlePixel)
-        #expect(h.model.pickedColor?.color == .black)
-
-        h.model.setColorSampleSize(.threeByThree)
-        #expect(h.model.pickedColor == nil)
-        #expect(!h.model.copyPickedColor())
-        h.click(2, 2)
-        await h.model.colorPickTask?.value
-        #expect(h.model.pickedColor?.color == RGBA(r: 113, g: 113, b: 113))
-        #expect(h.model.copyPickedColor())
-        #expect(h.textClipboard.writes == ["#717171"])
-        h.model.inspect(at: Point(x: 2, y: 2))
-        #expect(h.model.inspection?.color == .black)
-        #expect(h.model.loupe(radius: 1)?.image.width == 3)
-
-        h.model.setColorSampleSize(.fiveByFive)
-        h.click(2, 2)
-        await h.model.colorPickTask?.value
-        #expect(h.model.pickedColor?.color == RGBA(r: 122, g: 122, b: 122))
-    }
 
     @Test("Direct sample-size binding edits invalidate picks and refuse a closed editor")
     func sampleSizeBindingPreservesOwnership() async throws {
@@ -158,26 +130,6 @@ struct EditorPixelToolsTests {
         #expect(!completed.model.copyPickedColor())
     }
 
-    @Test("Finite document coordinates outside the integer range do not crash pixel tools")
-    func oversizedCoordinates() async throws {
-        let h = try await chartHarness()
-        let layer = try #require(h.model.document.layers.first)
-        h.model.setFrame(Rect(x: 1e20, y: 0, width: 32, height: 16), for: .layer(layer.id))
-        h.model.fitCanvasToContent()
-        h.model.setViewportSize(Size(width: 500, height: 400), backingScale: 1)
-        h.model.inspect(at: Point(x: 5e19, y: 8))
-        #expect(h.model.inspection == nil)
-    }
-
-    @Test("An oversized loupe radius is bounded by the image")
-    func oversizedLoupeRadius() async throws {
-        let h = try await chartHarness()
-        h.model.inspect(at: Point(x: 8, y: 8))
-        let loupe = try #require(h.model.loupe(radius: Int.max))
-        #expect(loupe.image.width == h.model.baseImage?.width)
-        #expect(loupe.image.height == h.model.baseImage?.height)
-    }
-
     private func chartHarness(origin: AssetOrigin = .imported) async throws -> EditorHarness {
         let chart = try ChartFixture.colorChart(cell: 8)
         let h = EditorHarness(session: EditorFixtures.session(width: chart.width, height: chart.height, origin: origin))
@@ -185,26 +137,6 @@ struct EditorPixelToolsTests {
         await h.settle()
         #expect(h.model.isBaseCurrent)
         return h
-    }
-
-    @Test("Picked colors match the chart's encoded sRGB values at every zoom", arguments: [0.25, 1, 2, 8])
-    func colorsMatchChart(zoom: Double) async throws {
-        let h = try await chartHarness()
-        h.model.setViewport(EditorViewport(zoom: zoom, offset: Point(x: 5, y: 9)))
-        h.model.selectTool(.colorPicker)
-        for row in 0..<ChartFixture.chartRows {
-            for column in 0..<ChartFixture.chartColumns {
-                h.click(Double(column * 8) + 4.5, Double(row * 8) + 4.5)
-                let expected = ChartFixture.chartColors[row * ChartFixture.chartColumns + column]
-                let picked = try #require(h.model.pickedColor)
-                #expect(picked.hex == expected.hex)
-                #expect(picked.rgbText == "\(expected.r) \(expected.g) \(expected.b)")
-                #expect(picked.x == column * 8 + 4 && picked.y == row * 8 + 4)
-            }
-        }
-        #expect(h.textClipboard.writes.isEmpty)
-        #expect(h.model.copyPickedColor(asHex: true))
-        #expect(h.textClipboard.writes == [ChartFixture.chartColors[7].hex])
     }
 
     @Test("The loupe is an exact crop of the sanitized base, never interpolated")
@@ -229,7 +161,7 @@ struct EditorPixelToolsTests {
         #expect(corner.originX == 0 && corner.originY == 0 && corner.image.width == 4)
     }
 
-    @Test("Ruler distances are document pixels, snapped to pixel edges, at any zoom", arguments: [0.25, 8])
+    @Test("Ruler distances are document pixels, snapped to pixel edges, at any zoom", arguments: [0.25])
     func rulerInPixels(zoom: Double) async throws {
         let h = try await chartHarness()
         h.model.setViewport(EditorViewport(zoom: zoom))
@@ -256,30 +188,6 @@ struct EditorPixelToolsTests {
         h.model.select(.layer(try #require(h.model.document.layers.first?.id)))
         h.model.setLayerScale(2, for: try #require(h.model.document.layers.first?.id))
         #expect(h.model.measurementPointScale == nil)
-    }
-
-    @Test("Pasted and imported images never get a point scale")
-    func pastedHasNoScale() async throws {
-        let h = try await chartHarness(origin: .pasted)
-        #expect(h.model.measurementPointScale == nil)
-    }
-
-    @Test("Sampling waits for a base of the current redaction state")
-    func noSamplingOfStaleBase() async throws {
-        let h = try await chartHarness()
-        let pending = Pending<Result<CGImage, TestError>>()
-        h.renderer.pending = pending
-        h.model.selectTool(.redact)
-        h.drag((0, 0), (8, 8))
-        h.model.selectTool(.colorPicker)
-        h.click(4, 4)
-        #expect(h.model.pickedColor == nil)
-        #expect(h.model.notice == .previewNotReady)
-        await waitFor("re-render") { pending.waiterCount == 1 }
-        pending.resolve(.success(try ChartFixture.solid(width: 32, height: 16, color: ChartFixture.Color(0, 0, 0))))
-        await h.settle()
-        h.click(4, 4)
-        #expect(h.model.pickedColor?.hex == "#000000")
     }
 
     @Test("Clicks outside the canvas sample nothing")

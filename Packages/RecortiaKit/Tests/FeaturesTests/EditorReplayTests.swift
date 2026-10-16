@@ -12,24 +12,6 @@ import Testing
 @Suite("Editor deterministic replay (EDIT-01)")
 @MainActor
 struct EditorReplayTests {
-    @Test("A delayed adjustment completion cannot split the following move")
-    func adjustmentBeforeMove() throws {
-        let h = EditorHarness()
-        let m = h.model
-        let layer = try #require(m.document.layers.first)
-        m.beginContinuousChange()
-        m.setLayerOpacity(0.5, for: layer.id)
-        m.pointerDown(at: Point(x: 100, y: 100))
-        m.pointerDragged(to: Point(x: 110, y: 100))
-        m.endContinuousChange()
-        m.pointerDragged(to: Point(x: 120, y: 100))
-        m.pointerUp(at: Point(x: 130, y: 100))
-        m.undo()
-        #expect(m.document.layers.first?.placement.translation == layer.placement.translation)
-        #expect(m.document.layers.first?.opacity == 0.5)
-        m.undo()
-        #expect(m.document.layers.first?.opacity == layer.opacity)
-    }
 
     /// Runs one fixed script covering every annotation kind and editing operation; returns the
     /// document after each undoable step, starting with the initial document.
@@ -136,29 +118,6 @@ struct EditorReplayTests {
         #expect(m.document == snapshots.last)
     }
 
-    @Test("Replaying the same script on two editors yields the same geometry")
-    func replayIsDeterministic() throws {
-        let a = EditorHarness(), b = EditorHarness()
-        let first = try runScript(a).map(\.annotationShapes)
-        let second = try runScript(b).map(\.annotationShapes)
-        #expect(first == second)
-    }
-
-    @Test("One drag with many pointer moves is one undo step")
-    func gestureIsOneUndoGroup() {
-        let h = EditorHarness()
-        let m = h.model
-        m.selectTool(.rectangle)
-        h.drag((10, 10), (60, 60))
-        let afterCreate = m.document
-        m.selectTool(.select)
-        h.drag((10, 30), (110, 90), steps: 40)
-        #expect(m.session.undoCount == 2)
-        #expect(m.document != afterCreate)
-        m.undo()
-        #expect(m.document == afterCreate)
-    }
-
     @Test("A resize drag is one undo step and restores the original frame on undo")
     func resizeIsOneUndoGroup() throws {
         let h = EditorHarness()
@@ -184,34 +143,6 @@ struct EditorReplayTests {
         }
         #expect(!h.model.canUndo)
         #expect(h.model.document.annotations.isEmpty)
-    }
-
-    @Test("Canceling a move restores the document and records nothing")
-    func cancelMove() {
-        let h = EditorHarness()
-        let m = h.model
-        m.selectTool(.rectangle)
-        h.drag((10, 10), (60, 60))
-        let created = m.document
-        m.selectTool(.select)
-        m.pointerDown(at: Point(x: 10, y: 30))
-        m.pointerDragged(to: Point(x: 90, y: 90))
-        m.cancelGesture()
-        #expect(m.document == created)
-        #expect(m.session.undoCount == 1)
-    }
-
-    @Test("Canceling numbered-step placement restores the document without adding history")
-    func cancelStepCreation() {
-        let h = EditorHarness()
-        let original = h.model.document
-        h.model.selectTool(.step)
-        h.model.pointerDown(at: Point(x: 20, y: 30))
-        h.model.pointerDragged(to: Point(x: 80, y: 90))
-        h.model.cancelGesture()
-        #expect(h.model.document == original)
-        #expect(!h.model.canUndo)
-        #expect(h.model.selection.isEmpty)
     }
 
     @Test("Emptying a text deletes it; a blank new text adds nothing")

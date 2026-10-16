@@ -67,8 +67,23 @@ The resumed session supplies the required control; final acceptance is recorded 
 - A versioned read-only Shottr/CleanShot resource inventory, explicit parity gaps and an
   adversarial implementation plan. No proprietary assets or undocumented optimizations are copied.
 
+### Changed
+
+- The automated tests keep only checks that fail when a break matters to a user, to data or to
+  security: 779 test functions became 553 (package 722 → 511, script controls 57 → 42), and 87
+  redundant parameter cases were dropped. Removed tests were duplicates, detail checks, inputs the
+  app cannot produce, tests of helpers the app never calls, or outcomes a bilingual native E2E
+  scenario asserts on the same path; hosted CI runs no E2E, so those now fail only in the native
+  run. A 55-mutation net (data loss, redaction, consent, stale results, decode and release
+  guards) fails the reduced suite; the original suite missed only the two mutations behind the one
+  added test: an unconfirmed save never replaces an existing file, which only the native E2E
+  caught before.
+
 ### Fixed
 
+- Every editor window now opens at the same size, whatever was captured: the size you last
+  resized an editor to, or a default, kept within the screen. Previously each capture's own size
+  set the window size, so windows appeared at different sizes.
 - An image import or keyboard nudge that lands while a layer or annotation is being dragged is
   kept: the drag is settled at its current position first, and each becomes its own Undo step.
 - Committing a text edit, a new text or an image import after changing a colour is its own Undo

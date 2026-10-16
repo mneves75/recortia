@@ -50,15 +50,6 @@ struct ScrollChromaTests {
         try #require(ScrollPageFixture.image(from: buffer(offset: offset, patch: patch)))
     }
 
-    @Test("Premise: even-row shifts keep luma within tolerance while the colors differ a lot")
-    func premise() throws {
-        let a = try #require(ScrollFrame(image: try Self.image(offset: 0)))
-        let b = try #require(ScrollFrame(image: try Self.image(offset: 2)))
-        let lumaDifference = zip(a.luma, b.luma).map { abs($0 - $1) }.max() ?? 0
-        #expect(lumaDifference < ScrollMatcher.Thresholds.calibrated.pixelTolerance)
-        #expect(b.colorChangedFraction(comparedTo: a, tolerance: 16) > 0.9)
-    }
-
     @Test("Chromatic motion with repeating luminance does not count toward end of page")
     func chromaticMotionDoesNotDeclarePageEnd() throws {
         var stitcher = ScrollStitcher()
@@ -73,17 +64,6 @@ struct ScrollChromaTests {
         #expect(!stitcher.endOfPageDetected)
         // The first frame stays the partial output; nothing was stitched from ambiguous frames.
         #expect(stitcher.acceptedFrameCount == 1)
-    }
-
-    @Test("Control: identical frames still detect stationarity and end of page")
-    func identicalFramesStayStationary() throws {
-        var stitcher = ScrollStitcher()
-        var results: [ScrollAppendResult] = []
-        for index in 0..<4 {
-            results.append(stitcher.append(try Self.image(offset: 0), elapsed: .milliseconds(index * 100)))
-        }
-        #expect(results == [.accepted(offset: 0), .stationary, .stationary, .stationary])
-        #expect(stitcher.endOfPageDetected)
     }
 
     @Test("Control: ±1 capture noise and a small local color blink are still stationary")

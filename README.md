@@ -6,9 +6,15 @@ are no longer lost, automatic scrolling acts only on the bound window and Stop h
 startup, secure masks fail closed on unmappable geometry, scroll memory admission counts the
 matcher's scratch, closing an editor cancels its export, designed fonts recover from transient
 nil results, and the release and E2E scripts keep retained artifacts and enforce the reviewed
-toolchain. The stable gate (720 tests), the full bilingual native E2E (48/48 per language) and
-[different-model independent verification](docs/specs/full-source-review/acceptance-verdict.md)
-pass. It builds on 0.12.1 (build 20), which
+toolchain. Every editor window now opens at one size (the last one you resized to, or 1100×720,
+kept within the screen) instead of each capture's size. The tests were reduced to checks that
+fail when a break matters ([record](docs/specs/test-reduction/README.md)): 779 → 553 test
+functions. The stable gate (511 package tests, 42 script controls) passes. The bilingual native
+E2E passed 48/49 scenarios per language; `editor-presentation` failed for environmental
+reasons and passed on a rerun of the same app
+([evidence](docs/specs/native-window-qualification/review-evidence.md)). The full-source fixes
+passed [different-model independent verification](docs/specs/full-source-review/acceptance-verdict.md).
+It builds on 0.12.1 (build 20), which
 added controlled native focus qualification. The installed local-test artifact remains
 0.12.0/build19. None of these candidates has been tagged, notarized or distributed.
 The replayable first-run feature tour and reference-feature inventory are

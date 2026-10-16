@@ -100,35 +100,6 @@ struct EditorIndependentEditSiblingTests {
         #expect(m.document == original)
     }
 
-    @Test(
-        "Escape after an import settled a move or resize keeps both the drag progress and the import",
-        arguments: [false, true])
-    func cancelAfterImportSettledDrag(resize: Bool) async throws {
-        let h = EditorHarness()
-        defer { h.model.close() }
-        let m = h.model
-        let original = m.document
-        let layer = try #require(original.layers.first)
-        let (read, url) = Self.suspendedImport(h, "escape-import")
-        let task = Task { await m.addImageLayer(from: .file(url)) }
-        await waitFor("import suspended") { read.waiterCount == 1 }
-        m.select(.layer(layer.id))
-        m.pointerDown(at: resize ? Point(x: 400, y: 300) : Point(x: 200, y: 150))
-        m.pointerDragged(to: resize ? Point(x: 600, y: 450) : Point(x: 220, y: 180))
-        let progressed = m.document
-        #expect(progressed != original)
-        read.resolve(())
-        #expect(await task.value)
-        let imported = m.document
-        m.cancelGesture()
-        #expect(m.document == imported, "Escape must not revert past an independently committed import")
-        #expect(m.session.undoCount == 2)
-        m.undo()
-        #expect(m.document == progressed)
-        m.undo()
-        #expect(m.document == original)
-    }
-
     // MARK: B-5 / Spec 1 siblings
 
     @Test(
@@ -188,24 +159,6 @@ struct EditorIndependentEditSiblingTests {
         m.redo()
         m.redo()
         #expect(m.document == commanded)
-    }
-
-    @Test("Control: successive colour changes in one adjustment stay one undo step")
-    func colourChangesCoalesce() throws {
-        var document = EditorFixtures.session().document
-        let annotation = Annotation(kind: .rectangle(Rect(x: 20, y: 20, width: 50, height: 40)), style: .default)
-        document.annotations.append(annotation)
-        let h = EditorHarness(session: DocumentSession(document: document))
-        defer { h.model.close() }
-        let m = h.model
-        m.select(.annotation(annotation.id))
-        m.beginContinuousChange()
-        m.setStrokeColor(.yellow)
-        m.setStrokeColor(.white)
-        m.endContinuousChange()
-        #expect(m.session.undoCount == 1)
-        m.undo()
-        #expect(m.document == document)
     }
 
     // MARK: A-2 sibling

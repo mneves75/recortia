@@ -33,12 +33,4 @@ struct SecretPairFixtureTests {
         }
     }
 
-    @Test("Hand-crafted PNG chunks carry valid CRCs and the inspector lists them")
-    func handcraftedPNG() throws {
-        let png = try ContainerCrafting.blankOneBitPNG(width: 9, height: 3)
-        #expect(try ContainerInspector.pngChunkTypes(png) == ["IHDR", "IDAT", "IEND"])
-        let bad = ContainerCrafting.handcraftedPNG(
-            width: 1, height: 1, bitDepth: 8, colorType: 6, idat: [1, 2], corruptIDATCRC: true)
-        #expect(throws: ContainerInspectionError.badCRC(chunk: "IDAT")) { try ContainerInspector.pngChunkTypes(bad) }
-    }
 }

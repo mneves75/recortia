@@ -37,18 +37,9 @@ final class ExportHarness {
 struct ExportCoordinatorTests {
     let destination = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
 
-    @Test("Copy reports success only after the clipboard write")
-    func copySucceeds() async {
-        let h = ExportHarness()
-        let outcome = await h.export(.copy)
-        #expect(outcome == .copied)
-        #expect(h.clipboard.writes.count == 1)
-        #expect(h.coordinator.state == .succeeded(canceledAfterCommit: false))
-    }
-
     @Test(
         "Pipeline failures never touch a sink",
-        arguments: [ExportFailure.renderFailed, .encodeFailed, .budgetExceeded])
+        arguments: [ExportFailure.budgetExceeded])
     func pipelineFailure(failure: ExportFailure) async {
         let h = ExportHarness()
         h.exporter.failure = failure
@@ -78,42 +69,6 @@ struct ExportCoordinatorTests {
         let h = ExportHarness()
         h.clipboard.error = .clipboardWriteFailed
         #expect(await h.export(.copy) == .failed(.clipboardFailed))
-    }
-
-    @Test("Save passes the user's overwrite confirmation through")
-    func saveToURL() async {
-        let h = ExportHarness()
-        #expect(await h.export(.save(to: destination, overwriteConfirmed: true)) == .saved(destination))
-        #expect(h.files.saves.first?.overwrite == true)
-    }
-
-    @Test("Cancel before commit leaves the clipboard untouched")
-    func cancelBeforeCommit() async {
-        let h = ExportHarness()
-        let pending = Pending<Result<Void, ExportServiceError>>()
-        h.exporter.pending = pending
-        async let outcome = h.export(.copy)
-        await waitFor("snapshotting") { pending.waiterCount == 1 }
-        h.coordinator.cancel()
-        pending.resolve(.success(()))
-        #expect(await outcome == .canceled)
-        #expect(h.clipboard.writes.isEmpty)
-        #expect(h.coordinator.state == .canceled)
-    }
-
-    @Test("Cancel during the file commit reports that the save already completed")
-    func cancelAfterCommit() async {
-        let h = ExportHarness()
-        let pending = Pending<Void>()
-        h.files.pending = pending
-        async let outcome = h.export(.save(to: destination, overwriteConfirmed: false))
-        await waitFor("committing") { pending.waiterCount == 1 }
-        #expect(h.coordinator.state == .committing)
-        h.coordinator.cancel()
-        pending.resolve(())
-        #expect(await outcome == .alreadyCompleted(.saved(destination)))
-        #expect(h.coordinator.state == .succeeded(canceledAfterCommit: true))
-        #expect(h.files.saves.count == 1)
     }
 
     @Test("A snapshot of an outdated revision or privacy epoch is rejected")
@@ -146,49 +101,6 @@ struct ExportCoordinatorTests {
         #expect(await h.export(.drag) == .canceled)
         h.drag.outcome = .failure(.writeFailed(code: 9))
         #expect(await h.export(.drag) == .failed(.system(code: 9)))
-    }
-
-    @Test("A document change during a pending drag revokes it, dismisses the chip, and writes nothing")
-    func pendingDragInvalidatedByDocumentChange() async throws {
-        let h = ExportHarness()
-        let pending = Pending<DragDeliveryOutcome>()
-        h.drag.pending = pending
-        async let outcome = h.export(.drag)
-        await waitFor("drag offered") { h.drag.leases.count == 1 }
-        let lease = try #require(h.drag.leases.first)
-        #expect(!lease.isRevoked)
-        h.coordinator.invalidatePendingDrag(documentID: h.session.document.id)
-        #expect(lease.isRevoked)
-        #expect(h.drag.dismissCount == 1)
-        #expect(await outcome == .failed(.staleDocument))
-        #expect(h.drag.writtenSnapshots.isEmpty)
-    }
-
-    @Test("Invalidating another document's drag leaves this drag alone")
-    func pendingDragOtherDocumentUntouched() async throws {
-        let h = ExportHarness()
-        let pending = Pending<DragDeliveryOutcome>()
-        h.drag.pending = pending
-        async let outcome = h.export(.drag)
-        await waitFor("drag offered") { h.drag.leases.count == 1 }
-        h.coordinator.invalidatePendingDrag(documentID: DocumentID())
-        #expect(!(h.drag.leases.first?.isRevoked ?? true))
-        pending.resolve(.delivered)
-        #expect(await outcome == .dragged)
-        #expect(h.drag.writtenSnapshots.count == 1)
-    }
-
-    @Test("Cancel during a pending drag revokes the lease and dismisses the chip")
-    func cancelPendingDrag() async throws {
-        let h = ExportHarness()
-        h.drag.pending = Pending<DragDeliveryOutcome>()
-        async let outcome = h.export(.drag)
-        await waitFor("drag offered") { h.drag.leases.count == 1 }
-        h.coordinator.cancel()
-        #expect(h.drag.leases.first?.isRevoked == true)
-        #expect(h.drag.dismissCount == 1)
-        #expect(await outcome == .canceled)
-        #expect(h.drag.writtenSnapshots.isEmpty)
     }
 
     @Test("A delivery reported after the lease was revoked is not committed as a success")
@@ -248,20 +160,6 @@ struct ExportCoordinatorTests {
         pending.resolve(outcome)
         _ = await result
         #expect(h.drag.leases.first?.isRevoked == true, "an outstanding promise could still write")
-    }
-
-    @Test("Only one export runs at a time")
-    func oneExportAtATime() async {
-        let h = ExportHarness()
-        let pending = Pending<Result<Void, ExportServiceError>>()
-        h.exporter.pending = pending
-        async let first = h.export(.copy)
-        await waitFor("busy") { pending.waiterCount == 1 }
-        #expect(h.coordinator.isBusy)
-        #expect(await h.export(.copy) == .rejectedBusy)
-        pending.resolve(.success(()))
-        #expect(await first == .copied)
-        #expect(h.clipboard.writes.count == 1)
     }
 
     @Test("Automatic copy and save do nothing while the preferences are off (default)")
@@ -327,20 +225,4 @@ struct ExportCoordinatorTests {
         #expect(h.files.uniqueSaves.isEmpty)
     }
 
-    @Test("An automatic batch rejected while busy returns a presentable failure")
-    func automaticBusyIsReported() async {
-        let h = ExportHarness()
-        h.settings.update { $0.autoCopy = true }
-        h.drag.pending = Pending<DragDeliveryOutcome>()
-        let first = Task { await h.export(.drag) }
-        await waitFor("pending drag") { h.drag.leases.count == 1 }
-        let outcomes = await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session })
-        #expect(
-            outcomes.contains {
-                if case .failed = $0 { return true }; return false
-            })
-        #expect(h.clipboard.writes.isEmpty)
-        h.coordinator.cancel()
-        _ = await first.value
-    }
 }

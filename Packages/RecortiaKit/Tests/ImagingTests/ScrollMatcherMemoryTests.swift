@@ -67,27 +67,6 @@ struct ScrollMatcherMemoryTests {
 
     // MARK: Equivalence
 
-    @Test("Chunked changed counts equal a direct count for every chunk size and slice offset")
-    func changedCountEquivalence() {
-        var rng = ScrollPageRandom(seed: 91)
-        let n = 5_000
-        let a = (0..<(n + 9)).map { _ in Float(rng.next() % 256) }
-        let b = (0..<(n + 9)).map { _ in Float(rng.next() % 256) }
-        for tolerance: Float in [0.5, 16, 100] {
-            for (start, count) in [(0, n), (3, n), (9, n - 1), (5, 1), (0, 0)] {
-                let x = a[start..<(start + count)]
-                let y = b[(start + 1)..<(start + 1 + count)]
-                let expected = zip(x, y).filter { abs($0 - $1) >= tolerance }.count
-                for chunk in [1, 2, 3, 7, 64, 1000, count - 1, count, count + 1, ScrollMatcher.scratchElements]
-                where chunk > 0 {
-                    #expect(
-                        ScrollMatcher.changedCount(x, y, tolerance: tolerance, chunkElements: chunk) == expected,
-                        "tolerance \(tolerance), slice \(start)+\(count), chunk \(chunk)")
-                }
-            }
-        }
-    }
-
     @Test("error and texture are bit-identical to the unchunked math on random frames spanning many chunks")
     func measuresEquivalence() throws {
         // 700 x 400 = 280,000 luma values: several default chunks, with boundaries inside rows.
@@ -123,24 +102,6 @@ struct ScrollMatcherMemoryTests {
     static func largeFrame(offset: Int, index: Int) throws -> ScrollFrame {
         let image = try #require(large.frame(offset: offset, index: index))
         return try #require(ScrollFrame(image: image))
-    }
-
-    @Test("decide over a region many chunks tall keeps every temporary within the working budget")
-    func decideIsBounded() throws {
-        let previous = try Self.largeFrame(offset: 0, index: 0)
-        let current = try Self.largeFrame(offset: 90, index: 1)
-        let region = Self.large.headerHeight..<(Self.large.viewportHeight - Self.large.footerHeight)
-        #expect(region.count * Self.large.width > 10 * ScrollMatcher.scratchElements)
-        let probe = ScrollMatcher.ScratchProbe()
-        let decision = ScrollMatcher.$scratchProbe.withValue(probe) {
-            ScrollMatcher.decide(previous: previous, current: current, region: region)
-        }
-        #expect(decision == .displacement(90))
-        #expect(probe.chunkCount > 0, "the probe must observe the measures")
-        #expect(probe.largestChunk <= ScrollMatcher.scratchElements, "largest chunk \(probe.largestChunk)")
-        #expect(
-            ScrollMatcher.scratchTemporaries * probe.largestChunk * MemoryLayout<Float>.stride
-                <= ScrollStitcher.workingBudgetBytes)
     }
 
     @Test("Every stitcher path (bands, stationarity, motion before bands, decide) stays within the budget")
@@ -181,43 +142,4 @@ struct ScrollMatcherMemoryTests {
         #expect(first >= 240_100)
     }
 
-    @Test("Working-plan arithmetic refuses overflowing bookkeeping without allocating frames")
-    func peakAdmissionBookkeepingOverflow() throws {
-        let tall = PixelSize(width: 1, height: Int.max / 128)
-        let wide = PixelSize(width: Int.max / 32, height: 1)
-        for size in [tall, wide] {
-            #expect(ScrollFrame.plannedByteCount(width: size.width, height: size.height) != nil)
-            #expect(ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: true) == nil)
-        }
-    }
-
-    @Test("Candidate working storage follows each matcher limit and refuses arithmetic overflow")
-    func candidateBudgetFollowsMatcherLimits() throws {
-        let strips = ScrollMatcher.maximumStripCount
-        let coarse = ScrollMatcher.coarseCandidatesPerSearch
-        let ties = ScrollMatcher.maximumTiedCandidates
-        let baseline = try #require(ScrollStitcher.matcherCandidateWorkingBytes())
-        for (s, c, t) in [
-            (strips + 1, coarse, ties), (strips, coarse + 1, ties), (strips, coarse, ties + 1),
-            (strips * 4, coarse * 4, ties * 4),
-        ] {
-            let bytes = try #require(
-                ScrollStitcher.matcherCandidateWorkingBytes(
-                    maximumStripCount: s, coarseCandidatesPerSearch: c, maximumTiedCandidates: t))
-            let candidates =
-                (c + t) * 2 * (ScrollMatcher.candidateNeighborRadius * 2 + 1)
-                + ScrollMatcher.distinctAlternativeOffsets.count
-            let retainedTables = s * candidates * MemoryLayout<ScrollMatcher.Candidate>.stride
-            #expect(bytes >= retainedTables)
-            #expect(bytes > baseline)
-        }
-        for (s, c, t) in [
-            (Int.max, coarse, ties), (strips, Int.max, ties), (strips, coarse, Int.max),
-            (-1, coarse, ties),
-        ] {
-            #expect(
-                ScrollStitcher.matcherCandidateWorkingBytes(
-                    maximumStripCount: s, coarseCandidatesPerSearch: c, maximumTiedCandidates: t) == nil)
-        }
-    }
 }

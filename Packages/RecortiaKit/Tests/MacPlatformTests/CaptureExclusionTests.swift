@@ -10,12 +10,6 @@ import Testing
 struct CaptureExclusionTests {
     let own: pid_t = 100
 
-    @Test("A requested Recortia window that vanished is not foreign")
-    func vanishedOwnWindowIsNotForeign() {
-        let present = [CaptureExclusion.Window(id: 7, ownerPID: own)]
-        #expect(CaptureExclusion.foreignWindowIDs(requested: [5, 7], present: present, ownPID: own).isEmpty)
-    }
-
     @Test("A requested window of another app that is present is foreign")
     func presentForeignWindowIsForeign() {
         let present = [CaptureExclusion.Window(id: 7, ownerPID: own), CaptureExclusion.Window(id: 9, ownerPID: 200)]

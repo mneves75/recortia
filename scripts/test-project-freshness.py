@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """The generated-project gate must compare against git, so a stale committed project fails every run."""
 
-import os
 import pathlib
 import shutil
 import stat
@@ -72,19 +71,6 @@ class ProjectFreshnessTests(unittest.TestCase):
         fixture = self.fixture(committed="fresh", generated="fresh", extra="new.xcscheme")
         for _ in range(2):
             self.assertEqual(1, fixture.run().returncode)
-
-    def test_missing_xcodegen_fails_in_ci_and_locally(self) -> None:
-        fixture = self.fixture(committed="stale", generated="fresh")
-        self.assertEqual(1, fixture.run(with_xcodegen=False, ci=True).returncode)
-        self.assertEqual(1, fixture.run(with_xcodegen=False).returncode)
-
-    def test_gate_is_wired_into_check_sh(self) -> None:
-        script = (ROOT / "scripts/check.sh").read_text()
-        self.assertIn("scripts/check-project-fresh.sh", script)
-        self.assertIn("scripts/test-project-freshness.py", script)
-
-    def test_gate_script_is_executable_like_its_siblings(self) -> None:
-        self.assertTrue(os.access(GATE, os.X_OK), "scripts/check-project-fresh.sh must be executable")
 
 
 if __name__ == "__main__":

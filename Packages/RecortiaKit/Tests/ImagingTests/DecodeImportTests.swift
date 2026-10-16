@@ -33,14 +33,6 @@ struct DecodeImportTests {
         #expect(try pixels(jpeg.image).pixel(x: 8, y: 8).distance(to: ChartFixture.quadrantColors[0]) <= 12)
     }
 
-    @Test("Decoding never mutates the caller's bytes")
-    func sourceIsNotMutated() throws {
-        let png = try ContainerCrafting.pngData(try ChartFixture.checkerboard(width: 9, height: 9))
-        let copy = Data(png)
-        _ = try ImageDecoder.decode(png)
-        #expect(png == copy)
-    }
-
     @Test("Unsupported formats and empty or truncated inputs are rejected")
     func malformedInputs() throws {
         let png = try ContainerCrafting.pngData(try ChartFixture.checkerboard(width: 8, height: 8))

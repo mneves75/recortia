@@ -25,7 +25,7 @@ struct PinnedExportReviewTests {
 
     @Test(
         "Any scale other than exactly 1 is refused for a pinned raster",
-        arguments: [0.0, -1.0, 0.5, 1.0000001, 0.9999999, 2.0, 8.0, 9.0, Double.nan, Double.infinity])
+        arguments: [0.9999999, 1.0000001, Double.nan])
     func onlyUnitScale(scale: Double) async throws {
         let image = try raster()
         await #expect(throws: ExportError.invalidOptions(.invalidScale)) {
@@ -47,40 +47,6 @@ struct PinnedExportReviewTests {
         }
     }
 
-    @Test("Exporting the same pin twice gives identical bytes; only the filename follows the date")
-    func deterministicEncoding() async throws {
-        let image = try raster()
-        let later = fixedExportDate.addingTimeInterval(3_600)
-        for format in [ExportFormat.png, .jpeg(quality: 0.7)] {
-            let first = try await pinned(image, ExportOptions(format: format))
-            let second = try await pinned(image, ExportOptions(format: format), date: later)
-            #expect(first.bytes == second.bytes, "no timestamp or random value in the encoding")
-            #expect(first.suggestedFilename != second.suggestedFilename)
-            #expect(first.pixelSize == PixelSize(width: image.width, height: image.height))
-        }
-    }
-
-    @Test("A wide-gamut raster exports with allowlisted containers and no hidden representations")
-    func wideGamutRaster() async throws {
-        let space = try #require(CGColorSpace(name: CGColorSpace.displayP3))
-        let context = try #require(
-            CGContext(
-                data: nil, width: 20, height: 12, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.setFillColor(CGColor(colorSpace: space, components: [0.9, 0.1, 0.2, 1])!)
-        context.fill(CGRect(x: 0, y: 0, width: 20, height: 12))
-        let image = try #require(context.makeImage())
-
-        let png = try await pinned(image)
-        let chunks = try ContainerInspector.pngChunkTypes(png.bytes)
-        #expect(Set(chunks).isSubset(of: ExportContainerTests.allowedPNGChunks), "unexpected chunks: \(chunks)")
-        #expect(ContainerInspector.propertyKeys(png.bytes).isDisjoint(with: ExportContainerTests.forbiddenPropertyKeys))
-        let jpeg = try await pinned(image, ExportOptions(format: .jpeg(quality: 0.9)))
-        let markers = try ContainerInspector.jpegSegments(jpeg.bytes).segments.map(\.marker)
-        #expect(Set(markers).isSubset(of: ExportContainerTests.allowedJPEGMarkers), "unexpected markers: \(markers)")
-        #expect(png.pixelSize == PixelSize(width: 20, height: 12))
-    }
-
     /// Straight-alpha input whose fully transparent pixels store vivid RGB.
     private static func canaryInput() -> [UInt8] {
         var input: [UInt8] = []
@@ -100,20 +66,6 @@ struct PinnedExportReviewTests {
         #expect(transparent >= expectedTransparent)
     }
 
-    @Test("The pin's real source, the renderer's 1x output, exports no RGB under alpha 0")
-    func rendererOutputCarriesNoRGBUnderAlphaZero() async throws {
-        let png = try ContainerCrafting.pngData(
-            try ChartFixture.image(width: 4, height: 2, straightRGBA: Self.canaryInput()))
-        let harness = ImagingHarness()
-        let asset = await harness.store.insert(try ImageDecoder.decode(png), origin: .imported)
-        var document = Document(asset: asset)
-        document.canvasSize = Size(width: 6, height: 3)
-        let raster = try await harness.renderer.render(document, scale: 1)
-        let snapshot = try await harness.pipeline.snapshot(
-            ofPinned: raster, exportID: DocumentID(), privacyEpoch: 0, options: ExportOptions(), date: fixedExportDate)
-        try assertNoRGBUnderAlphaZero(snapshot, expectedTransparent: 8)
-    }
-
     // The pinned entry point redraws whatever raster it is handed, so a raster that did not come
     // from `PrivacyRenderer` still exports only its visible pixels.
     @Test("A raw straight-alpha raster exports no RGB under alpha 0")
@@ -123,14 +75,4 @@ struct PinnedExportReviewTests {
         try assertNoRGBUnderAlphaZero(snapshot, expectedTransparent: 4)
     }
 
-    @Test("A transparent pinned raster flattens onto the JPEG background, not black")
-    func jpegFlattensOnBackground() async throws {
-        var input: [UInt8] = []
-        for _ in 0..<16 { input += [0, 0, 0, 0] }
-        let image = try ChartFixture.image(width: 4, height: 4, straightRGBA: input)
-        let snapshot = try await pinned(image, ExportOptions(format: .jpeg(quality: 1), jpegBackground: .white))
-        let pixels = try ContainerInspector.decodePixels(snapshot.bytes)
-        let p = pixels.pixel(x: 1, y: 1)
-        #expect(p.r > 240 && p.g > 240 && p.b > 240, "got \(p)")
-    }
 }

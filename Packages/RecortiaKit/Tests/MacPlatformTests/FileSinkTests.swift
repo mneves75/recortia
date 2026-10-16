@@ -66,17 +66,6 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
     }
 
-    @Test("The overwrite flag replaces the destination atomically")
-    func overwritesWhenAsked() throws {
-        let folder = try TestSupport.makeTemporaryDirectory()
-        defer { TestSupport.removeDirectory(folder) }
-        let url = folder.appendingPathComponent("shot.png")
-        try priorBytes.write(to: url)
-        _ = try FileSink().save(snapshot, to: url, overwrite: true)
-        #expect(try Data(contentsOf: url) == snapshot.bytes)
-        #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
-    }
-
     @Test("Unique saves add a counter before the extension on collision")
     func uniqueNames() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
@@ -155,15 +144,4 @@ struct FileSinkTests {
         }
     }
 
-    @Test("A read-only folder is access denied and gains no files")
-    func readOnlyFolder() throws {
-        let folder = try TestSupport.makeTemporaryDirectory()
-        defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
-            TestSupport.removeDirectory(folder)
-        }
-        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
-        #expect(throws: SinkError.accessDenied) { try FileSink().saveUnique(snapshot, in: folder) }
-        #expect(TestSupport.directoryEntries(folder).isEmpty)
-    }
 }

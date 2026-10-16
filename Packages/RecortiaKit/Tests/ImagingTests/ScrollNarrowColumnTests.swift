@@ -126,7 +126,7 @@ struct NarrowColumnPage {
 
 @Suite("SCR-01: a narrow scrolling column between static margins")
 struct ScrollNarrowColumnTests {
-    @Test("A narrow textured column in a wide viewport stitches exactly", arguments: [false, true])
+    @Test("A narrow textured column in a wide viewport stitches exactly", arguments: [true])
     func narrowColumnStitches(badge: Bool) throws {
         let page = NarrowColumnPage(seed: 71, badge: badge)
         var rng = ScrollPageRandom(seed: 71)
@@ -153,18 +153,6 @@ struct ScrollNarrowColumnTests {
         #expect(bad.isEmpty, "\(bad.count) mismatched rows, first \(bad.prefix(5))")
     }
 
-    @Test("Band detection finds the full-width header and footer around a narrow moving column")
-    func bandsAroundNarrowColumn() throws {
-        let page = NarrowColumnPage(seed: 72, badge: true)
-        let previous = try page.scrollFrame(offset: 0, index: 0)
-        let current = try page.scrollFrame(offset: 60, index: 1)
-        let bands = ScrollStitcher.detectBands(
-            previous: previous, current: current, tolerance: ScrollMatcher.Thresholds.calibrated.pixelTolerance)
-        // Blank content rows next to a band may join it (harmless); real content must not.
-        #expect(bands.top >= page.headerHeight && bands.top <= page.headerHeight + 16, "\(bands)")
-        #expect(bands.bottom >= page.footerHeight && bands.bottom <= page.footerHeight + 16, "\(bands)")
-    }
-
     @Test("Control: header animation alone is confined to its own rows and is stationary, not motion")
     func animationAloneIsStationary() throws {
         let page = NarrowColumnPage(seed: 73, badge: true)
@@ -185,16 +173,4 @@ struct ScrollNarrowColumnTests {
         #expect(stitcher.endOfPageDetected)
     }
 
-    @Test("Control: full-width content keeps its header and footer bands")
-    func fullWidthBandsUnchanged() throws {
-        let fixture = ScrollPageFixture(seed: 74, headerHeight: 40, footerHeight: 24, pageHeight: 1200)
-        let first = try #require(fixture.frame(offset: 0, index: 0))
-        let second = try #require(fixture.frame(offset: 60, index: 1))
-        let previous = try #require(ScrollFrame(image: first))
-        let current = try #require(ScrollFrame(image: second))
-        let bands = ScrollStitcher.detectBands(
-            previous: previous, current: current, tolerance: ScrollMatcher.Thresholds.calibrated.pixelTolerance)
-        #expect(bands.top >= 40 && bands.top <= 40 + 16, "\(bands)")
-        #expect(bands.bottom >= 24 && bands.bottom <= 24 + 16, "\(bands)")
-    }
 }

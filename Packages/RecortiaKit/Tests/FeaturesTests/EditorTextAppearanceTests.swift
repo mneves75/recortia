@@ -9,60 +9,6 @@ import Testing
 @Suite("Native text font designs (FR-05)")
 @MainActor
 struct EditorTextAppearanceTests {
-    @Test("Select All loads the sole text's actual appearance and size without editing it")
-    func selectAllLoadsTextStyle() throws {
-        var session = EditorFixtures.session()
-        let annotation = Annotation(
-            kind: .text(
-                .init(
-                    origin: Point(x: 20, y: 30), string: "Selecionar tudo🙂",
-                    fontSize: 40, appearance: .rounded)), style: .default)
-        try session.perform("Text-only fixture") {
-            $0.layers = []
-            $0.annotations = [annotation]
-        }
-        let h = EditorHarness(session: session)
-        defer { h.model.close() }
-        let model = h.model
-        model.clearSelection()
-        #expect(model.setTextAppearance(.standard))
-        model.setFontSize(24)
-        let before = model.document
-        let revision = model.session.revision
-        let undoCount = model.session.undoCount
-        model.selectAll()
-        #expect(model.selection == [.annotation(annotation.id)])
-        #expect(model.style.textAppearance == .rounded)
-        #expect(model.style.fontSize == 40)
-        #expect(model.document == before)
-        #expect(model.session.revision == revision)
-        #expect(model.session.undoCount == undoCount)
-    }
-
-    @Test("Canvas reports layout failure explicitly and restores caller drawing state")
-    func canvasFailure() throws {
-        var document = EditorFixtures.session().document
-        document.annotations = [
-            Annotation(
-                kind: .text(
-                    .init(
-                        origin: Point(x: .greatestFiniteMagnitude, y: 10), string: "WWWW",
-                        fontSize: 24, maxWidth: .greatestFiniteMagnitude, appearance: .rounded)), style: .default)
-        ]
-        let context = try #require(ChartFixture.context(width: 400, height: 300))
-        let transform = context.ctm
-        #expect(throws: RenderError.textLayoutFailed(.unmeasurableText)) {
-            try EditorCanvasRenderer.draw(document, base: nil, calloutBase: nil, in: context)
-        }
-        #expect(context.ctm == transform)
-        let h = EditorHarness()
-        defer { h.model.close() }
-        h.model.reportCanvasRenderFailure()
-        let serial = h.model.noticeSerial
-        h.model.reportCanvasRenderFailure()
-        #expect(h.model.notice == .previewFailed)
-        #expect(h.model.noticeSerial == serial)
-    }
 
     @Test("Active text input and closed editors refuse without changing input or history")
     func inputAndClosedRefusal() throws {
@@ -100,44 +46,6 @@ struct EditorTextAppearanceTests {
         #expect(!model.setTextAppearance(.monospaced))
         #expect(model.style == closedStyle)
         #expect(model.session.revision == closedRevision)
-    }
-
-    @Test("Unmeasurable text refuses appearance, resize and fit before mutation")
-    func unmeasurableRefusal() throws {
-        var session = EditorFixtures.session()
-        let text = Annotation(
-            kind: .text(
-                .init(
-                    origin: Point(x: .greatestFiniteMagnitude, y: 10), string: "WWWW",
-                    fontSize: 24, maxWidth: .greatestFiniteMagnitude)), style: .default)
-        try session.perform("Fixture") { $0.annotations = [text] }
-        let h = EditorHarness(session: session)
-        defer { h.model.close() }
-        let model = h.model
-        model.select(.annotation(text.id))
-        let count = model.session.undoCount
-        let original = model.document
-        let group = model.beginContinuousChange()
-        model.setStrokeColor(.yellow)
-        let before = model.document
-        let revision = model.session.revision
-        let style = model.style
-        #expect(model.frame(of: .annotation(text.id)) == nil)
-        #expect(!model.setTextAppearance(.rounded))
-        #expect(model.notice == .previewFailed)
-        #expect(model.document == before)
-        #expect(model.style == style)
-        #expect(model.session.revision == revision)
-        model.setStrokeColor(.white)
-        model.endContinuousChange(group)
-        #expect(model.session.undoCount == count + 1)
-        model.undo()
-        #expect(model.document == original)
-        let geometryRevision = model.session.revision
-        model.setFrame(Rect(x: 20, y: 20, width: 90, height: 40), for: .annotation(text.id))
-        model.fitCanvasToContent()
-        #expect(model.session.revision == geometryRevision)
-        #expect(model.document == original)
     }
 
     @Test("Creation, reopening, cancel, confirm and duplication preserve font design and wrapping")
@@ -183,7 +91,7 @@ struct EditorTextAppearanceTests {
 
     @Test(
         "Advertised text frames contain exported Unicode ink at fractional and doubled scales",
-        arguments: TextAppearance.allCases)
+        arguments: [TextAppearance.standard, .rounded, .monospaced, .boxed])
     func exportedInkFitsSelection(appearance: TextAppearance) async throws {
         let store = ImageStore()
         let decoded = try ImageDecoder.canonicalize(

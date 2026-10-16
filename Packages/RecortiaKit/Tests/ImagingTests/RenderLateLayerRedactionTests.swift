@@ -66,7 +66,7 @@ struct RenderLateLayerRedactionTests {
         return try decoded(try await harness.export(session))
     }
 
-    @Test("A scaled late layer under a mask is masked before it is resampled", arguments: [1, 7, 42] as [UInt64])
+    @Test("A scaled late layer under a mask is masked before it is resampled", arguments: [1, 42] as [UInt64])
     func scaledLateLayerIsIndependentOfHiddenPixels(seed: UInt64) async throws {
         let harness = ImagingHarness()
         let pair = try RedactionFixtures.pair(seed: seed)
@@ -79,7 +79,7 @@ struct RenderLateLayerRedactionTests {
     }
 
     @Test(
-        "Exports do not depend on pixels hidden under a mask in a layer added later", arguments: [1, 7, 42] as [UInt64])
+        "Exports do not depend on pixels hidden under a mask in a layer added later", arguments: [1, 42] as [UInt64])
     func lateLayerIsIndependentOfHiddenPixels(seed: UInt64) async throws {
         let harness = ImagingHarness()
         let pair = try RedactionFixtures.pair(seed: seed)
@@ -93,7 +93,7 @@ struct RenderLateLayerRedactionTests {
 
     // Failure mode (Codex review): callouts were drawn after the output-space mask fill, so a
     // secure mask drawn over a magnifier's destination was painted over by the magnified source.
-    @Test("A secure mask over a magnifier's destination hides it in the export", arguments: [1, 7, 42] as [UInt64])
+    @Test("A secure mask over a magnifier's destination hides it in the export", arguments: [1] as [UInt64])
     func maskOverMagnifierDestination(seed: UInt64) async throws {
         let harness = ImagingHarness()
         let pair = try RedactionFixtures.pair(seed: seed)

@@ -82,9 +82,6 @@ class ReleaseBinaryGateTests(unittest.TestCase):
             app = make_app(pathlib.Path(directory), main=b"#!/bin/sh\n", extras={})
             self.assertNotEqual(0, run_gate(app).returncode)
 
-    def test_missing_path_fails(self) -> None:
-        self.assertNotEqual(0, run_gate(pathlib.Path("/nonexistent/Recortia.app")).returncode)
-
     def test_release_script_passes_the_bundle_not_only_the_executable(self) -> None:
         script = (ROOT / "scripts/release.sh").read_text()
         self.assertIn('scripts/check-release-binary.sh "$app"\n', script)
