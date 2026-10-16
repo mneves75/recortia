@@ -1,6 +1,7 @@
 # Recortia
 
-**Development candidate:** 0.12.2 (build 21), intended label `0.12.2-beta1`, fixes the defects
+**Pre-release:** [0.12.2-beta1](https://github.com/mneves75/recortia/releases/tag/v0.12.2-beta1)
+(build 21, notarized; Homebrew keeps the stable 0.11.0) fixes the defects
 found by a [full-source review](docs/specs/full-source-review/plan.md): edits made during a drag
 are no longer lost, automatic scrolling acts only on the bound window and Stop halts capture
 startup, secure masks fail closed on unmappable geometry, scroll memory admission counts the
@@ -15,8 +16,9 @@ reasons and passed on a rerun of the same app
 ([evidence](docs/specs/native-window-qualification/review-evidence.md)). The full-source fixes
 passed [different-model independent verification](docs/specs/full-source-review/acceptance-verdict.md).
 It builds on 0.12.1 (build 20), which
-added controlled native focus qualification. The installed local-test artifact remains
-0.12.0/build19. None of these candidates has been tagged, notarized or distributed.
+added controlled native focus qualification. 0.12.2-beta1 is installed on the maintainer's Mac;
+physical Spaces, keyboard and TCC checks of it were not run. 0.12.0 and 0.12.1 were never
+tagged or distributed.
 The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
