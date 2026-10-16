@@ -1,7 +1,7 @@
 # Implementation plan and task contracts
 
 Owner-authorized feature discovery/reference research (2026-10-14) uses the detailed plan in
-`docs/specs/feature-discovery/implementation-plan.md` and the current comparison in
+`docs/specs/feature-discovery/implementation-plan.md` and the capability inventory in
 `reference-matrix.md`. The first vertical slice extends FR-01 onboarding without permission or
 export side effects; unfinished competitor capabilities remain explicit rather than being
 advertised as implemented. Existing qualification and deferred-task records are preserved.

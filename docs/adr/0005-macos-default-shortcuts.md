@@ -8,10 +8,10 @@ Until 0.9.0-beta4 every global shortcut was user-assigned. The owner asked for t
 as the macOS Screenshot app, so that people who already type ⇧⌘3 and ⇧⌘4 need no setup.
 
 Those combinations belong to macOS (symbolic hot keys 28–31 and 184 in System Settings ›
-Keyboard › Keyboard Shortcuts › Screenshots) until the user turns them off. The established Mac
-screenshot tools handle this the same way: Shottr's start guide asks the user to turn the system
-shortcuts off first and links to System Settings; CleanShot X offers a "Use System Default
-Shortcuts" button that assigns them in the app. Turning Apple's shortcuts off from code means
+Keyboard › Keyboard Shortcuts › Screenshots) until the user turns them off. Established Mac
+screenshot tools handle this the same way: their setup guides ask the user to turn the system
+shortcuts off first and link to System Settings, or offer a button that assigns the same keys in
+the app. Turning Apple's shortcuts off from code means
 writing `com.apple.symbolichotkeys` and running the private `activateSettings` tool; that
 changes another app's settings, is undocumented, and FR-01 forbids replacing Apple's shortcuts.
 KeyboardShortcuts also warns against initial shortcuts that steal existing ones.

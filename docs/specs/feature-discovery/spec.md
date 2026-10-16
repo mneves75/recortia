@@ -94,7 +94,6 @@ Physical performance, TCC and multi-display evidence cannot be replaced by synth
 ## Further Notes
 
 Primary sources: [Apple onboarding guidance](https://developer.apple.com/design/human-interface-guidelines/onboarding),
-[Shottr](https://shottr.cc/), [CleanShot X](https://cleanshot.com/),
-[Xcode 27.2 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
-Reference bundle metadata is inspected read-only; no proprietary internal performance claim
-is inferred from a product feature list or linked framework.
+[Xcode 27.2 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes),
+and the public feature pages of other screenshot utilities. No proprietary internal behavior or
+performance claim is inferred from a product feature list.

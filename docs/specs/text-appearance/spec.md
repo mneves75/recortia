@@ -24,7 +24,7 @@ intended final result; the first ticket delivers three and cannot close the whol
 
 Text annotations currently offer size, color and rectangular fill, but cannot choose a rounded
 or monospaced font, outlined glyphs or rounded text boxes. Font-size shortcuts would not close
-this reference gap: CleanShot's public preview shows different font and decoration treatments.
+this reference gap: other screenshot utilities show different font and decoration treatments.
 
 ## Solution
 
@@ -137,8 +137,8 @@ runner. Explicit native choice buttons with checkmarks and selected accessibilit
 passed the same model/undo acceptance. That is the chosen control; keyboard tab/activation and
 physical assistive-technology qualification remain distinct from synthetic Press evidence.
 
-Primary reference verified 2026-10-14: [CleanShot features](https://cleanshot.com/features),
-including its public seven-style preview. Marketing security/performance statements are not
+Reference checked 2026-10-14: the public feature pages of other screenshot utilities, which
+preview several text styles. Marketing security/performance statements are not
 Recortia evidence. Existing styles are not promised until their own pixel and native tests pass.
 
 Status: ticket01 verified-development on f1852b7 with full gate and fresh independent

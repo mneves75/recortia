@@ -1,43 +1,22 @@
 # Research sources and verification boundaries
 
-**2026-10-14 supplement:** [Reference inventory](docs/specs/feature-discovery/reference-matrix.md)
-records installed Shottr 1.9.3/build 137 and CleanShot X Setapp 5.0.1, current official feature
-pages, and read-only resource enumeration. Earlier research/version statements below are
-historical. Resource presence does not prove runtime behavior or proprietary algorithms.
+**2026-10-14 supplement:** The [capability gap inventory](docs/specs/feature-discovery/reference-matrix.md)
+lists common screenshot-utility capabilities and Recortia's status for each. Earlier
+research/version statements below are historical.
 Current UI guidance: [Apple onboarding](https://developer.apple.com/design/human-interface-guidelines/onboarding),
 [Xcode 27.2 beta release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
-Repository-pinned Xcode 27.1 (27A9275), Swift 6.4 and macOS SDK 27.0 remain the local development
-gates. [Apple identifies 27A9275 as RC](https://developer.apple.com/news/releases/?id=10052026g):
-the existing pin therefore does not satisfy the specification's stable-toolchain release
-qualification. Xcode 27.2 beta (27B5028f) diagnostics supplement source checks only.
+Stable Xcode 27.0 (27A266a) is the release and CI baseline (`TOOLCHAIN.json`). Xcode 27.1
+(27A9275) is accepted only for development checks: [Apple identifies 27A9275 as RC](https://developer.apple.com/news/releases/?id=10052026g),
+so it does not satisfy the specification's stable-toolchain release qualification. Xcode 27.2 beta (27B5028f) diagnostics supplement source checks only.
 
-**Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Shottr or Apple uses that implementation.
+**Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Apple or any other product uses that implementation.
 
-No Shottr binary or Mac hardware was tested. Some Apple symbol-documentation pages exposed a JavaScript-only view; where that prevented inspection, readable official WWDC transcripts and Apple's support table were used instead. Exact symbol availability and build settings still require M0 verification in the selected installed SDK.
+No third-party screenshot app or Mac hardware was tested. Some Apple symbol-documentation pages exposed a JavaScript-only view; where that prevented inspection, readable official WWDC transcripts and Apple's support table were used instead. Exact symbol availability and build settings still require M0 verification in the selected installed SDK.
 
-## S01 — Shottr product page and release notes
+## S01–S04 — Withdrawn
 
-URL: `https://shottr.cc/`
-
-Supports the listed 1.9.2 release on September 17, 2026 and the high-level workflow inventory. The site contains vendor performance claims; those are not independent measurements and are not adopted as this project's achieved results.
-
-## S02 — Shottr FAQ
-
-URL: `https://shottr.cc/kb/faq`
-
-Supports the existence of manual scrolling fallback and acknowledged compatibility limitations. This was important when rejecting an unqualified “works with every app” requirement.
-
-## S03 — Shottr upload documentation
-
-URL: `https://shottr.cc/kb/upload/`
-
-Supports the documented distinction between Shottr Cloud and a user-supplied S3 destination. Recortia does not reuse either service and defers its own optional sharing integration.
-
-## S04 — Shottr URL scheme documentation
-
-URL: `https://shottr.cc/kb/urlschemes`
-
-Supports the existence of external workflow integration as a reference capability. Recortia does not adopt the proprietary scheme name or presume that externally invoked side effects are safe.
+These identifiers cited third-party product pages and are no longer used. They are not
+reassigned.
 
 ## S05 — Apple Xcode SDK and system requirements
 
@@ -101,7 +80,7 @@ Primary guidance for CI trust separation and dependency/workflow security. The p
 
 URL: `https://opensource.org/license/mit`
 
-Supports identifying MIT as an open-source license option. Final ownership, third-party compatibility, notices, and any needed legal review remain maintainer responsibilities. This specification does not grant rights to Shottr's assets or to Apple's proprietary frameworks.
+Supports identifying MIT as an open-source license option. Final ownership, third-party compatibility, notices, and any needed legal review remain maintainer responsibilities. This specification does not grant rights to any other product's assets or to Apple's proprietary frameworks.
 
 ## S15 — Apple: NSPasteboard.clearContents()
 
@@ -130,15 +109,12 @@ window's resources but separately ordering out a child detaches it from its pare
 restores visibility without changing the key/main window. Recortia hides top-level windows and
 lets AppKit preserve their child relationships; the recapture E2E checks that relationship.
 
-## S18 — Screenshot workflows from product maintainers
+## S18 — Public screenshot-utility workflows
 
-URLs: `https://shottr.cc/kb/customareacapture`, `https://shottr.cc/kb/faq`,
-`https://cleanshot.com/features`
-
-Reviewed on 2026-09-29. These workflows informed the comparison of hiding, minimizing, closing,
-transparent windows, and app-wide hiding. Temporary top-level window ordering preserves the
-existing editing session with the smallest behavioral change. No parity or benchmark claim
-follows from documentation research.
+Public documentation of other screenshot utilities was reviewed on 2026-09-29. It informed the
+comparison of hiding, minimizing, closing, transparent windows, and app-wide hiding. Temporary
+top-level window ordering preserves the existing editing session with the smallest behavioral
+change. No parity or benchmark claim follows from documentation research.
 
 ## S19 — Review and user-control guidance
 
@@ -207,10 +183,9 @@ installed SDK header `AppKit.framework/Headers/NSWindow.h`.
 
 ## Curved-arrow investigation (2026-10-14)
 
-[CleanShot features](https://cleanshot.com/features) identifies four arrow styles including
-curves. [Shottr's early-access notes](https://shottr.cc/kb/earlyaccessprogram) describe bending
-its arrow types. These sources establish the capability, not a proprietary representation or
-complete head-style parity. Recortia uses its own optional quadratic control.
+Public feature pages of other screenshot utilities show curved and bendable arrows. They
+establish the capability, not a proprietary representation or complete head-style parity.
+Recortia uses its own optional quadratic control.
 
 The selected SDK's CoreGraphics `CGPath.h` and Swift interface declare quadratic paths,
 stroked outlines and `CGPath.union(_:using:)` (macOS13+, compatible with target15). The
@@ -221,8 +196,8 @@ minimum-OS runtime, performance and physical qualification remain separate.
 
 ## Text appearance investigation (2026-10-14)
 
-CleanShot's [public feature page](https://cleanshot.com/features) and its linked text preview
-show distinct standard, rounded, monospaced, outlined and boxed treatments. Recortia's
+Public feature pages of other screenshot utilities show distinct standard, rounded,
+monospaced, outlined and boxed text treatments. Recortia's
 [text appearance spec](docs/specs/text-appearance/spec.md) implements its own seven appearances
 in two tickets; font-size presets alone would not deliver that capability.
 
@@ -257,4 +232,4 @@ decision; failed and successful pixel evidence is recorded in the decoration rev
 
 ## External assertions not made
 
-No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.
+No claim is made about a cleared product name/domain, a published repository, the internal behavior of any other product, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.

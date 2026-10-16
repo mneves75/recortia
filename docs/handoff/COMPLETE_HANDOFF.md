@@ -12,7 +12,7 @@ Prepared 2026-09-26. Documentation only; no implementation or executed validatio
 
 # File: README.md
 
-# Recortia — Open-source Shottr-alternative handoff
+# Recortia — Open-source screenshot utility handoff
 
 **Prepared:** September 26, 2026.  
 **State:** Documentation-only specification. No macOS app, Xcode project, compiled binary, benchmark run, security audit, or executed test suite is included.  
@@ -47,7 +47,7 @@ The proposed distribution is a single notarized, Hardened Runtime-enabled direct
 
 ## Reading boundaries
 
-External facts were researched from public product and primary technical sources. All performance budgets are targets. The source website was reviewed, but Shottr was not run or disassembled. Exact SDK availability, physical-Mac behavior, compile results, permissions, signing, and names/domains remain unverified until the corresponding tasks are executed.
+External facts were researched from public product and primary technical sources. All performance budgets are targets. Public product documentation was reviewed; no third-party app was run or disassembled. Exact SDK availability, physical-Mac behavior, compile results, permissions, signing, and names/domains remain unverified until the corresponding tasks are executed.
 
 The bundle intentionally does not provide a fake application scaffold or prefilled successful test report. Runtime AI, uploads, project-file persistence, and other deferred features are not implementation authorization.
 
@@ -65,7 +65,7 @@ Read AGENTS.md, SPEC.md, IMPLEMENTATION_PLAN.md, BACKLOG.json,
 ACCEPTANCE_TESTS.md, THREAT_MODEL.md, TOOLCHAIN.json, and SOURCES.md.
 
 We are building Recortia, a native, local-first macOS screenshot utility
-and independent open-source alternative to Shottr. Recortia is only a
+and independent open-source project. Recortia is only a
 working codename. The application does not require an embedded AI agent.
 
 Your first assignment is planning and read-only inspection, not application
@@ -193,13 +193,13 @@ If blocked, preserve safe partial progress and report the precise missing capabi
 **Research date:** 2026-09-26  
 **Status:** Proposed implementation contract; no application has been implemented or tested.  
 **Product name:** Recortia is an internal working codename. Trademark, repository, and domain availability have not been checked.  
-**Intent:** Independently implement an open-source, native macOS alternative to Shottr. “AI agent” means the coding agent building the product; an LLM is not required inside the application.
+**Intent:** Independently implement an open-source, native macOS screenshot utility. “AI agent” means the coding agent building the product; an LLM is not required inside the application.
 
 ## 1. Scope and evidence
 
 This document separates externally verified facts from proposed engineering decisions. Source identifiers resolve in `SOURCES.md`. MUST denotes a release-blocking requirement; SHOULD permits a documented, reviewed exception; MAY denotes optional scope. All performance figures below are proposed targets, not measured results.
 
-Shottr's website currently lists version 1.9.2, released September 17, 2026, with macOS 27 compatibility improvements. Its documented capabilities include capture, annotation, scrolling capture, OCR/QR, pinning, measurement, color inspection, image composition, presentation backgrounds, and sharing. Its knowledge base acknowledges scrolling incompatibilities and a manual fallback. These are the reference workflows, not a promise that every feature can be reproduced identically. [S01, S02, S03, S04]
+Established macOS screenshot utilities commonly offer capture, annotation, scrolling capture, OCR/QR, pinning, measurement, color inspection, image composition, presentation backgrounds, and sharing, and document scrolling incompatibilities with a manual fallback. These are the reference workflows, not a promise that every feature can be reproduced identically.
 
 Only public behavior and documentation were inspected. No binary was executed, disassembled, or inspected. Do not reproduce proprietary code, branding, assets, license checks, or website copy. Build an independent interface and implementation. Use synthetic or appropriately licensed test assets.
 
@@ -229,7 +229,7 @@ No backend, webview shell, Electron, Tauri, React, authentication server, teleme
 
 ## 3. Release scope and parity boundaries
 
-A release may only advertise features with passing acceptance evidence. A 0.1 release is a useful subset, not full Shottr parity. A 1.0 release is a local-first alternative with explicit limitations, not a claim of universal scrolling support.
+A release may only advertise features with passing acceptance evidence. A 0.1 release is a useful subset, not feature parity with established screenshot utilities. A 1.0 release is a local-first alternative with explicit limitations, not a claim of universal scrolling support.
 
 | ID | Capability | Release | Verification family |
 |---|---|---|---|
@@ -252,7 +252,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 
 Deferred rather than silently omitted: horizontal scrolling; cross-display selections; arbitrary nested-scroll reliability; text-only object removal/inpainting; intelligent object snapping; hand-drawn styling; contrast analyzers; before/after animation; editable project files; persistent history/search; CLI/App Intents/URL integrations; HDR-preserving export; Intel/Windows/Linux support; cloud hosting.
 
-The 1.0 automatic-scroll target is Safari, Chrome, and a native scroll-view fixture on supported macOS releases. Other applications get manual mode and a compatibility report, not an “any app” guarantee. Terminal, virtualized lists, canvas-based editors, and scroll-modifying utilities belong in the explicit unsupported/limited matrix until tested. Shottr itself documents comparable classes of limitations. [S02]
+The 1.0 automatic-scroll target is Safari, Chrome, and a native scroll-view fixture on supported macOS releases. Other applications get manual mode and a compatibility report, not an “any app” guarantee. Terminal, virtualized lists, canvas-based editors, and scroll-modifying utilities belong in the explicit unsupported/limited matrix until tested. Other screenshot utilities document comparable classes of limitations.
 
 ## 4. Users and primary workflows
 
@@ -492,7 +492,7 @@ Benchmark on a physical Apple Silicon Mac with at least 16 GB RAM, a 4K 60 Hz di
 | Heavy workflow footprint | <= 512 MiB target for the declared 40 MP limit | Include decode, matching, export, and framework allocations |
 | Leaks | No retained sessions/windows/frame buffers after 200 capture-close cycles | Memory graph and steady-state plateau; account for allocator caches |
 
-Hard input/output limits protect correctness independently of these performance targets. If measured framework allocations prevent meeting a budget, reduce supported limits or obtain a reviewed target change; do not suppress the benchmark. Do not claim Shottr's advertised timings as the project's measured performance.
+Hard input/output limits protect correctness independently of these performance targets. If measured framework allocations prevent meeting a budget, reduce supported limits or obtain a reviewed target change; do not suppress the benchmark. Do not claim another product's advertised timings as the project's measured performance.
 
 ## 11. Test strategy and definition of done
 
@@ -1138,33 +1138,14 @@ Before v1, document how to stop a compromised update rollout, distribute a corre
 
 # Research sources and verification boundaries
 
-**Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Shottr or Apple uses that implementation.
+**Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Apple or any other product uses that implementation.
 
-No Shottr binary or Mac hardware was tested. Some Apple symbol-documentation pages exposed a JavaScript-only view; where that prevented inspection, readable official WWDC transcripts and Apple's support table were used instead. Exact symbol availability and build settings still require M0 verification in the selected installed SDK.
+No third-party screenshot app or Mac hardware was tested. Some Apple symbol-documentation pages exposed a JavaScript-only view; where that prevented inspection, readable official WWDC transcripts and Apple's support table were used instead. Exact symbol availability and build settings still require M0 verification in the selected installed SDK.
 
-## S01 — Shottr product page and release notes
+## S01–S04 — Withdrawn
 
-URL: `https://shottr.cc/`
-
-Supports the listed 1.9.2 release on September 17, 2026 and the high-level workflow inventory. The site contains vendor performance claims; those are not independent measurements and are not adopted as this project's achieved results.
-
-## S02 — Shottr FAQ
-
-URL: `https://shottr.cc/kb/faq`
-
-Supports the existence of manual scrolling fallback and acknowledged compatibility limitations. This was important when rejecting an unqualified “works with every app” requirement.
-
-## S03 — Shottr upload documentation
-
-URL: `https://shottr.cc/kb/upload/`
-
-Supports the documented distinction between Shottr Cloud and a user-supplied S3 destination. Recortia does not reuse either service and defers its own optional sharing integration.
-
-## S04 — Shottr URL scheme documentation
-
-URL: `https://shottr.cc/kb/urlschemes`
-
-Supports the existence of external workflow integration as a reference capability. Recortia does not adopt the proprietary scheme name or presume that externally invoked side effects are safe.
+These identifiers cited third-party product pages and are no longer used. They are not
+reassigned.
 
 ## S05 — Apple Xcode SDK and system requirements
 
@@ -1224,11 +1205,11 @@ Primary guidance for CI trust separation and dependency/workflow security. The p
 
 URL: `https://opensource.org/license/mit`
 
-Supports identifying MIT as an open-source license option. Final ownership, third-party compatibility, notices, and any needed legal review remain maintainer responsibilities. This specification does not grant rights to Shottr's assets or to Apple's proprietary frameworks.
+Supports identifying MIT as an open-source license option. Final ownership, third-party compatibility, notices, and any needed legal review remain maintainer responsibilities. This specification does not grant rights to any other product's assets or to Apple's proprietary frameworks.
 
 ## External assertions not made
 
-No claim is made about a cleared product name/domain, a published repository, complete Shottr internal behavior, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.
+No claim is made about a cleared product name/domain, a published repository, the internal behavior of any other product, benchmark equivalence, App Store eligibility, unlimited S3-provider compatibility, future SDK/model availability, real OCR accuracy, byte-reproducible signed artifacts, or passing hardware/security tests.
 
 
 ---

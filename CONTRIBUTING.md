@@ -5,9 +5,11 @@ Thanks for helping. Recortia is a native, local-first macOS screenshot utility; 
 
 ## Setup
 
-- macOS 26.6 or later with stable Xcode 27.0 (see `TOOLCHAIN.json`). If `xcode-select` points to a
-  beta, prefix commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
-- `brew install xcodegen` if you change `project.yml` (regenerate with `xcodegen generate`).
+- macOS 26.6 or later with stable Xcode 27.0 (27A266a, see `TOOLCHAIN.json`). If `xcode-select`
+  points to another Xcode, prefix commands with `DEVELOPER_DIR=<stable Xcode.app>/Contents/Developer`.
+- XcodeGen; the project freshness check fails without it.
+- After changing `project.yml` or adding/moving source files, run `xcodegen generate` and commit
+  the regenerated project.
 
 ## Gate
 
@@ -21,13 +23,14 @@ Run one package test: `swift test --package-path Packages/RecortiaKit --filter <
 ## Version and distribution
 
 Update version/build metadata in `project.yml`, regenerate with `xcodegen generate`, and keep
-the candidate label in README, CHANGELOG and BACKLOG consistent. Preserve the version attached
-to earlier test and installation evidence. Generated app `Info.plist` values must match the
+the candidate label in CHANGELOG and BACKLOG consistent; README's version table changes only when a
+release is published. Record test and installation evidence in BACKLOG, with the version it
+applies to. Generated app `Info.plist` values must match the
 new metadata before committing; run the repository gate after regeneration.
 
 Signed local installs use the archive/export and artifact checks in `AGENTS.md`. Public
 distribution uses the tagged `scripts/release.sh` pipeline. A local install, a notarized DMG,
-and a clean-user launch are separate verification steps; see README for the current status.
+and a clean-user launch are separate verification steps; BACKLOG records which have run.
 
 ## Rules that reviews enforce
 

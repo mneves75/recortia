@@ -1,77 +1,20 @@
 # Recortia
 
-**Pre-release:** [0.12.2-beta1](https://github.com/mneves75/recortia/releases/tag/v0.12.2-beta1)
-(build 21, notarized; Homebrew keeps the stable 0.11.0) fixes the defects
-found by a [full-source review](docs/specs/full-source-review/plan.md): edits made during a drag
-are no longer lost, automatic scrolling acts only on the bound window and Stop halts capture
-startup, secure masks fail closed on unmappable geometry, scroll memory admission counts the
-matcher's scratch, closing an editor cancels its export, designed fonts recover from transient
-nil results, and the release and E2E scripts keep retained artifacts and enforce the reviewed
-toolchain. Every editor window now opens at one size (the last one you resized to, or 1100×720,
-kept within the screen) instead of each capture's size. The tests were reduced to checks that
-fail when a break matters ([record](docs/specs/test-reduction/README.md)): 779 → 553 test
-functions. The stable gate (511 package tests, 42 script controls) passes. The bilingual native
-E2E passed 48/49 scenarios per language; `editor-presentation` failed for environmental
-reasons and passed on a rerun of the same app
-([evidence](docs/specs/native-window-qualification/review-evidence.md)). The full-source fixes
-passed [different-model independent verification](docs/specs/full-source-review/acceptance-verdict.md).
-It builds on 0.12.1 (build 20), which
-added controlled native focus qualification. 0.12.2-beta1 is installed on the maintainer's Mac;
-physical Spaces, keyboard and TCC checks of it were not run. 0.12.0 and 0.12.1 were never
-tagged or distributed.
-The replayable first-run feature tour and reference-feature inventory are
-tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
-[straight-line annotation tool](docs/specs/straight-line/spec.md) and
-[explicit saved annotation colors](docs/specs/saved-colors/spec.md). The
-[curved-arrow extension](docs/specs/curved-arrows/spec.md) adds editable bends, native coordinate
-fields and a distinct future default, with shared sanitized rendering. Its 683-test development
-gate, exact-source stable CI and [independent code/security and bilingual native acceptance](docs/specs/curved-arrows/acceptance-verdict.md)
-pass. Physical input and release qualification remain separate.
-Three editable
-[text font designs](docs/specs/text-appearance/spec.md) passed the 640-test development gate and
-[independent code/security and native acceptance](docs/specs/text-appearance/acceptance-verdict.md)
-on f1852b7. Outlined, Boxed, Rounded Box and Monospaced Box are implemented with background
-color/reset and passive decoration during native input; all seven passed
-[fresh independent development acceptance](docs/specs/text-appearance/decoration-acceptance-verdict.md)
-on 2df6387. Native palette control
-checks now pass in both languages after correcting the DEBUG accessibility/window lifecycle;
-fresh independent native acceptance passes on e6c259c. On 2276817 the full development gate
-passes 656 tests and 604 translations; the full native run passes 46/46 scenarios in each
-language, 190 screenshots, with four host-activation checks explicitly skipped. Native wrapped
-text now paints every line and restores composed characters to the current zoom font size;
-mixed-selection background controls show selected fills and retain Reset/undo eligibility.
-The subsequent expanded full run on 2df6387 failed capture-focus keyboard ownership in English
-(45/46; Portuguese 46/46), before any text scenario ran. Isolated, complete-prefix, 50-cycle
-and one full-English diagnostic replay passed without reproducing it. The cause remains
-unattributed and controlled focus qualification is pending; these passes do not erase the failure.
-This is phased work; it does
-not establish full Shottr/CleanShot parity or replace the qualification limits below.
-Xcode 27.0 (`27A266a`) is installed at `/Applications/Xcode_27.app`; the earlier signed gate
-passed 683 tests and 617 translations. The 0.12.0 installation run passed 45/47 native scenarios
-per language, with `capture-focus` and `editor-presentation` failures. The owner explicitly
-authorized that local test installation despite these failures; it remains historical evidence;
-see the [installation record](docs/specs/curved-arrows/local-installation.md).
-The [controlled native qualification investigation](docs/specs/native-window-qualification/implementation-plan.md)
-preserves the failed controls and owned-foreground fixture. On the resumed graphical session,
-both focus scenarios pass in both languages; omitting required key/ordering calls makes each
-regression fail. The 0.12.1 stable unsigned gate passes 683 tests and 617 translations; full
-native EN/PT-BR passes 47/47 per language, with 2,222 assertions, 138 images and zero skips.
-Independent different-model acceptance passes, including 50 overlay cycles per language.
-The installed version remains 0.12.0/build19; source acceptance does not qualify physical input
-or distribution.
+A native, local-first macOS screenshot utility: capture, annotate, redact for real, read text,
+and share from the menu bar. Nothing leaves your Mac unless you turn on the optional GitHub
+upload, and Recortia keeps no screenshot archive.
 
-A native, local-first macOS screenshot utility: capture, annotate, redact for real, and share —
-from the menu bar, with optional user-controlled GitHub upload and no local screenshot archive.
+| Channel | Version | Where |
+|---|---|---|
+| Stable | 0.11.0 (build 18) | Homebrew and the [latest release](https://github.com/mneves75/recortia/releases/latest) |
+| Pre-release | 0.12.2-beta1 (build 21) | [GitHub pre-release](https://github.com/mneves75/recortia/releases/tag/v0.12.2-beta1) |
 
-**Status:** 0.11.0 (build 18), released and available through Homebrew: opening Recortia shows Settings, pins are ordinary windows that window switchers such as AltTab list, pins can be copied and dragged out, and Recortia appears in ⌘Tab and the Dock while one of its windows is open (ADR-007). 0.10.1 made Recortia work on every desktop: other Spaces, other
-apps' fullscreen Spaces, and multiple displays. The v1 features FR-01…FR-13 in `SPEC.md` are built, and FR-14 except its
-in-app update flow (updates come through Homebrew or a new download); they are covered by automated
-and end-to-end tests, but not every acceptance case has passed yet: hardware capture,
-multi-display geometry, the scrolling compatibility matrix, VoiceOver passes, performance budgets,
-and the in-app updater are pending (see [Validation status](#validation-status)). From 0.10.1,
-betas are GitHub pre-releases (`v<version>-betaN`); Homebrew and the Releases "latest" link follow
-stable releases. Recortia is an independent project and is not affiliated
-with Shottr or any other screenshot tool.
+Both are signed with Developer ID and notarized. Betas are GitHub pre-releases named
+`v<version>-betaN`; Homebrew and the "latest" link follow stable releases only. What changed in
+each version is in [CHANGELOG.md](CHANGELOG.md).
+
+Recortia is an independent open-source project and is not affiliated with any other screenshot
+app.
 
 ## Install
 
@@ -81,243 +24,137 @@ Requires macOS 15 or later on Apple Silicon.
 brew install --cask mneves75/tap/recortia
 ```
 
-Or download the notarized DMG from [Releases](https://github.com/mneves75/recortia/releases).
-
-0.10.1 keeps Recortia's windows on the Space you are using, including another app's
-fullscreen Space, and opens windows on the display you captured; 0.10.2 extends this to
-Settings, which 0.10.1 still showed on a desktop Space. Before, using Recortia could
-switch you to the Space where one of its windows was last shown. Quit now asks before
-discarding unexported edits. See `CHANGELOG.md` for the full list of fixes from the
-full-source review. Update an existing install with `brew upgrade --cask recortia`.
-
-The previous 0.10.0-beta3 candidate (app version 0.10.0, build 12) was installed locally on
-2026-10-02 from commit `2069d91` after the signed stable gate, synthetic EN/PT-BR E2E,
-independent reviews and PR CI passed. Developer ID archive/export, strict signature,
-Hardened Runtime, parsed distribution entitlements and provisioning profile checks passed.
-All 33 installed files match the export; build 10 was preserved intact. The installation
-procedure did not launch or terminate the app. Physical shortcuts, actual displays/Spaces,
-TCC, clean-user launch and notarized/public distribution remain unverified.
-Independent verification passed provenance, installed bundle checks and backup integrity.
-Its overall verdict is `BLOCKED` solely because no independent process audit covers the
-installation interval. Evidence: `.scratch/local-install-build12-20261002/installation.json`
-and `verification.md`.
-
-The build-11 candidate adds shared import admission across documents/layers and clears transient
-Space-to-pan input when the canvas loses keyboard ownership. It has not been installed or published.
-The previous local Developer ID-signed
-0.10.0-beta1 candidate (app version 0.10.0, build 10) was installed on 2026-10-01 from this
-working tree after the stable gate and synthetic EN/PT-BR E2E passed. The exported and installed
-binary hashes match; signature, Hardened Runtime, distribution entitlements and provisioning
-profile were verified. Build 9 and its running process were preserved; quit and reopen after
-saving current documents to test build 10. No notarization or public release is claimed.
-Evidence: `.scratch/local-install-github-build10-final-20261001/verification.txt` and
-`installation.txt`; E2E: `.scratch/e2e/20261001-013242/`.
-
-Previously, the local Developer ID-signed
-0.9.1-beta3 candidate (app version 0.9.1, build 9) was installed on the maintainer's Mac on
-2026-09-30 from commit `49047c7`. Independent verification confirmed that all installed files
-match the approved export, with valid signature, distribution entitlements and bundled licenses.
-The previous build 7 was preserved. The app was not launched by the installation procedure and
-has not been notarized. [PR #5](https://github.com/mneves75/recortia/pull/5) merged the source changes.
-
-Earlier build-10 installation and build-11 verification evidence remains historical and is recorded in
-`BACKLOG.json`; live capture and production qualification remain pending. See
-[Validation status](#validation-status).
+Update with `brew upgrade --cask recortia`. Or download the DMG from
+[Releases](https://github.com/mneves75/recortia/releases). There is no in-app updater yet.
 
 ## What it does
 
-- **Learn on first launch.** A skippable tour explains capture/import/scrolling, annotations and
-  secure redaction, OCR/QR and pixel tools, composition and pins, exports and optional sharing,
-  then shortcuts. Open **Feature Tour** from the menu-bar menu to replay it. Back/Continue and
-  Skip/Done use native controls; replay preserves preferences and first-run completion. No
-  screen permission is requested by the tour. Automatic exports happen before later edits:
-  disable automatic copy/save/upload before sensitive captures; later redaction cannot recall
-  copies already made.
+Items marked **(beta)** are in the 0.12.2-beta1 pre-release and not yet in the stable release.
 
-- **Capture** a region, a display, or a chosen window; delayed capture; repeat the last region.
-  Recortia's own windows are excluded; regions stay on one display. Starting another capture hides
-  existing Recortia windows during selection and capture, then restores them without closing
-  documents or taking focus. Still and scrolling workflows cannot overlap.
-- **The macOS shortcuts**: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and
-  ⇧⌘5 shows every capture mode at the pointer. They start working once you turn the macOS ones off
-  in System Settings › Keyboard › Keyboard Shortcuts › Screenshots; Recortia never changes them
-  itself and says which ones macOS still uses ([ADR-005](docs/adr/0005-macos-default-shortcuts.md)).
-- **Annotate** with text, arrows, rectangles, ellipses, freehand, highlighter, and numbered steps;
-  select, move, resize, duplicate, reorder, crop, resize, zoom, and pan with grouped undo.
-- **Redact securely.** The solid redaction tool replaces source pixels before any resampling or
-  effect, so the exported image cannot depend on what was underneath. Blur and pixelate are
-  available and clearly labeled cosmetic, never secure.
-- **Export deliberately.** Copy (a single sanitized PNG), Save (atomic, PNG or JPEG), or drag out.
-  Exports are freshly encoded with an allowlist of metadata: no EXIF, GPS, text chunks, or
+- **Capture** a region, a display, or a chosen window, with a delay or by repeating the last
+  region. Recortia's own windows are excluded, a region stays on one display, and existing
+  Recortia windows are hidden while you select and restored afterwards.
+- **macOS shortcuts.** ⇧⌘3 captures the display, ⇧⌘4 a region (press Space to pick a window),
+  and ⇧⌘5 shows every capture mode at the pointer. They take effect once you turn off the macOS
+  screenshot shortcuts in System Settings › Keyboard › Keyboard Shortcuts › Screenshots.
+  Recortia never changes system settings itself and tells you which shortcuts macOS still holds
+  ([ADR-005](docs/adr/0005-macos-default-shortcuts.md)).
+- **Annotate** with text, arrows, rectangles, ellipses, freehand, highlighter and numbered steps. Select, move, resize, duplicate, reorder, crop, zoom and pan, with grouped undo.
+  - **(beta)** Curved arrows with a bend handle and keyboard-editable coordinates.
+  - **(beta)** Straight lines without arrowheads.
+  - **(beta)** Seven text appearances: standard, rounded, monospaced, outlined, boxed, rounded
+    box and monospaced box, with a background color for boxed text.
+  - **(beta)** A saved palette of up to 12 annotation colors shared by all editors.
+- **Redact securely.** Solid redaction replaces source pixels before any resampling or effect,
+  so the exported image does not depend on what was underneath. Blur and pixelate are available
+  and labeled cosmetic, never secure.
+- **Export deliberately.** Copy (one sanitized PNG), save (atomic, PNG or JPEG) or drag out.
+  Every export is freshly encoded with an allowlist of metadata: no EXIF, GPS, text chunks or
   hidden layers.
-- **Read text and QR codes on device** with Vision (English and Portuguese). QR payloads are shown as
-  untrusted data; only http/https links open, and only when you click.
-- **Pin** up to five references with adjustable opacity and zoom, and copy or drag a pin out.
-  Pins are ordinary windows, so ⌥Tab switchers list them, and Recortia joins ⌘Tab and the Dock
+- **Read text and QR codes on device** with Vision, in English and Portuguese. QR payloads are
+  shown as untrusted data; only http and https links open, and only when you click.
+- **Pin** up to five images with adjustable opacity and zoom, then copy or drag a pin out. Pins
+  are ordinary windows, so window switchers list them, and Recortia appears in ⌘Tab and the Dock
   while any of its windows is open.
-- **Scrolling capture**, manual by default; automatic scrolling is opt-in and asks for Accessibility
-  only when you turn it on. Ambiguous matches pause instead of producing a wrong stitch. A live
-  session stops if its source window, an unrelated foreground app, or its display changes.
-- **Pixel tools**: nearest-neighbor loupe, ruler, and sRGB color picker (HEX/RGB).
-  The development candidate adds 1×1, 3×3 and 5×5 color-picker samples. Area choices average
-  encoded sRGB pixels from the sanitized preview off the UI actor; the loupe remains nearest-pixel.
-- **Compose and present**: multiple images on one canvas, side-by-side, background, padding,
-  rounded corners, shadow, spotlight, and magnifier callouts.
-- English and Brazilian Portuguese; keyboard-accessible, with VoiceOver labels.
+- **Scrolling capture**, manual by default. Automatic scrolling is opt-in, scrolls downward and
+  asks for Accessibility only when you turn it on. Ambiguous matches pause instead of producing a
+  wrong stitch, and a session stops if its window, the foreground app or the display changes.
+- **Pixel tools**: nearest-neighbor loupe, ruler and sRGB color picker (HEX/RGB).
+  **(beta)** The picker can average a 3×3 or 5×5 area.
+- **Compose and present** several images on one canvas: side by side, background, padding,
+  rounded corners, shadow, spotlight and magnifier callouts.
+- **Works on every desktop**: windows open on the Space you are using, including another app's
+  fullscreen Space, and on the display you captured.
+- **(beta)** A skippable first-run tour, which you can replay from **Feature Tour** in the
+  menu-bar menu. **(beta)** Every editor window opens at one size: the last size you chose, or a
+  default that fits the screen.
+- English and Brazilian Portuguese; keyboard accessible, with VoiceOver labels.
 
 ## Privacy
 
-- Capture, editing and recognition run on your Mac. Network requests occur only when you
-  explicitly enable optional GitHub upload, which is off by default.
-- Nothing is written to disk or the clipboard until you choose Copy, Save, or drag out
-  (auto-copy and auto-save exist and are off by default).
-- Screen Recording is requested at your first capture, not at launch. Opening and editing images
+- Capture, editing and recognition run on your Mac. Recortia makes network requests only after
+  you set up and enable the optional GitHub upload, which is off by default.
+- Nothing is written to disk or the clipboard until you copy, save or drag out. Automatic copy
+  and save exist, are off by default and apply to still captures.
+- Screen Recording is requested at your first capture, not at launch; opening and editing images
   never needs it. Accessibility is requested only for automatic scrolling.
-- Public DMGs are distributed outside the App Store, signed with Developer ID and notarized, without
-  App Sandbox, because the sandbox forbids the Accessibility APIs automatic scrolling needs
+- The app is distributed outside the App Store without App Sandbox, because the sandbox forbids
+  the Accessibility APIs that automatic scrolling needs
   ([ADR-002](docs/adr/0002-permission-and-sandbox-profile.md)).
 
-Redaction protects the exported image. It cannot recall copies you exported earlier or other
-apps' clipboard histories.
+Redaction protects the image you export. It cannot recall copies you exported earlier, including
+automatic exports made before you redacted, or other apps' clipboard histories. Turn off
+automatic copy, save and upload before capturing something sensitive.
 
-## Optional GitHub auto-upload
+## Optional GitHub upload
 
 In Settings › GitHub, enter the owner/name of an existing **private** repository and a
-fine-grained token restricted to it with **Contents: read and write**. Save the destination/token,
-then separately enable and confirm automatic upload. Tokens stay in this app's device-only
-Keychain, never preferences/logs. No repository/token is created for you.
+fine-grained token restricted to it with **Contents: read and write**. Save the destination and
+token, then enable and confirm automatic upload separately. The token stays in this app's
+device-only Keychain, never in preferences or logs. Recortia creates no repository or token.
 
-Still captures upload immediately **before later edits or redaction**, as sanitized PNG/JPEG
-under `screenshots/`, creating a commit per capture. Images are limited to 8 MiB. Imports,
-OCR-only captures and scrolling results do not auto-upload. Successful uploads show an editor
-link; private links require GitHub access and have no promised expiry.
+Still captures upload as sanitized PNG or JPEG under `screenshots/`, one commit per capture,
+immediately and **before any later edit or redaction**. Images are limited to 8 MiB. Imports,
+OCR-only captures and scrolling results are not uploaded. A successful upload shows a link in the
+editor; private links need GitHub access.
 
-Cancellation stops later batch actions. Once PUT begins, timeout/cancellation may leave a
-completed upload; the app reports uncertainty and does not retry automatically. Disabling upload
-or removing the token does not delete remote copies or Git history. Keep the repository private.
-Provider-level retries preserve their intent ID; a new capture creates a new intent.
+Cancelling stops the batch's later actions. Once an upload has started, a timeout or cancellation can still leave it completed; Recortia
+reports the uncertainty and does not retry by itself. Turning upload off or removing the token
+does not delete remote copies or Git history. Keep the repository private
+([ADR-006](docs/adr/0006-github-upload.md)).
 
 ## Build from source
 
-Stable Xcode 27.0 (27A266a, `stable_xcode_baseline` in `TOOLCHAIN.json`) and
-[XcodeGen](https://github.com/yonaskolb/XcodeGen). Select its installed path per command with
-`DEVELOPER_DIR`; an application named `Xcode.app` can still contain a prerelease build.
-`scripts/doctor.sh` checks the exact version/build against the stable baseline by default.
+You need stable Xcode 27.0 (27A266a, `stable_xcode_baseline` in `TOOLCHAIN.json`) and
+[XcodeGen](https://github.com/yonaskolb/XcodeGen). Select the Xcode installation for each command
+with `DEVELOPER_DIR`; an app named `Xcode.app` may still be a prerelease build, and
+by default `scripts/doctor.sh` rejects any build other than the stable baseline.
 
 ```sh
 scripts/check.sh --unsigned    # toolchain doctor, format lint, project freshness, tests, app build
-scripts/e2e.sh --lang all      # end-to-end scenarios through the real app; writes screenshots + report
-scripts/release.sh             # maintainer only: Developer ID archive, checks, DMG, notarize, staple, manifest
+scripts/e2e.sh --lang all      # scenarios through the real app in English and Portuguese
+swift test --package-path Packages/RecortiaKit --filter <TestName>   # one test or suite
 ```
 
-XcodeGen is required: the project freshness gate fails without it. `scripts/e2e.sh` applies the
-same toolchain doctor as the gate and records build provenance (commit, working-tree fingerprint,
-Xcode and SDK builds, toolchain mode, app-bundle SHA-256) in each run's `provenance.json`;
-`--no-build` refuses a binary whose provenance does not match. `scripts/release.sh` reserves `.build/release/<label>/` and
-refuses to run when it already exists, so a rerun never deletes a retained archive, dSYMs or DMG;
-move the old directory aside first. Dry runs use a fresh `<version>-dev-<time>-<pid>` directory.
+`scripts/check.sh` without `--unsigned` also builds the signed app and needs the maintainer's
+signing identity. `scripts/e2e.sh` writes screenshots, `report.json` and `provenance.json` under
+`.scratch/e2e/`; it needs an unlocked, idle desktop session, and it never touches the real screen,
+general pasteboard, user defaults or Keychain. Releases are built by the maintainer with
+`scripts/release.sh` from a `v<version>[-betaN]` tag.
 
-Run one test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
+`project.yml` owns the version and build number. After adding or moving source files, or
+editing `project.yml`, run `xcodegen generate` and commit the regenerated project.
 
-The optional `capture-focus-repeat` scenario runs 50 synthetic onscreen overlay cycles against
-an owned foreground helper and is
-excluded from the default suite. Capture-focus reports retain bounded own-window key-event
-timelines and record recovery only after FAIL; they do not relax the keyboard-ownership check
-or qualify physical focus/Space behavior. With the verified stable toolchain on this host:
+The code is split into `RecortiaApp/` (AppKit and SwiftUI app) and `Packages/RecortiaKit`:
+`Domain` (document model, geometry, state machines), `Imaging` (decode, privacy renderer,
+export, OCR, QR, stitching), `MacPlatform` (ScreenCaptureKit, permissions, sinks), `Features`
+(feature models) and `RecortiaFixtures` (synthetic test inputs). Module boundaries are described
+in [docs/architecture/module-contracts.md](docs/architecture/module-contracts.md).
 
-```sh
-DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=stable scripts/e2e.sh --lang all --only capture-focus,capture-focus-repeat --unsigned
-```
+## Known limitations
 
-The recorded local Xcode 27.1 RC (27A9275) is available for development checks only:
+- Not yet validated on hardware: live capture on 1× and mixed-DPI multi-display setups, macOS 15
+  and 26 hosts, the scrolling compatibility matrix, VoiceOver and input-method passes, and the
+  performance budgets. On the build Mac, the first opening of the editor and of Settings took
+  longer than the 50 ms target (PERF-02).
+- Physical keyboard, Spaces and permission checks were not run on 0.12.2-beta1.
+- Automatic scrolling scrolls downward only.
+- There is no in-app updater; update through Homebrew or a new DMG.
 
-```sh
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned
-```
-
-This mode accepts only that recorded release candidate and labels its evidence as development,
-not release qualification. Beta and unknown builds are rejected. CI uses the stable baseline;
-`scripts/release.sh`, including `--dry-run`, requires it regardless of an inherited development
-mode. A stable OS remains necessary for release and performance qualification (ADR-001).
-
-`project.yml` owns the base version and build number; regenerate the Xcode project with
-`xcodegen generate` after changing them. Beta candidate names also appear in this status,
-`CHANGELOG.md`, and `BACKLOG.json`. A source version bump does not update an installed app.
-
-For a local Developer ID installation, use the archive/export steps in `scripts/release.sh`
-with the existing signing identity and provisioning profile, after owner authorization.
-Follow the artifact checks in `AGENTS.md`; a successful Release `build` action alone does
-not prove that the app has distribution entitlements. Local installation does not run
-notarization or publish a release.
-
-Layout: `RecortiaApp/` (AppKit + SwiftUI app), `Packages/RecortiaKit` with `Domain` (document model,
-geometry, state machines), `Imaging` (decode, privacy renderer, export, OCR, QR, stitching),
-`MacPlatform` (ScreenCaptureKit, permissions, sinks), `Features` (feature models), and
-`RecortiaFixtures` (synthetic test inputs).
-
-## Validation status
-
-0.10.1 adds eleven native scenarios (39 in total) for Spaces, displays, focus, Quit, notices
-and imports; each went red before its fix. A physical probe (`scripts/space-probe/run.sh`)
-measured the window policies on this project's Mac on 2026-10-03: windows without a Space
-policy switched the user out of a fullscreen Space in 6 of 6 runs, and the six configurations
-Recortia now uses never did (0 of 18). The probe uses one display; multiple physical displays remain a
-manual check. Gate, E2E counts, reviews and release evidence for 0.10.1 are in `BACKLOG.json`.
-Earlier results below remain historical.
-
-Build 12 corrects shortcut selection activation and permanently invalidates revoked GitHub
-upload intents. Synthetic coverage checks an external foreground application, activation
-notifications and AppKit keyboard dispatch; it does not prove physical hotkeys, multiple
-monitors or actual fullscreen/Space transitions. Build-11 results below are historical.
-The final build-12 signed `scripts/check.sh` passed 517 package tests, 12 Python controls,
-517 translated strings, formatting/project freshness and both Debug builds. A fresh different-model
-behavior verifier ran the complete suite once: 27/27 scenarios, 672 assertions and 56 reported
-screenshots per language; all assertions passed and reported PNGs were valid. Evidence:
-`.scratch/capture-shortcut-build12-20261001/check.log` and `.scratch/e2e/20261001-230940/`.
-
-Automated: Swift Testing suites for every module, including the redaction metamorphic tests
-(RED-01…RED-04) with planted-leak controls, import hardening (IO-01), export container inspection,
-OCR accuracy on a 104-sample EN/PT-BR corpus, and scroll stitching with held-out calibration, plus
-the end-to-end scenario runner (27 scenarios in English and Brazilian Portuguese). The build-11
-stable-Xcode signed gate passed 517 package tests, 12 Python controls, 517 translated strings,
-project freshness, strict formatting, and both Debug builds. A fresh different-model verifier
-independently executed the full synthetic suite: 26/26 scenarios, 603 assertions, and 55 screenshots
-per language. A separate fresh behavior-only context ran the two corrected flows, passed 159
-assertions per language, and inspected all 22 generated renders without reading implementation.
-Evidence: `.scratch/e2e/20261001-171230/` (full suite) and
-`.scratch/e2e/20261001-171639/` (independent behavior). Earlier build-9/build-10 results remain
-historical evidence in `BACKLOG.json`; they are not evidence for the build-11 artifact.
-
-Security: source reviews and synthetic regressions cover redaction, export boundaries, input
-limits, asynchronous freshness, and cancellation. The beta1 and beta3 corrections are listed in
-`CHANGELOG.md`; accepted residuals and the limits of live verification remain in `THREAT_MODEL.md`.
-No confirmed source defect remains after independent Standards/Spec correction review. Dedicated
-security execution is blocked: this host cannot enforce the required memory limit for its isolated
-harness. Ordinary repository regression gates passed; that does not replace that containment proof.
-These checks do not establish that all platform behavior or security risks have been eliminated.
-
-Release evidence: PR #3 and its post-merge unsigned CI passed for the beta1 source; PR #5 and
-its pre-merge and post-merge CI passed for beta3. The local 0.9.1 build 9 archive/export succeeded with stable
-Xcode 27.0; strict signature verification,
-Hardened Runtime, the embedded provisioning profile, the protected Keychain access group,
-absence of the debug entitlement, and byte equality between the export and installed bundle
-were checked independently against the installed bundle. Build 7 was preserved; launch after replacement and
-clean-user/offline behavior were not verified. This is partial REL-02 evidence, not a
-notarized distribution or production qualification. `BACKLOG.json` records the source,
-artifact hash, CI links, and local evidence paths.
-
-Not yet validated: live capture on 1× and mixed-DPI multi-display setups (GEO-01), macOS 15 and
-26 hosts, the real-app scrolling compatibility matrix (SCR-03), VoiceOver and input-method passes
-on hardware, and performance budgets on a stable-OS Mac (PERF-01). The in-app updater is not
-built yet; update with `brew upgrade --cask recortia`.
+Automated coverage, per-build gate results and installation evidence are recorded in
+[BACKLOG.json](BACKLOG.json) and the records under [docs/specs/](docs/specs/). Accepted
+security residuals are in [THREAT_MODEL.md](THREAT_MODEL.md).
 
 ## Documents
 
-`SPEC.md` (product contract) · `AGENTS.md` (engineering boundaries) · `IMPLEMENTATION_PLAN.md` and
-`BACKLOG.json` (tasks) · `ACCEPTANCE_TESTS.md` · `THREAT_MODEL.md` · `docs/adr/` (decisions) ·
-`CHANGELOG.md` · `CONTRIBUTING.md` · `SECURITY.md`. The original documentation-only handoff is
-preserved in `docs/handoff/`.
+[SPEC.md](SPEC.md) (product contract) · [AGENTS.md](AGENTS.md) (engineering rules) ·
+[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and [BACKLOG.json](BACKLOG.json) (tasks) ·
+[ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) · [THREAT_MODEL.md](THREAT_MODEL.md) ·
+[docs/adr/](docs/adr/) (decisions) · [CHANGELOG.md](CHANGELOG.md) ·
+[CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md). The original planning handoff
+is kept in [docs/handoff/](docs/handoff/).
 
 ## License
 
-[MIT](LICENSE). The app bundle includes this license and the pinned KeyboardShortcuts MIT notice.
+[MIT](LICENSE). The app bundle includes this license and the MIT notice of the pinned
+KeyboardShortcuts package.

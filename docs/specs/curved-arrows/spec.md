@@ -94,13 +94,12 @@ Physical keyboard/VoiceOver/Spaces and minimum-macOS qualification remain explic
 
 Other arrowhead styles, hand-drawn rendering, arbitrary vector paths, persisted projects,
 capture changes, history, cloud/audio/video and proprietary internals. This closes the curved
-arrow gap only; it cannot establish all four CleanShot arrow styles or full product parity.
+arrow gap only; it cannot establish every arrow style other screenshot utilities offer, or full parity.
 
 ## Further Notes
 
-Primary sources checked 2026-10-14: [CleanShot features](https://cleanshot.com/features) lists
-four arrow styles including curves; [Shottr early access](https://shottr.cc/kb/earlyaccessprogram)
-documents bending arrows. Public Core Graphics offers quadratic paths and stroked outlines;
+Sources checked 2026-10-14: public feature pages of other screenshot utilities list several
+arrow styles, including curved and bendable arrows. Public Core Graphics offers quadratic paths and stroked outlines;
 the installed macOS15-compatible declarations and actual compilation must verify chosen APIs.
 
 Alternatives: a separate curved-arrow case isolates representation but duplicates every arrow

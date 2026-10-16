@@ -86,8 +86,8 @@ Evidence:
 - `docs/specs/feature-discovery/implementation-plan.md:41–45` requires individually actionable
   missing-feature slices and explicitly forbids closing the broad request after writing tickets.
 - The feature-discovery directory currently has only `01-first-run-tour.md` as a ticket.
-- The official [CleanShot feature list](https://cleanshot.com/features) separately documents
-  a line tool, text styles, saved colors, crop ratio/edge snapping and background Auto Balance.
+- Public feature lists of other screenshot utilities separately document a line tool, text
+  styles, saved colors, crop ratio/edge snapping and background auto-balancing.
   These behaviors are not individually accounted for in the present reference matrix.
 - `Packages/RecortiaKit/Sources/Features/EditorTypes.swift:10–31` has no standalone line tool.
   `Domain/Annotation.swift:6–13` represents text and straight arrows, not a styled-line family.
@@ -98,8 +98,8 @@ color, OKLCH, APCA" and "presets/image backgrounds"; their risks and done condit
 Saved color and text-style availability still needs a focused source inventory before calling
 them confirmed absent. A product page can prove a reference claim but not equivalent internals.
 
-`SPEC.md:14` still describes Shottr 1.9.2 as current; the live official page and the new matrix
-say 1.9.3. Keep the original research dated, or update the statement and provenance together.
+`SPEC.md:14` still cites the 2026-09-26 reference research while the new matrix is newer. Keep
+the original research dated, or update the statement and provenance together.
 Do not silently replace the original evidence scope with newly inferred binary behavior.
 
 ## Local feature direction: recommended execution order
@@ -137,7 +137,7 @@ serialization. Compare the actual exported raster and preview, including crop an
 ### 2. Bounded sRGB area and text-color sampling — M, MED risk
 
 User value: inspect representative colors without fragile one-pixel aiming.
-[Shottr's public tips](https://shottr.cc/) document area-average and nearby dark-pixel selection.
+Public tips for other screenshot utilities document area-average and nearby dark-pixel selection.
 Current seam: `Imaging/PixelSampler.swift:9–27` samples one pixel; each call allocates a 1×1
 raster. `EditorModel+PixelTools.swift:43–55` gates sampling on the current sanitized base;
 `EditorPixelToolsTests.swift:123–139` proves stale redaction state is refused.
@@ -281,8 +281,7 @@ each acceptance test, and keep every blocked reference item visible.
 
 - Read current feature-discovery docs, root instructions/spec/plan/acceptance sections, relevant
   onboarding/AppModel/Settings paths, annotation/render/pixel/composition/gesture seams and tests.
-- Read the official [Shottr page](https://shottr.cc/) and
-  [CleanShot feature list](https://cleanshot.com/features) on 2026-10-14. No reference app ran.
+- Read public feature pages of other screenshot utilities on 2026-10-14. No reference app ran.
 - `git status --short`, `git branch --show-current`, `git rev-parse --short HEAD`: current branch
   and dirty-state evidence are stated at the top. No reset, stash, commit or source write occurred.
 - `cccc --version`: 1.8.0. Focused `cccc --no-cache --min 0` over the three Features files

@@ -33,7 +33,7 @@ beta compilation does not replace the stable-toolchain release gates.
   unique `<version>-dev-<time>-<pid>` directory;
   `scripts/check-release-binary.sh` fails if the DEBUG-only E2E hook reached a binary.
 - Local signed installation and version updates: follow `AGENTS.md`'s artifact checks and
-  version-ownership rules. Current candidate and installation evidence live in README and BACKLOG.
+  version-ownership rules. Current candidate and installation evidence live in BACKLOG; README shows only published versions.
 - After adding or moving source files, or editing `project.yml`: `xcodegen generate` and commit
   the regenerated `Recortia.xcodeproj` (never hand-edit the pbxproj).
 - Format: `xcrun swift format --in-place --recursive <paths>` (config in `.swift-format`).
@@ -96,7 +96,8 @@ beta compilation does not replace the stable-toolchain release gates.
 - Owner-only steps: Screen Recording/Accessibility grants, Automation Mode for XCUITest,
   notarization credentials (`asc notarization`), the "Recortia Developer ID" provisioning
   profile that Release signing needs for the keychain access group, and publishing.
-- `docs/handoff/` is the frozen original handoff; do not update it.
+- `docs/handoff/` is the original handoff. Do not update it, except to keep it free of third-party
+  product names (2026-10-16).
 
 ## Agent skills
 

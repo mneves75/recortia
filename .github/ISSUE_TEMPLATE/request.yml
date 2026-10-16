@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Planned milestone work lives in `BACKLOG.json` (FP-001…FP-025). Deferred scope (SPEC.md §3,
+        Planned milestone work lives in `BACKLOG.json` (FP-001…FP-037). Deferred scope (SPEC.md §3,
         FR-15, FR-16) needs a separate design and approval before implementation.
   - type: textarea
     id: problem

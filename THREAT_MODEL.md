@@ -1,8 +1,9 @@
 # Threat model — Recortia v1
 
-**Status:** Security contract for 0.10.0 beta. Source review and synthetic regressions cover the
-boundaries below; live capture, platform qualification, and notarized distribution remain separate
-checks. Signed local-install evidence and its limits are recorded in README.md and BACKLOG.json.
+**Status:** Security contract for the 0.x betas (current pre-release 0.12.2-beta1). Source review
+and synthetic regressions cover the boundaries below; live capture and platform qualification
+remain separate checks. Release and installation evidence and its limits are recorded in
+BACKLOG.json.
 **Owner:** Repository maintainer.
 **Distribution assumption:** A direct-distribution, Hardened Runtime-enabled app that is not protected by App Sandbox. The tradeoff is recorded in ADR-0002.
 
