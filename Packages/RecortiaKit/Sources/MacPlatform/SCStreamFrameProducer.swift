@@ -59,7 +59,9 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
                 output: output)
             guard generation == request, !Task.isCancelled else {
                 made.output.detach()
-                // Preparation added an output, but this superseded stream must never start.
+                // Preparation added an output, but this superseded stream must never start. Its
+                // handlers are already detached and the stream is released here, so a removal
+                // error changes nothing; the caller still receives `.canceled`.
                 try? made.stream.removeStreamOutput(made.output, type: .screen)
                 throw CaptureError.canceled
             }

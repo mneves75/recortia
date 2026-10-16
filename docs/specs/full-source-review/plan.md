@@ -165,6 +165,25 @@ Two read-only observations without a demonstrating test are recorded as FP-036 p
 closing a pin does not cancel its snapshot (the coordinator stays busy until it finishes), and a
 Pause (not Stop) during the first automatic step's window discovery can still post one scroll.
 
+## Independent verification, pass 1 (0ab32d9)
+
+A fresh-context verifier ran the frozen criteria on 0ab32d9: the stable gate (710 tests), hosted
+CI, three full bilingual E2E runs plus focused and main-branch controls, and ten single-fix
+reverts (D-1, D-3, D-4, B-1, B-3, B-4, B-5, A-2, C-2, A-3), each red when reverted and green when
+restored. Verdict FAIL, and not independent enough: the requested different model did not take
+effect, so it ran as the same model as the main session. Findings mapped:
+
+- D-3 binary provenance (same as reviewer R-1): fixed in 1110c9e (app-bundle SHA-256).
+- Docs: wrong proposal count, missing gate results at 0ab32d9, and an F-1 "no longer fail"
+  overclaim: fixed in the CHANGELOG and this plan.
+- A new `try?` in `SCStreamFrameProducer`'s superseded-stream cleanup: the ignored error is now
+  justified in place (handlers detached, stream released, the caller still gets `.canceled`),
+  matching the existing documented call in `stop()`.
+- E2E: every scenario passed in at least one branch run; the intermittent `capture-focus` /
+  `editor-presentation` readiness failures coincided with the console locked or the user active.
+  The final run is taken on an unlocked, idle console. A second verification pass on the final
+  candidate must use a model other than the main session's.
+
 ## Gate results on the candidate (0ab32d9)
 
 - `scripts/check.sh --unsigned` with Xcode 27.0 (27A266a) in stable mode: exit 0. Package tests

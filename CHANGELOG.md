@@ -7,8 +7,9 @@ All notable changes to Recortia are documented here. The format follows
 ## [Unreleased]
 
 Source candidate: 0.12.2/build21 (`0.12.2-beta1`, untagged). A full-source review found 15
-candidate defects; 11 are fixed test-first below and 4 are recorded as proposals. The findings,
-evidence ledger, red/green runs and gate results are in
+candidate defects: 11 are fixed test-first, the font incident (F-1) is mitigated without an
+established cause, and 3 are recorded as proposals. Two review cycles added further fixes,
+listed below. The findings, evidence ledger, red/green runs and gate results are in
 [docs/specs/full-source-review/plan.md](docs/specs/full-source-review/plan.md). The installed
 local-test artifact remains 0.12.0/build19; physical and release qualification remain separate.
 
@@ -91,10 +92,10 @@ The resumed session supplies the required control; final acceptance is recorded 
   bundle's SHA-256). `--no-build` refuses a replaced executable or resource, including symlink
   target changes, before launching; the project
   freshness gate fails when XcodeGen is missing.
-- Designed fonts (rounded, monospaced) no longer fail exports or style changes when the system
-  briefly returns no font: the two resolution steps report distinct errors, and a nil result is
-  retried at most twice with the same inputs. Under test load, three such nils were each
-  recovered by the first retry; the underlying cause is not established.
+- Designed fonts (rounded, monospaced) are retried when the system briefly returns no font:
+  the two resolution steps report distinct errors, and a nil result is repeated at most twice
+  with the same inputs. Under test load, every observed nil (three) recovered on the first
+  repeat. This is a mitigation; the underlying cause is not established.
 
 - Wrapped native text paints all lines after resizing and zoom, with the current presentation
   font restored when composition ends. Keep one native text engine selected at construction.
