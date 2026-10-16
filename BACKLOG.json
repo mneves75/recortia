@@ -10,9 +10,9 @@
     "build": 21,
     "date": "2026-10-15",
     "scope": "Full-source review fixes on top of 0.12.1: gesture/history integrity, scroll capture lifecycle and bound-window automatic scrolling, fail-closed mask geometry and scroll memory admission, editor-close export cancellation, release/E2E script gates, and attributable font resolution with a bounded retry of transient nil results.",
-    "status": "source_review_fixes_in_progress",
-    "verification": "Findings, per-finding red/green evidence and final gate results are recorded in docs/specs/full-source-review/plan.md.",
-    "evidence_paths": ["docs/specs/full-source-review/plan.md"],
+    "status": "source_accepted_physical_release_unqualified",
+    "verification": "002f8b8: stable Xcode 27.0/27A266a gate passes 720 package tests, 617 translations and both builds; full native EN/PT-BR passes 48/48 per language (2,247 assertions/138 PNGs each); hosted CI 38842296882 success; different-model independent verification (gpt-6-astra) PASS on all seven frozen criteria. See docs/specs/full-source-review/plan.md and acceptance-verdict.md.",
+    "evidence_paths": ["docs/specs/full-source-review/plan.md", "docs/specs/full-source-review/acceptance-verdict.md", ".scratch/e2e/20261015-235920-72780/en/report.json", ".scratch/e2e/20261015-235920-72780/pt-BR/report.json"],
     "limitations": [
       "F-1 (transient nil font results) was reproduced in the Codex sandbox but its cause is not established; a bounded retry recovered every observed nil (3 in 100 runs), which is a mitigation, not a root-cause fix.",
       "Physical keyboard/IME/VoiceOver/TCC/Spaces, minimum-macOS runtime, signing/notarization and distribution remain unqualified.",
@@ -1258,15 +1258,15 @@
       "title": "Full-source review and test-first fixes (0.12.2)",
       "milestone": "M2",
       "authorization": "owner_request_2026-10-15_full_source_review_fix_merge",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["FP-034"],
       "requirement_ids": ["FR-04", "FR-05", "FR-06", "FR-07", "FR-10"],
       "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-03", "RED-04", "SCR-04", "REL-01"],
       "scope": "Four partitioned read-only reviews plus the hosted-CI font incident: fix confirmed P0-P2 findings test-first (B-1, B-3, B-4, B-5, A-2, A-3, C-1, C-2, D-1, D-3, D-4, F-1); record P3 findings as FP-036.",
       "deliverables": ["docs/specs/full-source-review/plan.md", "regressions per finding", "0.12.2/build21"],
       "completion_contract": "Red run on unfixed code and green run per deterministic finding; stable gate; full bilingual native E2E; code-review, reviewer and different-model verification; exact-head CI.",
-      "evidence": ["docs/specs/full-source-review/plan.md"],
-      "progress_note": "Fixes landing through two Codex lanes reviewed and committed by the main session."
+      "evidence": ["docs/specs/full-source-review/plan.md", "docs/specs/full-source-review/acceptance-verdict.md"],
+      "progress_note": "11 findings fixed and F-1 mitigated, plus two review cycles; red/green per finding, stable gate, full bilingual native E2E and different-model verification PASS on 002f8b8. Physical/release qualification excluded."
     },
     {
       "id": "FP-036",

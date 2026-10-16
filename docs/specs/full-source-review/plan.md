@@ -165,6 +165,26 @@ Two read-only observations without a demonstrating test are recorded as FP-036 p
 closing a pin does not cancel its snapshot (the coordinator stays busy until it finishes), and a
 Pause (not Stop) during the first automatic step's window discovery can still post one scroll.
 
+## Independent verification, pass 2 (002f8b8)
+
+PASS on all seven frozen criteria from gpt-6-astra, a model that built nothing, confirmed from
+its own Codex session record; see [acceptance-verdict.md](acceptance-verdict.md). It re-ran 689
+tests and seven single-fix revert controls (including D-3), checked font parity against the
+baseline, and audited the native E2E and stable-gate artifacts it could not drive in its sandbox
+(recomputed app-bundle SHA-256 matched the provenance).
+
+## Final candidate gates (002f8b8)
+
+- `scripts/check.sh --unsigned`, stable Xcode 27.0 (27A266a), on dd3d515 (002f8b8 differs only
+  by documentation and one Swift comment, lint-checked): exit 0; 720 package tests (139
+  MacPlatform, 174 Imaging, 343 Features, 64 Domain); 617 translated strings; both builds.
+- Hosted CI on the exact head 002f8b8: run 38842296882, success.
+- Full bilingual native E2E on 002f8b8, unlocked console idle 152 s
+  (`.scratch/e2e/20261015-235920-72780`): 48/48 scenarios per language, 2,247 assertions and
+  138 screenshots each, exit 0, including `capture-focus`, `editor-presentation` and the new
+  `scroll-target-binding`. Provenance: git 002f8b8, stable mode, SDK 27.0 (26A425), app-bundle
+  SHA-256 2cb9b690…70ff6.
+
 ## Independent verification, pass 1 (0ab32d9)
 
 A fresh-context verifier ran the frozen criteria on 0ab32d9: the stable gate (710 tests), hosted
