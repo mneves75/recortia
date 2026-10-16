@@ -1,4 +1,5 @@
 import CoreGraphics
+import Domain
 import Testing
 
 @testable import MacPlatform
@@ -38,5 +39,20 @@ struct LiveScrollTargetCheckerTests {
         #expect(selected?.id == 1)
         #expect(
             LiveScrollTargetChecker.frontmostWindow(in: [own, [:], elsewhere], at: point, excluding: ownPID) == nil)
+    }
+
+    @Test("Scrolling and capture select the same layered foreign window", arguments: [0, 3, 20])
+    func sharedFrontmostSelection(layer: Int) {
+        let own = entry(id: 10, pid: ownPID, layer: 99)
+        let floating = entry(id: 2, pid: 200, layer: layer)
+        let target = entry(id: 1, pid: 100, layer: 0)
+        let elsewhere = entry(id: 3, pid: 300, layer: 30, bounds: CGRect(x: 200, y: 200, width: 10, height: 10))
+        for entries in [[own, [:], elsewhere, floating, target], [own, target], [own, [:], elsewhere]] {
+            let checked = LiveScrollTargetChecker.frontmostWindow(in: entries, at: point, excluding: ownPID)?.id
+            let helper = ScrollFrameSource.frontmostWindowID(
+                in: entries, at: Point(x: point.x, y: point.y), excluding: ownPID)
+            #expect(helper == checked)
+            if entries.count == 5 { #expect(helper == 2) }
+        }
     }
 }

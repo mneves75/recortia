@@ -73,10 +73,10 @@ class ProjectFreshnessTests(unittest.TestCase):
         for _ in range(2):
             self.assertEqual(1, fixture.run().returncode)
 
-    def test_missing_xcodegen_fails_in_ci_and_skips_locally(self) -> None:
+    def test_missing_xcodegen_fails_in_ci_and_locally(self) -> None:
         fixture = self.fixture(committed="stale", generated="fresh")
         self.assertEqual(1, fixture.run(with_xcodegen=False, ci=True).returncode)
-        self.assertEqual(0, fixture.run(with_xcodegen=False).returncode)
+        self.assertEqual(1, fixture.run(with_xcodegen=False).returncode)
 
     def test_gate_is_wired_into_check_sh(self) -> None:
         script = (ROOT / "scripts/check.sh").read_text()

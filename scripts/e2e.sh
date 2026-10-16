@@ -3,7 +3,7 @@
 # `-RecortiaE2E <dir>` per language, and prints each report. Synthetic inputs only: no screen
 # capture, TCC prompt, general clipboard, or user settings are touched.
 # Usage: scripts/e2e.sh [--lang en|pt-BR|all] [--only id,id] [--unsigned] [--no-build]
-# Output: .scratch/e2e/<timestamp>/<lang>/{report.json,report.md,NN-*.png}
+# Output: .scratch/e2e/<timestamp>-<pid>/<lang>/{report.json,report.md,provenance.json,NN-*.png}
 # Exit: 0 when every scenario passed in every language; 1 on a failed scenario, crash, missing
 # report, or timeout; 2 on bad arguments or a failed build.
 set -euo pipefail
@@ -33,10 +33,46 @@ case "$lang" in
   *) echo "e2e: --lang must be en, pt-BR, or all" >&2; exit 2 ;;
 esac
 
+scripts/doctor.sh
+toolchain_mode="${RECORTIA_TOOLCHAIN_MODE:-stable}"
+xcode_version=$(xcodebuild -version)
+sdk_version=$(xcrun --sdk macosx --show-sdk-version)
+sdk_build_version=$(xcrun --sdk macosx --show-sdk-build-version)
+source_commit=$(git rev-parse HEAD)
 derived=.build/dd
-app="$derived/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
+provenance="$derived-e2e-provenance.json"
+# Compare the source and the doctor-approved compiler, including its selected installation.
+current_provenance=$(python3 - "$source_commit" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" "$sdk_version" "$sdk_build_version" <<'PY'
+import hashlib, json, os, pathlib, subprocess, sys
+record = dict(zip(("git_sha", "toolchain_mode", "developer_dir", "xcode_version", "sdk_version", "sdk_build_version"), sys.argv[1:]))
+fingerprint = hashlib.sha256()
+for arguments in (("status", "--porcelain=v1", "--untracked-files=all"), ("diff", "HEAD", "--binary")):
+    fingerprint.update(subprocess.check_output(["git", *arguments]))
+    fingerprint.update(b"\0")
+# Git's NUL-separated names preserve spaces, newlines and non-UTF-8 path bytes.
+# Hash symlink text rather than following links outside the working tree.
+untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "-z"])
+for name in sorted(filter(None, untracked.split(b"\0"))):
+    fingerprint.update(b"untracked\0" + len(name).to_bytes(8, "big") + name)
+    path = pathlib.Path(os.fsdecode(name))
+    if path.is_symlink():
+        target = os.fsencode(os.readlink(path))
+        fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
+    else:
+        fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as contents:
+            while chunk := contents.read(64 * 1024):
+                fingerprint.update(chunk)
+record["working_tree_fingerprint"] = fingerprint.hexdigest()
+print(json.dumps(record, sort_keys=True))
+PY
+)
+bundle="$derived/Build/Products/Debug/RecortiaE2E.app"
+app="$bundle/Contents/MacOS/RecortiaE2E"
 mkdir -p .build
 if (( build )); then
+  # A failed rebuild must not leave a previous build's qualification attached to partial output.
+  rm -f "$provenance"
   echo "== build Debug"
   if ! xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug \
     -destination 'platform=macOS' -derivedDataPath "$derived" "${sign_args[@]}" build >"$derived-e2e-build.log" 2>&1; then
@@ -46,12 +82,53 @@ if (( build )); then
   fi
 fi
 [[ -x "$app" ]] || { echo "e2e: $app not found; build first" >&2; exit 2; }
+# Bind the qualification to the entire built bundle, even when another script rebuilt it.
+if ! current_provenance=$(python3 - "$current_provenance" "$bundle" <<'PY'
+import hashlib, json, os, pathlib, sys
+record = json.loads(sys.argv[1])
+bundle = pathlib.Path(sys.argv[2])
+if bundle.is_symlink() or not bundle.is_dir():
+    sys.exit("e2e: expected a regular app bundle directory")
+def walk_error(error):
+    raise error
+entries = []
+for directory, directories, files in os.walk(bundle, followlinks=False, onerror=walk_error):
+    for name in directories + files:
+        path = pathlib.Path(directory) / name
+        if path.is_symlink() or path.is_file():
+            entries.append(path)
+fingerprint = hashlib.sha256()
+for path in sorted(entries, key=lambda path: os.fsencode(path.relative_to(bundle))):
+    name = os.fsencode(path.relative_to(bundle))
+    fingerprint.update(len(name).to_bytes(8, "big") + name)
+    if path.is_symlink():
+        target = os.fsencode(os.readlink(path))
+        fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
+    else:
+        fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as contents:
+            while chunk := contents.read(64 * 1024):
+                fingerprint.update(chunk)
+record["app_bundle_sha256"] = fingerprint.hexdigest()
+print(json.dumps(record, sort_keys=True))
+PY
+); then
+  echo "e2e: could not fingerprint app bundle for build provenance; rebuild with the selected toolchain" >&2
+  exit 2
+fi
+if (( build )); then
+  print -r -- "$current_provenance" > "$provenance"
+elif [[ ! -f "$provenance" ]] || [[ "$(cat "$provenance")" != "$current_provenance" ]]; then
+  echo "e2e: missing or mismatched build provenance at $provenance; rebuild with the selected toolchain" >&2
+  exit 2
+fi
 
-run_root="$PWD/.scratch/e2e/$(date +%Y%m%d-%H%M%S)"
+run_root="$PWD/.scratch/e2e/$(date +%Y%m%d-%H%M%S)-$$"
 rc=0
 for language in $languages; do
   out="$run_root/$language"
   mkdir -p "$out"
+  cp "$provenance" "$out/provenance.json"
   echo "== run $language → $out"
   args=(-RecortiaE2E "$out" -AppleLanguages "($language)" -AppleLocale "${language/-/_}")
   [[ -n "$only" ]] && args+=(-RecortiaE2EOnly "$only")

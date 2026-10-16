@@ -17,10 +17,14 @@ selection/bend editing, native keyboard fields, undo and sanitized exports. Geom
 precedes UI integration; historical CAP-01 failures remain separate from physical/release qualification.
 
 Controlled native focus qualification is tracked in
-`docs/specs/native-window-qualification/implementation-plan.md`. Its0.12.1/build20 source
-acceptance passes the stable gate, full bilingual native suite and fresh different-model
-verification, including required-call omission controls and50 overlay cycles per language.
-Exact-head CI and merge remain separate integration steps; installed0.12.0 evidence is preserved.
+`docs/specs/native-window-qualification/implementation-plan.md`. Its 0.12.1/build20 source
+acceptance passed the stable gate, full bilingual native suite and fresh different-model
+verification, including required-call omission controls and 50 overlay cycles per language;
+installed 0.12.0 evidence is preserved.
+
+The 2026-10 full-source review and its fixes (0.12.2/build21) are tracked in
+`docs/specs/full-source-review/plan.md`: findings, an evidence ledger per finding, red/green
+runs and the deferred P3 proposals.
 
 **Status:** The approved v1 milestones have a beta implementation. BACKLOG.json records current
 task status, signed local-install evidence, and outstanding manual qualification; this file defines

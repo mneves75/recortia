@@ -11,6 +11,12 @@
     /// (FR-10, SCR-01).
     @MainActor
     enum ScrollScenarios {
+        static func automaticTarget(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            for check in await AutoScrollRegression.run() {
+                context.check(check.name, check.passed)
+            }
+        }
+
         static func scrolling(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let model = harness.features.scroll
             let permissionRequestsBefore = harness.permission.requestCount

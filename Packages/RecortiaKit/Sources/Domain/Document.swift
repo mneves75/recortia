@@ -294,7 +294,11 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
             let toSource: AffineMap<DocumentSpace, SourcePixelSpace>
             do { toSource = try toDocument.inverted() } catch { throw DocumentError.unmappableTransform }
             guard layer.documentBounds(assetSize: asset.pixelSize).intersects(rect) else { continue }
-            let sourceRect = toSource.apply(rect)
+            // Validate before clipping: clipping can hide overflowing corners or spans.
+            let corners = rect.corners.map(toSource.apply)
+            guard corners.allSatisfy(\.isFinite), let sourceRect = Rect<SourcePixelSpace>.bounding(corners),
+                sourceRect.width.isFinite, sourceRect.height.isFinite, sourceRect.corners.allSatisfy(\.isFinite)
+            else { throw DocumentError.unmappableTransform }
             let visible = layer.visibleSourceRect(assetSize: asset.pixelSize)
             guard let clipped = sourceRect.intersection(visible.asRect),
                 let covered = try PixelRect.covering(clipped, within: asset.pixelSize)

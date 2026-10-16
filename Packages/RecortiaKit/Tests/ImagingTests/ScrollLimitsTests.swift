@@ -229,4 +229,40 @@ struct ScrollLimitsTests {
             framesFirst.append(try #require(fixture.frame(offset: 40, index: 1)), elapsed: .zero)
                 == .limitReached(.frames))
     }
+    @Test("A budget covering planes, growth and scratch still refuses an append without bookkeeping")
+    func appendRefusesMissingBookkeepingBudget() throws {
+        let fixture = ScrollPageFixture(
+            seed: 156, width: 100, viewportHeight: 200, headerHeight: 20, footerHeight: 10, pageHeight: 800)
+        let first = try #require(fixture.frame(offset: 0, index: 0))
+        let next = try #require(fixture.frame(offset: 40, index: 1))
+        // Full-frame planes, a retained viewport, worst-case output growth, and declared scratch.
+        // This exact budget has no room for the matcher bookkeeping.
+        var stitcher = ScrollStitcher(limits: ScrollLimits(maxWorkingBytes: 1_346_432))
+        #expect(stitcher.append(first, elapsed: .zero) == .accepted(offset: 0))
+        let retained = stitcher.retainedByteCount
+        let size = stitcher.outputSize
+        let probe = ScrollMatcher.ScratchProbe()
+        ScrollMatcher.$scratchProbe.withValue(probe) {
+            #expect(stitcher.append(next, elapsed: .zero) == .limitReached(.memory))
+            #expect(stitcher.append(next, elapsed: .zero) == .limitReached(.memory))
+        }
+        #expect(probe.chunkCount == 0, "admission must refuse before any pixel comparisons")
+        #expect(stitcher.acceptedFrameCount == 1)
+        #expect(stitcher.retainedByteCount == retained)
+        #expect(stitcher.outputSize == size)
+        let output = try #require(ScrollHarness.rgba(stitcher.assemble()))
+        #expect(output == fixture.frameBuffer(offset: 0, index: 0))
+
+        // At the complete declared peak, the same append is admitted and actually matched.
+        let peak = try #require(
+            ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: retained, appending: true))
+        var admitted = ScrollStitcher(limits: ScrollLimits(maxWorkingBytes: peak))
+        #expect(admitted.append(first, elapsed: .zero) == .accepted(offset: 0))
+        let control = ScrollMatcher.ScratchProbe()
+        ScrollMatcher.$scratchProbe.withValue(control) {
+            #expect(admitted.append(next, elapsed: .zero) == .accepted(offset: 40))
+        }
+        #expect(control.chunkCount > 0)
+    }
+
 }

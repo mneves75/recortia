@@ -1,8 +1,16 @@
 # Recortia
 
-**Development candidate:** 0.12.1 (build 20), intended label `0.12.1-beta1`, adds controlled
-native focus qualification with independent acceptance passed. The installed local-test artifact
-remains 0.12.0/build19. Neither candidate has been tagged, notarized or distributed.
+**Development candidate:** 0.12.2 (build 21), intended label `0.12.2-beta1`, fixes the defects
+found by a [full-source review](docs/specs/full-source-review/plan.md): edits made during a drag
+are no longer lost, automatic scrolling acts only on the bound window and Stop halts capture
+startup, secure masks fail closed on unmappable geometry, scroll memory admission counts the
+matcher's scratch, closing an editor cancels its export, designed fonts recover from transient
+nil results, and the release and E2E scripts keep retained artifacts and enforce the reviewed
+toolchain. The stable gate (720 tests), the full bilingual native E2E (48/48 per language) and
+[different-model independent verification](docs/specs/full-source-review/acceptance-verdict.md)
+pass. It builds on 0.12.1 (build 20), which
+added controlled native focus qualification. The installed local-test artifact remains
+0.12.0/build19. None of these candidates has been tagged, notarized or distributed.
 The replayable first-run feature tour and reference-feature inventory are
 tracked in [feature discovery](docs/specs/feature-discovery/spec.md). The candidate also includes a
 [straight-line annotation tool](docs/specs/straight-line/spec.md) and
@@ -25,7 +33,7 @@ language, 190 screenshots, with four host-activation checks explicitly skipped. 
 text now paints every line and restores composed characters to the current zoom font size;
 mixed-selection background controls show selected fills and retain Reset/undo eligibility.
 The subsequent expanded full run on 2df6387 failed capture-focus keyboard ownership in English
-(45/46; Portuguese46/46), before any text scenario ran. Isolated, complete-prefix, 50-cycle
+(45/46; Portuguese 46/46), before any text scenario ran. Isolated, complete-prefix, 50-cycle
 and one full-English diagnostic replay passed without reproducing it. The cause remains
 unattributed and controlled focus qualification is pending; these passes do not erase the failure.
 This is phased work; it does
@@ -193,6 +201,13 @@ scripts/check.sh --unsigned    # toolchain doctor, format lint, project freshnes
 scripts/e2e.sh --lang all      # end-to-end scenarios through the real app; writes screenshots + report
 scripts/release.sh             # maintainer only: Developer ID archive, checks, DMG, notarize, staple, manifest
 ```
+
+XcodeGen is required: the project freshness gate fails without it. `scripts/e2e.sh` applies the
+same toolchain doctor as the gate and records build provenance (commit, working-tree fingerprint,
+Xcode and SDK builds, toolchain mode, app-bundle SHA-256) in each run's `provenance.json`;
+`--no-build` refuses a binary whose provenance does not match. `scripts/release.sh` reserves `.build/release/<label>/` and
+refuses to run when it already exists, so a rerun never deletes a retained archive, dSYMs or DMG;
+move the old directory aside first. Dry runs use a fresh `<version>-dev-<time>-<pid>` directory.
 
 Run one test: `swift test --package-path Packages/RecortiaKit --filter <TestName>`.
 

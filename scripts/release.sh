@@ -40,13 +40,16 @@ if (( ! dry_run )); then
   fi
   label=${tag#v}
 else
-  label="$version-dev"
+  label="$version-dev-$(date -u +%Y%m%dT%H%M%SZ)-$$"
 fi
 
 out=$root/.build/release/$label
-rm -rf "$out"
+mkdir -p "$root/.build/release"
+if ! mkdir "$out"; then
+  echo "release: output directory already exists or cannot be reserved: $out; retained artifacts were not changed" >&2
+  exit 1
+fi
 git worktree prune
-mkdir -p "$out"
 
 # Build from a fresh checkout of the selected commit with its own derived data and package checkouts, so nothing
 # ignored or cached in the working tree can reach the signed binary.

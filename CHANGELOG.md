@@ -6,19 +6,24 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
-Source candidate: 0.12.1/build20 (`0.12.1-beta1`, untagged). Native focus tests now own a
+Source candidate: 0.12.2/build21 (`0.12.2-beta1`, untagged). A full-source review found 15
+candidate defects: 11 are fixed test-first, the font incident (F-1) is mitigated without an
+established cause, and 3 are recorded as proposals. Two review cycles added further fixes,
+listed below. The findings, evidence ledger, red/green runs and gate results are in
+[docs/specs/full-source-review/plan.md](docs/specs/full-source-review/plan.md). The installed
+local-test artifact remains 0.12.0/build19; physical and release qualification remain separate.
+
+Previous source candidate: 0.12.1/build20 (`0.12.1-beta1`, untagged). Native focus tests own a
 separate synthetic foreground application and require positive activation and opaque-overlap
 controls. Both focused scenarios pass in English/Portuguese and reject omitted key/ordering
-calls. The stable unsigned gate passes683 tests/617 translations and full native EN/PT-BR
-passes47/47 per language (2222 assertions/138 PNGs each,zero skips). Fresh different-model
-source-blind acceptance passes3/3 focused scenarios per language, including50 overlay cycles.
-The installed local-test artifact remains0.12.0/build19; physical and release qualification
-remain separate.
+calls. The stable unsigned gate passed 683 tests/617 translations and full native EN/PT-BR
+passed 47/47 per language (2,222 assertions/138 PNGs each, zero skips). Fresh different-model
+source-blind acceptance passed 3/3 focused scenarios per language, including 50 overlay cycles.
 
 Development candidate: app 0.12.0/build 19, planned tag `v0.12.0-beta1` (not created). Installed
-locally for owner-authorized testing on2026-10-15, preserving0.11.0/build18 without app launch
+locally for owner-authorized testing on 2026-10-15, preserving 0.11.0/build18 without app launch
 or termination. No notarization or distribution is claimed. Stable Xcode 27.0
-(`27A266a`) passed the signed 683-test gate. Its installation-time native E2E passed45/47
+(`27A266a`) passed the signed 683-test gate. Its installation-time native E2E passed 45/47
 scenarios per language; the preserved focus/presentation failures do not become passes retroactively.
 The owner explicitly authorized this test installation despite those failures.
 Existing Xcodes and global toolchain selection are preserved.
@@ -63,6 +68,34 @@ The resumed session supplies the required control; final acceptance is recorded 
   adversarial implementation plan. No proprietary assets or undocumented optimizations are copied.
 
 ### Fixed
+
+- An image import or keyboard nudge that lands while a layer or annotation is being dragged is
+  kept: the drag is settled at its current position first, and each becomes its own Undo step.
+- Committing a text edit, a new text or an image import after changing a colour is its own Undo
+  step; beginning or cancelling text editing still keeps an open colour adjustment. A refused or
+  unchanged edit no longer interrupts a drag in progress.
+- Nudge, delete, duplicate, arrange, crop/reset, renumber steps and composition commands close
+  a pending colour adjustment before their own Undo step; continuous inspector adjustments still
+  coalesce.
+- Automatic scrolling sends scroll events only to the window the capture bound at start, so a
+  quick switch to another app can no longer receive one; capture and scrolling agree on that
+  window even when a floating window covers it. Stop during startup or during window
+  discovery halts ScreenCaptureKit startup and creates no scroller; Resume after Stop no longer
+  scrolls while the final frame settles.
+- Secure masks refuse layers whose inverse transform or mapped corners are not finite instead of
+  silently skipping them; scroll append admission now counts the matcher's scratch memory.
+- Closing an editor cancels its in-flight export, upload or automatic batch, so other editors
+  are no longer told the exporter is busy.
+- `scripts/release.sh` refuses an existing output directory instead of deleting a retained
+  archive, dSYMs and DMG; `scripts/e2e.sh` applies the toolchain doctor and records build
+  provenance (commit, tracked and untracked contents, Xcode and SDK builds, and the entire app
+  bundle's SHA-256). `--no-build` refuses a replaced executable or resource, including symlink
+  target changes, before launching; the project
+  freshness gate fails when XcodeGen is missing.
+- Designed fonts (rounded, monospaced) are retried when the system briefly returns no font:
+  the two resolution steps report distinct errors, and a nil result is repeated at most twice
+  with the same inputs. Under test load, every observed nil (three) recovered on the first
+  repeat. This is a mitigation; the underlying cause is not established.
 
 - Wrapped native text paints all lines after resizing and zoom, with the current presentation
   font restored when composition ends. Keep one native text engine selected at construction.

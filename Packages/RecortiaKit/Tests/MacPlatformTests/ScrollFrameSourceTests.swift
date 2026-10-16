@@ -56,11 +56,83 @@ final class FakeFrameProducer: ScrollFrameProducer {
 
 @MainActor
 private final class FakeScrollTargetChecker: ScrollTargetChecking {
+    var boundWindowID: CGWindowID? = 42
     var canBind = true
     var current = true
 
     func bind() -> Bool { canBind }
     func isCurrent() -> Bool { current }
+}
+
+private actor SuspendedFrameProducer: ScrollFrameProducer {
+    enum Suspension: Sendable { case preparation, startCallback }
+    struct Observation: Sendable {
+        var stops = 0
+        var starts = 0
+        var startsAfterControlStop = 0
+        var hasHandlers = false
+        var running = false
+    }
+
+    let suspension: Suspension
+    private var observation = Observation()
+    private var deliver: (@Sendable (CGImage) -> Void)?
+    private var ended: (@Sendable (CaptureError) -> Void)?
+    private var generation = UUID()
+    private var controlStopped = false
+    private var suspended = false
+    private var arrival: CheckedContinuation<Void, Never>?
+    private var release: CheckedContinuation<Void, Never>?
+
+    init(_ suspension: Suspension) { self.suspension = suspension }
+
+    func start(
+        deliver: @escaping @Sendable (CGImage) -> Void, ended: @escaping @Sendable (CaptureError) -> Void
+    ) async throws(CaptureError) {
+        let request = generation
+        self.deliver = deliver
+        self.ended = ended
+        if suspension == .preparation { await hold() }
+        guard request == generation else { throw .canceled }
+        observation.starts += 1
+        if controlStopped { observation.startsAfterControlStop += 1 }
+        observation.running = true
+        if suspension == .startCallback { await hold() }
+        guard request == generation else { throw .canceled }
+    }
+
+    func stop() async {
+        generation = UUID()
+        observation.stops += 1
+        deliver = nil
+        ended = nil
+        observation.running = false
+    }
+
+    private func hold() async {
+        await withCheckedContinuation { continuation in
+            release = continuation
+            suspended = true
+            arrival?.resume()
+            arrival = nil
+        }
+    }
+
+    func waitUntilSuspended() async {
+        if suspended { return }
+        await withCheckedContinuation { arrival = $0 }
+    }
+
+    func noteControlStopped() { controlStopped = true }
+    func observe() -> Observation {
+        var result = observation
+        result.hasHandlers = deliver != nil || ended != nil
+        return result
+    }
+    func resume() {
+        release?.resume()
+        release = nil
+    }
 }
 
 @MainActor
@@ -78,6 +150,45 @@ private func drain(_ source: ScrollFrameSource) async -> [Int] {
 @MainActor
 @Suite("Scroll frame source: bounded newest-wins buffering and explicit stop (FR-10, PERM-02, SCR-04)")
 struct ScrollFrameSourceTests {
+    @Test("The running source exposes its startup window binding and clears it on stop")
+    func exposesBoundWindow() async throws {
+        let checker = FakeScrollTargetChecker()
+        let source = ScrollFrameSource(producer: FakeFrameProducer(), targetChecker: checker)
+        #expect(source.boundWindowID == nil)
+        try await source.start()
+        #expect(source.boundWindowID == 42)
+        checker.boundWindowID = 99
+        #expect(source.boundWindowID == 42)
+        await source.stop()
+        #expect(source.boundWindowID == nil)
+    }
+
+    @Test(
+        "Cancel during preparation or an outstanding start stops the producer immediately",
+        arguments: [SuspendedFrameProducer.Suspension.preparation, .startCallback])
+    fileprivate func stopDuringStartup(_ suspension: SuspendedFrameProducer.Suspension) async {
+        let producer = SuspendedFrameProducer(suspension)
+        let source = ScrollFrameSource(producer: producer)
+        let start = Task {
+            await #expect(throws: CaptureError.canceled) { try await source.start() }
+        }
+        await producer.waitUntilSuspended()
+        await source.stop()
+        await producer.noteControlStopped()
+        let stopped = await producer.observe()
+        #expect(stopped.stops > 0)
+        #expect(!stopped.hasHandlers)
+        #expect(!stopped.running)
+        await producer.resume()
+        _ = await start.value
+        let finished = await producer.observe()
+        #expect(finished.startsAfterControlStop == 0)
+        #expect(finished.starts == (suspension == .preparation ? 0 : 1))
+        #expect(!finished.hasHandlers)
+        #expect(!finished.running)
+        #expect(await drain(source).isEmpty)
+    }
+
     @Test("A missing scroll target refuses to start any screen stream")
     func missingTargetNeverStarts() async {
         let producer = FakeFrameProducer()

@@ -243,4 +243,33 @@ struct SecureMaskTests {
         }
         #expect(session.document.masks.isEmpty)
     }
+    @Test("Finite inverses with overflowing corners or bounds refuse masks atomically", arguments: [false, true])
+    func overflowingSourceBoundsRefuseMask(spanOnly: Bool) throws {
+        var (doc, _) = makeDocument()
+        doc.layers[0].placement.scale = 1e-5
+        let rect = Rect<DocumentSpace>(x: spanOnly ? -1e303 : 0, y: 0, width: spanOnly ? 2e303 : 1e304, height: 20)
+        let inverse = try doc.layers[0].sourceToDocument(assetSize: PixelSize(width: 200, height: 100)).inverted()
+        #expect(inverse.isFinite)
+        #expect(inverse.apply(rect).width.isInfinite)
+        #expect(rect.corners.map(inverse.apply).allSatisfy(\.isFinite) == spanOnly)
+        #expect(throws: DocumentError.unmappableTransform) { try doc.sourceRegions(for: rect) }
+
+        var session = DocumentSession(document: doc)
+        try session.perform("Seed") { $0.annotations.append(arrow(1)) }
+        session.undo()
+        let before = session.document
+        let identity = session.requestIdentity()
+        let redo = session.redoLabel
+        #expect(throws: DocumentError.unmappableTransform) { try session.addSecureMask(covering: rect) }
+        #expect(session.document == before)
+        #expect(session.revision == identity.revision)
+        #expect(session.privacyEpoch == identity.privacyEpoch)
+        #expect(session.document.id == identity.documentID)
+        #expect(session.undoCount == 0)
+        #expect(session.redoLabel == redo && session.canRedo)
+
+        // A finite inverse alone does not require refusal when this layer misses the mask.
+        #expect(try doc.sourceRegions(for: Rect(x: 1e303, y: 0, width: 1e304, height: 20)).isEmpty)
+    }
+
 }

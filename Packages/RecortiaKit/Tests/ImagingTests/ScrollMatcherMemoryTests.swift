@@ -1,5 +1,6 @@
 import Accelerate
 import CoreGraphics
+import Domain
 import Foundation
 import RecortiaFixtures
 import Testing
@@ -166,5 +167,57 @@ struct ScrollMatcherMemoryTests {
         }
         #expect(probe.chunkCount > 0)
         #expect(probe.largestChunk <= ScrollMatcher.scratchElements, "largest chunk \(probe.largestChunk)")
+    }
+    @Test("Append admission includes matcher scratch and row/column bookkeeping")
+    func peakAdmissionIncludesMatcherWorkingStorage() throws {
+        // 100x200: 240,000 retained + 240,000 incoming + 80,000 growth + 786,432 scratch.
+        // Add at least two 401-entry (Int, Float) tables, 200 row indices and two 100-column lists.
+        let size = PixelSize(width: 100, height: 200)
+        let peak = try #require(
+            ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 240_000, appending: true))
+        #expect(peak >= 1_362_464)
+        // First-frame conversion also keeps the 25 signature-block counters alive.
+        let first = try #require(ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: false))
+        #expect(first >= 240_100)
+    }
+
+    @Test("Working-plan arithmetic refuses overflowing bookkeeping without allocating frames")
+    func peakAdmissionBookkeepingOverflow() throws {
+        let tall = PixelSize(width: 1, height: Int.max / 128)
+        let wide = PixelSize(width: Int.max / 32, height: 1)
+        for size in [tall, wide] {
+            #expect(ScrollFrame.plannedByteCount(width: size.width, height: size.height) != nil)
+            #expect(ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: true) == nil)
+        }
+    }
+
+    @Test("Candidate working storage follows each matcher limit and refuses arithmetic overflow")
+    func candidateBudgetFollowsMatcherLimits() throws {
+        let strips = ScrollMatcher.maximumStripCount
+        let coarse = ScrollMatcher.coarseCandidatesPerSearch
+        let ties = ScrollMatcher.maximumTiedCandidates
+        let baseline = try #require(ScrollStitcher.matcherCandidateWorkingBytes())
+        for (s, c, t) in [
+            (strips + 1, coarse, ties), (strips, coarse + 1, ties), (strips, coarse, ties + 1),
+            (strips * 4, coarse * 4, ties * 4),
+        ] {
+            let bytes = try #require(
+                ScrollStitcher.matcherCandidateWorkingBytes(
+                    maximumStripCount: s, coarseCandidatesPerSearch: c, maximumTiedCandidates: t))
+            let candidates =
+                (c + t) * 2 * (ScrollMatcher.candidateNeighborRadius * 2 + 1)
+                + ScrollMatcher.distinctAlternativeOffsets.count
+            let retainedTables = s * candidates * MemoryLayout<ScrollMatcher.Candidate>.stride
+            #expect(bytes >= retainedTables)
+            #expect(bytes > baseline)
+        }
+        for (s, c, t) in [
+            (Int.max, coarse, ties), (strips, Int.max, ties), (strips, coarse, Int.max),
+            (-1, coarse, ties),
+        ] {
+            #expect(
+                ScrollStitcher.matcherCandidateWorkingBytes(
+                    maximumStripCount: s, coarseCandidatesPerSearch: c, maximumTiedCandidates: t) == nil)
+        }
     }
 }

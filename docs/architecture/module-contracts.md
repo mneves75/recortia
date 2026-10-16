@@ -46,6 +46,8 @@ public enum AnnotationRenderer {                  // shared by editor canvas and
                                           in context: CGContext) throws(RenderError)
 }
 public enum TextLayout {                          // stateless; text origin/content width in document space
+    // A nil font result is repeated at most twice; failures stay typed by stage
+    // (unavailableFontDesign: withDesign, unavailableFont: NSFont(descriptor:size:)).
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont
     public static func metrics(for text: Annotation.TextContent,
                                style: Annotation.Style) throws(TextLayoutError) -> TextLayoutMetrics
@@ -156,7 +158,9 @@ public actor ScreenCaptureService {
 public enum CaptureTarget: Sendable, Hashable {
     case region(Rect<DesktopSpace>, display: DisplayInfo), display(DisplayInfo), window(WindowInfo)
 }
-public final class ScrollFrameSource { … }         // SCStream for one region; bounded buffers; stop() ends stream
+public final class ScrollFrameSource { … }         // SCStream for one region; bounded buffers; stop() ends stream,
+    // including during startup. boundWindowID: the window bound at start (running only);
+    // frontmostWindowID(at:): the shared window-selection policy automatic scrolling must use.
 public final class AutoScroller { … }              // AX-based targeted scrolling; stops on focus/target change
 public struct ClipboardSink {                      // NSPasteboard; tests use a private named pasteboard
     public init(pasteboard: NSPasteboard)

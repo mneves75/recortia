@@ -14,6 +14,7 @@ protocol ScrollFrameProducer: Sendable {
 
 @MainActor
 protocol ScrollTargetChecking {
+    var boundWindowID: CGWindowID? { get }
     /// Bind the window beneath the selected region before starting a display stream.
     func bind() -> Bool
     func isCurrent() -> Bool
@@ -28,6 +29,23 @@ protocol ScrollTargetChecking {
 /// by itself when the display configuration changes or the stream fails.
 @MainActor
 public final class ScrollFrameSource {
+    /// Frontmost foreign window at a desktop point, using the capture target's selection policy.
+    public static func frontmostWindowID(at point: Point<DesktopSpace>) -> CGWindowID? {
+        guard
+            let entries = CGWindowListCopyWindowInfo(
+                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+        else { return nil }
+        return frontmostWindowID(in: entries, at: point, excluding: ProcessInfo.processInfo.processIdentifier)
+    }
+
+    static func frontmostWindowID(
+        in entries: [[String: Any]], at point: Point<DesktopSpace>, excluding ownPID: pid_t
+    ) -> CGWindowID? {
+        LiveScrollTargetChecker.frontmostWindow(
+            in: entries,
+            at: CGPoint(x: point.x, y: point.y), excluding: ownPID)?.id
+    }
+
     public enum StopReason: Sendable, Equatable {
         case requested
         case targetChanged
@@ -47,6 +65,8 @@ public final class ScrollFrameSource {
 
     public nonisolated let frames: AsyncStream<CGImage>
     public private(set) var state: State = .idle
+    /// The window bound at startup, available only while this single-use source is running.
+    public var boundWindowID: CGWindowID? { state == .running ? boundID : nil }
 
     private let producer: any ScrollFrameProducer
     private let targetChecker: (any ScrollTargetChecking)?
@@ -54,6 +74,8 @@ public final class ScrollFrameSource {
     private var displayObserver: (any NSObjectProtocol)?
     private var activationObserver: (any NSObjectProtocol)?
     private var targetWatch: Task<Void, Never>?
+    private var startupID: UUID?
+    private var boundID: CGWindowID?
 
     /// A live source for `region` on `display`, excluding Recortia's windows and the given window
     /// numbers. The region is clamped to the display; an empty result fails at `start()`.
@@ -81,11 +103,14 @@ public final class ScrollFrameSource {
 
     public func start() async throws(CaptureError) {
         guard state == .idle, let continuation else { throw .canceled }
+        let request = UUID()
+        startupID = request
         state = .starting
         if targetChecker?.bind() == false {
             finish(.targetChanged)
             throw .targetUnavailable
         }
+        boundID = targetChecker?.boundWindowID
         do {
             try await producer.start(
                 deliver: { image in continuation.yield(image) },
@@ -93,14 +118,16 @@ public final class ScrollFrameSource {
                     Task { @MainActor in await self?.stop(reason: .failed(error)) }
                 })
         } catch {
+            guard startupID == request else { throw .canceled }
             if state == .starting { finish(.failed(error)) }
             throw error
         }
-        guard state == .starting else {
+        guard startupID == request, state == .starting else {
             // stop() ran while the stream was starting; make sure nothing keeps running.
             await producer.stop()
             throw .canceled
         }
+        startupID = nil
         state = .running
         observeTargetChanges()
         guard await ensureTargetCurrent() else { throw .targetUnavailable }
@@ -122,19 +149,18 @@ public final class ScrollFrameSource {
             return
         case .idle:
             finish(reason)
-        case .starting:
-            // start() observes the new state and stops the producer when its start returns.
-            finish(reason)
-        case .running:
+        case .starting, .running:
             // Mark stopped first so a concurrent stop() returns; end the stream only after capture
             // has really stopped, so a consumer that sees the end knows no handler is left.
             state = .stopped(reason)
+            startupID = nil
             await producer.stop()
             finish(reason)
         }
     }
 
     private func finish(_ reason: StopReason) {
+        startupID = nil
         state = .stopped(reason)
         continuation?.finish()
         continuation = nil

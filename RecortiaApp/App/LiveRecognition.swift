@@ -81,6 +81,7 @@ extension AppServices {
         let store = ImageStore()
         let capture = LiveCaptureService()
         let github = LiveGitHubUpload()
+        let scrollFrames = LiveScrollFrames()
         return AppServices(
             githubUpload: github, githubCredentials: github,
             capture: capture, screenPermission: LiveScreenPermission(), accessibility: LiveAccessibilityPermission(),
@@ -88,7 +89,7 @@ extension AppServices {
             exporter: LiveExporter(store: store), clipboard: LiveClipboard(), files: LiveFiles(), drag: LiveDragSink(),
             folders: LiveSaveFolders.storing(in: settings), textRecognition: LiveTextRecognition(),
             qrDecoder: LiveQRDecoding(),
-            scrollFrames: LiveScrollFrames(), stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(),
+            scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
             loginItem: LiveLoginItem(), clock: SystemClock())
     }
 }
