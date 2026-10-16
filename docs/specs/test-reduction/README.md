@@ -46,8 +46,9 @@ consent, stale results and the privacy epoch, decode bounds, undo budgets, scrol
 release scripts and E2E isolation.
 
 - Original suite (cbe1153): every mutation except F18 and F19 fails at least one test.
-- Reduced suite: every mutation fails at least one test that `scripts/check.sh` runs (52 measured
-  at a195955, the review's three at f6e85c4, which only adds tests).
+- Reduced suite: every mutation fails at least one test that `scripts/check.sh` runs. 31 were
+  measured at 9dd9b54 (Features, Imaging, Domain), 21 at a195955 (MacPlatform, scripts and
+  four Imaging/Domain probes) and the review's three at f6e85c4; later commits only add tests.
   M12, a freshness gate that passes without XcodeGen, is caught by
   `test-release-contract.py` after its own file's test was removed.
 - The two overwrite mutations (F18, F19) were missed by the original suite. They are the red run
