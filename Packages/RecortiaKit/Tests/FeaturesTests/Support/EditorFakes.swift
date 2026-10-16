@@ -138,12 +138,13 @@ final class EditorHarness {
 
     init(
         session: DocumentSession = EditorFixtures.session(), settings: SettingsStore? = nil,
+        upload: (any GitHubUploadService)? = nil,
         configure: (EditorHarness) -> Void = { _ in }
     ) {
         self.settings = settings ?? SettingsStore(storage: MemoryPreferenceStorage())
         export = ExportCoordinator(
             exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: self.settings)
+            settings: self.settings, upload: upload)
         pins = PinsModel(renderer: renderer, settings: self.settings, export: export)
         let environment = EditorEnvironment(
             renderer: renderer, export: export, folders: folders, textRecognition: recognizer, qrDecoder: qr,

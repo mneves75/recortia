@@ -167,7 +167,7 @@ public final class ScrollSessionModel {
     /// Resumes appending; in automatic mode Recortia scrolls again rather than waiting for the
     /// page to change by itself.
     public func resume() {
-        guard isPausedState else { return }
+        guard isPausedState, pendingFinish == nil else { return }
         apply(.resume)
         guard mode == .automatic, let target, let id = sessionID else { return }
         unansweredSteps = 0
@@ -343,7 +343,8 @@ public final class ScrollSessionModel {
     /// Sends one scroll step and, once it was sent, waits `automaticSettleInterval` for a frame.
     /// Runs from the collection loop, the settle timer, or Resume; one step at a time.
     private func autoStep(_ target: CaptureTarget, id: UUID) async {
-        guard sessionID == id, state == .collecting, mode == .automatic, autoStepOwner != id else { return }
+        guard sessionID == id, state == .collecting, pendingFinish == nil, mode == .automatic, autoStepOwner != id
+        else { return }
         guard accessibility.isTrusted, let autoScroller else {
             mode = .manual
             notice = .accessibilityRevoked
@@ -352,7 +353,7 @@ public final class ScrollSessionModel {
         autoStepOwner = id
         let step = await autoScroller.step(target)
         if autoStepOwner == id { autoStepOwner = nil }
-        guard sessionID == id, state == .collecting else { return }
+        guard sessionID == id, state == .collecting, pendingFinish == nil else { return }
         switch step {
         case .scrolled:
             settleTask?.cancel()
