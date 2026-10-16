@@ -6,7 +6,9 @@ are no longer lost, automatic scrolling acts only on the bound window and Stop h
 startup, secure masks fail closed on unmappable geometry, scroll memory admission counts the
 matcher's scratch, closing an editor cancels its export, designed fonts recover from transient
 nil results, and the release and E2E scripts keep retained artifacts and enforce the reviewed
-toolchain. It builds on 0.12.1 (build 20), which
+toolchain. The stable gate (720 tests), the full bilingual native E2E (48/48 per language) and
+[different-model independent verification](docs/specs/full-source-review/acceptance-verdict.md)
+pass. It builds on 0.12.1 (build 20), which
 added controlled native focus qualification. The installed local-test artifact remains
 0.12.0/build19. None of these candidates has been tagged, notarized or distributed.
 The replayable first-run feature tour and reference-feature inventory are
