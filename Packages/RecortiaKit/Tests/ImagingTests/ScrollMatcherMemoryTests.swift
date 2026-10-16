@@ -1,5 +1,6 @@
 import Accelerate
 import CoreGraphics
+import Domain
 import Foundation
 import RecortiaFixtures
 import Testing
@@ -167,4 +168,27 @@ struct ScrollMatcherMemoryTests {
         #expect(probe.chunkCount > 0)
         #expect(probe.largestChunk <= ScrollMatcher.scratchElements, "largest chunk \(probe.largestChunk)")
     }
+    @Test("Append admission includes matcher scratch and row/column bookkeeping")
+    func peakAdmissionIncludesMatcherWorkingStorage() throws {
+        // 100x200: 240,000 retained + 240,000 incoming + 80,000 growth + 786,432 scratch.
+        // Add at least two 401-entry (Int, Float) tables, 200 row indices and two 100-column lists.
+        let size = PixelSize(width: 100, height: 200)
+        let peak = try #require(
+            ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 240_000, appending: true))
+        #expect(peak >= 1_362_464)
+        // First-frame conversion also keeps the 25 signature-block counters alive.
+        let first = try #require(ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: false))
+        #expect(first >= 240_100)
+    }
+
+    @Test("Working-plan arithmetic refuses overflowing bookkeeping without allocating frames")
+    func peakAdmissionBookkeepingOverflow() throws {
+        let tall = PixelSize(width: 1, height: Int.max / 128)
+        let wide = PixelSize(width: Int.max / 32, height: 1)
+        for size in [tall, wide] {
+            #expect(ScrollFrame.plannedByteCount(width: size.width, height: size.height) != nil)
+            #expect(ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: true) == nil)
+        }
+    }
+
 }

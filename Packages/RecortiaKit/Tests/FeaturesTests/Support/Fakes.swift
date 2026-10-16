@@ -270,6 +270,7 @@ final class FakeAssetService: ImageAssetService {
 
 @MainActor
 final class FakeImageInput: ImageInputService {
+    var pendingRead: Pending<Void>?
     var files: [URL: Result<Data, ImportError>] = [:]
     var pasteboardData: Data?
     private(set) var pasteboardReads = 0
@@ -277,6 +278,7 @@ final class FakeImageInput: ImageInputService {
 
     func readFile(at url: URL) async throws(ImportError) -> Data {
         fileReads.append(url)
+        if let pendingRead { await pendingRead.wait() }
         guard let result = files[url] else { throw .unreadable }
         return try result.get()
     }
@@ -313,12 +315,14 @@ final class FakeExportService: ExportService {
     var pending: Pending<Result<Void, ExportServiceError>>?
     var failure: ExportFailure?
     private(set) var snapshotCount = 0
+    private(set) var snapshotCancellationCount = 0
 
     func makeSnapshot(of session: DocumentSession, options: ExportOptions, date: Date) async throws(ExportServiceError)
         -> ShareSnapshot
     {
         snapshotCount += 1
         if let pending { try await pending.wait().get() }
+        if Task.isCancelled { snapshotCancellationCount += 1 }
         if let failure { throw ExportServiceError(failure) }
         return ShareSnapshot(
             documentID: session.document.id, revision: session.revision, privacyEpoch: session.privacyEpoch,
@@ -333,6 +337,7 @@ final class FakeExportService: ExportService {
     ) async throws(ExportServiceError) -> ShareSnapshot {
         pinnedRequests.append((image, exportID, options))
         if let pending { try await pending.wait().get() }
+        if Task.isCancelled { snapshotCancellationCount += 1 }
         if let failure { throw ExportServiceError(failure) }
         return ShareSnapshot(
             documentID: exportID, revision: 0, privacyEpoch: privacyEpoch, format: options.format,

@@ -104,4 +104,13 @@ struct GeometryTests {
         let captured = ImageAssetInfo(id: AssetID(), pixelSize: geometry.pixelSize, origin: .captured(geometry))
         #expect(captured.pointPixelScale == 2)
     }
+    @Test("Inversion refuses overflow in finite translation numerators")
+    func inverseTranslationOverflow() {
+        let map = AffineMap<SourcePixelSpace, DocumentSpace>(
+            a: 1e154, b: 0, c: 0, d: 1e154, tx: 1e308, ty: 0)
+        #expect(map.isFinite)
+        #expect(map.determinant.isFinite)
+        #expect(throws: GeometryError.nonFinite) { try map.inverted() }
+    }
+
 }

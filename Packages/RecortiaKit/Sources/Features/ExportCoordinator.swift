@@ -79,6 +79,7 @@ public final class ExportCoordinator {
 
     private struct Operation {
         let id: UUID
+        let documentID: DocumentID
         var cancelRequested = false
         /// A drag is offered and waiting for a receiver; cancel is decided when it ends.
         var awaitingDragReceiver = false
@@ -111,7 +112,7 @@ public final class ExportCoordinator {
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
-            action, uploadConsentID: uploadConsentID,
+            action, documentID: session.document.id, uploadConsentID: uploadConsentID,
             makeSnapshot: { options, date in try await exporter.makeSnapshot(of: session, options: options, date: date)
             },
             isCurrent: { snapshot in
@@ -129,7 +130,7 @@ public final class ExportCoordinator {
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
-            action == .copy ? .copy : .drag, uploadConsentID: nil, fixedScale: 1,
+            action == .copy ? .copy : .drag, documentID: exportID, uploadConsentID: nil, fixedScale: 1,
             makeSnapshot: { options, date in
                 try await exporter.makeSnapshot(
                     ofPinned: image, exportID: exportID, privacyEpoch: privacyEpoch, options: options, date: date)
@@ -138,14 +139,14 @@ public final class ExportCoordinator {
     }
 
     private func run(
-        _ action: ExportAction, uploadConsentID: UUID?, fixedScale: Double? = nil,
+        _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?, fixedScale: Double? = nil,
         makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
         isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
     ) async -> ExportOutcome {
         guard operation == nil else { return .rejectedBusy }
         let id = UUID()
         let consentID = uploadConsentID ?? settings.githubUploadConsentID
-        operation = Operation(id: id)
+        operation = Operation(id: id, documentID: documentID)
         defer {
             if operation?.id == id { operation = nil }
             snapshotTask = nil
@@ -269,6 +270,17 @@ public final class ExportCoordinator {
     /// write completes and the outcome says so.
     public func cancel() {
         automaticBatch?.cancelRequested = true
+        cancelOperation()
+    }
+
+    /// Closing one editor cancels only the snapshot, upload and batch owned by its document.
+    public func cancel(documentID: DocumentID) {
+        if automaticBatch?.documentID == documentID { automaticBatch?.cancelRequested = true }
+        guard operation?.documentID == documentID else { return }
+        cancelOperation()
+    }
+
+    private func cancelOperation() {
         guard var current = operation else { return }
         current.cancelRequested = true
         operation = current
@@ -304,7 +316,7 @@ public final class ExportCoordinator {
         uploadConsentID: UUID? = nil
     ) async -> [ExportOutcome] {
         guard automaticBatch == nil, operation == nil else { return [.failed(.busy)] }
-        automaticBatch = Operation(id: UUID())
+        automaticBatch = Operation(id: UUID(), documentID: session.document.id)
         defer { automaticBatch = nil }
         let preferences = settings.preferences
         let consentID = uploadConsentID ?? settings.githubUploadConsentID

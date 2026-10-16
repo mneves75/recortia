@@ -75,9 +75,11 @@ public struct AffineMap<From, To>: Hashable, Sendable, Codable {
         guard isFinite else { throw GeometryError.nonFinite }
         let det = determinant
         guard det.isFinite, abs(det) > 1e-12 else { throw GeometryError.singularTransform }
-        return AffineMap<To, From>(
+        let inverse = AffineMap<To, From>(
             a: d / det, b: -b / det, c: -c / det, d: a / det,
             tx: (c * ty - d * tx) / det,
             ty: (b * tx - a * ty) / det)
+        guard inverse.isFinite else { throw GeometryError.nonFinite }
+        return inverse
     }
 }

@@ -186,28 +186,41 @@ public struct ScrollStitcher: Sendable {
     /// Upper bound on transient Float scratch per append, whatever the frame size: every pixel
     /// comparison runs over chunks of at most `ScrollMatcher.scratchElements` luma values, each
     /// holding `ScrollMatcher.scratchTemporaries` temporaries. Per-row and per-column bookkeeping
-    /// (a few words each) comes on top.
+    /// and bounded candidate tables are accounted for separately by `peakWorkingBytes`.
     package static let workingBudgetBytes =
         ScrollMatcher.scratchTemporaries * ScrollMatcher.scratchElements * MemoryLayout<Float>.stride
 
-    /// Peak bytes held while one frame is appended, before any of the frame's planes exist: what is
-    /// already retained, the incoming frame's pixels, luma and signatures, and (when appending) the
-    /// output rows its newest content may add, at most one viewport. Checked at admission against
-    /// `ScrollLimits.maxWorkingBytes`. `nil` when the arithmetic overflows, which also refuses.
+    /// Retained output/previous planes coexist with incoming pixels, luma and signatures throughout
+    /// matching. Reserve the full comparison scratch and bookkeeping, plus at most one viewport of
+    /// output growth (even though growth happens after matching). `nil` refuses arithmetic overflow.
     package static func peakWorkingBytes(frameSize: PixelSize, retainedBytes: Int, appending: Bool) -> Int? {
-        guard let incoming = ScrollFrame.plannedByteCount(width: frameSize.width, height: frameSize.height) else {
-            return nil
-        }
-        var growth = 0
+        guard retainedBytes >= 0,
+            let incoming = ScrollFrame.plannedByteCount(width: frameSize.width, height: frameSize.height)
+        else { return nil }
+        // Eight words/column cover band counts and moving indices including capacity growth;
+        // they also cover the signature-block counters during first-frame conversion.
+        let (columns, columnsOverflow) = frameSize.width.multipliedReportingOverflow(by: 8 * MemoryLayout<Int>.stride)
+        guard !columnsOverflow else { return nil }
+        var allocations = [retainedBytes, incoming, columns]
         if appending {
             let (area, areaOverflow) = frameSize.width.multipliedReportingOverflow(by: frameSize.height)
-            let (bytes, bytesOverflow) = area.multipliedReportingOverflow(by: 4)
-            guard !areaOverflow, !bytesOverflow else { return nil }
-            growth = bytes
+            let (growth, growthOverflow) = area.multipliedReportingOverflow(by: 4)
+            // Coarse search reserves up to 2h+1 (Int, Float) costs, plus minima, sorting/filter
+            // copies, changed-row flags/runs and still-row indices. 32 words/row conservatively
+            // cover these phase peaks, including array capacity growth.
+            let (rows, rowsOverflow) = frameSize.height.multipliedReportingOverflow(by: 32 * MemoryLayout<Int>.stride)
+            guard !areaOverflow, !growthOverflow, !rowsOverflow else { return nil }
+            // Twelve reports hold at most 98 candidates each (16 global + 16 local proposals,
+            // three neighbors, two alternatives). 64 KiB covers their capacity and local sets/votes.
+            allocations += [growth, workingBudgetBytes, rows, 64 * 1024]
         }
-        let (partial, firstOverflow) = retainedBytes.addingReportingOverflow(incoming)
-        let (total, secondOverflow) = partial.addingReportingOverflow(growth)
-        return firstOverflow || secondOverflow ? nil : total
+        var total = 0
+        for bytes in allocations {
+            let (sum, overflow) = total.addingReportingOverflow(bytes)
+            guard !overflow else { return nil }
+            total = sum
+        }
+        return total
     }
 
     // MARK: Private

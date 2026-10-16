@@ -453,4 +453,72 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.state == .accepted)
         #expect(h.accepted.count == 1)
     }
+    @Test("Resume cannot restart automatic scrolling while Stop settles an append")
+    func resumeDuringPendingFinishDoesNotScroll() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        let steps = h.scroller.stepCount
+        #expect(steps == 1)
+        h.stitcher.holdAppends = true
+        #expect(h.frames.deliver())
+        await waitFor("append suspended") { h.stitcher.appends.waiterCount == 1 }
+        h.model.pause()
+        h.model.stop()
+        h.model.resume()
+        await drain()
+        #expect(h.model.state == .paused(.userPaused))
+        #expect(h.scroller.stepCount == steps)
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await drain()
+        #expect(h.scroller.stepCount == steps)
+        #expect(h.stitcher.appends.resolve(()))
+        await waitFor("review settled") { h.model.state == .reviewing && h.model.preview != nil }
+        h.model.resume()
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await drain()
+        #expect(h.scroller.stepCount == steps)
+        #expect(h.frames.startCount == 1)
+        #expect(!h.frames.deliver())
+        #expect(h.model.acceptedFrames == 2)
+        #expect(h.accepted.isEmpty && h.assets.registeredStitched.isEmpty)
+    }
+
+    @Test("A step returning after Stop cannot arm a timer or scroll while an append settles")
+    func pendingFinishWhileScrollerSuspendedDoesNotScroll() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        h.stitcher.holdAppends = true
+        #expect(h.frames.deliver())
+        await waitFor("append suspended") { h.stitcher.appends.waiterCount == 1 }
+        h.model.pause()
+        h.scroller.holdSteps = true
+        h.model.resume()
+        await waitFor("resume step suspended") { h.scroller.pendingSteps.waiterCount == 1 }
+        let steps = h.scroller.stepCount
+        #expect(steps == 2)
+        h.model.stop()
+        h.scroller.holdSteps = false
+        #expect(h.scroller.pendingSteps.resolve(()))
+        await drain()
+        #expect(h.clock.pendingSleepCount == 0)
+        #expect(h.scroller.stepCount == steps)
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await drain()
+        #expect(h.scroller.stepCount == steps)
+        #expect(h.stitcher.appends.resolve(()))
+        await waitFor("review settled") { h.model.state == .reviewing && h.model.preview != nil }
+        h.model.resume()
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await drain()
+        #expect(h.scroller.stepCount == steps)
+        #expect(h.clock.pendingSleepCount == 0)
+        #expect(h.frames.startCount == 1)
+        #expect(!h.frames.deliver())
+        #expect(h.accepted.isEmpty && h.assets.registeredStitched.isEmpty)
+    }
+
 }
