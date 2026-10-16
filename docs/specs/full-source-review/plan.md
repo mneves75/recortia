@@ -32,8 +32,8 @@ untagged), branch `review/full-source-0.12.2`, PR #17. Candidate after fixes: 0.
 
 ## What the plan review changed
 
-- F-1 is an unreproduced incident; the lock is an experimental mitigation, and the error now
-  distinguishes the two nullable AppKit calls so a recurrence is attributable.
+- F-1 is treated as an incident whose cause is unproven; every mitigation needs a falsifier, and the
+  error distinguishes the two nullable font calls so a recurrence is attributable.
 - B-1 covers every independently committed edit during a gesture (keyboard nudge as well as
   import), not only imports.
 - C-1 must be proven through the actual adapter (suspended discovery, recording event sink, two
@@ -55,33 +55,36 @@ log references are filled in as each item closes; red/green logs live under
 
 | ID | P | Observable failure | Hypothesis / defect | Falsifier and sibling paths | Closure |
 |---|---|---|---|---|---|
-| F-1 | P1 | Hosted CI 38652457209 (`setTextAppearance(.monospaced)` false, main actor) and 38795897584 attempt 1 (`unavailableFont(.roundedBoxed)`, off-main export); both reruns green | Concurrent AppKit font matching under heavy load returns nil (unproven). Local: 300 cold processes × 512 concurrent resolutions, 0 failures; hosted run 38821022009 with the stress test, 0 failures but 66 s for 1,920 resolutions (0.24 s locally) | A failure with the lock held falsifies sufficiency; a failure in a serial-only process falsifies the concurrency hypothesis | Stage-specific errors + stress test + experimental process-wide lock. Remove the lock if a locked failure recurs; then move to main-actor pre-resolution with Core Text inputs |
-| B-1 | P1 | Import completing during a move/resize drag is dropped | Move/resize replace the whole document from the gesture's `original` snapshot (`EditorModel+Gestures.swift:71-92`) | Siblings: `nudgeSelection` (`EditorModel.swift:502`) and any `edit()` during a gesture | Red/green: import and nudge during move and resize; layer/nudge survive; Undo separates steps |
-| C-1 | P1 | One scroll event can be posted to an app the user switched to | `LiveAutoScroll` re-discovers the frontmost window instead of using the frame source's binding (`LiveScrolling.swift:76-140`) | Two windows of one PID; suspended discovery; superseded session | Red/green through the adapter with a recording event sink |
-| C-2 | P1 | Cancel during scroll-capture startup can still start a stream | `.starting` stop finishes the source without stopping the producer; preparation reaches `startCapture` (`ScrollFrameSource.swift:125`, `SCStreamFrameProducer.swift:52`) | Cancel during preparation and while the start callback is outstanding | Red/green with a suspending producer double; generation check in the live producer |
-| D-1 | P1 | Re-running a tag deletes its archive, dSYMs and DMG before the gate | `rm -rf "$out"` precedes the gate (`release.sh:46-60`) | Concurrent invocations; dry runs | Red/green: sentinels byte-identical; atomic reservation |
-| A-2 | P2 | (none observed) Secure mask could skip a layer | `AffineMap.inverted()` returns non-finite coefficients; finite inverses can overflow on corners; `sourceRegions` `continue`s (`Document.swift:295-301`) | Mask duplication reaches the same path (`EditorModel.swift:485`) | Red/green: overflow inverse, overflowing corners and duplication refuse with history unchanged |
-| A-3 | P2 | (none observed) Append can exceed the admitted budget | `peakWorkingBytes` omits the declared matcher scratch (`ScrollStitcher.swift:186-210`) | Matcher bookkeeping allocations | Red/green: estimate covers scratch; budget-boundary refusal |
-| B-3 | P2 | Closed editor's export keeps running and holds the coordinator | `close()` does not cancel its export (`EditorModel+Export.swift:76-93`) | Upload and automatic batch ownership | Red/green: close during snapshot, upload, batch; other documents unaffected; committed writes reported truthfully |
-| B-4 | P2 | Resume after Stop can scroll the target app | `resume()`/`autoStep` ignore `pendingFinish`; `LiveAutoScroll.stop()` cannot stop a discovery in progress | Superseded session; Stop during discovery | Red/green: zero scroll steps after Stop |
-| B-5 | P2 | One Undo reverts a colour change and a text edit | `beginEditingText` leaves the continuous adjustment open (`EditorModel+Gestures.swift:403`) | Replacement, deletion, cancel; invalid IDs | Red/green; invalid IDs leave history unchanged |
-| D-3 | P2 | E2E evidence from an unreviewed toolchain looks ordinary | `e2e.sh` never runs `doctor.sh`; `--no-build` reuses binaries of unknown provenance | — | Red/green in the script tests; provenance recorded |
-| D-4 | P2 | Gate passes with a stale project | Missing XcodeGen exits 0 locally (`check-project-fresh.sh:10-16`) | Release path | Red/green: helper fails; release stops before archiving |
+| F-1 | P1 | Hosted CI 38652457209 (`setTextAppearance(.monospaced)` false, main actor) and 38795897584 attempt 1 (`unavailableFont(.roundedBoxed)`, off-main export); both reruns green | Transient nil from `NSFont(descriptor:size:)` under load (cause unproven). Not reproduced on this host (300 cold processes × 512 resolutions) nor in hosted run 38821022009 (66 s for 1,920 resolutions vs 0.24 s locally); reproduced in the Codex sandbox: E0 1/30 runs, always at `NSFont(descriptor:size:)`, also with a process-wide lock held | The lock was falsified by its own criterion; main-actor pre-resolution was rejected because incident 1 failed on the main actor | Closed (mitigated) with stage-specific errors and a bounded retry: E1 caught a nil that the first repeat recovered; 100 sandboxed runs with the retry saw 3 nils (one on the main thread), all recovered on the first repeat, 0 failures. Root cause remains open |
+| B-1 | P1 | Import completing during a move/resize drag is dropped | Move/resize replace the whole document from the gesture's `original` snapshot (`EditorModel+Gestures.swift:71-92`) | Siblings: `nudgeSelection` (`EditorModel.swift:502`) and any `edit()` during a gesture | Closed 60c44ac: red 9 failed expectations (import and nudge during move/resize); green; edits settle the drag via `settleTransformGesture` in `edit()` |
+| C-1 | P1 | One scroll event can be posted to an app the user switched to | `LiveAutoScroll` re-discovers the frontmost window instead of using the frame source's binding (`LiveScrolling.swift:76-140`) | Two windows of one PID; suspended discovery; superseded session | Closed f3050d7: red 12 failed checks; bilingual `scroll-target-binding` E2E passes 25 checks with zero events outside the bound window |
+| C-2 | P1 | Cancel during scroll-capture startup can still start a stream | `.starting` stop finishes the source without stopping the producer; preparation reaches `startCapture` (`ScrollFrameSource.swift:125`, `SCStreamFrameProducer.swift:52`) | Cancel during preparation and while the start callback is outstanding | Closed f3050d7: red showed a capture start after Stop; green for cancel during preparation and during the start callback |
+| D-1 | P1 | Re-running a tag deletes its archive, dSYMs and DMG before the gate | `rm -rf "$out"` precedes the gate (`release.sh:46-60`) | Concurrent invocations; dry runs | Closed d1b9915: red deleted retained artifacts; green keeps sentinels byte-identical, refuses a held reservation, dry runs use unique directories |
+| A-2 | P2 | (none observed) Secure mask could skip a layer | `AffineMap.inverted()` returns non-finite coefficients; finite inverses can overflow on corners; `sourceRegions` `continue`s (`Document.swift:295-301`) | Mask duplication reaches the same path (`EditorModel.swift:485`) | Closed 2dc33db: red inverse `tx: -inf` and mask admission changed history; green refuses with history unchanged, including duplication |
+| A-3 | P2 | (none observed) Append can exceed the admitted budget | `peakWorkingBytes` omits the declared matcher scratch (`ScrollStitcher.swift:186-210`) | Matcher bookkeeping allocations | Closed 2dc33db: red reached pixel comparisons under a budget without bookkeeping; green refuses before matching, exact peak admits |
+| B-3 | P2 | Closed editor's export keeps running and holds the coordinator | `close()` does not cancel its export (`EditorModel+Export.swift:76-93`) | Upload and automatic batch ownership | Closed c8c6359: red 10 issues (no cancellation, wrong committed outcomes); green 5 tests incl. other-document control |
+| B-4 | P2 | Resume after Stop can scroll the target app | `resume()`/`autoStep` ignore `pendingFinish`; `LiveAutoScroll.stop()` cannot stop a discovery in progress | Superseded session; Stop during discovery | Closed c8c6359 (model) and f3050d7 (adapter): red 7 issues and adapter red; green zero steps/events after Stop |
+| B-5 | P2 | One Undo reverts a colour change and a text edit | `beginEditingText` leaves the continuous adjustment open (`EditorModel+Gestures.swift:403`) | Replacement, deletion, cancel; invalid IDs | Closed 60c44ac + correction f4821a6: red 6 issues; the first fix broke two contract tests (4 issues), corrected to close the adjustment on commit only |
+| D-3 | P2 | E2E evidence from an unreviewed toolchain looks ordinary | `e2e.sh` never runs `doctor.sh`; `--no-build` reuses binaries of unknown provenance | — | Closed d1b9915 + 4927938: red built with an unreviewed toolchain and reused a stale binary after an edit; green refuses both |
+| D-4 | P2 | Gate passes with a stale project | Missing XcodeGen exits 0 locally (`check-project-fresh.sh:10-16`) | Release path | Closed d1b9915: red passed without XcodeGen and reached archive work; green fails before archiving |
 | A-1 | P3 | (none observed) | Block-mean colour signatures miss within-block permutations (`ScrollFrame.swift:82-99`) | Promote if ordinary chart/UI content triggers it | Deferred proposal; counterexample in A-1 report |
 | B-2 | P3 | (none) | Caller-task cancellation not propagated into `ExportCoordinator.run` | No caller cancels today | Deferred; specify semantics before a caller relies on it |
 | D-2 | P3 | Text looks opaque while editing a translucent annotation | Native editing ignores annotation opacity (`EditorCanvasView.swift:693-740`) | Must keep caret/marked-text usability | Deferred proposal |
 
 ## F-1 options
 
-1. **Process-wide lock around the AppKit calls (chosen, experimental).** Smallest change; same
-   fonts at every size, same public API and NSFont identity. Weakest assumption: the contention
-   is between our own calls, which the lock cannot extend to AppKit's own font work or fontd.
-2. **Resolve exact design-and-size fonts on the main actor before dispatching rendering and
-   pass Core Text inputs** (Apple documents CTFont/CTFontDescriptor as usable concurrently).
-   Strongest rejected alternative: it crosses the Imaging/Features contract and needs metric and
-   optical-size parity proof; it becomes the next step if a locked failure recurs.
-3. Cache one descriptor per design and derive sizes with `CTFontCreateWithFontDescriptor`.
-   Rejected: a descriptor carries its original size's optical attributes.
+1. **Process-wide lock around the font calls (tried, falsified).** The sandbox reproduced the
+   nil with the lock held, so contention between our own calls is not the mechanism.
+2. **Main-actor pre-resolution with Core Text inputs (rejected).** CI incident 1 failed on the
+   main actor and a sandbox nil also occurred there, so moving the call would only move the
+   failure; it would also cross the Imaging/Features contract.
+3. **Cache resolved fonts (rejected).** `CTFont`/`NSFont` are not Sendable in this SDK, so a
+   shared cache needs an `@unchecked` or `nonisolated(unsafe)` escape that AGENTS.md forbids.
+4. **Bounded retry of the same call (chosen).** Same APIs, sizes and font identity; failures
+   stay typed and attributable. Measured: every observed nil recovered on the first repeat.
+   Strongest rejected alternative: a Core Text fallback (`CTFontCreateWithFontDescriptor`),
+   which returned the right font in the sandbox but never returns nil, so a wrong-font fallback
+   could pass silently.
 
 ## Overall approach
 
@@ -109,7 +112,41 @@ log references are filled in as each item closes; red/green logs live under
 - `code-review` (Standards/Spec) on the branch diff, the `reviewer` agent, and a different-model
   `mneves-verify` acceptance; confirmed findings fixed, one rerun.
 - Exact-head CI green before the squash merge; main CI watched after it. A recurrence of F-1 on
-  main is recorded against the experimental lock, not dismissed as a flake.
+  main is recorded against the bounded retry, not dismissed as a flake.
+
+## Two-axis code review (cycle 1 of at most 2)
+
+`code-review` on `5268d48...7aedad9`, Standards and Spec in separate fresh contexts, with
+`cccc 1.8.0` over the 13 changed production files (377 functions; 34 parse errors in
+ExportCoordinator, SCStreamFrameProducer and LiveScrolling, so their metrics are partial; no new
+hotspot). No hard standards violation. Accepted and fixed in the final batch:
+
+- Spec 1: an import completing during an open colour adjustment, and a new-text commit, joined the
+  "Adjust" undo step (same invariant as B-1/B-5).
+- Spec 2 / Standards 8: the E2E fingerprint hashed untracked file names, not contents; SDK identity
+  was not recorded.
+- Spec 4: `LiveAutoScroll` and `LiveScrollTargetChecker` chose "the window at the centre" with
+  different layer filters, so a floating window made every step refuse; both now share one
+  selection. Standards 7: the single-first-step assumption is documented.
+- Spec 5: a refused or no-op edit settled an active drag; only a changing edit settles it now.
+- Standards 2: the scroll budget repeated matcher limits as literals; it is derived from the
+  named constants. Standards 3: `settleTransformGesture` switches exhaustively.
+
+Disproved or left as is: the `try?` → `.targetLost` mapping in `LiveAutoScroll` predates this
+change and `.targetLost` is the honest outcome; naming/duplication preferences (one-way
+`generation`, `startupID`, `documentID: exportID`, repeated guards) carry no defect; the stress
+test landing before its fix is intended (it exists to detect F-1 recurrences).
+
+## Process notes
+
+- Codex's workspace-write sandbox keeps `.git` read-only, refuses SwiftPM's nested
+  `sandbox-exec` (use `--disable-sandbox`, which affects only SwiftPM's own sandbox) and makes
+  pasteboard, OCR and QR rendering tests fail for environmental reasons. Lanes therefore stopped
+  at each group, and the main session reviewed, committed and ran the full suite outside it.
+- A focused green is not enough: the first B-5 fix passed its own tests but broke two existing
+  contract tests that only the full suite exercised. Every group now closes on the full suite.
+- The same sandbox reproduced F-1's failure class (see below), which the coordinator's host and
+  one hosted stress run had not.
 
 ## Not in scope
 

@@ -5,13 +5,28 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.12.2-beta1",
+    "app_version": "0.12.2",
+    "build": 21,
+    "date": "2026-10-15",
+    "scope": "Full-source review fixes on top of 0.12.1: gesture/history integrity, scroll capture lifecycle and bound-window automatic scrolling, fail-closed mask geometry and scroll memory admission, editor-close export cancellation, release/E2E script gates, and attributable font resolution with a bounded retry of transient nil results.",
+    "status": "source_review_fixes_in_progress",
+    "verification": "Findings, per-finding red/green evidence and final gate results are recorded in docs/specs/full-source-review/plan.md.",
+    "evidence_paths": ["docs/specs/full-source-review/plan.md"],
+    "limitations": [
+      "F-1 (transient nil font results) was reproduced in the Codex sandbox but its cause is not established; a bounded retry recovered every observed nil (3 in 100 runs), which is a mitigation, not a root-cause fix.",
+      "Physical keyboard/IME/VoiceOver/TCC/Spaces, minimum-macOS runtime, signing/notarization and distribution remain unqualified.",
+      "The installed local-test artifact remains 0.12.0/build19."
+    ]
+  },
+  "previous_source_candidate_0_12_1": {
     "version": "0.12.1-beta1",
     "app_version": "0.12.1",
     "build": 20,
     "date": "2026-10-15",
     "scope": "FR-01 replayable feature tour, FR-11 bounded area color sampling and FR-05 straight lines, saved colors, text appearances and curved arrows; broader reference parity remains unfinished.",
     "status": "source_accepted_physical_release_unqualified",
-    "verification": "0.12.1/build20: stable Xcode27.0/27A266a unsigned gate passes683 tests,617 translations and both app builds. Full native EN/PT-BR passes47/47 per language,2222 assertions/138 PNGs each,zero skips. Omitting makeKey or orderFrontRegardless produces the expected native regression failures; restored production code is unchanged. Fresh different-model source-blind acceptance passes all10 criteria,3/3 focused scenarios and265 assertions per language,including50 overlay cycles. Exact-head CI remains a separate merge gate. Earlier FP-034 code/security/native acceptance remains in its own verdict; historical CAP-01 and text-font CI incidents are not retroactively erased.",
+    "verification": "0.12.1/build20: stable Xcode 27.0/27A266a unsigned gate passes 683 tests, 617 translations and both app builds. Full native EN/PT-BR passes 47/47 per language, 2222 assertions/138 PNGs each, zero skips. Omitting makeKey or orderFrontRegardless produces the expected native regression failures; restored production code is unchanged. Fresh different-model source-blind acceptance passes all 10 criteria, 3/3 focused scenarios and 265 assertions per language, including 50 overlay cycles. Exact-head CI remains a separate merge gate. Earlier FP-034 code/security/native acceptance remains in its own verdict; historical CAP-01 and text-font CI incidents are not retroactively erased.",
     "evidence_paths": [
       "docs/specs/native-window-qualification/acceptance-verdict.md",
       "docs/specs/native-window-qualification/review-evidence.md",
@@ -27,10 +42,10 @@
       ".scratch/e2e/20261014-005816/pt-BR/report.json"
     ],
     "limitations": [
-      "The earlier0.12.0 signed stable gate passed683 tests/617 translations, but its installation-time native E2E passed45/47 per language with focus/presentation failures. Preserve that installed artifact and its historical evidence separately from0.12.1 source acceptance. See docs/specs/curved-arrows/local-installation.md.",
+      "The earlier 0.12.0 signed stable gate passed 683 tests/617 translations, but its installation-time native E2E passed 45/47 per language with focus/presentation failures. Preserve that installed artifact and its historical evidence separately from 0.12.1 source acceptance. See docs/specs/curved-arrows/local-installation.md.",
       "Capture-focus and inactive editor occlusion checks failed on this seed host; root cause not established.",
-      "Earlier2026-10-15 graphical-session controls failed readiness. The resumed session passes both focus scenarios bilingually and rejects omitted key/ordering calls; version0.12.1/build20 final synthetic native acceptance passes. Preserve the earlier failures in docs/specs/native-window-qualification/acceptance-verdict.md.",
-      "Developer ID archive/export from cf87796 with stable27A266a installed locally on2026-10-15 after explicit owner authorization despite current native FAILs; previous0.11.0/build18 preserved without app launch/termination. No new tag, merge, notarization or public distribution. Xcode installation is recorded separately.",
+      "Earlier 2026-10-15 graphical-session controls failed readiness. The resumed session passes both focus scenarios bilingually and rejects omitted key/ordering calls; version 0.12.1/build20 final synthetic native acceptance passes. Preserve the earlier failures in docs/specs/native-window-qualification/acceptance-verdict.md.",
+      "Developer ID archive/export from cf87796 with stable 27A266a installed locally on 2026-10-15 after explicit owner authorization despite current native FAILs; previous 0.11.0/build18 preserved without app launch/termination. No new tag, merge, notarization or public distribution. Xcode installation is recorded separately.",
       "Reference matrix documents unimplemented safe gaps, protected product decisions and unknown proprietary internals.",
       "Saved-color native interaction independently passes. Historical capture-focus failure remains unattributed; physical keyboard/IME/VoiceOver/Spaces and production qualification remain separate and unrun."
     ]
@@ -88,7 +103,7 @@
     "date": "2026-10-01",
     "scope": "FR-02 shortcut region selection without foreground activation; FR-15 permanent invalidation of revoked pending upload consent.",
     "status": "locally_installed_awaiting_manual_validation",
-    "verification": "Test-first synthetic regressions reproduced the activating overlay/key-ownership defect and upload consent revocation ABA. Corrected targeted EN/PT-BR suite passed all five scenarios and157 assertions per language. Final stable signed scripts/check.sh exited0:517 package tests,12 Python controls,517 translated strings,strict formatting/project freshness and both Debug targets. A fresh different-model behavior verifier executed the full synthetic suite once, exit0:27/27 scenarios,672 assertions and56 reported screenshots per language; every assertion passed and all reported PNGs were valid. Fresh Standards/security and Spec reviews accepted external foreground identity and activation notifications as the synthetic selection oracle; NSApp.isActive is recorded diagnostically. Both resolved Debug bundles are0.10.0/build12/min15.0. Correctly staged autoreview returned scoped-clean/P2; CI36955190485 passed on2069d91. Developer ID archive/export of that commit and local installation passed on2026-10-02: all33 installed files match export and all33 previous build10 files were preserved. No app launch or termination occurred. Physical hotkeys, actual monitor/Space/fullscreen transitions, live credentials/provider transfers and notarized distribution remain unrun. Build-11 evidence is retained separately below.",
+    "verification": "Test-first synthetic regressions reproduced the activating overlay/key-ownership defect and upload consent revocation ABA. Corrected targeted EN/PT-BR suite passed all five scenarios and 157 assertions per language. Final stable signed scripts/check.sh exited0:517 package tests, 12 Python controls, 517 translated strings,strict formatting/project freshness and both Debug targets. A fresh different-model behavior verifier executed the full synthetic suite once, exit 0:27/27 scenarios, 672 assertions and 56 reported screenshots per language; every assertion passed and all reported PNGs were valid. Fresh Standards/security and Spec reviews accepted external foreground identity and activation notifications as the synthetic selection oracle; NSApp.isActive is recorded diagnostically. Both resolved Debug bundles are 0.10.0/build12/min15.0. Correctly staged autoreview returned scoped-clean/P2; CI36955190485 passed on 2069d91. Developer ID archive/export of that commit and local installation passed on 2026-10-02: all 33 installed files match export and all 33 previous build10 files were preserved. No app launch or termination occurred. Physical hotkeys, actual monitor/Space/fullscreen transitions, live credentials/provider transfers and notarized distribution remain unrun. Build-11 evidence is retained separately below.",
     "evidence_paths": [
       ".scratch/e2e/20261001-224940/en/report.json",
       ".scratch/e2e/20261001-225137/en/report.json",
@@ -117,7 +132,7 @@
     "authorization": "Explicit owner sim to local test installation despite current capture-focus and editor-presentation FAILs; preserve previous app and no launch/restart.",
     "evidence_path": ".scratch/local-install-readiness-20261015/installation.json",
     "independent_verdict": "PASS (authorized local test installation only)",
-    "independent_verification": "Fresh different-model verifier confirmed all59 installed entries equal export and all30 backup entries equal prior0.11.0/build18; both strict signatures pass. Independent215-sample process audit spans replacement, no Recortia PID observed, maximum gap0.438s; finite-sampling limit stated. No app launch/termination. Current native readiness remains FAIL.",
+    "independent_verification": "Fresh different-model verifier confirmed all 59 installed entries equal export and all 30 backup entries equal prior0.11.0/build18; both strict signatures pass. Independent215-sample process audit spans replacement, no Recortia PID observed, maximum gap0.438s; finite-sampling limit stated. No app launch/termination. Current native readiness remains FAIL.",
     "independent_evidence_path": ".scratch/local-install-verifier-20261015/installation-verdict.md",
     "qualification": "Artifact independently PASS; current native readiness FAIL (45/47 per language). Local test installation does not qualify release or physical behavior."
   },
@@ -136,7 +151,7 @@
     "notarized": false,
     "evidence_path": ".scratch/local-install-build12-20261002/installation.json",
     "independent_verdict": "BLOCKED",
-    "independent_verification": "Fresh different-model verifier passed provenance, version, strict signature, runtime, parsed entitlements/profile, licenses and all60 installed entries compared with export; all33 backup files match the pre-install manifest. Overall verdict is BLOCKED solely by absent independent process audit of the installation interval. No artifact defect was found; no launch or termination command was issued by the installer.",
+    "independent_verification": "Fresh different-model verifier passed provenance, version, strict signature, runtime, parsed entitlements/profile, licenses and all 60 installed entries compared with export; all 33 backup files match the pre-install manifest. Overall verdict is BLOCKED solely by absent independent process audit of the installation interval. No artifact defect was found; no launch or termination command was issued by the installer.",
     "independent_evidence_path": ".scratch/local-install-build12-20261002/verification.md"
   },
   "previous_source_candidate": {
@@ -145,7 +160,7 @@
     "date": "2026-10-01",
     "scope": "FR-03/FR-12 shared import admission and cancellation; FR-04 canvas keyboard ownership reset. Includes the prior approved FR-07/FR-15 changes.",
     "status": "local_gates_passed_release_validation_blocked",
-    "verification": "Regressions were red before import/cancellation/focus fixes; a provider-counting canvas regression then reproduced and closed eager drop reads. Final stable Xcode27 signed scripts/check.sh exited0:517 package tests,12 Python controls,517 translated strings,format/project freshness and both Debug targets. Independent full E2E exited0:26/26 scenarios,603 assertions,55 screenshots per language. A separate fresh different-model behavior context passed159 focused assertions per language and inspected all22 renders. Independent Standards and Spec correction reruns found zero remaining confirmed findings; resolved app/E2E versions are0.10.0/build11/min15.0. Dedicated security execution is BLOCKED because this host cannot enforce sandbox memory limits; source security inspection found no confirmed defect. Live Keychain/GitHub transfer, IME/VoiceOver,TCC/clean-user launch,stable-host performance,notarization and public beta/production release remain unrun. No build11 installation is claimed.",
+    "verification": "Regressions were red before import/cancellation/focus fixes; a provider-counting canvas regression then reproduced and closed eager drop reads. Final stable Xcode 27 signed scripts/check.sh exited0:517 package tests, 12 Python controls, 517 translated strings,format/project freshness and both Debug targets. Independent full E2E exited0:26/26 scenarios, 603 assertions, 55 screenshots per language. A separate fresh different-model behavior context passed 159 focused assertions per language and inspected all 22 renders. Independent Standards and Spec correction reruns found zero remaining confirmed findings; resolved app/E2E versions are 0.10.0/build11/min15.0. Dedicated security execution is BLOCKED because this host cannot enforce sandbox memory limits; source security inspection found no confirmed defect. Live Keychain/GitHub transfer, IME/VoiceOver,TCC/clean-user launch,stable-host performance,notarization and public beta/production release remain unrun. No build11 installation is claimed.",
     "evidence_paths": [
       "/private/tmp/recortia-fix-20261001-import-red.log",
       "/private/tmp/recortia-fix-20261001-cancel-red.log",
@@ -169,7 +184,7 @@
     "date": "2026-10-01",
     "scope": "FR-07 automatic export cancellation and busy reporting; owner-authorized FR-15 optional private GitHub auto-upload (ADR-006).",
     "status": "source_verified_locally_installed_awaiting_manual_validation",
-    "verification": "Red regressions preceded all five confirmed fixes. Stable Xcode 27 scripts/check.sh --unsigned exited 0: 514 package tests, 12 Python controls, 513 translated strings and both Debug targets. Final synthetic E2E exited 0: 24/24 scenarios, 444 assertions and 44 screenshots per language. Fresh different-model security reverify passed 47 focused tests and closed all three additional findings. Final Developer ID archive/export and strict signature/runtime/parsed entitlements/profile checks passed; version0.10.0 build10 installed with matching executable SHA256 and build9 backup. PID6408 remains on build9. Xcode-beta MCP follow-up succeeded: four affected app files report zero diagnostics; initial Settings timeout resolved on retry. Real GitHub transfers, credential/Keychain interaction, TCC and clean-user launch remain unrun; no notarization/public release.",
+    "verification": "Red regressions preceded all five confirmed fixes. Stable Xcode 27 scripts/check.sh --unsigned exited 0: 514 package tests, 12 Python controls, 513 translated strings and both Debug targets. Final synthetic E2E exited 0: 24/24 scenarios, 444 assertions and 44 screenshots per language. Fresh different-model security reverify passed 47 focused tests and closed all three additional findings. Final Developer ID archive/export and strict signature/runtime/parsed entitlements/profile checks passed; version 0.10.0 build10 installed with matching executable SHA256 and build9 backup. PID6408 remains on build9. Xcode-beta MCP follow-up succeeded: four affected app files report zero diagnostics; initial Settings timeout resolved on retry. Real GitHub transfers, credential/Keychain interaction, TCC and clean-user launch remain unrun; no notarization/public release.",
     "evidence_paths": [
       "/private/tmp/recortia-autoupload-red.log",
       "/private/tmp/recortia-autoupload-busy-red.log",
@@ -1221,7 +1236,7 @@
       "deliverables": ["docs/specs/text-appearance/spec.md", "model/render/native-control regressions"],
       "completion_contract": "Both tickets require source-red regressions, measured geometry, development gates and fresh independent code/native acceptance. Physical and stable release qualification remain separate.",
       "evidence": [".scratch/text-font-feasibility-20261014/evidence.md", "docs/specs/text-appearance/acceptance-verdict.md", "docs/specs/text-appearance/review-evidence.md"],
-      "progress_note": "All seven styles independently accepted at development scope on2df6387 after one raster-evidence correction/fresh full reverify. Gate656tests/604translations and stable CI pass; independent native run has122images/1948assertions. Expanded full native run failed initial capture-focus key ownership: English45/46, Portuguese46/46, before text scenarios. Isolated6/6, adjacent-overlay6/6, complete-prefix3/3,50-cycle and a later full-English46/46 diagnostic run did not reproduce it. No production fix or host attribution is established. Integration/physical focus qualification remains pending; source work may continue without releasing this candidate."
+      "progress_note": "All seven styles independently accepted at development scope on 2df6387 after one raster-evidence correction/fresh full reverify. Gate656tests/604translations and stable CI pass; independent native run has122images/1948assertions. Expanded full native run failed initial capture-focus key ownership: English45/46, Portuguese46/46, before text scenarios. Isolated6/6, adjacent-overlay6/6, complete-prefix3/3,50-cycle and a later full-English46/46 diagnostic run did not reproduce it. No production fix or host attribution is established. Integration/physical focus qualification remains pending; source work may continue without releasing this candidate."
     },
     {
       "id": "FP-034",
@@ -1236,7 +1251,37 @@
       "deliverables": ["docs/specs/curved-arrows/spec.md", "docs/specs/curved-arrows/implementation-plan.md", "model/geometry/export/native regressions"],
       "completion_contract": "Observed source-red tracer regressions, head-junction feasibility, development gates, two-axis review and fresh independent code/native acceptance; no full-parity or physical qualification claim.",
       "evidence": ["docs/specs/curved-arrows/acceptance-verdict.md", "docs/specs/curved-arrows/review-evidence.md", ".scratch/curved-arrows-backend-20261014/evidence.md"],
-      "progress_note": "Development acceptance complete on3db91b7:683-test full gate,617 translations,both unsigned builds,stable CI38660460749,different-model code/security67 tests,source-blind bilingual native criteria PASS,and final full47/47 per language (2217 assertions/138 images each). All five confirmed review findings fixed with fresh regressions. Physical input/VoiceOver/Spaces and release are excluded; historical CAP-01 remains unattributed and current activation-control skips do not qualify it. Completed ticket removed; approved spec and acceptance retained."
+      "progress_note": "Development acceptance complete on 3db91b7:683-test full gate, 617 translations,both unsigned builds,stable CI38660460749,different-model code/security67 tests,source-blind bilingual native criteria PASS,and final full47/47 per language (2217 assertions/138 images each). All five confirmed review findings fixed with fresh regressions. Physical input/VoiceOver/Spaces and release are excluded; historical CAP-01 remains unattributed and current activation-control skips do not qualify it. Completed ticket removed; approved spec and acceptance retained."
+    },
+    {
+      "id": "FP-035",
+      "title": "Full-source review and test-first fixes (0.12.2)",
+      "milestone": "M2",
+      "authorization": "owner_request_2026-10-15_full_source_review_fix_merge",
+      "status": "in_progress",
+      "depends_on": ["FP-034"],
+      "requirement_ids": ["FR-04", "FR-05", "FR-06", "FR-07", "FR-10"],
+      "acceptance_test_ids": ["EDIT-01", "EDIT-02", "RED-03", "RED-04", "SCR-04", "REL-01"],
+      "scope": "Four partitioned read-only reviews plus the hosted-CI font incident: fix confirmed P0-P2 findings test-first (B-1, B-3, B-4, B-5, A-2, A-3, C-1, C-2, D-1, D-3, D-4, F-1); record P3 findings as FP-036.",
+      "deliverables": ["docs/specs/full-source-review/plan.md", "regressions per finding", "0.12.2/build21"],
+      "completion_contract": "Red run on unfixed code and green run per deterministic finding; stable gate; full bilingual native E2E; code-review, reviewer and different-model verification; exact-head CI.",
+      "evidence": ["docs/specs/full-source-review/plan.md"],
+      "progress_note": "Fixes landing through two Codex lanes reviewed and committed by the main session."
+    },
+    {
+      "id": "FP-036",
+      "title": "Full-source review P3 proposals",
+      "milestone": "M2",
+      "authorization": "proposal_requires_owner_approval",
+      "status": "not_started",
+      "depends_on": ["FP-035"],
+      "requirement_ids": ["FR-05", "FR-07", "FR-10"],
+      "acceptance_test_ids": [],
+      "scope": "A-1 block-mean colour signatures can miss within-block permutations in scroll stationarity; B-2 caller-task cancellation is not propagated into ExportCoordinator.run (no caller cancels today); D-2 native text editing ignores annotation opacity. A-3-style accounting is done; C-2 promoted and fixed.",
+      "deliverables": [],
+      "completion_contract": "Each proposal needs a concrete trigger or owner approval before implementation.",
+      "evidence": ["docs/specs/full-source-review/plan.md"],
+      "progress_note": "Recorded by the 2026-10 full-source review; not scheduled."
     }
   ],
   "deferred_scope": [

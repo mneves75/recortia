@@ -42,6 +42,17 @@ visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. 
 and marked-input refusal. Geometry/style admission must precede document/history/default
 mutations. This feature does not qualify CAP-01 or add reference-product head-style parity.
 
+Full-source review invariants (2026-10, `docs/specs/full-source-review/plan.md`): every
+independent document edit settles an active move/resize first (`settleTransformGesture`), so a
+drag never overwrites it; a committed text edit closes an open adjustment, while beginning or
+cancelling input does not. Automatic scrolling acts only on the frame source's session-bound
+window and keep `scroll-target-binding` in bilingual E2E; Stop during scroll startup stops the
+producer before `startCapture`. Mask source mapping fails closed on non-finite inverses or
+corners. Scroll append admission counts the matcher scratch. Closing an editor cancels only its
+own export work. `TextLayout.nativeFont` repeats a nil font result at most twice with the same
+inputs and reports which stage failed; do not add locks, caches or fallback fonts without new
+evidence, and treat a recurrence after the retry as an open incident (see the plan's F-1 row).
+
 Capture completion must exercise the real editor presentation path (`editor-presentation`),
 not only the offscreen editor host. Keep editor visibility independent of cooperative app
 activation; lay out the hosted canvas before assigning its responder.
@@ -149,6 +160,12 @@ The recorded local Xcode 27.1 RC (27A9275) is development-only. Run its gate exp
 Doctor labels that evidence as development, rejects beta/unknown builds, and never treats it as
 stable qualification. `scripts/release.sh` calls `doctor.sh --release` before creating artifacts,
 including in `--dry-run`; inherited development mode cannot bypass the stable baseline.
+
+`scripts/e2e.sh` runs the same doctor and writes `provenance.json` (commit, working-tree
+fingerprint, Xcode build, toolchain mode) into each run; `--no-build` refuses a binary whose
+provenance differs. XcodeGen is mandatory: the freshness gate fails without it. `release.sh`
+reserves `.build/release/<label>/` atomically and refuses an existing one; never add a cleanup
+that deletes retained archives, dSYMs or DMGs.
 
 Record the exact commands used. UI tests need a suitable GUI session and test configuration; a successful unsigned compilation is not a signing, TCC, UI, or release test. Use separate unsigned PR checks and protected signed release checks.
 

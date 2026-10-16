@@ -16,8 +16,10 @@ beta compilation does not replace the stable-toolchain release gates.
 - Full gate: `scripts/check.sh` (doctor, E2E-isolation and parsed Release-entitlement regression controls, strict `swift format lint`, generated-project freshness,
   all package tests, signed Debug build, pt-BR coverage of every extracted string, E2E target build); `--unsigned` without the signing identity.
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
-- End-to-end: `scripts/e2e.sh --lang all` runs the DEBUG scenario runner (`-RecortiaE2E <dir>`)
-  through the real app and writes screenshots + `report.json` under `.scratch/e2e/`. The runner
+- End-to-end: `scripts/e2e.sh --lang all` runs the doctor, then the DEBUG scenario runner
+  (`-RecortiaE2E <dir>`) through the real app, and writes screenshots, `report.json` and
+  `provenance.json` under `.scratch/e2e/<time>-<pid>/`; `--no-build` requires matching
+  provenance. The runner
   never touches the real screen, general pasteboard, the app's user defaults, or keychain (in-memory
   settings and integrity key; shortcut assignments only in its own `dev.mvneves.Recortia.E2E` domain,
   cleared at start, with a fake list of macOS shortcuts and a Carbon-free probe) and installs no
@@ -26,7 +28,9 @@ beta compilation does not replace the stable-toolchain release gates.
   instead of entering a modal loop or opening System Settings. This does not prove real alert
   interaction, TCC prompting, or live permission behavior.
 - Release (owner): tag `v<version>[-betaN]`, then `scripts/release.sh` → `.build/release/<version[-betaN]>/`
-  (fresh checkout, gate, notarized DMG, manifest with dependencies); `--dry-run` skips tag/gate/notary;
+  (fresh checkout, gate, notarized DMG, manifest with dependencies); it refuses an existing output
+  directory rather than deleting retained artifacts; `--dry-run` skips tag/gate/notary and writes a
+  unique `<version>-dev-<time>-<pid>` directory;
   `scripts/check-release-binary.sh` fails if the DEBUG-only E2E hook reached a binary.
 - Local signed installation and version updates: follow `AGENTS.md`'s artifact checks and
   version-ownership rules. Current candidate and installation evidence live in README and BACKLOG.
