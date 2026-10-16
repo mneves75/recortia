@@ -1277,7 +1277,7 @@
       "depends_on": ["FP-035"],
       "requirement_ids": ["FR-05", "FR-07", "FR-10"],
       "acceptance_test_ids": [],
-      "scope": "A-1 block-mean colour signatures can miss within-block permutations in scroll stationarity; B-2 caller-task cancellation is not propagated into ExportCoordinator.run (no caller cancels today); D-2 native text editing ignores annotation opacity. A-3-style accounting is done; C-2 promoted and fixed.",
+      "scope": "A-1 block-mean colour signatures can miss within-block permutations in scroll stationarity; B-2 caller-task cancellation is not propagated into ExportCoordinator.run (no caller cancels today); D-2 native text editing ignores annotation opacity; closing a pin does not cancel its snapshot; a Pause during the first automatic step's window discovery can still post one scroll (reviewer observations without a demonstrating test).",
       "deliverables": [],
       "completion_contract": "Each proposal needs a concrete trigger or owner approval before implementation.",
       "evidence": ["docs/specs/full-source-review/plan.md"],

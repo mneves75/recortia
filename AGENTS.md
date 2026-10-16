@@ -162,8 +162,9 @@ stable qualification. `scripts/release.sh` calls `doctor.sh --release` before cr
 including in `--dry-run`; inherited development mode cannot bypass the stable baseline.
 
 `scripts/e2e.sh` runs the same doctor and writes `provenance.json` (commit, working-tree
-fingerprint, Xcode build, toolchain mode) into each run; `--no-build` refuses a binary whose
-provenance differs. XcodeGen is mandatory: the freshness gate fails without it. `release.sh`
+fingerprint including untracked contents, Xcode and SDK builds, toolchain mode, app-bundle
+SHA-256) into each run; `--no-build` refuses a binary whose provenance differs, including one
+that `check.sh` rebuilt into the shared `.build/dd`. XcodeGen is mandatory: the freshness gate fails without it. `release.sh`
 reserves `.build/release/<label>/` atomically and refuses an existing one; never add a cleanup
 that deletes retained archives, dSYMs or DMGs.
 

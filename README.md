@@ -202,8 +202,8 @@ scripts/release.sh             # maintainer only: Developer ID archive, checks, 
 
 XcodeGen is required: the project freshness gate fails without it. `scripts/e2e.sh` applies the
 same toolchain doctor as the gate and records build provenance (commit, working-tree fingerprint,
-Xcode build, toolchain mode) in each run's `provenance.json`; `--no-build` refuses a binary
-whose provenance does not match. `scripts/release.sh` reserves `.build/release/<label>/` and
+Xcode and SDK builds, toolchain mode, app-bundle SHA-256) in each run's `provenance.json`;
+`--no-build` refuses a binary whose provenance does not match. `scripts/release.sh` reserves `.build/release/<label>/` and
 refuses to run when it already exists, so a rerun never deletes a retained archive, dSYMs or DMG;
 move the old directory aside first. Dry runs use a fresh `<version>-dev-<time>-<pid>` directory.
 

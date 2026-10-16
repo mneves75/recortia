@@ -65,7 +65,7 @@ log references are filled in as each item closes; red/green logs live under
 | B-3 | P2 | Closed editor's export keeps running and holds the coordinator | `close()` does not cancel its export (`EditorModel+Export.swift:76-93`) | Upload and automatic batch ownership | Closed c8c6359: red 10 issues (no cancellation, wrong committed outcomes); green 5 tests incl. other-document control |
 | B-4 | P2 | Resume after Stop can scroll the target app | `resume()`/`autoStep` ignore `pendingFinish`; `LiveAutoScroll.stop()` cannot stop a discovery in progress | Superseded session; Stop during discovery | Closed c8c6359 (model) and f3050d7 (adapter): red 7 issues and adapter red; green zero steps/events after Stop |
 | B-5 | P2 | One Undo reverts a colour change and a text edit | `beginEditingText` leaves the continuous adjustment open (`EditorModel+Gestures.swift:403`) | Replacement, deletion, cancel; invalid IDs | Closed 60c44ac + correction f4821a6: red 6 issues; the first fix broke two contract tests (4 issues), corrected to close the adjustment on commit only |
-| D-3 | P2 | E2E evidence from an unreviewed toolchain looks ordinary | `e2e.sh` never runs `doctor.sh`; `--no-build` reuses binaries of unknown provenance | — | Closed d1b9915 + 4927938: red built with an unreviewed toolchain and reused a stale binary after an edit; green refuses both |
+| D-3 | P2 | E2E evidence from an unreviewed toolchain looks ordinary | `e2e.sh` never runs `doctor.sh`; `--no-build` reuses binaries of unknown provenance | — | Closed d1b9915 + 4927938, reopened by reviewer R-1 (check.sh rebuilds the same binary) and closed again in cycle 2 with an app-bundle SHA-256: red built with an unreviewed toolchain, reused a stale binary after an edit, and launched a replaced binary; green refuses all three |
 | D-4 | P2 | Gate passes with a stale project | Missing XcodeGen exits 0 locally (`check-project-fresh.sh:10-16`) | Release path | Closed d1b9915: red passed without XcodeGen and reached archive work; green fails before archiving |
 | A-1 | P3 | (none observed) | Block-mean colour signatures miss within-block permutations (`ScrollFrame.swift:82-99`) | Promote if ordinary chart/UI content triggers it | Deferred proposal; counterexample in A-1 report |
 | B-2 | P3 | (none) | Caller-task cancellation not propagated into `ExportCoordinator.run` | No caller cancels today | Deferred; specify semantics before a caller relies on it |
@@ -136,6 +136,47 @@ Disproved or left as is: the `try?` → `.targetLost` mapping in `LiveAutoScroll
 change and `.targetLost` is the honest outcome; naming/duplication preferences (one-way
 `generation`, `startupID`, `documentID: exportID`, repeated guards) carry no defect; the stress
 test landing before its fix is intended (it exists to detect F-1 recurrences).
+
+## Independent reviewer (cycle 2)
+
+The `reviewer` agent wrote 12 requirement-derived tests on 0ab32d9 (Swift and Python), proved
+them with mutations (dropping the drag settle, reverting close to drag-only invalidation,
+removing the post-start stop and startup guard, removing corner validation, restoring the old
+release deletion), and found two defects:
+
+- R-1 (P2, reopens D-3): `check.sh` rebuilds the same `RecortiaE2E` binary in `.build/dd`
+  without touching the E2E provenance, so `e2e.sh --no-build` could run a binary its provenance
+  does not describe. Fixed by recording and verifying a hash of the built app bundle.
+- R-2 (P3, pre-existing, same invariant as B-1/B-5): nudge, delete, duplicate, arrange and crop
+  joined an open colour adjustment. Fixed by having each independent command close the
+  adjustment, as imports and text commits do; closing it inside `edit()` was rejected because
+  the reviewer's mutation showed it breaks restyle coalescing.
+
+Cycle-2 evidence (Codex lane, then the coordinator outside the sandbox): R-1 red showed a
+replaced binary launching under matching provenance; green refuses a replaced executable, changed
+resource content, renames, additions, deletions and symlink-target changes before launch. R-2
+was extended to every independent command found: nudge, delete, duplicate, z-order, crop and
+Reset Crop, renumber steps, transparency comparison, side by side, fit and expand canvas, and
+alignment; all 12 cases failed first with 24 issues and now pass, as do the colour-coalescing
+control and the existing history tests. Logs:
+`.scratch/full-source-review-20261015/cycle2-evidence/`.
+
+Two read-only observations without a demonstrating test are recorded as FP-036 proposals:
+closing a pin does not cancel its snapshot (the coordinator stays busy until it finishes), and a
+Pause (not Stop) during the first automatic step's window discovery can still post one scroll.
+
+## Gate results on the candidate (0ab32d9)
+
+- `scripts/check.sh --unsigned` with Xcode 27.0 (27A266a) in stable mode: exit 0. Package tests
+  137 MacPlatform + 174 Imaging + 335 Features + 64 Domain = 710; strict format lint; project
+  freshness; app and E2E target builds; 617 strings with pt-BR translations.
+- Hosted CI on the exact head: run 38835156965, success.
+- Full bilingual native E2E (`.scratch/e2e/20261015-223003-83183`): 46/48 per language, 136
+  screenshots each. `capture-focus` and `editor-presentation` failed their owned-foreground
+  readiness control (fixture never key/active/foreground) while the console was locked
+  (`IOConsoleLocked` true, about 64 minutes idle). The same two passed in the unchanged
+  baseline run earlier that evening (47/47). Per AGENTS.md this is a failed readiness control,
+  not a product diagnosis; both are rerun on an unlocked, idle console before merging.
 
 ## Process notes
 

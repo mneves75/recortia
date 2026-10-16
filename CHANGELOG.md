@@ -73,6 +73,9 @@ The resumed session supplies the required control; final acceptance is recorded 
 - Committing a text edit, a new text or an image import after changing a colour is its own Undo
   step; beginning or cancelling text editing still keeps an open colour adjustment. A refused or
   unchanged edit no longer interrupts a drag in progress.
+- Nudge, delete, duplicate, arrange, crop/reset, renumber steps and composition commands close
+  a pending colour adjustment before their own Undo step; continuous inspector adjustments still
+  coalesce.
 - Automatic scrolling sends scroll events only to the window the capture bound at start, so a
   quick switch to another app can no longer receive one; capture and scrolling agree on that
   window even when a floating window covers it. Stop during startup or during window
@@ -84,7 +87,9 @@ The resumed session supplies the required control; final acceptance is recorded 
   are no longer told the exporter is busy.
 - `scripts/release.sh` refuses an existing output directory instead of deleting a retained
   archive, dSYMs and DMG; `scripts/e2e.sh` applies the toolchain doctor and records build
-  provenance (commit, tracked and untracked contents, Xcode and SDK builds); the project
+  provenance (commit, tracked and untracked contents, Xcode and SDK builds, and the entire app
+  bundle's SHA-256). `--no-build` refuses a replaced executable or resource, including symlink
+  target changes, before launching; the project
   freshness gate fails when XcodeGen is missing.
 - Designed fonts (rounded, monospaced) no longer fail exports or style changes when the system
   briefly returns no font: the two resolution steps report distinct errors, and a nil result is
