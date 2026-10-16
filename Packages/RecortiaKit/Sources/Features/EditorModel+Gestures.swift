@@ -129,7 +129,7 @@ extension EditorModel {
                 releaseUnreachableAssets()
                 noteUndoEvictionIfNeeded()
             }
-        default:
+        case .idle, .create, .marquee, .ruler, .sample:
             break
         }
     }
@@ -429,8 +429,9 @@ extension EditorModel {
         guard let editing = textEditing else { return }
         textEditing = nil
         let isBlank = string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard editing.annotationID != nil || !isBlank else { return }
+        endContinuousChange()
         if let id = editing.annotationID {
-            endContinuousChange()
             if isBlank {
                 edit("Delete Text") { $0.annotations.removeAll { $0.id == id } }
                 return
@@ -444,7 +445,6 @@ extension EditorModel {
             }
             return
         }
-        guard !isBlank else { return }
         let text = Annotation(
             kind: .text(
                 Annotation.TextContent(

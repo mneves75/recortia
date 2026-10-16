@@ -60,21 +60,29 @@ extension EditorModel {
             environment.assets.release(info.id)
             return false
         }
-        knownAssets.insert(info.id)
         let canvas = document.canvasSize
         let width = Double(info.pixelSize.width), height = Double(info.pixelSize.height)
-        guard width > 0, height > 0 else { return false }
+        guard width > 0, height > 0 else {
+            environment.assets.release(info.id)
+            return false
+        }
         let scale = min(1, canvas.width / width, canvas.height / height)
         let layer = ImageLayer(
             assetID: info.id,
             placement: LayerPlacement(
                 translation: Point(x: (canvas.width - width * scale) / 2, y: (canvas.height - height * scale) / 2),
                 scale: scale))
+        endContinuousChange()
         let ok = edit("Add Image") { document in
             document.assets[info.id] = info
             document.layers.append(layer)
         }
-        if ok { selection = [.layer(layer.id)] }
+        if ok {
+            knownAssets.insert(info.id)
+            selection = [.layer(layer.id)]
+        } else {
+            environment.assets.release(info.id)
+        }
         return ok
     }
 

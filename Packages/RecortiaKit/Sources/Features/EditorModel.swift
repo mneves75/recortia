@@ -222,11 +222,14 @@ public final class EditorModel {
     @discardableResult
     func edit(_ label: String, _ change: (inout Document) throws -> Void) -> Bool {
         guard !isClosed else { return false }
-        settleTransformGesture()
         let before = session.document
         let epoch = session.privacyEpoch
         do {
-            try session.perform(label, change)
+            var updated = before
+            try change(&updated)
+            guard updated != before else { return true }
+            settleTransformGesture()
+            try session.perform(label) { $0 = updated }
         } catch {
             if error is ArrowGeometryFailure {
                 post(.arrowGeometryRefused)
