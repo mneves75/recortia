@@ -12,6 +12,15 @@ import Testing
 @MainActor
 struct EditorExportTests {
 
+    @Test("Save replaces an existing file only after the panel confirmed it")
+    func saveOverwriteFollowsConfirmation() async {
+        let h = EditorHarness()
+        let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
+        _ = await h.model.export(.save(url, overwriteConfirmed: false))
+        _ = await h.model.export(.save(url, overwriteConfirmed: true))
+        #expect(h.files.saves.map(\.overwrite) == [false, true])
+    }
+
     @Test("Save to the preferred folder needs an authorized folder")
     func preferredFolder() async {
         let h = EditorHarness()
