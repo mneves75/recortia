@@ -36,17 +36,33 @@ esac
 scripts/doctor.sh
 toolchain_mode="${RECORTIA_TOOLCHAIN_MODE:-stable}"
 xcode_version=$(xcodebuild -version)
+sdk_version=$(xcrun --sdk macosx --show-sdk-version)
+sdk_build_version=$(xcrun --sdk macosx --show-sdk-build-version)
 source_commit=$(git rev-parse HEAD)
 derived=.build/dd
 provenance="$derived-e2e-provenance.json"
 # Compare the source and the doctor-approved compiler, including its selected installation.
-current_provenance=$(python3 - "$source_commit" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" <<'PY'
-import hashlib, json, subprocess, sys
-record = dict(zip(("git_sha", "toolchain_mode", "developer_dir", "xcode_version"), sys.argv[1:]))
+current_provenance=$(python3 - "$source_commit" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" "$sdk_version" "$sdk_build_version" <<'PY'
+import hashlib, json, os, pathlib, subprocess, sys
+record = dict(zip(("git_sha", "toolchain_mode", "developer_dir", "xcode_version", "sdk_version", "sdk_build_version"), sys.argv[1:]))
 fingerprint = hashlib.sha256()
 for arguments in (("status", "--porcelain=v1", "--untracked-files=all"), ("diff", "HEAD", "--binary")):
     fingerprint.update(subprocess.check_output(["git", *arguments]))
     fingerprint.update(b"\0")
+# Git's NUL-separated names preserve spaces, newlines and non-UTF-8 path bytes.
+# Hash symlink text rather than following links outside the working tree.
+untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "-z"])
+for name in sorted(filter(None, untracked.split(b"\0"))):
+    fingerprint.update(b"untracked\0" + len(name).to_bytes(8, "big") + name)
+    path = pathlib.Path(os.fsdecode(name))
+    if path.is_symlink():
+        target = os.fsencode(os.readlink(path))
+        fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
+    else:
+        fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as contents:
+            while chunk := contents.read(64 * 1024):
+                fingerprint.update(chunk)
 record["working_tree_fingerprint"] = fingerprint.hexdigest()
 print(json.dumps(record, sort_keys=True))
 PY

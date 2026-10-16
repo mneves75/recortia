@@ -27,18 +27,36 @@ class E2EToolchainTests(unittest.TestCase):
         self.bin.mkdir()
         (self.bin / "python3").symlink_to(sys.executable)
         self.tool("xcodegen", "#!/bin/sh\nexit 0\n")
-        self.tool("xcrun", "#!/bin/sh\necho 'Swift fixture compiler'\n")
-        self.tool("git", f"#!{sys.executable}\n" + '''import difflib, pathlib, sys
+        self.tool("xcrun", f"#!{sys.executable}\n" + '''import pathlib, sys
+args = sys.argv[1:]
+if args == ['--sdk', 'macosx', '--show-sdk-version']:
+    print(pathlib.Path('.fixture-sdk-version').read_text().strip())
+elif args == ['--sdk', 'macosx', '--show-sdk-build-version']:
+    print(pathlib.Path('.fixture-sdk-build').read_text().strip())
+elif args == ['swift', '--version']:
+    print('Swift fixture compiler')
+else:
+    sys.exit(f'unexpected xcrun arguments: {args}')
+''')
+        (self.root / ".fixture-sdk-version").write_text("27.0\n")
+        (self.root / ".fixture-sdk-build").write_text("27A123\n")
+        (self.root / ".fixture-untracked.json").write_text("[]")
+        self.tool("git", f"#!{sys.executable}\n" + '''import difflib, json, os, pathlib, sys
 args = sys.argv[1:]
 if args == ['rev-parse', 'HEAD']:
     print(pathlib.Path('.fixture-sha').read_text().strip())
 elif args == ['status', '--porcelain=v1', '--untracked-files=all']:
     if pathlib.Path('Tracked.swift').read_bytes() != pathlib.Path('.fixture-original').read_bytes():
         print(' M Tracked.swift')
+    for name in json.loads(pathlib.Path('.fixture-untracked.json').read_text()):
+        print('?? ' + name)
 elif args == ['diff', 'HEAD', '--binary']:
     before = pathlib.Path('.fixture-original').read_text().splitlines(keepends=True)
     after = pathlib.Path('Tracked.swift').read_text().splitlines(keepends=True)
     sys.stdout.writelines(difflib.unified_diff(before, after, fromfile='a/Tracked.swift', tofile='b/Tracked.swift'))
+elif args == ['ls-files', '--others', '--exclude-standard', '-z']:
+    for name in json.loads(pathlib.Path('.fixture-untracked.json').read_text()):
+        sys.stdout.buffer.write(os.fsencode(name) + bytes([0]))
 else:
     sys.exit(f'unexpected git arguments: {args}')
 ''')
@@ -87,6 +105,8 @@ else:
         self.assertEqual("stable", record["toolchain_mode"])
         self.assertEqual("a" * 40, record["git_sha"])
         self.assertIn("27A266a", record["xcode_version"])
+        self.assertEqual("27.0", record.get("sdk_version"))
+        self.assertEqual("27A123", record.get("sdk_build_version"))
         runs = list((self.root / ".scratch/e2e").glob("*/en/provenance.json"))
         self.assertEqual(1, len(runs))
         self.assertEqual(record, json.loads(runs[0].read_text()))
@@ -127,6 +147,62 @@ else:
             reused = self.run_e2e("--no-build")
             self.assertEqual(0, reused.returncode, reused.stdout + reused.stderr)
             previous = current
+
+    def test_no_build_rejects_untracked_content_edits_before_build_or_launch(self) -> None:
+        name = "untracked folder/Shape \n name.swift"
+        path = self.root / name
+        path.parent.mkdir()
+        path.write_text("let value = 1\n")
+        (self.root / ".fixture-untracked.json").write_text(json.dumps([name]))
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        provenance = self.root / ".build/dd-e2e-provenance.json"
+        previous = json.loads(provenance.read_text())
+        for value in (2, 3):
+            path.write_text(f"let value = {value}\n")
+            for marker in ("build-reached", "launch-reached"):
+                (self.root / marker).unlink()
+            refused = self.run_e2e("--no-build")
+            self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+            self.assertIn("provenance", refused.stderr)
+            self.assertFalse((self.root / "build-reached").exists())
+            self.assertFalse((self.root / "launch-reached").exists())
+            self.assertEqual(previous, json.loads(provenance.read_text()))
+            rebuilt = self.run_e2e()
+            self.assertEqual(0, rebuilt.returncode, rebuilt.stdout + rebuilt.stderr)
+            current = json.loads(provenance.read_text())
+            self.assertNotEqual(previous["working_tree_fingerprint"], current["working_tree_fingerprint"])
+            self.assertEqual(0, self.run_e2e("--no-build").returncode)
+            previous = current
+
+    def test_no_build_rejects_untracked_symlink_target_changes(self) -> None:
+        name = "Untracked.swift"
+        path = self.root / name
+        path.symlink_to("first-missing-target.swift")
+        (self.root / ".fixture-untracked.json").write_text(json.dumps([name]))
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        for marker in ("build-reached", "launch-reached"):
+            (self.root / marker).unlink()
+        path.unlink()
+        path.symlink_to("second-missing-target.swift")
+        refused = self.run_e2e("--no-build")
+        self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+        self.assertFalse((self.root / "build-reached").exists())
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_no_build_rejects_a_changed_sdk_before_build_or_launch(self) -> None:
+        for filename, value in ((".fixture-sdk-version", "27.1"), (".fixture-sdk-build", "27A999")):
+            with self.subTest(filename=filename):
+                built = self.run_e2e()
+                self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+                for marker in ("build-reached", "launch-reached"):
+                    (self.root / marker).unlink()
+                (self.root / filename).write_text(value + "\n")
+                refused = self.run_e2e("--no-build")
+                self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+                self.assertFalse((self.root / "build-reached").exists())
+                self.assertFalse((self.root / "launch-reached").exists())
 
     def test_development_mode_is_explicit_and_recorded(self) -> None:
         result = self.run_e2e(version="27.1", build="27A9275", mode="development")
