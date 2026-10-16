@@ -105,7 +105,7 @@ final class LiveAutoScroll: AutoScrollService {
         windows: @escaping @MainActor () async throws(CaptureError) -> [WindowInfo] = {
             try await ScreenCaptureService().windows()
         },
-        frontmost: @escaping @MainActor (Point<DesktopSpace>) -> CGWindowID? = LiveAutoScroll.frontmostWindowID,
+        frontmost: @escaping @MainActor (Point<DesktopSpace>) -> CGWindowID? = ScrollFrameSource.frontmostWindowID(at:),
         makeDriver:
             @escaping @MainActor (WindowInfo, DisplayInfo, Point<DesktopSpace>) throws(AutoScrollError) ->
             any AutoScrollDriving = {
@@ -118,6 +118,7 @@ final class LiveAutoScroll: AutoScrollService {
         self.makeDriver = makeDriver
     }
 
+    /// ScrollSessionModel's autoStepOwner serializes steps, including the first driver creation.
     func step(_ target: CaptureTarget) async -> AutoScrollStep {
         guard let expected = binding(), !Task.isCancelled else {
             stop()
@@ -211,23 +212,4 @@ final class LiveAutoScroll: AutoScrollService {
         return try? makeDriver(window, display, center)
     }
 
-    /// `CGWindowListCopyWindowInfo` documents front-to-back ordering (ScreenCaptureKit does not), and
-    /// its bounds use the same top-left global coordinates as desktop space.
-    static func frontmostWindowID(containing point: Point<DesktopSpace>) -> CGWindowID? {
-        let ownPID = ProcessInfo.processInfo.processIdentifier
-        guard
-            let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
-                as? [[CFString: Any]]
-        else { return nil }
-        for entry in list {
-            guard let layer = entry[kCGWindowLayer] as? Int, layer == 0,
-                let pid = entry[kCGWindowOwnerPID] as? pid_t, pid != ownPID,
-                let number = entry[kCGWindowNumber] as? CGWindowID,
-                let boundsDict = entry[kCGWindowBounds] as? NSDictionary,
-                let bounds = CGRect(dictionaryRepresentation: boundsDict)
-            else { continue }
-            if bounds.contains(CGPoint(x: point.x, y: point.y)) { return number }
-        }
-        return nil
-    }
 }

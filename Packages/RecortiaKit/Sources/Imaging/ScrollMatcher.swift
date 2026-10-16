@@ -71,6 +71,8 @@ package enum ScrollMatcher {
     static let minimumStripPixels = 1024
     static let coarseCandidatesPerSearch = 4
     static let maximumTiedCandidates = 12
+    static let candidateNeighborRadius = 1
+    static let distinctAlternativeOffsets = [-2, 2]
 
     package static func stripHeight(regionHeight: Int, width: Int) -> Int {
         let forPixels = (minimumStripPixels + max(1, width) - 1) / max(1, width)
@@ -277,7 +279,8 @@ package enum ScrollMatcher {
             proposals.formUnion(global)
             var displacements = Set<Int>()
             for d in proposals {
-                for neighbor in (d - 1)...(d + 1) where valid.contains(neighbor) { displacements.insert(neighbor) }
+                for neighbor in (d - candidateNeighborRadius)...(d + candidateNeighborRadius)
+                where valid.contains(neighbor) { displacements.insert(neighbor) }
             }
             func evaluate(_ d: Int) -> Candidate {
                 Candidate(
@@ -293,8 +296,9 @@ package enum ScrollMatcher {
             if let best = candidates.first,
                 !candidates.contains(where: { abs($0.displacement - best.displacement) >= 2 })
             {
-                for d in [best.displacement - 2, best.displacement + 2] where valid.contains(d) {
-                    candidates.append(evaluate(d))
+                for offset in distinctAlternativeOffsets {
+                    let d = best.displacement + offset
+                    if valid.contains(d) { candidates.append(evaluate(d)) }
                 }
                 candidates.sort { ($0.error, abs($0.displacement)) < ($1.error, abs($1.displacement)) }
             }

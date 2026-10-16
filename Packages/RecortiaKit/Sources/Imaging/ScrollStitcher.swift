@@ -210,9 +210,8 @@ public struct ScrollStitcher: Sendable {
             // cover these phase peaks, including array capacity growth.
             let (rows, rowsOverflow) = frameSize.height.multipliedReportingOverflow(by: 32 * MemoryLayout<Int>.stride)
             guard !areaOverflow, !growthOverflow, !rowsOverflow else { return nil }
-            // Twelve reports hold at most 98 candidates each (16 global + 16 local proposals,
-            // three neighbors, two alternatives). 64 KiB covers their capacity and local sets/votes.
-            allocations += [growth, workingBudgetBytes, rows, 64 * 1024]
+            guard let candidates = matcherCandidateWorkingBytes() else { return nil }
+            allocations += [growth, workingBudgetBytes, rows, candidates]
         }
         var total = 0
         for bytes in allocations {
@@ -221,6 +220,48 @@ public struct ScrollStitcher: Sendable {
             total = sum
         }
         return total
+    }
+
+    static func matcherCandidateWorkingBytes(
+        maximumStripCount: Int = ScrollMatcher.maximumStripCount,
+        coarseCandidatesPerSearch: Int = ScrollMatcher.coarseCandidatesPerSearch,
+        maximumTiedCandidates: Int = ScrollMatcher.maximumTiedCandidates
+    ) -> Int? {
+        guard maximumStripCount >= 0, coarseCandidatesPerSearch >= 0, maximumTiedCandidates >= 0,
+            ScrollMatcher.candidateNeighborRadius >= 0
+        else { return nil }
+        func sum(_ a: Int, _ b: Int) -> Int? {
+            let (value, overflow) = a.addingReportingOverflow(b)
+            return overflow ? nil : value
+        }
+        func product(_ factors: Int...) -> Int? {
+            var value = 1
+            for factor in factors {
+                let (next, overflow) = value.multipliedReportingOverflow(by: factor)
+                guard !overflow else { return nil }
+                value = next
+            }
+            return value
+        }
+        // Each strip combines global and local proposals, expands their neighbors, then may
+        // add distinct alternatives. Retained reports coexist with map/sort copies; reserve
+        // capacity growth for these arrays and hash storage for proposal/displacement sets.
+        guard let perSearch = sum(coarseCandidatesPerSearch, maximumTiedCandidates),
+            let proposals = product(perSearch, 2),
+            let neighborSpan = product(ScrollMatcher.candidateNeighborRadius, 2),
+            let neighbors = sum(neighborSpan, 1),
+            let expanded = product(proposals, neighbors),
+            let candidates = sum(expanded, ScrollMatcher.distinctAlternativeOffsets.count),
+            let liveTables = sum(maximumStripCount, 2),
+            let arrays = product(liveTables, candidates, MemoryLayout<ScrollMatcher.Candidate>.stride, 4),
+            let setEntries = sum(proposals, candidates),
+            let sets = product(setEntries, MemoryLayout<Int>.stride, 8),
+            let reportAndVote = sum(
+                MemoryLayout<ScrollMatcher.StripReport>.stride, MemoryLayout<(Int, (Int, Double, Double))>.stride),
+            let metadata = product(maximumStripCount, reportAndVote, 8),
+            let tablesAndSets = sum(arrays, sets)
+        else { return nil }
+        return sum(tablesAndSets, metadata)
     }
 
     // MARK: Private

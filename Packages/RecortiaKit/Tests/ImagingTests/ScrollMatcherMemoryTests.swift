@@ -191,4 +191,33 @@ struct ScrollMatcherMemoryTests {
         }
     }
 
+    @Test("Candidate working storage follows each matcher limit and refuses arithmetic overflow")
+    func candidateBudgetFollowsMatcherLimits() throws {
+        let strips = ScrollMatcher.maximumStripCount
+        let coarse = ScrollMatcher.coarseCandidatesPerSearch
+        let ties = ScrollMatcher.maximumTiedCandidates
+        let baseline = try #require(ScrollStitcher.matcherCandidateWorkingBytes())
+        for (s, c, t) in [
+            (strips + 1, coarse, ties), (strips, coarse + 1, ties), (strips, coarse, ties + 1),
+            (strips * 4, coarse * 4, ties * 4),
+        ] {
+            let bytes = try #require(
+                ScrollStitcher.matcherCandidateWorkingBytes(
+                    maximumStripCount: s, coarseCandidatesPerSearch: c, maximumTiedCandidates: t))
+            let candidates =
+                (c + t) * 2 * (ScrollMatcher.candidateNeighborRadius * 2 + 1)
+                + ScrollMatcher.distinctAlternativeOffsets.count
+            let retainedTables = s * candidates * MemoryLayout<ScrollMatcher.Candidate>.stride
+            #expect(bytes >= retainedTables)
+            #expect(bytes > baseline)
+        }
+        for (s, c, t) in [
+            (Int.max, coarse, ties), (strips, Int.max, ties), (strips, coarse, Int.max),
+            (-1, coarse, ties),
+        ] {
+            #expect(
+                ScrollStitcher.matcherCandidateWorkingBytes(
+                    maximumStripCount: s, coarseCandidatesPerSearch: c, maximumTiedCandidates: t) == nil)
+        }
+    }
 }

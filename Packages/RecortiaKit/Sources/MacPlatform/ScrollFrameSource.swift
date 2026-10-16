@@ -29,6 +29,23 @@ protocol ScrollTargetChecking {
 /// by itself when the display configuration changes or the stream fails.
 @MainActor
 public final class ScrollFrameSource {
+    /// Frontmost foreign window at a desktop point, using the capture target's selection policy.
+    public static func frontmostWindowID(at point: Point<DesktopSpace>) -> CGWindowID? {
+        guard
+            let entries = CGWindowListCopyWindowInfo(
+                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+        else { return nil }
+        return frontmostWindowID(in: entries, at: point, excluding: ProcessInfo.processInfo.processIdentifier)
+    }
+
+    static func frontmostWindowID(
+        in entries: [[String: Any]], at point: Point<DesktopSpace>, excluding ownPID: pid_t
+    ) -> CGWindowID? {
+        LiveScrollTargetChecker.frontmostWindow(
+            in: entries,
+            at: CGPoint(x: point.x, y: point.y), excluding: ownPID)?.id
+    }
+
     public enum StopReason: Sendable, Equatable {
         case requested
         case targetChanged
