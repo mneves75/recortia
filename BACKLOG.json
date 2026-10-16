@@ -8,15 +8,16 @@
     "version": "0.12.2-beta1",
     "app_version": "0.12.2",
     "build": 21,
-    "date": "2026-10-15",
+    "date": "2026-10-16",
+    "release": {"tag": "v0.12.2-beta1", "commit": "682297430ef2d8c139d6f116a8a33776059fb54f", "url": "https://github.com/mneves75/recortia/releases/tag/v0.12.2-beta1", "prerelease": true, "notarization_submissions": {"app": "0392616a-06d3-48b7-8022-e1b66d711a8d", "dmg": "83399fba-f4ca-426f-a3f5-8a58ad044615"}, "dmg_sha256": "8b28f6df380c62dbe955a46184008f1fb1354dd6036c06721218aaacbbb4a942", "homebrew": "not updated; the cask follows stable releases (0.11.0)", "security_gate": "WAIVED (SEC-17 until 2026-11-15, SEC-18 until 2027-04-16); record .scratch/security-gate/682297430ef2d8c139d6f116a8a33776059fb54f/production.json"},
     "scope": "Full-source review fixes on top of 0.12.1: gesture/history integrity, scroll capture lifecycle and bound-window automatic scrolling, fail-closed mask geometry and scroll memory admission, editor-close export cancellation, release/E2E script gates, and attributable font resolution with a bounded retry of transient nil results; every editor window opens at one remembered or default size; tests reduced to checks that fail when a break matters (779 to 553 functions).",
-    "status": "source_accepted_physical_release_unqualified",
+    "status": "released_prerelease_physical_unqualified",
     "verification": "1b31c3f: stable Xcode 27.0/27A266a unsigned gate passes 511 package tests, 42 script controls, 617 translations and both builds; full native EN/PT-BR 48/49 per language, editor-presentation failed for environmental reasons (preserved) and passed 31/31 per language on a rerun of the same app bundle; hosted CI 38858778587 success on ab02bec; GPT-6 Astra review findings fixed and re-review approved. Earlier full-source fixes: 002f8b8 passed 720 tests, 48/48 native per language and different-model verification. See docs/specs/test-reduction/README.md and docs/specs/native-window-qualification/review-evidence.md.",
     "evidence_paths": ["docs/specs/test-reduction/README.md", "docs/specs/native-window-qualification/review-evidence.md", ".scratch/e2e/20261016-083024-82851/en/report.json", ".scratch/e2e/20261016-084609-5369/en/report.json", "docs/specs/full-source-review/plan.md", "docs/specs/full-source-review/acceptance-verdict.md", ".scratch/e2e/20261015-235920-72780/en/report.json", ".scratch/e2e/20261015-235920-72780/pt-BR/report.json"],
     "limitations": [
       "F-1 (transient nil font results) was reproduced in the Codex sandbox but its cause is not established; a bounded retry recovered every observed nil (3 in 100 runs), which is a mitigation, not a root-cause fix.",
-      "Physical keyboard/IME/VoiceOver/TCC/Spaces, minimum-macOS runtime, signing/notarization and distribution remain unqualified.",
-      "The installed local-test artifact remains 0.12.0/build19."
+      "Physical keyboard/IME/VoiceOver/TCC/Spaces and minimum-macOS runtime remain unqualified; signing, notarization and the published asset were verified for v0.12.2-beta1.",
+      "Installed on the maintainer's Mac from the published disk image; the running 0.12.0 process was not terminated, so a relaunch is needed to run 0.12.2."
     ]
   },
   "previous_source_candidate_0_12_1": {
@@ -117,6 +118,24 @@
     ]
   },
   "current_local_installation": {
+    "candidate": "0.12.2-beta1 notarized pre-release",
+    "app_version": "0.12.2",
+    "build": 21,
+    "date": "2026-10-16",
+    "source_commit": "682297430ef2d8c139d6f116a8a33776059fb54f",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "published DMG (sha256 8b28f6df380c62dbe955a46184008f1fb1354dd6036c06721218aaacbbb4a942, downloaded from the GitHub release)",
+    "backup_path": ".scratch/local-install-0.12.2-20261016/previous-0.12.0-build19.app",
+    "executable_sha256": "3e6c5b312071d3155fc2400f411e5ff174bf72bc05fbbdade949096a3942a623",
+    "installed_equals_export": true,
+    "backup_equals_previous": true,
+    "launched": false,
+    "notarized": true,
+    "authorization": "Owner request 2026-10-16: fix the window size and, when done, approved release, install on this Mac.",
+    "verification": "codesign --verify --deep --strict passes; spctl: Notarized Developer ID; Hardened Runtime; profile Recortia Developer ID; keychain-access-groups Q96FUTC5G8.dev.mvneves.Recortia; no get-task-allow; no ATS exceptions; installed bundle identical (diff -rq) to the published disk image's app. The previous 0.12.0 process kept running and was not terminated; the old bundle went to the Trash after a verified ditto backup.",
+    "qualification": "Release artifact verified; physical Spaces, keyboard and TCC behaviour of this build not run."
+  },
+  "previous_local_installation_0_12_0": {
     "candidate": "0.12.0 local test (untagged)",
     "app_version": "0.12.0",
     "build": 19,
@@ -1296,7 +1315,7 @@
       "deliverables": ["Features/EditorWindowSizing.swift", "E2E editor-window-size", "docs/specs/test-reduction/README.md"],
       "completion_contract": "Red/green E2E for the size; 55-mutation net caught by the reduced suite; stable gate; bilingual native E2E; different-model review; exact-head CI.",
       "evidence": ["docs/specs/test-reduction/README.md", "docs/specs/native-window-qualification/review-evidence.md"],
-      "progress_note": "Delivered by PR #18; release v0.12.2-beta1 follows the security gate."
+      "progress_note": "Delivered by PR #18; released as the v0.12.2-beta1 pre-release and installed on the maintainer's Mac on 2026-10-16."
     }
   ],
   "deferred_scope": [

@@ -6,12 +6,20 @@ All notable changes to Recortia are documented here. The format follows
 
 ## [Unreleased]
 
-Source candidate: 0.12.2/build21 (`0.12.2-beta1`, untagged). A full-source review found 15
-candidate defects: 11 are fixed test-first, the font incident (F-1) is mitigated without an
-established cause, and 3 are recorded as proposals. Two review cycles added further fixes,
-listed below. The findings, evidence ledger, red/green runs and gate results are in
-[docs/specs/full-source-review/plan.md](docs/specs/full-source-review/plan.md). The installed
-local-test artifact remains 0.12.0/build19; physical and release qualification remain separate.
+## [0.12.2-beta1] - 2026-10-16
+
+Released as build 21: a notarized GitHub pre-release (app submission `0392616a`, disk image
+`83399fba`; DMG SHA-256 `8b28f6df380c62dbe955a46184008f1fb1354dd6036c06721218aaacbbb4a942`).
+Homebrew keeps the stable 0.11.0. Installed on the maintainer's Mac on 2026-10-16 from the published
+disk image, keeping 0.12.0/build19 as a backup; the running 0.12.0 process was not terminated.
+The bilingual native E2E passed 48/49 scenarios per language; `editor-presentation` failed for
+environmental reasons and passed on a rerun of the same app. Physical Spaces, keyboard and TCC checks were not run.
+Security gate: WAIVED (SEC-17, SEC-18).
+
+A full-source review found 15 candidate defects: 11 are fixed test-first, the font incident (F-1)
+is mitigated without an established cause, and 3 are recorded as proposals. Two review cycles
+added further fixes, listed below. The findings, evidence ledger, red/green runs and gate
+results are in [docs/specs/full-source-review/plan.md](docs/specs/full-source-review/plan.md).
 
 Previous source candidate: 0.12.1/build20 (`0.12.1-beta1`, untagged). Native focus tests own a
 separate synthetic foreground application and require positive activation and opaque-overlap
