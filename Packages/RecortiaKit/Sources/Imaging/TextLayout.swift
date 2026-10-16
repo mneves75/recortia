@@ -7,6 +7,9 @@ import class AppKit.NSFontDescriptor
 
 public enum TextLayoutError: Error, Equatable, Sendable {
     case invalidGeometry
+    /// NSFontDescriptor.withDesign returned nil.
+    case unavailableFontDesign(TextAppearance)
+    /// NSFont(descriptor:size:) returned nil.
     case unavailableFont(TextAppearance)
     case unmeasurableText
 }
@@ -25,7 +28,22 @@ public struct TextLayoutMetrics: Hashable, Sendable {
 
 /// Stateless public-system-font resolution shared by native editing, selection and export.
 public enum TextLayout {
+    /// Bounded mitigation for transient nil font results: CI runs 38652457209 and 38795897584,
+    /// and sandbox E0 run 5/30 (monospaced, size 28). Reruns pass; the cause is not established.
+    /// Each stage repeats the same call at most twice after a nil. Under load, 100 sandboxed
+    /// runs saw three nils, each recovered by the first repeat (docs/specs/full-source-review).
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont {
+        try nativeFont(
+            for: appearance, size: size,
+            withDesign: { $0.withDesign($1) },
+            fontFromDescriptor: { NSFont(descriptor: $0, size: $1) })
+    }
+
+    static func nativeFont(
+        for appearance: TextAppearance, size: Double,
+        withDesign: (NSFontDescriptor, NSFontDescriptor.SystemDesign) -> NSFontDescriptor?,
+        fontFromDescriptor: (NSFontDescriptor, Double) -> NSFont?
+    ) throws(TextLayoutError) -> NSFont {
         // Two-sided ink/decorations must have a representable extent before resolving a font.
         guard size.isFinite, size > 0, (size * 2).isFinite else { throw .invalidGeometry }
         let base = NSFont.systemFont(ofSize: size)
@@ -35,10 +53,21 @@ public enum TextLayout {
         case .rounded, .roundedBoxed: design = .rounded
         case .monospaced, .monospacedBoxed: design = .monospaced
         }
-        guard let descriptor = base.fontDescriptor.withDesign(design),
-            let font = NSFont(descriptor: descriptor, size: size)
-        else { throw .unavailableFont(appearance) }
+        let baseDescriptor = base.fontDescriptor
+        guard let descriptor = resolveFontValue({ withDesign(baseDescriptor, design) }) else {
+            throw .unavailableFontDesign(appearance)
+        }
+        guard let font = resolveFontValue({ fontFromDescriptor(descriptor, size) }) else {
+            throw .unavailableFont(appearance)
+        }
         return font
+    }
+
+    private static func resolveFontValue<Value>(_ resolve: () -> Value?) -> Value? {
+        for _ in 0..<3 {
+            if let value = resolve() { return value }
+        }
+        return nil
     }
 
     public static func metrics(for text: Annotation.TextContent, style: Annotation.Style) throws(TextLayoutError)
