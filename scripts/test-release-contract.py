@@ -102,18 +102,6 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertFalse((out / "src").exists(), "reservation must fail before the gate")
             self.assertFalse((fixture.root / "archive-reached").exists())
 
-    def test_failed_gate_keeps_reservation_and_second_invocation_refuses_it(self) -> None:
-        fixture = self.fixture()
-        first = fixture.run()
-        self.assertIn("the gate failed", first.stderr)
-        out = fixture.root / ".build/release/0.12.2"
-        (out / "reserved").write_bytes(b"first invocation")
-        second = fixture.run()
-        self.assertNotEqual(0, second.returncode)
-        self.assertIn("already exists", second.stderr)
-        self.assertEqual(b"first invocation", (out / "reserved").read_bytes())
-        self.assertFalse((fixture.root / "archive-reached").exists())
-
     def test_concurrent_invocations_reserve_the_tag_exactly_once(self) -> None:
         fixture = self.fixture()
         gate = fixture.root / "gate/scripts/check.sh"

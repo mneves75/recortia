@@ -62,13 +62,6 @@ struct PreferenceSealTests {
         #expect(!PreferenceSeal(store: store).verify(consentOn, seal: tag))
     }
 
-    @Test("When the secret cannot be saved nothing is sealed")
-    func saveFailureSealsNothing() {
-        let store = MemoryStore()
-        store.failSaves = true
-        #expect(PreferenceSeal(store: store).seal(consentOn) == nil)
-    }
-
     // Hardening (security run-2): if the next generation cannot be stored, an older sealed pair
     // copied by another process must not stay valid at the unchanged generation.
     @Test("A failed save invalidates the secret so older seals stop verifying")

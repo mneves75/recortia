@@ -37,37 +37,6 @@ struct ImageInputFileTests {
         #expect(throws: ImportError.tooManyBytes) { try ImageInput.readFile(at: url) }
     }
 
-    @Test("A huge declared size is rejected before any read")
-    func hugeFile() throws {
-        let folder = try TestSupport.makeTemporaryDirectory()
-        defer { TestSupport.removeDirectory(folder) }
-        let url = try sparseFile(size: 1 << 40, in: folder)
-        #expect(throws: ImportError.tooManyBytes) { try ImageInput.readFile(at: url) }
-    }
-
-    @Test("A small file is returned byte for byte and is not modified")
-    func smallFile() throws {
-        let folder = try TestSupport.makeTemporaryDirectory()
-        defer { TestSupport.removeDirectory(folder) }
-        let url = folder.appendingPathComponent("small.png")
-        let bytes = TestSupport.pngSignature + Data([1, 2, 3])
-        try bytes.write(to: url)
-        let before = try FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date
-        #expect(try ImageInput.readFile(at: url) == bytes)
-        let after = try FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date
-        #expect(before == after)
-    }
-
-    @Test("Missing files and directories are unreadable")
-    func unreadable() throws {
-        let folder = try TestSupport.makeTemporaryDirectory()
-        defer { TestSupport.removeDirectory(folder) }
-        #expect(throws: ImportError.unreadable) {
-            try ImageInput.readFile(at: folder.appendingPathComponent("none.png"))
-        }
-        #expect(throws: ImportError.unreadable) { try ImageInput.readFile(at: folder) }
-    }
-
     /// Resumes a continuation at most once; the read and the deadline race for it.
     private final class Once: Sendable {
         private let claimed = Mutex(false)

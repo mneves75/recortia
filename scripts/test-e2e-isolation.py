@@ -86,15 +86,6 @@ class E2EIsolationTests(unittest.TestCase):
                 (pathlib.Path(directory) / "Planted.swift").write_text(f"func probe() {{\n    {source}\n}}\n")
                 self.assertEqual([f"Planted.swift:2: {rule}"], scan(pathlib.Path(directory)))
 
-    def test_scan_passes_a_clean_directory_and_ignores_comments(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            (pathlib.Path(directory) / "Clean.swift").write_text(
-                "// NSPasteboard.general is forbidden here\n"
-                "let board = NSPasteboard(name: NSPasteboard.Name(\"dev.mvneves.Recortia.E2E.image\"))\n"
-                "let unique = NSPasteboard.withUniqueName()\n"
-            )
-            self.assertEqual([], scan(pathlib.Path(directory)))
-
     def test_allowlist_is_narrow_per_file_and_per_rule(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)

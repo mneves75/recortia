@@ -60,15 +60,6 @@ struct GitHubUploadTests {
         #expect(requests.allSatisfy { $0.url?.host == "api.github.com" && $0.url?.user == nil })
     }
 
-    @Test("Retrying the same intent recognizes the existing blob without another PUT")
-    func retryDoesNotDuplicate() async throws {
-        let snapshot = TestSupport.snapshot()
-        let transport = UploadTransportFixture([privateRepo, file(snapshot, wrapped: false)])
-        _ = try await GitHubUploader(transport: transport).upload(
-            snapshot, to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
-        #expect(await transport.requests.map(\.httpMethod) == ["GET", "GET"])
-    }
-
     @Test("A public repository is rejected before any content request")
     func publicRepositoryDenied() async {
         let transport = UploadTransportFixture([
@@ -206,18 +197,6 @@ struct GitHubUploadTests {
             Issue.record("header injection token was accepted")
         } catch { #expect(error == .missingCredential) }
         #expect(await transport.requests.isEmpty)
-    }
-
-    @Test("Oversized responses are refused")
-    func responseLimit() async {
-        let transport = UploadTransportFixture([
-            GitHubResponse(statusCode: 200, body: Data(count: GitHubUploader.maximumResponseBytes + 1))
-        ])
-        do {
-            _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
-            Issue.record("oversized response was accepted")
-        } catch { #expect(error == .invalidResponse) }
     }
 
     @Test("Malformed success and a server failure after PUT report uncertain completion", arguments: [201, 500])

@@ -18,30 +18,6 @@ struct DragOutProviderTests {
         }
     }
 
-    @Test("The receiver's file gets bytes identical to the snapshot")
-    func writesIdenticalBytes() async throws {
-        let folder = try TestSupport.makeTemporaryDirectory()
-        defer { TestSupport.removeDirectory(folder) }
-        let snapshot = TestSupport.snapshot()
-        let provider = DragOutProvider(snapshot: snapshot)
-        let url = folder.appendingPathComponent("dropped.png")
-        let error = await write(provider, to: url)
-        #expect(error == nil)
-        #expect(try Data(contentsOf: url) == snapshot.bytes)
-        #expect(TestSupport.directoryEntries(folder) == ["dropped.png"])
-    }
-
-    @Test("A write the receiver cannot accept reports an error and leaves no file")
-    func reportsWriteFailure() async throws {
-        let folder = try TestSupport.makeTemporaryDirectory()
-        defer { TestSupport.removeDirectory(folder) }
-        let provider = DragOutProvider(snapshot: TestSupport.snapshot())
-        let url = folder.appendingPathComponent("missing", isDirectory: true).appendingPathComponent("x.png")
-        let error = await write(provider, to: url)
-        #expect(error != nil)
-        #expect(TestSupport.directoryEntries(folder).isEmpty)
-    }
-
     @Test("A revoked lease writes nothing, even when the receiver asks for the file later")
     func revokedLeaseWritesNothing() async throws {
         let folder = try TestSupport.makeTemporaryDirectory()

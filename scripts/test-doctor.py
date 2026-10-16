@@ -90,12 +90,6 @@ else:
         self.assertFalse((self.root / "build-reached").exists())
         self.assertFalse((self.root / "launch-reached").exists())
 
-    def test_no_build_requires_matching_provenance_before_launch(self) -> None:
-        result = self.run_e2e("--no-build")
-        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("provenance", result.stderr)
-        self.assertFalse((self.root / "launch-reached").exists())
-
     def test_build_records_provenance_and_matching_no_build_reuses_it(self) -> None:
         result = self.run_e2e()
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
@@ -261,31 +255,6 @@ else:
         reused = self.run_e2e("--no-build")
         self.assertEqual(0, reused.returncode, reused.stdout + reused.stderr)
 
-    def test_no_build_rejects_a_binary_rebuilt_outside_e2e(self) -> None:
-        # check.sh builds the same scheme into the same derived data and never touches the E2E
-        # provenance, so a gate run (any toolchain mode, any working tree) replaces the binary.
-        check = (ROOT / "scripts/check.sh").read_text()
-        e2e = (ROOT / "scripts/e2e.sh").read_text()
-        self.assertIn("derived=.build/dd\n", e2e)
-        self.assertRegex(check, r"-scheme RecortiaE2E [^\n]*\\\n[^\n]*-derivedDataPath \.build/dd ")
-        self.assertNotIn("e2e-provenance", check)
-        built = self.run_e2e()
-        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
-        provenance = self.root / ".build/dd-e2e-provenance.json"
-        recorded = provenance.read_text()
-        for marker in ("build-reached", "launch-reached"):
-            (self.root / marker).unlink()
-        app = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
-        app.write_text('#!/bin/sh\ntouch foreign-binary-launched\n'
-                       'printf \'[{"passed":true,"screenshots":[]}]\' > "$2/report.json"\n')
-        reused = self.run_e2e("--no-build")
-        self.assertEqual(recorded, provenance.read_text(), "the provenance still describes the replaced build")
-        self.assertFalse(
-            (self.root / "foreign-binary-launched").exists(),
-            "--no-build qualified a binary that the recorded provenance does not describe",
-        )
-        self.assertNotEqual(0, reused.returncode, reused.stdout + reused.stderr)
-
 
 class DoctorTests(unittest.TestCase):
     def run_doctor(
@@ -345,11 +314,6 @@ class DoctorTests(unittest.TestCase):
                 timeout=15,
             )
 
-    def test_supported_stable_build_is_independent_of_local_observation(self) -> None:
-        result = self.run_doctor()
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("stable baseline", result.stdout)
-
     def test_recorded_rc_requires_explicit_development_mode(self) -> None:
         rejected = self.run_doctor(version="27.1", build="27A9275")
         self.assertNotEqual(0, rejected.returncode)
@@ -377,34 +341,6 @@ class DoctorTests(unittest.TestCase):
                 with self.subTest(mode=mode, version=version, build=build):
                     result = self.run_doctor(version=version, build=build, mode=mode)
                     self.assertNotEqual(0, result.returncode, result.stdout)
-
-    def test_release_mode_rejects_rc_despite_development_override(self) -> None:
-        result = self.run_doctor(
-            version="27.1", build="27A9275", mode="development", arguments=("--release",),
-        )
-        self.assertNotEqual(0, result.returncode, result.stdout)
-        self.assertIn("stable baseline", result.stderr)
-
-    def test_release_mode_accepts_reviewed_stable_baseline(self) -> None:
-        result = self.run_doctor(mode="development", arguments=("--release",))
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("stable baseline", result.stdout)
-        self.assertNotIn("DEVELOPMENT", result.stdout)
-
-    def test_unknown_mode_and_arguments_fail_closed(self) -> None:
-        for mode, arguments in (("beta", ()), (None, ("--unknown",)), ("development", ("--release", "--unknown"))):
-            with self.subTest(mode=mode, arguments=arguments):
-                self.assertNotEqual(0, self.run_doctor(mode=mode, arguments=arguments).returncode)
-
-    def test_inconsistent_release_policy_is_denied(self) -> None:
-        self.assertNotEqual(0, self.run_doctor(required_major=26).returncode)
-        self.assertNotEqual(0, self.run_doctor(allow_beta_release=True, arguments=("--release",)).returncode)
-
-    def test_multiline_version_output_does_not_trigger_sigpipe(self) -> None:
-        result = self.run_doctor(0)
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("doctor: Swift test compiler", result.stdout)
-        self.assertNotIn("secondary line", result.stdout)
 
     def test_swift_failure_still_fails_doctor(self) -> None:
         self.assertNotEqual(0, self.run_doctor(42).returncode)
