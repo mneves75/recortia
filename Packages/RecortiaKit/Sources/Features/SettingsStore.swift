@@ -105,6 +105,7 @@ public final class SettingsStore {
             input.pinDefaultOpacity.isFinite
             ? min(max(input.pinDefaultOpacity, opacityRange.lowerBound), opacityRange.upperBound)
             : defaults.pinDefaultOpacity
+        output.editorContentSize = input.editorContentSize.flatMap(EditorWindowSizing.rememberable)
         return output
     }
 }

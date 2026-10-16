@@ -69,6 +69,9 @@ The resumed session supplies the required control; final acceptance is recorded 
 
 ### Fixed
 
+- Every editor window now opens at the same size, whatever was captured: the size you last
+  resized an editor to, or a default, kept within the screen. Previously each capture's own size
+  set the window size, so windows appeared at different sizes.
 - An image import or keyboard nudge that lands while a layer or annotation is being dragged is
   kept: the drag is settled at its current position first, and each becomes its own Undo step.
 - Committing a text edit, a new text or an image import after changing a colour is its own Undo

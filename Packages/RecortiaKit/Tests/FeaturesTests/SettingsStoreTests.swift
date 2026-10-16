@@ -107,9 +107,28 @@ struct SettingsStoreTests {
             "schemaVersion", "hasCompletedOnboarding", "captureDelaySeconds", "captureShowsCursor",
             "captureIncludesWindowShadow", "autoCopy", "autoSave", "launchAtLogin", "updateChecksEnabled",
             "automaticScrollingEnabled", "defaultExportFormat", "jpegQuality", "defaultExportScale", "ocrTextMode",
-            "pinDefaultOpacity", "preferredSaveFolderBookmark",
+            "pinDefaultOpacity", "preferredSaveFolderBookmark", "editorContentSize",
         ]
         #expect(Set(object.keys).isSubset(of: allowed))
+    }
+
+    @Test("The editor window size persists, and blobs written before it existed still load")
+    func editorContentSize() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        store.update { $0.editorContentSize = Size(width: 1240, height: 790) }
+        #expect(SettingsStore(storage: storage).preferences.editorContentSize == Size(width: 1240, height: 790))
+        // A 0.12.1 blob has no editorContentSize key: it must load without a load issue.
+        let legacy = MemoryPreferenceStorage()
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old.removeValue(forKey: "editorContentSize")
+        old["captureDelaySeconds"] = 3
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 3)
+        #expect(loaded.preferences.editorContentSize == nil)
     }
 
     @Test("Works against a real, isolated UserDefaults suite")

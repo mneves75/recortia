@@ -81,7 +81,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         // The capture result follows the current Space, including another app's fullscreen
         // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
         window.collectionBehavior = SpacePolicy.followsActiveSpace
-        window.contentMinSize = NSSize(width: 980, height: 560)
+        window.contentMinSize = NSSize(
+            width: EditorWindowSizing.minimumContentSize.width, height: EditorWindowSizing.minimumContentSize.height)
         window.tabbingMode = .disallowed
         super.init(window: window)
         window.delegate = self
@@ -90,7 +91,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             model: model, canvas: canvas, actions: self, noticePresentation: noticePresentation)
         window.contentViewController = NSHostingController(rootView: root)
         window.initialFirstResponder = canvas
-        window.setContentSize(Self.initialContentSize(for: model.document, on: targetScreen()))
+        let visible = targetScreen()?.visibleFrame.size ?? NSSize(width: 1440, height: 900)
+        let size = EditorWindowSizing.initialContentSize(
+            remembered: model.environment.settings.preferences.editorContentSize,
+            visibleFrame: Size(width: visible.width, height: visible.height))
+        window.setContentSize(NSSize(width: size.width, height: size.height))
     }
 
     @available(*, unavailable)
@@ -130,18 +135,6 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         return ScreenChoice.screen(displayID: displayID)
     }
 
-    /// Room for the image at its captured point size plus the side panels, within the screen.
-    private static func initialContentSize(for document: Domain.Document, on screen: NSScreen?) -> NSSize {
-        let screenScale = Double(screen?.backingScaleFactor ?? 2)
-        let captureScale: Double? = document.assets.values.first.flatMap(\.pointPixelScale)
-        let scale = captureScale ?? screenScale
-        let chromeWidth = 200.0 + 290.0 + 48, chromeHeight = 48.0 + 30 + 48
-        let visible = screen?.visibleFrame.size ?? NSSize(width: 1440, height: 900)
-        let width = min(max(document.canvasSize.width / scale + chromeWidth, 980), visible.width * 0.92)
-        let height = min(max(document.canvasSize.height / scale + chromeHeight, 560), visible.height * 0.92)
-        return NSSize(width: width, height: height)
-    }
-
     /// Commits in-progress text first, so typed text counts as an edit.
     func hasUnexportedEdits() -> Bool {
         canvas.finishTextEditing(commit: true)
@@ -168,6 +161,14 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             self.window?.close()
         }
         return false
+    }
+
+    /// A size the user dragged to becomes every new editor's size.
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard let window else { return }
+        let content = window.contentRect(forFrameRect: window.frame).size
+        let size = Size<DesktopSpace>(width: content.width, height: content.height)
+        model.environment.settings.update { $0.editorContentSize = EditorWindowSizing.rememberable(size) }
     }
 
     func windowWillClose(_ notification: Notification) {

@@ -42,6 +42,10 @@ visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. 
 and marked-input refusal. Geometry/style admission must precede document/history/default
 mutations. This feature does not qualify CAP-01 or add reference-product head-style parity.
 
+Editor windows open at one size (`EditorWindowSizing`): the last user-resized content size,
+stored as the `editorContentSize` preference, or the default, limited to the target screen; never
+the captured image's size. Keep the bilingual `editor-window-size` E2E scenario.
+
 Full-source review invariants (2026-10, `docs/specs/full-source-review/plan.md`): every
 independent document edit settles an active move/resize first (`settleTransformGesture`), so a
 drag never overwrites it; a committed text edit closes an open adjustment, while beginning or
