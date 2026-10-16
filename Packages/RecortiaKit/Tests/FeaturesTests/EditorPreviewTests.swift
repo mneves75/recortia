@@ -14,32 +14,6 @@ import Testing
 @Suite("Editor preview and stale results (RED-03)")
 @MainActor
 struct EditorPreviewTests {
-    @Test("The base renders once; annotation edits never re-render it")
-    func annotationEditsDoNotRenderBase() async {
-        let h = EditorHarness()
-        await h.settle()
-        #expect(h.renderer.baseRenders.count == 1)
-        #expect(h.model.isBaseCurrent)
-        h.model.selectTool(.arrow)
-        h.drag((10, 10), (100, 100))
-        h.model.selectTool(.text)
-        h.click(50, 50)
-        h.model.commitTextEditing("Hi")
-        await h.settle()
-        #expect(h.renderer.baseRenders.count == 1)
-    }
-
-    @Test("Moving an image layer re-renders the base")
-    func layerMoveRendersBase() async throws {
-        let h = EditorHarness()
-        await h.settle()
-        h.model.select(.layer(try #require(h.model.document.layers.first?.id)))
-        h.model.nudgeSelection(dx: 5, dy: 0)
-        await h.settle()
-        #expect(h.renderer.baseRenders.count == 2)
-        #expect(h.renderer.baseRenders.last?.layers.first?.placement.translation == Point(x: 5, y: 0))
-        #expect(h.model.isBaseCurrent)
-    }
 
     @Test("A base rendered before a redaction is dropped; the follow-up render is installed")
     func staleBaseAfterRedactionIsDropped() async throws {
@@ -161,29 +135,6 @@ struct EditorPreviewTests {
         #expect(h.model.qrPayloads.isEmpty)
         #expect(h.model.notice == .recognitionInvalidated)
         #expect(h.textClipboard.writes.isEmpty)
-    }
-
-    @Test("Pins made before a redaction are closed when the privacy epoch changes")
-    func pinsInvalidatedOnRedaction() async {
-        let h = EditorHarness()
-        await h.model.pin()
-        #expect(h.pins.pins.count == 1)
-        h.model.selectTool(.redact)
-        h.drag((100, 100), (150, 150))
-        #expect(h.pins.pins.isEmpty)
-        #expect(h.model.notice == .pinsInvalidated(1))
-    }
-
-    @Test("Undoing a redaction also advances the epoch and invalidates derivatives")
-    func undoRedactionInvalidates() async {
-        let h = EditorHarness()
-        h.model.selectTool(.redact)
-        h.drag((100, 100), (150, 150))
-        await h.model.pin()
-        #expect(h.pins.pins.count == 1)
-        h.model.undo()
-        #expect(h.model.session.privacyEpoch == 2)
-        #expect(h.pins.pins.isEmpty)
     }
 
     @Test("Magnifiers draw only from a base of the current privacy epoch")

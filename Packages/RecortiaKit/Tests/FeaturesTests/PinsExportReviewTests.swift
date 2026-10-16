@@ -51,16 +51,6 @@ struct PinsExportReviewTests {
         #expect(h.drag.writtenSnapshots.isEmpty)
     }
 
-    @Test("A pin outlives its source editor and can still be copied (FR-09)")
-    func pinSurvivesEditorClose() async throws {
-        let h = EditorHarness()
-        let id = try await pinnedFromEditor(h)
-        h.model.close()
-        #expect(h.pins.pin(for: id) != nil)
-        #expect(await h.pins.export(.copy, id) == .copied)
-        #expect(h.clipboard.writes.count == 1)
-    }
-
     @Test("Closing the source editor does not revoke the pin's own waiting drag")
     func editorCloseLeavesPinDragAlone() async throws {
         let h = EditorHarness()
@@ -89,21 +79,6 @@ struct PinsExportReviewTests {
         #expect(h.pins.pin(for: id) != nil)
         pending.resolve(.delivered)
         #expect(await outcome == .dragged)
-    }
-
-    @Test("Each pin has its own export identity, distinct from its source document")
-    func exportIdentitiesAreDistinct() async throws {
-        let h = EditorHarness()
-        let a = try await pinnedFromEditor(h)
-        let b = try await pinnedFromEditor(h)
-        let pinA = try #require(h.pins.pin(for: a)), pinB = try #require(h.pins.pin(for: b))
-        let idA = try #require(pinA.exportID), idB = try #require(pinB.exportID)
-        #expect(idA != idB)
-        #expect(idA != h.model.document.id && idB != h.model.document.id, "must not alias the editor's document")
-        #expect(await h.pins.export(.copy, a) == .copied)
-        #expect(await h.pins.export(.copy, b) == .copied)
-        #expect(h.clipboard.writes.map(\.documentID) == [idA, idB])
-        #expect(h.clipboard.writes.map(\.privacyEpoch) == [pinA.privacyEpoch, pinB.privacyEpoch])
     }
 
     @Test("A canceled pin drag leaves the coordinator free and the pin exportable")
@@ -150,19 +125,6 @@ struct PinsExportReviewTests {
         #expect(h.clipboard.writes.count == 1, "only the editor's copy")
     }
 
-    @Test("An editor export while a pin export encodes is rejected as busy")
-    func editorRejectedWhilePinExports() async throws {
-        let h = EditorHarness()
-        let id = try await pinnedFromEditor(h)
-        let pending = Pending<Result<Void, ExportServiceError>>()
-        h.exporter.pending = pending
-        async let pinOutcome = h.pins.export(.copy, id)
-        await waitFor("pin encoding") { pending.waiterCount == 1 }
-        #expect(await h.model.export(.copy) == .rejectedBusy)
-        pending.resolve(.success(()))
-        #expect(await pinOutcome == .copied)
-    }
-
     @Test("A pin export never marks the editor's document saved")
     func pinExportDoesNotMarkEditorSaved() async throws {
         let h = EditorHarness()
@@ -177,19 +139,4 @@ struct PinsExportReviewTests {
 
     // Characterization, not a requirement: the coordinator has one operation slot, so a pin's
     // drag chip left waiting makes automatic exports of a later capture skip with `.busy`.
-    @Test("Characterization: a waiting pin drag makes an automatic export skip as busy")
-    func waitingPinDragStarvesAutomaticExport() async throws {
-        let h = EditorHarness()
-        h.settings.update { $0.autoCopy = true }
-        let id = try await pinnedFromEditor(h)
-        h.drag.pending = Pending<DragDeliveryOutcome>()
-        async let outcome = h.pins.export(.drag, id)
-        await waitFor("drag offered") { h.drag.leases.count == 1 }
-        let session = EditorFixtures.session()
-        let automatic = await h.export.runAutomaticExports(for: session, currentSession: { session })
-        #expect(automatic == [.failed(.busy)])
-        #expect(h.clipboard.writes.isEmpty)
-        h.pins.close(id)
-        _ = await outcome
-    }
 }

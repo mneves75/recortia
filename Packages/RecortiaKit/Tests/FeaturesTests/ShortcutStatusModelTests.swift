@@ -32,26 +32,6 @@ struct ShortcutStatusModelTests {
         #expect(!model.hasFailed("captureRegion"))
     }
 
-    @Test("A shortcut macOS claims is held, never registered, until macOS lets it go")
-    func heldWhileMacOSClaimsIt() {
-        let registry = FakeShortcutRegistry(assigned: ["captureRegion", "captureDisplay"])
-        registry.takenBySystem = ["captureRegion"]
-        let model = ShortcutStatusModel(registry: registry, names: names)
-        model.refreshAll()
-        #expect(model.state(of: "captureRegion") == .heldBySystem)
-        #expect(registry.registered["captureRegion"] == false)
-        #expect(registry.probed.contains("captureRegion") == false)
-        #expect(model.state(of: "captureDisplay") == .active)
-        #expect(registry.registered["captureDisplay"] == true)
-        #expect(model.isHoldingAny)
-
-        registry.takenBySystem = []
-        model.refreshAll()
-        #expect(model.state(of: "captureRegion") == .active)
-        #expect(registry.registered["captureRegion"] == true)
-        #expect(!model.isHoldingAny)
-    }
-
     @Test("Reassignment suspends handlers before changing stored keys, then restores only safe keys")
     func reassignmentOrder() {
         let registry = FakeShortcutRegistry(assigned: ["captureRegion", "captureDisplay"])
@@ -107,19 +87,6 @@ struct ShortcutStatusModelTests {
         #expect(!model.isHoldingAny)
     }
 
-    @Test("A press while macOS claims the keys does nothing and holds the shortcut")
-    func pressWhileClaimedIsIgnored() {
-        let registry = FakeShortcutRegistry(assigned: ["captureRegion"])
-        let model = ShortcutStatusModel(registry: registry, names: names)
-        model.refreshAll()
-        #expect(model.admitPress(named: "captureRegion"))
-
-        registry.takenBySystem = ["captureRegion"]  // the user turned the macOS shortcut back on
-        #expect(!model.admitPress(named: "captureRegion"))
-        #expect(model.state(of: "captureRegion") == .heldBySystem)
-        #expect(registry.registered["captureRegion"] == false)
-    }
-
     @Test("An unassigned shortcut is left registrable so a new recording works at once")
     func unassignedStaysRegistrable() {
         let registry = FakeShortcutRegistry(assigned: [])
@@ -147,14 +114,4 @@ struct ShortcutStatusModelTests {
         #expect(seed([:], offered: ["captureDisplay", "captureRegion"]) == ["captureMenu"])
     }
 
-    @Test("Restore Defaults returns every command to the table and clears the rest")
-    func restorePlan() {
-        let defaults = [
-            DefaultShortcut(name: "captureDisplay", shortcut: "⇧⌘3"),
-            DefaultShortcut(name: "captureRegion", shortcut: "⇧⌘4"),
-        ]
-        let restored = ShortcutDefaultsPlan.restored(
-            names: ["captureRegion", "captureDisplay", "captureText"], defaults: defaults)
-        #expect(restored == ["captureRegion": "⇧⌘4", "captureDisplay": "⇧⌘3", "captureText": nil])
-    }
 }

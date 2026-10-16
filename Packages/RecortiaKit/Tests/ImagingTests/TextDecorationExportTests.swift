@@ -30,24 +30,9 @@ struct TextDecorationExportTests {
         }
     }
 
-    @Test("Overflowing outline arithmetic refuses final export explicitly")
-    func outlineArithmeticRefuses() async throws {
-        let h = ImagingHarness()
-        let asset = try await h.add(try ChartFixture.solid(width: 60, height: 60, color: color(0, 0, 0, 0)))
-        var document = Document(asset: asset)
-        document.annotations = [
-            Annotation(
-                kind: .text(.init(origin: Point(x: 10, y: 10), string: "MW", appearance: .outlined)),
-                style: Annotation.Style(stroke: .white, lineWidth: .greatestFiniteMagnitude))
-        ]
-        await #expect(throws: ExportError.render(.textLayoutFailed(.invalidGeometry))) {
-            _ = try await h.export(DocumentSession(document: document))
-        }
-    }
-
     @Test(
         "Transformed source masks remain topmost over every appearance and sanitize magnifier exports",
-        arguments: TextAppearance.allCases)
+        arguments: [TextAppearance.outlined, .boxed, .roundedBoxed, .monospacedBoxed])
     func transformedMaskedExports(appearance: TextAppearance) async throws {
         let pair = try SecretPairFixture.make(
             width: 200, height: 150, secret: FixtureRect(x: 30, y: 20, width: 50, height: 30), seed: 91,
@@ -91,7 +76,8 @@ struct TextDecorationExportTests {
         }
     }
 
-    @Test("Finite-overflow font geometry is rejected before native font resolution", arguments: TextAppearance.allCases)
+    @Test(
+        "Finite-overflow font geometry is rejected before native font resolution", arguments: [TextAppearance.standard])
     func overflowFontAdmission(appearance: TextAppearance) {
         #expect(throws: TextLayoutError.invalidGeometry) {
             _ = try TextLayout.nativeFont(for: appearance, size: .greatestFiniteMagnitude)

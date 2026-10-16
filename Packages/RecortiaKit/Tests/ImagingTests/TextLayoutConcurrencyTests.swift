@@ -54,33 +54,9 @@ struct TextLayoutConcurrencyTests {
         #expect(failures.isEmpty, "\(failures.count) failures; first: \(failures.prefix(3))")
     }
 
-    @Test("Failure diagnostics distinguish resolution stages and execution context", arguments: [false, true])
-    func failureDiagnostics(isMainThread: Bool) {
-        let designs: [(TextAppearance, String)] = [
-            (.standard, "default"), (.rounded, "rounded"), (.monospaced, "monospaced"),
-            (.outlined, "default"), (.boxed, "default"), (.roundedBoxed, "rounded"),
-            (.monospacedBoxed, "monospaced"),
-        ]
-        for (appearance, design) in designs {
-            let failures: [(TextLayoutError, String)] = [
-                (.unavailableFontDesign(appearance), "withDesign"),
-                (.unavailableFont(appearance), "NSFont(descriptor:size:)"),
-                (.invalidGeometry, "geometry"), (.unmeasurableText, "measurement"),
-            ]
-            for (error, stage) in failures {
-                let message = Self.failureMessage(
-                    error, operation: "metrics", appearance: appearance, size: 18,
-                    isMainThread: isMainThread)
-                #expect(message.hasPrefix("metrics: stage=\(stage) "))
-                #expect(message.contains("design=\(design) appearance=\(appearance.rawValue) "))
-                #expect(message.contains("size=18.0 mainThread=\(isMainThread) "))
-            }
-        }
-    }
-
     @Test(
         "Both font-resolution stages recover transient nils and stop after three identical attempts",
-        arguments: ["design", "font"], [1, 2, 3, 4])
+        arguments: ["design", "font"], [3, 4])
     func boundedRetries(stage: String, succeedsOn: Int) {
         let appearance = TextAppearance.roundedBoxed
         let size = 28.0

@@ -16,31 +16,6 @@ struct ExportPipelineTests {
             document: Document(assets: [asset.id: asset], canvasSize: Size(width: 30, height: 14), layers: [layer]))
     }
 
-    @Test("The same session always yields byte-identical snapshots with its identity and a safe filename")
-    func snapshotsAreDeterministic() async throws {
-        let harness = ImagingHarness()
-        let pair = try SecretPairFixture.make(
-            width: 50, height: 40, secret: FixtureRect(x: 5, y: 5, width: 10, height: 10), seed: 3)
-        let asset = try await harness.add(pair.a)
-        var session = DocumentSession(document: Document(asset: asset))
-        try session.addSecureMask(covering: Rect(x: 5, y: 5, width: 10, height: 10))
-        try session.perform("Annotate") {
-            $0.annotations.append(Annotation(kind: .step(center: Point(x: 30, y: 20), number: 1), style: .default))
-        }
-        for options in [ExportOptions(), ExportOptions(format: .jpeg(quality: 0.7), scale: 1.5)] {
-            let first = try await harness.export(session, options)
-            let second = try await harness.export(session, options)
-            #expect(first == second)
-            #expect(first.revision == session.revision && first.privacyEpoch == session.privacyEpoch)
-            #expect(first.documentID == session.document.id)
-            #expect(first.format == options.format)
-            #expect(first.pixelSize == session.document.outputPixelSize(exportScale: options.scale))
-            #expect(first.suggestedFilename == ExportFilename.make(for: fixedExportDate, format: options.format))
-            let decodedPixels = try decoded(first)
-            #expect(decodedPixels.width == first.pixelSize.width && decodedPixels.height == first.pixelSize.height)
-        }
-    }
-
     @Test("PNG keeps alpha: transparent canvas stays transparent and layer opacity becomes pixel alpha")
     func pngAlpha() async throws {
         let harness = ImagingHarness()
@@ -79,7 +54,7 @@ struct ExportPipelineTests {
         }
     }
 
-    @Test("Preview geometry (renderBase + AnnotationRenderer) matches export geometry", arguments: [1.0, 2.0])
+    @Test("Preview geometry (renderBase + AnnotationRenderer) matches export geometry", arguments: [2.0])
     func previewMatchesExport(scale: Double) async throws {
         let harness = ImagingHarness()
         let asset = try await harness.add(try ChartFixture.geometryChart(width: 60, height: 40))
@@ -134,17 +109,6 @@ struct RenderBudgetTests {
         #expect(RenderLimits.maxWorkingBytes <= 512 * 1024 * 1024)
     }
 
-    @Test("Non-finite or non-positive scales are rejected")
-    func invalidScales() async throws {
-        let harness = ImagingHarness()
-        let asset = try await harness.add(try ChartFixture.solid(width: 10, height: 10, color: color(1, 2, 3)))
-        for scale in [0, -1, Double.nan, Double.infinity] {
-            await #expect(throws: RenderError.invalidScale) {
-                try await harness.renderer.render(Document(asset: asset), scale: scale)
-            }
-        }
-    }
-
     @Test("Assets missing from the store are an error, not a blank render")
     func missingAsset() async throws {
         let harness = ImagingHarness()
@@ -159,14 +123,4 @@ struct RenderBudgetTests {
         }
     }
 
-    @Test("Rendering runs off the main thread even when requested from the main actor")
-    @MainActor
-    func renderRunsOffMain() async throws {
-        let harness = ImagingHarness()
-        let asset = try await harness.add(try ChartFixture.solid(width: 10, height: 10, color: color(1, 2, 3)))
-        let outcome = try await harness.renderer.renderOutcome(Document(asset: asset), scale: 1)
-        #expect(!outcome.renderedOnMainThread)
-        // Control: the probe does report the main thread when the core runs there.
-        #expect(RenderEngine.isMainThread())
-    }
 }

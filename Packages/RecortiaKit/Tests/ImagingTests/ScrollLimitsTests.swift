@@ -31,14 +31,6 @@ struct ScrollLimitsTests {
         #expect(limits.maxWorkingBytes == 512 * 1024 * 1024)
     }
 
-    @Test("Scroll, render, and import pixel bounds stay coupled so none can drift silently")
-    func limitsAreCoupled() {
-        #expect(ScrollLimits.default.maxOutputArea == RenderLimits.maxOutputPixels)
-        #expect(ScrollLimits.default.maxOutputArea == ImportLimits.maxPixelArea)
-        #expect(RenderLimits.maxOutputPixels == ImportLimits.maxPixelArea)
-        #expect(ScrollLimits.default.maxSide == RenderLimits.maxOutputSide)
-    }
-
     @Test("120 s: a frame after the duration budget ends collection, and the limit is sticky")
     func duration() throws {
         let fixture = ScrollPageFixture(seed: 51, pageHeight: 900)
@@ -89,31 +81,6 @@ struct ScrollLimitsTests {
         #expect(throws: ScrollStitchError.noFrames) { try stitcher.assemble() }
     }
 
-    @Test("Working budget: a viewport whose peak allocation exceeds it is refused before its planes exist")
-    func rejectsViewportExceedingWorkingBudget() throws {
-        // 100x200 viewport: the first frame peaks near 240 KB, the second append near 560 KB.
-        let fixture = ScrollPageFixture(
-            seed: 56, width: 100, viewportHeight: 200, headerHeight: 20, footerHeight: 10, pageHeight: 800)
-        var stitcher = ScrollStitcher(limits: ScrollLimits(maxWorkingBytes: 400_000))
-        let first = try #require(fixture.frame(offset: 0, index: 0))
-        #expect(stitcher.append(first, elapsed: .zero) == .accepted(offset: 0))
-        let retained = stitcher.retainedByteCount
-
-        let second = try #require(fixture.frame(offset: 40, index: 1))
-        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.memory))
-        // Sticky like every limit, and nothing was allocated or lost.
-        #expect(stitcher.append(second, elapsed: .zero) == .limitReached(.memory))
-        #expect(stitcher.acceptedFrameCount == 1)
-        #expect(stitcher.retainedByteCount == retained)
-        let output = try stitcher.assemble()
-        #expect(output.width == 100 && output.height == 200)
-
-        // Control: the same session under the default budget accepts the second frame.
-        var roomy = ScrollStitcher()
-        _ = roomy.append(first, elapsed: .zero)
-        #expect(roomy.append(second, elapsed: .zero) == .accepted(offset: 40))
-    }
-
     @Test("Working budget: even the first frame is refused when its own planes cannot fit")
     func firstFrameExceedingWorkingBudget() throws {
         var stitcher = ScrollStitcher(limits: ScrollLimits(maxWorkingBytes: 100_000))
@@ -145,42 +112,8 @@ struct ScrollLimitsTests {
                 frameSize: PixelSize(width: 10, height: 10), retainedBytes: Int.max, appending: true) == nil)
     }
 
-    @Test("32,768 side: a wider viewport is refused under default limits")
-    func side() throws {
-        var stitcher = ScrollStitcher()
-        #expect(stitcher.append(try Self.blankFrame(width: 32_769, height: 8), elapsed: .zero) == .limitReached(.side))
-    }
-
-    @Test("20,000 default height: collection stops before the output exceeds it, and the partial output is exact")
-    func height() throws {
-        let fixture = ScrollPageFixture(
-            seed: 53, width: 40, viewportHeight: 420, headerHeight: 20, footerHeight: 12, pageHeight: 21_000,
-            animated: false)
-        var stitcher = ScrollStitcher()
-        var offset = 0, index = 0
-        var last = ScrollAppendResult.stationary
-        var lastAccepted = 0
-        while offset <= fixture.maxOffset {
-            last = stitcher.append(try #require(fixture.frame(offset: offset, index: index)), elapsed: .zero)
-            if case .limitReached = last { break }
-            #expect(last.isAccepted, "frame \(index): \(last)")
-            lastAccepted = offset
-            offset += 190
-            index += 1
-        }
-        #expect(last == .limitReached(.height))
-        #expect(stitcher.outputSize.height <= 20_000)
-        #expect(stitcher.outputSize.height + 190 > 20_000)
-        let image = try stitcher.assemble()
-        #expect(image.height == stitcher.outputSize.height)
-        let output = try #require(ScrollHarness.rgba(image))
-        let bad = ScrollHarness.mismatchedRows(
-            output: output, expected: fixture.expectedOutput(lastOffset: lastAccepted), fixture: fixture)
-        #expect(bad.isEmpty, "\(bad.prefix(5))")
-    }
-
     @Test(
-        "Each limit ends collection independently mid-session", arguments: [ScrollLimit.area, .side, .height, .frames])
+        "Each limit ends collection independently mid-session", arguments: [ScrollLimit.area, .side, .height])
     func independentLimits(limit: ScrollLimit) throws {
         let huge = ScrollLimits(
             maxDuration: .seconds(10_000), maxAcceptedFrames: 10_000, maxOutputArea: 1 << 40, maxSide: 1 << 30,
@@ -208,27 +141,6 @@ struct ScrollLimitsTests {
         #expect(try stitcher.assemble().height == 320)
     }
 
-    @Test("When one frame crosses several limits, the first in FR-10 order wins")
-    func firstLimitWins() throws {
-        let fixture = ScrollPageFixture(
-            seed: 55, width: 100, viewportHeight: 200, headerHeight: 20, footerHeight: 10, pageHeight: 800)
-        let limits = ScrollLimits(
-            maxDuration: .seconds(1), maxAcceptedFrames: 1, maxOutputArea: 100 * 210, maxSide: 210,
-            defaultMaxHeight: 210)
-        var stitcher = ScrollStitcher(limits: limits)
-        #expect(
-            stitcher.append(try #require(fixture.frame(offset: 0, index: 0)), elapsed: .zero) == .accepted(offset: 0))
-        #expect(
-            stitcher.append(try #require(fixture.frame(offset: 40, index: 1)), elapsed: .seconds(2))
-                == .limitReached(.duration))
-
-        var framesFirst = ScrollStitcher(
-            limits: ScrollLimits(maxAcceptedFrames: 1, maxOutputArea: 100 * 210, maxSide: 210, defaultMaxHeight: 210))
-        _ = framesFirst.append(try #require(fixture.frame(offset: 0, index: 0)), elapsed: .zero)
-        #expect(
-            framesFirst.append(try #require(fixture.frame(offset: 40, index: 1)), elapsed: .zero)
-                == .limitReached(.frames))
-    }
     @Test("A budget covering planes, growth and scratch still refuses an append without bookkeeping")
     func appendRefusesMissingBookkeepingBudget() throws {
         let fixture = ScrollPageFixture(

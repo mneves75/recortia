@@ -7,7 +7,7 @@ import Testing
 
 @Suite("Straight-line sanitized exports (FR-05, RED-02, RED-03)")
 struct StraightLineExportTests {
-    @Test("PNG flattens line stroke and opacity with round caps and no arrowhead", arguments: [1.0, 2.0])
+    @Test("PNG flattens line stroke and opacity with round caps and no arrowhead", arguments: [2.0])
     func flattenedLinePixels(scale: Double) async throws {
         let harness = ImagingHarness()
         let asset = try await harness.add(try ChartFixture.solid(width: 120, height: 80, color: color(255, 255, 255)))

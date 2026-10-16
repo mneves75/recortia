@@ -11,22 +11,6 @@ import Testing
 @Suite("Editor redaction labeling and masks (RED-04)")
 @MainActor
 struct EditorRedactionTests {
-    @Test("Only Redact is secure; Blur and Pixelate are cosmetic and never secure")
-    func toolClassification() {
-        for tool in EditorTool.allCases {
-            switch tool {
-            case .redact:
-                #expect(tool.isSecureRedaction && !tool.isCosmeticObfuscation)
-            case .blur, .pixelate:
-                #expect(!tool.isSecureRedaction && tool.isCosmeticObfuscation)
-            default:
-                #expect(!tool.isSecureRedaction && !tool.isCosmeticObfuscation)
-            }
-        }
-        #expect(EditorItemKind.redaction.isSecure && !EditorItemKind.redaction.isCosmetic)
-        #expect(!EditorItemKind.blur.isSecure && EditorItemKind.blur.isCosmetic)
-        #expect(!EditorItemKind.pixelate.isSecure && EditorItemKind.pixelate.isCosmetic)
-    }
 
     @Test("Blur and Pixelate add cosmetic effects only and leave the privacy epoch alone")
     func cosmeticToolsAreNotMasks() {

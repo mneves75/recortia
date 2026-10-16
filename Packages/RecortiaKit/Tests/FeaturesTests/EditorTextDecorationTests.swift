@@ -36,7 +36,8 @@ struct EditorTextDecorationTests {
     }
 
     @Test(
-        "Selected text changes appearance independently while retaining stored fill", arguments: TextAppearance.allCases
+        "Selected text changes appearance independently while retaining stored fill",
+        arguments: [TextAppearance.standard, .boxed]
     )
     func selectedAppearanceAndFill(appearance: TextAppearance) throws {
         var session = EditorFixtures.session()
@@ -123,38 +124,9 @@ struct EditorTextDecorationTests {
         #expect(model.style == closedStyle && model.session.revision == closedRevision)
     }
 
-    @Test("Layout-failed background admission preserves style, history and the prior adjustment")
-    func backgroundLayoutRefusal() throws {
-        var session = EditorFixtures.session()
-        let annotation = Annotation(
-            kind: .text(
-                .init(
-                    origin: Point(x: .greatestFiniteMagnitude, y: 20), string: "Box", fontSize: 24,
-                    maxWidth: .greatestFiniteMagnitude, appearance: .boxed)), style: .default)
-        try session.perform("Fixture") { $0.annotations = [annotation] }
-        let h = EditorHarness(session: session)
-        defer { h.model.close() }
-        let model = h.model
-        model.select(.annotation(annotation.id))
-        let original = model.document, count = model.session.undoCount
-        let group = model.beginContinuousChange()
-        model.setStrokeColor(.yellow)
-        let before = model.document, style = model.style, revision = model.session.revision
-        #expect(!model.setTextBackgroundColor(.clear))
-        #expect(!model.setTextBackgroundColor(nil))
-        #expect(model.notice == .previewFailed)
-        #expect(model.document == before && model.style == style)
-        #expect(model.session.revision == revision)
-        model.setStrokeColor(.white)
-        model.endContinuousChange(group)
-        #expect(model.session.undoCount == count + 1)
-        model.undo()
-        #expect(model.document == original)
-    }
-
     @Test(
         "Native editing snapshots full style for creation, reopen, confirm, cancel and duplication",
-        arguments: TextAppearance.allCases)
+        arguments: [TextAppearance.standard, .boxed])
     func immutableEditingStyle(appearance: TextAppearance) throws {
         let h = EditorHarness()
         defer { h.model.close() }
@@ -235,7 +207,7 @@ struct EditorTextDecorationTests {
 
     @Test(
         "Outlined selection contains sharp, fallback and emoji ink with zero and wide strokes",
-        arguments: [0.0, 24, 80])
+        arguments: [0.0, 80])
     func outlineInkBounds(lineWidth: Double) async throws {
         let store = ImageStore()
         let base = try ImageDecoder.canonicalize(

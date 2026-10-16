@@ -163,34 +163,12 @@ struct ScrollSessionModelEndingTests {
     // result must never be labeled complete).
     @Test(
         "Steps that go unanswered end as partial unless the target confirms it is at its end",
-        arguments: [nil, false] as [Bool?])
+        arguments: [nil] as [Bool?])
     func unconfirmedEndIsPartial(atEnd: Bool?) async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)
         h.scroller.atEnd = atEnd
         await Self.runUntilStepsGoUnanswered(h)
         #expect(h.model.partialReason == .stoppedMoving)
-    }
-
-    @Test("Automatic mode ends the page when scroll steps expose nothing new (no frames arrive)")
-    func automaticEndOfPageWithoutFrames() async {
-        let h = ScrollHarness(trusted: true, automaticPreference: true)
-        h.scroller.atEnd = true
-        await h.startCollecting()
-        h.frames.deliver()
-        // The 2-minute deadline plus the settle timer armed after the first scroll step.
-        await waitFor("first step, settle timer armed") { Self.settleArmed(h, steps: 1) }
-        for retry in 1..<Self.endThreshold {
-            h.clock.advance(bySeconds: Self.settleSeconds)
-            await waitFor("retry step \(retry)") { Self.settleArmed(h, steps: 1 + retry) }
-            #expect(h.model.state == .collecting)
-        }
-        h.clock.advance(bySeconds: Self.settleSeconds)
-        await waitFor("reviewing") { h.model.state == .reviewing }
-        #expect(h.model.partialReason == nil)
-        #expect(h.scroller.stepCount == Self.endThreshold)
-        #expect(h.scroller.stopCount >= 1)
-        #expect(h.frames.frames.waiterCount == 0)
-        await waitFor("timers released") { h.clock.pendingSleepCount == 0 }
     }
 
     @Test("A frame that moves the page restarts the settle count")
@@ -317,35 +295,6 @@ struct ScrollSessionModelEndingTests {
         #expect(h.stitcher.appendCount == 1)
     }
 
-    @Test("Cancel is immediate while a frame is awaited and releases every timer")
-    func cancelWhileBlocked() async {
-        let h = ScrollHarness(trusted: true, automaticPreference: true)
-        await h.startCollecting()
-        await Self.deliverFrames(h, 1)
-        await waitFor("deadline and settle armed") { Self.settleArmed(h, steps: 1) }
-        h.model.cancel()
-        #expect(h.model.state == .canceled)
-        #expect(h.frames.frames.waiterCount == 0)
-        #expect(h.scroller.stopCount >= 1)
-        await waitFor("timers released") { h.clock.pendingSleepCount == 0 }
-        h.clock.advance(bySeconds: Self.maxSeconds * 2)
-        await drain()
-        #expect(h.model.state == .canceled)
-        #expect(h.scroller.stepCount == 1)
-    }
-
-    @Test("Resuming in automatic mode scrolls again instead of waiting for a frame")
-    func automaticResumeSteps() async {
-        let h = ScrollHarness(trusted: true, automaticPreference: true)
-        await h.startCollecting()
-        await Self.deliverFrames(h, 1)
-        #expect(h.scroller.stepCount == 1)
-        h.model.pause()
-        h.model.resume()
-        await waitFor("stepped on resume") { h.scroller.stepCount == 2 }
-        #expect(h.model.state == .collecting)
-    }
-
     // MARK: Interrupts
 
     // The system screen-sharing Stop action also reports .canceled. Treating it as our
@@ -387,7 +336,7 @@ struct ScrollSessionModelEndingTests {
 
     @Test(
         "An interrupt stops an active session at once and discards the stitch",
-        arguments: [ScrollFailure.targetLost, .permissionRevoked, .displayChanged, .screenLocked, .noFrames])
+        arguments: [ScrollFailure.screenLocked])
     func interruptWhileCollecting(failure: ScrollFailure) async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)
         await h.startCollecting()

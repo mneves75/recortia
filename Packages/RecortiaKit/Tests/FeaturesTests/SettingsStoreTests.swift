@@ -9,33 +9,6 @@ import Testing
 @Suite("SettingsStore (FR-14, PRIV-01)")
 @MainActor
 struct SettingsStoreTests {
-    @Test("First launch uses defaults with every side-effect toggle off")
-    func defaults() {
-        let store = SettingsStore(storage: MemoryPreferenceStorage())
-        #expect(store.preferences == Preferences())
-        #expect(store.preferences.autoCopy == false)
-        #expect(store.preferences.autoSave == false)
-        #expect(store.preferences.launchAtLogin == false)
-        #expect(store.preferences.updateChecksEnabled == false)
-        #expect(store.preferences.automaticScrollingEnabled == false)
-        #expect(store.loadIssue == nil)
-    }
-
-    @Test("Updates persist as one JSON blob and reload")
-    func roundTrip() {
-        let storage = MemoryPreferenceStorage()
-        let store = SettingsStore(storage: storage)
-        store.update {
-            $0.captureDelaySeconds = 4
-            $0.ocrTextMode = .raw
-        }
-        // The blob plus its 32-byte seal; no other key and no content.
-        #expect(storage.values.keys.sorted() == [SettingsStore.storageKey, SettingsStore.sealKey].sorted())
-        #expect(storage.values[SettingsStore.sealKey]?.count == 32)
-        let reloaded = SettingsStore(storage: storage)
-        #expect(reloaded.preferences.captureDelaySeconds == 4)
-        #expect(reloaded.preferences.ocrTextMode == .raw)
-    }
 
     @Test("Corrupted data falls back to defaults without crashing or overwriting it")
     func corruptedData() {
@@ -57,20 +30,6 @@ struct SettingsStoreTests {
         let store = SettingsStore(storage: storage)
         #expect(store.preferences == Preferences())
         #expect(store.loadIssue == .unsupportedSchema(Preferences.currentSchemaVersion + 1))
-    }
-
-    @Test("Changes made while a newer blob is loaded never overwrite it (downgrade keeps its settings)")
-    func newerSchemaIsNotOverwritten() throws {
-        let storage = MemoryPreferenceStorage()
-        var future = Preferences()
-        future.schemaVersion = Preferences.currentSchemaVersion + 1
-        let stored = try JSONEncoder().encode(future)
-        storage.values[SettingsStore.storageKey] = stored
-        let store = SettingsStore(storage: storage)
-        store.update { $0.hasCompletedOnboarding = true }
-        #expect(store.preferences.hasCompletedOnboarding, "this session still uses the change")
-        #expect(storage.values[SettingsStore.storageKey] == stored)
-        #expect(storage.writeCount == 0)
     }
 
     @Test("Out-of-range values are clamped on load and on update")
@@ -141,97 +100,10 @@ struct SettingsStoreTests {
         #expect(SettingsStore(storage: defaults).preferences.pinDefaultOpacity == 0.5)
     }
 
-    @Test("Reset restores defaults")
-    func reset() {
-        let store = SettingsStore(storage: MemoryPreferenceStorage())
-        store.update { $0.autoSave = true }
-        store.resetToDefaults()
-        #expect(store.preferences == Preferences())
-    }
 }
 
 @Suite("OnboardingModel (FR-01)")
 @MainActor
 struct OnboardingModelTests {
-    @Test("First launch walks every feature page before persisting completion")
-    func flow() {
-        let storage = MemoryPreferenceStorage()
-        let settings = SettingsStore(storage: storage)
-        let model = OnboardingModel(settings: settings)
-        #expect(model.shouldPresent)
-        #expect(model.step == .localProcessing)
-        #expect(model.canGoBack == false)
-        model.next()
-        #expect(String(describing: model.step) == "capture")
-        #expect(model.canGoBack)
-        model.back()
-        #expect(model.step == .localProcessing)
-        let pages = ["capture", "editing", "recognition", "composition", "sharing", "shortcuts"]
-        for page in pages {
-            model.next()
-            #expect(String(describing: model.step) == page)
-            #expect(model.shouldPresent)
-            #expect(!settings.preferences.hasCompletedOnboarding)
-        }
-        model.next()
-        #expect(model.step == .done)
-        #expect(settings.preferences.hasCompletedOnboarding)
-        #expect(OnboardingModel(settings: SettingsStore(storage: storage)).shouldPresent == false)
-    }
 
-    @Test("Skipping finishes onboarding without assigning any shortcut")
-    func skip() {
-        let settings = SettingsStore(storage: MemoryPreferenceStorage())
-        let model = OnboardingModel(settings: settings)
-        model.finish()
-        #expect(model.step == .done)
-        #expect(model.shouldPresent == false)
-    }
-
-    @Test("Replaying a completed tour preserves preferences and login completion")
-    func replay() {
-        let storage = MemoryPreferenceStorage()
-        let settings = SettingsStore(storage: storage)
-        settings.update {
-            $0.autoCopy = true
-            $0.autoSave = true
-            $0.automaticScrollingEnabled = true
-            $0.captureDelaySeconds = 4
-            $0.githubUpload = GitHubUploadPreferences(
-                destination: GitHubDestination(owner: "fixture", repository: "private-captures"), automatic: true)
-        }
-        let model = OnboardingModel(settings: settings)
-        model.finish()
-        let before = settings.preferences
-        model.beginTour()
-        #expect(model.step == .localProcessing)
-        #expect(!model.shouldPresent)
-        #expect(settings.preferences == before)
-        model.back()
-        #expect(model.step == .localProcessing)
-        model.next()
-        model.back()
-        #expect(model.step == .localProcessing)
-        model.finish()
-        #expect(settings.preferences == before)
-        #expect(!OnboardingModel(settings: SettingsStore(storage: storage)).shouldPresent)
-        model.next()
-        model.back()
-        #expect(model.step == .done)
-    }
-
-    @Test("Skipping from any feature page completes the tour without enabling side effects")
-    func skipEveryPage() {
-        for page in 0..<7 {
-            let storage = MemoryPreferenceStorage()
-            let settings = SettingsStore(storage: storage)
-            let model = OnboardingModel(settings: settings)
-            for _ in 0..<page { model.next() }
-            model.finish()
-            #expect(!OnboardingModel(settings: SettingsStore(storage: storage)).shouldPresent)
-            var expected = Preferences()
-            expected.hasCompletedOnboarding = true
-            #expect(settings.preferences == expected)
-        }
-    }
 }

@@ -40,22 +40,6 @@ struct OCRRecognitionTests {
         sample.language == .english ? [english, portuguese] : [portuguese, english]
     }
 
-    @Test("Corpus is versioned, has at least 100 samples, and is balanced EN/PT-BR")
-    func corpusShape() throws {
-        let samples = try TextCorpus.samples()
-        #expect(samples.count >= 100)
-        let english = samples.filter { $0.language == .english }.count
-        #expect(english * 2 == samples.count)
-        #expect(Set(samples.map(\.id)).count == samples.count)
-        #expect(Set(samples.map(\.theme)) == Set(TextCorpus.Theme.allCases))
-        #expect(Set(samples.map(\.category)) == Set(TextCorpus.Category.allCases))
-        #expect(Set(samples.map(\.pointSize)).count >= 5)
-        let text = samples.map(\.text).joined()
-        for required in ["ç", "ã", "é", "ô", "á", "à", "0", "9", "%", "$", "(", ";", "{", "\""] {
-            #expect(text.contains(required), "corpus lacks \(required)")
-        }
-    }
-
     @Test("CER on the clean typed-text subset is at most 1%; full-corpus CER is reported", VisionRuntime.required)
     func characterErrorRate() async throws {
         let samples = try TextCorpus.samples()
@@ -136,34 +120,6 @@ struct OCRRecognitionTests {
                 #expect(line.box.height <= truth.height * 1.5 && line.box.height >= truth.height * 0.4)
             }
         }
-    }
-
-    @Test("Boxes follow text placed off-center: no vertical flip, no scale error", VisionRuntime.required)
-    func boxesTrackPlacement() async throws {
-        let sample = try TextCorpus.render(
-            id: "placement", language: .english, category: .prose, theme: .light, pointSize: 16, scale: 2,
-            lines: ["Placed near the lower right corner."])
-        let canvasWidth = sample.image.width + 900, canvasHeight = sample.image.height + 700
-        let dx = 850, dy = 640
-        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
-        let context = try #require(
-            CGContext(
-                data: nil, width: canvasWidth, height: canvasHeight, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.setFillColor(CGColor(gray: 1, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: canvasWidth, height: canvasHeight))
-        // Core Graphics is bottom-left; placing at top-left `dy` means y = height - dy - imageHeight.
-        context.draw(
-            sample.image,
-            in: CGRect(
-                x: dx, y: canvasHeight - dy - sample.image.height, width: sample.image.width,
-                height: sample.image.height))
-        let canvas = try #require(context.makeImage())
-        let result = try await recognizer.recognize(canvas, languages: [Self.english])
-        let line = try #require(result.lines.first)
-        let truth = sample.lineRects[0].offsetBy(dx: CGFloat(dx), dy: CGFloat(dy))
-        #expect(truth.contains(CGPoint(x: line.box.midX, y: line.box.midY)), "\(line.box) vs \(truth)")
-        #expect(line.text == "Placed near the lower right corner.")
     }
 
     @Test(

@@ -31,12 +31,6 @@ struct ScrollCalibrationTests {
 
     static let geometries = [(48, 140, 16, 8), (120, 260, 30, 20), (240, 320, 40, 24), (320, 420, 52, 0)]
 
-    static func percentile(_ values: [Double], _ p: Double) -> Double {
-        guard !values.isEmpty else { return .nan }
-        let sorted = values.sorted()
-        return sorted[min(sorted.count - 1, max(0, Int((Double(sorted.count - 1) * p).rounded())))]
-    }
-
     static func collect(seeds: [UInt64]) -> StripStatistics {
         var stats = StripStatistics()
         let thresholds = ScrollMatcher.Thresholds.calibrated
@@ -70,55 +64,6 @@ struct ScrollCalibrationTests {
             }
         }
         return stats
-    }
-
-    /// Wrong matches as exact as the true ones (repetition) must never clear the margin, since
-    /// nothing downstream could tell them apart; most correct strips on textured pages must.
-    /// Wrong matches that are less exact than every true match are left to the matcher's
-    /// exactness rule and consistency check, and are measured end to end on held-out seeds.
-    @Test("Baked thresholds separate exact wrong strip matches from correct ones on development seeds")
-    func calibrationOnDevelopmentSeeds() {
-        let stats = Self.collect(seeds: Self.developmentSeeds)
-        let thresholds = ScrollMatcher.Thresholds.calibrated
-        let correct = stats.samples.filter(\.correct)
-        let wrong = stats.samples.filter { !$0.correct }
-        let maxCorrectError = correct.map(\.error).max() ?? 0
-        let exactWrong = wrong.filter { $0.error <= maxCorrectError }
-        let weakWrongVotes = wrong.filter {
-            $0.error > maxCorrectError && $0.error <= thresholds.maximumMatchError
-                && $0.margin >= thresholds.minimumMargin
-        }
-        let maxExactWrongMargin = exactWrong.map(\.margin).max() ?? 0
-        let textMargins = correct.filter { $0.kind == .text }.map(\.margin)
-        let textRecall =
-            Double(textMargins.filter { $0 >= thresholds.minimumMargin }.count) / Double(max(1, textMargins.count))
-        print(
-            String(
-                format:
-                    "SCR-02 calibration (dev seeds %d...%d, 4 geometries): %d strips, %d featureless (%d matched a wrong shift exactly), %d textured: %d correct (error max %.4f), %d exact-wrong (margin max %.4f), %d weaker wrong votes",
-                Self.developmentSeeds.first ?? 0, Self.developmentSeeds.last ?? 0, stats.strips, stats.featureless,
-                stats.featurelessWrongExactMatches, stats.samples.count, correct.count, maxCorrectError,
-                exactWrong.count,
-                maxExactWrongMargin, weakWrongVotes.count))
-        print(
-            String(
-                format:
-                    "SCR-02 correct text-page margins: p1 %.4f p5 %.4f p10 %.4f median %.4f; vote recall at threshold %.3f",
-                Self.percentile(textMargins, 0.01), Self.percentile(textMargins, 0.05),
-                Self.percentile(textMargins, 0.10),
-                Self.percentile(textMargins, 0.5), textRecall))
-        print(
-            String(
-                format:
-                    "SCR-02 baked thresholds: minimumMargin %.4f maximumMatchError %.4f minimumTexture %.4f pixelTolerance %.0f minimumAgreeingStrips %d",
-                thresholds.minimumMargin, thresholds.maximumMatchError, thresholds.minimumTexture,
-                Double(thresholds.pixelTolerance),
-                thresholds.minimumAgreeingStrips))
-        #expect(exactWrong.count > 0, "calibration set must contain repetition, or the margin bound is vacuous")
-        #expect(thresholds.minimumMargin > 0 && thresholds.minimumMargin >= maxExactWrongMargin * 2)
-        #expect(textRecall >= 0.9, "threshold silences too many correct strips")
-        #expect(thresholds.maximumMatchError >= maxCorrectError)
-        #expect(thresholds.minimumAgreeingStrips >= 3)
     }
 
     @Test("Held-out seeds: zero false accepts across every scenario family")

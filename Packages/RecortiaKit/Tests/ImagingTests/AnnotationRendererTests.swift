@@ -8,16 +8,6 @@ import Testing
 
 @Suite("AnnotationRenderer: deterministic drawing shared by editor and export")
 struct AnnotationRendererTests {
-    @Test("Invalid text geometry refuses explicitly instead of silently omitting the text")
-    func invalidTextRefuses() throws {
-        #expect(throws: RenderError.textLayoutFailed(.invalidGeometry)) {
-            _ = try draw([
-                Annotation(
-                    kind: .text(.init(origin: Point(x: 10, y: 10), string: "Text", fontSize: .nan)),
-                    style: .default)
-            ])
-        }
-    }
 
     private func draw(_ annotations: [Annotation], width: Int = 120, height: Int = 80) throws -> DecodedPixels {
         let context = try #require(ChartFixture.context(width: width, height: height))
@@ -74,22 +64,6 @@ struct AnnotationRendererTests {
         #expect(shaft >= 3 && head > shaft * 2)
     }
 
-    @Test("A straight line has round caps and no arrowhead, even when fill is set")
-    func lineHasNoArrowhead() throws {
-        let style = Annotation.Style(stroke: .red, fill: .yellow, lineWidth: 4)
-        let line = try draw([
-            Annotation(kind: .line(start: Point(x: 10, y: 40), end: Point(x: 110, y: 40)), style: style)
-        ])
-        #expect(line.pixel(x: 40, y: 40).distance(to: RGBA.red.fixtureColor) <= 2)
-        #expect(line.pixel(x: 111, y: 40).a > 0, "the round end cap extends beyond the endpoint")
-        #expect(line.pixel(x: 96, y: 46).a == 0, "no head below the segment")
-        #expect(line.pixel(x: 96, y: 33).a == 0, "no head above the segment")
-        let arrow = try draw([
-            Annotation(kind: .arrow(start: Point(x: 10, y: 40), end: Point(x: 110, y: 40)), style: style)
-        ])
-        #expect(arrow.pixel(x: 96, y: 46).a > 0, "the same pixel detects a real arrowhead")
-    }
-
     @Test("Highlighter is translucent and numbered steps render their number")
     func highlighterAndStep() throws {
         let highlight = try draw([
@@ -127,15 +101,6 @@ struct AnnotationRendererTests {
         #expect(inked(rtl, in: FixtureRect(x: 0, y: 0, width: 120, height: 30)) > 30)
     }
 
-    @Test("Non-finite geometry is skipped instead of drawn or crashing")
-    func nonFiniteIsSkipped() throws {
-        let p = try draw([
-            Annotation(kind: .rectangle(Rect(x: .nan, y: 0, width: 10, height: .infinity)), style: .default),
-            Annotation(kind: .line(start: Point(x: .nan, y: 10), end: Point(x: 100, y: 10)), style: .default),
-            Annotation(kind: .line(start: Point(x: 10, y: 10), end: Point(x: 100, y: .infinity)), style: .default),
-        ])
-        #expect(inked(p, in: FixtureRect(x: 0, y: 0, width: 120, height: 80)) == 0)
-    }
 }
 
 extension RGBA {

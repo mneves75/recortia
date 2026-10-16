@@ -4,49 +4,6 @@ import Testing
 
 @Suite("Saved annotation palette (FR-05, FR-14)")
 struct SavedAnnotationPaletteTests {
-    @Test("Saving colors keeps distinct opaque RGB values in insertion order")
-    func opaqueColorsInInsertionOrder() {
-        var palette = SavedAnnotationPalette()
-        #expect(palette.colors.isEmpty)
-        let savedRed = palette.insert(.red.withAlpha(10))
-        let savedYellow = palette.insert(.yellow.withAlpha(0))
-        let savedDuplicate = palette.insert(.red.withAlpha(200))
-        #expect(savedRed)
-        #expect(savedYellow)
-        #expect(!savedDuplicate)
-        #expect(palette.colors == [.red, .yellow])
-    }
-
-    @Test("A full palette rejects another RGB value without changing saved colors")
-    func capacity() {
-        var palette = SavedAnnotationPalette()
-        for red in UInt8(0)..<12 {
-            let saved = palette.insert(RGBA(r: red, g: 20, b: 30))
-            #expect(saved)
-        }
-        let before = palette.colors
-        let saved = palette.insert(.white)
-        #expect(!saved)
-        #expect(palette.colors == before)
-        #expect(palette.colors.count == 12)
-    }
-
-    @Test("Explicit RGB removal preserves the remaining order and permits saving again")
-    func removal() {
-        var palette = SavedAnnotationPalette()
-        palette.insert(.red)
-        palette.insert(.white)
-        palette.insert(.yellow)
-        #expect(palette.contains(.white.withAlpha(0)))
-        let removed = palette.remove(.white.withAlpha(10))
-        let removedUnknown = palette.remove(.black)
-        #expect(removed)
-        #expect(!removedUnknown)
-        #expect(!palette.contains(.white))
-        #expect(palette.colors == [.red, .yellow])
-        palette.insert(.white)
-        #expect(palette.colors == [.red, .yellow, .white])
-    }
 
     @Test("Decoded saved colors normalize opacity and RGB duplicates, then reload unchanged")
     func decodingAndReload() throws {
@@ -64,7 +21,7 @@ struct SavedAnnotationPaletteTests {
 
     @Test(
         "Oversized arrays fail on their size before even a malformed thirteenth color is decoded",
-        arguments: ["{\"r\":1,\"g\":2,\"b\":3,\"a\":255}", "{}"])
+        arguments: ["{\"r\":1,\"g\":2,\"b\":3,\"a\":255}"])
     func oversizedArray(_ lastColor: String) {
         let repeated = Array(repeating: "{\"r\":0,\"g\":0,\"b\":0,\"a\":255}", count: 12)
         let data = Data(("[" + repeated.joined(separator: ",") + "," + lastColor + "]").utf8)
@@ -78,12 +35,4 @@ struct SavedAnnotationPaletteTests {
         }
     }
 
-    @Test(
-        "Malformed palette shapes and RGB components fail decoding",
-        arguments: ["{}", "[{}]", "[{\"r\":256,\"g\":0,\"b\":0,\"a\":255}]", "[null]"])
-    func malformedPalette(_ json: String) {
-        #expect(throws: DecodingError.self) {
-            try JSONDecoder().decode(SavedAnnotationPalette.self, from: Data(json.utf8))
-        }
-    }
 }

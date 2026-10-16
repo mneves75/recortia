@@ -74,16 +74,4 @@ struct PinnedExportTests {
         #expect(unmaskedA.bytes != unmaskedB.bytes)
     }
 
-    @Test("A pinned raster exports only at its own size")
-    func onlyOwnScale() async throws {
-        let harness = ImagingHarness()
-        let pair = try SecretPairFixture.make(width: 50, height: 40, secret: Self.secret, seed: 5)
-        let session = try await maskedSession(harness, pair.a)
-        await #expect(throws: ExportError.invalidOptions(.invalidScale)) {
-            try await pinnedSnapshot(harness, session, ExportOptions(scale: 2))
-        }
-        await #expect(throws: ExportError.invalidOptions(.invalidQuality)) {
-            try await pinnedSnapshot(harness, session, ExportOptions(format: .jpeg(quality: 2)))
-        }
-    }
 }

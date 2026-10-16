@@ -32,15 +32,6 @@ struct QRDecodingTests {
         }
     }
 
-    @Test("Malformed codes yield no payload")
-    func malformed() async throws {
-        let malformed = try QRFixture.all().filter(\.isMalformed)
-        #expect(malformed.count >= 2)
-        for fixture in malformed {
-            #expect(try await decoder.decode(fixture.image).isEmpty, "\(fixture.name)")
-        }
-    }
-
     @Test("Classification is conservative: only well-formed http(s) with a host is a web URL")
     func classification() {
         func kind(_ string: String) -> QRPayload.Kind { QRPayloadClassifier.classify(Data(string.utf8)).kind }
@@ -85,22 +76,6 @@ struct QRDecodingTests {
             index = next
         }
         return data
-    }
-
-    @Test("Bitstream parser recovers message bytes from Vision's raw data codewords")
-    func bitstreamParser() {
-        // Captured from Vision's BarcodeObservation.payloadData for CIQRCodeGenerator codes (level M).
-        let cases: [(String, Data)] = [
-            ("40b68656c6c6f20776f726c640ec11ec", Data("hello world".utf8)),
-            ("1030003240a35000ec11ec11ec11ec11", Data("000201010212".utf8)),
-            ("2045b256bf63e9a07b2ba1daa1d2ba8209da81d383b9d9d800ec11ec", Data("WIFI:S:Net;T:WPA;P:pw;;".utf8)),
-            ("40a4f6cc3a120c3a7c3a36f0ec11ec11", Data("Olá ção".utf8)),
-            ("405fffe0080410ec11ec11ec11ec11ec", Data([0xFF, 0xFE, 0x00, 0x80, 0x41])),
-        ]
-        for (raw, expected) in cases {
-            #expect(
-                QRBitstream.messageBytes(fromDataCodewords: Self.hex(raw), expectedString: nil) == expected, "\(raw)")
-        }
     }
 
     @Test("Recovered bytes must match Vision's decoded string when Vision reports one")

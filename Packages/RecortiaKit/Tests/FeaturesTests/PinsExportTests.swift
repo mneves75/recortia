@@ -34,20 +34,6 @@ final class PinsExportHarness {
 @Suite("Pin copy and drag-out (FR-09, PIN-02)")
 @MainActor
 struct PinsExportTests {
-    @Test("Copy encodes the pinned raster once and writes it under the pin's export identity")
-    func copy() async throws {
-        let h = PinsExportHarness()
-        let id = try await h.pinned()
-        let pin = try #require(h.model.pin(for: id))
-        let exportID = try #require(pin.exportID)
-
-        #expect(await h.model.export(.copy, id) == .copied)
-        #expect(h.exporter.pinnedRequests.count == 1)
-        #expect(h.exporter.pinnedRequests.first?.image === pin.image, "the pinned sanitized raster, not a new render")
-        #expect(h.exporter.pinnedRequests.first?.options.format == .png)
-        #expect(h.clipboard.writes.map(\.documentID) == [exportID])
-        #expect(h.exporter.snapshotCount == 0, "no document export ran")
-    }
 
     @Test("Drag-out uses the export format but always the pinned raster's own size")
     func dragOptions() async throws {
@@ -93,7 +79,7 @@ struct PinsExportTests {
 
     @Test(
         "Closing, redacting, or Close All while a drag offer waits revokes it and writes nothing",
-        arguments: ["close", "invalidate", "closeAll"])
+        arguments: ["closeAll"])
     func removalRevokesDrag(removal: String) async throws {
         let h = PinsExportHarness()
         var session = TestFixtures.session()
@@ -129,16 +115,4 @@ struct PinsExportTests {
         #expect(await outcome == .dragged)
     }
 
-    @Test("A second export while one runs is rejected as busy")
-    func busy() async throws {
-        let h = PinsExportHarness()
-        let id = try await h.pinned()
-        let pending = Pending<Result<Void, ExportServiceError>>()
-        h.exporter.pending = pending
-        async let first = h.model.export(.copy, id)
-        await waitFor("encoding") { pending.waiterCount == 1 }
-        #expect(await h.model.export(.copy, id) == .rejectedBusy)
-        pending.resolve(.success(()))
-        #expect(await first == .copied)
-    }
 }

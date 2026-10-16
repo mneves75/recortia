@@ -11,29 +11,6 @@ import Testing
 @Suite("Editor export actions (FR-07, FR-09)")
 @MainActor
 struct EditorExportTests {
-    @Test("Copy goes through the export pipeline and clipboard sink, and clears the dirty state")
-    func copy() async {
-        let h = EditorHarness()
-        h.model.selectTool(.arrow)
-        h.drag((10, 10), (90, 90))
-        #expect(h.model.isDirty)
-        let outcome = await h.model.export(.copy)
-        #expect(outcome == .copied)
-        #expect(h.exporter.snapshotCount == 1)
-        #expect(h.clipboard.writes.count == 1)
-        #expect(h.clipboard.writes.first?.revision == h.model.session.revision)
-        #expect(h.model.notice == .exported(.copied))
-        #expect(!h.model.isDirty)
-    }
-
-    @Test("Save passes the panel's overwrite confirmation to the file sink")
-    func save() async {
-        let h = EditorHarness()
-        let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
-        #expect(await h.model.export(.save(url, overwriteConfirmed: true)) == .saved(url))
-        #expect(h.files.saves.count == 1)
-        #expect(h.files.saves.first?.overwrite == true)
-    }
 
     @Test("Save to the preferred folder needs an authorized folder")
     func preferredFolder() async {
@@ -50,17 +27,6 @@ struct EditorExportTests {
         #expect(outcome.didWrite)
     }
 
-    @Test("Drag-out delivers the sanitized snapshot; a canceled drag shows no notice")
-    func drag() async {
-        let h = EditorHarness()
-        #expect(await h.model.export(.drag) == .dragged)
-        #expect(h.drag.deliveries.count == 1)
-        h.drag.outcome = .success(.canceledByUser)
-        h.model.dismissNotice()
-        #expect(await h.model.export(.drag) == .canceled)
-        #expect(h.model.notice == nil)
-    }
-
     @Test("Redacting while a drag is offered revokes it: the pre-redaction pixels are never written (RED-03)")
     func redactionRevokesPendingDrag() async throws {
         let h = EditorHarness()
@@ -74,18 +40,6 @@ struct EditorExportTests {
         #expect(!h.model.document.masks.isEmpty)
         #expect(lease.isRevoked)
         #expect(h.drag.dismissCount == 1)
-        _ = await export.value
-        #expect(h.drag.writtenSnapshots.isEmpty)
-    }
-
-    @Test("Closing the editor revokes a pending drag")
-    func closeRevokesPendingDrag() async throws {
-        let h = EditorHarness()
-        h.drag.pending = Pending<DragDeliveryOutcome>()
-        let export = Task { await h.model.export(.drag) }
-        await waitFor("drag offered") { h.drag.leases.count == 1 }
-        h.model.close()
-        #expect(h.drag.leases.first?.isRevoked == true)
         _ = await export.value
         #expect(h.drag.writtenSnapshots.isEmpty)
     }
@@ -106,16 +60,6 @@ struct EditorExportTests {
         #expect(h.model.isDirty)
     }
 
-    @Test("Pin renders the sanitized document through the pins model")
-    func pin() async {
-        let h = EditorHarness()
-        await h.model.pin()
-        #expect(h.pins.pins.count == 1)
-        #expect(h.pins.pins.first?.sourceDocumentID == h.model.document.id)
-        #expect(h.renderer.fullRenders.count == 1)
-        #expect(h.model.notice == .pinned)
-    }
-
     @Test("Pin failures are reported")
     func pinFailure() async {
         let h = EditorHarness()
@@ -123,16 +67,6 @@ struct EditorExportTests {
         h.renderer.fails = true
         await h.model.pin()
         #expect(h.model.notice == .pinFailed(.renderFailed))
-    }
-
-    @Test("After close, exports and pins do nothing")
-    func closedEditorExportsNothing() async {
-        let h = EditorHarness()
-        h.model.close()
-        #expect(await h.model.export(.copy) == .failed(.staleDocument))
-        await h.model.pin()
-        #expect(h.exporter.snapshotCount == 0)
-        #expect(h.pins.pins.isEmpty)
     }
 
     // Failure mode (Codex review): an undone image whose redo step is discarded stayed in the

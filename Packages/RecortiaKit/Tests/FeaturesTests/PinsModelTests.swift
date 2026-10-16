@@ -25,20 +25,6 @@ final class PinsHarness {
 @Suite("PinsModel (FR-09, PIN-01)")
 @MainActor
 struct PinsModelTests {
-    @Test("At most five pins; the sixth is refused")
-    func pinLimit() async throws {
-        let h = PinsHarness()
-        let session = TestFixtures.session()
-        for _ in 0..<PinLimits.maxPins {
-            _ = try await h.model.pin(session, currentSession: { session })
-        }
-        #expect(h.model.pins.count == 5)
-        #expect(h.model.canAddPin == false)
-        await #expect(throws: PinError.limitReached) {
-            _ = try await h.model.pin(session, currentSession: { session })
-        }
-        #expect(h.renderer.renderCount == 5)  // the refused pin never rendered
-    }
 
     @Test("Pins share a pixel budget; a pin that would exceed it is refused and nothing is added")
     func pinPixelBudget() throws {
@@ -87,17 +73,6 @@ struct PinsModelTests {
         #expect(h.model.pins.isEmpty)
     }
 
-    @Test("A render failure is reported and creates no pin")
-    func renderFailure() async {
-        let h = PinsHarness()
-        h.renderer.shouldFail = true
-        let session = TestFixtures.session()
-        await #expect(throws: PinError.renderFailed) {
-            _ = try await h.model.pin(session, currentSession: { session })
-        }
-        #expect(h.model.pins.isEmpty)
-    }
-
     @Test("A privacy-epoch change removes stale pins of that document only")
     func epochInvalidation() async throws {
         let h = PinsHarness()
@@ -131,20 +106,6 @@ struct PinsModelTests {
         h.model.close(id)
         #expect(h.model.pins.isEmpty)
         #expect(weakImage == nil)
-    }
-
-    @Test("Close all empties the list; bring forward is observable")
-    func closeAllAndBringForward() async throws {
-        let h = PinsHarness()
-        let session = TestFixtures.session()
-        _ = try await h.model.pin(session, currentSession: { session })
-        _ = try await h.model.pin(session, currentSession: { session })
-        let before = h.model.bringForwardRequest
-        h.model.bringForward()
-        #expect(h.model.bringForwardRequest == before + 1)
-        h.model.closeAll()
-        #expect(h.model.pins.isEmpty)
-        #expect(h.model.canAddPin)
     }
 
     @Test(

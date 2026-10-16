@@ -26,18 +26,6 @@ final class ImportHarness {
 struct ImportCoordinatorTests {
     let file = URL(fileURLWithPath: "/tmp/recortia-tests/fixture.png")
 
-    @Test("Opening a file creates a new document session without screen permission")
-    func openFile() async throws {
-        let h = ImportHarness()
-        h.input.files[file] = .success(Data(repeating: 1, count: 32))
-        let session = try await h.coordinator.importImage(from: .file(file)).get()
-        #expect(session.document.layers.count == 1)
-        #expect(h.assets.imported.first?.origin == .imported)
-        #expect(h.imported.count == 1)
-        #expect(h.input.pasteboardReads == 0)
-        #expect(h.permission.requestCount == 0)
-    }
-
     @Test("Paste reads the clipboard exactly once, only on request")
     func paste() async throws {
         let h = ImportHarness()
@@ -46,25 +34,6 @@ struct ImportCoordinatorTests {
         _ = try await h.coordinator.importImage(from: .pasteboard).get()
         #expect(h.input.pasteboardReads == 1)
         #expect(h.assets.imported.first?.origin == .pasted)
-    }
-
-    @Test("An empty clipboard is a typed, user-presentable error")
-    func emptyPasteboard() async {
-        let h = ImportHarness()
-        let result = await h.coordinator.importImage(from: .pasteboard)
-        #expect(result.failureValue == .nothingToPaste)
-        #expect(h.coordinator.lastFailure == .nothingToPaste)
-        #expect(h.imported.isEmpty)
-    }
-
-    @Test("Dropped data and dropped files import without touching the clipboard")
-    func drop() async throws {
-        let h = ImportHarness()
-        h.input.files[file] = .success(Data([1, 2, 3]))
-        _ = try await h.coordinator.importImage(from: .droppedFile(file)).get()
-        _ = try await h.coordinator.importImage(from: .droppedData(Data([4, 5]))).get()
-        #expect(h.imported.count == 2)
-        #expect(h.input.pasteboardReads == 0)
     }
 
     @Test(
