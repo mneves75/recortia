@@ -70,13 +70,14 @@ The resumed session supplies the required control; final acceptance is recorded 
 ### Changed
 
 - The automated tests keep only checks that fail when a break matters to a user, to data or to
-  security: 779 test functions became 551 (package 722 → 509, script controls 57 → 42), and 87
+  security: 779 test functions became 553 (package 722 → 511, script controls 57 → 42), and 87
   redundant parameter cases were dropped. Removed tests were duplicates, detail checks, inputs the
   app cannot produce, tests of helpers the app never calls, or outcomes a bilingual native E2E
   scenario asserts on the same path; hosted CI runs no E2E, so those now fail only in the native
-  run. A 52-mutation net (data loss, redaction, consent, stale results, decode and release
-  guards) fails on both the original and the reduced suites. One test was added: an unconfirmed
-  save never replaces an existing file, which only the native E2E caught before.
+  run. A 55-mutation net (data loss, redaction, consent, stale results, decode and release
+  guards) fails the reduced suite; the original suite missed only the two mutations behind the one
+  added test: an unconfirmed save never replaces an existing file, which only the native E2E
+  caught before.
 
 ### Fixed
 
