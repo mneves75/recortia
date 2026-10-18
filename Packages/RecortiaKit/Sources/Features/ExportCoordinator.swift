@@ -342,9 +342,11 @@ public final class ExportCoordinator {
                 outcomes.append(
                     await export(
                         .saveToFolder(folder), session: session, currentSession: currentSession,
-                        isAllowed: {
+                        isAllowed: { [folders] in
+                            // Compare folders, not bookmark bytes: a moved folder's bookmark is renewed.
                             settings.preferences.autoSave
-                                && settings.preferences.preferredSaveFolderBookmark == bookmark
+                                && settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder)
+                                    == folder
                         }))
             } else {
                 outcomes.append(.failed(.accessDenied))
