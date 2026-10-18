@@ -225,4 +225,32 @@ struct ExportCoordinatorTests {
         #expect(h.files.uniqueSaves.isEmpty)
     }
 
+    @Test("Turning automatic copy off, or changing the save folder, during the render stops that write")
+    func automaticExportsRecheckPreferences() async {
+        let h = ExportHarness()
+        h.settings.update { $0.autoCopy = true }
+        let copyRender = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = copyRender
+        let copyRun = Task { await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session }) }
+        await waitFor("automatic copy rendering") { copyRender.waiterCount == 1 }
+        h.settings.update { $0.autoCopy = false }
+        copyRender.resolve(.success(()))
+        #expect(await copyRun.value == [.canceled])
+        #expect(h.clipboard.writes.isEmpty)
+
+        h.settings.update {
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        h.folders.folder = destination.deletingLastPathComponent()
+        let saveRender = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = saveRender
+        let saveRun = Task { await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session }) }
+        await waitFor("automatic save rendering") { saveRender.waiterCount == 1 }
+        h.settings.update { $0.preferredSaveFolderBookmark = Data([2]) }
+        saveRender.resolve(.success(()))
+        #expect(await saveRun.value == [.canceled])
+        #expect(h.files.uniqueSaves.isEmpty)
+    }
+
 }

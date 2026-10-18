@@ -18,7 +18,8 @@ new tag for the last version ("do it all").
   livecheck use `releases/latest`, which never resolves to a pre-release) with the same notarized
   DMG (SHA-256 `8b28f6df…bb4a942`). The cask `mneves75/tap/recortia` moved from 0.11.0 to
   0.12.2-beta1.
-- Backups: local branch `backup/main-pre-squash-20261016` (`dd03993`); bundle of all refs and tags
+- Backups (all deleted at the owner's request later on 2026-10-16; the old history is gone):
+  local branch `backup/main-pre-squash-20261016` (`dd03993`); bundle of all refs and tags
   `/Volumes/MARCUS_S7/ARCHIVE/dev-scratch/recortia/main-pre-squash-20261016.bundle`; every old
   release's notes and assets under
   `/Volumes/MARCUS_S7/ARCHIVE/dev-scratch/recortia/release-assets-pre-squash-20261016/`.
@@ -83,8 +84,7 @@ new tag for the last version ("do it all").
 ## Next steps
 
 1. Nothing pending. If anything above failed, the final report of this session says which step.
-2. Delete the backup branch, bundle and release-asset archive only when the owner says the old
-   history is no longer needed.
+2. Done 2026-10-16: the owner had the backup branch, bundle and release-asset archive deleted.
 3. Future releases: `scripts/release.sh` on a new `v<version>[-betaN]` tag; the cask and the
    README version line follow the release the owner publishes.
 

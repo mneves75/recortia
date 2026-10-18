@@ -108,11 +108,11 @@ public final class ExportCoordinator {
     public func export(
         _ action: ExportAction, session: DocumentSession,
         currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
-        uploadConsentID: UUID? = nil
+        uploadConsentID: UUID? = nil, isAllowed: @escaping @MainActor () -> Bool = { true }
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
-            action, documentID: session.document.id, uploadConsentID: uploadConsentID,
+            action, documentID: session.document.id, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
             makeSnapshot: { options, date in try await exporter.makeSnapshot(of: session, options: options, date: date)
             },
             isCurrent: { snapshot in
@@ -139,7 +139,8 @@ public final class ExportCoordinator {
     }
 
     private func run(
-        _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?, fixedScale: Double? = nil,
+        _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?,
+        isAllowed: @escaping @MainActor () -> Bool = { true }, fixedScale: Double? = nil,
         makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
         isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
     ) async -> ExportOutcome {
@@ -182,6 +183,11 @@ public final class ExportCoordinator {
         apply(.encode)
 
         guard isCurrent(snapshot) else { return fail(.staleDocument) }
+        // The setting that authorized an automatic write may have changed during the render.
+        guard isAllowed() else {
+            apply(.cancel)
+            return finish(.canceled)
+        }
 
         do throws(SinkError) {
             let completed: ExportOutcome
@@ -318,24 +324,34 @@ public final class ExportCoordinator {
         guard automaticBatch == nil, operation == nil else { return [.failed(.busy)] }
         automaticBatch = Operation(id: UUID(), documentID: session.document.id)
         defer { automaticBatch = nil }
-        let preferences = settings.preferences
         let consentID = uploadConsentID ?? settings.githubUploadConsentID
+        let settings = self.settings
         var outcomes: [ExportOutcome] = []
-        if preferences.autoCopy {
-            outcomes.append(await export(.copy, session: session, currentSession: currentSession))
+        if settings.preferences.autoCopy {
+            outcomes.append(
+                await export(
+                    .copy, session: session, currentSession: currentSession,
+                    isAllowed: { settings.preferences.autoCopy }))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
+        let preferences = settings.preferences
         if preferences.autoSave {
             if let bookmark = preferences.preferredSaveFolderBookmark,
                 let folder = folders.resolveFolder(bookmark: bookmark)
             {
-                outcomes.append(await export(.saveToFolder(folder), session: session, currentSession: currentSession))
+                outcomes.append(
+                    await export(
+                        .saveToFolder(folder), session: session, currentSession: currentSession,
+                        isAllowed: {
+                            settings.preferences.autoSave
+                                && settings.preferences.preferredSaveFolderBookmark == bookmark
+                        }))
             } else {
                 outcomes.append(.failed(.accessDenied))
             }
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if let configuration = preferences.githubUpload, configuration.automatic {
+        if let configuration = settings.preferences.githubUpload, configuration.automatic {
             outcomes.append(
                 await export(
                     .upload(to: configuration.destination, intent: UUID()), session: session,

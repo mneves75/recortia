@@ -38,11 +38,11 @@ toolchain_mode="${RECORTIA_TOOLCHAIN_MODE:-stable}"
 xcode_version=$(xcodebuild -version)
 sdk_version=$(xcrun --sdk macosx --show-sdk-version)
 sdk_build_version=$(xcrun --sdk macosx --show-sdk-build-version)
-source_commit=$(git rev-parse HEAD)
 derived=.build/dd
 provenance="$derived-e2e-provenance.json"
 # Compare the source and the doctor-approved compiler, including its selected installation.
-current_provenance=$(python3 - "$source_commit" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" "$sdk_version" "$sdk_build_version" <<'PY'
+source_provenance() {
+python3 - "$(git rev-parse HEAD)" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" "$sdk_version" "$sdk_build_version" <<'PY'
 import hashlib, json, os, pathlib, subprocess, sys
 record = dict(zip(("git_sha", "toolchain_mode", "developer_dir", "xcode_version", "sdk_version", "sdk_build_version"), sys.argv[1:]))
 fingerprint = hashlib.sha256()
@@ -66,7 +66,8 @@ for name in sorted(filter(None, untracked.split(b"\0"))):
 record["working_tree_fingerprint"] = fingerprint.hexdigest()
 print(json.dumps(record, sort_keys=True))
 PY
-)
+}
+current_provenance=$(source_provenance)
 bundle="$derived/Build/Products/Debug/RecortiaE2E.app"
 app="$bundle/Contents/MacOS/RecortiaE2E"
 mkdir -p .build
@@ -78,6 +79,11 @@ if (( build )); then
     -destination 'platform=macOS' -derivedDataPath "$derived" "${sign_args[@]}" build >"$derived-e2e-build.log" 2>&1; then
     tail -30 "$derived-e2e-build.log" >&2
     echo "e2e: build failed (full log: $derived-e2e-build.log)" >&2
+    exit 2
+  fi
+  # An edit or commit during the build would bind this evidence to sources it did not compile.
+  if [[ "$(source_provenance)" != "$current_provenance" ]]; then
+    echo "e2e: the source or toolchain changed during the build; rerun on a quiet working tree" >&2
     exit 2
   fi
 fi
