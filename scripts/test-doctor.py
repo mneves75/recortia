@@ -73,10 +73,11 @@ else:
         executable.write_text(source)
         executable.chmod(0o755)
 
-    def run_e2e(self, *arguments: str, version: str = "27.0", build: str = "27A266a", mode: str = "stable") -> subprocess.CompletedProcess[str]:
+    def run_e2e(self, *arguments: str, version: str = "27.0", build: str = "27A266a", mode: str = "stable",
+                during_build: str = "") -> subprocess.CompletedProcess[str]:
         self.tool("xcodebuild", "#!/bin/sh\n"
                   f"if [ \"$1\" = -version ]; then printf 'Xcode {version}\\nBuild version {build}\\n'; "
-                  "else touch build-reached; fi\n")
+                  f"else touch build-reached; {during_build} fi\n")
         return subprocess.run(
             ["/bin/zsh", str(self.root / "scripts/e2e.sh"), "--lang", "en", *arguments],
             cwd=self.root, capture_output=True, text=True, timeout=15,
@@ -89,6 +90,13 @@ else:
         self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertFalse((self.root / "build-reached").exists())
         self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_source_edit_during_build_is_refused(self) -> None:
+        result = self.run_e2e(during_build="echo 'let value = 2' > Tracked.swift;")
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("changed during the build", result.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+        self.assertFalse((self.root / ".build/dd-e2e-provenance.json").exists())
 
     def test_build_records_provenance_and_matching_no_build_reuses_it(self) -> None:
         result = self.run_e2e()

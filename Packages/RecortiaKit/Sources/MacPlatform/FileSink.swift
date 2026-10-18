@@ -23,7 +23,10 @@ public struct FileSink {
     public func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) throws(SinkError) -> URL {
         guard url.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
         if !overwrite, fileSystem.itemExists(at: url) { throw .destinationExists }
-        let temporary = try writeTemporary(snapshot, in: url.deletingLastPathComponent())
+        // A replaced file may be private: write it owner-only and let `replace` copy its mode.
+        let replacing = overwrite && fileSystem.itemExists(at: url)
+        let temporary = try writeTemporary(
+            snapshot, in: url.deletingLastPathComponent(), permissions: replacing ? 0o600 : 0o644)
         do {
             if overwrite {
                 try fileSystem.replace(from: temporary, to: url)
@@ -42,7 +45,7 @@ public struct FileSink {
     public func saveUnique(_ snapshot: ShareSnapshot, in folder: URL) throws(SinkError) -> URL {
         guard folder.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
         let name = SafeFilename.sanitize(snapshot.suggestedFilename, fallbackExtension: snapshot.format.fileExtension)
-        let temporary = try writeTemporary(snapshot, in: folder)
+        let temporary = try writeTemporary(snapshot, in: folder, permissions: 0o644)
         for attempt in 1...Self.maxUniqueAttempts {
             let candidate = folder.appendingPathComponent(
                 ExportFilename.deduplicated(name, attempt: attempt), isDirectory: false)
@@ -60,10 +63,12 @@ public struct FileSink {
         throw .destinationExists
     }
 
-    private func writeTemporary(_ snapshot: ShareSnapshot, in folder: URL) throws(SinkError) -> URL {
+    private func writeTemporary(_ snapshot: ShareSnapshot, in folder: URL, permissions: mode_t) throws(SinkError)
+        -> URL
+    {
         let temporary = folder.appendingPathComponent(".recortia-\(UUID().uuidString).tmp", isDirectory: false)
         do {
-            try fileSystem.writeNewFile(snapshot.bytes, at: temporary)
+            try fileSystem.writeNewFile(snapshot.bytes, at: temporary, permissions: permissions)
         } catch {
             fileSystem.removeItem(at: temporary)
             throw Self.map(error)
@@ -90,11 +95,12 @@ struct FileSystemFailure: Error, Equatable, Sendable {
 
 /// The few file operations the sink needs, reporting POSIX error codes so failures map precisely.
 protocol FileSystemOperations {
-    /// Creates `url` exclusively (fails if it exists), writes all bytes, and flushes them to disk.
-    func writeNewFile(_ data: Data, at url: URL) throws(FileSystemFailure)
+    /// Creates `url` exclusively (fails if it exists) with `permissions` (before the umask), writes
+    /// all bytes, and flushes them to disk.
+    func writeNewFile(_ data: Data, at url: URL, permissions: mode_t) throws(FileSystemFailure)
     /// Atomically renames, failing with EEXIST if `destination` exists.
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure)
-    /// Atomically renames, replacing `destination` if it exists.
+    /// Atomically renames, replacing `destination` if it exists and keeping its permission bits.
     func replace(from source: URL, to destination: URL) throws(FileSystemFailure)
     /// Best-effort cleanup of a temporary file.
     func removeItem(at url: URL)
@@ -108,8 +114,8 @@ struct POSIXFileSystem: FileSystemOperations {
         self.fileManager = fileManager
     }
 
-    func writeNewFile(_ data: Data, at url: URL) throws(FileSystemFailure) {
-        let descriptor = open(url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o644)
+    func writeNewFile(_ data: Data, at url: URL, permissions: mode_t) throws(FileSystemFailure) {
+        let descriptor = open(url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, permissions)
         guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
         var failure: Int32?
         // Invariant: `buffer` is valid only inside the closure; every access stays within
@@ -139,6 +145,13 @@ struct POSIXFileSystem: FileSystemOperations {
     }
 
     func replace(from source: URL, to destination: URL) throws(FileSystemFailure) {
+        var existing = stat()
+        if stat(destination.path(percentEncoded: false), &existing) == 0 {
+            // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
+            _ = chmod(source.path(percentEncoded: false), existing.st_mode & 0o777)
+        } else if errno != ENOENT {
+            throw FileSystemFailure(code: errno)
+        }
         if rename(source.path(percentEncoded: false), destination.path(percentEncoded: false)) != 0 {
             throw FileSystemFailure(code: errno)
         }

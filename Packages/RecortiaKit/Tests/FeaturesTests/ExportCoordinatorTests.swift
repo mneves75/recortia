@@ -225,4 +225,44 @@ struct ExportCoordinatorTests {
         #expect(h.files.uniqueSaves.isEmpty)
     }
 
+    @Test("Turning automatic copy off, or changing the save folder, during the render stops that write")
+    func automaticExportsRecheckPreferences() async {
+        let h = ExportHarness()
+        h.settings.update { $0.autoCopy = true }
+        let copyRender = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = copyRender
+        let copyRun = Task { await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session }) }
+        await waitFor("automatic copy rendering") { copyRender.waiterCount == 1 }
+        h.settings.update { $0.autoCopy = false }
+        copyRender.resolve(.success(()))
+        #expect(await copyRun.value == [.canceled])
+        #expect(h.clipboard.writes.isEmpty)
+
+        h.settings.update {
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        let folder = destination.deletingLastPathComponent()
+        h.folders.folder = folder
+        func saveWhileRendering(_ change: () -> Void) async -> [ExportOutcome] {
+            let render = Pending<Result<Void, ExportServiceError>>()
+            h.exporter.pending = render
+            let run = Task { await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session }) }
+            await waitFor("automatic save rendering") { render.waiterCount == 1 }
+            change()
+            render.resolve(.success(()))
+            return await run.value
+        }
+        // The folder moved: its renewed bookmark still resolves to the authorized folder.
+        _ = await saveWhileRendering { h.settings.update { $0.preferredSaveFolderBookmark = Data([2]) } }
+        #expect(h.files.uniqueSaves.map(\.folder) == [folder])
+        // The user chose another folder: the pending save does not go to the old one.
+        let outcomes = await saveWhileRendering {
+            h.settings.update { $0.preferredSaveFolderBookmark = Data([3]) }
+            h.folders.folder = folder.appendingPathComponent("other", isDirectory: true)
+        }
+        #expect(outcomes == [.canceled])
+        #expect(h.files.uniqueSaves.count == 1)
+    }
+
 }

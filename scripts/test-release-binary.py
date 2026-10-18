@@ -47,6 +47,16 @@ class ReleaseBinaryGateTests(unittest.TestCase):
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                 self.assertIn(marker, result.stderr)
 
+    def test_marker_in_fat64_sibling_is_rejected(self) -> None:
+        for magic in ("cafebabf", "bfbafeca"):  # universal headers with 64-bit offsets, both byte orders
+            with self.subTest(magic=magic), tempfile.TemporaryDirectory() as directory:
+                fat64 = bytes.fromhex(magic) + mach_o("RecortiaE2E")[len(MACH_O_MAGIC):]
+                app = make_app(
+                    pathlib.Path(directory), main=mach_o(), extras={"Contents/MacOS/Recortia.debug.dylib": fat64}
+                )
+                result = run_gate(app)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+
     def test_marker_in_embedded_framework_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             app = make_app(

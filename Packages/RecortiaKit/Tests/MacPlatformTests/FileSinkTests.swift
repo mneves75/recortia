@@ -16,13 +16,13 @@ final class FaultInjectingFileSystem: FileSystemOperations {
         self.failCommit = failCommit
     }
 
-    func writeNewFile(_ data: Data, at url: URL) throws(FileSystemFailure) {
+    func writeNewFile(_ data: Data, at url: URL, permissions: mode_t) throws(FileSystemFailure) {
         if let failWrite {
             // Leave a partial temporary file behind, as a real mid-write failure would.
-            try base.writeNewFile(data.prefix(3), at: url)
+            try base.writeNewFile(data.prefix(3), at: url, permissions: permissions)
             throw FileSystemFailure(code: failWrite)
         }
-        try base.writeNewFile(data, at: url)
+        try base.writeNewFile(data, at: url, permissions: permissions)
     }
 
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
@@ -131,6 +131,19 @@ struct FileSinkTests {
         #expect(throws: SinkError.diskFull) { try sink.saveUnique(snapshot, in: folder) }
         #expect(try Data(contentsOf: url) == priorBytes)
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
+    }
+
+    @Test("Overwriting keeps the replaced file's permissions, so a restricted file stays restricted")
+    func overwriteKeepsPermissions() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o640], ofItemAtPath: url.path)
+        _ = try FileSink().save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
+        #expect(mode == 0o640)
     }
 
     @Test("A missing destination folder is an unavailable volume")

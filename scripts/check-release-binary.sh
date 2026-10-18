@@ -10,10 +10,10 @@ if (( $# != 1 )) || [[ ! -e "$1" ]]; then
   exit 2
 fi
 
-# True when the file starts with a Mach-O or universal (fat) magic number.
+# True when the file starts with a Mach-O or universal (fat or fat64) magic number.
 is_mach_o() {
   case "$(od -An -tx1 -N4 "$1" 2>/dev/null | tr -d ' \n')" in
-    feedface|feedfacf|cefaedfe|cffaedfe|cafebabe|bebafeca) return 0 ;;
+    feedface|feedfacf|cefaedfe|cffaedfe|cafebabe|bebafeca|cafebabf|bfbafeca) return 0 ;;
     *) return 1 ;;
   esac
 }

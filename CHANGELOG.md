@@ -14,6 +14,21 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-10-18
+
+Build 22. Fixes the four open items from the 0.12.2 security review. Physical keyboard, Spaces
+and permission checks of this build were not run.
+
+### Fixed
+
+- Automatic copy and save check their setting again just before writing: turning either off, or
+  changing the save folder, while a capture is still being prepared now stops that write.
+- Replacing an existing file keeps its permissions, so a file readable only by you stays that
+  way; the new content is also written owner-only until it replaces the old file.
+- The release check that keeps test-only code out of published builds now also scans universal
+  binaries with 64-bit offsets.
+- The end-to-end runner refuses to record its evidence when the source changed during the build.
+
 ## [0.12.2-beta1] - 2026-10-16
 
 Build 21, on Homebrew and GitHub. First published as a pre-release; re-published on 2026-10-16
