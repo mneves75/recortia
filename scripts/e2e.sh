@@ -83,7 +83,7 @@ if (( build )); then
   fi
   # An edit or commit during the build would bind this evidence to sources it did not compile.
   if [[ "$(source_provenance)" != "$current_provenance" ]]; then
-    echo "e2e: the source or toolchain changed during the build; rerun on a quiet working tree" >&2
+    echo "e2e: the source changed during the build; rerun on a quiet working tree" >&2
     exit 2
   fi
 fi

@@ -24,8 +24,9 @@ public struct FileSink {
         guard url.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
         if !overwrite, fileSystem.itemExists(at: url) { throw .destinationExists }
         // A replaced file may be private: write it owner-only and let `replace` copy its mode.
+        let replacing = overwrite && fileSystem.itemExists(at: url)
         let temporary = try writeTemporary(
-            snapshot, in: url.deletingLastPathComponent(), permissions: overwrite ? 0o600 : 0o644)
+            snapshot, in: url.deletingLastPathComponent(), permissions: replacing ? 0o600 : 0o644)
         do {
             if overwrite {
                 try fileSystem.replace(from: temporary, to: url)
@@ -146,9 +147,8 @@ struct POSIXFileSystem: FileSystemOperations {
     func replace(from source: URL, to destination: URL) throws(FileSystemFailure) {
         var existing = stat()
         if stat(destination.path(percentEncoded: false), &existing) == 0 {
-            if chmod(source.path(percentEncoded: false), existing.st_mode & 0o7777) != 0 {
-                throw FileSystemFailure(code: errno)
-            }
+            // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
+            _ = chmod(source.path(percentEncoded: false), existing.st_mode & 0o777)
         } else if errno != ENOENT {
             throw FileSystemFailure(code: errno)
         }

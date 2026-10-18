@@ -133,17 +133,17 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
     }
 
-    @Test("Overwriting keeps the replaced file's permissions, so a private file stays private")
+    @Test("Overwriting keeps the replaced file's permissions, so a restricted file stays restricted")
     func overwriteKeepsPermissions() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
         defer { TestSupport.removeDirectory(folder) }
         let url = folder.appendingPathComponent("shot.png")
         try priorBytes.write(to: url)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o640], ofItemAtPath: url.path)
         _ = try FileSink().save(snapshot, to: url, overwrite: true)
         #expect(try Data(contentsOf: url) == snapshot.bytes)
         let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
-        #expect(mode == 0o600)
+        #expect(mode == 0o640)
     }
 
     @Test("A missing destination folder is an unavailable volume")

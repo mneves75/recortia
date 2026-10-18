@@ -9,7 +9,7 @@
     "app_version": "0.12.3",
     "build": 22,
     "date": "2026-10-18",
-    "scope": "Security-review plan items from the 0.12.2 production gate: CORE-1 automatic copy/save recheck their preference and folder before the write; PLATFORM-1 overwrites keep the replaced file's permission bits and write the temporary file owner-only; BR-1 the release-binary gate recognizes fat64 universal headers; BR-2 e2e.sh refuses provenance when the source or toolchain changed during the build.",
+    "scope": "Security-review plan items from the 0.12.2 production gate: CORE-1 automatic copy/save recheck their preference and folder before the write; PLATFORM-1 overwrites keep the replaced file's permission bits and write the temporary file owner-only; BR-1 the release-binary gate recognizes fat64 universal headers; BR-2 e2e.sh refuses provenance when the source changed during the build.",
     "status": "source_candidate",
     "verification": "Red tests before each fix: ExportCoordinatorTests.automaticExportsRecheckPreferences, FileSinkTests.overwriteKeepsPermissions, test-release-binary.py test_marker_in_fat64_sibling_is_rejected, test-doctor.py test_source_edit_during_build_is_refused. Release, gate and installation evidence is added when recorded.",
     "out_of_scope": "FP-024 updater, FP-028 window-open latency, FP-036 proposals and the physical/TCC/hardware matrix need the owner's approval or hardware and were not started."
