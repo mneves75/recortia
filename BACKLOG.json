@@ -5,6 +5,16 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.12.4",
+    "app_version": "0.12.4",
+    "build": 23,
+    "date": "2026-10-19",
+    "scope": "Follow-ups recorded by the 0.12.2 production gate after 0.12.3 shipped: BR2-1 the release-entitlement gate requires the exact reviewed entitlement set instead of only rejecting get-task-allow; BR2-2 the E2E harness injects a recording automatic scroller instead of the live one, so a test run cannot post events to a host window; CORE-1 the automatic-export test also covers turning automatic saving off during the render.",
+    "status": "source_candidate",
+    "verification": "Red before green for each item (PR #23): the planted disable-library-validation entitlement and a plist missing reviewed keys passed the old gate and fail now; a scroll-target-binding control failed while the live scroller was wired and passes with the recording one; the autoSave-off case writes a second save and fails when the autoSave clause is removed. scripts/check.sh on stable Xcode 27.0/27A266a passes 513 package tests, 47 script controls, 617 translations and both builds. Full native E2E on the merged tree: pt-BR 49/49; EN 47/49 with only capture-focus and editor-presentation failing their foreground activation control, both passing on an immediate rerun. Release, security-gate and installation evidence is added when recorded.",
+    "out_of_scope": "FP-024 updater, FP-028 window-open latency, FP-036 proposals and the physical/TCC/hardware matrix need the owner's approval or hardware and were not started."
+  },
+  "previous_release_0_12_3": {
     "version": "0.12.3",
     "app_version": "0.12.3",
     "build": 22,

@@ -14,6 +14,11 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-10-19
+
+Build 23. Closes the two Low findings and the test gap recorded by the 0.12.2 security review.
+Physical keyboard, Spaces and permission checks of this build were not run.
+
 ### Fixed
 
 - The release check that guards the signed app's entitlements now requires the exact reviewed
