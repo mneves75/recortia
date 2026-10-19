@@ -1063,7 +1063,7 @@
       "id": "FP-024",
       "milestone": "M6",
       "title": "Implement and stage the signed updater",
-      "status": "not_started",
+      "status": "blocked",
       "depends_on": [
         "FP-022"
       ],
@@ -1081,9 +1081,39 @@
         "Tamper/interruption/compatibility evidence"
       ],
       "completion_contract": "Invalid updates are rejected, default installs remain offline, and the working app survives failure. No release/update key is exposed to untrusted jobs.",
-      "evidence": [],
-      "authorization": "requires_approved_milestone",
-      "status_note": "In-app updater not built; updates ship through Homebrew."
+      "evidence": [
+        "docs/specs/signed-updater/spec.md",
+        "docs/specs/signed-updater/tickets.md"
+      ],
+      "authorization": "owner_approved_2026-10-19_fp024_signed_updater",
+      "status_note": "Spec and five tickets written on 2026-10-19. Sparkle 2.10.0 (2026-09-13, macOS 12+) verified as the latest stable, MIT with bundled external licenses. Implementation is blocked on the EdDSA key-custody decision (owner deferred on 2026-10-19: \"1. later\"); T1 and T2 do not need the key, T3 to T5 do. Updates still ship through Homebrew until this lands."
+    },
+    {
+      "id": "FP-041",
+      "milestone": "M6",
+      "title": "Release-script informational hardening (BR2-3, BR2-4, BR2-5)",
+      "status": "not_started",
+      "depends_on": [
+        "FP-035"
+      ],
+      "requirement_ids": [
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "REL-01",
+        "REL-02"
+      ],
+      "scope": "BR2-3 run the test-marker gate from the frozen checkout rather than the working tree; BR2-4 require an annotated tag reachable from origin/main before archiving; BR2-5 cover the Swift package with Dependabot when the repository supports it.",
+      "deliverables": [
+        "scripts/release.sh",
+        ".github/dependabot.yml"
+      ],
+      "completion_contract": "Each control fails on a planted violation: a marker planted in the working tree but not the checkout, an unannotated or unreachable tag, and a dependency update that Dependabot would have opened.",
+      "evidence": [
+        ".scratch/security-gate/43da8966c79c8afc50d438415968b8f6ad622a6f/production.md"
+      ],
+      "authorization": "owner_deferred_2026-10-19",
+      "status_note": "Owner deferred this on 2026-10-19 (\"1. later\"). The three findings stay in the 0.12.4 gate report and block nothing."
     },
     {
       "id": "FP-025",
@@ -1369,7 +1399,8 @@
       "deliverables": [],
       "completion_contract": "Each proposal needs a concrete trigger or owner approval before implementation.",
       "evidence": ["docs/specs/full-source-review/plan.md"],
-      "progress_note": "Recorded by the 2026-10 full-source review; not scheduled."
+      "status": "closed_by_owner",
+      "progress_note": "Recorded by the 2026-10 full-source review. Closed by the owner on 2026-10-19 (\"2. done\"): the four observations stay in the review record without a reproducing trigger and are not scheduled."
     },
     {
       "id": "FP-037",
