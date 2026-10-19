@@ -16,7 +16,7 @@
     "out_of_scope": "FP-024 updater, FP-028 window-open latency, FP-036 proposals and the physical/TCC/hardware matrix need the owner's approval or hardware and were not started.",
     "limitations": [
       "Physical keyboard, Spaces, TCC and minimum-macOS runtime behaviour of this build were not run.",
-      "Two Low findings (FP-038, FP-039) and one test gap (FP-040) from the same security review are recorded and not fixed.",
+      "Two Low findings (FP-038, FP-039) and one test gap (FP-040) from the same security review were fixed on main after this build; the released 0.12.3 DMG does not include them.",
       "Homebrew's Caskroom record still reports 0.12.2-beta1 because the production bundle replaced the app while the 0.12.3 beta process was running; `brew upgrade --cask recortia` after the next quit aligns the record."
     ]
   },
@@ -1356,46 +1356,46 @@
       "id": "FP-038",
       "title": "Release entitlement allowlist gate (BR2-1)",
       "milestone": "M2",
-      "authorization": "proposal_requires_owner_approval",
-      "status": "not_started",
+      "authorization": "owner_request_2026-10-18_next_eligible_tasks (owner replied \"continue\" to the next-task list)",
+      "status": "completed",
       "depends_on": ["FP-035"],
       "requirement_ids": ["FR-14"],
       "acceptance_test_ids": ["REL-01"],
       "scope": "scripts/check-release-entitlements.py only rejects get-task-allow, so any other runtime entitlement (for example com.apple.security.cs.disable-library-validation or a new temporary exception) would pass the release gate. Compare the signed plist against the exact reviewed entitlement set and reject unknown keys.",
       "deliverables": ["scripts/check-release-entitlements.py", "planted-fixture control in the script tests"],
       "completion_contract": "A planted extra entitlement fails the gate while the real distribution plist passes, both as script controls inside scripts/check.sh.",
-      "evidence": [".scratch/security-gate/e6cd24934c1a73cd4e45631da5363eb1077c580b/production.md"],
-      "progress_note": "Reported by the 0.12.2 production gate as BR2-1 (Low, code); not fixed in 0.12.3."
+      "evidence": ["scripts/check-release-entitlements.py", "scripts/test-release-entitlements.py", ".scratch/security-fixes-20261018/check-followups.log"],
+      "progress_note": "Reported by the 0.12.2 production gate as BR2-1 (Low, code). Fixed on fix/security-review-low-findings (27c2966): the gate compares against the reviewed set (application-identifier, team-identifier, keychain-access-groups), rejects unknown keys and checks value types. The planted disable-library-validation and missing-key cases failed first, then passed; the real 0.12.3 export still passes. Not in the released 0.12.3 build."
     },
     {
       "id": "FP-039",
       "title": "E2E harness scroll-poster guard (BR2-2)",
       "milestone": "M2",
-      "authorization": "proposal_requires_owner_approval",
-      "status": "not_started",
+      "authorization": "owner_request_2026-10-18_next_eligible_tasks (owner replied \"continue\" to the next-task list)",
+      "status": "completed",
       "depends_on": ["FP-035"],
       "requirement_ids": ["FR-10"],
       "acceptance_test_ids": ["SCR-04"],
       "scope": "RecortiaApp/E2E/E2EHarness.swift injects the real automatic scroller with a synthetic permission and no guard. It is DEBUG-only and the release marker gate keeps it out of published builds, but the harness should use a fake scroll poster or fail closed when its fixture target is missing.",
-      "deliverables": ["RecortiaApp/E2E/E2EHarness.swift", "focused harness control"],
+      "deliverables": ["RecortiaApp/E2E/SyntheticServices.swift", "RecortiaApp/E2E/E2EHarness.swift", "RecortiaApp/E2E/Scenarios+Scroll.swift"],
       "completion_contract": "The harness no longer drives the production scroller against a synthetic permission, and a control fails when the fixture target is absent.",
-      "evidence": [".scratch/security-gate/e6cd24934c1a73cd4e45631da5363eb1077c580b/production.md"],
-      "progress_note": "Reported by the 0.12.2 production gate as BR2-2 (Low, code); not fixed in 0.12.3."
+      "evidence": [".scratch/security-fixes-20261018/e2e-br2-red.log", ".scratch/security-fixes-20261018/e2e-br2-green.log", ".scratch/security-fixes-20261018/e2e-scroll-both.log"],
+      "progress_note": "Reported by the 0.12.2 production gate as BR2-2 (Low, code). Fixed in b5c7dc5: the harness injects a DEBUG-only SyntheticAutoScroll that records steps and posts nothing, and a scroll-target-binding control failed while the live scroller was wired and passes after it. scrolling and scroll-target-binding pass in EN and pt-BR. Not in the released 0.12.3 build."
     },
     {
       "id": "FP-040",
       "title": "Automatic-save test for autoSave turned off during the render",
       "milestone": "M2",
-      "authorization": "proposal_requires_owner_approval",
-      "status": "not_started",
+      "authorization": "owner_request_2026-10-18_next_eligible_tasks (owner replied \"continue\" to the next-task list)",
+      "status": "completed",
       "depends_on": ["FP-035"],
       "requirement_ids": ["FR-07"],
       "acceptance_test_ids": ["EXP-02"],
       "scope": "Turn autoSave off while an automatic save is rendering. The 0.12.3 CORE-1 test covers turning copy off and changing the save folder during the same window, but not the save toggle itself.",
       "deliverables": ["Packages/RecortiaKit/Tests/FeaturesTests/ExportCoordinatorTests.swift"],
       "completion_contract": "The new case fails when the save-side recheck is removed and passes with the shipped recheck.",
-      "evidence": [".scratch/security-gate/e6cd24934c1a73cd4e45631da5363eb1077c580b/production.md"],
-      "progress_note": "Recorded as the remaining CORE-1 test gap in the 0.12.2 production gate; not written in 0.12.3."
+      "evidence": ["Packages/RecortiaKit/Tests/FeaturesTests/ExportCoordinatorTests.swift", ".scratch/security-fixes-20261018/check-followups.log"],
+      "progress_note": "Recorded as the remaining CORE-1 test gap in the 0.12.2 production gate. Written in 1666fbd: the recheck already stopped the write, so this is coverage. The new case writes a second save and fails when the autoSave clause is removed, and passes with the shipped code. Not in the released 0.12.3 build."
     }
   ],
   "deferred_scope": [
