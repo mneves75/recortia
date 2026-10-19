@@ -26,7 +26,9 @@ class ReleaseEntitlementTests(unittest.TestCase):
 
     def test_valid_group(self) -> None:
         self.assertEqual(0, self.run_gate({
-            "com.apple.application-identifier": GROUP, "keychain-access-groups": [GROUP],
+            "com.apple.application-identifier": GROUP,
+            "com.apple.developer.team-identifier": "Q96FUTC5G8",
+            "keychain-access-groups": [GROUP],
         }))
 
     def test_application_identifier_is_not_an_access_group(self) -> None:
@@ -41,6 +43,24 @@ class ReleaseEntitlementTests(unittest.TestCase):
 
     def test_debug_entitlement_is_rejected(self) -> None:
         self.assertNotEqual(0, self.run_gate({"keychain-access-groups": [GROUP], "get-task-allow": False}))
+
+    def test_unknown_runtime_entitlement_is_rejected(self) -> None:
+        self.assertNotEqual(0, self.run_gate({
+            "com.apple.application-identifier": GROUP,
+            "com.apple.developer.team-identifier": "Q96FUTC5G8",
+            "keychain-access-groups": [GROUP],
+            "com.apple.security.cs.disable-library-validation": True,
+        }))
+
+    def test_reviewed_entitlement_set_is_required(self) -> None:
+        self.assertNotEqual(0, self.run_gate({"keychain-access-groups": [GROUP]}))
+
+    def test_reviewed_entitlement_set_passes(self) -> None:
+        self.assertEqual(0, self.run_gate({
+            "com.apple.application-identifier": GROUP,
+            "com.apple.developer.team-identifier": "Q96FUTC5G8",
+            "keychain-access-groups": [GROUP],
+        }))
 
 
 if __name__ == "__main__":
