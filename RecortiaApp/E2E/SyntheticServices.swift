@@ -8,6 +8,28 @@
     // DEBUG-only replacements for the boundaries that would need TCC, real input, or the user's
     // clipboard. Every other service in the E2E run is the live one from `AppServices.live()`.
 
+    /// Records automatic-scroll steps instead of posting events. The E2E run grants Accessibility
+    /// synthetically, so the live scroller would drive whatever window a target names, possibly one
+    /// of the host Mac's own. No scenario needs a real scroll: frames come from
+    /// `SyntheticScrollFrames`, and the scroller's binding rules are covered by
+    /// `AutoScrollRegression` with its recording driver.
+    @MainActor
+    final class SyntheticAutoScroll: AutoScrollService {
+        private(set) var steppedTargets: [CaptureTarget] = []
+        private(set) var stopCount = 0
+        /// What `isAtEnd` reports; a scenario can make the target look finished.
+        var atEnd: Bool?
+
+        func step(_ target: CaptureTarget) async -> AutoScrollStep {
+            steppedTargets.append(target)
+            return .scrolled
+        }
+
+        func stop() { stopCount += 1 }
+
+        func isAtEnd(_ target: CaptureTarget) async -> Bool? { atEnd }
+    }
+
     /// Returns crops of the generated synthetic desktop with a correct `CaptureGeometry`.
     /// Never calls ScreenCaptureKit and never reads the real screen.
     final class SyntheticCaptureService: CaptureService {
