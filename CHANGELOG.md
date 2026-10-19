@@ -14,6 +14,17 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+### Fixed
+
+- The release check that guards the signed app's entitlements now requires the exact reviewed
+  set instead of only rejecting `get-task-allow`.
+- The end-to-end harness injects a recording automatic scroller, so a test run can no longer
+  scroll a window on the host Mac.
+
+### Changed
+
+- The automatic-export test also covers turning automatic saving off while a save is rendering.
+
 ## [0.12.3] - 2026-10-18
 
 Build 22. Fixes the four open items from the 0.12.2 security review. Physical keyboard, Spaces

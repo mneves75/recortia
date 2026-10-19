@@ -5,6 +5,14 @@ import argparse
 import pathlib
 import plistlib
 
+# The exact entitlement set reviewed for a Developer ID distribution build. A new entitlement
+# changes what the signed app may do, so it has to be added here deliberately.
+REVIEWED_ENTITLEMENTS = {
+    "com.apple.application-identifier": str,
+    "com.apple.developer.team-identifier": str,
+    "keychain-access-groups": list,
+}
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -20,6 +28,15 @@ def main() -> None:
         parser.error("distribution entitlements must be a dictionary")
     if any(key in entitlements for key in ("get-task-allow", "com.apple.security.get-task-allow")):
         parser.error("debug entitlement is present in the distribution build")
+    unknown = sorted(set(entitlements) - set(REVIEWED_ENTITLEMENTS))
+    if unknown:
+        parser.error("unreviewed entitlement in the distribution build: " + ", ".join(unknown))
+    missing = sorted(set(REVIEWED_ENTITLEMENTS) - set(entitlements))
+    if missing:
+        parser.error("reviewed entitlement missing from the distribution build: " + ", ".join(missing))
+    for key, expected in REVIEWED_ENTITLEMENTS.items():
+        if not isinstance(entitlements[key], expected):
+            parser.error(f"{key} must be a {expected.__name__}")
     groups = entitlements.get("keychain-access-groups")
     if not isinstance(groups, list) or not all(isinstance(group, str) for group in groups):
         parser.error("keychain-access-groups must be a string array")

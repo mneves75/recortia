@@ -225,7 +225,7 @@ struct ExportCoordinatorTests {
         #expect(h.files.uniqueSaves.isEmpty)
     }
 
-    @Test("Turning automatic copy off, or changing the save folder, during the render stops that write")
+    @Test("Turning automatic copy or save off, or changing the save folder, during the render stops that write")
     func automaticExportsRecheckPreferences() async {
         let h = ExportHarness()
         h.settings.update { $0.autoCopy = true }
@@ -262,6 +262,10 @@ struct ExportCoordinatorTests {
             h.folders.folder = folder.appendingPathComponent("other", isDirectory: true)
         }
         #expect(outcomes == [.canceled])
+        #expect(h.files.uniqueSaves.count == 1)
+        // The user turned automatic saving off: the pending save does not happen.
+        let offOutcomes = await saveWhileRendering { h.settings.update { $0.autoSave = false } }
+        #expect(offOutcomes == [.canceled])
         #expect(h.files.uniqueSaves.count == 1)
     }
 

@@ -18,6 +18,8 @@
         let permission: SyntheticScreenPermission
         let accessibility = SyntheticAccessibilityPermission()
         let scrollFrames: SyntheticScrollFrames
+        /// Records automatic-scroll steps; never posts a system event to this Mac.
+        let autoScroll = SyntheticAutoScroll()
         let clipboard: PrivatePasteboardClipboard
         let textPasteboard: NSPasteboard
         let drag: SyntheticDragReceiver
@@ -68,7 +70,7 @@
                 assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,
-                stitcher: live.stitcher, autoScroller: live.autoScroller, loginItem: live.loginItem, clock: live.clock)
+                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: live.clock)
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(

@@ -12,6 +12,12 @@
     @MainActor
     enum ScrollScenarios {
         static func automaticTarget(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            // Accessibility is granted synthetically here, so the live scroller would post events to
+            // whatever window the target names, including one of the host Mac's own.
+            context.check(
+                "the harness scroller posts no system events",
+                harness.services.autoScroller is SyntheticAutoScroll,
+                String(describing: type(of: harness.services.autoScroller)))
             for check in await AutoScrollRegression.run() {
                 context.check(check.name, check.passed)
             }
