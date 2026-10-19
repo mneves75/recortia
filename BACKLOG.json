@@ -10,9 +10,15 @@
     "build": 23,
     "date": "2026-10-19",
     "scope": "Follow-ups recorded by the 0.12.2 production gate after 0.12.3 shipped: BR2-1 the release-entitlement gate requires the exact reviewed entitlement set instead of only rejecting get-task-allow; BR2-2 the E2E harness injects a recording automatic scroller instead of the live one, so a test run cannot post events to a host window; CORE-1 the automatic-export test also covers turning automatic saving off during the render.",
-    "status": "source_candidate",
-    "verification": "Red before green for each item (PR #23): the planted disable-library-validation entitlement and a plist missing reviewed keys passed the old gate and fail now; a scroll-target-binding control failed while the live scroller was wired and passes with the recording one; the autoSave-off case writes a second save and fails when the autoSave clause is removed. scripts/check.sh on stable Xcode 27.0/27A266a passes 513 package tests, 47 script controls, 617 translations and both builds. Full native E2E on the merged tree: pt-BR 49/49; EN 47/49 with only capture-focus and editor-presentation failing their foreground activation control, both passing on an immediate rerun. Release, security-gate and installation evidence is added when recorded.",
-    "out_of_scope": "FP-024 updater, FP-028 window-open latency, FP-036 proposals and the physical/TCC/hardware matrix need the owner's approval or hardware and were not started."
+    "release": {"tag": "v0.12.4", "commit": "43da8966c79c8afc50d438415968b8f6ad622a6f", "url": "https://github.com/mneves75/recortia/releases/tag/v0.12.4", "prerelease": false, "latest": true, "dmg": "Recortia-0.12.4.dmg", "dmg_sha256": "c36ea76bc3e7ad83acb1074d79c2101cedf611a5e450b8f6d8315cd11b5c8710", "homebrew": "cask mneves75/tap/recortia moved from 0.12.3 to 0.12.4 (tap commit 1ac4167); brew audit passes and the upgrade through the cask replaced the app and aligned the Caskroom", "notarization_submissions": {"app": "18a46455-9358-4660-b0db-17c55716f929", "dmg": "8d5254b8-5189-479e-9c3a-943760b2c8ff"}, "security_gate": "WAIVED (SEC-17 until 2026-11-15, SEC-18 until 2027-04-16); staging PASS; independent acceptance PASS (claude-sonnet-4.5, fresh context); record .scratch/security-gate/43da8966c79c8afc50d438415968b8f6ad622a6f/production.json", "release_log": ".scratch/security-fixes-20261018/release-0.12.4.log"},
+    "status": "released",
+    "verification": "Red before green for each item (PR #23): the planted disable-library-validation entitlement and a plist missing reviewed keys passed the old gate and fail now; a scroll-target-binding control failed while the live scroller was wired and passes with the recording one; the autoSave-off case writes a second save and fails when the autoSave clause is removed. scripts/check.sh on stable Xcode 27.0/27A266a passes 513 package tests, 47 script controls, 617 translations and both builds. Full native E2E on the merged tree: pt-BR 49/49; EN 47/49 with only capture-focus and editor-presentation failing their foreground activation control, both passing on an immediate rerun. Release: scripts/release.sh completed on the tag (manifest notarized:1, both submissions Accepted, DMG stapled and validated); the published asset was re-downloaded and is byte-identical to the build artifact; the installed app is identical (diff -rq) to the app inside the published DMG. Security gate: staging PASS, production WAIVED with independent acceptance PASS on a different model. Installed through the Homebrew cask and launched.",
+    "out_of_scope": "FP-024 updater, FP-028 window-open latency, FP-036 proposals and the physical/TCC/hardware matrix need the owner's approval or hardware and were not started.",
+    "limitations": [
+      "Physical keyboard, Spaces, TCC and minimum-macOS runtime behaviour of this build were not run.",
+      "Nine pre-existing Informational findings remain recorded and unaddressed: BR2-3, BR2-4, BR2-5, CORE-INFO-1, CORE-INFO-2, PLAT-1, PLAT-2 and the open investigations.",
+      "SEC-17 stays open until the fine-grained release token exists (waived to 2026-11-15)."
+    ]
   },
   "previous_release_0_12_3": {
     "version": "0.12.3",
@@ -144,6 +150,24 @@
     ]
   },
   "current_local_installation": {
+    "candidate": "0.12.4 notarized release, installed through the Homebrew cask",
+    "app_version": "0.12.4",
+    "build": 23,
+    "date": "2026-10-19",
+    "source_commit": "43da8966c79c8afc50d438415968b8f6ad622a6f",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "brew upgrade --cask mneves75/tap/recortia after the cask moved to 0.12.4; the published DMG is sha256 c36ea76bc3e7ad83acb1074d79c2101cedf611a5e450b8f6d8315cd11b5c8710",
+    "backup_path": ".build/release/0.12.3/export/Recortia.app (retained release artifact, identical to the 0.12.3 bundle Homebrew replaced)",
+    "executable_sha256": "398e1b1b08b6e11bb64229105462a456cd251d37ab3bb80df999740e1f1226f5",
+    "installed_equals_published_dmg_app": true,
+    "launched": true,
+    "notarized": true,
+    "authorization": "Owner request 2026-10-19 (\"yes to all\"): cut 0.12.4, install it, and relaunch Recortia.",
+    "verification": "codesign --verify --deep --strict passes; spctl: Notarized Developer ID; stapler validate passes; the installed bundle is identical (diff -rq) to the app inside the mounted published DMG; the app relaunched as PID 57170 with no new crash report. Homebrew now records Caskroom/recortia/0.12.4, so the 0.12.2-beta1 record drift from the 0.12.3 manual install is resolved.",
+    "qualification": "Release artifact installed and launched through the cask; physical Spaces, keyboard and TCC behaviour of this build not run.",
+    "note": "The 0.12.3 install record is kept below as previous_local_installation_0_12_3."
+  },
+  "previous_local_installation_0_12_3": {
     "candidate": "0.12.3 notarized release",
     "app_version": "0.12.3",
     "build": 22,

@@ -4,7 +4,7 @@ A native, local-first macOS screenshot utility: capture, annotate, redact for re
 and share from the menu bar. Nothing leaves your Mac unless you turn on the optional GitHub
 upload, and Recortia keeps no screenshot archive.
 
-The current version is **0.12.3** (build 22), signed with Developer ID and notarized,
+The current version is **0.12.4** (build 23), signed with Developer ID and notarized,
 available through Homebrew and the [latest release](https://github.com/mneves75/recortia/releases/latest).
 The physical checks listed under [Known limitations](#known-limitations) have not run. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md).
@@ -132,7 +132,7 @@ in [docs/architecture/module-contracts.md](docs/architecture/module-contracts.md
   and 26 hosts, the scrolling compatibility matrix, VoiceOver and input-method passes, and the
   performance budgets. On the build Mac, the first opening of the editor and of Settings took
   longer than the 50 ms target (PERF-02).
-- Physical keyboard, Spaces and permission checks were not run on 0.12.3.
+- Physical keyboard, Spaces and permission checks were not run on 0.12.4.
 - Automatic scrolling scrolls downward only.
 - There is no in-app updater; update through Homebrew or a new DMG.
 
