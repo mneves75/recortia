@@ -132,6 +132,15 @@ per skill in `docs/specs/release-review-0.12.5/xcode-security-settings.md`.
 - Version 0.12.6 build 25 is a documentation-only candidate: untagged, unnotarized, unpublished and
   not installed. The tag `v0.12.5-beta1` and the installed 0.12.5 build 24 are untouched.
 
+## Deferred item taken, 2026-10-28
+
+The performance finding the architecture review ranked first is done, measured as call counts:
+`EditorModel.listItems` is memoised against `DocumentSession.revision`, so a selection change, a tool
+change, a zoom or an in-flight draft no longer re-lay out every text annotation. Planted revert fails
+the new test with three issues. Not done, and why: the AX messaging timeout needs a fixture that can
+simulate a hung peer before it can have a test; the retained-pixel budget needs a memory measurement
+on a stable host; the editor menu commands need physical keyboard qualification.
+
 ## Results
 
 - Gate: `.scratch/logs/check-8.log` ends `check: all gates passed`.

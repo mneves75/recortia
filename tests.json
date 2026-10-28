@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T14:12:07Z",
-  "commit": "4d3dcf1fe9dd0a45b0c0bbcffb4ee2a71cc51174",
+  "generated_at": "2026-10-28T19:13:53Z",
+  "commit": "21118268c8014a51cd37ea562df5879ba6bd217d",
   "toolchain": {
     "xcode": "27.2 (27B48)",
     "channel": "release_candidate",
@@ -13,8 +13,8 @@
       "id": "check",
       "command": "./init.sh check --unsigned",
       "status": "passed",
-      "evidence": ".scratch/logs/check-10.log",
-      "observed_at": "2026-10-28T04:47:36Z",
+      "evidence": ".scratch/logs/check-16.log",
+      "observed_at": "2026-10-28T19:13:52Z",
       "note": "local observation of the evidence file above, not a CI result"
     },
     {

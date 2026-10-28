@@ -1517,6 +1517,26 @@
       ],
       "authorization": "owner_request_2026-10-28_review_and_update",
       "status_note": "0.12.5 build 24 is a source candidate: not tagged, notarized, published or installed. Deferred with reasons in the spec: editor menu commands (a global Cmd-C would take Copy from text editing), plural variants for two counted strings, the editor 4 pt grid, text-layout memoisation, an AX-messaging timeout, a retained-pixel budget for editors, release.sh wiring for the bundled-license test, and FP-041. The next ticket is an accessibility/layout instrument: a hosted SwiftUI view exposes an empty in-process accessibility tree, measured on 2026-10-28."
+    },
+    {
+      "id": "FP-043",
+      "milestone": "M6",
+      "title": "Memoise the editor object list against the document revision",
+      "status": "implemented",
+      "depends_on": ["FP-009"],
+      "requirement_ids": ["FR-04"],
+      "acceptance_test_ids": ["EDIT-02"],
+      "scope": "The architecture review of 2026-10-28 recorded that EditorModel.listItems resolves a full Core Text layout per text annotation, and the canvas asks for that list on every observed change including the draft that moves per pointer event. Memoise the list against DocumentSession.revision, which moves in one place.",
+      "deliverables": ["Packages/RecortiaKit/Sources/Features/EditorModel.swift", "EditorListItemsMemoTests"],
+      "completion_contract": "Selection, tool, zoom and an in-flight draft resolve no geometry; a committed document change does; a settled revision is never resolved twice.",
+      "evidence": [
+        "Packages/RecortiaKit/Tests/FeaturesTests/EditorListItemsMemoTests.swift asserts the resolution count",
+        "Planted revert: removing the memo makes the test fail with three issues (selection/tool/zoom 1 extra, in-flight draft 1 extra, settled revision re-resolved)",
+        ".scratch/logs/check-14.log: 'check: all gates passed'",
+        "e2e annotations, curved-arrows, text-font-designs, canvas-focus and inspector-height pass in en and pt-BR"
+      ],
+      "authorization": "owner request 2026-10-28: finish the deferred items",
+      "status_note": "Call-count evidence only. No wall-clock or Instruments claim: the host runs Apple's Xcode 27.2 release candidate, so performance qualification for release is still open. Still deferred with reasons: the AX messaging timeout (needs a fixture that can simulate a hung peer), the retained-pixel budget for editors (needs a memory measurement), and the editor menu commands (needs physical keyboard qualification)."
     }
   ],
   "deferred_scope": [

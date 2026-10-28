@@ -15,6 +15,24 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.12.7] - 2026-10-28
+
+Build 26. A source candidate: untagged, not notarized, not published, not installed.
+
+### Fixed
+
+- The editor no longer rebuilds the object list on every observed change. The canvas asks for that
+  list whenever the document, selection, tool, zoom, draft, inspector or recognition state moves,
+  and a text item's frame is a full Core Text layout, so drawing or dragging on an annotated image
+  laid the same text out again per pointer event. The list is now memoised against the document
+  revision, which moves in one place, and selection, tool, zoom and an in-flight draft no longer
+  resolve anything.
+
+  Measured as call counts, not as wall-clock time: the regression test drives a selection change, a
+  tool change, a zoom and a draft gesture and asserts zero extra geometry resolutions, then commits
+  the rectangle and asserts the list does change. Timing on this host would prove nothing, because
+  the toolchain is Apple's release candidate.
+
 ## [0.12.6] - 2026-10-28
 
 Build 25. Documentation and verification only: there is no user-facing change in this build, so the
