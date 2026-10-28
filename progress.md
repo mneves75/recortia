@@ -141,6 +141,23 @@ the new test with three issues. Not done, and why: the AX messaging timeout need
 simulate a hung peer before it can have a test; the retained-pixel budget needs a memory measurement
 on a stable host; the editor menu commands need physical keyboard qualification.
 
+## Local installation, 0.12.7 build 26, 2026-10-28
+
+Installed the build the memo fix ships in, from a detached worktree at `889f67a`, with the profile
+recovered earlier and the same export settings. Nine checks before touching `/Applications`: strict
+signature and Designated Requirement, 0.12.7 build 26, Hardened Runtime, embedded profile, the exact
+entitlement set with the Keychain access group, no `get-task-allow`, no test-only markers in 43
+Mach-O files, `spctl` accepting it as Developer ID, and a byte-identical installed bundle
+(33 files, 60 entries, no symlinks, sha256 `3efed410…`).
+
+0.12.7 launches and runs with a clean startup log. The previous 0.12.5 build 24 is preserved under
+`.scratch/local-install-0.12.7-20261028/previous-0.12.5-24.app`. Nothing was running before the
+replacement, so no session was discarded.
+
+No version bump: the repository is already at 0.12.7 build 26, which is exactly what was installed.
+Moving the number again would ship an identical binary under a new one and force the CHANGELOG to
+describe a release with no change.
+
 ## Results
 
 - Gate: `.scratch/logs/check-8.log` ends `check: all gates passed`.
