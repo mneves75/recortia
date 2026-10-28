@@ -81,8 +81,8 @@ else:
         executable.chmod(0o755)
 
     def run_e2e(self, *arguments: str, version: str = STABLE_VERSION, build: str = STABLE_BUILD,
-                mode: str = "stable",
-                during_build: str = "") -> subprocess.CompletedProcess[str]:
+                mode: str = "stable", during_build: str = "", timeout: str = "1",
+                idle_timeout: str = "180") -> subprocess.CompletedProcess[str]:
         self.tool("xcodebuild", "#!/bin/sh\n"
                   f"if [ \"$1\" = -version ]; then printf 'Xcode {version}\\nBuild version {build}\\n'; "
                   f"else touch build-reached; {during_build} fi\n")
@@ -90,8 +90,20 @@ else:
             ["/bin/zsh", str(self.root / "scripts/e2e.sh"), "--lang", "en", *arguments],
             cwd=self.root, capture_output=True, text=True, timeout=15,
             env={"PATH": f"{self.bin}:/usr/bin:/bin", "RECORTIA_TOOLCHAIN_MODE": mode,
-                 "DEVELOPER_DIR": "/fixture/Xcode/Contents/Developer", "E2E_TIMEOUT": "1"},
+                 "DEVELOPER_DIR": "/fixture/Xcode/Contents/Developer", "E2E_TIMEOUT": timeout,
+                 "E2E_IDLE_TIMEOUT": idle_timeout},
         )
+
+    def test_silent_runner_is_stopped_as_a_hang_not_as_a_long_run(self) -> None:
+        # A hang is silence, not elapsed time. Raising the wall-clock ceiling must not remove the
+        # ability to stop a run that stopped making progress.
+        app = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
+        app.write_text("#!/bin/sh\ntouch launch-reached\nsleep 40\n")
+        app.chmod(0o755)
+        result = self.run_e2e(timeout="3600", idle_timeout="1")
+        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("no runner output for", result.stderr)
+        self.assertTrue((self.root / "launch-reached").exists(), "the run must have started")
 
     def test_unreviewed_toolchain_never_builds_or_launches(self) -> None:
         result = self.run_e2e(version="27.9", build="unreviewed")

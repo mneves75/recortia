@@ -16,7 +16,8 @@ lang=all
 only=""
 build=1
 sign_args=()
-timeout_seconds=${E2E_TIMEOUT:-300}
+timeout_seconds=${E2E_TIMEOUT:-3600}
+idle_timeout=${E2E_IDLE_TIMEOUT:-180}
 while (( $# > 0 )); do
   case "$1" in
     --lang) lang="${2:-}"; shift 2 ;;
@@ -141,8 +142,41 @@ for language in $languages; do
   set +e
   "$app" "${args[@]}" 2>"$out/runner.log" &
   pid=$!
-  # Watchdog: stop only this run's process if it outlives the timeout.
-  ( sleep "$timeout_seconds"; kill -TERM "$pid" 2>/dev/null ) &
+  # Watchdog: a hang is "no progress", not "long run". A wall-clock cap per language punished a
+  # suite that was still passing scenarios (ocr-qr alone takes 76 s), so the guard now watches the
+  # runner log for silence and keeps a much larger absolute ceiling.
+  (
+    last_size=-1
+    idle=0
+    elapsed=0
+    while kill -0 "$pid" 2>/dev/null; do
+      sleep 1
+      elapsed=$(( elapsed + 1 ))
+      size=$(wc -c <"$out/runner.log" 2>/dev/null || print 0)
+      if [[ "$size" == "$last_size" ]]; then
+        idle=$(( idle + 1 ))
+      else
+        idle=0
+        last_size=$size
+      fi
+      if (( idle >= idle_timeout )) || (( elapsed >= timeout_seconds )); then
+        if (( idle >= idle_timeout )); then
+          print -u2 "e2e[$language]: no runner output for ${idle}s; stopping this run as a hang"
+        else
+          print -u2 "e2e[$language]: reached the ${timeout_seconds}s ceiling; stopping this run"
+        fi
+        # Children first: TERM to the parent alone orphans its helpers, and zsh's `wait` then
+        # blocks until the whole job (including the orphans) exits. That is how a killed run kept
+        # the suite open for another 40 s.
+        pkill -TERM -P "$pid" 2>/dev/null
+        kill -TERM "$pid" 2>/dev/null
+        ( sleep 3
+          pkill -KILL -P "$pid" 2>/dev/null
+          kill -KILL "$pid" 2>/dev/null ) &
+        break
+      fi
+    done
+  ) &
   watchdog=$!
   wait "$pid"
   exit_code=$?
@@ -151,7 +185,7 @@ for language in $languages; do
   set -e
   cat "$out/runner.log"
   if [[ ! -f "$out/report.json" ]]; then
-    echo "e2e[$language]: no report (exit $exit_code: crash or timeout after ${timeout_seconds}s)" >&2
+    echo "e2e[$language]: no report (exit $exit_code: crash or stopped after ${timeout_seconds}s ceiling, ${idle_timeout}s silence)" >&2
     rc=1
     continue
   fi

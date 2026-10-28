@@ -30,7 +30,13 @@ FORBIDDEN: dict[str, re.Pattern[str]] = {
     "CGDisplayCreateImage": re.compile(r"\bCGDisplayCreateImage\b"),
     # The general pasteboard, the app's user defaults, and the keychain.
     "NSPasteboard.general": re.compile(r"\bNSPasteboard\s*\.\s*general\b"),
+    # The same pasteboard and defaults reachable through the initialiser spellings: a scan that
+    # only knows the dot spelling reports clean while the runner rewrites the user's real consent.
+    "NSPasteboard.generalByName": re.compile(
+        r"\bNSPasteboard\s*\(\s*name:\s*(?:\.\s*general\b|NSPasteboard\.Name\.general\b)"
+    ),
     "UserDefaults.standard": re.compile(r"\bUserDefaults\s*\.\s*standard\b"),
+    "UserDefaults.suiteName": re.compile(r"\bUserDefaults\s*\(\s*suiteName\s*:"),
     "SecItem": re.compile(r"\bSecItem(?:Add|CopyMatching|Update|Delete)\b"),
 }
 
@@ -77,7 +83,9 @@ class E2EIsolationTests(unittest.TestCase):
             "CGWindowList": "let list = CGWindowListCreateImage(.null, .optionOnScreenOnly, 0, [])",
             "CGDisplayCreateImage": "let image = CGDisplayCreateImage(CGMainDisplayID())",
             "NSPasteboard.general": "let board = NSPasteboard.general",
+            "NSPasteboard.generalByName": "let board = NSPasteboard(name: .general)",
             "UserDefaults.standard": "UserDefaults.standard.set(true, forKey: \"k\")",
+            "UserDefaults.suiteName": "let d = UserDefaults(suiteName: \"dev.mvneves.Recortia\")",
             "SecItem": "SecItemAdd(query as CFDictionary, nil)",
         }
         self.assertEqual(set(FORBIDDEN), set(planted), "every rule needs a planted control")
@@ -104,10 +112,20 @@ class E2EIsolationTests(unittest.TestCase):
                 for rule in rules:
                     self.assertRegex(source, FORBIDDEN[rule], f"stale allowlist entry {name}: {rule}")
         harness = (E2E_DIRECTORY / "E2EHarness.swift").read_text()
-        guard = harness.index("domain == E2ESystemShortcuts.runnerDomain")
-        first_use = harness.index("UserDefaults.standard")
+        # `str.index` counts comment lines, so a guard quoted in a comment used to satisfy this
+        # check on its own. Read the executable lines only, as `scan` already does.
+        code = "\n".join(
+            line for line in harness.splitlines() if not line.lstrip().startswith("//")
+        )
+        self.assertRegex(
+            code,
+            r"guard\s+let\s+domain\s*=\s*Bundle\.main\.bundleIdentifier\s*,\s*\n?\s*"
+            r"domain\s*==\s*E2ESystemShortcuts\.runnerDomain",
+            "the runner must compare the real bundle identifier with its own domain",
+        )
+        guard = code.index("domain == E2ESystemShortcuts.runnerDomain")
+        first_use = code.index("UserDefaults.standard")
         self.assertLess(guard, first_use, "the bundle-identifier guard must precede the first defaults access")
-        self.assertIn("E2ESystemShortcuts.runnerDomain", harness)
 
 
 if __name__ == "__main__":
