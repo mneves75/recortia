@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T04:47:42Z",
-  "commit": "ce26e229e33b6988c2778c5ccc6b4f031a2c96be",
+  "generated_at": "2026-10-28T14:12:07Z",
+  "commit": "4d3dcf1fe9dd0a45b0c0bbcffb4ee2a71cc51174",
   "toolchain": {
     "xcode": "27.2 (27B48)",
     "channel": "release_candidate",
@@ -20,9 +20,9 @@
     {
       "id": "e2e",
       "command": "./init.sh e2e --lang all",
-      "status": "failed",
-      "evidence": ".scratch/logs/e2e-final2.log",
-      "observed_at": "2026-10-28T04:40:48Z",
+      "status": "passed",
+      "evidence": ".scratch/logs/e2e-final3.log",
+      "observed_at": "2026-10-28T14:07:28Z",
       "note": "local observation of the evidence file above, not a CI result"
     },
     {
