@@ -61,8 +61,10 @@ review does not re-audit them.
 **D1 — The appearance axis is a scenario, not a global switch.** Changing `E2ESnapshot` defaults to
 render everything twice would double every scenario's runtime and make 47 reports ambiguous.
 Instead: `park`/`host` gain an explicit `appearance:` parameter defaulting to the current light
-behaviour, and one new scenario renders the surfaces where user content sits under app chrome (the
-scroll review and the editor canvas) in dark, asserting pixels. Rejected alternative: a
+behaviour, and one new scenario renders the surface where app chrome sits directly over arbitrary
+user content — the scroll review's seam markers — asserting pixels. The editor canvas is the obvious
+second surface and is deliberately not in this scenario: it needs a fixture that draws annotations
+over a synthetic page, which is a separate ticket. Rejected alternative: a
 `RECORTIA_E2E_APPEARANCE` environment variable driving the whole runner — hidden global state, and
 the report would not say which appearance produced a given screenshot.
 
@@ -97,8 +99,8 @@ Each item lands with a test that fails when the item is reverted. `check` means
 | W3 | Defaults-domain guard test skips comment lines | Removing the real guard while leaving its text in a comment fails the test |
 | W4 | Remove the duplicated entitlements test | Suite still covers every failing shape |
 | W5 | Pins revocation table exercises `close`, `invalidate`, `closeAll` | Dropping `PinsModel.invalidate`'s revocation fails |
-| W6 | Appearance axis in `E2ESnapshot` plus a dark-content scenario asserting seam-marker contrast | Reverting the dual stroke fails the scenario |
-| W7 | Seam markers use an opaque under-stroke plus accent over-stroke, as the canvas already does | W6 |
+| W6 | Appearance axis in `E2ESnapshot` plus a scenario asserting seam-marker contrast per band | Reverting the keyline fails the scenario |
+| W7 | Seam markers use a white under-stroke with a black core, so the mark reads over any page colour and for any accent | W6, measured 19.17:1 / 19.60:1 / 5.32:1 on dark, light and mid-grey pages |
 | W8 | Pin image becomes a real accessibility element with its label | Source: the label is applied to an element, not to `Image(decorative:)`. The VoiceOver-tree assertion is deferred; see the amendment below |
 | W9 | Save-folder row becomes `LabeledContent` with one-line truncation and a help tooltip | Source: one-line truncation, middle truncation and a help tooltip on the value, control on the trailing edge. The rendered single-line-height assertion is deferred with W8 |
 | W10 | "Remove destination and token" is destructive and confirmed, with new pt-BR strings | `check` passes and the localization gate covers the new keys |

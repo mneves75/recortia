@@ -28,6 +28,8 @@
             let pages: [(String, NSColor)] = [
                 ("a dark page", NSColor(white: 0.06, alpha: 1)),
                 ("a light page", NSColor(white: 0.97, alpha: 1)),
+                // Mid grey is the worst case for a keyline: neither stroke is far from the content.
+                ("a mid grey page", NSColor(white: 0.5, alpha: 1)),
             ]
             for (pageName, pageColor) in pages {
                 for appearance in [NSAppearance.Name.aqua, .darkAqua] {
@@ -38,10 +40,10 @@
                         width: width, height: height, pageColor: pageColor, seams: seams, appearance: appearance)
                     let measured = measure(clean: clean, marked: marked)
                     context.check(
-                        "seam markers keep contrast on \(pageName) in \(name)",
-                        measured.strongest >= minimumContrast,
+                        "every seam marker keeps contrast on \(pageName) in \(name)",
+                        measured.weakestBand >= minimumContrast,
                         String(
-                            format: "strongest %.2f:1 over %d changed pixels", measured.strongest,
+                            format: "weakest band %.2f:1 over %d changed pixels", measured.weakestBand,
                             measured.changed))
                     // The marks must be where the seams are, spanning the width, not a blob
                     // somewhere else in the preview that happens to be visible.
@@ -111,14 +113,13 @@
         /// narrowest horizontal span of a band as a share of the preview width. Counting bands is
         /// what separates "the seams are drawn across the image" from "something changed somewhere".
         private static func measure(clean: DecodedPixels, marked: DecodedPixels) -> (
-            strongest: Double, bands: Int, narrowestSpan: Double, changed: Int
+            weakestBand: Double, bands: Int, narrowestSpan: Double, changed: Int
         ) {
             guard clean.width == marked.width, clean.height == marked.height else {
                 return (0, 0, 0, 0)
             }
-            var strongest = 0.0
             var changed = 0
-            var rows: [Int: (minX: Int, maxX: Int)] = [:]
+            var rows: [Int: (minX: Int, maxX: Int, strongest: Double)] = [:]
             for y in 0..<clean.height {
                 for x in 0..<clean.width {
                     let index = (y * clean.width + x) * 4
@@ -128,27 +129,31 @@
                         + abs(Int(marked.bytes[index + 2]) - Int(clean.bytes[index + 2]))
                     guard delta > 6 else { continue }
                     changed += 1
-                    strongest = max(strongest, contrast(marked.bytes, clean.bytes, index))
-                    let span = rows[y] ?? (minX: x, maxX: x)
-                    rows[y] = (min(span.minX, x), max(span.maxX, x))
+                    let ratio = contrast(marked.bytes, clean.bytes, index)
+                    let row = rows[y] ?? (minX: x, maxX: x, strongest: 0)
+                    rows[y] = (min(row.minX, x), max(row.maxX, x), max(row.strongest, ratio))
                 }
             }
             // A 1 pt dashed mark is a few rows tall; rows separated by a gap are another band.
-            var bands: [(minX: Int, maxX: Int, lastRow: Int)] = []
+            var bands: [(minX: Int, maxX: Int, lastRow: Int, strongest: Double)] = []
             for y in rows.keys.sorted() {
                 guard let row = rows[y] else { continue }
                 if let index = bands.indices.last, y - bands[index].lastRow <= 3 {
                     bands[index].minX = min(bands[index].minX, row.minX)
                     bands[index].maxX = max(bands[index].maxX, row.maxX)
                     bands[index].lastRow = y
+                    bands[index].strongest = max(bands[index].strongest, row.strongest)
                 } else {
-                    bands.append((row.minX, row.maxX, y))
+                    bands.append((row.minX, row.maxX, y, row.strongest))
                 }
             }
             let narrowest =
                 bands.isEmpty
                 ? 0 : bands.map { Double($0.maxX - $0.minX + 1) / Double(clean.width) }.min() ?? 0
-            return (strongest, bands.count, narrowest, changed)
+            // The floor applies to every band, not to the brightest pixel anywhere: a mark that
+            // reads well at one point and vanishes along the rest of the seam is not visible.
+            let weakest = bands.map(\.strongest).min() ?? 0
+            return (weakest, bands.count, narrowest, changed)
         }
 
         /// WCAG contrast ratio between one pixel and the pixel it replaced.

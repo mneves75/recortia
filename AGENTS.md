@@ -90,8 +90,10 @@ with `scripts/space-probe/run.sh` as the reusable probe.
 Rendered output has an appearance control (`docs/specs/release-review-0.12.5/spec.md`).
 `E2ESnapshot.park` and `host` take the appearance they render, defaulting to the light behaviour so
 existing screenshots stay identical, and `appearance-contrast` renders the scrolling review with and
-without seam markers and asserts at least 3:1 contrast against the page under them, in light and
-dark appearance over dark and light content. Keep it in the bilingual gate: it is the only control
+without seam markers. It requires one horizontal band per seam spanning at least 80% of the preview,
+and every band at 3:1 or better against the page under it, in light and dark appearance over dark,
+light and mid-grey content. The current marks are a keyline (white under-stroke, black core), which
+measures 19.17:1, 19.60:1 and 5.32:1 respectively and does not depend on the accent colour. Keep it in the bilingual gate: it is the only control
 that can see a mark disappear where app chrome meets page content, which is how a 1.08:1 seam
 marker survived every other test. A new user-visible mark over user content belongs under it.
 

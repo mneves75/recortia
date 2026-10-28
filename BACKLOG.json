@@ -1481,8 +1481,9 @@
       "completion_contract": "Every instrument fails on a planted revert; the gate and the bilingual E2E pass; nothing is published.",
       "evidence": [
         ".scratch/logs/check-8.log ends 'check: all gates passed'",
-        ".scratch/logs/e2e-final.log: 50/50 scenarios per language, 138 screenshots each",
-        "Planted reverts: single-colour seam markers measure 1.08:1 and 1.06:1 and fail appearance-contrast; deleting the review window's delegate assignment fails the delegate check; removing either new isolation rule fails its planted control; a commented-out defaults guard fails its test",
+        ".scratch/logs/e2e-2.log and e2e-final.log: 50/50 scenarios per language, 138 screenshots each, on the code at 2f5b6cd and 08130be",
+        ".scratch/logs/e2e-final2.log: 48/50 per language at the final commit. The two failures are capture-focus and editor-presentation timing out on the foreground-fixture readiness control with key/active/foreground false and unoccluded false, while IOConsoleLocked=Yes: a locked console voids GUI qualification, so this is an environmental block and not a product result. Rerun after unlock with ./init.sh e2e --only capture-focus,editor-presentation --lang all --unsigned",
+        "docs/specs/release-review-0.12.5/plants.md records each planted revert with its own output: single-colour seam markers measure 1.08:1 and 1.06:1 and fail appearance-contrast; deleting the review window's delegate assignment fails the delegate check; removing either new isolation rule fails its planted control; a commented-out defaults guard fails its test; a stale tests.json fails the gate inventory step",
         "progress.md records each step with its evidence path"
       ],
       "authorization": "owner_request_2026-10-28_review_and_update",

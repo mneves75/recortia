@@ -58,7 +58,8 @@ Apple's release candidate, recorded as `actual_*` in `TOOLCHAIN.json`.
   native editing and export. Only its exact two font-class AppKit imports are allowed in Imaging.
   Propagate typed text-layout failures; clear partial native canvas output before reporting.
   Measure with the actual annotation style and use the shared passive background during input.
-  Keep `text-font-designs`, `text-decorations` and `text-layout-failure` in bilingual E2E;
+  Keep `text-font-designs`, `text-decorations`, `text-layout-failure` and `appearance-contrast` in
+  bilingual E2E;
   AGENTS.md owns the clipping, composition and mixed-background control invariants.
 - Region-selection panels receive keyboard focus without activating the app; synthetic
   foreground/activation checks supplement the physical shortcut/Space matrix (CAP-01).

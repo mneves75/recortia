@@ -4,10 +4,11 @@
 lists common screenshot-utility capabilities and Recortia's status for each. Earlier
 research/version statements below are historical.
 Current UI guidance: [Apple onboarding](https://developer.apple.com/design/human-interface-guidelines/onboarding),
-[Xcode 27.2 beta release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
+[Xcode 27.2 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
 Stable Xcode 27.0 (27A266a) is the release and CI baseline (`TOOLCHAIN.json`). Xcode 27.1
-(27A9275) is accepted only for development checks: [Apple identifies 27A9275 as RC](https://developer.apple.com/news/releases/?id=10052026g),
-so it does not satisfy the specification's stable-toolchain release qualification. Xcode 27.2 beta (27B5028f) diagnostics supplement source checks only.
+(27A9275) shipped on 2026-10-15. [Apple publishes Xcode 27.2 (27B48) as a release candidate](https://developer.apple.com/news/releases/?id=10192026g),
+which is what this host has installed, so it is recorded as the development toolchain only and does
+not satisfy the specification's stable-toolchain release qualification.
 
 **Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Apple or any other product uses that implementation.
 

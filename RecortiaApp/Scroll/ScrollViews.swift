@@ -206,8 +206,9 @@ struct ScrollReviewView: View {
             ForEach(seams, id: \.self) { seam in
                 let y = Double(seam) * scale
                 // Over arbitrary page pixels one colour disappears: primary is black in light
-                // appearance, so the marks vanish on the dark pages people scroll most. Pair an
-                // opaque under-stroke with the accent, the same idiom the canvas uses for guides.
+                // appearance, so the marks vanish on the dark pages people scroll most. A keyline
+                // (opaque white under-stroke, black core) reads over any page colour, keeps working
+                // for every accent colour, and carries its contrast in shape rather than in hue.
                 Path { path in
                     path.move(to: CGPoint(x: 0, y: y))
                     path.addLine(to: CGPoint(x: previewWidth, y: y))
@@ -217,7 +218,7 @@ struct ScrollReviewView: View {
                     path.move(to: CGPoint(x: 0, y: y))
                     path.addLine(to: CGPoint(x: previewWidth, y: y))
                 }
-                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: width, dash: [6, 4]))
+                .stroke(Color.black, style: StrokeStyle(lineWidth: width, dash: [6, 4]))
             }
         }
         .frame(width: previewWidth, height: displayHeight, alignment: .topLeading)
