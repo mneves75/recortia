@@ -61,6 +61,12 @@ public final class EditorModel {
     @ObservationIgnored var hasFittedViewport = false
     @ObservationIgnored private var reportedEvictedUndoCount = 0
     @ObservationIgnored var continuousChangeID: UUID?
+    /// `listItems` memoised against the document revision that produced it.
+    @ObservationIgnored private var listItemsMemo: (revision: UInt64, items: [EditorListItem])?
+    /// Geometry resolutions performed while building `listItems`. Resolving a text frame is a full
+    /// Core Text layout, so the memo is a performance invariant and tests assert this count instead
+    /// of wall-clock time, which no gate on this host could qualify.
+    @ObservationIgnored internal private(set) var listItemGeometryResolutions = 0
 
     @ObservationIgnored var baseTask: Task<Void, Never>?
     @ObservationIgnored var installedBaseKey: BaseKey?
@@ -335,13 +341,27 @@ public final class EditorModel {
     }
 
     /// Every object, topmost first, for the accessible object list and canvas accessibility.
+    ///
+    /// The canvas, the inspector, the sidebar and the marquee each ask for this list, and the canvas
+    /// asks on every observed change — including the draft, which moves per pointer event. A text
+    /// item's frame is a full Core Text layout, so the result is memoised against the document
+    /// revision: `revision` moves in exactly one place (`DocumentSession.replaceDocument`), which is
+    /// what makes it a sound key rather than a guess.
     public var listItems: [EditorListItem] {
+        if let memo = listItemsMemo, memo.revision == session.revision { return memo.items }
+        let items = resolveListItems()
+        listItemsMemo = (revision: session.revision, items: items)
+        return items
+    }
+
+    private func resolveListItems() -> [EditorListItem] {
         var counters: [EditorItemKind: Int] = [:]
         var bottomUp: [EditorListItem] = []
         let d = session.document
         // Output order: layers, cosmetic effects, annotations, redactions, callouts.
         for item in allItemIDs {
             guard let kind = kind(of: item), let frame = frame(of: item) else { continue }
+            listItemGeometryResolutions += 1
             counters[kind, default: 0] += 1
             var step: Int?
             if case .annotation(let id) = item, let annotation = d.annotations.first(where: { $0.id == id }),
