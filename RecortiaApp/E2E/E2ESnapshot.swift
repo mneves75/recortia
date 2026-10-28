@@ -14,27 +14,34 @@
         /// Editor windows use one content size in every scenario so screenshots line up.
         static let editorSize = NSSize(width: 1320, height: 860)
 
-        /// Moves `window` offscreen with a fixed light appearance (deterministic screenshots).
-        static func park(_ window: NSWindow) {
-            window.appearance = NSAppearance(named: .aqua)
+        /// Moves `window` offscreen with a fixed appearance (deterministic screenshots).
+        /// The appearance is a parameter because light-only snapshots cannot see a defect that
+        /// exists on dark content; the default keeps every existing scenario byte-identical.
+        static func park(_ window: NSWindow, appearance: NSAppearance.Name = .aqua) {
+            window.appearance = NSAppearance(named: appearance)
             window.setFrameOrigin(offscreenOrigin)
         }
 
         /// A borderless offscreen window hosting `view`; `size` nil uses the view's fitting size.
-        static func host<Content: View>(_ view: Content, size: NSSize? = nil) -> NSWindow {
-            let hosting = NSHostingView(rootView: view.environment(\.colorScheme, .light))
+        static func host<Content: View>(
+            _ view: Content, size: NSSize? = nil, appearance: NSAppearance.Name = .aqua
+        ) -> NSWindow {
+            let scheme: ColorScheme = appearance == .darkAqua ? .dark : .light
+            let hosting = NSHostingView(rootView: view.environment(\.colorScheme, scheme))
             let fitting = size ?? hosting.fittingSize
-            return host(nsView: hosting, size: fitting)
+            return host(nsView: hosting, size: fitting, appearance: appearance)
         }
 
-        static func host(nsView view: NSView, size: NSSize) -> NSWindow {
+        static func host(
+            nsView view: NSView, size: NSSize, appearance: NSAppearance.Name = .aqua
+        ) -> NSWindow {
             let window = NSWindow(
                 contentRect: NSRect(origin: offscreenOrigin, size: size), styleMask: [.borderless], backing: .buffered,
                 defer: false)
             window.isReleasedWhenClosed = false
             view.frame = NSRect(origin: .zero, size: size)
             window.contentView = view
-            park(window)
+            park(window, appearance: appearance)
             return window
         }
 

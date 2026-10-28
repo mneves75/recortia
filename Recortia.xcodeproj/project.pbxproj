@@ -90,6 +90,7 @@
 		8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
 		903193BD2B60CF8D8B4E2E84 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */; };
 		9325096169A5F984CE9D27C6 /* HostMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 157FFAAB86E949F9B49035CB /* HostMain.swift */; };
+		9574817EAC04B1ED3B058F71 /* Scenarios+Appearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */; };
 		9B66009877EDC38A4359066A /* E2EForegroundState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E65BE730BC431A6770FF18A /* E2EForegroundState.swift */; };
 		9B89A1BC56B6C7226ED6FB51 /* Scenarios+TextDecorations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB5F8BBE3C3ECB34B0C587E /* Scenarios+TextDecorations.swift */; };
 		9CB38D928DC1ACE86AE42098 /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
@@ -173,6 +174,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Appearance.swift"; sourceTree = "<group>"; };
 		1054033F6519FF4F5EECEDA7 /* Scenarios+TextAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+TextAppearance.swift"; sourceTree = "<group>"; };
 		1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Recortia-LICENSE.txt"; sourceTree = "<group>"; };
 		12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shortcuts.swift"; sourceTree = "<group>"; };
@@ -425,6 +427,7 @@
 				F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */,
 				E33BB654473B6F3033727605 /* E2EScenarios.swift */,
 				293033569B29300AB2B89925 /* E2ESnapshot.swift */,
+				06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */,
 				143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */,
 				7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */,
 				4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */,
@@ -745,6 +748,7 @@
 				3B6F7CBFE641BB0D4D133B24 /* PreviewSupport.swift in Sources */,
 				56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */,
 				F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */,
+				9574817EAC04B1ED3B058F71 /* Scenarios+Appearance.swift in Sources */,
 				662B5EEB1979FE8CB55404C3 /* Scenarios+AutomaticExport.swift in Sources */,
 				C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */,
 				DA848AED2EE99F81FCDFF4D4 /* Scenarios+CaptureVisibility.swift in Sources */,

@@ -90,6 +90,9 @@
                 run: AutomaticExportScenarios.feedbackRouting),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(
+                id: "appearance-contrast", title: "Review marks stay visible on dark and light content",
+                run: AppearanceScenarios.reviewContrast),
+            E2EScenario(
                 id: "window-latency", title: "Each window opens in under 50 ms", run: LatencyScenarios.windowLatency,
                 runsOnlyWhenNamed: true),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),

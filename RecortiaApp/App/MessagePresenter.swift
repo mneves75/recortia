@@ -26,6 +26,25 @@ enum MessagePresenter {
         }
     }
 
+    /// Asks before a scrolling capture is thrown away. Close, Escape, and Discard all route here,
+    /// so the review window can be closed without silently destroying an assembled result.
+    static func confirmDiscardScrollingCapture() -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Discard this scrolling capture?")
+        // No count here: a counted sentence needs plural variants in two languages, which this
+        // release deliberately defers until the localization gate covers the plural branch.
+        alert.informativeText = String(
+            localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image.")
+        let discard = alert.addButton(withTitle: String(localized: "Discard"))
+        discard.hasDestructiveAction = true
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        SpacePolicy.follow(alert.window)
+        AppPresence.shared.activate()
+        defer { AppPresence.shared.setNeedsRefresh() }
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
     /// Asks before Quit discards edits in `count` open editors. True means quit.
     static func confirmDiscardOnQuit(count: Int) -> Bool {
         let alert = NSAlert()
