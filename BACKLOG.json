@@ -411,6 +411,19 @@
     "evidence": ".scratch/local-install-0.12.5-20261028/{Recortia.xcarchive,export/Recortia.app,ExportOptions.plist,entitlements.plist,previous-0.12.4-23.app}",
     "authorization": "Owner request 2026-10-28: deploy on my macOS"
   },
+  "source_candidate_0_12_6": {
+    "candidate": "0.12.6 source candidate",
+    "app_version": "0.12.6",
+    "build": 25,
+    "date": "2026-10-28",
+    "scope": "Documentation and verification only: the security-settings audit record, the planted-revert record, and the closed 0.12.5 GUI qualification. No product change.",
+    "distribution_status": "Source candidate. Untagged, not notarized, not published, not installed. 0.12.5 build 24 remains the installed and tagged build.",
+    "evidence": [
+      ".scratch/logs/check-11.log: 'check: all gates passed'",
+      ".scratch/logs/e2e-final3.log: 50/50 scenarios per language at 4d3dcf1"
+    ],
+    "authorization": "owner request 2026-10-28: bump the version and update every document"
+  },
   "tasks": [
     {
       "id": "FP-001",

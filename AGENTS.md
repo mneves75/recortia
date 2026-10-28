@@ -97,6 +97,12 @@ measures 19.17:1, 19.60:1 and 5.32:1 respectively and does not depend on the acc
 that can see a mark disappear where app chrome meets page content, which is how a 1.08:1 seam
 marker survived every other test. A new user-visible mark over user content belongs under it.
 
+The Xcode security posture is recorded once, in
+`docs/specs/release-review-0.12.5/xcode-security-settings.md`: it says which settings are already at
+their strictest, which are out of scope because this is a pure-Swift repository, and what a
+deliberate Enhanced Security adoption must prove (it changes `ARCHS`, the reviewed entitlement set
+and the runtime-OS requirement at once). Read it before proposing any build-hardening change.
+
 `TOOLCHAIN.json` owns the toolchain pins. No test and no script copies them: `scripts/test-doctor.py`
 derives its fixtures from the record, because a copied pin turned a correct record update into three
 failing tests on 2026-10-28 and blocked every gate for a day's work. `./init.sh` resolves the
