@@ -106,16 +106,17 @@ with `DEVELOPER_DIR`; an app named `Xcode.app` may still be a prerelease build, 
 by default `scripts/doctor.sh` rejects any build other than the stable baseline.
 
 ```sh
-scripts/check.sh --unsigned    # toolchain doctor, format lint, project freshness, tests, app build
-scripts/e2e.sh --lang all      # scenarios through the real app in English and Portuguese
+./init.sh check --unsigned    # resolves the toolchain, then: doctor, format lint, project freshness, tests, builds
+./init.sh e2e --lang all      # scenarios through the real app in English and Portuguese
 swift test --package-path Packages/RecortiaKit --filter <TestName>   # one test or suite
 ```
 
-`scripts/check.sh` without `--unsigned` also builds the signed app and needs the maintainer's
-signing identity. `scripts/e2e.sh` writes screenshots, `report.json` and `provenance.json` under
-`.scratch/e2e/`; it needs an unlocked, idle desktop session, and it never touches the real screen,
-general pasteboard, user defaults or Keychain. Releases are built by the maintainer with
-`scripts/release.sh` from a `v<version>[-betaN]` tag.
+`./init.sh` picks the reviewed stable toolchain when it is installed and otherwise falls back to the
+recorded release candidate, saying so. `scripts/check.sh` without `--unsigned` also builds the signed
+app and needs the maintainer's signing identity. `scripts/e2e.sh` writes screenshots, `report.json`
+and `provenance.json` under `.scratch/e2e/`; it needs an unlocked, idle desktop session, and it never
+touches the real screen, general pasteboard, user defaults or Keychain. Releases are built by the
+maintainer with `scripts/release.sh` from a `v<version>[-betaN]` tag.
 
 `project.yml` owns the version and build number. After adding or moving source files, or
 editing `project.yml`, run `xcodegen generate` and commit the regenerated project.

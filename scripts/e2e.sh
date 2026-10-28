@@ -146,6 +146,21 @@ for language in $languages; do
   # suite that was still passing scenarios (ocr-qr alone takes 76 s), so the guard now watches the
   # runner log for silence and keeps a much larger absolute ceiling.
   (
+    # Stop the whole process tree: a grandchild that survives keeps the job zsh waits on.
+    stop_tree() {
+      local signal=$1 root=$2 level pids next
+      pids=($root)
+      for level in 1 2 3; do
+        next=()
+        for pids_item in $pids; do
+          next+=($(pgrep -P $pids_item 2>/dev/null))
+        done
+        (( ${#next} )) || break
+        kill -$signal $next 2>/dev/null
+        pids=($next)
+      done
+      kill -$signal $root 2>/dev/null
+    }
     last_size=-1
     idle=0
     elapsed=0
@@ -168,11 +183,8 @@ for language in $languages; do
         # Children first: TERM to the parent alone orphans its helpers, and zsh's `wait` then
         # blocks until the whole job (including the orphans) exits. That is how a killed run kept
         # the suite open for another 40 s.
-        pkill -TERM -P "$pid" 2>/dev/null
-        kill -TERM "$pid" 2>/dev/null
-        ( sleep 3
-          pkill -KILL -P "$pid" 2>/dev/null
-          kill -KILL "$pid" 2>/dev/null ) &
+        stop_tree TERM "$pid"
+        ( sleep 3; stop_tree KILL "$pid" ) &
         break
       fi
     done

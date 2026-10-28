@@ -7,16 +7,16 @@ and `BACKLOG.json`, and the matching requirements and cases in `SPEC.md` and `AC
 
 ## Commands
 
-Every command needs the stable toolchain: `xcode-select` on the maintainer's Mac points to
-Xcode-beta, so prefix with `DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer`
-and `RECORTIA_TOOLCHAIN_MODE=stable` on this host. Script defaults alone do not select the
-verified stable installation. Xcode-beta MCP diagnostics may supplement a requested review;
-beta compilation does not replace the stable-toolchain release gates.
+`./init.sh` resolves the installed toolchain against `TOOLCHAIN.json` and then runs an existing
+suite, so no gate can run under an unreviewed Xcode by accident. It prefers the reviewed stable
+baseline and falls back to the recorded release candidate, announcing that it is development
+evidence only. On 2026-10-28 this host has no stable baseline installed: Xcode 27.2 (27B48) is
+Apple's release candidate, recorded as `actual_*` in `TOOLCHAIN.json`.
 
-- Full gate: `scripts/check.sh` (doctor, E2E-isolation and parsed Release-entitlement regression controls, strict `swift format lint`, generated-project freshness,
-  all package tests, signed Debug build, pt-BR coverage of every extracted string, E2E target build); `--unsigned` without the signing identity.
+- Full gate: `./init.sh check --unsigned` (doctor, E2E-isolation and parsed Release-entitlement regression controls, gate inventory, strict `swift format lint`, generated-project freshness,
+  all package tests, Debug build, pt-BR coverage of every extracted string, E2E target build); drop `--unsigned` when the signing identity is available.
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
-- End-to-end: `scripts/e2e.sh --lang all` runs the doctor, then the DEBUG scenario runner
+- End-to-end: `./init.sh e2e --lang all` runs the doctor, then the DEBUG scenario runner
   (`-RecortiaE2E <dir>`) through the real app, and writes screenshots, `report.json` and
   `provenance.json` under `.scratch/e2e/<time>-<pid>/`; `--no-build` requires matching
   provenance. The runner

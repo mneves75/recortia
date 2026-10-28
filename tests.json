@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T03:49:28Z",
-  "commit": "8339624b1ea5101853e3636c66adfdb286542968",
+  "generated_at": "2026-10-28T04:06:36Z",
+  "commit": "2f5b6cd1105f3b8ac7a1e01f5cc6a191033cf32b",
   "toolchain": {
     "xcode": "27.2 (27B48)",
     "channel": "release_candidate",
@@ -13,16 +13,16 @@
       "id": "check",
       "command": "./init.sh check --unsigned",
       "status": "running",
-      "evidence": ".scratch/logs/check-3.log",
-      "observed_at": "2026-10-28T03:49:02Z",
+      "evidence": ".scratch/logs/check-5.log",
+      "observed_at": "2026-10-28T04:06:31Z",
       "note": "local observation of the evidence file above, not a CI result"
     },
     {
       "id": "e2e",
       "command": "./init.sh e2e --lang all",
-      "status": "failed",
-      "evidence": ".scratch/logs/e2e-1.log",
-      "observed_at": "2026-10-28T03:36:59Z",
+      "status": "passed",
+      "evidence": ".scratch/logs/e2e-2.log",
+      "observed_at": "2026-10-28T04:00:51Z",
       "note": "local observation of the evidence file above, not a CI result"
     },
     {

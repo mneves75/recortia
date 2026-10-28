@@ -287,7 +287,7 @@ else:
 
 class DoctorTests(unittest.TestCase):
     def run_doctor(
-        self, swift_exit: int = 0, *, version: str = "27.0", build: str = "27A266a",
+        self, swift_exit: int = 0, *, version: str = STABLE_VERSION, build: str = STABLE_BUILD,
         mode: str | None = None, arguments: tuple[str, ...] = (),
         observed_channel: str = "release_candidate", stable_channel: str = "stable",
         required_major: int = 27, allow_beta_release: bool = False,
@@ -302,10 +302,10 @@ class DoctorTests(unittest.TestCase):
                 "required_stable_xcode_major": required_major,
                 "allow_beta_toolchains_for_release": allow_beta_release,
                 "stable_xcode_baseline": {
-                    "version": "27.0", "build": "27A266a", "release_channel": stable_channel,
+                    "version": STABLE_VERSION, "build": STABLE_BUILD, "release_channel": stable_channel,
                 },
-                "actual_xcode_version": "27.1",
-                "actual_xcode_build": "27A9275",
+                "actual_xcode_version": DEVELOPMENT_VERSION,
+                "actual_xcode_build": DEVELOPMENT_BUILD,
                 "actual_xcode_release_channel": observed_channel,
             }))
             binaries = root / "bin"
@@ -344,9 +344,9 @@ class DoctorTests(unittest.TestCase):
             )
 
     def test_recorded_rc_requires_explicit_development_mode(self) -> None:
-        rejected = self.run_doctor(version="27.1", build="27A9275")
+        rejected = self.run_doctor(version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD)
         self.assertNotEqual(0, rejected.returncode)
-        accepted = self.run_doctor(version="27.1", build="27A9275", mode="development")
+        accepted = self.run_doctor(version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD, mode="development")
         self.assertEqual(0, accepted.returncode, accepted.stderr)
         self.assertIn("DEVELOPMENT", accepted.stdout)
         self.assertIn("release_candidate", accepted.stdout)
@@ -360,13 +360,18 @@ class DoctorTests(unittest.TestCase):
         for channel in ("beta", "unknown", "stable"):
             with self.subTest(observed_channel=channel):
                 result = self.run_doctor(
-                    version="27.1", build="27A9275", mode="development", observed_channel=channel,
+                    version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD, mode="development",
+                    observed_channel=channel,
                 )
                 self.assertNotEqual(0, result.returncode, result.stdout)
 
     def test_unknown_and_beta_builds_are_denied_in_both_modes(self) -> None:
         for mode in ("stable", "development"):
-            for version, build in (("27.0", "27A9999"), ("27.2", "27B5028f"), ("27.1", "27A266a")):
+            # Any pair that differs from the record must be refused; the stable pair with a
+            # wrong build is included so an "almost right" toolchain cannot slip through.
+            for version, build in (
+                ("27.0", "27A9999"), ("27.2", "27B5028f"), (STABLE_VERSION, "27A266a!")
+            ):
                 with self.subTest(mode=mode, version=version, build=build):
                     result = self.run_doctor(version=version, build=build, mode=mode)
                     self.assertNotEqual(0, result.returncode, result.stdout)

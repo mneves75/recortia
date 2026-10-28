@@ -116,12 +116,21 @@ SUITES = (
 IN_PROGRESS_SECONDS = 120
 
 
+def last_marker(text: str, markers: tuple[str, ...]) -> tuple[int, str] | None:
+    """The last occurrence of any marker, so an appended log cannot hide a later failure."""
+    found: list[tuple[int, str]] = []
+    for marker in markers:
+        index = text.rfind(marker)
+        if index >= 0:
+            found.append((index, marker))
+    return max(found) if found else None
+
+
 def check_status(text: str) -> str | None:
-    if "check: all gates passed" in text:
-        return "passed"
-    if "FAILED (" in text or "\nerror: " in text:
-        return "failed"
-    return None
+    markers = last_marker(text, ("check: all gates passed", "FAILED (", "\nerror: "))
+    if markers is None:
+        return None
+    return "passed" if markers[1] == "check: all gates passed" else "failed"
 
 
 def e2e_status(text: str) -> str | None:
@@ -240,6 +249,36 @@ def build() -> dict[str, object]:
     }
 
 
+def staleness_problems(fresh: dict[str, object]) -> list[str]:
+    """Fail when the committed tests.json no longer describes this tree or these results."""
+    path = ROOT / "tests.json"
+    if not path.exists():
+        return ["tests.json is missing; run scripts/tests-report.py"]
+    try:
+        recorded = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        return [f"tests.json is not valid JSON: {error}"]
+    problems: list[str] = []
+    fresh_gates = fresh["gates"]
+    if recorded.get("gates") != fresh_gates:
+        problems.append("tests.json records a different gate inventory; regenerate it")
+    recorded_suites = {s.get("id"): s for s in recorded.get("suites", []) if isinstance(s, dict)}
+    for suite in fresh["suites"]:  # type: ignore[union-attr]
+        known = recorded_suites.get(suite["id"])
+        if known is None:
+            problems.append(f"tests.json is missing suite {suite['id']}")
+            continue
+        if known.get("command") != suite["command"]:
+            problems.append(f"tests.json records another command for {suite['id']}")
+        # A recorded verdict that disagrees with the evidence on disk is a stale claim.
+        if suite["status"] in ("passed", "failed") and known.get("status") != suite["status"]:
+            problems.append(
+                f"tests.json says {suite['id']} is {known.get('status')}, "
+                f"the evidence says {suite['status']}"
+            )
+    return problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="fail when the inventory is not true")
@@ -252,6 +291,12 @@ def main() -> int:
             print(f"tests-report: {problem}", file=sys.stderr)
         return 1
     document = build()
+    if arguments.check:
+        problems.extend(staleness_problems(document))
+        if problems:
+            for problem in problems:
+                print(f"tests-report: {problem}", file=sys.stderr)
+            return 1
     rendered = json.dumps(document, indent=2, sort_keys=False) + "\n"
     if arguments.print_only:
         sys.stdout.write(rendered)

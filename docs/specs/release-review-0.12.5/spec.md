@@ -99,11 +99,28 @@ Each item lands with a test that fails when the item is reverted. `check` means
 | W5 | Pins revocation table exercises `close`, `invalidate`, `closeAll` | Dropping `PinsModel.invalidate`'s revocation fails |
 | W6 | Appearance axis in `E2ESnapshot` plus a dark-content scenario asserting seam-marker contrast | Reverting the dual stroke fails the scenario |
 | W7 | Seam markers use an opaque under-stroke plus accent over-stroke, as the canvas already does | W6 |
-| W8 | Pin image becomes a real accessibility element with its label | The scenario's accessibility probe finds the element and its label |
-| W9 | Save-folder row becomes `LabeledContent` with one-line truncation and a help tooltip | Rendered row keeps single-line height with a long pt-BR folder name |
+| W8 | Pin image becomes a real accessibility element with its label | Source: the label is applied to an element, not to `Image(decorative:)`. The VoiceOver-tree assertion is deferred; see the amendment below |
+| W9 | Save-folder row becomes `LabeledContent` with one-line truncation and a help tooltip | Source: one-line truncation, middle truncation and a help tooltip on the value, control on the trailing edge. The rendered single-line-height assertion is deferred with W8 |
 | W10 | "Remove destination and token" is destructive and confirmed, with new pt-BR strings | `check` passes and the localization gate covers the new keys |
-| W11 | Scroll review window is closable; close, Escape, and Discard ask one confirmation | Closing with confirmation declined leaves the session in `.reviewing`; accepting discards |
+| W11 | Scroll review window is closable; close, Escape, and Discard ask one confirmation | The window is closable, the controller is its delegate, the question is asked exactly once, a declined answer keeps the window open and a confirmed one closes it; on a live `.reviewing` session a declined discard leaves the stitch in place |
 | W12 | `scripts/tests-report.py`, `tests.json`, `./init.sh`, `progress.md` | `--check` fails on a stale inventory; `./init.sh check` runs the gate |
+
+## Amendments, 2026-10-28 after the adversarial review
+
+Two acceptance criteria promised proofs this repository cannot produce yet. Making them true would
+have meant inventing a result, so they are corrected here and the gap is a ticket, not a claim.
+
+- **W8, pin accessibility, and W9, folder row.** Both were written to be proved by rendering.
+  Measured, not assumed: a hosted `NSHostingView` exposes an empty accessibility tree in-process
+  (`root.accessibilityChildren()` returns nothing for the pin's hosted view when no accessibility
+  client is attached), and the existing `E2EAccessibilityControl` reaches only native AppKit
+  controls, not SwiftUI surfaces. A rendered-height comparison for W9 would need a resolvable save
+  folder bookmark and a layout assertion instrument that does not exist here. The fixes stay, with
+  source-level acceptance; the instrument is the first ticket of the next unit.
+- **W11.** The live half of the criterion now runs in the `scrolling` scenario, where the model is
+  actually in `.reviewing`: a declined discard must leave the stitch intact. The confirmed half is
+  proved in `appearance-contrast` by the window decision, because the only other caller of
+  `model.discard()` in that path is the gate itself.
 
 ## Deferred, with reasons
 

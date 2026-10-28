@@ -76,7 +76,7 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
 
     private func showReview() {
         guard review == nil else { return }
-        let window = Self.makeReviewWindow(model: model, onDiscard: { [weak self] in self?.requestDiscard() })
+        let window = makeReviewWindow()
         // On the display that was scrolled, not the key window's (FR-01).
         let displayID: CGDirectDisplayID? =
             switch model.target {
@@ -85,8 +85,6 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
             case nil: nil
             }
         window.center(on: ScreenChoice.screen(displayID: displayID))
-        review = window
-        window.delegate = self
         AppPresence.shared.activate()
         window.makeKeyAndOrderFront(nil)
     }
@@ -98,22 +96,26 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        // The delegate is only ever assigned to the review window, so asking here is the whole
-        // contract. An identity guard on top of that only made the gate untestable.
+        guard sender === review else { return true }
         let discarded = confirmDiscard()
         if discarded { model.discard() }
         return discarded
     }
 
-    static func makeReviewWindow(model: ScrollSessionModel, onDiscard: (() -> Void)? = nil) -> NSWindow {
-        // Titled windows keep a close button; the controller asks before a close discards.
+    /// Builds the review window, takes its delegate, and becomes the one place a discard can be
+    /// requested. The discard closure is not a parameter: a caller that forgot it would wire the
+    /// Discard and Escape buttons straight to destruction without asking.
+    func makeReviewWindow() -> NSWindow {
         let window = NSWindow(
             contentViewController: NSHostingController(
-                rootView: LiveScrollReview(model: model, onDiscard: onDiscard ?? { model.discard() })))
+                rootView: LiveScrollReview(model: model, onDiscard: { [weak self] in self?.requestDiscard() })))
         window.title = String(localized: "Review Scrolling Capture")
+        // Titled windows keep a close button; `windowShouldClose` asks before a close discards.
         window.styleMask = [.titled, .closable, .resizable]
         window.isReleasedWhenClosed = false
+        window.delegate = self
         SpacePolicy.follow(window)
+        if review == nil { review = window }
         return window
     }
 

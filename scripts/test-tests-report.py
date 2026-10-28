@@ -79,6 +79,8 @@ class TestsReportTests(unittest.TestCase):
         )
 
     def test_clean_inventory_passes(self) -> None:
+        # --check compares the committed file with the tree, so it needs one to compare.
+        self.assertEqual(0, self.run_report().returncode)
         result = self.run_report("--check")
         self.assertEqual(0, result.returncode, result.stderr)
 
@@ -128,6 +130,35 @@ class TestsReportTests(unittest.TestCase):
         by_id = {suite["id"]: suite for suite in document["suites"]}
         self.assertEqual("incomplete", by_id["check"]["status"],
                          "a log with no verdict must not be reported as a result")
+
+
+    def test_stale_recorded_status_is_reported(self) -> None:
+        log = self.root / ".scratch/logs/check-1.log"
+        log.write_text("check: all gates passed\n")
+        self.assertEqual(0, self.run_report().returncode)
+        # The evidence now says the run failed; the committed file still claims a pass.
+        log.write_text("FAILED (failures=1)\n")
+        result = self.run_report("--check")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("tests.json says check is passed", result.stderr)
+
+    def test_a_later_failure_is_not_hidden_by_an_earlier_pass(self) -> None:
+        log = self.root / ".scratch/logs/check-1.log"
+        log.write_text("check: all gates passed\nFAILED (failures=1)\n")
+        self.assertEqual(0, self.run_report().returncode)
+        document = json.loads((self.root / "tests.json").read_text())
+        by_id = {suite["id"]: suite for suite in document["suites"]}
+        self.assertEqual("failed", by_id["check"]["status"])
+
+    def test_a_recorded_gate_inventory_that_drifted_is_reported(self) -> None:
+        self.assertEqual(0, self.run_report().returncode)
+        path = self.root / "tests.json"
+        document = json.loads(path.read_text())
+        document["gates"] = document["gates"][:-1]
+        path.write_text(json.dumps(document))
+        result = self.run_report("--check")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("different gate inventory", result.stderr)
 
 
 if __name__ == "__main__":

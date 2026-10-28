@@ -67,6 +67,9 @@
             for scenario in selected {
                 let context = ScenarioContext(id: scenario.id, title: scenario.title, output: output)
                 let started = ContinuousClock.now
+                // Liveness, not progress: the run watchdog stops a run after silence, so a scenario
+                // that legitimately takes minutes must be visible as alive from its first moment.
+                log("START \(scenario.id)")
                 do {
                     try await scenario.run(harness, context)
                 } catch {
