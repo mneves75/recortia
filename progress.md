@@ -42,8 +42,34 @@ feeling. Spec: `docs/specs/release-review-0.12.5/spec.md`.
   and Discard all ask once.
 - Removed a duplicate entitlements test and a two-of-three-unreachable parameter table.
 
-## Open at the time of writing
+## Adversarial review of the diff
 
-- Full bilingual E2E after the changes.
-- Adversarial review of the diff, then `mneves-verify`.
-- Version bump, docs, commit, push, merge, cleanup.
+Two fresh-context reviewers read the diff and the spec. Both found real defects in my own work;
+all are now closed or corrected, none silently dropped:
+
+- the discard checks proved a closure was called, not that the window's close is answered. The
+  review window is now controller-owned, takes its own delegate, and the scenario asserts the
+  delegate identity. Planted revert fails it (`the controller is the window's delegate: nil`).
+- `onDiscard` defaulted to a direct `model.discard()`, the silent path the decision removed. It is
+  no longer a parameter.
+- the seam measurement counted a per-pixel share, so a mark over 10% of the width scored 1.0. It
+  now requires one horizontal band per seam spanning at least 80% of the preview. A portrait
+  fixture had been hiding the second seam behind the review's viewport.
+- the watchdog measured silence in a log written only after each scenario. The runner now logs
+  `START <id>` before each scenario, and the stop walks the process tree.
+- `tests.json` could be stale and still pass `--check`. It now compares against the tree and the
+  evidence, and the last terminal marker wins. It caught its own staleness during the gate.
+- `DoctorTests` still hardcoded the development pins. They now come from the record.
+
+Two acceptance criteria in the spec promised proofs this repository cannot produce. Both are
+corrected in the spec's amendments section rather than claimed: a hosted SwiftUI view exposes an
+empty in-process accessibility tree (measured on 2026-10-28), and there is no layout instrument for
+a rendered row height.
+
+## Results
+
+- Gate: `.scratch/logs/check-8.log` ends `check: all gates passed`.
+- Bilingual E2E, final: `.scratch/logs/e2e-final.log`, 50/50 scenarios per language, 138
+  screenshots each. The recorded state before this work was 45/47 per language.
+- `tests.json` regenerated from that evidence and checked by `scripts/tests-report.py --check`.
+- 0.12.5 build 24 is a source candidate: not tagged, notarized, published or installed.

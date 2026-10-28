@@ -1461,6 +1461,32 @@
       "completion_contract": "The new case fails when the save-side recheck is removed and passes with the shipped recheck.",
       "evidence": ["Packages/RecortiaKit/Tests/FeaturesTests/ExportCoordinatorTests.swift", ".scratch/security-fixes-20261018/check-followups.log"],
       "progress_note": "Recorded as the remaining CORE-1 test gap in the 0.12.2 production gate. Written in 1666fbd: the recheck already stopped the write, so this is coverage. The new case writes a second save and fails when the autoSave clause is removed, and passes with the shipped code. Not in the released 0.12.3 build."
+    },
+    {
+      "id": "FP-042",
+      "milestone": "M6",
+      "title": "Instrumented review and 0.12.5 source candidate",
+      "status": "implemented",
+      "depends_on": ["FP-035"],
+      "requirement_ids": ["FR-01", "FR-05", "FR-10", "FR-14"],
+      "acceptance_test_ids": ["UX-01", "SCR-01", "REL-01"],
+      "scope": "Three read-only reviews (design/accessibility, architecture/performance, test quality) over 3d52b80, then only the changes whose defect was re-read at its line: toolchain-record repair, gate instruments that can fail, the appearance axis in the E2E runner, and four user-visible fixes.",
+      "deliverables": [
+        "docs/specs/release-review-0.12.5/spec.md",
+        "scripts/tests-report.py and tests.json",
+        "init.sh",
+        "appearance-contrast E2E scenario",
+        "pin, seam-marker, save-folder and GitHub-credential fixes"
+      ],
+      "completion_contract": "Every instrument fails on a planted revert; the gate and the bilingual E2E pass; nothing is published.",
+      "evidence": [
+        ".scratch/logs/check-8.log ends 'check: all gates passed'",
+        ".scratch/logs/e2e-final.log: 50/50 scenarios per language, 138 screenshots each",
+        "Planted reverts: single-colour seam markers measure 1.08:1 and 1.06:1 and fail appearance-contrast; deleting the review window's delegate assignment fails the delegate check; removing either new isolation rule fails its planted control; a commented-out defaults guard fails its test",
+        "progress.md records each step with its evidence path"
+      ],
+      "authorization": "owner_request_2026-10-28_review_and_update",
+      "status_note": "0.12.5 build 24 is a source candidate: not tagged, notarized, published or installed. Deferred with reasons in the spec: editor menu commands (a global Cmd-C would take Copy from text editing), plural variants for two counted strings, the editor 4 pt grid, text-layout memoisation, an AX-messaging timeout, a retained-pixel budget for editors, release.sh wiring for the bundled-license test, and FP-041. The next ticket is an accessibility/layout instrument: a hosted SwiftUI view exposes an empty in-process accessibility tree, measured on 2026-10-28."
     }
   ],
   "deferred_scope": [
