@@ -123,6 +123,15 @@ per skill in `docs/specs/release-review-0.12.5/xcode-security-settings.md`.
 - The rest either duplicate work already done this session (review swarms, concurrency, performance)
   or target stacks this app does not use (Tuist, SwiftPM packaging, iOS simulator, React, App Store).
 
+## Closing sequence, 2026-10-28
+
+- The `~/.agents` skill store: took the ffmpeg-skill 2.17.3 automated upstream release that the
+  installer had left uncommitted, after the store's own gate (`validate --strict ok=True
+  blocking=[]`, `parity to_create=0 problems=0`, `sync clean 55 / no-repo 2`); pushed as `0bd5ccb`.
+- OptMem: the pending compression was already satisfied (`Nothing left to compress`).
+- Version 0.12.6 build 25 is a documentation-only candidate: untagged, unnotarized, unpublished and
+  not installed. The tag `v0.12.5-beta1` and the installed 0.12.5 build 24 are untouched.
+
 ## Results
 
 - Gate: `.scratch/logs/check-8.log` ends `check: all gates passed`.

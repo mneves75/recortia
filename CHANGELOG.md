@@ -15,6 +15,27 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.12.6] - 2026-10-28
+
+Build 25. Documentation and verification only: there is no user-facing change in this build, so the
+honest semver reading is that only the build number moved. It is a source candidate, untagged, not
+notarized, not published, and not installed.
+
+### Added
+
+- `docs/specs/release-review-0.12.5/xcode-security-settings.md`, the audit of this project's Xcode
+  security settings against the Skills collection: which settings are already at their strictest,
+  which are out of scope because the repository is pure Swift, and the exact conditions the deferred
+  Enhanced Security adoption has to meet.
+- `docs/specs/release-review-0.12.5/plants.md`, every planted revert with its own output, so the
+  controls behind the 0.12.5 instruments are checkable from the repository.
+
+### Fixed
+
+- Nothing in the product. The 0.12.5 qualification is complete: the full bilingual end-to-end suite
+  passes 50/50 per language, including the two scenarios that had failed while the console was
+  locked.
+
 ## [0.12.5] - 2026-10-28
 
 Build 24. Tagged `v0.12.5-beta1` as a pre-release marker: not notarized, no disk image, no
