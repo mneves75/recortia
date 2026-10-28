@@ -10,6 +10,13 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# One source for the reviewed pins: the real record. A copied literal here rots into a false
+# failure the moment the toolchain is re-observed, which is how this suite broke on 2026-10-28.
+RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
+STABLE_VERSION = RECORD["stable_xcode_baseline"]["version"]
+STABLE_BUILD = RECORD["stable_xcode_baseline"]["build"]
+DEVELOPMENT_VERSION = RECORD["actual_xcode_version"]
+DEVELOPMENT_BUILD = RECORD["actual_xcode_build"]
 
 
 class E2EToolchainTests(unittest.TestCase):
@@ -73,7 +80,8 @@ else:
         executable.write_text(source)
         executable.chmod(0o755)
 
-    def run_e2e(self, *arguments: str, version: str = "27.0", build: str = "27A266a", mode: str = "stable",
+    def run_e2e(self, *arguments: str, version: str = STABLE_VERSION, build: str = STABLE_BUILD,
+                mode: str = "stable",
                 during_build: str = "") -> subprocess.CompletedProcess[str]:
         self.tool("xcodebuild", "#!/bin/sh\n"
                   f"if [ \"$1\" = -version ]; then printf 'Xcode {version}\\nBuild version {build}\\n'; "
@@ -106,7 +114,7 @@ else:
         record = json.loads(provenance.read_text())
         self.assertEqual("stable", record["toolchain_mode"])
         self.assertEqual("a" * 40, record["git_sha"])
-        self.assertIn("27A266a", record["xcode_version"])
+        self.assertIn(STABLE_BUILD, record["xcode_version"])
         self.assertEqual("27.0", record.get("sdk_version"))
         self.assertEqual("27A123", record.get("sdk_build_version"))
         self.assertRegex(record.get("app_bundle_sha256", ""), r"^[0-9a-f]{64}$")
@@ -119,7 +127,8 @@ else:
     def test_no_build_rejects_different_toolchain_or_source(self) -> None:
         self.assertEqual(0, self.run_e2e().returncode)
         (self.root / "launch-reached").unlink()
-        changed = self.run_e2e("--no-build", version="27.1", build="27A9275", mode="development")
+        changed = self.run_e2e("--no-build", version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD,
+                               mode="development")
         self.assertNotEqual(0, changed.returncode)
         self.assertFalse((self.root / "launch-reached").exists())
         (self.root / ".fixture-sha").write_text("b" * 40 + "\n")
@@ -208,7 +217,7 @@ else:
                 self.assertFalse((self.root / "launch-reached").exists())
 
     def test_development_mode_is_explicit_and_recorded(self) -> None:
-        result = self.run_e2e(version="27.1", build="27A9275", mode="development")
+        result = self.run_e2e(version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD, mode="development")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("DEVELOPMENT", result.stdout)
         record = json.loads((self.root / ".build/dd-e2e-provenance.json").read_text())
