@@ -10,6 +10,13 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# One source for the reviewed pins: the real record. A copied literal here rots into a false
+# failure the moment the toolchain is re-observed, which is how this suite broke on 2026-10-28.
+RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
+STABLE_VERSION = RECORD["stable_xcode_baseline"]["version"]
+STABLE_BUILD = RECORD["stable_xcode_baseline"]["build"]
+DEVELOPMENT_VERSION = RECORD["actual_xcode_version"]
+DEVELOPMENT_BUILD = RECORD["actual_xcode_build"]
 
 
 class E2EToolchainTests(unittest.TestCase):
@@ -73,8 +80,9 @@ else:
         executable.write_text(source)
         executable.chmod(0o755)
 
-    def run_e2e(self, *arguments: str, version: str = "27.0", build: str = "27A266a", mode: str = "stable",
-                during_build: str = "") -> subprocess.CompletedProcess[str]:
+    def run_e2e(self, *arguments: str, version: str = STABLE_VERSION, build: str = STABLE_BUILD,
+                mode: str = "stable", during_build: str = "", timeout: str = "1",
+                idle_timeout: str = "180") -> subprocess.CompletedProcess[str]:
         self.tool("xcodebuild", "#!/bin/sh\n"
                   f"if [ \"$1\" = -version ]; then printf 'Xcode {version}\\nBuild version {build}\\n'; "
                   f"else touch build-reached; {during_build} fi\n")
@@ -82,8 +90,20 @@ else:
             ["/bin/zsh", str(self.root / "scripts/e2e.sh"), "--lang", "en", *arguments],
             cwd=self.root, capture_output=True, text=True, timeout=15,
             env={"PATH": f"{self.bin}:/usr/bin:/bin", "RECORTIA_TOOLCHAIN_MODE": mode,
-                 "DEVELOPER_DIR": "/fixture/Xcode/Contents/Developer", "E2E_TIMEOUT": "1"},
+                 "DEVELOPER_DIR": "/fixture/Xcode/Contents/Developer", "E2E_TIMEOUT": timeout,
+                 "E2E_IDLE_TIMEOUT": idle_timeout},
         )
+
+    def test_silent_runner_is_stopped_as_a_hang_not_as_a_long_run(self) -> None:
+        # A hang is silence, not elapsed time. Raising the wall-clock ceiling must not remove the
+        # ability to stop a run that stopped making progress.
+        app = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E"
+        app.write_text("#!/bin/sh\ntouch launch-reached\nsleep 40\n")
+        app.chmod(0o755)
+        result = self.run_e2e(timeout="3600", idle_timeout="1")
+        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("no runner output for", result.stderr)
+        self.assertTrue((self.root / "launch-reached").exists(), "the run must have started")
 
     def test_unreviewed_toolchain_never_builds_or_launches(self) -> None:
         result = self.run_e2e(version="27.9", build="unreviewed")
@@ -106,7 +126,7 @@ else:
         record = json.loads(provenance.read_text())
         self.assertEqual("stable", record["toolchain_mode"])
         self.assertEqual("a" * 40, record["git_sha"])
-        self.assertIn("27A266a", record["xcode_version"])
+        self.assertIn(STABLE_BUILD, record["xcode_version"])
         self.assertEqual("27.0", record.get("sdk_version"))
         self.assertEqual("27A123", record.get("sdk_build_version"))
         self.assertRegex(record.get("app_bundle_sha256", ""), r"^[0-9a-f]{64}$")
@@ -119,7 +139,8 @@ else:
     def test_no_build_rejects_different_toolchain_or_source(self) -> None:
         self.assertEqual(0, self.run_e2e().returncode)
         (self.root / "launch-reached").unlink()
-        changed = self.run_e2e("--no-build", version="27.1", build="27A9275", mode="development")
+        changed = self.run_e2e("--no-build", version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD,
+                               mode="development")
         self.assertNotEqual(0, changed.returncode)
         self.assertFalse((self.root / "launch-reached").exists())
         (self.root / ".fixture-sha").write_text("b" * 40 + "\n")
@@ -208,7 +229,7 @@ else:
                 self.assertFalse((self.root / "launch-reached").exists())
 
     def test_development_mode_is_explicit_and_recorded(self) -> None:
-        result = self.run_e2e(version="27.1", build="27A9275", mode="development")
+        result = self.run_e2e(version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD, mode="development")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("DEVELOPMENT", result.stdout)
         record = json.loads((self.root / ".build/dd-e2e-provenance.json").read_text())
@@ -266,7 +287,7 @@ else:
 
 class DoctorTests(unittest.TestCase):
     def run_doctor(
-        self, swift_exit: int = 0, *, version: str = "27.0", build: str = "27A266a",
+        self, swift_exit: int = 0, *, version: str = STABLE_VERSION, build: str = STABLE_BUILD,
         mode: str | None = None, arguments: tuple[str, ...] = (),
         observed_channel: str = "release_candidate", stable_channel: str = "stable",
         required_major: int = 27, allow_beta_release: bool = False,
@@ -281,10 +302,10 @@ class DoctorTests(unittest.TestCase):
                 "required_stable_xcode_major": required_major,
                 "allow_beta_toolchains_for_release": allow_beta_release,
                 "stable_xcode_baseline": {
-                    "version": "27.0", "build": "27A266a", "release_channel": stable_channel,
+                    "version": STABLE_VERSION, "build": STABLE_BUILD, "release_channel": stable_channel,
                 },
-                "actual_xcode_version": "27.1",
-                "actual_xcode_build": "27A9275",
+                "actual_xcode_version": DEVELOPMENT_VERSION,
+                "actual_xcode_build": DEVELOPMENT_BUILD,
                 "actual_xcode_release_channel": observed_channel,
             }))
             binaries = root / "bin"
@@ -323,9 +344,9 @@ class DoctorTests(unittest.TestCase):
             )
 
     def test_recorded_rc_requires_explicit_development_mode(self) -> None:
-        rejected = self.run_doctor(version="27.1", build="27A9275")
+        rejected = self.run_doctor(version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD)
         self.assertNotEqual(0, rejected.returncode)
-        accepted = self.run_doctor(version="27.1", build="27A9275", mode="development")
+        accepted = self.run_doctor(version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD, mode="development")
         self.assertEqual(0, accepted.returncode, accepted.stderr)
         self.assertIn("DEVELOPMENT", accepted.stdout)
         self.assertIn("release_candidate", accepted.stdout)
@@ -339,13 +360,18 @@ class DoctorTests(unittest.TestCase):
         for channel in ("beta", "unknown", "stable"):
             with self.subTest(observed_channel=channel):
                 result = self.run_doctor(
-                    version="27.1", build="27A9275", mode="development", observed_channel=channel,
+                    version=DEVELOPMENT_VERSION, build=DEVELOPMENT_BUILD, mode="development",
+                    observed_channel=channel,
                 )
                 self.assertNotEqual(0, result.returncode, result.stdout)
 
     def test_unknown_and_beta_builds_are_denied_in_both_modes(self) -> None:
         for mode in ("stable", "development"):
-            for version, build in (("27.0", "27A9999"), ("27.2", "27B5028f"), ("27.1", "27A266a")):
+            # Any pair that differs from the record must be refused; the stable pair with a
+            # wrong build is included so an "almost right" toolchain cannot slip through.
+            for version, build in (
+                ("27.0", "27A9999"), ("27.2", "27B5028f"), (STABLE_VERSION, "27A266a!")
+            ):
                 with self.subTest(mode=mode, version=version, build=build):
                     result = self.run_doctor(version=version, build=build, mode=mode)
                     self.assertNotEqual(0, result.returncode, result.stdout)

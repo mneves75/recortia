@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-28T04:47:42Z",
+  "commit": "ce26e229e33b6988c2778c5ccc6b4f031a2c96be",
+  "toolchain": {
+    "xcode": "27.2 (27B48)",
+    "channel": "release_candidate",
+    "stable_baseline": "27.0 (27A266a)"
+  },
+  "status_source": "local evidence files; CI results are separate and not recorded here",
+  "suites": [
+    {
+      "id": "check",
+      "command": "./init.sh check --unsigned",
+      "status": "passed",
+      "evidence": ".scratch/logs/check-10.log",
+      "observed_at": "2026-10-28T04:47:36Z",
+      "note": "local observation of the evidence file above, not a CI result"
+    },
+    {
+      "id": "e2e",
+      "command": "./init.sh e2e --lang all",
+      "status": "failed",
+      "evidence": ".scratch/logs/e2e-final2.log",
+      "observed_at": "2026-10-28T04:40:48Z",
+      "note": "local observation of the evidence file above, not a CI result"
+    },
+    {
+      "id": "release-dry-run",
+      "command": "scripts/release.sh --dry-run",
+      "status": "not_run",
+      "evidence": null
+    }
+  ],
+  "gates": [
+    {
+      "id": "toolchain",
+      "protected_file": "scripts/doctor.sh",
+      "tests": [
+        "scripts/test-doctor.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "e2e-isolation",
+      "protected_file": "scripts/e2e.sh",
+      "tests": [
+        "scripts/test-e2e-isolation.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "localization",
+      "protected_file": "scripts/check-localization.py",
+      "tests": [
+        "scripts/test-localization.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "release-entitlements",
+      "protected_file": "scripts/check-release-entitlements.py",
+      "tests": [
+        "scripts/test-release-entitlements.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "release-binary",
+      "protected_file": "scripts/check-release-binary.sh",
+      "tests": [
+        "scripts/test-release-binary.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "release-contract",
+      "protected_file": "scripts/release.sh",
+      "tests": [
+        "scripts/test-release-contract.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "project-freshness",
+      "protected_file": "scripts/check-project-fresh.sh",
+      "tests": [
+        "scripts/test-project-freshness.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "tests-report",
+      "protected_file": "scripts/tests-report.py",
+      "tests": [
+        "scripts/test-tests-report.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "package-tests",
+      "protected_file": "Packages/RecortiaKit/Package.swift",
+      "tests": [],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "native-e2e",
+      "protected_file": "RecortiaApp/E2E/E2EScenarios.swift",
+      "tests": [],
+      "invoked_by": [
+        "scripts/e2e.sh"
+      ]
+    }
+  ]
+}

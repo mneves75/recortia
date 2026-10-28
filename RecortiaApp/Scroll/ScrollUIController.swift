@@ -6,7 +6,7 @@ import SwiftUI
 
 /// Presents the scrolling-capture UI for the model's state: region overlay while choosing the
 /// area, the HUD while armed/collecting/paused, and the review window.
-final class ScrollUIController {
+final class ScrollUIController: NSObject, NSWindowDelegate {
     private let model: ScrollSessionModel
     private let displays: () -> [DisplayInfo]
     private let overlay = RegionOverlayController()
@@ -14,6 +14,8 @@ final class ScrollUIController {
     private var review: NSWindow?
     private var lastState: ScrollState = .idle
     private var loop: ObservationLoop?
+    /// Injected so the E2E runner can prove the discard gate without presenting a modal alert.
+    var confirmDiscard: @MainActor () -> Bool = MessagePresenter.confirmDiscardScrollingCapture
 
     init(model: ScrollSessionModel, displays: @escaping () -> [DisplayInfo]) {
         self.model = model
@@ -22,6 +24,7 @@ final class ScrollUIController {
             model?.chooseTarget(.region(rect, display: display))
         }
         overlay.onCancel = { [weak model] in model?.cancel() }
+        super.init()
         loop = ObservationLoop { [weak self] in self?.render() }
     }
 
@@ -73,7 +76,7 @@ final class ScrollUIController {
 
     private func showReview() {
         guard review == nil else { return }
-        let window = Self.makeReviewWindow(model: model)
+        let window = makeReviewWindow()
         // On the display that was scrolled, not the key window's (FR-01).
         let displayID: CGDirectDisplayID? =
             switch model.target {
@@ -82,17 +85,37 @@ final class ScrollUIController {
             case nil: nil
             }
         window.center(on: ScreenChoice.screen(displayID: displayID))
-        review = window
         AppPresence.shared.activate()
         window.makeKeyAndOrderFront(nil)
     }
 
-    static func makeReviewWindow(model: ScrollSessionModel) -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: LiveScrollReview(model: model)))
+    /// The one destructive path out of the review: close, Escape, and Discard all ask here first.
+    func requestDiscard() {
+        guard confirmDiscard() else { return }
+        model.discard()
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard sender === review else { return true }
+        let discarded = confirmDiscard()
+        if discarded { model.discard() }
+        return discarded
+    }
+
+    /// Builds the review window, takes its delegate, and becomes the one place a discard can be
+    /// requested. The discard closure is not a parameter: a caller that forgot it would wire the
+    /// Discard and Escape buttons straight to destruction without asking.
+    func makeReviewWindow() -> NSWindow {
+        let window = NSWindow(
+            contentViewController: NSHostingController(
+                rootView: LiveScrollReview(model: model, onDiscard: { [weak self] in self?.requestDiscard() })))
         window.title = String(localized: "Review Scrolling Capture")
-        window.styleMask = [.titled]
+        // Titled windows keep a close button; `windowShouldClose` asks before a close discards.
+        window.styleMask = [.titled, .closable, .resizable]
         window.isReleasedWhenClosed = false
+        window.delegate = self
         SpacePolicy.follow(window)
+        if review == nil { review = window }
         return window
     }
 
@@ -132,11 +155,12 @@ private struct LiveScrollHUD: View {
 
 private struct LiveScrollReview: View {
     let model: ScrollSessionModel
+    let onDiscard: () -> Void
 
     var body: some View {
         ScrollReviewView(
             preview: model.preview, outputSize: model.outputSize, seams: model.seams,
             partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
-            onAccept: { Task { await model.accept() } }, onDiscard: { model.discard() })
+            onAccept: { Task { await model.accept() } }, onDiscard: onDiscard)
     }
 }

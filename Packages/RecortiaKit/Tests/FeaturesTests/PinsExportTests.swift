@@ -79,7 +79,7 @@ struct PinsExportTests {
 
     @Test(
         "Closing, redacting, or Close All while a drag offer waits revokes it and writes nothing",
-        arguments: ["closeAll"])
+        arguments: ["close", "invalidate", "closeAll"])
     func removalRevokesDrag(removal: String) async throws {
         let h = PinsExportHarness()
         var session = TestFixtures.session()

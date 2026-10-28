@@ -201,15 +201,24 @@ struct ScrollReviewView: View {
 
     private func seamMarkers(displayHeight: Double) -> some View {
         let scale = outputSize.height > 0 ? displayHeight / Double(outputSize.height) : 0
+        let width: Double = contrast == .increased ? 2 : 1
         return ZStack(alignment: .topLeading) {
             ForEach(seams, id: \.self) { seam in
+                let y = Double(seam) * scale
+                // Over arbitrary page pixels one colour disappears: primary is black in light
+                // appearance, so the marks vanish on the dark pages people scroll most. A keyline
+                // (opaque white under-stroke, black core) reads over any page colour, keeps working
+                // for every accent colour, and carries its contrast in shape rather than in hue.
                 Path { path in
-                    path.move(to: CGPoint(x: 0, y: Double(seam) * scale))
-                    path.addLine(to: CGPoint(x: previewWidth, y: Double(seam) * scale))
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: previewWidth, y: y))
                 }
-                .stroke(
-                    Color.primary,
-                    style: StrokeStyle(lineWidth: contrast == .increased ? 2 : 1, dash: [6, 4]))
+                .stroke(Color.white, style: StrokeStyle(lineWidth: width + 2, dash: [6, 4]))
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: previewWidth, y: y))
+                }
+                .stroke(Color.black, style: StrokeStyle(lineWidth: width, dash: [6, 4]))
             }
         }
         .frame(width: previewWidth, height: displayHeight, alignment: .topLeading)

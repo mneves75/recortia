@@ -150,12 +150,18 @@ struct ExportSettingsTab: View {
                 }
                 Toggle("Copy automatically after capture", isOn: settings.binding(\.autoCopy))
                 Toggle("Save automatically after capture", isOn: settings.binding(\.autoSave))
-                HStack {
-                    Text("Save folder")
-                    Spacer()
-                    Text(folderDescription)
-                        .foregroundStyle(.secondary)
-                    Button("Choose…", action: chooseFolder)
+                LabeledContent("Save folder") {
+                    HStack(spacing: 8) {
+                        // A folder name is user data: truncate it and keep the whole value in a
+                        // tooltip, so a long or localized name cannot wrap the row and push the
+                        // control off its trailing edge.
+                        Text(folderDescription)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(folderDescription)
+                        Button("Choose…", action: chooseFolder)
+                    }
                 }
             } header: {
                 Text("Automatic export")

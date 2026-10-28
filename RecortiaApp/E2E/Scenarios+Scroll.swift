@@ -89,6 +89,15 @@
             await E2ESnapshot.settle(reviewRoot)
             context.snapshot(reviewRoot, shot: "review")
 
+            // A declined discard must leave the assembled stitch where it is: this is the only
+            // place the model is really in `.reviewing`, so the survival claim is proved here.
+            let discardGate = ScrollUIController(model: model, displays: { [] })
+            discardGate.confirmDiscard = { false }
+            discardGate.requestDiscard()
+            context.check(
+                "a declined discard leaves the stitched capture in review", model.state == .reviewing,
+                "\(model.state)")
+
             let before = harness.editors.controllers.count
             await model.accept()
             let controller = try await E2EActions.waitForNewEditor(harness, after: before, context)

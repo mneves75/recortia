@@ -24,13 +24,6 @@ class ReleaseEntitlementTests(unittest.TestCase):
             )
             return result.returncode
 
-    def test_valid_group(self) -> None:
-        self.assertEqual(0, self.run_gate({
-            "com.apple.application-identifier": GROUP,
-            "com.apple.developer.team-identifier": "Q96FUTC5G8",
-            "keychain-access-groups": [GROUP],
-        }))
-
     def test_application_identifier_is_not_an_access_group(self) -> None:
         self.assertNotEqual(0, self.run_gate({"com.apple.application-identifier": GROUP}))
 

@@ -1,6 +1,56 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Remove destination and token…": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover destino e token…"
+          }
+        }
+      }
+    },
+    "Remove destination and token?": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover destino e token?"
+          }
+        }
+      }
+    },
+    "Automatic upload stops and the saved token is deleted from Keychain. You will need to save it again to resume uploading.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O envio automático é desligado e o token salvo é apagado do Keychain. Você precisará salvá-lo de novo para voltar a enviar."
+          }
+        }
+      }
+    },
+    "Discard this scrolling capture?": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar esta captura com rolagem?"
+          }
+        }
+      }
+    },
+    "The accepted frames will be thrown away. Accept the result instead to keep it as an image.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os quadros aceitos serão descartados. Aceite o resultado para mantê-lo como imagem."
+          }
+        }
+      }
+    },
     "Start with a capture": {
       "localizations": {
         "pt-BR": {

@@ -72,6 +72,7 @@ struct GitHubUploadSettings: View {
     @State private var token = ""
     @State private var message: String?
     @State private var confirmingAutomaticUpload = false
+    @State private var confirmingRemoval = false
 
     private var destination: GitHubDestination {
         GitHubDestination(
@@ -114,7 +115,7 @@ struct GitHubUploadSettings: View {
                             })
                     )
                     .disabled(credentials == nil)
-                    Button("Remove destination and token") { remove(configuration.destination) }
+                    Button("Remove destination and token…", role: .destructive) { confirmingRemoval = true }
                 } else {
                     Text("Automatic upload is off. Save a destination and token first.")
                 }
@@ -133,6 +134,20 @@ struct GitHubUploadSettings: View {
             repository = settings.preferences.githubUpload?.destination.repository ?? ""
         }
         .onDisappear { token = "" }
+        .confirmationDialog("Remove destination and token?", isPresented: $confirmingRemoval) {
+            if let configuration = settings.preferences.githubUpload {
+                // The token cannot be recovered from the app, so this repeats the action and names
+                // the repository it stops uploading to.
+                Button("Remove destination and token", role: .destructive) {
+                    remove(configuration.destination)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "Automatic upload stops and the saved token is deleted from Keychain. You will need to save it again to resume uploading."
+            )
+        }
         .confirmationDialog("Enable automatic upload to GitHub?", isPresented: $confirmingAutomaticUpload) {
             Button("Enable automatic upload") { settings.update { $0.githubUpload?.automatic = true } }
             Button("Cancel", role: .cancel) {}

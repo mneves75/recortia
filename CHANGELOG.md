@@ -4,15 +4,67 @@ All notable changes to Recortia are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-Each section covers one published release. Candidates that were never tagged (0.9.1, 0.10.0,
-0.12.0 and 0.12.1) are folded into the release that first shipped their changes, and the
-0.9.0 betas into one section. Build, gate and installation evidence for every candidate is in
-`BACKLOG.json`.
+Each section covers one published release, except a section whose first line says it is a source
+candidate: that one is recorded before it ships and is never published from here. Candidates that
+were never tagged (0.9.1, 0.10.0, 0.12.0 and 0.12.1) are folded into the release that first shipped
+their changes, and the 0.9.0 betas into one section. Build, gate and installation evidence for
+every candidate is in `BACKLOG.json`.
 
 On 2026-10-16 the repository history was squashed into one commit and the releases before
 0.12.2-beta1 were withdrawn from GitHub; their sections remain as a record of what changed.
 
 ## [Unreleased]
+
+## [0.12.5] - 2026-10-28
+
+Build 24, a source candidate: not tagged, notarized or published, and not installed on this Mac.
+Physical keyboard, Spaces, permission and VoiceOver checks of this build were not run.
+
+### Added
+
+- An appearance control in the end-to-end runner. It renders the scrolling review twice, with and
+  without seam markers, and requires one band per seam spanning at least 80% of the preview, with
+  every band keeping at least 3:1 contrast against the page under it: light and dark appearance over
+  dark, light and mid-grey content. Until now every scenario rendered in light appearance, so a mark
+  that disappeared on dark content had no test at all.
+- `./init.sh` resolves the installed toolchain against `TOOLCHAIN.json` and runs an existing suite,
+  so a gate cannot run under an unreviewed Xcode by accident.
+- `tests.json` records the gate inventory and the last local evidence for each suite. It is written
+  by `scripts/tests-report.py`; `--check` verifies the recorded inventory and statuses against the
+  evidence on disk, and fails when a gate loses its test or when a test script is named by no gate.
+
+### Fixed
+
+- Seam markers in the scrolling review are visible on any page. They were drawn in one colour,
+  which measured 1.06–1.08:1 against the dark and light pages where it vanished. They are now a
+  keyline (white under-stroke, black core): measured 19.17:1 on a dark page, 19.60:1 on a light
+  page and 5.32:1 on mid grey, in both appearances, and independent of the accent colour.
+- A pin's image is now an accessibility element, so VoiceOver reads "Pinned screenshot" instead of
+  ignoring a label applied to a decorative image.
+- The review window can be closed. Closing it, pressing Escape and choosing Discard all ask once
+  before throwing away an assembled scrolling capture; previously Escape destroyed it silently and
+  the window had no close button.
+- "Remove destination and token" is a destructive action behind a confirmation, because the token
+  cannot be recovered from the app.
+- The save-folder row truncates a long or localized folder name and keeps the change button on the
+  trailing edge.
+
+### Changed
+
+- The end-to-end watchdog stops a run after 180 seconds without runner output instead of 300
+  seconds of wall-clock time. The old ceiling killed a run that was still passing scenarios;
+  `ocr-qr` alone takes 76 seconds.
+- `TOOLCHAIN.json` records Xcode 27.2 (27B48), Apple's release candidate, as the development
+  toolchain. The stable baseline stays 27.0 (27A266a) and is no longer installed here, so
+  stable-toolchain and release qualification remain blocked. `scripts/test-doctor.py` derives those
+  pins from the record instead of copying them.
+- The end-to-end isolation scan also covers `UserDefaults(suiteName:)` and
+  `NSPasteboard(name: .general)`; its defaults-domain guard test now reads executable lines, so a
+  guard quoted in a comment no longer satisfies it.
+
+### Removed
+
+- A duplicated release-entitlement test, and two parameter rows a pins test named but never ran.
 
 ## [0.12.4] - 2026-10-19
 

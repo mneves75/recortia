@@ -144,6 +144,9 @@ struct PinView: View {
                 .interpolation(pin.zoom * fitScale >= 2 ? .none : .high)
                 .frame(width: imageSize.width, height: imageSize.height)
                 .opacity(pin.opacity)
+                // A decorative image is not an accessibility element, so a label applied to one is
+                // never read. Declare the element first, then label it (as the scroll preview does).
+                .accessibilityElement()
                 .accessibilityLabel(Text("Pinned screenshot"))
             controls
             if let status {

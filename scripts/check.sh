@@ -22,6 +22,10 @@ python3 scripts/test-release-entitlements.py
 python3 scripts/test-release-binary.py
 python3 scripts/test-release-contract.py   # static release.sh checks; the bundle checks need --app
 python3 scripts/test-project-freshness.py
+python3 scripts/test-tests-report.py
+
+echo "== gate inventory"
+python3 scripts/tests-report.py --check
 
 echo "== format lint"
 xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests RecortiaApp RecortiaUITests
