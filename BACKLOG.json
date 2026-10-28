@@ -424,6 +424,21 @@
     ],
     "authorization": "owner request 2026-10-28: bump the version and update every document"
   },
+  "candidate_local_installation_0_12_7": {
+    "candidate": "0.12.7 source candidate",
+    "app_version": "0.12.7",
+    "build": 26,
+    "date": "2026-10-28",
+    "source_commit": "889f67a9f9084eeb456d1085a13de48cd5f1606c",
+    "toolchain": "Xcode 27.2 (27B48), Apple release candidate, recorded as the development toolchain in TOOLCHAIN.json; compilation and test evidence only, not release qualification",
+    "executable_sha256": "3efed41032ecfe2ffeb9aabfc23ec2d216029b6f115305d30ba51cc8b9d0c0f7",
+    "verification": "Owner asked to install on this Mac. Release archive built from a detached worktree at the merged commit, exported developer-id with manual signing, team Q96FUTC5G8, certificate 'Developer ID Application' and the locally installed 'Recortia Developer ID' profile. codesign --verify --deep --strict passes and the bundle satisfies its Designated Requirement; version 0.12.7 build 26; Hardened Runtime flags=0x10000(runtime); embedded profile present; scripts/check-release-entitlements.py passes for access group Q96FUTC5G8.dev.mvneves.Recortia; no get-task-allow; scripts/check-release-binary.sh scanned 43 Mach-O files and found no test-only markers; spctl accepts it with source=Developer ID; the installed bundle is byte-identical to the exported one (33 files, 60 entries, no symlinks, executable hash above). The previous 0.12.5 build 24 bundle is preserved at .scratch/local-install-0.12.7-20261028/previous-0.12.5-24.app. No process was running before the replacement, so no session was discarded.",
+    "distribution_status": "Signed local Developer ID installation only. Not notarized (no stapled ticket), no disk image, no GitHub release, not published, no cask or Homebrew change. Untagged.",
+    "launch": "0.12.7 launched after installation and is running; the startup log shows no error, fault, denial or Keychain failure and no crash report was written.",
+    "not_verified": "Notarization, clean-user launch, TCC and permission prompts, physical keyboard, Spaces and VoiceOver checks. No GUI inspection was performed during this installation; the scenario suite was run separately at the same source commit (50/50 per language at 4d3dcf1, editor scenarios 5/5 at 889f67a).",
+    "evidence": ".scratch/local-install-0.12.7-20261028/{Recortia.xcarchive,export/Recortia.app,ExportOptions.plist,entitlements.plist,previous-0.12.5-24.app}",
+    "authorization": "Owner request 2026-10-28: install on this macOS"
+  },
   "tasks": [
     {
       "id": "FP-001",

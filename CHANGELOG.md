@@ -17,7 +17,9 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [0.12.7] - 2026-10-28
 
-Build 26. A source candidate: untagged, not notarized, not published, not installed.
+Build 26. A source candidate: untagged, not notarized, not published. It is installed on the
+maintainer's Mac as a signed local Developer ID build (see `BACKLOG.json`
+`candidate_local_installation_0_12_7`).
 
 ### Fixed
 
