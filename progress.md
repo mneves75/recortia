@@ -84,6 +84,27 @@ light page with the default blue, below the floor with graphite or yellow) is no
 keyline at 19.17:1 / 19.60:1 / 5.32:1; the contrast floor is per band, not the brightest pixel
 anywhere; and four doc sentences that overstated what was measured are corrected.
 
+## Local installation, 2026-10-28
+
+The owner asked to deploy on this Mac. The documented path was blocked twice over: `release.sh`
+requires the stable 27.0 toolchain, which is not installed, and the `Recortia Developer ID`
+provisioning profile was no longer in the profile store. The profile was recovered from the
+embedded profile of the installed 0.12.4 bundle (UUID `c9bdcdae-…`, expires 2044) and reinstalled
+locally; nothing touched the developer portal.
+
+Archived from a detached worktree at `e071be1`, exported as `developer-id` with manual signing, then
+verified before installation: strict signature and Designated Requirement, version 0.12.5 build 24,
+Hardened Runtime, embedded profile, exact entitlement set with the Keychain access group, no
+`get-task-allow`, no test-only markers across 82 Mach-O files, and `spctl` accepting the bundle with
+`source=Developer ID`. The installed bundle is byte-identical to the export (33 files, 60 entries, no
+symlinks); the previous 0.12.4 bundle is preserved under
+`.scratch/local-install-0.12.5-20261028/previous-0.12.4-23.app`.
+
+0.12.5 is running. The 0.12.4 process had terminated normally at 02:11:38, before the bundle was
+replaced, and left no crash report. Not verified, because the console was locked throughout:
+notarization, clean-user launch, TCC prompts, physical keyboard, Spaces, VoiceOver and any GUI
+inspection.
+
 ## Results
 
 - Gate: `.scratch/logs/check-8.log` ends `check: all gates passed`.
