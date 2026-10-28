@@ -17,8 +17,10 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [0.12.5] - 2026-10-28
 
-Build 24, a source candidate: not tagged, notarized or published, and not installed on this Mac.
-Physical keyboard, Spaces, permission and VoiceOver checks of this build were not run.
+Build 24, a source candidate: not tagged, notarized or published. It is installed on the
+maintainer's Mac as a signed local Developer ID build (see `BACKLOG.json`
+`candidate_local_installation_0_12_5`). Physical keyboard, Spaces, permission and VoiceOver checks
+of this build were not run.
 
 ### Added
 
