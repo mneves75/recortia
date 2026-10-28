@@ -111,12 +111,15 @@ inspection.
 - Bilingual E2E: `.scratch/logs/e2e-2.log` and `.scratch/logs/e2e-final.log`, 50/50 scenarios per
   language, 138 screenshots each, on the code before the keyline and per-band changes. The recorded
   state before this work was 45/47 per language.
-- Bilingual E2E at the final commit: `.scratch/logs/e2e-final2.log`, 48/50 per language. The two
-  failures are `capture-focus` and `editor-presentation`, both on the foreground-fixture readiness
-  control (`key`, `active`, `foreground` false, `unoccluded` false) while `IOConsoleLocked=Yes`. A
-  locked console voids GUI qualification, so this is an environmental block, not a product result,
-  and it is not reported as a pass. Rerun after unlocking:
-  `./init.sh e2e --only capture-focus,editor-presentation --lang all --unsigned`.
+- Bilingual E2E while the console was locked: `.scratch/logs/e2e-final2.log`, 48/50 per language.
+  Both failures were `capture-focus` and `editor-presentation` on the foreground-fixture readiness
+  control (`key`, `active`, `foreground` false, `unoccluded` false) with `IOConsoleLocked=Yes`.
+  A locked console voids GUI qualification, so it was reported as an environmental block, not a
+  pass, and it was not explained away.
+- After the console was unlocked, both scenarios passed in both languages
+  (`./init.sh e2e --only capture-focus,editor-presentation --lang all`), and the full suite passed
+  **50/50 per language at `4d3dcf1`**: `.scratch/logs/e2e-final3.log`, 138 screenshots each. The
+  locked-console reading was right, and it is now proven rather than assumed.
 - Those two scenarios are also the pair the repository recorded as failing before this work
   (`TOOLCHAIN.json`, `installed_stable_observation.native_e2e`).
 - `tests.json` regenerated from that evidence and checked by `scripts/tests-report.py --check`.
