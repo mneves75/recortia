@@ -98,7 +98,9 @@ Hardened Runtime, embedded profile, exact entitlement set with the Keychain acce
 `get-task-allow`, no test-only markers across 82 Mach-O files, and `spctl` accepting the bundle with
 `source=Developer ID`. The installed bundle is byte-identical to the export (33 files, 60 entries, no
 symlinks); the previous 0.12.4 bundle is preserved under
-`.scratch/local-install-0.12.5-20261028/previous-0.12.4-23.app`.
+`.scratch/local-install-0.12.5-20261028/previous-0.12.4-23.app` — that directory was removed as
+superseded on 2026-10-28 while the 0.12.7 build was installed, so the rollback target today is the
+0.12.5 build 24 bundle kept at `.scratch/local-install-0.12.7-20261028/previous-0.12.5-24.app`.
 
 0.12.5 is running. The 0.12.4 process had terminated normally at 02:11:38, before the bundle was
 replaced, and left no crash report. Not verified, because the console was locked throughout:
@@ -157,6 +159,14 @@ replacement, so no session was discarded.
 No version bump: the repository is already at 0.12.7 build 26, which is exactly what was installed.
 Moving the number again would ship an identical binary under a new one and force the CHANGELOG to
 describe a release with no change.
+
+## Cleanup mistake, 2026-10-28
+
+I moved `.scratch/local-install-0.12.5-20261028` into a staging directory and let `scratch clean`
+delete it. The BACKLOG and progress entries cited a bundle *inside* that directory, so the citation
+guard did not see it: it checks the entry it is given, not paths nested under it. The 0.12.4 build 23
+bundle is gone; the 0.12.5 build 24 bundle it installed survives in the 0.12.7 directory and is now
+the rollback target. Both records are corrected to say what exists instead of what used to.
 
 ## Results
 
