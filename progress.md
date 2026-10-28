@@ -105,6 +105,24 @@ replaced, and left no crash report. Not verified, because the console was locked
 notarization, clean-user launch, TCC prompts, physical keyboard, Spaces, VoiceOver and any GUI
 inspection.
 
+## Skills collection review, 2026-10-28
+
+The owner asked for a review of `~/dev/Skills` (Dimillian's Skills, 29 skills) and for anything that
+applies to be applied here. The audit ran; nothing was applied blindly, and the reason is recorded
+per skill in `docs/specs/release-review-0.12.5/xcode-security-settings.md`.
+
+- `audit-xcode-security-settings`: the C/C++/ObjC half does not apply — this repository has no C,
+  C++, or Objective-C sources (checked), and the skill's own reference forbids enabling clang-only
+  settings for pure Swift. The one capability that would apply, Enhanced Security, changes the
+  shipped binary's architecture, its entitlement set and the runtime OS requirement at once, so it is
+  deferred with the exact conditions an adoption must meet rather than slipped into a tagged
+  candidate.
+- `modernize-tests`: nothing to do; no source file imports XCTest.
+- `swiftui-view-refactor`: two files named as the worthwhile candidates (1030 and 925 lines); a split
+  is a refactor with its own spec.
+- The rest either duplicate work already done this session (review swarms, concurrency, performance)
+  or target stacks this app does not use (Tuist, SwiftPM packaging, iOS simulator, React, App Store).
+
 ## Results
 
 - Gate: `.scratch/logs/check-8.log` ends `check: all gates passed`.
