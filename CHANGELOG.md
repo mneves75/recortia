@@ -17,10 +17,10 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [0.12.5] - 2026-10-28
 
-Build 24, a source candidate: not tagged, notarized or published. It is installed on the
-maintainer's Mac as a signed local Developer ID build (see `BACKLOG.json`
-`candidate_local_installation_0_12_5`). Physical keyboard, Spaces, permission and VoiceOver checks
-of this build were not run.
+Build 24. Tagged `v0.12.5-beta1` as a pre-release marker: not notarized, no disk image, no
+release, no cask change, and nothing published. It is installed on the maintainer's Mac as a signed
+local Developer ID build (see `BACKLOG.json` `candidate_local_installation_0_12_5`). Physical
+keyboard, Spaces, permission and VoiceOver checks of this build were not run.
 
 ### Added
 
