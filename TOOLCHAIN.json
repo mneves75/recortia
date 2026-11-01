@@ -12,22 +12,22 @@
   "documented_build_host_minimum": "macOS 26.6",
   "allow_beta_toolchains_for_release": false,
   "stable_xcode_baseline": {
-    "version": "27.0",
-    "build": "27A266a",
+    "version": "27.2",
+    "build": "27B52",
     "release_channel": "stable",
-    "source": "https://developer.apple.com/news/releases/ (Xcode 27, 27A266a, published 2026-09-14; rechecked 2026-10-14)"
+    "source": "https://developer.apple.com/news/releases/ (Xcode 27.2, 27B52, published 2026-10-29; macOS 27.2, 26B123, published 2026-10-26; verified 2026-11-01)"
   },
   "actual_xcode_version": "27.2",
-  "actual_xcode_build": "27B48",
+  "actual_xcode_build": "27B52",
   "actual_swift_version_output": "swift-driver version: 1.168.6 Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)",
   "actual_macos_sdk_version": "27.2",
-  "actual_macos_sdk_build": "26B116",
+  "actual_macos_sdk_build": "26B118",
   "actual_build_host_os": "macOS 27.2 (26B123)",
   "package_resolution_verified": true,
   "actual_developer_dir": "/Applications/Xcode.app/Contents/Developer",
-  "observation_date": "2026-10-28",
-  "actual_xcode_release_channel": "release_candidate",
-  "stable_release_qualification": "blocked",
+  "observation_date": "2026-11-01",
+  "actual_xcode_release_channel": "stable",
+  "stable_release_qualification": "toolchain_matches_stable_baseline",
   "installed_stable_observation": {
     "date": "2026-10-15",
     "version": "27.0",
@@ -44,6 +44,7 @@
     "uninstalled_note": "2026-10-28: /Applications/Xcode_27.app is absent. /Applications/Xcode.app was updated in place to 27.2 (27B48), Apple's Xcode 27.2 release candidate, so no stable-baseline toolchain remains on this host and stable-toolchain qualification is blocked until one is installed and selected with DEVELOPER_DIR. Development mode runs against the recorded release candidate only."
   },
   "observation_notes": [
+    "2026-11-01: host is macOS 27.2 (26B123) with Xcode 27.2 (27B52), Swift 6.4.2 (swiftlang-6.4.2.1.9) and macOS SDK 27.2 (26B118, from xcrun --show-sdk-build-version); /Applications/Xcode.app is the only Xcode installed and xcode-select points to it. Apple's release list (https://developer.apple.com/news/releases/) publishes Xcode 27.2 (27B52) on 2026-10-29 and macOS 27.2 (26B123) on 2026-10-26 as releases, so 27B52 is now the reviewed stable baseline and the observed toolchain. No release candidate is recorded, so development mode has nothing to select until one is observed. Before this update scripts/doctor.sh failed in both modes (stable 27A266a and RC 27B48 differ from 27B52): .scratch/autosave-menu-bar/baseline-doctor.log. Deployment target 15.0, Swift 6 mode and allow_beta_toolchains_for_release=false are unchanged.",
     "2026-10-28: host is macOS 27.2 (26B123) with Xcode 27.2 (27B48); /Applications/Xcode.app verifies as com.apple.dt.Xcode signed by Apple (TeamIdentifier 59GAB85EFG) and is accepted by spctl. Apple's release list (https://developer.apple.com/news/releases/?id=10192026g) publishes 27B48 as 'Xcode 27.2 RC' on 2026-10-19, so the record keeps release_channel release_candidate and cannot qualify a release. Before this update every gate aborted inside doctor.sh with a toolchain mismatch, which is a stale-record block rather than a project defect. The stable baseline 27.0 (27A266a) is unchanged and not installed here.",
     "2026-10-14: Apple lists installed 27A9275 as Xcode 27.1 RC (https://developer.apple.com/news/releases/?id=10052026g), not stable. The local observation is development-only via RECORTIA_TOOLCHAIN_MODE=development; CI and releases use the separate stable_xcode_baseline 27A266a. Stable-toolchain release qualification on this Mac is BLOCKED. Xcode-beta is 27.2 beta 2 (27B5028f); the host is macOS 27.2 seed 26B5112a. No toolchain installation or system selection was changed.",
     "2026-09-26 observation: xcode-select points to /Applications/Xcode-beta.app (Xcode 27.2, 27B5019j, macOS SDK 27.2 26B5086k). Select DEVELOPER_DIR per command and run doctor to verify its release channel/build; see docs/adr/0001-native-stack-and-toolchain-baseline.md.",

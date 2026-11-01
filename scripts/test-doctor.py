@@ -15,8 +15,18 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
 STABLE_VERSION = RECORD["stable_xcode_baseline"]["version"]
 STABLE_BUILD = RECORD["stable_xcode_baseline"]["build"]
-DEVELOPMENT_VERSION = RECORD["actual_xcode_version"]
-DEVELOPMENT_BUILD = RECORD["actual_xcode_build"]
+# The record names a release candidate only while one is installed. Otherwise the development
+# controls use a candidate derived from the stable pin, so it can never equal that pin.
+if RECORD["actual_xcode_release_channel"] == "release_candidate":
+    DEVELOPMENT_VERSION = RECORD["actual_xcode_version"]
+    DEVELOPMENT_BUILD = RECORD["actual_xcode_build"]
+else:
+    DEVELOPMENT_VERSION = STABLE_VERSION
+    DEVELOPMENT_BUILD = STABLE_BUILD + "rc"
+FIXTURE_RECORD = dict(
+    RECORD, actual_xcode_version=DEVELOPMENT_VERSION, actual_xcode_build=DEVELOPMENT_BUILD,
+    actual_xcode_release_channel="release_candidate",
+)
 
 
 class E2EToolchainTests(unittest.TestCase):
@@ -29,7 +39,7 @@ class E2EToolchainTests(unittest.TestCase):
         (self.root / "scripts").mkdir()
         for name in ("e2e.sh", "doctor.sh"):
             shutil.copy(ROOT / "scripts" / name, self.root / "scripts" / name)
-        shutil.copy(ROOT / "TOOLCHAIN.json", self.root / "TOOLCHAIN.json")
+        (self.root / "TOOLCHAIN.json").write_text(json.dumps(FIXTURE_RECORD))
         self.bin = self.root / "bin"
         self.bin.mkdir()
         (self.bin / "python3").symlink_to(sys.executable)
