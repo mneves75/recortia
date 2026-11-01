@@ -129,6 +129,9 @@
                 await E2EWait.until { (try? images(in: second).count) == 1 })
             context.check("the old folder gets nothing more", try images(in: first).count == firstCount)
 
+            try await checkRevocationDuringRender(
+                harness, context, work: work, first: first, second: second, firstCount: firstCount, press: press)
+
             try await press("settings.saveFolder.remove")
             context.check(
                 "Remove forgets the folder and turns automatic save off together",
@@ -175,6 +178,133 @@
             context.check("cancelling keeps it off", !harness.settings.preferences.autoSave)
             harness.settings.clearAutomaticSaveFolder()
             await foreground.stop(context)
+        }
+
+        /// A capture's automatic save is held at the render, before the write-time recheck; the
+        /// person then turns automatic save off, or chooses another folder, through the real
+        /// Settings controls. Neither the old nor the new folder gets that capture. A fresh capture
+        /// under the new consent then writes, and the earlier folder is chosen again, so the
+        /// checks that follow see exactly the files they saw before.
+        private static func checkRevocationDuringRender(
+            _ harness: E2EHarness, _ context: ScenarioContext, work: URL, first: URL, second: URL, firstCount: Int,
+            press: (String) async throws -> Void
+        ) async throws {
+            let gate = harness.exportGate
+            let export = harness.features.export
+            let chooser = harness.folderChooser
+            let revoked = work.appending(path: "revoked", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: revoked, withIntermediateDirectories: false)
+            let topLevel = try images(in: work)
+            defer {
+                gate.holdNextSnapshot = false
+                gate.release()
+            }
+            /// Every folder this scenario writes to keeps the count it had before the held capture.
+            func nothingWritten(_ label: String) throws {
+                let previous = try images(in: second).count
+                let chosen = try images(in: revoked).count
+                context.check(
+                    "\(label): the earlier folder gets nothing", try images(in: first).count == firstCount)
+                context.check("\(label): the previous folder gets nothing", previous == 1, "\(previous) files")
+                context.check("\(label): the newly chosen folder gets nothing", chosen == 0, "\(chosen) files")
+                context.check("\(label): nothing is written elsewhere", try images(in: work) == topLevel)
+            }
+            /// Starts a capture whose automatic save waits at the render, before the write.
+            func holdCapture(_ label: String, folder: URL) async throws -> Int {
+                try context.require(
+                    "\(label): no export is in flight before the held capture",
+                    await E2EWait.until { !export.isBusy } && !gate.isWaiting && !gate.holdNextSnapshot)
+                try context.require(
+                    "\(label): only automatic save is on, into \(folder.lastPathComponent)",
+                    harness.settings.preferences.autoSave && !harness.settings.preferences.autoCopy
+                        && harness.settings.preferences.githubUpload == nil
+                        && savedFolder(harness) == canonical(folder), savedFolder(harness))
+                let renders = gate.snapshotCount
+                gate.holdNextSnapshot = true
+                _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+                try context.require(
+                    "\(label): the capture's automatic save waits at the render, before the write",
+                    await E2EWait.until { gate.isWaiting } && export.isBusy,
+                    "waiting=\(gate.isWaiting), busy=\(export.isBusy)")
+                return renders
+            }
+            /// Releases the held render and waits until that export has finished.
+            func releaseAndFinish(_ label: String, renders: Int) async throws {
+                gate.release()
+                try context.require(
+                    "\(label): the held export finishes", await E2EWait.until { !gate.isWaiting && !export.isBusy })
+                try? await Task.sleep(for: .milliseconds(500))
+                context.check(
+                    "\(label): the capture rendered once, with no retry or fallback",
+                    gate.snapshotCount == renders + 1, "\(gate.snapshotCount - renders) renders")
+            }
+
+            // pref-revoked no-write: automatic save turned off while the render is held.
+            var label = "pref-revoked no-write"
+            var messages = harness.messages.values.count
+            var renders = try await holdCapture(label, folder: second)
+            try await press("settings.autoSave")
+            try context.require(
+                "\(label): the switch turns automatic save off and keeps the folder",
+                !harness.settings.preferences.autoSave && savedFolder(harness) == canonical(second),
+                savedFolder(harness))
+            try await releaseAndFinish(label, renders: renders)
+            try nothingWritten(label)
+            context.check(
+                "\(label): no message reports the withdrawn save", harness.messages.values.count == messages,
+                "\(harness.messages.values.count - messages) messages")
+
+            let asked = chooser.asked
+            try await press("settings.autoSave")
+            try context.require(
+                "automatic save turns back on with the remembered folder, without asking",
+                harness.settings.preferences.autoSave && chooser.asked == asked
+                    && savedFolder(harness) == canonical(second), savedFolder(harness))
+
+            // folder-changed no-write: Choose… picks another folder while the render is held.
+            label = "folder-changed no-write"
+            messages = harness.messages.values.count
+            renders = try await holdCapture(label, folder: second)
+            chooser.answers = [revoked]
+            try await press("settings.saveFolder.choose")
+            try context.require(
+                "\(label): Choose… replaces the folder and keeps automatic save on",
+                chooser.asked == asked + 1 && harness.settings.preferences.autoSave
+                    && savedFolder(harness) == canonical(revoked), savedFolder(harness))
+            try await releaseAndFinish(label, renders: renders)
+            try nothingWritten(label)
+            context.check(
+                "\(label): no message reports the withdrawn save", harness.messages.values.count == messages,
+                "\(harness.messages.values.count - messages) messages")
+
+            // positive fresh write: a new capture under the current consent saves into the new folder.
+            label = "positive fresh write"
+            try context.require(
+                "\(label): no export is in flight before the capture",
+                await E2EWait.until { !export.isBusy } && !gate.isWaiting && !gate.holdNextSnapshot)
+            _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+            try context.require(
+                "\(label): the fresh capture is saved into the newly chosen folder",
+                await E2EWait.until { (try? images(in: revoked).count) == 1 })
+            for file in try images(in: revoked) {
+                let image = try E2EActions.decode(
+                    try Data(contentsOf: revoked.appending(path: file)), "\(label) \(file)", context)
+                context.check(
+                    "\(label): the file is a decodable capture-sized image",
+                    image.width > 100 && image.height > 100)
+            }
+            context.check(
+                "\(label): the earlier folders get nothing",
+                try images(in: first).count == firstCount && images(in: second).count == 1
+                    && images(in: work) == topLevel)
+
+            // Back to the previous folder through Choose…, for the Remove and lost-folder checks.
+            chooser.answers = [second]
+            try await press("settings.saveFolder.choose")
+            try context.require(
+                "choosing the previous folder again restores it with automatic save on",
+                await E2EWait.until { !export.isBusy } && harness.settings.preferences.autoSave
+                    && savedFolder(harness) == canonical(second), savedFolder(harness))
         }
 
         private static func canonical(_ url: URL) -> String { url.resolvingSymlinksInPath().path }

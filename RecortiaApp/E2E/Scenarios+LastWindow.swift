@@ -80,6 +80,11 @@
             await settled()
             context.check("without a closed window (as at launch) nothing quits", requests() == 0)
 
+            try await checkPanelAndHide(harness, context, requests, shown)
+            // The hide probe's real close had its own exactly-once outcome, required above; the
+            // existing matrix starts at zero again.
+            start = terminations.count
+
             let controller = try await harness.openImported(harness.desktop, name: "last-window.png")
             let editor = try context.unwrap("the editor has a window", controller.window)
             editor.ignoresMouseEvents = true
@@ -132,6 +137,83 @@
             for kind in LastWindowProbe.Kind.allCases {
                 await LastWindowProbe.check(kind, context)
             }
+        }
+
+        /// With the preference off and nothing in flight, closing a capture-style panel (never a
+        /// window the person switches to) and hiding Recortia do not quit; closing the real window
+        /// that hiding kept is the positive control and requests termination exactly once.
+        private static func checkPanelAndHide(
+            _ harness: E2EHarness, _ context: ScenarioContext, _ requests: () -> Int, _ shown: () -> NSWindow
+        ) async throws {
+            let presence = AppPresence.shared
+            let before = requests()
+            func settled() async { try? await Task.sleep(for: .milliseconds(400)) }
+            func requireIdle(_ label: String) throws {
+                try context.require(
+                    "\(label): the preference is off and no capture or export is in flight",
+                    !harness.settings.preferences.keepsRunningInMenuBar && !harness.features.capture.state.isActive
+                        && !harness.features.scroll.state.isActive && !harness.features.export.isBusy
+                        && !harness.exportGate.isWaiting)
+            }
+
+            // panel-only close: an owned non-activating capture-style panel, with no other window.
+            var label = "panel-only close"
+            try requireIdle(label)
+            let panel = HostingPanel(title: "E2E panel", activating: false)
+            defer { if panel.isVisible { panel.close() } }
+            panel.setContentSize(NSSize(width: 200, height: 120))
+            E2ESnapshot.park(panel)
+            panel.alphaValue = 0
+            panel.ignoresMouseEvents = true
+            panel.orderFrontRegardless()
+            try context.require(
+                "\(label): the panel is shown, floating and not switchable",
+                panel.isVisible && panel.level == .floating && !AppPresence.isSwitchable(panel),
+                "visible=\(panel.isVisible), level=\(panel.level.rawValue)")
+            try context.require(
+                "\(label): no other window, hold or hidden state keeps Recortia running", !presence.hasUserWindow)
+            panel.close()
+            try context.require("\(label): the panel closes", !panel.isVisible)
+            await settled()
+            context.check(
+                "\(label): closing a non-switchable panel does not quit", requests() == before,
+                "\(requests() - before) requests")
+
+            // hide-only: hiding orders the window out without closing it.
+            label = "hide-only"
+            try requireIdle(label)
+            let window = shown()
+            // Unhiding does not restore visibility synchronously, so cleanup does not depend on it.
+            var closedByProbe = false
+            defer { if !closedByProbe { window.close() } }
+            defer { if NSApp.isHidden { NSApp.unhideWithoutActivation() } }
+            try context.require(
+                "\(label): the owned window is shown and switchable",
+                window.isVisible && AppPresence.isSwitchable(window))
+            NSApp.hide(nil)
+            try context.require("\(label): Recortia is hidden", await E2EWait.until { NSApp.isHidden })
+            await settled()
+            context.check(
+                "\(label): hiding with the preference off does not quit", requests() == before,
+                "\(requests() - before) requests")
+            NSApp.unhideWithoutActivation()
+            try context.require(
+                "\(label): unhiding shows the same window again",
+                await E2EWait.until { !NSApp.isHidden && window.isVisible })
+            await settled()
+            context.check(
+                "\(label): unhiding does not quit", requests() == before, "\(requests() - before) requests")
+
+            // Positive control for both negatives above: the real close of that window quits.
+            window.close()
+            closedByProbe = true
+            try context.require(
+                "\(label): closing the window it kept requests termination",
+                await E2EWait.until(timeout: .seconds(3)) { requests() == before + 1 }, "\(requests() - before)")
+            await settled()
+            try context.require(
+                "\(label): closing the window it kept requests termination exactly once",
+                requests() == before + 1, "\(requests() - before) requests")
         }
 
         /// The editor's own discard question still guards the last close; Cancel never quits.
