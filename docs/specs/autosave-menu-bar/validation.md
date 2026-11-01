@@ -1,9 +1,9 @@
 # Candidate validation — 0.13.0 (27)
 
 Status: **scoped implementation and independent behavior acceptance PASS**, 2026-11-01.
-Public distribution remains gated; no release, notarization or physical capture qualification is
-implied. Local installation and final artifact identities are recorded separately in the private
-release evidence under `.scratch/autosave-menu-bar/` and `.scratch/security-gate/`.
+Published as v0.13.0 at `2858cf1` (notarized; public download byte-identical to the qualified DMG);
+the production export is installed locally (PASS). See [release-0.13.0.md](release-0.13.0.md).
+No physical capture qualification is implied. The sections below are the acceptance history.
 
 ## Behavior delivered
 
@@ -79,14 +79,15 @@ capability fallback. No launcher or global configuration was modified.
 ## Distribution and remaining limits
 
 The c981e74 dry-run archive/export under `.build/release/0.13.0-dev-20261101T052043Z-17174/`
-is retained but superseded: it excludes the folder-status refresh. It must not be installed as the
-latest candidate. A fresh clean-commit Developer ID archive/export is required. The old artifact
-passed strict signature, parsed entitlements, profile, Hardened Runtime, license and eight artifact
-contract controls; its manifest explicitly says no tag, internal gate skipped and no notarization.
+is retained as history and superseded: it excludes the folder-status refresh and must not be
+installed. It passed strict signature, parsed entitlements, profile, Hardened Runtime, license and
+eight artifact contract controls; its manifest says no tag, internal gate skipped and no
+notarization.
 
-The final candidate needs its exact-tree security verdict before local distribution. Public release
-also needs candidate-specific resolution of SEC-17 and SEC-18; historical waivers are not reused.
-Security records remain private. Public README version remains the actually published 0.12.4.
+The released artifact was built from the tag at `2858cf1` by the full `scripts/release.sh`
+pipeline, with its own exact-commit security verdict (WAIVED SEC-17, SEC-18). Its identities,
+notarization, download check and local installation are in
+[release-0.13.0.md](release-0.13.0.md). Security records remain private.
 
 Native evidence uses the separate DEBUG E2E app and synthetic frames, upload/clipboard sinks and
 folder/confirmation boundaries. It does not qualify real NSOpenPanel interaction, personal preference

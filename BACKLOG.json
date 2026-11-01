@@ -5,6 +5,22 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.13.0",
+    "app_version": "0.13.0",
+    "build": 27,
+    "date": "2026-11-01",
+    "scope": "FP-044 (automatic-save folder controls, keep-running-in-the-menu-bar preference, stable Xcode 27.2 (27B52) toolchain), plus the unpublished 0.12.5-0.12.7 changes; see source_candidate_0_13_0 and CHANGELOG.md.",
+    "release": {"tag": "v0.13.0", "commit": "2858cf13c5798e711be4690c364da535d4b21355", "url": "https://github.com/mneves75/recortia/releases/tag/v0.13.0", "published_at": "2026-11-01T21:54:22Z", "draft": false, "prerelease": false, "latest": true, "dmg": "Recortia-0.13.0.dmg", "dmg_sha256": "20f452cc946628859f2f43df896918c4bc759417d01b88c7c5104a8f8789efad", "dsym_uuid": "13D75ECB-AFAC-3C3F-8B42-5FFAF990386B", "notarization_submissions": {"app": "2c80f1b9-54f4-4a4c-ac17-048e8d45ab29", "dmg": "ebdae866-8a4b-4dfe-8bfe-c1fa24c50430"}, "notarization_status": "Accepted", "security_gate": "WAIVED (SEC-17, SEC-18); record .scratch/security-gate/2858cf13c5798e711be4690c364da535d4b21355/production.json", "artifact_directory": ".build/release/0.13.0", "homebrew": "not changed: the separate mneves75/homebrew-tap cask still installs 0.12.4; the direct DMG is the 0.13.0 install path"},
+    "status": "released",
+    "verification": "scripts/release.sh on the tag exits 0 (manifest: gate passed, notarized 1, toolchain Xcode 27.2 27B52): production gate 519 package tests and 629 translations, both notarization submissions Accepted, stapler and Gatekeeper pass for the app and the DMG, eight artifact-contract tests pass. The public asset downloaded anonymously is byte-identical (SHA-256 above) to the qualified DMG. Full native E2E 52/52 per language (.scratch/e2e/20261101-152335-97907/) ran at 2fee018, whose entire tree (3a76fd0640cb8cf1d87ec56b77c6f28840d983d6) is identical to the tagged 2858cf1. Staging and GitHub CI were explicitly skipped by the owner; there is no staging infrastructure.",
+    "installation": "PASS: the published notarized export is installed at /Applications/Recortia.app and running; see current_local_installation.",
+    "note": "Sources and tag are frozen at 2858cf1; this record is a later documentation-only bookkeeping commit. Evidence summary: docs/specs/autosave-menu-bar/release-0.13.0.md.",
+    "limitations": [
+      "Physical keyboard, Spaces, TCC, IME, VoiceOver and minimum-macOS runtime behaviour of this build were not run; native E2E uses the DEBUG harness with synthetic frames and sinks.",
+      "SEC-17 and SEC-18 remain open under the recorded waiver."
+    ]
+  },
+  "previous_release_0_12_4": {
     "version": "0.12.4",
     "app_version": "0.12.4",
     "build": 23,
@@ -150,6 +166,23 @@
     ]
   },
   "current_local_installation": {
+    "candidate": "0.13.0 notarized release, installed from the published export",
+    "app_version": "0.13.0",
+    "build": 27,
+    "date": "2026-11-01",
+    "source_commit": "2858cf13c5798e711be4690c364da535d4b21355",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "the notarized export produced by scripts/release.sh for v0.13.0 (.build/release/0.13.0); the published DMG is sha256 20f452cc946628859f2f43df896918c4bc759417d01b88c7c5104a8f8789efad",
+    "backup_path": ".scratch/autosave-menu-bar/previous-local-0.13.0-dev.app (the previous local bundle, preserved)",
+    "executable_sha256": "03086fe4c6a8ff91637a64a5d9acad839adf38de33a0c0348ea0261f06ef99b3",
+    "installed_equals_production_export": true,
+    "launched": true,
+    "notarized": true,
+    "verification": "The entire installed bundle is identical (diff -rq) to the production export; codesign strict signature, stapler and Gatekeeper pass. The previous instance ended through a normal guarded quit, with no forced quit or discarded session. The relaunched app runs as PID 30057; its OS process, executable and path were cross-checked against the installed bundle.",
+    "qualification": "Release artifact installed and launched; physical Spaces, keyboard, TCC, IME, VoiceOver and minimum-macOS behaviour of this build not run.",
+    "note": "The 0.12.4 install record is kept below as previous_local_installation_0_12_4."
+  },
+  "previous_local_installation_0_12_4": {
     "candidate": "0.12.4 notarized release, installed through the Homebrew cask",
     "app_version": "0.12.4",
     "build": 23,
@@ -445,7 +478,7 @@
     "build": 27,
     "date": "2026-11-01",
     "scope": "FP-044: Settings › Export chooses, replaces and removes the automatic-save folder and never keeps automatic save on without one; Settings › General can quit Recortia after the last window closes (on by default: keep running in the menu bar). The reviewed stable toolchain moves to Xcode 27.2 (27B52).",
-    "distribution_status": "Source candidate. Untagged, not notarized or published. Local delivery is recorded separately in private exact-commit gate/artifact evidence. 0.12.4 remains the published release.",
+    "distribution_status": "Released: tagged v0.13.0 at 2858cf1, notarized and published 2026-11-01; see current_candidate and docs/specs/autosave-menu-bar/release-0.13.0.md. The published bundle is installed locally (current_local_installation). The c981e74 dry-run artifact under local_preparation is historical and superseded.",
     "evidence": [
     "See FP-044 and docs/specs/autosave-menu-bar/validation.md. Production source 3d2dba7 passed the signed gate (519 tests), full native suite (52/52 per language) and latest stable Xcode MCP. Fresh crossed source-blind verification PASS: Sol verified all Opus criteria; Opus verified the Sol pending-quit correction with a discriminating mutant."
     ],
@@ -1615,7 +1648,7 @@
     ".scratch/e2e/20261101-021325-10346/: both scenarios in both languages stop before input at visible=true/key=false/active=false, foreground loginwindow PID 451. Fresh source-blind mneves-verify: BLOCKED; .scratch/autosave-menu-bar/verify-behavior.md. Crossed Opus review of Sol changes is also quota-blocked."
       ],
       "authorization": "owner request 2026-10-31 (two Settings requests); proceed without interviews",
-  "status_note": "Scoped feature acceptance PASS: signed production-source gate (519 tests) and full 52/52 native scenarios per language at 3d2dba7; final expanded native flows 5/5 per language at .scratch/e2e/20261101-151339-27864 and isolated persistence 11/11. Fresh source-blind Sol PASS for all Opus criteria and Opus PASS for Sol criterion 4b, with a one-line mutant failure. Spec/Standards: zero P0-P3 findings. See validation.md for exact commands, provenance, original failures and synthetic limits. Public release remains separately gated; current artifact/installation evidence is private. Physical Spaces/TCC remain manual."
+  "status_note": "Scoped feature acceptance PASS: signed production-source gate (519 tests) and full 52/52 native scenarios per language at 3d2dba7; final expanded native flows 5/5 per language at .scratch/e2e/20261101-151339-27864 and isolated persistence 11/11. Fresh source-blind Sol PASS for all Opus criteria and Opus PASS for Sol criterion 4b, with a one-line mutant failure. Spec/Standards: zero P0-P3 findings. See validation.md for exact commands, provenance, original failures and synthetic limits. Published in 0.13.0 (v0.13.0 at 2858cf1; see current_candidate); the published bundle is installed locally (current_local_installation). Physical Spaces/TCC remain manual."
     }
   ],
   "deferred_scope": [

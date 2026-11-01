@@ -1,7 +1,7 @@
 # Automatic-save configuration and last-window preference
 
-Status: source 0.13.0 build 27; scoped native behavior and crossed independent acceptance PASS.
-Public release remains separately gated; see the current validation record.
+Status: 0.13.0 build 27 published as v0.13.0 at `2858cf1`; scoped native behavior and crossed
+independent acceptance PASS. Local installation PASS; see [release-0.13.0.md](release-0.13.0.md).
 Owner request: 2026-10-31. Current evidence: [validation.md](validation.md).
 Requirements: FR-01, FR-07, FR-14; new work unit FP-044 (next unused ID after FP-043).
 
@@ -232,5 +232,12 @@ Both review axes found zero P0–P3 findings in the final delta.
 Fresh Sol complete source-blind reverify passed every assigned Opus criterion in EN and pt-BR
 (5/5 scenarios each, plus 11 isolated persistence tests). Fresh Opus separately passed the
 Sol pending-quit correction, with a one-line mutant that fails only the immediate-cancellation
-regression. Reports and exact evidence are linked from validation.md. Physical capture/Spaces/TCC
-and public distribution remain separate; no source-only version bump is an installation.
+regression. Reports and exact evidence are linked from validation.md. Physical capture/Spaces/TCC remain
+unqualified; no source-only version bump is an installation.
+
+## Publication
+
+v0.13.0 was published from `2858cf1` using artifacts built by `scripts/release.sh`: notarized
+app and DMG, public download byte-identical to the qualified DMG, staging and GitHub CI skipped by
+the owner. The production
+export is installed locally, `diff -rq` equal, with signature, stapler and Gatekeeper passing. Record: [release-0.13.0.md](release-0.13.0.md).

@@ -109,8 +109,10 @@ contract in AGENTS.md defines replay, real-control E2E and reference-evidence bo
 feature specs stay in tracked `docs/specs/<feature>/`; GitHub continues to handle bug triage.
 
 FP-034 curved-arrow implementation/qualification is tracked in `docs/specs/curved-arrows/`.
-Follow its canonical geometry and native-gate rules in AGENTS.md. Preserve the separately
-unresolved capture-focus FAIL; passing curve checks does not qualify release or installation.
+Follow its canonical geometry and native-gate rules in AGENTS.md. Preserve the historical FP-034
+capture-focus FAIL and its evidence there; passing curve checks does not qualify release or
+installation. The 0.13.0 tagged tree later passed the full synthetic suite (52/52 per language),
+which does not qualify physical Spaces or TCC.
 
 ### Issue tracker
 
