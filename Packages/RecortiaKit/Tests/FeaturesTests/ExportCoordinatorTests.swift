@@ -174,16 +174,18 @@ struct ExportCoordinatorTests {
     @Test("Automatic copy and save run only when enabled; save needs an authorized folder")
     func automaticExportsWhenEnabled() async {
         let h = ExportHarness()
+        // A chosen folder that no longer resolves fails the save; it never falls back elsewhere.
         h.settings.update {
             $0.autoCopy = true
             $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1, 2, 3])
         }
         var outcomes = await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session })
         #expect(outcomes == [.copied, .failed(.accessDenied)])
+        #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty)
 
         let folder = URL(fileURLWithPath: "/tmp/recortia-tests/folder", isDirectory: true)
         h.folders.folder = folder
-        h.settings.update { $0.preferredSaveFolderBookmark = Data([1, 2, 3]) }
         outcomes = await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session })
         #expect(outcomes.count == 2)
         #expect(h.files.uniqueSaves.map(\.folder) == [folder])

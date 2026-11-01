@@ -106,6 +106,8 @@ public final class SettingsStore {
             ? min(max(input.pinDefaultOpacity, opacityRange.lowerBound), opacityRange.upperBound)
             : defaults.pinDefaultOpacity
         output.editorContentSize = input.editorContentSize.flatMap(EditorWindowSizing.rememberable)
+        // Automatic saving writes only to a folder the person chose; without one it is off.
+        if input.preferredSaveFolderBookmark == nil { output.autoSave = false }
         return output
     }
 }
