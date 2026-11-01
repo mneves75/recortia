@@ -91,13 +91,16 @@ Quit after the last window (FR-01, `docs/specs/autosave-menu-bar/`): `AppPresenc
 that the person closed the last switchable window, in its coalesced refresh, and only for a real
 close (never launch, minimize, hide, capture suspension or a capture panel; a hold present then
 drops the report). `AppModel` decides with `QuitAfterLastWindow`: the menu-bar preference (stored
-as optional `keepsRunningInMenuBarChoice`, default on, so older blobs and seals survive), then any
-export or automatic export until its result is reported, then remaining windows and captures; it
-always requests `NSApp.terminate`, so `shouldTerminate()` keeps confirming unexported edits.
+as optional `keepsRunningInMenuBarChoice`, default on, so older blobs and seals survive) or an active
+capture first cancels the quit; otherwise it waits for exports until their results are reported,
+then considers remaining windows. Accepted capture startup also invalidates the pending decision
+synchronously, so immediate cancellation cannot revive it. Termination uses `NSApp.terminate`, so
+`shouldTerminate()` keeps confirming unexported edits.
 `SettingsStore.sanitized` keeps automatic save off without a chosen folder; clearing the folder
 turns it off in the same change. Keep `last-window` (with its child-process exit probes) and
 `automatic-save-settings` in bilingual E2E; scenarios inject termination and the folder panel,
-never quit the runner or open a panel.
+never quit the runner or open a panel. Settings control scenarios must establish a visible, key,
+active foreground window before input; an unshown hosting window does not qualify native input.
 
 Rendered output has an appearance control (`docs/specs/release-review-0.12.5/spec.md`).
 `E2ESnapshot.park` and `host` take the appearance they render, defaulting to the light behaviour so

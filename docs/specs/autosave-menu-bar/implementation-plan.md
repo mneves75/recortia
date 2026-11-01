@@ -1,6 +1,7 @@
 # Automatic-save configuration and last-window preference
 
-Status: implemented in source as 0.13.0 build 27; native gate and E2E pending. Owner request: 2026-10-31.
+Status: source 0.13.0 build 27; signed local gate passed; final native E2E and crossed review blocked.
+Owner request: 2026-10-31. Current evidence: [validation.md](validation.md).
 Requirements: FR-01, FR-07, FR-14; new work unit FP-044 (next unused ID after FP-043).
 
 ## Assumptions and scope
@@ -124,8 +125,10 @@ Decisions taken while building, beyond the plan above:
   scheduling until their result is reported, instead of reading `automaticBatch` directly. Only
   `AppModel` starts automatic batches, so the count spans every batch and also the moment before
   its task starts; because it ends after reporting, a failure alert is shown before the quit.
-  `isBusy` keeps its meaning for the editor. `QuitAfterLastWindow` checks the export first (wait),
-  then windows and captures (stay), so an alert raised by the export does not cancel the wait.
+  `isBusy` keeps its meaning for the editor. After the late-capture correction,
+  `QuitAfterLastWindow` first cancels the quit for the keep-running preference or an active
+  capture, then waits for exports, then considers remaining windows. An export's failure alert
+  does not cancel its result-reporting wait.
 - `AppPresence` reports a close in the refresh that sees it or never: a capture hold present then
   drops it. A shortcut pressed right after the last close, then cancelled, leaves Recortia in the
   menu bar, which keeps "closing a capture panel never quits" true.
@@ -182,4 +185,12 @@ check. If a toggle press fails, fix `E2EAccessibilityControl.press`, not the ass
   fixture and late/same-turn native regressions remain unrun while the Mac is locked; neither
   these green package tests nor the earlier child-process pass completes native acceptance.
   Crossed review of the Sol delta remains required when Opus is available.
-
+- Final signed `scripts/check.sh` passed on `45a92e4`: 519 package tests, script controls,
+  formatting, project freshness, 629 translated strings, production and E2E target builds.
+  Final Xcode MCP build of the corrected source passed in 3.962 seconds, with zero warnings
+  and zero refreshed diagnostics in AppModel, AppPresence and SettingsView.
+- The corrected fixture was exercised in both languages in
+  `.scratch/e2e/20261101-021325-10346/`. All four scenario/language cases stopped at their
+  readiness control: visible window, no key/active state, foreground PID 451 (`loginwindow`).
+  A fresh source-blind verifier independently confirmed the locked session. No clicks or
+  screenshots qualified. Its `mneves-verify` verdict is BLOCKED, not a product failure or PASS.
