@@ -28,6 +28,8 @@ Deployment target remains macOS 15.0. Apple lists this stable Xcode build in its
 | Latest installed Xcode MCP `BuildProject` after correction | PASS, 3.962 s; zero errors/warnings | `xcode-final-build.log`, `xcode-final-diagnostics.json` |
 | Xcode MCP refreshed AppModel, AppPresence, SettingsView | PASS, zero diagnostics | `xcode-final-diagnostics.json` |
 | Native focused EN and pt-BR, final fixture | BLOCKED; process exit 1 from failed readiness | `.scratch/e2e/20261101-021325-10346/` |
+| `scripts/release.sh --dry-run` on c981e74 | PASS, exit 0; Developer ID archive/export and signed DMG prepared | `parent-release-dry-run.log` |
+| Release contract with exported app and pinned package checkout | PASS, eight tests, no skips | `parent-release-contract-artifact-2.log` |
 
 The latest focused command was:
 
@@ -41,6 +43,20 @@ with `loginwindow` (PID 451) foreground. A fresh source-blind verifier independe
 `CGSSessionScreenIsLocked=True`. No screenshots qualified. The earlier run that decoded a saved
 image and preserved collisions, and the earlier bilingual child-process exit pass, are retained
 in `.scratch/e2e/20261101-011908-95563/`; they do not qualify the final fixture.
+
+## Prepared local artifact
+
+`.build/release/0.13.0-dev-20261101T052043Z-17174/` contains the retained archive, exported app,
+signed DMG and `manifest.txt`, built from a fresh checkout of `c981e74`. The export passed strict
+signature, Hardened Runtime, reviewed entitlement/profile, version/build, license and no-test-marker
+checks. The embedded Developer ID profile matches the reviewed team/app identity, expires
+2044-09-21 and carries no `get-task-allow`. The actual app's Keychain entitlement passed the
+existing parsed-plist gate. DMG SHA-256:
+`11c8cb1ce5592045a9e0f9f6de6b9169dd041e5cd5b0b09edeef3e310dd0c24e`.
+
+The dry-run manifest explicitly says `gate: skipped (dry run)`, `tag: none`, `notarized: 0`.
+The independently recorded signed local gate is separate. This is a prepared artifact, not an
+installation or public release; the temporary archive worktree was removed by the pipeline.
 
 ## Independent review and remaining gates
 
@@ -59,6 +75,6 @@ in `.scratch/e2e/20261101-011908-95563/`; they do not qualify the final fixture.
   `.scratch/security-gate/` and are distinct from product acceptance.
 
 Next: unlock the Mac, rerun the focused scenarios and full bilingual native gate, finish crossed
-review and independent verification, then qualify the Developer ID export/install and public
-release. No merge, tag, installation or release was performed. Staging and GitHub CI were skipped
+review and independent verification, then qualify installation and the public notarized release.
+No merge, tag, installation or release was performed. Staging and GitHub CI were skipped
 as requested; this native app has no staging resources to disable.

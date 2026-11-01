@@ -449,7 +449,15 @@
     "evidence": [
     "See FP-044 and docs/specs/autosave-menu-bar/validation.md. Signed local gate and latest stable Xcode MCP build passed; final bilingual E2E and crossed review remain blocked."
     ],
-    "authorization": "owner request 2026-10-31: version 0.13.0 build 27"
+  "local_preparation": {
+    "status": "Developer ID export and signed DMG prepared; not installed, not notarized, not published",
+    "source_commit": "c981e743a7938311b32912ecd991d63164b846a7",
+    "directory": ".build/release/0.13.0-dev-20261101T052043Z-17174",
+    "dmg_sha256": "11c8cb1ce5592045a9e0f9f6de6b9169dd041e5cd5b0b09edeef3e310dd0c24e",
+    "verification": "scripts/release.sh --dry-run exits 0: fresh checkout archive/export, exact version/build, strict signature, Hardened Runtime, reviewed distribution entitlements, embedded provisioning profile, no test markers and license checks. Profile is Recortia Developer ID for the reviewed team/app identity, valid until 2044-09-21, without get-task-allow. All eight release-contract tests pass with --app and --package-checkout.",
+    "evidence": ".scratch/autosave-menu-bar/parent-release-dry-run.log; parent-release-contract-artifact-2.log; manifest.txt in the artifact directory. The dry run skips its internal gate/notarization; the separately passed signed local gate is recorded above. Its temporary worktree was removed by the pipeline."
+  },
+  "authorization": "owner request 2026-10-31: version 0.13.0 build 27"
   },
   "tasks": [
     {
