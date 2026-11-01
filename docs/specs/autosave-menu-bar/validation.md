@@ -1,104 +1,94 @@
 # Candidate validation — 0.13.0 (27)
 
-Status: **current full gate and independent behavior verification pending**, 2026-11-01.
-Initial code qualification was at `45a92e4`; resumed native checks found and corrected a folder
-status refresh defect. Focused flows now pass in EN and pt-BR as recorded below. Historical
-gate/export evidence does not qualify the newer code. Installed 0.12.7 (26) and published 0.12.4
-remain unchanged.
+Status: **scoped implementation and independent behavior acceptance PASS**, 2026-11-01.
+Public distribution remains gated; no release, notarization or physical capture qualification is
+implied. Local installation and final artifact identities are recorded separately in the private
+release evidence under `.scratch/autosave-menu-bar/` and `.scratch/security-gate/`.
 
-## Delivered source
+## Behavior delivered
 
-Settings › Export reuses the existing still-capture export and folder bookmark: choose, replace,
-cancel, remove and report unavailable destinations. Clearing disables automatic saving. Later
-edits, imports and scrolling reviews retain explicit-save behavior.
+Settings › Export reuses the existing sanitized still-capture export and bookmark. Choose,
+replace, cancel and remove work through native controls; removing the folder disables automatic
+saving. Unavailable destinations remain selected and show a warning. Pending saves recheck consent
+and destination before writing. Imports, scrolling reviews and later edits retain explicit saving.
 
 Settings › General persists whether Recortia keeps running after its last ordinary window closes,
-defaulting on without resetting older sealed preferences. The opt-out requests normal termination
-and waits for export results. Accepted capture startup cancels a pending quit synchronously.
+defaulting on without resetting older sealed preferences. Opting out requests normal termination
+after export results. Other/minimized/pin windows and active capture protect the session; launch,
+hiding and panel closure alone never quit. Unsaved-edit cancellation remains guarded. Accepted
+capture startup cancels an earlier pending quit synchronously, including same-turn cancellation.
 
-## Checks actually run
+## Environment and source checks
 
-Environment: macOS 27.2 (26B123), Xcode 27.2 (27B52), Swift 6.4.2, SDK 27.2 (26B118).
-Deployment target remains macOS 15.0. Apple lists this stable Xcode build in its
-[official release record](https://developer.apple.com/news/releases/).
+macOS 27.2 (26B123), Xcode 27.2 (27B52), Swift 6.4.2, SDK 27.2 (26B118), deployment target macOS 15.0.
+The stable toolchain was checked against Apple's [official release record](https://developer.apple.com/news/releases/).
+No global toolchain or system permission setting changed.
 
-| Check | Result | Evidence |
+| Check actually run | Result | Evidence |
 | --- | --- | --- |
-| Late-capture policy regression before correction | RED, exit 1, one behavioral issue | `.scratch/autosave-menu-bar/parent-red-late-capture.log` |
-| Focused settings/export/lifecycle tests after correction | PASS, exit 0, 44 tests including isolated UserDefaults | `parent-green-focused.log` in the same directory |
-| `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=stable scripts/check.sh` | PASS, exit 0; 519 package tests, script controls, format, project freshness, 629 translations, both signed Debug targets | `parent-check-signed.log` |
-| Latest installed Xcode MCP `BuildProject` after correction | PASS, 3.962 s; zero errors/warnings | `xcode-final-build.log`, `xcode-final-diagnostics.json` |
-| Xcode MCP refreshed AppModel, AppPresence, SettingsView | PASS, zero diagnostics | `xcode-final-diagnostics.json` |
-| Native focused EN and pt-BR, final fixture | BLOCKED; process exit 1 from failed readiness | `.scratch/e2e/20261101-021325-10346/` |
-| `scripts/release.sh --dry-run` on c981e74 | PASS, exit 0; Developer ID archive/export and signed DMG prepared | `parent-release-dry-run.log` |
-| Release contract with exported app and pinned package checkout | PASS, eight tests, no skips | `parent-release-contract-artifact-2.log` |
+| Signed `scripts/check.sh` on production source `3d2dba7` | PASS, exit 0; 519 package tests, script controls, format, project freshness, 629 translations and both Debug targets | `.scratch/autosave-menu-bar/parent-check-resume-signed.log` |
+| Full `scripts/e2e.sh --lang all` on clean `3d2dba7` | PASS, exit 0; 52/52 scenarios and 142 screenshots in each language | `.scratch/e2e/20261101-143019-66053/` |
+| Latest installed stable Xcode MCP BuildProject | PASS, 17.739 s; zero warnings; SettingsView, AppModel and AppPresence refreshed with zero diagnostics | `.scratch/autosave-menu-bar/xcode-resume-build.log`, `xcode-resume-diagnostics.json` |
+| Expanded native revocation/hide/panel probes | PASS, exit 0; 2/2 scenarios in each language | `.scratch/e2e/20261101-151010-12523/` |
+| Fresh independent complete native reverify with expanded probes | PASS, exit 0; 5/5 in each language, six screenshots each | `.scratch/e2e/20261101-151339-27864/` |
+| Fresh independent isolated SettingsStore/Integrity operator | PASS, exit 0; 11/11 tests | `.scratch/autosave-menu-bar/verify-opus-flows-final.md` |
+| Fresh Spec and Standards axes on resumed code and final test delta | Zero P0–P3 findings | Independent review records; no GUI run claimed by reviewers |
+| `cccc --no-cache --min 0` on both final scenario files | PASS, 2/2 files, 85 functions, zero parse errors; maxima cognitive 13/cyclomatic 16 | `.scratch/autosave-menu-bar/complete-probes-complexity.json` |
 
-The latest focused command was:
+Commands use `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` and
+`RECORTIA_TOOLCHAIN_MODE=stable`. The independent native operator was:
 
 ```sh
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=stable \
-  scripts/e2e.sh --lang all --only automatic-save-settings,last-window
+scripts/e2e.sh --lang all --only last-window,automatic-save-settings,quit-confirmation,automatic-export,stale-folder
 ```
 
-Both scenarios in both languages stopped before any input: window visible, but not key or active,
-with `loginwindow` (PID 451) foreground. A fresh source-blind verifier independently confirmed
-`CGSSessionScreenIsLocked=True`. No screenshots qualified. The earlier run that decoded a saved
-image and preserved collisions, and the earlier bilingual child-process exit pass, are retained
-in `.scratch/e2e/20261101-011908-95563/`; they do not qualify the final fixture.
+The first expanded gate stopped at two LineLength lint failures; Opus wrapped only those
+assertions and focused strict lint then passed. The original failure remains in
+`parent-check-complete-probes.log`. Final all-source and whole-suite confirmation logs use
+`parent-check-final-signed.log` and `parent-e2e-final-all.log` in the same private directory;
+their actual exit status belongs to the final delivery record.
 
-## Prepared local artifact
+## Independent acceptance and controls
 
-This retained earlier artifact is superseded: it excludes the resumed folder-status refresh fix.
-A fresh Developer ID export is required before installing the latest candidate.
+Fresh Sol, source-blind, verified every Opus-built clause (1, 2, 3, 4a, 5, 6): PASS after one
+correction round added direct runtime probes for pending file-consent revocation and hide/panel-only
+lifecycle. Both languages exercised actual native Settings input, real isolated defaults, local
+file writes and native child-process exits. The verifier decoded all six output PNGs, checked CRCs
+and scanlines at 1280×840, and preserved all 120 collision sentinels. It inspected General,
+long-folder and unavailable-folder renders. Report: `verify-opus-flows-final.md`.
 
-`.build/release/0.13.0-dev-20261101T052043Z-17174/` contains the retained archive, exported app,
-signed DMG and `manifest.txt`, built from a fresh checkout of `c981e74`. The export passed strict
-signature, Hardened Runtime, reviewed entitlement/profile, version/build, license and no-test-marker
-checks. The embedded Developer ID profile matches the reviewed team/app identity, expires
-2044-09-21 and carries no `get-task-allow`. The actual app's Keychain entitlement passed the
-existing parsed-plist gate. DMG SHA-256:
-`11c8cb1ce5592045a9e0f9f6de6b9169dd041e5cd5b0b09edeef3e310dd0c24e`.
+Fresh Opus, source-blind, separately verified the Sol-built pending-quit correction (4b): PASS.
+Removing only synchronous capture-start invalidation in a disposable worktree caused the same-turn
+case to fail with five termination requests instead of four; the fixed binary passed 89/89 checks.
+The ordinary export/file-before-quit and report-before-quit controls passed on both binaries.
+The initial mutant readiness failure was unqualified; its unchanged retry supplied the decisive
+failure. Report: `verify-late-capture-result.md`; hashes, reports and provenance are retained under
+`nonce-control-evidence/`. The task-owned mutant worktree was removed after evidence preservation.
 
-The dry-run manifest explicitly says `gate: skipped (dry run)`, `tag: none`, `notarized: 0`.
-The independently recorded signed local gate is separate. This is a prepared artifact, not an
-installation or public release; the temporary archive worktree was removed by the pipeline.
+The initial locked-session verifier was BLOCKED, not PASS. Resumed native RED then reproduced a
+real missing-folder-warning defect with Settings genuinely foreground; Opus corrected transient
+availability refresh. Existing accessibility Press assertions stay strict; pointer delivery uses
+the runner's event queue and the selected pane. Historical failures and their logs remain intact.
+A mismatched-provenance `--no-build` attempt correctly stopped before launch; a standard rebuild
+established matching provenance without bypassing the guard.
 
-## Resumed checks
+`autoreview --max-priority P3` could not launch `codex-auto` in its isolated HOME because the Profile
+Manager dependency was unavailable. Fresh independent Spec/Standards reviews provided the skill's
+capability fallback. No launcher or global configuration was modified.
 
-- Real native RED, including after Settings regained foreground:
-  `.scratch/e2e/20261101-141218-38267/` failed only the missing unavailable-folder warning while
-  file failure/no-fallback checks and both language lifecycle scenarios passed.
-- Native pt-BR GREEN: `.scratch/e2e/20261101-141656-83183/pt-BR/`, 2/2 flows.
-- Native EN GREEN on the same unchanged binary: `.scratch/e2e/20261101-141946-13966/en/`, 2/2.
-  The first EN attempt stopped before input at host readiness; the original failure is retained.
-- Current pointer input uses the runner's FIFO event queue and selected-pane geometry. Existing
-  accessibility Press assertions remain strict. Activation requires actual foreground ownership;
-  the owned host is never replaced silently by another PID.
-- Transient folder availability refreshes on appearance, bookmark changes and app key-window
-  events. Consent is preserved; no watcher, timer or new export pipeline exists.
-- Fresh crossed reviews of the new Opus delta: Standards zero P0–P3 findings; Spec zero P0–P3.
-  The earlier Sol lifecycle correction separately passed Opus review; its two P3 test findings
-  were addressed. Full-suite and fresh independent behavior qualification remain pending.
+## Distribution and remaining limits
 
-## Independent review and remaining gates
+The c981e74 dry-run archive/export under `.build/release/0.13.0-dev-20261101T052043Z-17174/`
+is retained but superseded: it excludes the folder-status refresh. It must not be installed as the
+latest candidate. A fresh clean-commit Developer ID archive/export is required. The old artifact
+passed strict signature, parsed entitlements, profile, Hardened Runtime, license and eight artifact
+contract controls; its manifest explicitly says no tag, internal gate skipped and no notarization.
 
-- **Spec axis:** one P2: a late capture could leave pending quit alive during export. Genuine
-  unit RED/GREEN is retained; the late and immediate-cancel native regressions now pass in both
-  focused language runs. Crossed Opus review accepted the Sol lifecycle correction.
-- **Standards axis:** zero findings in the original Opus portions. Opus identified two P3 test
-  issues in the Sol delta; strict AXPress and selected-pane pointer checks address them. Fresh
-  Sol Standards/Spec reviews found zero P0–P3 findings in the resumed five-file Opus correction.
-- `autoreview --max-priority P3` could not launch the required `codex-auto` in its isolated HOME
-  because its Profile Manager dependency was absent. A fresh independent Standards review was
-  used as the skill's capability fallback; no launcher/configuration was modified.
-- **mneves-verify:** the initial locked-session report was BLOCKED. Fresh behavior verification
-  remains pending after the resumed fixes. Initial private report:
-  `.scratch/autosave-menu-bar/verify-behavior.md`.
-- Production security still needs candidate-specific resolution of SEC-17, SEC-18 and independent
-  acceptance. Historical release waivers are not reused. Security records stay private under
-  `.scratch/security-gate/` and are distinct from product acceptance.
+The final candidate needs its exact-tree security verdict before local distribution. Public release
+also needs candidate-specific resolution of SEC-17 and SEC-18; historical waivers are not reused.
+Security records remain private. Public README version remains the actually published 0.12.4.
 
-Next: run the current full signed gate and full bilingual native gate, finish fresh independent
-verification, then qualify a new Developer ID export, installation and the public notarized release.
-No merge, tag, installation or release was performed. Staging and GitHub CI were skipped
-as requested; this native app has no staging resources to disable.
+Native evidence uses the separate DEBUG E2E app and synthetic frames, upload/clipboard sinks and
+folder/confirmation boundaries. It does not qualify real NSOpenPanel interaction, personal preference
+relaunch, live ScreenCaptureKit/TCC, physical Spaces/displays, IME or VoiceOver. No personal screen
+content, credentials or system settings were read or changed for these tests.

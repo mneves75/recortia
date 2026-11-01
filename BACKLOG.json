@@ -445,9 +445,9 @@
     "build": 27,
     "date": "2026-11-01",
     "scope": "FP-044: Settings › Export chooses, replaces and removes the automatic-save folder and never keeps automatic save on without one; Settings › General can quit Recortia after the last window closes (on by default: keep running in the menu bar). The reviewed stable toolchain moves to Xcode 27.2 (27B52).",
-    "distribution_status": "Source candidate. Untagged, not notarized, not published, not installed. 0.12.7 build 26 remains the installed build; 0.12.4 remains the published release.",
+    "distribution_status": "Source candidate. Untagged, not notarized or published. Local delivery is recorded separately in private exact-commit gate/artifact evidence. 0.12.4 remains the published release.",
     "evidence": [
-    "See FP-044 and docs/specs/autosave-menu-bar/validation.md. Earlier signed gate/Xcode MCP passed. Resumed focused native flows now pass in EN and pt-BR after a folder-state refresh fix; the current full gate and fresh independent verification remain pending."
+    "See FP-044 and docs/specs/autosave-menu-bar/validation.md. Production source 3d2dba7 passed the signed gate (519 tests), full native suite (52/52 per language) and latest stable Xcode MCP. Fresh crossed source-blind verification PASS: Sol verified all Opus criteria; Opus verified the Sol pending-quit correction with a discriminating mutant."
     ],
   "local_preparation": {
     "status": "Retained earlier Developer ID export/DMG; superseded by resumed folder-status refresh source, so a fresh export is required. Not installed, notarized or published.",
@@ -1577,7 +1577,7 @@
       "id": "FP-044",
       "milestone": "M6",
       "title": "Automatic-save folder controls and keep-running-in-the-menu-bar preference",
-  "status": "implemented",
+  "status": "completed",
       "depends_on": [
         "FP-006",
         "FP-012",
@@ -1615,7 +1615,7 @@
     ".scratch/e2e/20261101-021325-10346/: both scenarios in both languages stop before input at visible=true/key=false/active=false, foreground loginwindow PID 451. Fresh source-blind mneves-verify: BLOCKED; .scratch/autosave-menu-bar/verify-behavior.md. Crossed Opus review of Sol changes is also quota-blocked."
       ],
       "authorization": "owner request 2026-10-31 (two Settings requests); proceed without interviews",
-  "status_note": "Resumed focused native flows pass 2/2 in pt-BR (.scratch/e2e/20261101-141656-83183/pt-BR/) and EN on unchanged-binary retry (.scratch/e2e/20261101-141946-13966/en/). Actual foreground-native RED exposed stale folder availability; Opus fixed transient UI refresh and pointer/activation instrumentation, with strict AXPress preserved. Fresh Sol Spec/Standards reviews found no P0-P3 findings in the five-file delta; earlier Sol lifecycle correction passed crossed Opus review. Current full signed gate, full bilingual E2E and fresh source-blind verification remain pending. The earlier c981e74 export is superseded. Source 0.13.0 (27) remains unmerged, uninstalled and unpublished. Physical Spaces/TCC remain manual."
+  "status_note": "Scoped feature acceptance PASS: signed production-source gate (519 tests) and full 52/52 native scenarios per language at 3d2dba7; final expanded native flows 5/5 per language at .scratch/e2e/20261101-151339-27864 and isolated persistence 11/11. Fresh source-blind Sol PASS for all Opus criteria and Opus PASS for Sol criterion 4b, with a one-line mutant failure. Spec/Standards: zero P0-P3 findings. See validation.md for exact commands, provenance, original failures and synthetic limits. Public release remains separately gated; current artifact/installation evidence is private. Physical Spaces/TCC remain manual."
     }
   ],
   "deferred_scope": [

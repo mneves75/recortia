@@ -1,7 +1,7 @@
 # Automatic-save configuration and last-window preference
 
-Status: source 0.13.0 build 27; resumed focused native flows pass in EN and pt-BR;
-current full gate and independent behavior verification pending.
+Status: source 0.13.0 build 27; scoped native behavior and crossed independent acceptance PASS.
+Public release remains separately gated; see the current validation record.
 Owner request: 2026-10-31. Current evidence: [validation.md](validation.md).
 Requirements: FR-01, FR-07, FR-14; new work unit FP-044 (next unused ID after FP-043).
 
@@ -216,6 +216,21 @@ These are focused passes, not full-suite or physical qualification.
 
 Crossed Opus review accepted the earlier Sol lifecycle correction and identified two P3 test
 issues, now fixed. Fresh Sol Standards and Spec reviews found zero P0–P3 findings in the new
-five-file Opus delta. Current code still needs the full signed gate, full bilingual E2E and fresh
-source-blind verification. The earlier c981e74 Developer ID artifact excludes the folder-state
+five-file Opus delta. The later qualification below supersedes those pending checks. The earlier c981e74 Developer ID artifact excludes the folder-state
 fix and must not be installed as this latest candidate.
+
+
+## Completed scoped qualification
+
+Production source at `3d2dba7` passed the signed gate (519 package tests) and full bilingual native
+suite (52/52 scenarios, 142 screenshots per language). Latest stable Xcode MCP built it in
+17.739 s with zero warnings/diagnostics. Final additive scenario probes cover preference/folder
+revocation while a render is held, non-switchable panel closure and hiding/unhiding with the
+preference off, with fresh-write and real-close positive controls. No earlier assertion was removed.
+Both review axes found zero P0–P3 findings in the final delta.
+
+Fresh Sol complete source-blind reverify passed every assigned Opus criterion in EN and pt-BR
+(5/5 scenarios each, plus 11 isolated persistence tests). Fresh Opus separately passed the
+Sol pending-quit correction, with a one-line mutant that fails only the immediate-cancellation
+regression. Reports and exact evidence are linked from validation.md. Physical capture/Spaces/TCC
+and public distribution remain separate; no source-only version bump is an installation.

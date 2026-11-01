@@ -17,8 +17,8 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [0.13.0] - 2026-11-01
 
-Build 27. A source candidate: untagged, not notarized, not published, not installed (see
-`BACKLOG.json` `source_candidate_0_13_0`).
+Build 27. A source candidate: public distribution pending (see
+`BACKLOG.json` `source_candidate_0_13_0`; local delivery is recorded separately).
 
 ### Added
 
