@@ -91,6 +91,14 @@ Opening Recortia (Finder, Spotlight, Dock) MUST show a window: onboarding on fir
 otherwise Settings. Once onboarding is complete, a launch by "Open at login" shows none
 (onboarding still appears until it is finished, as the first launch requires). Recortia launches without a Dock icon. While it has a switchable window (a visible or minimized editor, Settings, onboarding, scrolling review, About, alert, or pin), it MUST appear in ⌘Tab and the Dock, and its windows MUST be listed by window switchers that list ordinary windows (ADR-007); when the last one closes it returns to the menu bar only. Temporarily hiding windows for a capture, or hiding the app, does not remove it. Clicking the Dock icon restores a minimized window before opening Settings.
 
+Settings › General offers "Keep running in the menu bar after the last window closes", on by
+default (preferences written before it existed load as on). Turned off, the person closing the
+last switchable window requests normal termination, which still confirms unexported edits; it
+waits for an export or automatic save in progress and its reported result, and does not quit if a
+window opens, a capture starts, or the preference is turned back on meanwhile. Launching without
+a window, minimizing, hiding, capture suspension and closing a capture panel never quit. Quit
+stays available in both modes.
+
 ### FR-02 — Capture
 
 Region selection invoked by a global shortcut must remain on the user's current desktop,
@@ -180,7 +188,7 @@ PNG is the default. JPEG requires flattening transparency against an explicit ba
 
 Save uses a user-selected destination or a previously authorized preferred folder, sanitized collision-resistant filenames, a same-directory temporary file, and atomic replacement/rename where supported. Overwrite requires confirmation. Encode failure leaves the destination intact. Quota, revocation, full disk, and disconnected volumes are explicit errors. File promises for drag-out must keep sanitized bytes alive until the receiving app completes or the transfer is canceled; do not delete a promised file prematurely.
 
-Auto-copy and auto-save are off by default. If later enabled, show that copying/saving happens before subsequent edits and cannot be retracted from other applications. An ordinary screenshot filename MUST NOT include a window title, recognized text, account identifier, or URL.
+Auto-copy and auto-save are off by default. If later enabled, show that copying/saving happens before subsequent edits and cannot be retracted from other applications. Auto-save writes only to the folder chosen in Settings: turning it on without a reachable folder asks for one, and a cancel leaves it off; removing the folder turns it off in the same change; a remembered folder that becomes unreachable stays chosen, Settings says so, and each save fails visibly without writing anywhere else. An ordinary screenshot filename MUST NOT include a window title, recognized text, account identifier, or URL.
 
 ### FR-08 — OCR and QR
 

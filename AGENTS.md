@@ -87,6 +87,28 @@ installed-app fullscreen check when changing activation or pin windows.
 Synthetic checks guard configuration only; physical Space/display qualification stays manual,
 with `scripts/space-probe/run.sh` as the reusable probe.
 
+Quit after the last window (FR-01, `docs/specs/autosave-menu-bar/`): `AppPresence` alone reports
+that the person closed the last switchable window, in its coalesced refresh, and only for a real
+close (never launch, minimize, hide, capture suspension or a capture panel; a hold present then
+drops the report). `AppModel` decides with `QuitAfterLastWindow`: the menu-bar preference (stored
+as optional `keepsRunningInMenuBarChoice`, default on, so older blobs and seals survive) or an active
+capture first cancels the quit; otherwise it waits for exports until their results are reported,
+then considers remaining windows. Accepted capture startup also invalidates the pending decision
+synchronously, so immediate cancellation cannot revive it. Termination uses `NSApp.terminate`, so
+`shouldTerminate()` keeps confirming unexported edits.
+`SettingsStore.sanitized` keeps automatic save off without a chosen folder; clearing the folder
+turns it off in the same change. Keep `last-window` (with its child-process exit probes) and
+`automatic-save-settings` in bilingual E2E; scenarios inject termination and the folder panel,
+never quit the runner or open a panel. Settings control scenarios must establish a visible, key,
+active foreground window before input; an unshown hosting window does not qualify native input.
+Existing `E2EAccessibilityControl.press` callers still require accessibility Press; Settings uses
+its separate selected-pane pointer path, posting down then up through the runner's own event queue.
+The owned foreground fixture may reopen only its original PID; activation decisions check both
+AppKit active state and the workspace foreground PID. Never accept a missing readiness control.
+Export Settings caches resolved folder availability only as transient view state: refresh on pane
+appearance, bookmark change and this process's key-window notifications. Filesystem changes do not
+invalidate SwiftUI by themselves; do not replace this with polling or mutate consent to refresh UI.
+
 Rendered output has an appearance control (`docs/specs/release-review-0.12.5/spec.md`).
 `E2ESnapshot.park` and `host` take the appearance they render, defaulting to the light behaviour so
 existing screenshots stay identical, and `appearance-contrast` renders the scrolling review with and
@@ -172,7 +194,7 @@ notes; describe the capability instead. Credit adopted open-source work by name.
 ## Verification commands and evidence
 
 The repository gates default to the exact reviewed `stable_xcode_baseline` in `TOOLCHAIN.json`
-(Xcode 27.0, 27A266a). Select the installed stable toolchain with `DEVELOPER_DIR`; the path name
+(Xcode 27.2, 27B52). Select the installed stable toolchain with `DEVELOPER_DIR`; the path name
 `Xcode.app` does not prove its release channel:
 
 ```sh
@@ -184,8 +206,9 @@ scripts/release.sh --dry-run  # untagged local build of the same pipeline withou
 swift test --package-path Packages/RecortiaKit --filter <Test>   # one test or suite
 ```
 
-The recorded local Xcode 27.1 RC (27A9275) is development-only. Run its gate explicitly with
-`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned`.
+No release candidate is recorded on 2026-11-01: the installed Xcode is the stable baseline. When a
+recorded RC exists, run its gate explicitly with
+`DEVELOPER_DIR=<that Xcode>/Contents/Developer RECORTIA_TOOLCHAIN_MODE=development scripts/check.sh --unsigned`.
 Doctor labels that evidence as development, rejects beta/unknown builds, and never treats it as
 stable qualification. `scripts/release.sh` calls `doctor.sh --release` before creating artifacts,
 including in `--dry-run`; inherited development mode cannot bypass the stable baseline.

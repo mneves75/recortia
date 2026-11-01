@@ -78,20 +78,8 @@
                 hosting.setContent(CountdownView(remaining: 3, onCancel: {}), fixedToFittingSize: true)
                 panel = hosting
             case .pin:
-                let settings = SettingsStore.e2eInMemory()
-                let services = AppServices.live(settings: settings)
-                let export = ExportCoordinator(
-                    exporter: services.exporter, clipboard: services.clipboard, files: services.files,
-                    drag: services.drag, folders: services.folders, clock: services.clock, settings: settings)
-                let pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
-                let notes = SyntheticDesktop.notesWindow
-                guard
-                    let image = try SyntheticDesktop.image().cropping(
-                        to: CGRect(
-                            x: notes.minX * 2, y: notes.minY * 2, width: notes.width * 2, height: notes.height * 2))
-                else { throw E2EAbort("pin image crop failed") }
-                let id = try pins.add(image, source: nil, displayScale: 2)
-                panel = PinPanel(pinID: id, model: pins)
+                let (pin, pins) = try makePinPanel()
+                panel = pin
                 retained = pins
             }
             E2ESnapshot.park(panel)
@@ -115,6 +103,23 @@
             panel.orderOut(nil)
             _ = retained
             return size
+        }
+
+        /// The real pin panel over a synthetic capture, with the model the caller must retain.
+        static func makePinPanel() throws -> (PinPanel, PinsModel) {
+            let settings = SettingsStore.e2eInMemory()
+            let services = AppServices.live(settings: settings)
+            let export = ExportCoordinator(
+                exporter: services.exporter, clipboard: services.clipboard, files: services.files,
+                drag: services.drag, folders: services.folders, clock: services.clock, settings: settings)
+            let pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
+            let notes = SyntheticDesktop.notesWindow
+            guard
+                let image = try SyntheticDesktop.image().cropping(
+                    to: CGRect(x: notes.minX * 2, y: notes.minY * 2, width: notes.width * 2, height: notes.height * 2))
+            else { throw E2EAbort("pin image crop failed") }
+            let id = try pins.add(image, source: nil, displayScale: 2)
+            return (PinPanel(pinID: id, model: pins), pins)
         }
     }
 #endif

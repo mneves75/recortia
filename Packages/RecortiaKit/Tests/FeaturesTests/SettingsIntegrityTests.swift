@@ -49,6 +49,26 @@ struct SettingsIntegrityTests {
         expectConsentDropped(SettingsStore(storage: storage, integrity: FixedKeyPreferenceIntegrity()))
     }
 
+    @Test("A sealed blob written before the menu-bar preference existed keeps its consent")
+    func sealedLegacyBlob() throws {
+        let storage = MemoryPreferenceStorage()
+        let integrity = FixedKeyPreferenceIntegrity()
+        var preferences = consenting()
+        preferences.githubUpload = GitHubUploadPreferences(
+            destination: GitHubDestination(owner: "fixture", repository: "private-captures"), automatic: true)
+        // What 0.12 sealed: the same settings without any menu-bar key.
+        let current = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(preferences)) as? [String: Any])
+        let data = try JSONSerialization.data(
+            withJSONObject: current.filter { !$0.key.localizedCaseInsensitiveContains("menuBar") })
+        storage.values[SettingsStore.storageKey] = data
+        storage.values[SettingsStore.sealKey] = integrity.seal(data)
+        let loaded = SettingsStore(storage: storage, integrity: integrity)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences == preferences)
+        #expect(loaded.preferences.keepsRunningInMenuBar)
+    }
+
     @Test("Without the secret nothing is sealed and consent does not survive a relaunch")
     func unavailableSecret() {
         let storage = MemoryPreferenceStorage()

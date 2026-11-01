@@ -15,6 +15,27 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-01
+
+Build 27. A source candidate: public distribution pending (see
+`BACKLOG.json` `source_candidate_0_13_0`; local delivery is recorded separately).
+
+### Added
+
+- Settings › General › "Keep running in the menu bar after the last window closes", on by
+  default. Turned off, closing the last window quits Recortia, after any automatic save in
+  progress has finished and reported its result; Quit still asks about unexported edits.
+- Settings › Export can remove the save folder, which also turns automatic saving off and leaves
+  the editor's Save to Preferred Folder without a destination.
+
+### Changed
+
+- Turning automatic saving on without a reachable folder now asks for one first, and cancelling
+  leaves it off. Automatic saving is never on without a folder, including in older settings.
+- An unavailable automatic-save folder stays chosen, and Settings says that saves fail until you
+  choose another one.
+- The reviewed toolchain is the stable Xcode 27.2 (27B52).
+
 ## [0.12.7] - 2026-10-28
 
 Build 26. A source candidate: untagged, not notarized, not published. It is installed on the

@@ -22,6 +22,10 @@ contains Xcode 27.1 RC (27A9275), and the host is macOS 27.2 seed (26B5112a). Ap
 identifies 27A9275 as a release candidate. Local observations therefore cannot replace the
 stable baseline used by CI or qualify a release.
 
+2026-11-01: Apple's release list publishes Xcode 27.2 (27B52) as a release on 2026-10-29, and the
+host has it installed with macOS 27.2 (26B123). The reviewed stable baseline in `TOOLCHAIN.json`
+moved to 27B52 through the same doctor policy; the decision below is otherwise unchanged.
+
 ## Decision
 
 1. **Language and UI:** Swift 6.4 compiler in Swift 6 language mode. SwiftUI for settings and chrome;

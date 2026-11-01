@@ -10,8 +10,8 @@ and `BACKLOG.json`, and the matching requirements and cases in `SPEC.md` and `AC
 `./init.sh` resolves the installed toolchain against `TOOLCHAIN.json` and then runs an existing
 suite, so no gate can run under an unreviewed Xcode by accident. It prefers the reviewed stable
 baseline and falls back to the recorded release candidate, announcing that it is development
-evidence only. On 2026-10-28 this host has no stable baseline installed: Xcode 27.2 (27B48) is
-Apple's release candidate, recorded as `actual_*` in `TOOLCHAIN.json`.
+evidence only. On 2026-11-01 the installed Xcode 27.2 (27B52) is the stable baseline; no release
+candidate is recorded.
 
 - Full gate: `./init.sh check --unsigned` (doctor, E2E-isolation and parsed Release-entitlement regression controls, gate inventory, strict `swift format lint`, generated-project freshness,
   all package tests, Debug build, pt-BR coverage of every extracted string, E2E target build); drop `--unsigned` when the signing identity is available.
@@ -73,7 +73,9 @@ Apple's release candidate, recorded as `actual_*` in `TOOLCHAIN.json`.
   otherwise. Present ordinary windows through `AppPresence.activate()`; pins are normal-level
   windows so AltTab lists them. Opening the app shows onboarding or Settings (`LaunchKind`,
   `LaunchWindow`); "Open at login" stays silent once onboarding is complete. Keep `window-presence` and
-  `launch-presentation` in bilingual E2E.
+  `launch-presentation` in bilingual E2E. With "Keep running in the menu bar" off, the last real
+  close requests termination after pending exports (AGENTS.md); keep `last-window` and
+  `automatic-save-settings` in bilingual E2E.
 - All desktops: `RecortiaApp/App/SpacePolicy.swift` owns window Space behavior (windows follow
   the active Space, panels join all Spaces; `SpacePolicyMonitor` is a safety net for framework
   windows like About) and `ScreenChoice.swift` picks screens. Settings is an AppKit window

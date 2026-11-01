@@ -107,7 +107,7 @@
             pins.close(pinID)
         }
 
-        private static func plainWindow() -> NSWindow {
+        static func plainWindow() -> NSWindow {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 200, height: 120), styleMask: [.titled, .closable],
                 backing: .buffered, defer: false)
@@ -152,7 +152,7 @@
         }
 
         /// Orders `window` in the way presenting code does, parked offscreen and transparent.
-        private static func show(_ window: NSWindow, _ presence: AppPresence) {
+        static func show(_ window: NSWindow, _ presence: AppPresence) {
             E2ESnapshot.park(window)
             window.alphaValue = 0
             presence.windowWillAppear()
@@ -176,7 +176,7 @@
             (menu?.items ?? []).flatMap { [$0] + allItems($0.submenu) }
         }
 
-        private static func policy() -> String {
+        static func policy() -> String {
             switch NSApp.activationPolicy() {
             case .regular: "regular"
             case .accessory: "accessory"

@@ -59,14 +59,17 @@ struct SettingsStoreTests {
     func storesNoContent() throws {
         let storage = MemoryPreferenceStorage()
         let store = SettingsStore(storage: storage)
-        store.update { $0.autoCopy = true }
+        store.update {
+            $0.autoCopy = true
+            $0.keepsRunningInMenuBar = false
+        }
         let data = try #require(storage.values[SettingsStore.storageKey])
         let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let allowed: Set<String> = [
             "schemaVersion", "hasCompletedOnboarding", "captureDelaySeconds", "captureShowsCursor",
             "captureIncludesWindowShadow", "autoCopy", "autoSave", "launchAtLogin", "updateChecksEnabled",
             "automaticScrollingEnabled", "defaultExportFormat", "jpegQuality", "defaultExportScale", "ocrTextMode",
-            "pinDefaultOpacity", "preferredSaveFolderBookmark", "editorContentSize",
+            "pinDefaultOpacity", "preferredSaveFolderBookmark", "editorContentSize", "keepsRunningInMenuBarChoice",
         ]
         #expect(Set(object.keys).isSubset(of: allowed))
     }
@@ -90,14 +93,42 @@ struct SettingsStoreTests {
         #expect(loaded.preferences.editorContentSize == nil)
     }
 
+    // Failure mode: a required Bool added to the synthesized Codable makes every older blob fail
+    // to decode, which resets all settings and drops the sealed export consent.
+    @Test("Keeping Recortia in the menu bar defaults on, persists off, and older blobs still load")
+    func keepsRunningInMenuBar() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(store.preferences.keepsRunningInMenuBar)
+        store.update { $0.keepsRunningInMenuBar = false }
+        #expect(SettingsStore(storage: storage).preferences.keepsRunningInMenuBar == false)
+
+        // A 0.12 blob has no menu-bar key.
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("menuBar") }
+        old["captureDelaySeconds"] = 5
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 5)
+        #expect(loaded.preferences.keepsRunningInMenuBar)
+    }
+
     @Test("Works against a real, isolated UserDefaults suite")
     func userDefaultsSuite() throws {
         let suiteName = "dev.mvneves.Recortia.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let store = SettingsStore(storage: defaults)
-        store.update { $0.pinDefaultOpacity = 0.5 }
-        #expect(SettingsStore(storage: defaults).preferences.pinDefaultOpacity == 0.5)
+        store.update {
+            $0.pinDefaultOpacity = 0.5
+            $0.keepsRunningInMenuBar = false
+        }
+        let reloaded = SettingsStore(storage: defaults).preferences
+        #expect(reloaded.pinDefaultOpacity == 0.5)
+        #expect(!reloaded.keepsRunningInMenuBar)
     }
 
 }

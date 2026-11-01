@@ -229,8 +229,18 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var annotationPalette: SavedAnnotationPalette?
     /// The editor window content size the user last chose; nil until they resize an editor.
     public var editorContentSize: Size<DesktopSpace>?
+    /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
+    /// 0.13 have no such key, and synthesized Codable cannot default a missing non-optional one.
+    public var keepsRunningInMenuBarChoice: Bool?
 
     public init() {}
+
+    /// Whether Recortia stays in the menu bar after its last window closes (FR-01). On by default;
+    /// off, closing the last window quits.
+    public var keepsRunningInMenuBar: Bool {
+        get { keepsRunningInMenuBarChoice ?? true }
+        set { keepsRunningInMenuBarChoice = newValue }
+    }
 
     public var exportOptions: ExportOptions {
         let format: ExportFormat = defaultExportFormat == .png ? .png : .jpeg(quality: jpegQuality)

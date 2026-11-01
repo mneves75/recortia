@@ -5,10 +5,9 @@ lists common screenshot-utility capabilities and Recortia's status for each. Ear
 research/version statements below are historical.
 Current UI guidance: [Apple onboarding](https://developer.apple.com/design/human-interface-guidelines/onboarding),
 [Xcode 27.2 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes).
-Stable Xcode 27.0 (27A266a) is the release and CI baseline (`TOOLCHAIN.json`). Xcode 27.1
-(27A9275) shipped on 2026-10-15. [Apple publishes Xcode 27.2 (27B48) as a release candidate](https://developer.apple.com/news/releases/?id=10192026g),
-which is what this host has installed, so it is recorded as the development toolchain only and does
-not satisfy the specification's stable-toolchain release qualification.
+Stable Xcode 27.2 (27B52) is the release baseline (`TOOLCHAIN.json`): [Apple's release list](https://developer.apple.com/news/releases/)
+publishes it on 2026-10-29, after the 27.2 release candidate (27B48), and this host has it installed.
+The hosted CI runner still names Xcode 27.0 (`.github/workflows/ci.yml`) and has not been rechecked.
 
 **Checked:** September 26, 2026. These sources support external facts in the specification. Requirement IDs, product limits, milestones, architecture, and performance gates are original proposed decisions, not statements that Apple or any other product uses that implementation.
 
@@ -26,6 +25,8 @@ URL: `https://developer.apple.com/xcode/system-requirements`
 Apple's current table lists Xcode 27 with Swift 6.4, Swift 6 language mode, and a macOS 26.6-or-later build host. The table also distinguishes beta versions. The exact installed Xcode/SDK build is not known from this research and must be recorded locally. Support claims concern Apple's table, not a tested Recortia build.
 
 Rechecked 2026-10-28 for the toolchain record: Apple's release list publishes Xcode 27.1 (27A9275) as a release on 2026-10-15 and Xcode 27.2 (27B48) as a **release candidate** on 2026-10-19 (`https://developer.apple.com/news/releases/?id=10192026g`). The installed `/Applications/Xcode.app` is 27B48, so it is recorded as the development toolchain only; the reviewed stable baseline remains 27.0 (27A266a), which is not installed on this host. macOS 27.2 (26B123) shipped on 2026-10-26.
+
+Rechecked 2026-11-01: Apple's release list publishes Xcode 27.2 (27B52) as a release on 2026-10-29. The installed `/Applications/Xcode.app` is 27B52 (Swift 6.4.2, macOS SDK 27.2 build 26B118), so it is now both the reviewed stable baseline and the observed toolchain; no release candidate is recorded.
 
 ## S06 — Apple: What's new in ScreenCaptureKit, WWDC23
 

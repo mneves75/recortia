@@ -22,6 +22,7 @@
         /// Starts the runner when the launch argument is present. Returns false otherwise.
         static func startIfRequested(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
             if E2EPanelProbe.runIfRequested(arguments: arguments) { return true }
+            if LastWindowProbe.runIfRequested(arguments: arguments) { return true }
             guard let index = arguments.firstIndex(of: argument) else { return false }
             guard index + 1 < arguments.count, arguments[index + 1].hasPrefix("/") else {
                 log("usage: Recortia \(argument) <absolute output dir> [\(onlyArgument) id,id]")

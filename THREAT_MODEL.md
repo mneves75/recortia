@@ -74,7 +74,12 @@ This is not a theorem that every possible application implementation is secure. 
 
 Signing/update key material must never be available to untrusted PR jobs, coding-agent prompts, or test fixtures. A named maintainer owns credential rotation, release approval, security reports, and removal of compromised published artifacts. Do not claim a public security-contact address exists until the maintainer sets it.
 
-Before v1, document how to stop a compromised update rollout, distribute a corrected signed build, notify users, and rotate the relevant credential without assuming all users can auto-update. Key recovery and updater trust continuity require an actual staging test. For privacy defects, document what kinds of exports may have been affected rather than promising retroactive deletion from recipients.
+SECURITY.md's "Lost release device or exposed credential" runbook covers stopping distribution,
+credential containment, artifact review, a corrected signed build and user notification without
+assuming automatic updates. Key recovery and updater trust continuity still require a separately
+authorized recovery exercise; writing the procedure does not qualify that exercise. For privacy
+defects, describe which exports may have been affected rather than promising retroactive deletion
+from recipients.
 
 ## Accepted residuals (0.10.0 beta)
 

@@ -439,6 +439,26 @@
     "evidence": ".scratch/local-install-0.12.7-20261028/{Recortia.xcarchive,export/Recortia.app,ExportOptions.plist,entitlements.plist,previous-0.12.5-24.app}",
     "authorization": "Owner request 2026-10-28: install on this macOS"
   },
+  "source_candidate_0_13_0": {
+    "candidate": "0.13.0 source candidate",
+    "app_version": "0.13.0",
+    "build": 27,
+    "date": "2026-11-01",
+    "scope": "FP-044: Settings › Export chooses, replaces and removes the automatic-save folder and never keeps automatic save on without one; Settings › General can quit Recortia after the last window closes (on by default: keep running in the menu bar). The reviewed stable toolchain moves to Xcode 27.2 (27B52).",
+    "distribution_status": "Source candidate. Untagged, not notarized or published. Local delivery is recorded separately in private exact-commit gate/artifact evidence. 0.12.4 remains the published release.",
+    "evidence": [
+    "See FP-044 and docs/specs/autosave-menu-bar/validation.md. Production source 3d2dba7 passed the signed gate (519 tests), full native suite (52/52 per language) and latest stable Xcode MCP. Fresh crossed source-blind verification PASS: Sol verified all Opus criteria; Opus verified the Sol pending-quit correction with a discriminating mutant."
+    ],
+  "local_preparation": {
+    "status": "Retained earlier Developer ID export/DMG; superseded by resumed folder-status refresh source, so a fresh export is required. Not installed, notarized or published.",
+    "source_commit": "c981e743a7938311b32912ecd991d63164b846a7",
+    "directory": ".build/release/0.13.0-dev-20261101T052043Z-17174",
+    "dmg_sha256": "11c8cb1ce5592045a9e0f9f6de6b9169dd041e5cd5b0b09edeef3e310dd0c24e",
+    "verification": "scripts/release.sh --dry-run exits 0: fresh checkout archive/export, exact version/build, strict signature, Hardened Runtime, reviewed distribution entitlements, embedded provisioning profile, no test markers and license checks. Profile is Recortia Developer ID for the reviewed team/app identity, valid until 2044-09-21, without get-task-allow. All eight release-contract tests pass with --app and --package-checkout.",
+    "evidence": ".scratch/autosave-menu-bar/parent-release-dry-run.log; parent-release-contract-artifact-2.log; manifest.txt in the artifact directory. The dry run skips its internal gate/notarization; the separately passed signed local gate is recorded above. Its temporary worktree was removed by the pipeline."
+  },
+  "authorization": "owner request 2026-10-31: version 0.13.0 build 27"
+  },
   "tasks": [
     {
       "id": "FP-001",
@@ -1552,6 +1572,50 @@
       ],
       "authorization": "owner request 2026-10-28: finish the deferred items",
       "status_note": "Call-count evidence only. No wall-clock or Instruments claim: the host runs Apple's Xcode 27.2 release candidate, so performance qualification for release is still open. Still deferred with reasons: the AX messaging timeout (needs a fixture that can simulate a hung peer), the retained-pixel budget for editors (needs a memory measurement), and the editor menu commands (needs physical keyboard qualification)."
+    },
+    {
+      "id": "FP-044",
+      "milestone": "M6",
+      "title": "Automatic-save folder controls and keep-running-in-the-menu-bar preference",
+  "status": "completed",
+      "depends_on": [
+        "FP-006",
+        "FP-012",
+        "FP-026"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-07",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-02",
+        "EXP-03",
+        "PRIV-01"
+      ],
+      "scope": "Owner request 2026-10-31: let Settings choose, replace and remove the automatic-save folder, never leave automatic save on without one, and add a General preference to quit after the last window closes (default: keep running in the menu bar).",
+      "deliverables": [
+        "Packages/RecortiaKit/Sources/Domain/Policies.swift (keepsRunningInMenuBarChoice)",
+        "Packages/RecortiaKit/Sources/Features/SettingsStore+AutomaticSave.swift, QuitAfterLastWindow.swift, SettingsStore.swift",
+        "RecortiaApp/App/AppPresence.swift, AppModel.swift; RecortiaApp/Settings/SettingsView.swift, SettingsWindowController.swift",
+        "E2E: last-window (with child-process exit probes) and automatic-save-settings",
+        "TOOLCHAIN.json stable baseline 27.2 (27B52); scripts/test-doctor.py and scripts/test-release-contract.py derive their pins from it"
+      ],
+      "completion_contract": "docs/specs/autosave-menu-bar/implementation-plan.md frozen acceptance 1-6, verified by package tests, scripts/check.sh and bilingual scripts/e2e.sh.",
+      "evidence": [
+        ".scratch/autosave-menu-bar/red-2-package-behavior.log: a required Bool resets older and sealed preferences; folder and quit rules fail (exit=1)",
+        ".scratch/autosave-menu-bar/green-1-package.log: 29 focused tests pass (exit=0)",
+        ".scratch/autosave-menu-bar/red-test-doctor.log and green-test-doctor.log; red-script-controls-release-contract.log and green-test-release-contract.log",
+    ".scratch/autosave-menu-bar/typecheck-2.log and typecheck-3-no-e2e-flag.log: strict swiftc type-check of every app source with and without RECORTIA_E2E (exit=0)",
+    ".scratch/autosave-menu-bar/parent-red-late-capture.log: active capture incorrectly waits for export instead of cancelling pending quit (exit=1); parent-green-focused.log: 44 focused tests pass after correction (exit=0), including real isolated UserDefaults persistence",
+    ".scratch/autosave-menu-bar/xcode-diagnostics.json: latest stable Xcode MCP refresh reports zero diagnostics for AppModel, AppPresence and SettingsView; candidate build succeeded with zero warnings before the late-capture correction",
+    ".scratch/e2e/20261101-011908-95563/: last-window passed in both languages, including actual child-process exit; automatic-save-settings failed after initial output and collision checks. The hidden Settings fixture was corrected; final qualification requires an unlocked GUI.",
+    ".scratch/autosave-menu-bar/parent-check-signed.log: scripts/check.sh on 45a92e4 exits 0; 519 package tests, script controls, formatting, project freshness, 629 translations and both signed Debug targets pass",
+    ".scratch/autosave-menu-bar/xcode-final-build.log and xcode-final-diagnostics.json: corrected source passes latest stable Xcode MCP build (3.962 s), zero warnings and zero diagnostics in three changed production files",
+    ".scratch/e2e/20261101-021325-10346/: both scenarios in both languages stop before input at visible=true/key=false/active=false, foreground loginwindow PID 451. Fresh source-blind mneves-verify: BLOCKED; .scratch/autosave-menu-bar/verify-behavior.md. Crossed Opus review of Sol changes is also quota-blocked."
+      ],
+      "authorization": "owner request 2026-10-31 (two Settings requests); proceed without interviews",
+  "status_note": "Scoped feature acceptance PASS: signed production-source gate (519 tests) and full 52/52 native scenarios per language at 3d2dba7; final expanded native flows 5/5 per language at .scratch/e2e/20261101-151339-27864 and isolated persistence 11/11. Fresh source-blind Sol PASS for all Opus criteria and Opus PASS for Sol criterion 4b, with a one-line mutant failure. Spec/Standards: zero P0-P3 findings. See validation.md for exact commands, provenance, original failures and synthetic limits. Public release remains separately gated; current artifact/installation evidence is private. Physical Spaces/TCC remain manual."
     }
   ],
   "deferred_scope": [

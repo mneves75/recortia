@@ -45,12 +45,14 @@ Update with `brew upgrade --cask recortia`. Or download the DMG from
   and labeled cosmetic, never secure.
 - **Export deliberately.** Copy (one sanitized PNG), save (atomic, PNG or JPEG) or drag out.
   Every export is freshly encoded with an allowlist of metadata: no EXIF, GPS, text chunks or
-  hidden layers.
+  hidden layers. Automatic save, off by default, writes each still capture only to the folder you
+  choose in Settings; removing the folder turns it off.
 - **Read text and QR codes on device** with Vision, in English and Portuguese. QR payloads are
   shown as untrusted data; only http and https links open, and only when you click.
 - **Pin** up to five images with adjustable opacity and zoom, then copy or drag a pin out. Pins
   are ordinary windows, so window switchers list them, and Recortia appears in ⌘Tab and the Dock
-  while any of its windows is open.
+  while any of its windows is open. It keeps running in the menu bar after the last window
+  closes unless you turn that off in Settings › General.
 - **Scrolling capture**, manual by default. Automatic scrolling is opt-in, scrolls downward and
   asks for Accessibility only when you turn it on. Ambiguous matches pause instead of producing a
   wrong stitch, and a session stops if its window, the foreground app or the display changes.
@@ -100,7 +102,7 @@ does not delete remote copies or Git history. Keep the repository private
 
 ## Build from source
 
-You need stable Xcode 27.0 (27A266a, `stable_xcode_baseline` in `TOOLCHAIN.json`) and
+You need stable Xcode 27.2 (27B52, `stable_xcode_baseline` in `TOOLCHAIN.json`) and
 [XcodeGen](https://github.com/yonaskolb/XcodeGen). Select the Xcode installation for each command
 with `DEVELOPER_DIR`; an app named `Xcode.app` may still be a prerelease build, and
 by default `scripts/doctor.sh` rejects any build other than the stable baseline.
