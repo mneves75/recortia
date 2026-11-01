@@ -75,15 +75,28 @@ final class AppModel: AppActions {
     @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
     /// Asks whether to quit and discard those edits; the argument is how many editors have them.
     @ObservationIgnored private let confirmQuit: @MainActor (Int) -> Bool
+    /// Normal termination (`applicationShouldTerminate` still confirms unexported edits).
+    @ObservationIgnored private let requestTermination: @MainActor () -> Void
+    /// Asks the person for the automatic-save folder; nil when they cancel.
+    @ObservationIgnored let chooseSaveFolder: @MainActor () -> URL?
+    /// Automatic exports from scheduling until their results were reported.
+    private var automaticExportsInFlight = 0
+    /// Identifies the current quit-after-last-window decision; a newer close, accepted capture
+    /// or final answer makes earlier pending re-evaluations do nothing.
+    @ObservationIgnored private var quitDecision = 0
 
     init(
         settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry,
         showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
-        confirmQuit: @escaping @MainActor (Int) -> Bool = { MessagePresenter.confirmDiscardOnQuit(count: $0) }
+        confirmQuit: @escaping @MainActor (Int) -> Bool = { MessagePresenter.confirmDiscardOnQuit(count: $0) },
+        requestTermination: @escaping @MainActor () -> Void = { NSApp.terminate(nil) },
+        chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() }
     ) {
         self.settings = settings
         self.showMessage = showMessage
         self.confirmQuit = confirmQuit
+        self.requestTermination = requestTermination
+        self.chooseSaveFolder = chooseSaveFolder
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = services.map { FeatureModels(services: $0, settings: settings) }
@@ -97,6 +110,7 @@ final class AppModel: AppActions {
         // Every path that holds a shortcut starts the watch, including a recording in Settings.
         shortcutStatus.onHold = { [weak self] in self?.watchHeldShortcuts() }
         shortcutStatus.onAttention = { [weak self] in self?.watchHeldShortcuts(restart: true) }
+        AppPresence.shared.onLastWindowClosed = { [weak self] in self?.lastWindowClosed() }
     }
 
     /// Called once from `applicationDidFinishLaunching`. Requests no permission. Opening Recortia
@@ -148,6 +162,8 @@ final class AppModel: AppActions {
     func perform(_ command: AppCommand) {
         guard isEnabled(command) else { return }
         if AppCommand.captureModes.contains(command) {
+            // A capture can start and cancel before an observation task re-evaluates the quit.
+            quitDecision += 1
             captureWindowVisibility?.suspend()
         }
         switch command {
@@ -182,6 +198,40 @@ final class AppModel: AppActions {
     func shouldTerminate() -> Bool {
         let count = unexportedEditCount()
         return count == 0 || confirmQuit(count)
+    }
+
+    /// The person closed Recortia's last window (FR-01). With "keep running in the menu bar" off
+    /// this requests normal termination, after any export in progress has finished.
+    private func lastWindowClosed() {
+        quitDecision += 1
+        decideQuit(quitDecision)
+    }
+
+    /// Decides now, or again whenever an input it read changes, until it quits or stays.
+    private func decideQuit(_ decision: Int) {
+        guard decision == quitDecision else { return }
+        let outcome = withObservationTracking {
+            QuitAfterLastWindow.decide(
+                keepsRunningInMenuBar: settings.preferences.keepsRunningInMenuBar,
+                isExporting: features?.export.isBusy == true || automaticExportsInFlight > 0,
+                hasUserWindow: AppPresence.shared.hasUserWindow,
+                isCapturing: features?.capture.state.isActive == true || features?.scroll.state.isActive == true
+                    || isStartingScrollingCapture)
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in self?.decideQuit(decision) }
+        }
+        switch outcome {
+        case .wait: return
+        case .stay: quitDecision += 1
+        case .quit:
+            quitDecision += 1
+            requestTermination()
+        }
+    }
+
+    /// Shows a message from Settings through the app's presenter.
+    func report(_ message: UserMessage) {
+        showMessage(message)
     }
 
     func showSettings() {
@@ -278,7 +328,11 @@ final class AppModel: AppActions {
             guard let editor, !editor.isClosed else { return nil }
             return editor.session
         }
+        // Counted until reported, so quitting after the last window waits for the save and shows
+        // its failure first.
+        automaticExportsInFlight += 1
         Task {
+            defer { automaticExportsInFlight -= 1 }
             let outcomes = await export.runAutomaticExports(
                 for: session, currentSession: live, uploadConsentID: uploadConsentID)
             let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)

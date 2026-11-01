@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T21:16:23Z",
-  "commit": "6eb1a2dc5c83d8e9f0e6cf9654a2a389e5e9555b",
+  "generated_at": "2026-11-01T04:00:11Z",
+  "commit": "7713c6b8444d91367483d6f357f55744ff0fc8c5",
   "toolchain": {
-    "xcode": "27.2 (27B48)",
-    "channel": "release_candidate",
-    "stable_baseline": "27.0 (27A266a)"
+    "xcode": "27.2 (27B52)",
+    "channel": "stable",
+    "stable_baseline": "27.2 (27B52)"
   },
   "status_source": "local evidence files; CI results are separate and not recorded here",
   "suites": [

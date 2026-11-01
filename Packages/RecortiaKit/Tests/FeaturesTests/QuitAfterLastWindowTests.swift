@@ -19,7 +19,12 @@ struct QuitAfterLastWindowTests {
         #expect(decide(keeps: true) == .stay)
         #expect(decide(keeps: true, exporting: true) == .stay)
         #expect(decide(exporting: true) == .wait, "an unfinished export is waited for, never cut off")
-        #expect(decide(exporting: true, window: true) == .wait, "a failure alert during the export is not a reason to give up")
+        #expect(
+            decide(exporting: true, capturing: true) == .stay,
+            "a new capture cancels pending autoquit even while the previous export is unfinished")
+        #expect(
+            decide(exporting: true, window: true) == .wait,
+            "a failure alert during the export is not a reason to give up")
         #expect(decide(window: true) == .stay)
         #expect(decide(capturing: true) == .stay)
     }

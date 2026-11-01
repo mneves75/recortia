@@ -7,15 +7,23 @@ import AppKit
 /// code calls `activate()`, which becomes regular before activating, because a switch after
 /// activation leaves the previous app's menu in the menu bar. Demotion is coalesced to a later
 /// main-actor turn, so one window replacing another never drops the Dock icon.
+///
+/// The same coalesced turn reports that the person closed the last switchable window
+/// (`onLastWindowClosed`). Only a real close counts: launching without a window, minimizing,
+/// hiding, a capture that orders windows out, and closing a capture panel never do.
 @MainActor
 final class AppPresence {
     static let shared = AppPresence()
 
     /// How many times the app returned to accessory; lets E2E prove a replacement did not demote.
     private(set) var demotions = 0
+    /// Called when a closed switchable window left none, nothing holds the app, and it is not hidden.
+    var onLastWindowClosed: (@MainActor () -> Void)?
     /// Active reasons to keep the app regular without a visible window (capture suspension).
     private var holds = 0
     private var refreshScheduled = false
+    /// A switchable window closed since the last refresh.
+    private var closedSwitchableWindow = false
     private var observers: [any NSObjectProtocol] = []
 
     private init() {}
@@ -24,9 +32,8 @@ final class AppPresence {
     func start() {
         guard observers.isEmpty else { return }
         let names = [
-            NSWindow.willCloseNotification, NSWindow.didMiniaturizeNotification,
-            NSWindow.didDeminiaturizeNotification, NSWindow.didBecomeKeyNotification,
-            NSApplication.didUnhideNotification,
+            NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification,
+            NSWindow.didBecomeKeyNotification, NSApplication.didUnhideNotification,
         ]
         for name in names {
             observers.append(
@@ -34,6 +41,18 @@ final class AppPresence {
                     MainActor.assumeIsolated { AppPresence.shared.setNeedsRefresh() }
                 })
         }
+        observers.append(
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) {
+                notification in
+                // Still ordered in while it closes, so a switchable window is recognized here.
+                let window = notification.object as? NSWindow
+                MainActor.assumeIsolated { AppPresence.shared.windowWillClose(window) }
+            })
+    }
+
+    private func windowWillClose(_ window: NSWindow?) {
+        if let window, Self.isSwitchable(window) { closedSwitchableWindow = true }
+        setNeedsRefresh()
     }
 
     /// Becomes regular, then activates: for code about to show a switchable window.
@@ -72,13 +91,27 @@ final class AppPresence {
         NSApp.windows.last { Self.isSwitchable($0) && $0.isMiniaturized }
     }
 
+    /// A window the person can still return to: one shown or minimized, one a capture ordered out
+    /// (a hold), or any while Recortia is hidden.
+    var hasUserWindow: Bool {
+        holds > 0 || NSApp.isHidden || NSApp.windows.contains(where: Self.isSwitchable)
+    }
+
     private func refresh() {
+        // A close is reported in the turn that sees it or never: a capture holding the app then
+        // means the person is still working, and cancelling that capture must not quit.
+        let closed = closedSwitchableWindow
+        closedSwitchableWindow = false
         if NSApp.windows.contains(where: Self.isSwitchable) {
             windowWillAppear()
-        } else if holds == 0, !NSApp.isHidden, NSApp.activationPolicy() == .regular {
+            return
+        }
+        guard holds == 0, !NSApp.isHidden else { return }
+        if NSApp.activationPolicy() == .regular {
             NSApp.setActivationPolicy(.accessory)
             demotions += 1
         }
+        if closed { onLastWindowClosed?() }
     }
 
     /// A top-level window at the normal or modal level that is shown or minimized: the editor,

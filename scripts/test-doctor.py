@@ -380,7 +380,7 @@ class DoctorTests(unittest.TestCase):
             # Any pair that differs from the record must be refused; the stable pair with a
             # wrong build is included so an "almost right" toolchain cannot slip through.
             for version, build in (
-                ("27.0", "27A9999"), ("27.2", "27B5028f"), (STABLE_VERSION, "27A266a!")
+                ("27.0", "27A9999"), ("27.2", "27B5028f"), (STABLE_VERSION, STABLE_BUILD + "!")
             ):
                 with self.subTest(mode=mode, version=version, build=build):
                     result = self.run_doctor(version=version, build=build, mode=mode)

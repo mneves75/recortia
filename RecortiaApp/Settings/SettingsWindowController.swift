@@ -59,7 +59,9 @@ final class SettingsWindowController {
         add(String(localized: "Capture"), "camera.viewfinder", CaptureSettingsTab(settings: model.settings))
         add(
             String(localized: "Export"), "square.and.arrow.up",
-            ExportSettingsTab(settings: model.settings, folders: model.features?.services.folders))
+            ExportSettingsTab(
+                settings: model.settings, folders: model.features?.services.folders,
+                chooseFolder: model.chooseSaveFolder, report: model.report))
         add(
             String(localized: "GitHub"), "icloud.and.arrow.up",
             GitHubUploadSettings(settings: model.settings, credentials: model.features?.services.githubCredentials))

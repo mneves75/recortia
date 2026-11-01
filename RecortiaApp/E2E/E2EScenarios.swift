@@ -14,6 +14,9 @@
                 id: "launch-presentation", title: "Opening Recortia shows a window; Open at login does not",
                 run: PresenceScenarios.launchPresentation),
             E2EScenario(
+                id: "last-window", title: "Closing the last window quits only when the person chose that",
+                run: LastWindowScenarios.quitAfterLastWindow),
+            E2EScenario(
                 id: "other-spaces", title: "Capture leaves windows on other Spaces alone",
                 run: DesktopScenarios.otherSpaces),
             E2EScenario(
@@ -88,6 +91,9 @@
             E2EScenario(
                 id: "export-feedback-routing", title: "Automatic-export failures are never hidden",
                 run: AutomaticExportScenarios.feedbackRouting),
+            E2EScenario(
+                id: "automatic-save-settings", title: "Automatic save writes only to the folder chosen in Settings",
+                run: AutomaticSaveScenarios.settings),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(
                 id: "appearance-contrast", title: "Review marks stay visible on dark and light content",

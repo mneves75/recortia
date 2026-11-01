@@ -7,14 +7,13 @@ public enum QuitAfterLastWindow: Equatable, Sendable {
     /// Request normal termination, which still asks about unexported edits.
     case quit
 
-    /// An unfinished export is waited for before anything else, so a failure alert it raises is
-    /// shown and an automatic save is never cut off; a window the person still has, or a capture
-    /// in progress, cancels the quit.
+    /// Keeping the app running or starting a capture cancels the quit. Otherwise an unfinished
+    /// export is waited for so its result is reported before considering remaining windows.
     public static func decide(keepsRunningInMenuBar: Bool, isExporting: Bool, hasUserWindow: Bool, isCapturing: Bool)
         -> QuitAfterLastWindow
     {
-        if keepsRunningInMenuBar { return .stay }
+        if keepsRunningInMenuBar || isCapturing { return .stay }
         if isExporting { return .wait }
-        return hasUserWindow || isCapturing ? .stay : .quit
+        return hasUserWindow ? .stay : .quit
     }
 }

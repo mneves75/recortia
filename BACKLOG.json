@@ -439,6 +439,18 @@
     "evidence": ".scratch/local-install-0.12.7-20261028/{Recortia.xcarchive,export/Recortia.app,ExportOptions.plist,entitlements.plist,previous-0.12.5-24.app}",
     "authorization": "Owner request 2026-10-28: install on this macOS"
   },
+  "source_candidate_0_13_0": {
+    "candidate": "0.13.0 source candidate",
+    "app_version": "0.13.0",
+    "build": 27,
+    "date": "2026-11-01",
+    "scope": "FP-044: Settings › Export chooses, replaces and removes the automatic-save folder and never keeps automatic save on without one; Settings › General can quit Recortia after the last window closes (on by default: keep running in the menu bar). The reviewed stable toolchain moves to Xcode 27.2 (27B52).",
+    "distribution_status": "Source candidate. Untagged, not notarized, not published, not installed. 0.12.7 build 26 remains the installed build; 0.12.4 remains the published release.",
+    "evidence": [
+    "See FP-044. Latest installed stable Xcode MCP build and focused package checks passed. Full local gate and final bilingual E2E qualification remain pending."
+    ],
+    "authorization": "owner request 2026-10-31: version 0.13.0 build 27"
+  },
   "tasks": [
     {
       "id": "FP-001",
@@ -1552,6 +1564,47 @@
       ],
       "authorization": "owner request 2026-10-28: finish the deferred items",
       "status_note": "Call-count evidence only. No wall-clock or Instruments claim: the host runs Apple's Xcode 27.2 release candidate, so performance qualification for release is still open. Still deferred with reasons: the AX messaging timeout (needs a fixture that can simulate a hung peer), the retained-pixel budget for editors (needs a memory measurement), and the editor menu commands (needs physical keyboard qualification)."
+    },
+    {
+      "id": "FP-044",
+      "milestone": "M6",
+      "title": "Automatic-save folder controls and keep-running-in-the-menu-bar preference",
+      "status": "implemented",
+      "depends_on": [
+        "FP-006",
+        "FP-012",
+        "FP-026"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-07",
+        "FR-14"
+      ],
+      "acceptance_test_ids": [
+        "UX-02",
+        "EXP-03",
+        "PRIV-01"
+      ],
+      "scope": "Owner request 2026-10-31: let Settings choose, replace and remove the automatic-save folder, never leave automatic save on without one, and add a General preference to quit after the last window closes (default: keep running in the menu bar).",
+      "deliverables": [
+        "Packages/RecortiaKit/Sources/Domain/Policies.swift (keepsRunningInMenuBarChoice)",
+        "Packages/RecortiaKit/Sources/Features/SettingsStore+AutomaticSave.swift, QuitAfterLastWindow.swift, SettingsStore.swift",
+        "RecortiaApp/App/AppPresence.swift, AppModel.swift; RecortiaApp/Settings/SettingsView.swift, SettingsWindowController.swift",
+        "E2E: last-window (with child-process exit probes) and automatic-save-settings",
+        "TOOLCHAIN.json stable baseline 27.2 (27B52); scripts/test-doctor.py and scripts/test-release-contract.py derive their pins from it"
+      ],
+      "completion_contract": "docs/specs/autosave-menu-bar/implementation-plan.md frozen acceptance 1-6, verified by package tests, scripts/check.sh and bilingual scripts/e2e.sh.",
+      "evidence": [
+        ".scratch/autosave-menu-bar/red-2-package-behavior.log: a required Bool resets older and sealed preferences; folder and quit rules fail (exit=1)",
+        ".scratch/autosave-menu-bar/green-1-package.log: 29 focused tests pass (exit=0)",
+        ".scratch/autosave-menu-bar/red-test-doctor.log and green-test-doctor.log; red-script-controls-release-contract.log and green-test-release-contract.log",
+    ".scratch/autosave-menu-bar/typecheck-2.log and typecheck-3-no-e2e-flag.log: strict swiftc type-check of every app source with and without RECORTIA_E2E (exit=0)",
+    ".scratch/autosave-menu-bar/parent-red-late-capture.log: active capture incorrectly waits for export instead of cancelling pending quit (exit=1); parent-green-focused.log: 44 focused tests pass after correction (exit=0), including real isolated UserDefaults persistence",
+    ".scratch/autosave-menu-bar/xcode-diagnostics.json: latest stable Xcode MCP refresh reports zero diagnostics for AppModel, AppPresence and SettingsView; candidate build succeeded with zero warnings before the late-capture correction",
+    ".scratch/e2e/20261101-011908-95563/: last-window passed in both languages, including actual child-process exit; automatic-save-settings failed after initial output and collision checks. The hidden Settings fixture was corrected; final qualification requires an unlocked GUI."
+      ],
+      "authorization": "owner request 2026-10-31 (two Settings requests); proceed without interviews",
+  "status_note": "Source implemented; full local gate and final bilingual E2E remain pending. Parent ran native scenarios and retained their failures; the current readiness fixture is not yet qualified because Quartz confirms the Mac is locked. Initial production implementation used Opus; Sol fallback corrected a genuine late-capture regression after Opus quota exhaustion, with crossed review still required. Physical Spaces, TCC and real quit-from-Dock behavior remain manual."
     }
   ],
   "deferred_scope": [

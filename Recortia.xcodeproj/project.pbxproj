@@ -25,6 +25,7 @@
 		182984EEB477BE03386FF93A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */; };
 		18A45AB75723F8BFA3916DBD /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
+		1A98A7B62D4C8919FAF4D280 /* Scenarios+AutomaticSave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695E6CF017268288FAA2B8A3 /* Scenarios+AutomaticSave.swift */; };
 		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
 		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
 		2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */; };
@@ -45,6 +46,7 @@
 		38F97E15732CA80EEE0746B3 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */; };
 		3AC080957ABB8147960886B8 /* Scenarios+Editor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */; };
 		3B6F7CBFE641BB0D4D133B24 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
+		3BB7356881116137AE7EAF5E /* Scenarios+LastWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */; };
 		3BEF040F1072DF3D8A1DBE98 /* RecortiaFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 411B40D8A69F69633A9FDF64 /* RecortiaFixtures */; };
 		3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */; };
 		3D6140BA1D228918E1B4AE7F /* LiveGitHubUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6610A99F1B386ECA2E10FF6C /* LiveGitHubUpload.swift */; };
@@ -175,6 +177,7 @@
 
 /* Begin PBXFileReference section */
 		06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Appearance.swift"; sourceTree = "<group>"; };
+		0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+LastWindow.swift"; sourceTree = "<group>"; };
 		1054033F6519FF4F5EECEDA7 /* Scenarios+TextAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+TextAppearance.swift"; sourceTree = "<group>"; };
 		1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Recortia-LICENSE.txt"; sourceTree = "<group>"; };
 		12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shortcuts.swift"; sourceTree = "<group>"; };
@@ -211,6 +214,7 @@
 		6606E40D90DE7108819150A3 /* SpacePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacePolicy.swift; sourceTree = "<group>"; };
 		6610A99F1B386ECA2E10FF6C /* LiveGitHubUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveGitHubUpload.swift; sourceTree = "<group>"; };
 		68A32821DBE9F97E4B468E29 /* LiveServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveServices.swift; sourceTree = "<group>"; };
+		695E6CF017268288FAA2B8A3 /* Scenarios+AutomaticSave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+AutomaticSave.swift"; sourceTree = "<group>"; };
 		6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollUIController.swift; sourceTree = "<group>"; };
 		78E65B31A931DA8F9BA987BB /* PinPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinPanels.swift; sourceTree = "<group>"; };
 		78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchKind.swift; sourceTree = "<group>"; };
@@ -429,6 +433,7 @@
 				293033569B29300AB2B89925 /* E2ESnapshot.swift */,
 				06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */,
 				143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */,
+				695E6CF017268288FAA2B8A3 /* Scenarios+AutomaticSave.swift */,
 				7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */,
 				4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */,
 				F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */,
@@ -436,6 +441,7 @@
 				D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */,
 				DFCE525587D4EDB1319159B1 /* Scenarios+EditorFixes.swift */,
 				A39817EE5D149AB669AEE652 /* Scenarios+EditorWindowSize.swift */,
+				0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */,
 				E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */,
 				AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */,
 				BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */,
@@ -750,6 +756,7 @@
 				F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */,
 				9574817EAC04B1ED3B058F71 /* Scenarios+Appearance.swift in Sources */,
 				662B5EEB1979FE8CB55404C3 /* Scenarios+AutomaticExport.swift in Sources */,
+				1A98A7B62D4C8919FAF4D280 /* Scenarios+AutomaticSave.swift in Sources */,
 				C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */,
 				DA848AED2EE99F81FCDFF4D4 /* Scenarios+CaptureVisibility.swift in Sources */,
 				2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */,
@@ -757,6 +764,7 @@
 				3AC080957ABB8147960886B8 /* Scenarios+Editor.swift in Sources */,
 				E65AC2695767655A13BF576E /* Scenarios+EditorFixes.swift in Sources */,
 				747BEF5FD53C4B739E049209 /* Scenarios+EditorWindowSize.swift in Sources */,
+				3BB7356881116137AE7EAF5E /* Scenarios+LastWindow.swift in Sources */,
 				B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */,
 				F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */,
 				A8310D2D3CD5C642EB8F3D94 /* Scenarios+Presence.swift in Sources */,
@@ -987,7 +995,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -1006,7 +1014,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.12.7;
+				MARKETING_VERSION = 0.13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1058,7 +1066,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -1083,7 +1091,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.12.7;
+				MARKETING_VERSION = 0.13.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

@@ -13,6 +13,10 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# The reviewed stable pin comes from the record, never a copy: a copied pin fails every release
+# control the moment the toolchain is re-observed.
+STABLE = json.loads((ROOT / "TOOLCHAIN.json").read_text())["stable_xcode_baseline"]
+STABLE_XCODE = f"Xcode {STABLE['version']}\\nBuild version {STABLE['build']}\\n"
 RELEASE = ROOT / "scripts/release.sh"
 RESOLVED = ROOT / "Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
 NOTICE = "KeyboardShortcuts-LICENSE.txt"
@@ -33,7 +37,7 @@ class ReleaseFixture:
         self.write_tool("xcrun", "#!/bin/sh\necho 'Swift fixture compiler'\n")
         (self.bin / "python3").symlink_to(sys.executable)
         self.write_tool("xcodebuild", "#!/bin/sh\n"
-                        "if [ \"$1\" = -version ]; then printf 'Xcode 27.0\\nBuild version 27A266a\\n'; "
+                        f"if [ \"$1\" = -version ]; then printf '{STABLE_XCODE}'; "
                         "else touch archive-reached; exit 89; fi\n")
         self.write_tool("git", f"#!{sys.executable}\n" + '''import pathlib, shutil, sys
 root = pathlib.Path(__file__).resolve().parent.parent
@@ -195,7 +199,7 @@ class ReleaseContractTests(unittest.TestCase):
                     self.assertIn("stable baseline", result.stderr)
                     self.assertNotIn("git boundary reached", result.stderr)
                     self.assertFalse((root / ".build").exists())
-            xcodebuild.write_text("#!/bin/sh\nprintf 'Xcode 27.0\\nBuild version 27A266a\\n'\n")
+            xcodebuild.write_text(f"#!/bin/sh\nprintf '{STABLE_XCODE}'\n")
             control = subprocess.run(
                 ["/bin/zsh", str(root / "scripts/release.sh"), "--dry-run"],
                 cwd=root, env=environment, capture_output=True, text=True, timeout=15,

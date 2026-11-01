@@ -16,6 +16,9 @@ implementation plan. One functional ticket covers shared curve/head geometry, cr
 selection/bend editing, native keyboard fields, undo and sanitized exports. Geometry feasibility
 precedes UI integration; historical CAP-01 failures remain separate from physical/release qualification.
 
+FR-01/FR-07 automatic-save folder controls and the "keep running in the menu bar" preference are
+tracked as FP-044 in `docs/specs/autosave-menu-bar/implementation-plan.md` (0.13.0 build 27).
+
 Controlled native focus qualification is tracked in
 `docs/specs/native-window-qualification/implementation-plan.md`. Its 0.12.1/build20 source
 acceptance passed the stable gate, full bilingual native suite and fresh different-model

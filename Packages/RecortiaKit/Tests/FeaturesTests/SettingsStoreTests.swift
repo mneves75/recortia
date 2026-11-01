@@ -122,8 +122,13 @@ struct SettingsStoreTests {
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let store = SettingsStore(storage: defaults)
-        store.update { $0.pinDefaultOpacity = 0.5 }
-        #expect(SettingsStore(storage: defaults).preferences.pinDefaultOpacity == 0.5)
+        store.update {
+            $0.pinDefaultOpacity = 0.5
+            $0.keepsRunningInMenuBar = false
+        }
+        let reloaded = SettingsStore(storage: defaults).preferences
+        #expect(reloaded.pinDefaultOpacity == 0.5)
+        #expect(!reloaded.keepsRunningInMenuBar)
     }
 
 }

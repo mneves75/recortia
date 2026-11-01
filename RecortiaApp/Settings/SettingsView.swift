@@ -39,6 +39,11 @@ struct GeneralSettingsTab: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
+                Toggle(
+                    "Keep running in the menu bar after the last window closes",
+                    isOn: settings.binding(\.keepsRunningInMenuBar)
+                )
+                .accessibilityIdentifier("settings.keepRunningInMenuBar")
             }
         }
         .formStyle(.grouped)
@@ -112,6 +117,8 @@ struct CaptureSettingsTab: View {
 struct ExportSettingsTab: View {
     let settings: SettingsStore
     let folders: (any SaveFolderService)?
+    var chooseFolder: () -> URL? = { nil }
+    var report: (UserMessage) -> Void = { _ in }
 
     var body: some View {
         Form {
@@ -149,7 +156,12 @@ struct ExportSettingsTab: View {
                     .font(.callout)
                 }
                 Toggle("Copy automatically after capture", isOn: settings.binding(\.autoCopy))
-                Toggle("Save automatically after capture", isOn: settings.binding(\.autoSave))
+                Toggle(
+                    "Save automatically after capture",
+                    isOn: Binding(get: { settings.preferences.autoSave }, set: setAutomaticSave)
+                )
+                .disabled(folders == nil)
+                .accessibilityIdentifier("settings.autoSave")
                 LabeledContent("Save folder") {
                     HStack(spacing: 8) {
                         // A folder name is user data: truncate it and keep the whole value in a
@@ -160,8 +172,23 @@ struct ExportSettingsTab: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .help(folderDescription)
-                        Button("Choose…", action: chooseFolder)
+                            .accessibilityIdentifier("settings.saveFolder.name")
+                        Button("Choose…", action: replaceFolder)
+                            .disabled(folders == nil)
+                            .accessibilityIdentifier("settings.saveFolder.choose")
+                        if settings.preferences.preferredSaveFolderBookmark != nil {
+                            Button("Remove", action: settings.clearAutomaticSaveFolder)
+                                .accessibilityIdentifier("settings.saveFolder.remove")
+                        }
                     }
+                }
+                if settings.preferences.autoSave, folderStatus == .unavailable {
+                    Label(
+                        "The save folder is unavailable, so automatic saves fail. Choose another folder.",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .font(.callout)
+                    .accessibilityIdentifier("settings.saveFolder.unavailable")
                 }
             } header: {
                 Text("Automatic export")
@@ -178,17 +205,48 @@ struct ExportSettingsTab: View {
         .formStyle(.grouped)
     }
 
-    private var folderDescription: String {
-        guard let bookmark = settings.preferences.preferredSaveFolderBookmark else {
-            return String(localized: "None")
-        }
-        if let url = folders?.resolveFolder(bookmark: bookmark) {
-            return FileManager.default.displayName(atPath: url.path)
-        }
-        return folders == nil ? String(localized: "Chosen") : String(localized: "Unavailable")
+    private var folderStatus: AutomaticSaveFolder? {
+        folders.map { settings.automaticSaveFolder(resolvingWith: $0) }
     }
 
-    private func chooseFolder() {
+    private var folderDescription: String {
+        switch folderStatus {
+        case .available(let url): FileManager.default.displayName(atPath: url.path)
+        case .unavailable: String(localized: "Unavailable")
+        case .notChosen?: String(localized: "None")
+        case nil:
+            settings.preferences.preferredSaveFolderBookmark == nil
+                ? String(localized: "None") : String(localized: "Chosen")
+        }
+    }
+
+    private func setAutomaticSave(_ enabled: Bool) {
+        guard let folders else { return }
+        rememberingFolder { try settings.setAutomaticSave(enabled, folders: folders, chooseFolder: chooseFolder) }
+    }
+
+    private func replaceFolder() {
+        rememberingFolder { try settings.chooseAutomaticSaveFolder(chooseFolder) }
+    }
+
+    /// A folder whose access cannot be remembered leaves the settings unchanged and says so.
+    private func rememberingFolder(_ change: () throws -> Void) {
+        do {
+            try change()
+        } catch {
+            report(
+                UserMessage(
+                    title: String(localized: "The folder could not be saved"),
+                    detail: String(
+                        localized: "Recortia could not remember access to that folder. Choose another folder.")))
+        }
+    }
+}
+
+/// The folder panel behind Settings › Export › Save folder.
+@MainActor
+enum SaveFolderPanel {
+    static func choose() -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -196,17 +254,7 @@ struct ExportSettingsTab: View {
         panel.allowsMultipleSelection = false
         panel.prompt = String(localized: "Choose")
         panel.message = String(localized: "Choose where automatic saves go.")
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            let bookmark = try url.bookmarkData()
-            settings.update { $0.preferredSaveFolderBookmark = bookmark }
-        } catch {
-            MessagePresenter.present(
-                UserMessage(
-                    title: String(localized: "The folder could not be saved"),
-                    detail: String(
-                        localized: "Recortia could not remember access to that folder. Choose another folder.")))
-        }
+        return panel.runModal() == .OK ? panel.url : nil
     }
 }
 

@@ -181,6 +181,18 @@ For each supported format and scale, render the same snapshot through every sink
 
 Inject render failure, encoding failure, clipboard failure, denied folder access, destination collision, disk full, unplugged volume, and canceled drag. No false success notification. A prior destination file survives a failed atomic save. Clipboard is untouched on failure before write. Successful committed writes are not described as canceled/retracted. Drag receivers get a complete file for the transfer lifetime.
 
+### EXP-03 — Automatic save folder
+
+Through the real Settings › Export controls with a scripted folder panel: turning automatic save
+on without a folder asks for one; Cancel, or a folder whose access cannot be remembered, changes
+nothing. A chosen folder (including a long, non-ASCII name that stays truncated without moving
+Choose…) receives one decodable image per still capture, never replacing files that share the
+generated name, and nothing is written elsewhere. Choose… replaces the folder; Remove forgets it
+and turns automatic save off together. A folder that disappears stays remembered, Settings says
+it is unavailable, and the capture's save fails visibly. Older and sealed preferences load
+without losing consent; automatic save is never on without a folder (bilingual
+`automatic-save-settings`; unit guards in `AutomaticSaveSettingsTests`).
+
 ## OCR and pixel tools
 
 ### OCR-01 — Local recognition corpus
@@ -268,6 +280,16 @@ intermediate demotion when one window replaces another. A Dock click restores a 
 window. The visible app menu offers Settings (⌘,) and Quit (⌘Q through the unexported-edits
 confirmation). Physical check: AltTab lists editor, Settings and pins, and ⌘Tab lists Recortia,
 over a desktop and over another app's fullscreen Space without switching Spaces.
+
+Keep running in the menu bar (Settings › General, on by default): on, closing the last editor
+leaves the process in the menu bar as an accessory app. Off, closing the last window requests
+termination exactly once, after an automatic save in progress has written its file or reported
+its failure; another window, a same-turn replacement, a minimized window, a pin, a capture
+started right after the close (and cancelled), a refresh without a close, the preference turned
+back on, or a window opened while waiting all keep Recortia running. Cancelling an edited
+editor's discard question keeps the editor and the process (bilingual `last-window`). Child
+processes of the runner prove real exit through `NSApp.terminate` (pin, then last window) and a
+process still running with the preference on or after a launch without a window.
 
 ### REL-01 — Independent build and CI boundary
 

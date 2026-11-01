@@ -29,6 +29,10 @@
         let links = RecordingLinkOpener()
         let messages = RecordingMessagePresenter()
         let quit = RecordingQuitConfirmation()
+        /// Termination requests from quit-after-last-window; the runner process itself never quits.
+        let terminations = RecordingTerminations()
+        /// Stands in for the save-folder panel; never shows one.
+        let folderChooser = ScriptedFolderChooser()
         let services: AppServices
         let app: AppModel
         let features: FeatureModels
@@ -78,7 +82,9 @@
                 shortcutRegistry: KeyboardShortcutsRegistry(
                     takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
                 showMessage: { messages.values.append($0) },
-                confirmQuit: { [quit] in quit.answer($0) })
+                confirmQuit: { [quit] in quit.answer($0) },
+                requestTermination: { [terminations] in terminations.request() },
+                chooseSaveFolder: { [folderChooser] in folderChooser.next() })
             guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
             self.features = features
             environment = EditorEnvironment(
@@ -126,7 +132,9 @@
             exportGate.release()
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
+                $0.keepsRunningInMenuBar = true
             }
+            folderChooser.answers = []
             editors.closeAll()
             features.pins.closeAll()
             if features.capture.state.isActive { features.capture.cancel() }
@@ -155,6 +163,31 @@
         func answer(_ count: Int) -> Bool {
             questions.append(count)
             return answers.isEmpty ? false : answers.removeFirst()
+        }
+    }
+
+    @MainActor
+    final class RecordingTerminations {
+        private(set) var count = 0
+        /// Runs at each request, so a scenario can record what was true at that moment.
+        var onRequest: (() -> Void)?
+
+        func request() {
+            count += 1
+            onRequest?()
+        }
+    }
+
+    /// Answers the save-folder panel from a script: each answer is a folder, or nil for Cancel
+    /// (also when the script is empty). Records how often it was asked.
+    @MainActor
+    final class ScriptedFolderChooser {
+        var answers: [URL?] = []
+        private(set) var asked = 0
+
+        func next() -> URL? {
+            asked += 1
+            return answers.isEmpty ? nil : answers.removeFirst()
         }
     }
 

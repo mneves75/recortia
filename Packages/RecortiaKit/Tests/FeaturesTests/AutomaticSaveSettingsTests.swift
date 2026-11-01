@@ -49,7 +49,9 @@ struct AutomaticSaveSettingsTests {
         #expect(resolved.resolvingSymlinksInPath().path == chosen.resolvingSymlinksInPath().path)
 
         // A remembered folder that no longer resolves is not reused: the person chooses again.
-        try store.setAutomaticSave(false, folders: folders) { Issue.record("turning off asks nothing"); return nil }
+        try store.setAutomaticSave(false, folders: folders) {
+            Issue.record("turning off asks nothing"); return nil
+        }
         #expect(!store.preferences.autoSave && store.preferences.preferredSaveFolderBookmark == bookmark)
         asked = 0
         try store.setAutomaticSave(true, folders: folders) {
@@ -61,7 +63,9 @@ struct AutomaticSaveSettingsTests {
         #expect(store.automaticSaveFolder(resolvingWith: folders) == .unavailable)
 
         folders.folder = chosen
-        try store.setAutomaticSave(true, folders: folders) { Issue.record("a reachable folder asks nothing"); return nil }
+        try store.setAutomaticSave(true, folders: folders) {
+            Issue.record("a reachable folder asks nothing"); return nil
+        }
         #expect(store.preferences.autoSave && store.automaticSaveFolder(resolvingWith: folders) == .available(chosen))
     }
 
