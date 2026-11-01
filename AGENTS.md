@@ -101,6 +101,13 @@ turns it off in the same change. Keep `last-window` (with its child-process exit
 `automatic-save-settings` in bilingual E2E; scenarios inject termination and the folder panel,
 never quit the runner or open a panel. Settings control scenarios must establish a visible, key,
 active foreground window before input; an unshown hosting window does not qualify native input.
+Existing `E2EAccessibilityControl.press` callers still require accessibility Press; Settings uses
+its separate selected-pane pointer path, posting down then up through the runner's own event queue.
+The owned foreground fixture may reopen only its original PID; activation decisions check both
+AppKit active state and the workspace foreground PID. Never accept a missing readiness control.
+Export Settings caches resolved folder availability only as transient view state: refresh on pane
+appearance, bookmark change and this process's key-window notifications. Filesystem changes do not
+invalidate SwiftUI by themselves; do not replace this with polling or mutate consent to refresh UI.
 
 Rendered output has an appearance control (`docs/specs/release-review-0.12.5/spec.md`).
 `E2ESnapshot.park` and `host` take the appearance they render, defaulting to the light behaviour so

@@ -33,10 +33,7 @@
             ]
             let application: NSRunningApplication
             do {
-                application = try await NSWorkspace.shared.openApplication(
-                    at: Bundle.main.bundleURL.deletingLastPathComponent().appending(
-                        path: "RecortiaE2EForegroundHost.app"),
-                    configuration: configuration)
+                application = try await NSWorkspace.shared.openApplication(at: bundleURL, configuration: configuration)
             } catch {
                 throw E2EAbort("owned foreground fixture launch failed: \(error)")
             }
@@ -62,8 +59,24 @@
             }
         }
 
+        /// Whether the runner is both active and the actual frontmost application. `NSApp.isActive`
+        /// alone can still read true before the runner processes its resign event.
+        static var runnerIsForeground: Bool {
+            NSApp.isActive && frontmostPID == ProcessInfo.processInfo.processIdentifier
+        }
+
+        private static var frontmostPID: pid_t? { NSWorkspace.shared.frontmostApplication?.processIdentifier }
+
         func restore() async throws {
-            if NSApp.isActive { NSApp.yieldActivation(to: application) }
+            if Self.runnerIsForeground {
+                NSApp.yieldActivation(to: application)
+            } else if !(application.isActive && Self.frontmostPID == processIdentifier) {
+                // Neither the runner nor this host holds the foreground (another app took it, for
+                // example after the runner became an accessory), so nobody can yield. Ask
+                // LaunchServices to activate this same host, as `start` does, and refuse any other
+                // instance.
+                try await reopen()
+            }
             _ = try await request("activate", requireReady: true)
         }
 
@@ -80,6 +93,29 @@
             requestStop()
             let terminated = await E2EWait.until(timeout: .seconds(5)) { application.isTerminated }
             context.check("owned foreground fixture terminated", terminated, "pid=\(processIdentifier)")
+        }
+
+        private static var bundleURL: URL {
+            Bundle.main.bundleURL.deletingLastPathComponent().appending(path: "RecortiaE2EForegroundHost.app")
+        }
+
+        private func reopen() async throws {
+            guard !application.isTerminated else { throw E2EAbort("owned foreground fixture exited before reopen") }
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.createsNewApplicationInstance = false
+            configuration.activates = true
+            let reopened: NSRunningApplication
+            do {
+                reopened = try await NSWorkspace.shared.openApplication(
+                    at: Self.bundleURL, configuration: configuration)
+            } catch {
+                throw E2EAbort("owned foreground fixture reopen failed: \(error)")
+            }
+            guard !application.isTerminated, reopened.processIdentifier == processIdentifier else {
+                throw E2EAbort(
+                    "owned foreground fixture reopen reached pid \(reopened.processIdentifier), "
+                        + "expected \(processIdentifier) (terminated=\(application.isTerminated))")
+            }
         }
 
         private func request(_ command: String, frame: CGRect? = nil, requireReady: Bool) async throws

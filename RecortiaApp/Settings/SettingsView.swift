@@ -119,6 +119,10 @@ struct ExportSettingsTab: View {
     let folders: (any SaveFolderService)?
     var chooseFolder: () -> URL? = { nil }
     var report: (UserMessage) -> Void = { _ in }
+    /// The folder's reachability lives in the file system, which SwiftUI does not observe, so it
+    /// is resolved when this pane appears, when the remembered folder changes, and whenever one
+    /// of this app's windows becomes key (the person may have moved or deleted it meanwhile).
+    @State private var folderStatus: AutomaticSaveFolder?
 
     var body: some View {
         Form {
@@ -203,10 +207,15 @@ struct ExportSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear(perform: refreshFolderStatus)
+        .onChange(of: settings.preferences.preferredSaveFolderBookmark, refreshFolderStatus)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            refreshFolderStatus()
+        }
     }
 
-    private var folderStatus: AutomaticSaveFolder? {
-        folders.map { settings.automaticSaveFolder(resolvingWith: $0) }
+    private func refreshFolderStatus() {
+        folderStatus = folders.map { settings.automaticSaveFolder(resolvingWith: $0) }
     }
 
     private var folderDescription: String {

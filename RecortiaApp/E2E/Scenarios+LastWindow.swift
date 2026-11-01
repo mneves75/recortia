@@ -22,6 +22,10 @@
                 return window
             }
 
+            // The owned host (another process, never a window of this app) takes the foreground and
+            // then yields it, so each Settings activation below is cooperative and deterministic.
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
             let settings = SettingsWindowController.makeWindow(model: harness.app)
             settings.appearance = NSAppearance(named: .aqua)
             settings.setContentSize(NSSize(width: 560, height: 540))
@@ -30,11 +34,21 @@
             let root = try context.unwrap("settings window has content", settings.contentView)
             let tabs = try context.unwrap("Settings tab view", EditorWindowController.first(NSTabView.self, in: root))
             tabs.selectTabViewItem(at: 0)
-            try await E2EAccessibilityControl.showAndActivate(settings, context)
+            let pane = try context.unwrap("the selected Settings pane", tabs.selectedTabViewItem?.view)
+            // A runner that is active and frontmost keeps its focus; otherwise it reacquires it
+            // through the host. Either way the same visible/key/active/frontmost requirement follows.
+            func activateSettings() async throws {
+                if !E2EForegroundFixture.runnerIsForeground {
+                    try await foreground.restore()
+                    try await foreground.yieldToRunner()
+                }
+                try await E2EAccessibilityControl.showAndActivate(settings, context)
+            }
+            try await activateSettings()
             await E2ESnapshot.settle(root, for: .milliseconds(400))
             context.check(
                 "keeping Recortia in the menu bar is on by default", harness.settings.preferences.keepsRunningInMenuBar)
-            context.snapshot(tabs.selectedTabViewItem?.view ?? root, shot: "general")
+            context.snapshot(pane, shot: "general")
 
             settings.close()
             await settled()
@@ -44,8 +58,9 @@
                 await E2EWait.until(timeout: .seconds(3)) { NSApp.activationPolicy() == .accessory },
                 PresenceScenarios.policy())
 
-            try await E2EAccessibilityControl.showAndActivate(settings, context)
-            try E2EAccessibilityControl.press("settings.keepRunningInMenuBar", in: root, context)
+            // Reopening after the accessory demotion reacquires the foreground cooperatively.
+            try await activateSettings()
+            try E2EAccessibilityControl.click("settings.keepRunningInMenuBar", in: pane, context)
             await E2ESnapshot.settle(root)
             context.check(
                 "the General switch turns the preference off", !harness.settings.preferences.keepsRunningInMenuBar)
@@ -58,6 +73,7 @@
             await settled()
             try context.require("closing General requests termination exactly once", requests() == 1, "\(requests())")
             try context.require("the Settings fixture is closed before the zero-window matrix", !settings.isVisible)
+            await foreground.stop(context)
             // The real General close above has its own outcome; the existing matrix starts at zero.
             start = terminations.count
             presence.setNeedsRefresh()

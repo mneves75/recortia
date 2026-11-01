@@ -24,11 +24,67 @@
 
         static func press(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
             let control = try control(identifier, in: root, context)
-            if let modern = control as? any NSAccessibilityProtocol, modern.accessibilityPerformPress() { return }
-            // A SwiftUI node may decline Press (a grouped-form switch row does); the scenario's own
-            // outcome checks still decide whether the fallback below worked.
-            E2ERunner.log("\(identifier): \(type(of: control)) declined Press; pressing its frame")
+            if let modern = control as? any NSAccessibilityProtocol {
+                try context.require("\(identifier) responds to Press", modern.accessibilityPerformPress())
+                return
+            }
             try pressFrame(control, in: root, context)
+        }
+
+        /// Clicks a control of the selected Settings pane like a pointer would: one mouse-down then
+        /// one mouse-up, posted in that order to this application's own event queue, so the normal
+        /// app event loop dispatches the down and then the up in FIFO order, as Apple's public
+        /// event-handling docs describe. This proves pointer delivery, not VoiceOver or
+        /// accessibility Press. No global event, tap or other process is involved. The caller's
+        /// next settle runs the event loop that delivers both events.
+        static func click(_ identifier: String, in pane: NSView, _ context: ScenarioContext) throws {
+            let window = try context.unwrap("the Settings pane has a window", pane.window)
+            try context.require(
+                "the window under \(identifier) is visible, key and foreground", isReadyForInput(window),
+                "visible=\(window.isVisible), key=\(window.isKeyWindow), active=\(NSApp.isActive), "
+                    + "foregroundPID=\(String(describing: NSWorkspace.shared.frontmostApplication?.processIdentifier))")
+            let control = try control(identifier, in: pane, context)
+            try context.require(
+                "\(identifier) exposes its frame", control.responds(to: NSSelectorFromString("accessibilityFrame")))
+            let frame = try context.unwrap(
+                "\(identifier) frame", control.value(forKey: "accessibilityFrame") as? NSValue
+            ).rectValue
+            try context.require(
+                "\(identifier) frame is finite and nonempty",
+                frame.origin.x.isFinite && frame.origin.y.isFinite && frame.width.isFinite && frame.height.isFinite
+                    && frame.width > 0 && frame.height > 0, "\(frame)")
+            let paneFrame = window.convertToScreen(pane.convert(pane.bounds, to: nil))
+            let centre = NSPoint(x: frame.midX, y: frame.midY)
+            try context.require(
+                "\(identifier) centre lies inside the selected pane", paneFrame.contains(centre),
+                "control \(frame), pane \(paneFrame)")
+            let point = window.convertPoint(fromScreen: centre)
+            let topView = window.contentView?.superview ?? window.contentView
+            let hit = try context.unwrap("a view under \(identifier) centre", topView?.hitTest(point))
+            try context.require(
+                "the view under \(identifier) centre is inside the selected pane", hit.isDescendant(of: pane),
+                "\(type(of: hit))")
+            if let view = control as? NSView {
+                try context.require(
+                    "the view under \(identifier) centre is that control", hit.isDescendant(of: view),
+                    "hit \(type(of: hit)), control \(type(of: view))")
+            }
+
+            func event(_ type: NSEvent.EventType) throws -> NSEvent {
+                try context.unwrap(
+                    "\(identifier) mouse event",
+                    NSEvent.mouseEvent(
+                        with: type, location: point, modifierFlags: [],
+                        timestamp: ProcessInfo.processInfo.systemUptime,
+                        windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+            }
+            let down = try event(.leftMouseDown)
+            let up = try event(.leftMouseUp)
+            NSApp.postEvent(down, atStart: false)
+            NSApp.postEvent(up, atStart: false)
+            E2ERunner.log(
+                "click \(identifier): \(type(of: control)) at \(point) in window \(window.windowNumber); "
+                    + "hit \(type(of: hit))")
         }
 
         /// Presents only the scenario's synthetic window through the ordinary-window activation path.
@@ -123,7 +179,6 @@
 
         private static func pressFrame(_ control: NSObject, in root: NSView, _ context: ScenarioContext) throws {
             let window = try context.unwrap("control has a window", root.window)
-            try context.require("the native event target is visible, key and foreground", isReadyForInput(window))
             try context.require(
                 "control exposes its frame", control.responds(to: NSSelectorFromString("accessibilityFrame")))
             let value = try context.unwrap(
@@ -134,21 +189,15 @@
                 frame.origin.x.isFinite && frame.origin.y.isFinite && frame.width.isFinite && frame.height.isFinite
                     && frame.width > 0 && frame.height > 0)
             let point = window.convertPoint(fromScreen: NSPoint(x: frame.midX, y: frame.midY))
-            let topView = window.contentView?.superview ?? window.contentView
-            let hit = try context.unwrap("a view under the control's centre", topView?.hitTest(point))
-            try context.require("the view under the control's centre is inside the pane", hit.isDescendant(of: root))
-            func event(_ type: NSEvent.EventType) throws -> NSEvent {
-                try context.unwrap(
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                let event = try context.unwrap(
                     "control mouse event",
                     NSEvent.mouseEvent(
                         with: type, location: point, modifierFlags: [],
                         timestamp: ProcessInfo.processInfo.systemUptime,
                         windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+                window.sendEvent(event)
             }
-            // Queue the mouse-up in this app's own event queue first: an AppKit control tracks a
-            // mouse-down on the main thread until a mouse-up arrives.
-            NSApp.postEvent(try event(.leftMouseUp), atStart: false)
-            window.sendEvent(try event(.leftMouseDown))
         }
 
         private static func isReadyForInput(_ window: NSWindow) -> Bool {

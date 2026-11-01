@@ -27,6 +27,10 @@
                 $0.defaultExportFormat = .png
             }
 
+            // The owned host takes the foreground, then yields it, so the runner's own activation is
+            // cooperative and deterministic whatever was frontmost before this scenario.
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
             let window = SettingsWindowController.makeWindow(model: harness.app)
             window.appearance = NSAppearance(named: .aqua)
             window.setContentSize(NSSize(width: 560, height: 540))
@@ -35,12 +39,21 @@
             let root = try context.unwrap("settings window has content", window.contentView)
             let tabs = try context.unwrap("Settings tab view", EditorWindowController.first(NSTabView.self, in: root))
             tabs.selectTabViewItem(at: 3)
-            try await E2EAccessibilityControl.showAndActivate(window, context)
-            await E2ESnapshot.settle(root, for: .milliseconds(400))
-            let pane = tabs.selectedTabViewItem?.view ?? root
-            func press(_ identifier: String) async throws {
+            let pane = try context.unwrap("the selected Settings pane", tabs.selectedTabViewItem?.view)
+            // A runner that is active and frontmost keeps its focus; otherwise it reacquires it
+            // through the host. Either way the same visible/key/active/frontmost requirement follows.
+            func activate() async throws {
+                if !E2EForegroundFixture.runnerIsForeground {
+                    try await foreground.restore()
+                    try await foreground.yieldToRunner()
+                }
                 try await E2EAccessibilityControl.showAndActivate(window, context)
-                try E2EAccessibilityControl.press(identifier, in: root, context)
+            }
+            try await activate()
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            func press(_ identifier: String) async throws {
+                try await activate()
+                try E2EAccessibilityControl.click(identifier, in: pane, context)
                 await E2ESnapshot.settle(root)
             }
             let chooser = harness.folderChooser
@@ -141,6 +154,8 @@
             context.check(
                 "and is not written anywhere else",
                 try images(in: first).count == firstCount && images(in: second).count == 1 && images(in: work).isEmpty)
+            // The failed capture's editor is now in front; the person returns to Settings first.
+            try await activate()
             await E2ESnapshot.settle(root, for: .milliseconds(400))
             context.check(
                 "the unavailable folder stays remembered with automatic save on",
@@ -159,6 +174,7 @@
                 "turning it on again with the folder gone asks for a new one", chooser.asked == askedBefore + 1)
             context.check("cancelling keeps it off", !harness.settings.preferences.autoSave)
             harness.settings.clearAutomaticSaveFolder()
+            await foreground.stop(context)
         }
 
         private static func canonical(_ url: URL) -> String { url.resolvingSymlinksInPath().path }

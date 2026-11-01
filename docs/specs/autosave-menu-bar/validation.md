@@ -1,8 +1,10 @@
 # Candidate validation — 0.13.0 (27)
 
-Status: **BLOCKED for completion and distribution**, 2026-11-01. Code tested at
-`45a92e488f5559168e58e700a6775baed8166bd0`; subsequent documentation-only changes do not
-qualify a new runtime artifact. Installed 0.12.7 (26) and published 0.12.4 remain unchanged.
+Status: **current full gate and independent behavior verification pending**, 2026-11-01.
+Initial code qualification was at `45a92e4`; resumed native checks found and corrected a folder
+status refresh defect. Focused flows now pass in EN and pt-BR as recorded below. Historical
+gate/export evidence does not qualify the newer code. Installed 0.12.7 (26) and published 0.12.4
+remain unchanged.
 
 ## Delivered source
 
@@ -46,6 +48,9 @@ in `.scratch/e2e/20261101-011908-95563/`; they do not qualify the final fixture.
 
 ## Prepared local artifact
 
+This retained earlier artifact is superseded: it excludes the resumed folder-status refresh fix.
+A fresh Developer ID export is required before installing the latest candidate.
+
 `.build/release/0.13.0-dev-20261101T052043Z-17174/` contains the retained archive, exported app,
 signed DMG and `manifest.txt`, built from a fresh checkout of `c981e74`. The export passed strict
 signature, Hardened Runtime, reviewed entitlement/profile, version/build, license and no-test-marker
@@ -58,23 +63,42 @@ The dry-run manifest explicitly says `gate: skipped (dry run)`, `tag: none`, `no
 The independently recorded signed local gate is separate. This is a prepared artifact, not an
 installation or public release; the temporary archive worktree was removed by the pipeline.
 
+## Resumed checks
+
+- Real native RED, including after Settings regained foreground:
+  `.scratch/e2e/20261101-141218-38267/` failed only the missing unavailable-folder warning while
+  file failure/no-fallback checks and both language lifecycle scenarios passed.
+- Native pt-BR GREEN: `.scratch/e2e/20261101-141656-83183/pt-BR/`, 2/2 flows.
+- Native EN GREEN on the same unchanged binary: `.scratch/e2e/20261101-141946-13966/en/`, 2/2.
+  The first EN attempt stopped before input at host readiness; the original failure is retained.
+- Current pointer input uses the runner's FIFO event queue and selected-pane geometry. Existing
+  accessibility Press assertions remain strict. Activation requires actual foreground ownership;
+  the owned host is never replaced silently by another PID.
+- Transient folder availability refreshes on appearance, bookmark changes and app key-window
+  events. Consent is preserved; no watcher, timer or new export pipeline exists.
+- Fresh crossed reviews of the new Opus delta: Standards zero P0–P3 findings; Spec zero P0–P3.
+  The earlier Sol lifecycle correction separately passed Opus review; its two P3 test findings
+  were addressed. Full-suite and fresh independent behavior qualification remain pending.
+
 ## Independent review and remaining gates
 
 - **Spec axis:** one P2: a late capture could leave pending quit alive during export. Genuine
-  unit RED/GREEN is retained; the late and immediate-cancel native regressions remain blocked.
-- **Standards axis:** zero P0–P3 findings in the original Opus portions. The explicitly excluded
-  Sol correction and fixture changes still require crossed Opus review. Opus is quota-blocked
-  until 03:10 local; other configured accounts are unavailable. No full-candidate approval.
+  unit RED/GREEN is retained; the late and immediate-cancel native regressions now pass in both
+  focused language runs. Crossed Opus review accepted the Sol lifecycle correction.
+- **Standards axis:** zero findings in the original Opus portions. Opus identified two P3 test
+  issues in the Sol delta; strict AXPress and selected-pane pointer checks address them. Fresh
+  Sol Standards/Spec reviews found zero P0–P3 findings in the resumed five-file Opus correction.
 - `autoreview --max-priority P3` could not launch the required `codex-auto` in its isolated HOME
   because its Profile Manager dependency was absent. A fresh independent Standards review was
   used as the skill's capability fallback; no launcher/configuration was modified.
-- **mneves-verify:** BLOCKED on native behavior and the different-model condition for Sol changes.
-  Private report: `.scratch/autosave-menu-bar/verify-behavior.md`.
+- **mneves-verify:** the initial locked-session report was BLOCKED. Fresh behavior verification
+  remains pending after the resumed fixes. Initial private report:
+  `.scratch/autosave-menu-bar/verify-behavior.md`.
 - Production security still needs candidate-specific resolution of SEC-17, SEC-18 and independent
   acceptance. Historical release waivers are not reused. Security records stay private under
   `.scratch/security-gate/` and are distinct from product acceptance.
 
-Next: unlock the Mac, rerun the focused scenarios and full bilingual native gate, finish crossed
-review and independent verification, then qualify installation and the public notarized release.
+Next: run the current full signed gate and full bilingual native gate, finish fresh independent
+verification, then qualify a new Developer ID export, installation and the public notarized release.
 No merge, tag, installation or release was performed. Staging and GitHub CI were skipped
 as requested; this native app has no staging resources to disable.

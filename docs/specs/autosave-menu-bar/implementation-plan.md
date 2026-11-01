@@ -1,6 +1,7 @@
 # Automatic-save configuration and last-window preference
 
-Status: source 0.13.0 build 27; signed local gate passed; final native E2E and crossed review blocked.
+Status: source 0.13.0 build 27; resumed focused native flows pass in EN and pt-BR;
+current full gate and independent behavior verification pending.
 Owner request: 2026-10-31. Current evidence: [validation.md](validation.md).
 Requirements: FR-01, FR-07, FR-14; new work unit FP-044 (next unused ID after FP-043).
 
@@ -194,3 +195,27 @@ check. If a toggle press fails, fix `E2EAccessibilityControl.press`, not the ass
   readiness control: visible window, no key/active state, foreground PID 451 (`loginwindow`).
   A fresh source-blind verifier independently confirmed the locked session. No clicks or
   screenshots qualified. Its `mneves-verify` verdict is BLOCKED, not a product failure or PASS.
+
+## Resumed native qualification (2026-11-01 afternoon)
+
+The session was unlocked. Actual native RED exposed two instrument faults and one product fault:
+the old frame path bypassed the application event queue, foreground ownership could be stale,
+and Settings did not refresh folder availability after an external deletion even when brought
+back to the foreground. Preserve `parent-e2e-focused-resume*.log` and their native reports.
+
+Opus corrected the Settings pointer driver without weakening the existing accessibility Press
+contract, reused the owned host with exact PID admission, and refreshed transient folder state
+on appearance/bookmark/key-window events. No timer, watcher, preference mutation or export path
+was added. Temporary mouse monitoring was removed after delivery was observed.
+
+Focused pt-BR passed 2/2 on `.scratch/e2e/20261101-141656-83183/pt-BR/`. EN's same run stopped at
+the host's initial foreground control, before input; an unchanged-binary `--no-build` retry passed
+2/2 in `.scratch/e2e/20261101-141946-13966/en/`. Both final flows include decoded saved images,
+collision/cancel/off/unavailable behavior, real child-process exit and late/immediate-cancel capture.
+These are focused passes, not full-suite or physical qualification.
+
+Crossed Opus review accepted the earlier Sol lifecycle correction and identified two P3 test
+issues, now fixed. Fresh Sol Standards and Spec reviews found zero P0–P3 findings in the new
+five-file Opus delta. Current code still needs the full signed gate, full bilingual E2E and fresh
+source-blind verification. The earlier c981e74 Developer ID artifact excludes the folder-state
+fix and must not be installed as this latest candidate.
