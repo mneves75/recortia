@@ -77,6 +77,9 @@
                 id: "canvas-focus", title: "Space pan ends when keyboard ownership changes",
                 run: EditorScenarios.canvasFocus),
             E2EScenario(
+                id: "inspector-context", title: "The inspector shows what the person is working on",
+                run: InspectorScenarios.contextual),
+            E2EScenario(
                 id: "inspector-height", title: "Resize an image by its inspector height",
                 run: EditorScenarios.inspectorHeight),
             E2EScenario(id: "redaction", title: "Redaction and RED-01", run: EditorScenarios.redaction),
