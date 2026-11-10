@@ -15,6 +15,13 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+### Changed
+
+- Agent instructions: `CLAUDE.md` imports `AGENTS.md` on its own line. A new
+  `.claude/settings.json` denies TCC resets, SIP and Gatekeeper changes, system hotkey writes and
+  edits to `tests.json`, asks before releases, tags, notarization, `asc` and `git stash`, and runs
+  `./init.sh check --unsigned` at Stop when the tree changed.
+
 ## [0.13.0] - 2026-11-01
 
 Build 27. Published as `v0.13.0`, a notarized DMG on GitHub Releases. It is the first release

@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+@AGENTS.md
+
 `AGENTS.md` is the canonical agent contract; read it first, then the task in `IMPLEMENTATION_PLAN.md`
 and `BACKLOG.json`, and the matching requirements and cases in `SPEC.md` and `ACCEPTANCE_TESTS.md`.
 
