@@ -87,7 +87,7 @@ synthetic and do not qualify TCC, physical Spaces or live alerts.
 | Object list | `52771fe` | Guard test added first and passing on the old code: `.scratch/logs/i9-guard-before.log` | `.scratch/logs/i9-green.log` (133 editor tests), `.scratch/logs/i9-e2e.log`. No performance claim. |
 | Interface width | `1063bfa`, `49131aa`, `e730af9`, `2257fc5`, `dab3b43` | n/a | `.scratch/logs/i10-*.log`; each commit lists what became internal and what stayed public, and why. RecortiaFixtures was not narrowed (not in the brief's module list). |
 | Recognition adapters | `5a09346` | n/a | `.scratch/logs/i11-app.log`, `.scratch/logs/i11-e2e.log` (`ocr-qr`, both languages). |
-| Import-failure text | not done | Sharing would change visible text: "Only PNG and JPEG images are supported." is "Apenas imagens PNG e JPEG são compatíveis." in `Localizable` and "Só imagens PNG e JPEG são compatíveis." in `Editor`. Needs the owner to choose one wording. | |
+| Import-failure text | done later, `7fbac1d` (FP-045 slice 4) | The alert's wording ("Apenas imagens…") was kept and the editor now uses the alert's detail text. Earlier note: sharing would change visible text: "Only PNG and JPEG images are supported." is "Apenas imagens PNG e JPEG são compatíveis." in `Localizable` and "Só imagens PNG e JPEG são compatíveis." in `Editor`. Needs the owner to choose one wording. | |
 
 Final gates: `.scratch/logs/review-fixes-check.log` (`./init.sh check --unsigned`, "check: all gates
 passed"). The full E2E run (54 scenarios, every id in `E2EScenarios.swift` except `capture-focus`
@@ -116,6 +116,7 @@ ends with the folder state later scenarios saw before. Final runs on the finishe
 `.scratch/logs/second-review-check.log` (`./init.sh check --unsigned`, "check: all gates passed").
 The full E2E run is still pending a clean session.
 
-Noticed and left: when the editor is open and an automatic batch has exactly one failure, the editor
-notice reuses `EditorStrings.exportFailure`, whose "Nothing was exported: ..." texts can also deny
-an earlier copy in the same batch (the R-2 defect on the editor route).
+Noticed then, fixed in `7fbac1d` (FP-045 slice 4): when the editor is open and an automatic batch
+has exactly one failure, the editor notice reused `EditorStrings.exportFailure`, whose "Nothing was
+exported: ..." texts could also deny an earlier copy in the same batch (the R-2 defect on the
+editor route). The notice is now `EditorNotice.automaticExportFailed`, worded like the alert.

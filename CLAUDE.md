@@ -51,8 +51,9 @@ candidate is recorded.
   QR, `ScrollStitcher`) → `MacPlatform` (ScreenCaptureKit, permissions, sinks, input) → `Features`
   (main-actor models + service protocols). `RecortiaFixtures` generates synthetic test inputs and
   must never import Imaging.
-- Invariants: every save/copy/drag/pin goes through `ExportPipeline` → `ShareSnapshot`
-  (`ShareSnapshotConstructionTests` enforces it); secure masks fill source pixels before any
+- Invariants: every save, copy and drag, including from a pin, goes through `ExportPipeline` →
+  `ShareSnapshot` (`ShareSnapshotConstructionTests` enforces it); a pin itself shows the sanitizing
+  renderer's output, never raw pixels; secure masks fill source pixels before any
   resample or effect (RED suite with planted controls); async results are accepted only while
   request identity, revision, and privacy epoch still match.
 - Contracts between modules: `docs/architecture/module-contracts.md`. Decisions: `docs/adr/`.

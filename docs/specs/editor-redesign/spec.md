@@ -135,7 +135,8 @@ and tools are one native bar that takes the system's current look on each macOS 
 
 ## Slice 3 — feature tour and Settings (built 2026-11-11)
 
-As built (native E2E pending: the console was locked, see the end of this section):
+As built (the first runs were made on a locked console; see the unlocked run at the end of this
+section):
 
 - Tour: one `TourPage` view per step (`tour.page`). Slice 3 measured every page at open and
   opened at the tallest page's height; Slice 4 replaced that with the fixed 580 × 615 pt default
@@ -159,6 +160,11 @@ As built (native E2E pending: the console was locked, see the end of this sectio
   with the measurement and 45 ms without it (budget 50 ms; the editor and a first Settings open already exceed it,
   FP-028). The settings click path and the onboarding/settings reruns could not complete with
   the screen locked; results from a locked console are void.
+- Unlocked run (2026-11-11 05:10, `.scratch/logs/final-e2e.log`, at `4f8ec58`): `onboarding`,
+  `settings`, `last-window`, `automatic-save-settings`, `editor-toolbar` and `window-latency`
+  passed in en and pt-BR. `capture-focus` failed its foreground control in both languages and
+  `ocr-qr` one foreground-unchanged check in en while the Mac was in use, so that run is not a
+  clean pass; the idle-console run for the release is recorded in `BACKLOG.json`.
 
 ### Feature tour
 
@@ -285,9 +291,10 @@ slice is evidence first, fixes where the evidence showed a defect. No appearance
   disk is full." / "Uma etapa da exportação automática falhou. O disco está cheio."), while a
   failed manual save still says nothing was saved; the editor's import-failure text is the alert's
   detail (pt-BR "Apenas imagens…"), and ten Editor-table keys were removed.
-- Not verified: anything foreground-dependent (the console was locked for every run), so
-  `last-window`, the Settings and automatic-save click paths and `window-latency` (the tour's first
-  frame without the measurement) await an unlocked run; a key-window render of these surfaces;
+- Not verified in this slice's own runs: anything foreground-dependent (the console was locked
+  for every one of them). The later unlocked run recorded under Slice 3 covered `last-window`, the
+  Settings and automatic-save click paths and `window-latency`. Still not verified: a key-window
+  render of these surfaces;
   real `NSVisualEffectView` materials, which do not render through `cacheDisplay`; macOS 15 and 26;
   Increase Contrast and Reduce Transparency in dark.
 - Noticed and left: the window chooser still has an empty title-bar band above its heading (the
