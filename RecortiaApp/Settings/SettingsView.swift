@@ -45,6 +45,7 @@ struct GeneralSettingsTab: View {
                 )
                 .accessibilityIdentifier("settings.keepRunningInMenuBar")
             }
+            PinsSettingsSection(settings: settings)
         }
         .formStyle(.grouped)
         .onAppear { loginItem?.refresh() }
@@ -90,6 +91,7 @@ struct ShortcutsSettingsTab: View {
 
 struct CaptureSettingsTab: View {
     let settings: SettingsStore
+    let accessibility: (any AccessibilityPermissionService)?
 
     var body: some View {
         Form {
@@ -107,6 +109,7 @@ struct CaptureSettingsTab: View {
                 Toggle("Show the pointer in captures", isOn: settings.binding(\.captureShowsCursor))
                 Toggle("Include window shadow", isOn: settings.binding(\.captureIncludesWindowShadow))
             }
+            ScrollingSettingsSection(settings: settings, accessibility: accessibility)
         }
         .formStyle(.grouped)
     }
@@ -350,76 +353,78 @@ struct OCRSettingsTab: View {
     }
 }
 
-// MARK: - Pins
+// MARK: - Pins (a section of General)
 
-struct PinsSettingsTab: View {
+struct PinsSettingsSection: View {
     let settings: SettingsStore
 
     var body: some View {
-        Form {
-            Section {
-                Slider(value: settings.binding(\.pinDefaultOpacity), in: SettingsStore.opacityRange, step: 0.05) {
-                    Text("Default opacity")
-                } minimumValueLabel: {
-                    Text(SettingsStore.opacityRange.lowerBound, format: .percent)
-                } maximumValueLabel: {
-                    Text(SettingsStore.opacityRange.upperBound, format: .percent)
-                }
-                .accessibilityValue(
-                    Text(settings.preferences.pinDefaultOpacity, format: .percent.precision(.fractionLength(0))))
-                Text("Pins stay until you close them and are not restored after Recortia quits.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+        Section("Pins") {
+            Slider(value: settings.binding(\.pinDefaultOpacity), in: SettingsStore.opacityRange, step: 0.05) {
+                Text("Default opacity")
+            } minimumValueLabel: {
+                Text(SettingsStore.opacityRange.lowerBound, format: .percent)
+            } maximumValueLabel: {
+                Text(SettingsStore.opacityRange.upperBound, format: .percent)
             }
+            .accessibilityValue(
+                Text(settings.preferences.pinDefaultOpacity, format: .percent.precision(.fractionLength(0)))
+            )
+            .accessibilityIdentifier("settings.pinOpacity")
+            Text("Pins stay until you close them and are not restored after Recortia quits.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
-        .formStyle(.grouped)
     }
 }
 
-// MARK: - Scrolling
+// MARK: - Scrolling Capture (a section of Capture)
 
-struct ScrollingSettingsTab: View {
+struct ScrollingSettingsSection: View {
     let settings: SettingsStore
     let accessibility: (any AccessibilityPermissionService)?
     @State private var isTrusted = false
 
     var body: some View {
-        Form {
-            Section {
-                Toggle(
-                    "Scroll automatically",
-                    isOn: Binding(
-                        get: { settings.preferences.automaticScrollingEnabled },
-                        set: { enabled in
-                            settings.update { $0.automaticScrollingEnabled = enabled }
-                            if enabled, let accessibility, !accessibility.isTrusted {
-                                accessibility.requestWithPrompt()
-                            }
-                            refresh()
-                        })
-                )
-                .disabled(accessibility == nil)
-                Text(
-                    "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            }
-            Section {
-                LabeledContent("Accessibility") {
+        Section("Scrolling Capture") {
+            Toggle(
+                "Scroll automatically",
+                isOn: Binding(
+                    get: { settings.preferences.automaticScrollingEnabled },
+                    set: { enabled in
+                        settings.update { $0.automaticScrollingEnabled = enabled }
+                        if enabled, let accessibility, !accessibility.isTrusted {
+                            accessibility.requestWithPrompt()
+                        }
+                        refresh()
+                    })
+            )
+            .disabled(accessibility == nil)
+            .accessibilityIdentifier("settings.automaticScrolling")
+            Text(
+                "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+            )
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
+        // The permission can change in System Settings while the pane is closed.
+        .onAppear(perform: refresh)
+        Section {
+            LabeledContent("Accessibility") {
+                Group {
                     if accessibility == nil {
                         Text("Not available in this build.")
                     } else {
                         Text(isTrusted ? "Allowed" : "Not allowed")
                     }
                 }
-                if accessibility != nil {
-                    Button("Check Again", action: refresh)
-                }
+                .accessibilityIdentifier("settings.accessibilityStatus")
+            }
+            if accessibility != nil {
+                Button("Check Again", action: refresh)
+                    .accessibilityIdentifier("settings.accessibilityCheckAgain")
             }
         }
-        .formStyle(.grouped)
-        .onAppear(perform: refresh)
     }
 
     private func refresh() {
@@ -462,12 +467,8 @@ struct ScrollingSettingsTab: View {
             .frame(width: 560, height: 520)
     }
 
-    #Preview("Capture, Pins, Scrolling") {
-        VStack {
-            CaptureSettingsTab(settings: PreviewSupport.settings())
-            PinsSettingsTab(settings: PreviewSupport.settings())
-            ScrollingSettingsTab(settings: PreviewSupport.settings(), accessibility: nil)
-        }
-        .frame(width: 560, height: 900)
+    #Preview("Capture") {
+        CaptureSettingsTab(settings: PreviewSupport.settings(), accessibility: nil)
+            .frame(width: 560)
     }
 #endif

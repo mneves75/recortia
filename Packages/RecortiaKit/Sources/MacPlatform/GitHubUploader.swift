@@ -2,8 +2,8 @@ import CryptoKit
 import Domain
 import Foundation
 
-public struct GitHubResponse: Sendable {
-    public let statusCode: Int
+struct GitHubResponse: Sendable {
+    let statusCode: Int
     public let body: Data
 
     public init(statusCode: Int, body: Data) {
@@ -12,13 +12,13 @@ public struct GitHubResponse: Sendable {
     }
 }
 
-public protocol GitHubTransport: Sendable {
+protocol GitHubTransport: Sendable {
     func send(_ request: URLRequest) async throws -> GitHubResponse
 }
 
 /// GitHub.com only. Never follows redirects, stores cookies, caches credentials, or writes
 /// request/response content to disk. Bounds response bodies before retaining them.
-public struct GitHubURLTransport: GitHubTransport {
+struct GitHubURLTransport: GitHubTransport {
     public init() {}
 
     @concurrent
@@ -59,12 +59,17 @@ final class NoGitHubRedirects: NSObject, URLSessionTaskDelegate {
 /// One immutable ShareSnapshot and one UUID per approved intent. Retrying that intent checks
 /// the existing Git blob instead of overwriting it. There are no automatic retries after PUT.
 public struct GitHubUploader: Sendable {
-    public static let maximumImageBytes = 8 * 1024 * 1024
+    static let maximumImageBytes = 8 * 1024 * 1024
     // Contents metadata can inline base64 for files up to 1 MiB, even with object media.
-    public static let maximumResponseBytes = 2 * 1024 * 1024
+    static let maximumResponseBytes = 2 * 1024 * 1024
     private let transport: any GitHubTransport
 
-    public init(transport: any GitHubTransport = GitHubURLTransport()) {
+    public init() {
+        self.init(transport: GitHubURLTransport())
+    }
+
+    /// Tests inject a scripted transport; the app always uses `GitHubURLTransport`.
+    init(transport: any GitHubTransport) {
         self.transport = transport
     }
 

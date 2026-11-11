@@ -22,8 +22,6 @@ public struct QRFixture: Sendable {
     public let expectedKinds: [ExpectedKind]
     public let image: CGImage
 
-    public var isMalformed: Bool { expectedPayloads.isEmpty }
-
     public enum GenerationError: Error, Sendable {
         case generatorUnavailable
         case renderFailed

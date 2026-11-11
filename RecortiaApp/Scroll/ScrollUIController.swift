@@ -63,10 +63,17 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
         guard hud == nil else { return }
         // Shown without taking focus from the page being scrolled; a click makes it key so
         // Escape cancels (FR-10) without a global key monitor.
-        let panel = HostingPanel(title: String(localized: "Scrolling Capture"), activating: false, keyOnClick: true)
+        let panel = Self.makeHUDPanel()
         panel.setContent(LiveScrollHUD(model: model))
         hud = panel
         panel.present(activate: false)
+    }
+
+    /// Shown without taking focus from the page being scrolled; a click makes it key.
+    static func makeHUDPanel() -> HostingPanel {
+        let panel = HostingPanel(title: String(localized: "Scrolling Capture"), activating: false, keyOnClick: true)
+        panel.reservesTitleBarArea = false
+        return panel
     }
 
     private func closeHUD() {
@@ -93,6 +100,11 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     func requestDiscard() {
         guard confirmDiscard() else { return }
         model.discard()
+        // A discard is the person closing the review, as the close button does: `close()` (not the
+        // order-out that Accept's replacement uses) lets `AppPresence` see a real close.
+        // `close()` does not ask `windowShouldClose` again.
+        review?.close()
+        review = nil
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

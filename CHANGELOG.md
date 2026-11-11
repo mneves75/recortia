@@ -15,12 +15,65 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-11
+
+Build 28. A source candidate: untagged, not notarized, not published (see `BACKLOG.json`
+`source_candidate_0_14_0`). Not verified on this build: the window toolbar on macOS 15 and 26 (no
+such host), VoiceOver and Full Keyboard Access on the new toolbar, menu buttons, style tiles and
+color swatches, physical keyboard, Spaces and permission checks, and a clean run of the full
+end-to-end suite.
+
+### Added
+
+- The editor's inspector has two tabs. Format shows the selected objects or the active tool:
+  position and size, only the style controls those kinds use, arrow shape, text style tiles,
+  redaction and pixel tools. Image holds size and crop, Framing (background, padding, corners,
+  shadow), added images, and text and QR recognition. It follows your selection and tool until you
+  pick a tab yourself.
+- Tools and export actions are in the editor window's toolbar. Blur, pixelate, spotlight and
+  magnifier are under an Effects menu, and loupe, ruler and color picker under Measure; the menu
+  button shows the active tool. Every item fits at the editor's minimum width.
+- End-to-end scenarios for the inspector tabs and the toolbar in English and Portuguese, and a
+  check that every app surface renders dark in dark appearance and light in light appearance.
+
 ### Changed
 
+- The cosmetic-effect warning for blur and pixelate stays visible above both inspector tabs.
+- Settings has seven panes, each as tall as its content: Pins is a section of General and
+  Scrolling Capture a section of Capture. No setting or default changed. The scrolling permission
+  message points to Settings › Capture.
+- The feature tour shows one line per item and opens at a fixed size at which no page scrolls in
+  either language.
+- Every window, panel and the menu were checked in dark appearance. The editor's transparency
+  checkerboard follows the appearance on screen; exported and pinned images are unchanged.
+- The window chooser's list is as tall as its rows, up to a limit, and the scrolling-capture
+  controls no longer reserve an empty title band. Both open centred.
+- A failed automatic export in the editor now says that an automatic step failed instead of
+  repeating the manual-save message, and import errors use one wording in the editor and in alerts.
+- Unused code was removed and module interfaces narrowed; the superseded planning document
+  `docs/handoff/COMPLETE_HANDOFF.md` was removed.
 - Agent instructions: `CLAUDE.md` imports `AGENTS.md` on its own line. A new
   `.claude/settings.json` denies TCC resets, SIP and Gatekeeper changes, system hotkey writes and
   edits to `tests.json`, asks before releases, tags, notarization, `asc` and `git stash`, and runs
   `./init.sh check --unsigned` at Stop when the tree changed.
+
+### Fixed
+
+- Confirming Discard in the scrolling review now behaves like its close button: with "Keep
+  running in the menu bar" off, discarding the last window quits Recortia.
+- An automatic-export failure alert no longer says "Nothing was exported" when an earlier step of
+  the same capture succeeded.
+- Automatic copy, save and upload use the settings in effect when the capture completed: turning
+  automatic save or upload on, or changing the folder, while a capture is being exported no longer
+  adds steps or redirects the save. Each step still runs only while it is allowed.
+- Overwriting a saved file keeps its explicit access control list, and a refused overwrite no
+  longer leaves a temporary file behind.
+- Saving a new image to an exFAT or FAT32 drive no longer fails. Those volumes refuse the
+  exclusive rename every new save ended with; Recortia now claims the name first and renames over
+  its own claim. A name that is already taken is still never replaced.
+- While a file is being saved, its temporary copy is readable only by its owner and does not take
+  the folder's inherited access entries; permissions and access lists are applied to that file
+  itself, and the save is refused if the temporary file was swapped for another file or a link.
 
 ## [0.13.0] - 2026-11-01
 

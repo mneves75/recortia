@@ -240,7 +240,7 @@
                 window.setContentSize(NSSize(width: 980, height: 560))
                 window.appearance = NSAppearance(named: .darkAqua)
                 model.zoomToFit()
-                await E2EActions.scrollInspector(controller, to: 0.5)
+                await E2EActions.scrollInspector(controller, to: 1)
                 await E2ESnapshot.settle(root)
                 context.check("decorations fit the minimum editor width", abs(root.bounds.width - 980) < 1)
                 context.snapshot(root, shot: "decorations-compact-dark")

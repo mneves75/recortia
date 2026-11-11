@@ -65,10 +65,8 @@
             for _ in 0..<samples {
                 let (ms, window) = measure {
                     OnboardingWindowController.makeWindow(
-                        NSHostingController(
-                            rootView: OnboardingView(
-                                onboarding: harness.app.onboarding, shortcutStatus: harness.app.shortcutStatus,
-                                onClose: {})))
+                        onboarding: harness.app.onboarding, shortcutStatus: harness.app.shortcutStatus,
+                        onClose: {})
                 }
                 onboarding.append(ms)
                 window?.close()

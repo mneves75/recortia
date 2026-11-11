@@ -209,12 +209,66 @@
         }
       }
     },
-    "Add an image layer in the editor, then position, resize, reorder or adjust its opacity. Arrange images side by side to explain a comparison; secure masks remain attached to their source images." : {
+    "Add a background, padding, rounded corners and a shadow. Spotlight and Magnifier draw attention to a detail." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a background, padding, rounded corners and a shadow. Spotlight and Magnifier draw attention to a detail."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicione uma camada de imagem no editor e ajuste posição, tamanho, ordem ou opacidade. Organize imagens lado a lado para explicar uma comparação; máscaras seguras permanecem vinculadas às imagens de origem."
+            "value" : "Adicione fundo, margem interna, cantos arredondados e sombra. Destaque e Ampliador chamam a atenção para um detalhe."
+          }
+        }
+      }
+    },
+    "Add images, then move, resize, reorder or place them side by side." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add images, then move, resize, reorder or place them side by side."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicione imagens e depois mova, redimensione, reordene ou coloque-as lado a lado."
+          }
+        }
+      }
+    },
+    "Add text, arrows, shapes, highlights and numbered steps. The inspector shows the options for what you selected." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add text, arrows, shapes, highlights and numbered steps. The inspector shows the options for what you selected."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicione texto, setas, formas, marcações e passos numerados. O inspetor mostra as opções do que você selecionou."
+          }
+        }
+      }
+    },
+    "All three share the same sanitized image, without hidden layers or location and text metadata." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All three share the same sanitized image, without hidden layers or location and text metadata."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os três compartilham a mesma imagem sanitizada, sem camadas ocultas nem metadados de localização e de texto."
           }
         }
       }
@@ -231,6 +285,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Permitido"
+          }
+        }
+      }
+    },
+    "An automatic export step failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An automatic export step failed"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma etapa da exportação automática falhou"
           }
         }
       }
@@ -277,12 +347,18 @@
         }
       }
     },
-    "Annotations stay editable in the editor. Export creates a flattened image." : {
+    "Annotations stay editable; exports are flattened images." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annotations stay editable; exports are flattened images."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As anotações continuam editáveis no editor. A exportação cria uma imagem achatada."
+            "value" : "As anotações continuam editáveis; as exportações são imagens achatadas."
           }
         }
       }
@@ -324,7 +400,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Organize imagens e destaque detalhes sem sair do editor."
+            "value" : "Organize imagens e dê ênfase aos detalhes sem sair do editor."
           }
         }
       }
@@ -341,6 +417,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Atribuir atalhos"
+          }
+        }
+      }
+    },
+    "Automatic copy and save run right after a capture, before any redaction. Turn them off before capturing sensitive content." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic copy and save run right after a capture, before any redaction. Turn them off before capturing sensitive content."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A cópia e o salvamento automáticos acontecem logo após a captura, antes de qualquer ocultação. Desative-os antes de capturar conteúdo sensível."
           }
         }
       }
@@ -429,18 +521,18 @@
         }
       }
     },
-    "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Scrolling." : {
+    "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Capture." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Scrolling."
+            "value" : "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Capture."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A rolagem automática precisa da permissão de Acessibilidade. Role manualmente ou permita em Ajustes › Rolagem."
+            "value" : "A rolagem automática precisa da permissão de Acessibilidade. Role manualmente ou permita em Ajustes › Captura."
           }
         }
       }
@@ -647,16 +739,6 @@
         }
       }
     },
-    "Capture Region lets you drag an area; press Space to choose a window, Return to confirm, or Escape to cancel. Capture Display and Capture Window select the source directly. Recortia hides its own windows during capture." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Capturar região permite arrastar uma área; pressione Espaço para escolher uma janela, Return para confirmar ou Escape para cancelar. Capturar tela e Capturar janela selecionam a origem diretamente. O Recortia oculta suas próprias janelas durante a captura."
-          }
-        }
-      }
-    },
     "Capture Text (OCR)" : {
       "localizations" : {
         "en" : {
@@ -669,6 +751,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Capturar texto (OCR)"
+          }
+        }
+      }
+    },
+    "Capture Text (OCR) recognizes text in a region, and the editor recognizes it in an open image. QR contents are untrusted; only http and https links open, after your click." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture Text (OCR) recognizes text in a region, and the editor recognizes it in an open image. QR contents are untrusted; only http and https links open, after your click."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturar texto (OCR) reconhece texto em uma região, e o editor o reconhece em uma imagem aberta. O conteúdo de QR não é confiável; só links http e https abrem, depois do seu clique."
           }
         }
       }
@@ -701,6 +799,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A captura parou onde o conteúdo não pôde ser alinhado com segurança."
+          }
+        }
+      }
+    },
+    "Capture with Delay catches menus and temporary states. Repeat Last Region captures the same area again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture with Delay catches menus and temporary states. Repeat Last Region captures the same area again."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturar com atraso registra menus e estados temporários. Repetir última região captura a mesma área de novo."
           }
         }
       }
@@ -907,26 +1021,6 @@
         }
       }
     },
-    "Choose solid redaction and cover sensitive content before sharing. It replaces source pixels in exports. Blur and pixelate are cosmetic effects, not secure redaction. Review the final output before Copy, Save or Drag Out." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha ocultação sólida e cubra o conteúdo sensível antes de compartilhar. Ela substitui os pixels de origem nas exportações. Desfoque e pixelização são efeitos cosméticos, não ocultação segura. Revise a saída final antes de Copiar, Salvar ou Arrastar para fora."
-          }
-        }
-      }
-    },
-    "Choose text, straight or curved arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Bend arrows with the middle handle or Bend X/Y fields. Text Style includes Standard, Rounded, Monospaced, Outlined, Boxed, Rounded Box and Monospaced Box. Background Color changes boxed text; Reset restores white. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha texto, setas retas ou curvas, linhas, retângulos, elipses, desenho livre, marca-texto ou etapas numeradas no editor. Curve setas pelo ponto central ou pelos campos X/Y da curvatura. Estilo do texto inclui Padrão, Arredondado, Monoespaçado, Contornado, Com caixa, Caixa arredondada e Caixa monoespaçada. Cor do fundo altera textos com caixa; Redefinir restaura o branco. Selecione uma anotação para mover, redimensionar, duplicar ou reordenar; Desfazer e Refazer recuperam alterações. Salve cores de anotação no inspetor para reutilizá-las em qualquer editor."
-          }
-        }
-      }
-    },
     "Choose what leaves the editor" : {
       "localizations" : {
         "pt-BR" : {
@@ -1107,22 +1201,28 @@
         }
       }
     },
-    "Copy puts a sanitized PNG on the clipboard. Save writes PNG or JPEG atomically; Drag Out shares the same sanitized output. Exported files omit hidden layers and location or text metadata." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar coloca um PNG sanitizado na área de transferência. Salvar grava PNG ou JPEG atomicamente; Arrastar para fora compartilha a mesma saída sanitizada. Arquivos exportados não incluem camadas ocultas nem metadados de localização ou texto."
-          }
-        }
-      }
-    },
     "Copy, Save or Drag Out" : {
       "localizations" : {
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar, Salvar ou Arrastar para fora"
+          }
+        }
+      }
+    },
+    "Crop to the relevant area and resize the output. Hold Space and drag to pan." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crop to the relevant area and resize the output. Hold Space and drag to pan."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recorte a área relevante e redimensione a saída. Segure Espaço e arraste para deslocar a tela."
           }
         }
       }
@@ -1297,6 +1397,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Concluir"
+          }
+        }
+      }
+    },
+    "Drag a region, or press Space to pick a window. Return captures the whole display; Escape cancels." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag a region, or press Space to pick a window. Return captures the whole display; Escape cancels."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arraste uma região ou pressione Espaço para escolher uma janela. Return captura a tela inteira; Esc cancela."
           }
         }
       }
@@ -1552,6 +1668,22 @@
         }
       }
     },
+    "Framing and emphasis" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Framing and emphasis"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moldura e ênfase"
+          }
+        }
+      }
+    },
     "General" : {
       "localizations" : {
         "en" : {
@@ -1712,6 +1844,22 @@
         }
       }
     },
+    "Inspect exact pixels and copy a color as HEX or RGB, from one pixel or an averaged area." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspect exact pixels and copy a color as HEX or RGB, from one pixel or an averaged area."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspecione pixels exatos e copie uma cor em HEX ou RGB, de um pixel ou da média de uma área."
+          }
+        }
+      }
+    },
     "JPEG" : {
       "localizations" : {
         "en" : {
@@ -1833,7 +1981,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lupa e seletor de cores"
+            "value" : "Lupa de pixels e conta-gotas"
           }
         }
       }
@@ -1993,22 +2141,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nada foi capturado"
-          }
-        }
-      }
-    },
-    "Nothing was exported" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing was exported"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nada foi exportado"
           }
         }
       }
@@ -2311,12 +2443,18 @@
         }
       }
     },
-    "Pin an image from the editor to keep a reference in its own window. Adjust zoom and opacity, Copy or Drag Out, and close it when finished. Up to five pins join all Spaces and appear in window switchers; they are ordinary windows, not always-on-top overlays." : {
+    "Pin an image to keep it in its own window on every Space. Up to five pins." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pin an image to keep it in its own window on every Space. Up to five pins."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fixe uma imagem pelo editor para manter uma referência em sua própria janela. Ajuste zoom e opacidade, copie ou arraste para fora e feche quando terminar. Até cinco referências aparecem em todos os Spaces e nos alternadores de janelas; são janelas comuns, não sobreposições sempre no topo."
+            "value" : "Fixe uma imagem para mantê-la em uma janela própria em todos os Espaços. Até cinco fixações."
           }
         }
       }
@@ -2381,16 +2519,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preparando a pré-visualização"
-          }
-        }
-      }
-    },
-    "Presentation and emphasis" : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apresentação e destaque"
           }
         }
       }
@@ -2639,18 +2767,34 @@
         }
       }
     },
-    "Recortia's default shortcuts are the macOS Screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. If another screenshot app already uses them, clear them here; you can change them later in Settings." : {
+    "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recortia's default shortcuts are the macOS Screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. If another screenshot app already uses them, clear them here; you can change them later in Settings."
+            "value" : "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Os atalhos padrão do Recortia são os do app Captura de Tela do macOS: ⇧⌘3 para a tela inteira, ⇧⌘4 para uma região (pressione Espaço para uma janela) e ⇧⌘5 para todos os modos de captura. Se outro app de captura já usa esses atalhos, limpe-os aqui; você pode alterá-los depois em Ajustes."
+            "value" : "Os atalhos padrão do Recortia são os de captura de tela do macOS: ⇧⌘3 para a tela inteira, ⇧⌘4 para uma região e ⇧⌘5 para todos os modos de captura. Altere-os ou limpe-os aqui, ou depois nos Ajustes."
+          }
+        }
+      }
+    },
+    "Redact replaces the covered pixels in every export. Blur and Pixelate are cosmetic, not secure." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redact replaces the covered pixels in every export. Blur and Pixelate are cosmetic, not secure."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarja substitui os pixels cobertos em todas as exportações. Desfoque e Pixelizar são cosméticos, não seguros."
           }
         }
       }
@@ -2660,7 +2804,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oculte com máscaras sólidas"
+            "value" : "Oculte com tarjas sólidas"
           }
         }
       }
@@ -2702,7 +2846,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Referências fixadas"
+            "value" : "Fixações de referência"
           }
         }
       }
@@ -2759,6 +2903,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remover destino e token…"
+          }
+        }
+      }
+    },
+    "Reopen this tour from Feature Tour in the menu bar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen this tour from Feature Tour in the menu bar."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reabra este tour em Tour de recursos na barra de menus."
           }
         }
       }
@@ -3020,22 +3180,6 @@
         }
       }
     },
-    "Scrolling" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scrolling"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rolagem"
-          }
-        }
-      }
-    },
     "Scrolling Capture" : {
       "localizations" : {
         "en" : {
@@ -3052,12 +3196,18 @@
         }
       }
     },
-    "Scrolling Capture joins vertical frames while you scroll manually. Uncertain matches pause for review; automatic scrolling is optional and requests Accessibility only when enabled. Open Image, Paste Image or drop a PNG/JPEG to edit without Screen Recording permission." : {
+    "Scrolling Capture joins frames while you scroll. Open, paste or drop a PNG or JPEG to edit it without Screen Recording permission." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolling Capture joins frames while you scroll. Open, paste or drop a PNG or JPEG to edit it without Screen Recording permission."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Captura com rolagem une quadros verticais enquanto você rola manualmente. Correspondências incertas pausam para revisão; a rolagem automática é opcional e pede Acessibilidade apenas quando ativada. Abra, cole ou solte um PNG/JPEG para editar sem permissão de Gravação de Tela."
+            "value" : "Captura com rolagem une quadros enquanto você rola. Abra, cole ou solte um PNG ou JPEG para editá-lo sem a permissão de Gravação de Tela."
           }
         }
       }
@@ -3106,46 +3256,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Selecione a área que rola. Se possível, deixe de fora cabeçalhos fixos."
-          }
-        }
-      }
-    },
-    "Select the pixel tools in the editor for a nearest-neighbor loupe. In Color Picker, choose 1×1 for one pixel or 3×3/5×5 to average a neighborhood. Copy encoded sRGB as HEX or RGB; zoom does not change the sampled pixels." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selecione as ferramentas de pixels no editor para usar a lupa de vizinho mais próximo. No Seletor de cores, escolha 1×1 para um pixel ou 3×3/5×5 para calcular a média de uma região. Copie sRGB codificado como HEX ou RGB; o zoom não muda os pixels amostrados."
-          }
-        }
-      }
-    },
-    "Settings also controls Open at login, recognition, pins and scrolling. You can reopen this introduction from Feature Tour in the menu bar." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os Ajustes também controlam Abrir ao iniciar sessão, reconhecimento, referências e rolagem. Você pode reabrir esta introdução pelo Tour de recursos na barra de menus."
-          }
-        }
-      }
-    },
-    "Settings › Export can enable automatic copy or save after capture. Disable automatic copy, save and upload before capturing sensitive content: they run before redaction. Later edits cannot recall earlier clipboard, file or remote copies. Redact first, then export deliberately." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajustes › Exportação permite ativar cópia ou salvamento automático após a captura. Desative cópia, salvamento e envio automáticos antes de capturar conteúdo sensível: eles ocorrem antes da ocultação. Edições posteriores não recolhem cópias anteriores da área de transferência, de arquivos ou remotas. Oculte primeiro e exporte deliberadamente."
-          }
-        }
-      }
-    },
-    "Settings › GitHub requires your destination, credentials and separate opt-in. Uploads leave this Mac; automatic upload is off by default and sends the capture before later edits. Disable it before sensitive captures. Local deletion or later redaction does not delete a remote copy." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajustes › GitHub exige destino, credenciais e consentimento separado. Os envios saem deste Mac; o envio automático vem desativado e envia a captura antes de edições posteriores. Desative-o antes de capturas sensíveis. Apagar localmente ou ocultar depois não apaga uma cópia remota."
           }
         }
       }
@@ -3809,6 +3919,22 @@
         }
       }
     },
+    "The ruler measures in image pixels and, for captures, in points." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ruler measures in image pixels and, for captures, in points."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A régua mede em pixels da imagem e, nas capturas, em pontos."
+          }
+        }
+      }
+    },
     "The save folder is unavailable, so automatic saves fail. Choose another folder." : {
       "localizations" : {
         "pt-BR" : {
@@ -4011,32 +4137,18 @@
         }
       }
     },
-    "Use Capture Text (OCR) from the menu, or recognize text in an open image. Choose text formatting in Settings › Text Recognition and copy the result. QR content is untrusted; only http/https links can open, after your click." : {
+    "Uploads leave this Mac and are off by default. Redacting or deleting later does not remove a remote copy." : {
       "localizations" : {
-        "pt-BR" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use Capturar texto (OCR) no menu ou reconheça texto em uma imagem aberta. Escolha a formatação em Ajustes › Reconhecimento de texto e copie o resultado. Conteúdo QR não é confiável; apenas links http/https podem abrir, após seu clique."
+            "value" : "Uploads leave this Mac and are off by default. Redacting or deleting later does not remove a remote copy."
           }
-        }
-      }
-    },
-    "Use Capture with Delay for menus or temporary states, then Repeat Last Region for the same area. Settings › Capture controls the delay, cursor and window shadow." : {
-      "localizations" : {
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use Capturar com atraso para menus ou estados temporários e Repetir última região para a mesma área. Ajustes › Captura controla o atraso, o cursor e a sombra da janela."
-          }
-        }
-      }
-    },
-    "Use Crop to keep the relevant area and Resize to change output dimensions. Zoom in for details and hold Space while dragging to pan the canvas." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use Recortar para manter a área relevante e Redimensionar para mudar as dimensões de saída. Amplie para ver detalhes e segure Espaço ao arrastar para deslocar a tela de edição."
+            "value" : "Os envios saem deste Mac e vêm desativados. Ocultar ou apagar depois não remove uma cópia remota."
           }
         }
       }
@@ -4053,26 +4165,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use um repositório privado dedicado e um token limitado a ele, com permissão Contents: leitura e escrita. O token fica nas Chaves. Cada envio cria um commit em screenshots/."
-          }
-        }
-      }
-    },
-    "Use the presentation inspector for solid or gradient backgrounds, padding, rounded corners and shadows. Spotlight and magnifier effects emphasize details using sanitized image content." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use o inspetor de apresentação para fundos sólidos ou em gradiente, margens, cantos arredondados e sombras. Destaque e ampliação enfatizam detalhes usando conteúdo de imagem sanitizado."
-          }
-        }
-      }
-    },
-    "Use the ruler to place measurement anchors. Dimensions distinguish image pixels from capture points; imported files have no invented screen scale." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use a régua para colocar pontos de medição. As dimensões distinguem pixels da imagem de pontos da captura; arquivos importados não recebem uma escala de tela inventada."
           }
         }
       }

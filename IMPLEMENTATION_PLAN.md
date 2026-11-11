@@ -19,6 +19,10 @@ precedes UI integration; historical CAP-01 failures remain separate from physica
 FR-01/FR-07 automatic-save folder controls and the "keep running in the menu bar" preference are
 tracked as FP-044 in `docs/specs/autosave-menu-bar/implementation-plan.md` (0.13.0 build 27).
 
+The FR-04/FR-06 editor redesign (contextual inspector, window toolbar, tour and Settings layout,
+dark appearance) is tracked as FP-045 in `docs/specs/editor-redesign/spec.md`, and the 2026-11
+review fixes as FP-046 in `docs/specs/code-review-2026-11/findings.md` (0.14.0 build 28).
+
 Controlled native focus qualification is tracked in
 `docs/specs/native-window-qualification/implementation-plan.md`. Its 0.12.1/build20 source
 acceptance passed the stable gate, full bilingual native suite and fresh different-model
@@ -431,5 +435,9 @@ The example is an empty schema illustration, not evidence for a real task. Repla
 Stop the affected operation, preserve safe progress, and report when the next action would require unapproved live data/credentials, an insecure export fallback, disabling platform security, exceeding a resource budget, changing the license/architecture, overwriting unrelated work, or faking unavailable hardware validation. Ordinary difficulties inside an approved task are handled with tests and bounded fixes, not repeated approval requests.
 
 ## Deferred backlog
+
+Proposed enhancements after 0.14.0 (2026-11-11, not approved work): see
+`docs/specs/enhancement-plan-2026-11/plan.md`. Class A items become backlog tasks only once the
+owner approves them; class B items each need a recorded decision first.
 
 FR-15 (S3 sharing) and FR-16 (automation/on-device assistance) require separate design, tests, threat-model updates, and approval. Their high-level constraints are in SPEC.md. Do not prebuild unused provider abstractions, a server, an agent runtime, or model downloads in the v1 implementation.

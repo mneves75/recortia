@@ -1,6 +1,6 @@
 import Foundation
 
-public struct StateTransitionError: Error, Equatable, Sendable, CustomStringConvertible {
+struct StateTransitionError: Error, Equatable, Sendable, CustomStringConvertible {
     public let from: String
     public let event: String
 

@@ -492,6 +492,26 @@
   },
   "authorization": "owner request 2026-10-31: version 0.13.0 build 27"
   },
+  "source_candidate_0_14_0": {
+    "candidate": "0.14.0 source candidate",
+    "app_version": "0.14.0",
+    "build": 28,
+    "date": "2026-11-11",
+    "scope": "FP-045: contextual inspector with Format and Image tabs; tools and actions in the native window toolbar with Effects and Measure menu buttons; cosmetic-effect warning pinned above both tabs; feature tour with one line per item in a fixed 580x615 window; Settings in seven content-tall panes (Pins in General, Scrolling Capture in Capture); every surface rendered and checked dark (ChromeAppearance), the transparency checkerboard following the appearance on screen only; window chooser sized to its list, scrolling HUD without the empty title band, capture panels centred from their content size. FP-046: a confirmed Discard of the scrolling review quits like its close button when it closes the last window; automatic-export alerts no longer deny earlier writes; an automatic batch is decided when the capture completes (automaticExportPlan) and each step still runs only while allowed; overwriting a file keeps its explicit ACL and a refused overwrite strands no temporary file; one import-failure wording; dead code removed and module interfaces narrowed; docs/handoff/COMPLETE_HANDOFF.md removed. See CHANGELOG.md.",
+    "distribution_status": "Source candidate. Untagged, not notarized, not published and not installed. 0.13.0 remains the published release (current_candidate) and the installed build (current_local_installation).",
+    "evidence": [
+      ".scratch/logs/second-review-check.log: './init.sh check --unsigned' on the working tree that was committed minutes later as f98a6c1 (the log itself records no commit) ends 'check: all gates passed'; 530 package tests (105 + 126 + 261 + 38) and 620 extracted strings with pt-BR translations.",
+      ".scratch/logs/second-review-e2e-final.log, .scratch/e2e/20261111-054004-61977: automatic-export and window-chooser pass in en and pt-BR on the finished second-review tree.",
+      ".scratch/logs/filesink-hardening-check-3.log: './init.sh check --unsigned' at 3e98e4e ends 'check: all gates passed', including the save-path hardening tests (.scratch/logs/nv-red.log, nv-green.log, nv03-red.log, nv03-green.log) and FileSinkVolumeTests on real exFAT and FAT32 images (.scratch/logs/nv04-red.log, nv04-green.log); see docs/specs/code-review-2026-11/findings.md, Pre-release security audit",
+      ".scratch/logs/final-e2e.log, .scratch/e2e/20261111-050521-59902: full bilingual run at 4f8ec58 (provenance git_sha), recorded by the session as an unlocked console while the owner was using the Mac. NOT a clean pass: 52/54 en, 53/54 pt-BR. capture-focus failed in both languages: in en the owned foreground fixture timed out before input; in pt-BR the fixture was ready and three assertions failed (foreground preserved, keyboard input with keyWindowMatches=false and foregroundUnchanged=false, keyboard transitions). ocr-qr failed one foreground-unchanged check in en (foreground PID changed during the recognition.format menu). Later commits (b91015f, 9a3f09d, 512f654, f98a6c1) are not covered by it. The final clean full run on an idle, unlocked console is pending.",
+      ".scratch/logs/release-prep-check.log: './init.sh check --unsigned' at 896bce7 (version 0.14.0 build 28, documentation complete) ends 'check: all gates passed'; 530 package tests and 620 pt-BR strings."
+    ],
+    "limitations": [
+      "Not run on this build: the window toolbar on macOS 15 and 26 (no such host); VoiceOver and Full Keyboard Access on the toolbar, menu buttons, style tiles and swatches; a key-window render; physical keyboard, Spaces, displays and TCC; Increase Contrast and Reduce Transparency in dark appearance.",
+      "window-latency: the editor's first frame and a first Settings open exceed the 50 ms budget (FP-028); the toolbar's effect was measured only on a locked console and is unqualified."
+    ],
+    "authorization": "Release preparation for 0.14.0 build 28 as recorded in docs/handoffs/2026-11-11-0503-redesign-fixes-release-pending.md (review fixes and redesign ship in one release). Tagging, notarization and publication are separate owner actions."
+  },
   "tasks": [
     {
       "id": "FP-001",
@@ -1488,7 +1508,6 @@
       "title": "Full-source review P3 proposals",
       "milestone": "M2",
       "authorization": "proposal_requires_owner_approval",
-      "status": "not_started",
       "depends_on": ["FP-035"],
       "requirement_ids": ["FR-05", "FR-07", "FR-10"],
       "acceptance_test_ids": [],
@@ -1649,6 +1668,92 @@
       ],
       "authorization": "owner request 2026-10-31 (two Settings requests); proceed without interviews",
   "status_note": "Scoped feature acceptance PASS: signed production-source gate (519 tests) and full 52/52 native scenarios per language at 3d2dba7; final expanded native flows 5/5 per language at .scratch/e2e/20261101-151339-27864 and isolated persistence 11/11. Fresh source-blind Sol PASS for all Opus criteria and Opus PASS for Sol criterion 4b, with a one-line mutant failure. Spec/Standards: zero P0-P3 findings. See validation.md for exact commands, provenance, original failures and synthetic limits. Published in 0.13.0 (v0.13.0 at 2858cf1; see current_candidate); the published bundle is installed locally (current_local_installation). Physical Spaces/TCC remain manual."
+    },
+    {
+      "id": "FP-045",
+      "milestone": "M6",
+      "title": "Editor redesign: contextual inspector and native window toolbar",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-009"
+      ],
+      "requirement_ids": [
+        "FR-04",
+        "FR-06"
+      ],
+      "acceptance_test_ids": [
+        "EDIT-02"
+      ],
+      "scope": "Owner request 2026-11-10 (docs/specs/editor-redesign/spec.md). Slice 1, done: the inspector shows only what the person works on, with Format/Image tabs that follow selection and tool until chosen; Format holds Object, Style (only the fill, line width and text size the renderer uses for the kinds in play), Arrow, Text Style, Redaction and Pixel Tools; Image holds Size, Framing, Images and Text & QR; the always-on Redaction section is removed; the cosmetic warning is pinned above both tabs and the chosen OCR text format survives tab switches (review fixes). Slice 2, done: tools and export actions are in the window's native toolbar (bridged SwiftUI .toolbar, unified style), with Effects and Measure menu buttons that show the active tool. Slice 3, built 2026-11-11: the feature tour keeps its seven pages with one line per item and opens at the measured height of its tallest page; Settings has seven content-tall panes, with Pins a section of General and Scrolling Capture a section of Capture. Slice 4, built 2026-11-11: dark screenshots and a chrome-luminance control for every surface, the checkerboard follows the appearance on screen only, the window chooser list is as tall as its rows and the scrolling HUD drops its title-bar band, the tour opens at a fixed 580x615, automatic-batch failures get their own editor notice, and import-failure text has one mapping.",
+      "deliverables": [
+        "RecortiaApp/Editor/EditorInspectorView.swift",
+        "RecortiaApp/Resources/Editor.xcstrings",
+        "RecortiaApp/E2E/Scenarios+Inspector.swift (bilingual inspector-context) and E2EScenarios.swift",
+        "RecortiaApp/Editor/EditorRootView.swift (EditorToolbarContent) and EditorWindowManager.swift (toolbar bridging)",
+        "RecortiaApp/E2E/Scenarios+EditorToolbar.swift (bilingual editor-toolbar), E2EReport.swift (editor screenshots render the frame view), E2EAccessibilityControl.swift (pressCheckingEffect, chooseFromMenu, name)",
+        "Slice 3: RecortiaApp/Onboarding/OnboardingView.swift, RecortiaApp/Settings/SettingsView.swift and SettingsWindowController.swift, RecortiaApp/Resources/Localizable.xcstrings, RecortiaApp/Scroll/ScrollViews.swift (Settings › Capture pointer), RecortiaApp/E2E/Scenarios+Shell.swift (onboarding fit, settings panes and merged controls), Scenarios+Spaces.swift and Scenarios+Latency.swift, docs/specs/feature-discovery/spec.md and reference-matrix.md",
+        "Slice 4: RecortiaApp/E2E/Scenarios+Appearance.swift (ChromeAppearance, planted chrome, checkerboard), E2EReport.swift, E2EActions.swift and the scenarios that render each surface; RecortiaApp/Editor/EditorCanvasView.swift, EditorStrings.swift, EditorRootView.swift, Editor.xcstrings; RecortiaApp/Capture/ChooserViews.swift and HostingPanel.swift; RecortiaApp/Scroll/ScrollUIController.swift; RecortiaApp/Onboarding/OnboardingView.swift; Packages/RecortiaKit/Sources/Features/EditorTypes.swift and EditorModel+Export.swift (automaticExportFailed)"
+      ],
+      "completion_contract": "Slice 1: inspector-context passes in en and pt-BR, every existing inspector scenario passes with its assertions unchanged, check.sh passes. Slice 2: editor-toolbar passes in en and pt-BR with every toolbar item visible at 980 and 1100 pt, the 26 editor scenarios pass unchanged, check.sh passes. Slice 3: check.sh passes; onboarding, settings, space-policy, window-presence, launch-presentation, last-window, automatic-save-settings, shortcuts, held-shortcut-polling and window-latency run in en and pt-BR on an unlocked console.",
+      "evidence": [
+        ".scratch/e2e/20261110-205454-84946: inspector-context fails on the old inspector (image.background, style.fill, style.lineWidth, style.textSize, frame.* missing; no Format/Image picker)",
+        ".scratch/e2e/20261110-223243-96790 (.scratch/logs/editor-redesign-e2e.log): 26/26 editor scenarios pass in en and pt-BR, including inspector-context, inspector-height, curved-arrows, saved-colors, text-font-designs, text-decorations, text-layout-failure, ocr-qr, redaction, annotations, pixel-tools, composition and crop-resize",
+        ".scratch/logs/editor-redesign-check.log: './init.sh check --unsigned' ends 'check: all gates passed'; 626 extracted strings have pt-BR translations",
+        "Extracted .stringsdata for the Editor table matches Editor.xcstrings with no missing and no unused key",
+        ".scratch/e2e/20261110-224906-20377: editor-toolbar fails on the in-content strip (no toolbar, no toolbar identifiers)",
+        ".scratch/e2e/20261110-231302-55337: review regressions fail before their fixes (cosmetic warning absent on the Image tab; OCR text format reverts after tab switches)",
+        ".scratch/e2e/20261110-233712-32368 (.scratch/logs/editor-redesign-e2e-2.log): 27/27 editor scenarios pass in en and pt-BR, including editor-toolbar; all 20 non-space toolbar items are in NSToolbar.visibleItems at 980 and 1100 pt (visibleItems holds 21 with the flexible space); a control at a forced 600 pt width left the window at 832 pt with 17 of 20 visible, so the check can fail; the remembered size after a resize is 1040x640 for a 1040x692 frame",
+        ".scratch/logs/editor-redesign-check-2.log: './init.sh check --unsigned' ends 'check: all gates passed'",
+        ".scratch/e2e/20261111-003248-86178: Slice 3 red run fails in en and pt-BR (no tour.page, 9 Settings tabs, General 360 vs 122 pt and Capture 360 vs 210 pt, no settings.pinOpacity or settings.automaticScrolling)",
+        ".scratch/e2e/20261111-003928-58291 (00:39, console lock state unknown, unlocked rerun required): tour content 580x615 in en and pt-BR, viewport 524 equal to the tallest page (shortcuts with the held-shortcut notice), no page scrolls; other pages fill 49-74%; every Settings pane but Text Recognition equals its content; the settings pointer path stopped at the owned foreground fixture",
+        ".scratch/logs/tour-latency-baseline.log and tour-settings-iter2.log: window-latency onboarding median 45 ms without the page measurement and 109-119 ms with it (budget 50 ms)",
+        ".scratch/logs/tour-settings-check.log: './init.sh check --unsigned' ends 'check: all gates passed'",
+        ".scratch/e2e/20261111-020042-35714 (.scratch/logs/dark-red.log, console locked): Slice 4 red run fails in en and pt-BR on the dark checkerboard (mean luminance 0.743), the HUD band (182 vs 150 pt), the chooser band (last row ends 116 of 264 pt), automatic-batch editor notices saying Nothing was exported/saved, and (pt-BR) the import-failure wording",
+        ".scratch/e2e/20261111-020825-14012 (.scratch/logs/dark-e2e.log) and 20261111-021724-88841 (dark-e2e-hud.log), console locked: every offscreen Slice 4 check passes in en and pt-BR; dark chrome medians 0.013-0.019, light 0.93-1.00; planted fixed-white surface fails dark (fill 100%); last-window, settings and automatic-save-settings stop at the owned foreground fixture (pending an unlocked run)",
+        ".scratch/e2e/20261111-022500-37445 (.scratch/logs/dark-e2e.log, console locked, commit 2cc868c): 17 of 20 scenarios per language pass; the three failures stop at the owned foreground fixture (last-window, settings, automatic-save-settings; pending an unlocked run)", ".scratch/e2e/20261111-024025-49007 (red) and 20261111-024151-53340 (green, .scratch/logs/dark-e2e-chooser.log), console locked: the reused chooser panel moved its centre 210 pt before the presentation fix and holds top and centre after it in en and pt-BR; window-chooser, countdown and scrolling shots are pixel-identical to 022500", ".scratch/logs/dark-check.log: './init.sh check --unsigned' on the final Slice 4 tree",
+        ".scratch/logs/final-e2e.log, .scratch/e2e/20261111-050521-59902 (at 4f8ec58, console unlocked while the owner was using the Mac): 52/54 en, 53/54 pt-BR, including onboarding, settings, last-window, automatic-save-settings, inspector-context and editor-toolbar; NOT a clean pass (capture-focus failed in both languages: en at the owned foreground fixture, pt-BR at its foreground and keyboard-ownership assertions; ocr-qr one foreground-unchanged check in en). Included in the 0.14.0 source candidate (source_candidate_0_14_0), which is not published."
+      ],
+      "authorization": "owner request 2026-11-10",
+      "status_note": "Slices 1 and 2 implemented and synthetically verified on macOS 27.3 with Xcode 27.2. Not qualified: macOS 15/26 toolbar rendering (no host), VoiceOver and Full Keyboard Access traversal of the toolbar and of the custom-styled tiles and swatches, and a key-window render (E2E windows are inactive). Slice 3 built; its native E2E awaits an unlocked console (results taken while locked are void), the tour window exceeds the 50 ms window-latency budget (Slice 4 replaced the tour's fit-to-page sizing with a fixed 580 x 615). Slice 4 built; its foreground-dependent E2E (last-window, Settings and automatic-save click paths, window-latency) awaits an unlocked console; the window chooser keeps a title-bar band above its heading. Update 2026-11-11: at 4f8ec58 onboarding, settings, last-window and automatic-save-settings passed in both languages on an unlocked console (.scratch/logs/final-e2e.log); window-latency was not part of that run and stays open."
+    },
+    {
+      "id": "FP-046",
+      "milestone": "M6",
+      "title": "2026-11 code review: fixes and cleanups",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-045"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-05",
+        "FR-07",
+        "FR-08",
+        "FR-10",
+        "FR-15"
+      ],
+      "acceptance_test_ids": [],
+      "scope": "Close the findings in docs/specs/code-review-2026-11/findings.md: R-1 a confirmed Discard of the scrolling review closes it like the close button (quits when it was the last window and the menu-bar preference is off); R-2 automatic-export alerts no longer say nothing was exported; R-3 an automatic batch keeps the steps and save folder chosen at capture and starts each only while still allowed; R-4 overwriting a file keeps its explicit ACL; C-1..C-7 cleanups; remove docs/handoff/COMPLETE_HANDOFF.md; object list built in one walk; public declarations no other module uses become internal in Domain, Imaging, MacPlatform and Features; one LiveRecognition adapter. Shared import-failure text was left out here (the two catalogs worded one pt-BR string differently) and done in FP-045 Slice 4: the editor shows the alert's detail.",
+      "deliverables": [
+        "RecortiaApp/Scroll/ScrollUIController.swift, ScrollViews.swift; RecortiaApp/E2E/Scenarios+LastWindow.swift, Scenarios+Scroll.swift",
+        "RecortiaApp/App/MessagePresenter.swift, Resources/Localizable.xcstrings; RecortiaApp/E2E/Scenarios+AutomaticExport.swift",
+        "Packages/RecortiaKit/Sources/Features/ExportCoordinator.swift and Tests/FeaturesTests/ExportCoordinatorTests.swift",
+        "Packages/RecortiaKit/Sources/MacPlatform/FileSink.swift and Tests/MacPlatformTests/FileSinkTests.swift",
+        "RecortiaApp/App/LiveServices.swift (refused options map to encodeFailed), LiveRecognition.swift",
+        "Packages/RecortiaKit/Sources/Features/EditorModel.swift, EditorGeometry.swift; Tests/FeaturesTests/EditorListItemsMemoTests.swift",
+        "docs/specs/code-review-2026-11/findings.md (Resolution)",
+        "Second review: RecortiaApp/App/AppModel.swift (batch decided at capture); RecortiaApp/Capture/HostingPanel.swift and RecortiaApp/E2E/Scenarios+Capture.swift (placeNearTop)"
+      ],
+      "completion_contract": "Each defect has a failing test recorded before its fix; './init.sh check --unsigned' passes on the final tree; every E2E scenario except capture-focus and editor-presentation passes in en and pt-BR.",
+      "evidence": [
+        "docs/specs/code-review-2026-11/findings.md: per-item commits with red and green evidence",
+        ".scratch/logs/review-fixes-check.log: './init.sh check --unsigned' ends 'check: all gates passed'",
+        ".scratch/logs/review-fixes-e2e.log, .scratch/e2e/20261111-004639-68097: VOID, not evidence (screen locked and another session sending real input during the run); the full 54-scenario E2E in en and pt-BR is pending a clean run",
+        "Second review (findings.md): SR-1 b91015f automatic batch decided synchronously at capture (AutomaticExportPlan); SR-2 9a3f09d a refused overwrite clears the copied ACL so no temporary file is stranded; SR-3 512f654 panel centring checked through present's placeNearTop. Red and green logs under .scratch/logs/sr*.log; gate .scratch/logs/second-review-check.log",
+        ".scratch/logs/final-e2e.log, .scratch/e2e/20261111-050521-59902 (at 4f8ec58, before the second review; console unlocked but the owner was using the Mac): NOT a clean pass, 52/54 en and 53/54 pt-BR; capture-focus failed in both languages (en: owned foreground fixture timed out; pt-BR: foreground and keyboard-ownership assertions after a ready fixture) and ocr-qr one foreground-unchanged check in en. The completion contract's full run on the final tree is still pending."
+      ],
+      "authorization": "owner request 2026-11-10",
+      "status_note": "Code complete; unit tests, per-item E2E runs from before the interference and './init.sh check --unsigned' pass on macOS 27.3 with Xcode 27.2. Not 'implemented' until the full E2E passes in a clean session. Not qualified: live alerts, TCC, physical Spaces; the ACL-copy failure path has no dedicated test."
     }
   ],
   "deferred_scope": [

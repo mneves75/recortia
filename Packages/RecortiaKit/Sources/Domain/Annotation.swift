@@ -79,7 +79,7 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
 
     /// Approximate bytes of unique data this annotation stores (points and text dominate). Used to
     /// budget undo memory (FR-04); not an exact allocation size.
-    public var estimatedByteCost: Int {
+    var estimatedByteCost: Int {
         let base = 128
         switch kind {
         case .text(let text): return base + text.string.utf8.count * 2

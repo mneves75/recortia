@@ -15,8 +15,13 @@ public enum EditorExportRequest: Hashable, Sendable {
 extension EditorModel {
     public func reportAutomaticExport(_ outcome: ExportOutcome) {
         guard !isClosed else { return }
-        post(.exported(outcome))
+        if case .failed(let failure) = outcome {
+            post(.automaticExportFailed(failure))
+        } else {
+            post(.exported(outcome))
+        }
     }
+
     @discardableResult
     public func export(_ request: EditorExportRequest) async -> ExportOutcome {
         guard !isClosed else { return .failed(.staleDocument) }

@@ -143,6 +143,12 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         reportViewport()
     }
 
+    /// The checkerboard's tones depend on the appearance.
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         resetTransientPan()
@@ -258,9 +264,12 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         guard !visible.isNull else { return }
         context.saveGState()
         context.clip(to: visible)
-        NSColor(white: 0.93, alpha: 1).setFill()
+        // On screen only, in the view's appearance: exports, pins and the color picker read the
+        // document's pixels, never this view.
+        let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        NSColor(white: dark ? 0.22 : 0.93, alpha: 1).setFill()
         visible.fill()
-        NSColor(white: 0.82, alpha: 1).setFill()
+        NSColor(white: dark ? 0.15 : 0.82, alpha: 1).setFill()
         let size: CGFloat = 8
         var y = (visible.minY / size).rounded(.down) * size
         while y < visible.maxY {

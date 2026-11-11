@@ -60,6 +60,9 @@
             E2EScenario(
                 id: "capture-admission", title: "One capture session across modes",
                 run: CaptureVisibilityScenarios.admission),
+            E2EScenario(
+                id: "editor-toolbar", title: "Tools and actions live in the window toolbar",
+                run: EditorToolbarScenarios.toolbar),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(
@@ -76,6 +79,9 @@
             E2EScenario(
                 id: "canvas-focus", title: "Space pan ends when keyboard ownership changes",
                 run: EditorScenarios.canvasFocus),
+            E2EScenario(
+                id: "inspector-context", title: "The inspector shows what the person is working on",
+                run: InspectorScenarios.contextual),
             E2EScenario(
                 id: "inspector-height", title: "Resize an image by its inspector height",
                 run: EditorScenarios.inspectorHeight),

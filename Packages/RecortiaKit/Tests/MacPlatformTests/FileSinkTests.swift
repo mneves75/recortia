@@ -16,13 +16,15 @@ final class FaultInjectingFileSystem: FileSystemOperations {
         self.failCommit = failCommit
     }
 
-    func writeNewFile(_ data: Data, at url: URL, permissions: mode_t) throws(FileSystemFailure) {
+    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
+        -> FileIdentity
+    {
         if let failWrite {
             // Leave a partial temporary file behind, as a real mid-write failure would.
-            try base.writeNewFile(data.prefix(3), at: url, permissions: permissions)
+            _ = try base.writeNewFile(data.prefix(3), at: url, access: access)
             throw FileSystemFailure(code: failWrite)
         }
-        try base.writeNewFile(data, at: url, permissions: permissions)
+        return try base.writeNewFile(data, at: url, access: access)
     }
 
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
@@ -30,9 +32,39 @@ final class FaultInjectingFileSystem: FileSystemOperations {
         try base.moveExclusively(from: source, to: destination)
     }
 
-    func replace(from source: URL, to destination: URL) throws(FileSystemFailure) {
+    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {
         if let failCommit { throw FileSystemFailure(code: failCommit) }
-        try base.replace(from: source, to: destination)
+        try base.replace(from: source, to: destination, expecting: identity)
+    }
+
+    func removeItem(at url: URL) { base.removeItem(at: url) }
+    func itemExists(at url: URL) -> Bool { base.itemExists(at: url) }
+}
+
+/// Real POSIX file operations that let a test act on the temporary file after it is written and
+/// before it is committed, as another account sharing the folder could.
+final class InterposingFileSystem: FileSystemOperations {
+    let base = POSIXFileSystem()
+    let afterWrite: (URL) -> Void
+
+    init(afterWrite: @escaping (URL) -> Void) {
+        self.afterWrite = afterWrite
+    }
+
+    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
+        -> FileIdentity
+    {
+        let identity = try base.writeNewFile(data, at: url, access: access)
+        afterWrite(url)
+        return identity
+    }
+
+    func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
+        try base.moveExclusively(from: source, to: destination)
+    }
+
+    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {
+        try base.replace(from: source, to: destination, expecting: identity)
     }
 
     func removeItem(at url: URL) { base.removeItem(at: url) }
@@ -144,6 +176,389 @@ struct FileSinkTests {
         #expect(try Data(contentsOf: url) == snapshot.bytes)
         let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
         #expect(mode == 0o640)
+    }
+
+    @Test("Overwriting keeps an explicit ACL entry on the replaced file")
+    func overwriteKeepsACL() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        let chmod = Process()
+        chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+        chmod.arguments = ["+a", "everyone allow read", url.path(percentEncoded: false)]
+        try chmod.run()
+        chmod.waitUntilExit()
+        try #require(chmod.terminationStatus == 0, "control: chmod +a could not set the synthetic entry")
+        let before = try #require(Self.extendedACL(url), "control: the destination has no explicit ACL")
+        _ = try FileSink().save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.extendedACL(url) == before, "the replaced file lost its ACL")
+    }
+
+    // Failure mode (second review of R-4): the destination's ACL is copied onto the temporary file
+    // before the rename. When it denies this user delete, the rename is refused and, unless the
+    // copy is undone, so is the cleanup, stranding a complete export after a reported failure.
+    @Test("A refused overwrite of a file whose ACL denies delete leaves it intact and no temporary file")
+    func refusedOverwriteLeavesNoTemporaryFile() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let denyDelete = "\(NSUserName()) deny delete"
+        // Control: in this directory the entry really refuses both replacing and unlinking the file.
+        let control = folder.appendingPathComponent("control.png")
+        let replacement = folder.appendingPathComponent("control-new.png")
+        try priorBytes.write(to: control)
+        try priorBytes.write(to: replacement)
+        try Self.addACL(denyDelete, to: control)
+        let renameResult = rename(replacement.path(percentEncoded: false), control.path(percentEncoded: false))
+        let renameErrno = errno
+        let unlinkResult = unlink(control.path(percentEncoded: false))
+        let unlinkErrno = errno
+        try #require(
+            renameResult != 0 && unlinkResult != 0,
+            "control: the ACL did not stop replace/unlink (rename \(renameResult)/\(renameErrno), unlink \(unlinkResult)/\(unlinkErrno))"
+        )
+        Self.clearACLs(in: folder)
+        try FileManager.default.removeItem(at: control)
+        try FileManager.default.removeItem(at: replacement)
+
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try Self.addACL(denyDelete, to: url)
+        #expect(throws: SinkError.accessDenied) { try FileSink().save(snapshot, to: url, overwrite: true) }
+        #expect(try Data(contentsOf: url) == priorBytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a temporary export was left behind")
+    }
+
+    enum Swap: String, CaseIterable, Sendable {
+        case symlink, hardLink
+    }
+
+    // NV-01 (pre-release security audit): the temporary file was closed after writing and its
+    // mode and ACL were later set by pathname. Another account that may rename entries in a
+    // shared, non-sticky folder could swap that name for a link to an unrelated file of the person
+    // in between, and the destination's access would then be applied to the unrelated file.
+    @Test(
+        "A temporary file swapped for a link to another file is refused and the other file is untouched",
+        arguments: Swap.allCases)
+    func swappedTemporaryFileIsRefused(swap: Swap) throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        try Self.addACL("everyone allow write", to: url)
+        let victimBytes = Data("unrelated private file".utf8)
+        let victim = folder.appendingPathComponent("victim.txt")
+        try victimBytes.write(to: victim)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: victim.path)
+        try #require(Self.extendedACL(victim) == nil, "control: the victim already has an ACL")
+
+        let observed = Observation()
+        let fileSystem = InterposingFileSystem { temporary in
+            // Keep the real temporary file under another name, so cleanup is still the sink's job.
+            let aside = folder.appendingPathComponent("moved-aside")
+            guard rename(temporary.path(percentEncoded: false), aside.path(percentEncoded: false)) == 0 else { return }
+            let linked =
+                switch swap {
+                case .symlink: symlink(victim.path(percentEncoded: false), temporary.path(percentEncoded: false))
+                case .hardLink: link(victim.path(percentEncoded: false), temporary.path(percentEncoded: false))
+                }
+            guard linked == 0 else { return }
+            observed.swapResolvesToVictim =
+                Self.inode(temporary) == Self.inode(victim)
+                && Self.isSymbolicLink(temporary) == (swap == .symlink)
+        }
+        #expect(throws: SinkError.accessDenied) {
+            try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+        }
+        try #require(observed.swapResolvesToVictim, "control: the temporary name never pointed at the victim")
+        #expect(!Self.isSymbolicLink(url), "the destination became a link")
+        #expect(try Data(contentsOf: url) == priorBytes)
+        #expect(try Data(contentsOf: victim) == victimBytes)
+        #expect(Self.mode(victim) == 0o600, "the destination's mode reached the victim")
+        #expect(Self.extendedACL(victim) == nil, "the destination's ACL reached the victim")
+        #expect(!TestSupport.directoryEntries(folder).contains { $0.hasPrefix(".recortia-") })
+    }
+
+    @Test("A temporary file that gained a second name before the commit is refused")
+    func temporaryFileWithSecondNameIsRefused() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        let observed = Observation()
+        let fileSystem = InterposingFileSystem { temporary in
+            let second = folder.appendingPathComponent("second-name")
+            observed.swapResolvesToVictim =
+                link(temporary.path(percentEncoded: false), second.path(percentEncoded: false)) == 0
+        }
+        #expect(throws: SinkError.accessDenied) {
+            try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+        }
+        try #require(observed.swapResolvesToVictim, "control: the second name was not created")
+        #expect(try Data(contentsOf: url) == priorBytes)
+    }
+
+    // NV-02 (pre-release security audit): the temporary file is created in the destination folder,
+    // so an inheritable folder entry reached it and the new bytes were readable by others while
+    // being written, and stayed so after replacing a private file.
+    @Test("Replacing a private file in a folder with an inheritable entry never exposes the new bytes")
+    func inheritedEntryNeverReachesReplacement() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        try Self.addACL("everyone allow read,file_inherit", to: folder)
+        try #require(Self.extendedACL(url) == nil, "control: the destination has an ACL of its own")
+        let control = try Self.plainFileACL(in: folder)
+        try #require(control?.contains("everyone") == true, "control: the folder entry is not inherited")
+
+        let observed = Observation()
+        let fileSystem = InterposingFileSystem { temporary in
+            observed.temporaryACL = Self.extendedACL(temporary)
+        }
+        _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+        #expect(observed.temporaryACL == nil, "the temporary file carried an inherited entry")
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.extendedACL(url) == nil, "the replaced private file gained an entry")
+        #expect(Self.mode(url) == 0o600)
+    }
+
+    enum NewSave: String, CaseIterable, Sendable {
+        case save, overwriteMissing, saveUnique
+    }
+
+    @Test(
+        "A new file in a folder with an inheritable entry carries what a plainly created file gets",
+        arguments: NewSave.allCases)
+    func newSaveKeepsFolderInheritance(kind: NewSave) throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        try Self.addACL("everyone allow read,file_inherit", to: folder)
+        let control = try Self.plainFileACL(in: folder)
+        try #require(control?.contains("everyone") == true, "control: the folder entry is not inherited")
+        let url = folder.appendingPathComponent("shot.png")
+        let saved =
+            switch kind {
+            case .save: try FileSink().save(snapshot, to: url, overwrite: false)
+            case .overwriteMissing: try FileSink().save(snapshot, to: url, overwrite: true)
+            case .saveUnique: try FileSink().saveUnique(snapshot, in: folder)
+            }
+        #expect(try Data(contentsOf: saved) == snapshot.bytes)
+        #expect(Self.extendedACL(saved) == control, "the new file lost the folder's inherited entry")
+        #expect(TestSupport.directoryEntries(folder) == [saved.lastPathComponent])
+    }
+
+    // Security review of the NV-02 fix: a new file's temporary file was created 0644 and written
+    // with its inherited entries removed, inherited deny entries included, so others could read
+    // the bytes being written in a folder whose deny entry keeps them out of every finished file.
+    @Test(
+        "A new file stays owner-only while written and ends with the folder's deny and allow entries and its usual mode",
+        arguments: NewSave.allCases)
+    func newSaveIsPrivateWhileWritten(kind: NewSave) throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        try Self.addACL("nobody deny read,file_inherit", to: folder)
+        try Self.addACL("everyone allow read,file_inherit", to: folder)
+        // Control: what the previous creation call, open(2) with 0644, gives a file in this folder.
+        let control = try Self.createdWithMode0644(in: folder)
+        try #require(
+            control.acl?.contains(":deny") == true && control.acl?.contains(":allow") == true,
+            "control: the folder's deny and allow entries are not inherited (\(control.acl ?? "nil"))")
+
+        let observed = Observation()
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterSync: { temporary in
+                observed.temporaryMode = Self.mode(temporary)
+                observed.temporaryACL = Self.extendedACL(temporary)
+            }))
+        let url = folder.appendingPathComponent("shot.png")
+        let saved =
+            switch kind {
+            case .save: try sink.save(snapshot, to: url, overwrite: false)
+            case .overwriteMissing: try sink.save(snapshot, to: url, overwrite: true)
+            case .saveUnique: try sink.saveUnique(snapshot, in: folder)
+            }
+        let writtenMode = try #require(observed.temporaryMode, "the seam never saw the temporary file")
+        #expect(writtenMode == 0o600, "the temporary file was not owner-only while written")
+        #expect(writtenMode & 0o077 == 0, "others could read the bytes being written")
+        #expect(observed.temporaryACL == nil, "inherited entries were in effect while bytes were written")
+        #expect(try Data(contentsOf: saved) == snapshot.bytes)
+        #expect(Self.extendedACL(saved) == control.acl, "the new file lost the folder's inherited entries")
+        #expect(Self.mode(saved) == control.mode, "the new file's mode changed")
+    }
+
+    // NV-06 (final pre-release audit): an overwrite gave the temporary file the destination's mode
+    // before its ACL, so a 0644 file kept private by a deny entry had a replacement that was 0644
+    // without that entry for an instant: broader than the file it replaces.
+    @Test("Overwriting a file kept private by a deny entry never makes the new file broader than it")
+    func overwriteIsNeverBroaderThanDestination() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        try Self.addACL("nobody deny read", to: url)
+        let before = Self.extendedACL(url)
+        let denyRead = try Self.denyReadEntry(url)
+
+        let observed = Observation()
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterReplaceStep: { observed.replaceSteps.append(Self.access($0)) }))
+        _ = try sink.save(snapshot, to: url, overwrite: true)
+        try #require(
+            observed.replaceSteps.contains { $0.acl?.contains(denyRead) == true },
+            "control: the seam never saw the deny entry on the temporary file (\(observed.replaceSteps))")
+        let exposed = observed.replaceSteps.filter { Self.isBroader($0, without: denyRead) }
+        #expect(exposed.isEmpty, "the temporary file was broader than 0600 without the deny entry: \(exposed)")
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.mode(url) == 0o644)
+        #expect(Self.extendedACL(url) == before, "the replaced file lost its deny entry")
+    }
+
+    // NV-06: when the rename failed, the copied ACL was cleared while the temporary file still had
+    // the destination's broad mode, so the complete new image was briefly broader again.
+    @Test("A refused overwrite returns the temporary file to owner-only before clearing its copied entries")
+    func refusedOverwriteIsOwnerOnlyWhenEntriesAreCleared() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let denyDelete = "\(NSUserName()) deny delete"
+        // Control: in this directory the entry really refuses a rename onto the file.
+        let control = folder.appendingPathComponent("control.png")
+        let replacement = folder.appendingPathComponent("control-new.png")
+        try priorBytes.write(to: control)
+        try priorBytes.write(to: replacement)
+        try Self.addACL(denyDelete, to: control)
+        let renameResult = rename(replacement.path(percentEncoded: false), control.path(percentEncoded: false))
+        try #require(renameResult != 0, "control: the deny-delete entry did not refuse the rename")
+        Self.clearACLs(in: folder)
+        try FileManager.default.removeItem(at: control)
+        try FileManager.default.removeItem(at: replacement)
+
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        try Self.addACL("nobody deny read", to: url)
+        try Self.addACL(denyDelete, to: url)
+        let denyRead = try Self.denyReadEntry(url)
+
+        let observed = Observation()
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterReplaceStep: { observed.replaceSteps.append(Self.access($0)) }))
+        #expect(throws: SinkError.accessDenied) { try sink.save(snapshot, to: url, overwrite: true) }
+        let cleared = try #require(observed.replaceSteps.last, "the seam never saw the temporary file")
+        try #require(
+            observed.replaceSteps.dropLast().contains { $0.acl?.contains(denyRead) == true } && cleared.acl == nil,
+            "control: the copied entries were never cleared after the failed rename (\(observed.replaceSteps))")
+        #expect(cleared.mode == 0o600, "the copied entries were cleared while the temporary file was broader")
+        let exposed = observed.replaceSteps.filter { Self.isBroader($0, without: denyRead) }
+        #expect(exposed.isEmpty, "the temporary file was broader than 0600 without the deny entry: \(exposed)")
+        #expect(try Data(contentsOf: url) == priorBytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a temporary export was left behind")
+    }
+
+    /// The `nobody deny read` line of the file's ACL text; failing means the control entry is missing.
+    private static func denyReadEntry(_ url: URL) throws -> String {
+        let acl = try #require(extendedACL(url), "control: the destination has no ACL")
+        let line = acl.split(separator: "\n").first { $0.contains(":nobody:") && $0.hasSuffix(":deny:read") }
+        return String(try #require(line, "control: the destination has no deny-read entry (\(acl))"))
+    }
+
+    private static func access(_ url: URL) -> Observation.Access { .init(mode: mode(url), acl: extendedACL(url)) }
+
+    /// Readable beyond the owner by mode while the destination's deny entry is not in effect.
+    private static func isBroader(_ access: Observation.Access, without denyRead: String) -> Bool {
+        (access.mode ?? 0) & 0o077 != 0 && access.acl?.contains(denyRead) != true
+    }
+
+    /// The ACL and mode of an empty file created in `folder` the way temporary files used to be.
+    private static func createdWithMode0644(in folder: URL) throws -> (acl: String?, mode: mode_t?) {
+        let path = folder.appendingPathComponent("mode-control").path(percentEncoded: false)
+        let descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o644)
+        try #require(descriptor >= 0, "control: could not create the mode control file")
+        close(descriptor)
+        defer { unlink(path) }
+        let url = URL(fileURLWithPath: path)
+        return (extendedACL(url), mode(url))
+    }
+
+    final class Observation {
+        var temporaryMode: mode_t?
+        var swapResolvesToVictim = false
+        var temporaryACL: String?
+        var replaceSteps: [Access] = []
+
+        struct Access: CustomStringConvertible {
+            let mode: mode_t?
+            let acl: String?
+            var description: String { "(mode \(mode.map { String($0, radix: 8) } ?? "nil"), acl \(acl ?? "nil"))" }
+        }
+    }
+
+    /// The ACL a file created plainly in `folder` receives; the file is removed again.
+    private static func plainFileACL(in folder: URL) throws -> String? {
+        let plain = folder.appendingPathComponent("plain-control")
+        try Data().write(to: plain)
+        defer { try? FileManager.default.removeItem(at: plain) }
+        return extendedACL(plain)
+    }
+
+    private static func mode(_ url: URL) -> mode_t? {
+        var status = stat()
+        guard lstat(url.path(percentEncoded: false), &status) == 0 else { return nil }
+        return status.st_mode & 0o7777
+    }
+
+    private static func isSymbolicLink(_ url: URL) -> Bool {
+        var status = stat()
+        return lstat(url.path(percentEncoded: false), &status) == 0 && status.st_mode & S_IFMT == S_IFLNK
+    }
+
+    /// The inode `url` resolves to, following a symbolic link.
+    private static func inode(_ url: URL) -> ino_t? {
+        var status = stat()
+        return stat(url.path(percentEncoded: false), &status) == 0 ? status.st_ino : nil
+    }
+
+    private static func addACL(_ entry: String, to url: URL) throws {
+        let chmod = Process()
+        chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+        chmod.arguments = ["+a", entry, url.path(percentEncoded: false)]
+        try chmod.run()
+        chmod.waitUntilExit()
+        try #require(chmod.terminationStatus == 0, "control: chmod +a could not set \(entry)")
+    }
+
+    /// Removes every explicit ACL in `folder`, so a deny entry cannot keep its files undeletable.
+    private static func clearACLs(in folder: URL) {
+        guard let empty = acl_init(0) else { return }
+        defer { acl_free(UnsafeMutableRawPointer(empty)) }
+        for name in (try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? [] {
+            _ = acl_set_file(folder.appendingPathComponent(name).path(percentEncoded: false), ACL_TYPE_EXTENDED, empty)
+        }
+    }
+
+    /// The file's explicit ACL as text, or nil when it has none.
+    private static func extendedACL(_ url: URL) -> String? {
+        guard let acl = acl_get_file(url.path(percentEncoded: false), ACL_TYPE_EXTENDED) else { return nil }
+        defer { acl_free(UnsafeMutableRawPointer(acl)) }
+        guard let text = acl_to_text(acl, nil) else { return nil }
+        defer { acl_free(text) }
+        return String(cString: text)
     }
 
     @Test("A missing destination folder is an unavailable volume")

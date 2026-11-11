@@ -216,9 +216,10 @@ struct EditorIndependentEditSiblingTests {
             $0.preferredSaveFolderBookmark = Data([1])
         }
         h.folders.folder = URL(fileURLWithPath: "/tmp/recortia-tests/sibling-folder", isDirectory: true)
+        let plan = h.export.automaticExportPlan()
         let task = Task {
             await h.export.runAutomaticExports(
-                for: h.model.session, currentSession: { h.model.isClosed ? nil : h.model.session })
+                plan, for: h.model.session, currentSession: { h.model.isClosed ? nil : h.model.session })
         }
         await waitFor("batch upload suspended") { upload.gate.waiterCount == 1 }
         #expect(h.clipboard.writes.count == 1)

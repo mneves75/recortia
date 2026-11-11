@@ -115,7 +115,7 @@
             let busyEditor = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             context.check(
                 "busy automatic export shows a failure in the new capture's editor",
-                await E2EWait.until { busyEditor.model.notice == .exported(.failed(.busy)) },
+                await E2EWait.until { busyEditor.model.notice == .automaticExportFailed(.busy) },
                 "\(String(describing: busyEditor.model.notice))")
             context.check(
                 "an automatic-export failure with an editor open raises no modal alert",
@@ -202,6 +202,39 @@
             harness.settings.update { $0.githubUpload?.automatic = false }
             _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             context.check("upload opt-out prevents additional sends", harness.github.snapshots.count == uploads + 3)
+
+            // The batch is decided when the capture completes: a main-actor job queued right after
+            // `handleCapture` returns (here, turning automatic save on) must not join this capture.
+            // The folder is authorized again: the reset above cleared it, which would hide a save.
+            // The scenario ends with the folder state it found, so later scenarios start as before.
+            let foundBookmark = harness.settings.preferences.preferredSaveFolderBookmark
+            defer { harness.settings.update { $0.preferredSaveFolderBookmark = foundBookmark } }
+            harness.settings.update {
+                $0.preferredSaveFolderBookmark = bookmark; $0.autoCopy = true; $0.autoSave = false
+            }
+            let wired = harness.features.capture.onCaptured
+            harness.features.capture.onCaptured = { [weak app = harness.app, settings = harness.settings] completion in
+                app?.handleCapture(completion)
+                settings.update { $0.autoSave = true }
+            }
+            defer { harness.features.capture.onCaptured = wired }
+            let copies = harness.clipboard.writeCount
+            let renders = harness.exportGate.snapshotCount
+            let savedBefore = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+            try context.require(
+                "frozen batch: the automatic copy chosen at capture runs",
+                await E2EWait.until { harness.clipboard.writeCount == copies + 1 && !harness.features.export.isBusy })
+            let savedAfter = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            context.check(
+                "frozen batch: automatic save turned on right after the capture does not save it",
+                savedAfter == savedBefore, "\(savedAfter)")
+            context.check(
+                "frozen batch: only the copy rendered", harness.exportGate.snapshotCount == renders + 1,
+                "\(harness.exportGate.snapshotCount - renders) renders")
+            harness.settings.update {
+                $0.autoCopy = false; $0.autoSave = false
+            }
         }
 
         /// A batch's failures are never hidden behind another notice in the editor's single slot.
@@ -233,6 +266,78 @@
                 "\(shown(double))")
             let closed = AppModel.routeAutomaticExport([.failed(.diskFull)], editorOpen: false)
             context.check("without an editor a failure is an alert", closed.alerts == [.diskFull], "\(closed)")
+
+            // The pipeline is the one admission point for export options: refused options reach
+            // the coordinator through the live exporter as the encode failure it always reported.
+            let exporter = LiveExporter(store: ImageStore())
+            let pixel = try E2EDrawing.image(size: CGSize(width: 4, height: 4), scale: 1) { rect in
+                NSColor.gray.setFill()
+                rect.fill()
+            }
+            let refused: [(String, ExportOptions)] = [
+                ("scale", ExportOptions(format: .png, scale: 2)),
+                ("quality", ExportOptions(format: .jpeg(quality: .nan), scale: 1)),
+            ]
+            for (label, options) in refused {
+                var failure: ExportFailure?
+                do {
+                    _ = try await exporter.makeSnapshot(
+                        ofPinned: pixel, exportID: DocumentID(), privacyEpoch: 0, options: options, date: Date())
+                } catch {
+                    failure = error.failure
+                }
+                context.check(
+                    "invalid \(label) options are refused as an encode failure", failure == .encodeFailed,
+                    "\(String(describing: failure))")
+            }
+            context.check(
+                "every refused-options reason maps to the encode failure",
+                [ExportOptionsError.invalidScale, .invalidQuality, .translucentJPEGBackground].allSatisfy {
+                    LiveExporter.failure(for: .invalidOptions($0)) == .encodeFailed
+                })
+
+            // An alert reports one failed step of a batch whose other steps may have written: its
+            // title must not say that nothing was exported (copy succeeds, save fails).
+            let denials: Set<String> = ["Nothing was exported", "Nada foi exportado"]
+            let failures: [ExportFailure] = [
+                .busy, .renderFailed, .encodeFailed, .budgetExceeded, .clipboardFailed, .accessDenied,
+                .destinationExists, .diskFull, .volumeUnavailable, .staleDocument, .system(code: 5),
+                .upload(.missingCredential),
+            ]
+            let titles = failures.map { "\($0): \(UserMessage.export($0).title)" }
+            let denying = zip(failures, titles).filter { denials.contains(UserMessage.export($0.0).title) }
+            context.check(
+                "no automatic-export alert title denies the batch's earlier writes", denying.isEmpty,
+                denying.map(\.1).joined(separator: "; "))
+            let unknown = UserMessage.export(.upload(.completionUnknown)).title
+            let checkGitHub = String(localized: "Check the GitHub upload")
+            context.check(
+                "an upload whose completion is unknown still asks to check GitHub", unknown == checkGitHub, unknown)
+
+            // The editor route (R-2): a batch with one failure shows it as the editor notice, and
+            // that notice must not deny the batch's earlier writes either. It says what the alert says.
+            let editor = try await harness.openImported(harness.desktop, name: "feedback-routing.png")
+            defer { editor.window?.close() }
+            let editorDenials = denials.union(["Nothing was saved", "Nada foi salvo"])
+            var denied: [String] = [], unlike: [String] = []
+            for failure in failures + [.upload(.completionUnknown)] {
+                editor.model.reportAutomaticExport(.failed(failure))
+                let text = editor.model.notice.map(EditorStrings.message) ?? ""
+                if editorDenials.contains(where: { text.contains($0) }) { denied.append("\(failure): \(text)") }
+                if !text.hasPrefix(UserMessage.export(failure).title) { unlike.append("\(failure): \(text)") }
+                editor.model.dismissNotice()
+            }
+            context.check(
+                "no automatic-export editor notice denies the batch's earlier writes", denied.isEmpty,
+                denied.joined(separator: "; "))
+            context.check(
+                "an automatic-export editor notice starts with the alert's title", unlike.isEmpty,
+                unlike.joined(separator: "; "))
+            // A manual export is one write: when it fails, saying nothing was saved is true and stays.
+            let manual = EditorStrings.message(.exported(.failed(.diskFull)))
+            context.check(
+                "a failed manual save still says nothing was saved",
+                manual == String(localized: "Nothing was saved: the disk is full.", table: "Editor"), manual)
         }
     }
 #endif

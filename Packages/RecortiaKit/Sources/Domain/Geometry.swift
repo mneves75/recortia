@@ -15,7 +15,7 @@ public enum DocumentSpace {}
 /// Editor view points, after zoom and pan.
 public enum ViewSpace {}
 
-public enum GeometryError: Error, Equatable, Sendable {
+enum GeometryError: Error, Equatable, Sendable {
     case nonFinite
     case negativeSize
     case singularTransform
@@ -168,7 +168,7 @@ public struct PixelRect: Hashable, Sendable, Codable {
     public var isEmpty: Bool { width <= 0 || height <= 0 }
     public var area: Int { width * height }
 
-    public var asRect: Rect<SourcePixelSpace> {
+    var asRect: Rect<SourcePixelSpace> {
         Rect(x: Double(x), y: Double(y), width: Double(width), height: Double(height))
     }
 

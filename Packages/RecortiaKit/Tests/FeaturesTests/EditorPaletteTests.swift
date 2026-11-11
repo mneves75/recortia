@@ -1,7 +1,8 @@
 import Domain
-import Features
 import Foundation
 import Testing
+
+@testable import Features
 
 @Suite("Saved annotation colors in the editor (FR-05, FR-14)")
 @MainActor

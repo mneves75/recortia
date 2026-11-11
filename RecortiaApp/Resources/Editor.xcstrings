@@ -1,6 +1,90 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Moldura" } }
+      }
+    },
+    "Effects": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Effects" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Efeitos" } }
+      }
+    },
+    "Effects: blur, pixelate, spotlight and magnifier": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Effects: blur, pixelate, spotlight and magnifier" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Efeitos: desfoque, pixelização, destaque e ampliador" } }
+      }
+    },
+    "Measure": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measure" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Medir" } }
+      }
+    },
+    "Measure: loupe, ruler and color picker": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measure: loupe, ruler and color picker" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Medir: lupa de pixels, régua e conta-gotas" } }
+      }
+    },
+    "%@ px": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ px" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "%@ px" } }
+      }
+    },
+    "Cosmetic, not secure: text can remain recoverable. Use Redact for private information.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cosmetic, not secure: text can remain recoverable. Use Redact for private information." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cosmético, não seguro: o texto pode continuar recuperável. Use Tarja para informações privadas." } }
+      }
+    },
+    "Covered pixels are replaced in every export. Other copies and earlier exports are not changed.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Covered pixels are replaced in every export. Other copies and earlier exports are not changed." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Os pixels cobertos são substituídos em todas as exportações. Outras cópias e exportações anteriores não são alteradas." } }
+      }
+    },
+    "Images": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Images" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagens" } }
+      }
+    },
+    "Inspector": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Inspector" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Inspetor" } }
+      }
+    },
+    "Select an object or choose a tool.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Select an object or choose a tool." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Selecione um objeto ou escolha uma ferramenta." } }
+      }
+    },
+    "Size": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Size" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Tamanho" } }
+      }
+    },
+    "Text Size": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Text Size" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Tamanho do texto" } }
+      }
+    },
+    "%lld objects": {
+      "localizations": {
+        "en": { "variations": { "plural": { "one": { "stringUnit": { "state": "translated", "value": "%lld object" } }, "other": { "stringUnit": { "state": "translated", "value": "%lld objects" } } } } },
+        "pt-BR": { "variations": { "plural": { "one": { "stringUnit": { "state": "translated", "value": "%lld objeto" } }, "other": { "stringUnit": { "state": "translated", "value": "%lld objetos" } } } } }
+      }
+    },
     "Applies to selected arrows and new arrows in this editor.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Applies to selected arrows and new arrows in this editor." } },
@@ -145,34 +229,16 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor atual" } }
       }
     },
-    "Remove the current annotation color from saved colors. Existing annotations keep their color.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Remove the current annotation color from saved colors. Existing annotations keep their color." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remova a cor atual da paleta. As anotações existentes mantêm sua cor." } }
-      }
-    },
     "Save Current Color": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Save Current Color" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar cor atual" } }
       }
     },
-    "Save up to 12 distinct annotation colors. Duplicate colors are already saved.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Save up to 12 distinct annotation colors. Duplicate colors are already saved." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salve até 12 cores de anotação diferentes. Cores repetidas já estão salvas." } }
-      }
-    },
     "Saved colors are unavailable while newer preferences are protected.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Saved colors are unavailable while newer preferences are protected." } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "As cores salvas ficam indisponíveis enquanto as preferências de uma versão mais recente estão protegidas." } }
-      }
-    },
-    "Save a color to reuse it in any editor. Only colors you choose are stored.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Save a color to reuse it in any editor. Only colors you choose are stored." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salve uma cor para reutilizá-la em qualquer editor. Apenas as cores que você escolher serão armazenadas." } }
       }
     },
     "Selected": {
@@ -185,18 +251,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Remove Saved Color" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor salva" } }
-      }
-    },
-    "Apply this annotation color. Use the context menu to remove it.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Apply this annotation color. Use the context menu to remove it." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplique esta cor à anotação. Use o menu de contexto para removê-la." } }
-      }
-    },
-    "Saved Colors": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Saved Colors" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cores salvas" } }
       }
     },
     "1×1 — Single pixel": {
@@ -233,12 +287,6 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "A amostragem de área calcula a média das cores sRGB e do alfa. As amostras respeitam as bordas da imagem." } }
       }
     },
-    "Another image is still being opened. Try again when it finishes.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Another image is still being opened. Try again when it finishes." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Outra imagem ainda está sendo aberta. Tente novamente quando terminar." } }
-      }
-    },
     "Dismiss": {
       "localizations": {
         "en": {
@@ -269,12 +317,6 @@
             "value": "Fechar aviso"
           }
         }
-      }
-    },
-    "Opening the image was canceled.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Opening the image was canceled." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "A abertura da imagem foi cancelada." } }
       }
     },
     "Image uploaded to GitHub.": {
@@ -511,46 +553,6 @@
         }
       }
     },
-    "%lld objects selected": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld object selected"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld objects selected"
-                }
-              }
-            }
-          }
-        },
-        "pt-BR": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld objeto selecionado"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld objetos selecionados"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld, %lld": {
       "localizations": {
         "en": {
@@ -775,38 +777,6 @@
         }
       }
     },
-    "Always opaque. Covered pixels are replaced in every export.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Always opaque. Covered pixels are replaced in every export."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sempre opaca. Os pixels cobertos são substituídos em todas as exportações."
-          }
-        }
-      }
-    },
-    "Animated or multi-page images are not supported.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Animated or multi-page images are not supported."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Imagens animadas ou com várias páginas não são compatíveis."
-          }
-        }
-      }
-    },
     "Another export is still running.": {
       "localizations": {
         "en": {
@@ -931,22 +901,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desfoque (estético, não seguro)"
-          }
-        }
-      }
-    },
-    "Blur and Pixelate are cosmetic, not secure: hidden text can sometimes be recovered. Use Redact for private information.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Blur and Pixelate are cosmetic, not secure: hidden text can sometimes be recovered. Use Redact for private information."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desfoque e Pixelização são estéticos, não seguros: às vezes é possível recuperar o texto escondido. Use a Tarja para informações privadas."
           }
         }
       }
@@ -1175,22 +1129,6 @@
         }
       }
     },
-    "Composition": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Composition"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Composição"
-          }
-        }
-      }
-    },
     "Copy": {
       "localizations": {
         "en": {
@@ -1283,22 +1221,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Raio dos cantos"
-          }
-        }
-      }
-    },
-    "Cosmetic, not secure: text can remain recoverable.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cosmetic, not secure: text can remain recoverable."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Estético, não seguro: o texto pode continuar recuperável."
           }
         }
       }
@@ -1411,22 +1333,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descartar suas edições?"
-          }
-        }
-      }
-    },
-    "Document": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Document"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Documento"
           }
         }
       }
@@ -2247,22 +2153,6 @@
         }
       }
     },
-    "Only PNG and JPEG images are supported.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Only PNG and JPEG images are supported."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Só imagens PNG e JPEG são compatíveis."
-          }
-        }
-      }
-    },
     "Only web links (http or https) can be opened.": {
       "localizations": {
         "en": {
@@ -2487,22 +2377,6 @@
         }
       }
     },
-    "Pixelate": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pixelate"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pixelizar"
-          }
-        }
-      }
-    },
     "Pixelate (cosmetic, not secure)": {
       "localizations": {
         "en": {
@@ -2563,22 +2437,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prepara a imagem para arrastar para outro app"
-          }
-        }
-      }
-    },
-    "Presentation": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Presentation"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apresentação"
           }
         }
       }
@@ -2759,22 +2617,6 @@
         }
       }
     },
-    "Redactions change this image only. Copies you opened separately and images you exported earlier are not changed.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Redactions change this image only. Copies you opened separately and images you exported earlier are not changed."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "As ocultações mudam só esta imagem. Cópias abertas separadamente e imagens exportadas antes não são alteradas."
-          }
-        }
-      }
-    },
     "Redactions changed, so %lld older pins were closed.": {
       "localizations": {
         "en": {
@@ -2891,22 +2733,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Renumerar passos"
-          }
-        }
-      }
-    },
-    "Replaces the covered pixels with a solid, opaque color in every copy, save, drag, and pin.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Replaces the covered pixels with a solid, opaque color in every copy, save, drag, and pin."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Substitui os pixels cobertos por uma cor sólida e opaca em toda cópia, arquivo salvo, arrasto e fixação."
           }
         }
       }
@@ -3083,22 +2909,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ferramenta selecionada"
-          }
-        }
-      }
-    },
-    "Selection": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Selection"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seleção"
           }
         }
       }
@@ -3375,22 +3185,6 @@
         }
       }
     },
-    "Text Size: %@ px": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Text Size: %@ px"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tamanho do texto: %@ px"
-          }
-        }
-      }
-    },
     "Text annotation": {
       "localizations": {
         "en": {
@@ -3423,22 +3217,6 @@
         }
       }
     },
-    "The clipboard does not contain a PNG or JPEG image.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The clipboard does not contain a PNG or JPEG image."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A área de transferência não contém uma imagem PNG ou JPEG."
-          }
-        }
-      }
-    },
     "The export had already finished and cannot be undone.": {
       "localizations": {
         "en": {
@@ -3451,38 +3229,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "A exportação já tinha terminado e não pode ser desfeita."
-          }
-        }
-      }
-    },
-    "The file could not be read.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file could not be read."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Não foi possível ler o arquivo."
-          }
-        }
-      }
-    },
-    "The file is larger than 64 MB.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file is larger than 64 MB."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O arquivo tem mais de 64 MB."
           }
         }
       }
@@ -3515,54 +3261,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "A imagem mudou enquanto era fixada. Tente de novo."
-          }
-        }
-      }
-    },
-    "The image data is damaged.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The image data is damaged."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Os dados da imagem estão danificados."
-          }
-        }
-      }
-    },
-    "The image has invalid dimensions.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The image has invalid dimensions."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A imagem tem dimensões inválidas."
-          }
-        }
-      }
-    },
-    "The image is larger than 40 megapixels.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The image is larger than 40 megapixels."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A imagem tem mais de 40 megapixels."
           }
         }
       }

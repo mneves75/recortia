@@ -22,8 +22,8 @@ public struct DocumentSession: Sendable {
     public private(set) var evictedUndoCount = 0
     public let undoLimit: Int
     /// Upper bound on the estimated bytes retained by undo history (FR-04: budget undo memory).
-    public let undoByteBudget: Int
-    public private(set) var retainedUndoByteCost = 0
+    let undoByteBudget: Int
+    private(set) var retainedUndoByteCost = 0
 
     private var undoStack: [Entry] = []
     private var redoStack: [Entry] = []
@@ -52,7 +52,6 @@ public struct DocumentSession: Sendable {
         return ids
     }
     public var undoCount: Int { undoStack.count }
-    public var undoLabel: String? { undoStack.last?.label }
     public var redoLabel: String? { redoStack.last?.label }
     public var isDirty: Bool { document != savedDocument }
     public var isGrouping: Bool { openGroup != nil }

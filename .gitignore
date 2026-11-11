@@ -38,5 +38,8 @@ build/
 agent_planning/
 .scratch/
 
+# Agent progress dashboard (local, never tracked)
+.dashboard/
+
 # Python gate caches
 __pycache__/

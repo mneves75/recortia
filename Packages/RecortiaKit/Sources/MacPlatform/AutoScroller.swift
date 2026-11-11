@@ -21,11 +21,11 @@ public enum AutoScrollError: Error, Equatable, Sendable {
 }
 
 /// What the scroller checks before every synthetic event.
-public struct AutoScrollObservation: Sendable, Equatable {
+struct AutoScrollObservation: Sendable, Equatable {
     public var frontmostPID: pid_t?
-    public var targetWindowOnScreen: Bool
+    var targetWindowOnScreen: Bool
     /// Current fingerprint of the target's display; nil when the display is gone.
-    public var displayFingerprint: String?
+    var displayFingerprint: String?
     public var accessibilityTrusted: Bool
 
     public init(
@@ -40,10 +40,10 @@ public struct AutoScrollObservation: Sendable, Equatable {
 
 /// Pure stop rules for automatic scrolling (FR-10, SCR-03): focus outside Recortia and the bound
 /// target, target-window loss, display changes, or Accessibility revocation stop scrolling.
-public struct AutoScrollStopPolicy: Sendable, Equatable {
-    public let targetPID: pid_t
-    public let controllerPID: pid_t
-    public let displayFingerprint: String
+struct AutoScrollStopPolicy: Sendable, Equatable {
+    let targetPID: pid_t
+    let controllerPID: pid_t
+    let displayFingerprint: String
 
     public init(targetPID: pid_t, controllerPID: pid_t, displayFingerprint: String) {
         self.targetPID = targetPID
@@ -51,12 +51,12 @@ public struct AutoScrollStopPolicy: Sendable, Equatable {
         self.displayFingerprint = displayFingerprint
     }
 
-    public func permitsFocus(_ pid: pid_t?) -> Bool {
+    func permitsFocus(_ pid: pid_t?) -> Bool {
         pid == targetPID || pid == controllerPID
     }
 
     /// Nil to continue; otherwise the most fundamental reason to stop.
-    public func stopReason(for observation: AutoScrollObservation) -> AutoScrollStopReason? {
+    func stopReason(for observation: AutoScrollObservation) -> AutoScrollStopReason? {
         if !observation.accessibilityTrusted { return .accessibilityRevoked }
         if !observation.targetWindowOnScreen { return .targetWindowGone }
         if observation.displayFingerprint != displayFingerprint { return .displayChanged }
@@ -95,7 +95,7 @@ public final class AutoScroller {
     }
 
     /// Upper bound for one step, in points; larger requests are clamped.
-    public static let maxStepPixels = 1_000
+    static let maxStepPixels = 1_000
 
     public let target: WindowInfo
     public let display: DisplayInfo

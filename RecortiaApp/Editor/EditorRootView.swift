@@ -3,7 +3,8 @@ import Domain
 import Features
 import SwiftUI
 
-/// The editor window's content: tool bar, object list, canvas, inspector, and status bar.
+/// The editor window's content: object list, canvas, inspector, and status bar. Its tools and
+/// actions are bridged into the window's own toolbar (`EditorToolbarContent`).
 struct EditorRootView: View {
     let model: EditorModel
     let canvas: EditorCanvasView
@@ -12,9 +13,6 @@ struct EditorRootView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            EditorToolbarView(model: model, actions: actions)
-                .background(Color(nsColor: .windowBackgroundColor))
-            Divider()
             if let reason = model.partialScrollCaptureReason {
                 Label("Partial result. \(ScrollReviewView.describe(reason))", systemImage: "exclamationmark.triangle")
                     .font(.callout)
@@ -40,6 +38,7 @@ struct EditorRootView: View {
             EditorStatusBar(model: model, presentation: noticePresentation)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
+        .toolbar { EditorToolbarContent(model: model, actions: actions) }
     }
 }
 
@@ -56,7 +55,7 @@ struct EditorNoticePresentation {
     static func persists(_ notice: EditorNotice) -> Bool {
         switch notice {
         case .copyFailed, .recognitionFailed, .linkNotAllowed, .previewFailed, .redactionRefused, .importFailed,
-            .pinFailed, .noPreferredFolder, .arrowGeometryRefused:
+            .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed:
             true
         case .exported(let outcome): persists(outcome)
         case .noTextFound, .recognitionLanguagesUnavailable, .textCopied, .recognitionDiscarded,
@@ -86,61 +85,58 @@ private struct CanvasHost: NSViewRepresentable {
 
 // MARK: - Tool bar
 
-struct EditorToolbarView: View {
+/// The window toolbar: tools on the leading edge, history and output on the trailing edge.
+/// Separate groups give the visual grouping; nothing here needs more than macOS 15.
+struct EditorToolbarContent: ToolbarContent {
     let model: EditorModel
     let actions: any EditorWindowActions
 
-    static let groups: [[EditorTool]] = [
-        [.select, .hand, .crop],
-        [.text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step],
-        [.redact],
-        [.blur, .pixelate],
-        [.spotlight, .magnifier],
-        [.loupe, .ruler, .colorPicker],
-    ]
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            contents.controlSize(.regular)
-            contents.controlSize(.small)
+    var body: some ToolbarContent {
+        ToolbarItemGroup(placement: .navigation) {
+            tools([.select, .hand, .crop])
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-    }
-
-    private var contents: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(Self.groups.enumerated()), id: \.offset) { index, group in
-                if index > 0 { Divider().frame(height: 20) }
-                HStack(spacing: 2) {
-                    ForEach(group, id: \.self) { tool in
-                        ToolButton(tool: tool, model: model, actions: actions)
-                    }
-                }
-            }
-            Spacer(minLength: 12)
+        ToolbarItemGroup(placement: .navigation) {
+            tools([.text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step])
+        }
+        ToolbarItem(placement: .navigation) {
+            ToolButton(tool: .redact, model: model, actions: actions)
+        }
+        ToolbarItem(placement: .navigation) {
+            ToolMenu(group: .effects, model: model, actions: actions)
+        }
+        ToolbarItem(placement: .navigation) {
+            ToolMenu(group: .measure, model: model, actions: actions)
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
             Button {
                 model.undo()
             } label: {
                 Label(String(localized: "Undo", table: "Editor"), systemImage: "arrow.uturn.backward")
             }
-            .labelStyle(.iconOnly)
             .help(String(localized: "Undo (⌘Z)", table: "Editor"))
             .disabled(!model.canUndo)
+            .accessibilityIdentifier("toolbar.undo")
             Button {
                 model.redo()
             } label: {
                 Label(String(localized: "Redo", table: "Editor"), systemImage: "arrow.uturn.forward")
             }
-            .labelStyle(.iconOnly)
             .help(String(localized: "Redo (⇧⌘Z)", table: "Editor"))
             .disabled(!model.canRedo)
-            Divider().frame(height: 20)
-            // Titles when they fit; icons with tooltips and accessible names otherwise.
-            ViewThatFits(in: .horizontal) {
-                ExportButtons(model: model, actions: actions)
-                ExportButtons(model: model, actions: actions).labelStyle(.iconOnly)
-            }
+            .accessibilityIdentifier("toolbar.redo")
+        }
+        // Keeps Copy out of the history group's capsule.
+        ToolbarItem(placement: .primaryAction) {
+            Spacer(minLength: 8).accessibilityHidden(true)
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
+            ExportButtons(model: model, actions: actions)
+        }
+    }
+
+    private func tools(_ tools: [EditorTool]) -> some View {
+        ForEach(tools, id: \.self) { tool in
+            ToolButton(tool: tool, model: model, actions: actions)
         }
     }
 }
@@ -157,8 +153,7 @@ private struct ToolButton: View {
                 get: { isSelected },
                 set: { on in
                     guard on else { return }
-                    actions.commitPendingText()
-                    model.selectTool(tool)
+                    select()
                 })
         ) {
             Label(EditorStrings.name(tool), systemImage: EditorStrings.symbol(tool))
@@ -166,10 +161,100 @@ private struct ToolButton: View {
         .toggleStyle(.button)
         .labelStyle(.iconOnly)
         .help(EditorStrings.help(tool))
-        .accessibilityLabel(EditorStrings.name(tool))
-        .accessibilityValue(
-            isSelected
-                ? String(localized: "Selected tool", table: "Editor") : "")
+        // In a bridged toolbar a Toggle reports its on/off state as its value, hiding the
+        // "Selected tool" value; a button representation keeps the name, value and Press.
+        .accessibilityRepresentation {
+            Button(EditorStrings.name(tool)) { select() }
+                .accessibilityValue(isSelected ? String(localized: "Selected tool", table: "Editor") : "")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
+        .accessibilityIdentifier("tool.\(tool.rawValue)")
+    }
+
+    private func select() {
+        actions.commitPendingText()
+        model.selectTool(tool)
+    }
+}
+
+/// Tools that share one toolbar menu button.
+private enum ToolMenuGroup {
+    case effects, measure
+
+    var tools: [EditorTool] {
+        switch self {
+        case .effects: [.blur, .pixelate, .spotlight, .magnifier]
+        case .measure: [.loupe, .ruler, .colorPicker]
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .effects: String(localized: "Effects", table: "Editor")
+        case .measure: String(localized: "Measure", table: "Editor")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .effects: "camera.filters"
+        case .measure: "level"
+        }
+    }
+
+    var help: String {
+        switch self {
+        case .effects: String(localized: "Effects: blur, pixelate, spotlight and magnifier", table: "Editor")
+        case .measure: String(localized: "Measure: loupe, ruler and color picker", table: "Editor")
+        }
+    }
+
+    var identifier: String {
+        switch self {
+        case .effects: "toolMenu.effects"
+        case .measure: "toolMenu.measure"
+        }
+    }
+}
+
+/// A menu of tools. While one of them is active the button shows that tool and reads as the
+/// selected tool; otherwise it shows the group.
+private struct ToolMenu: View {
+    let group: ToolMenuGroup
+    let model: EditorModel
+    let actions: any EditorWindowActions
+
+    var body: some View {
+        let active = group.tools.first { $0 == model.tool }
+        Menu {
+            ForEach(group.tools, id: \.self) { tool in
+                Toggle(
+                    isOn: Binding(
+                        get: { model.tool == tool },
+                        set: { on in
+                            guard on else { return }
+                            actions.commitPendingText()
+                            model.selectTool(tool)
+                        })
+                ) {
+                    Label(EditorStrings.name(tool), systemImage: EditorStrings.symbol(tool))
+                }
+                .help(EditorStrings.help(tool))
+            }
+        } label: {
+            // A bridged toolbar menu exposes its Label text as its accessible name, so the text
+            // names the group and, while one of its tools is active, that tool.
+            Label {
+                Text(active.map { "\(group.name), \(EditorStrings.name($0))" } ?? group.name)
+            } icon: {
+                Image(systemName: active.map(EditorStrings.symbol) ?? group.symbol)
+                    .foregroundStyle(active == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.accentColor))
+            }
+        }
+        // The active tool's help carries its single-key shortcut; otherwise the group's.
+        .help(active.map(EditorStrings.help) ?? group.help)
+        .accessibilityValue(active == nil ? "" : String(localized: "Selected tool", table: "Editor"))
+        .accessibilityIdentifier(group.identifier)
     }
 }
 
@@ -178,40 +263,43 @@ private struct ExportButtons: View {
     let actions: any EditorWindowActions
 
     var body: some View {
-        HStack(spacing: 6) {
-            Button {
-                actions.copyImage()
-            } label: {
-                Label(String(localized: "Copy", table: "Editor"), systemImage: "doc.on.doc")
-            }
-            .help(String(localized: "Copy the image as PNG (⌘C)", table: "Editor"))
-            Menu {
-                Button(String(localized: "Save…", table: "Editor")) { actions.saveImage() }
-                Button(String(localized: "Save to Preferred Folder", table: "Editor")) {
-                    actions.saveToPreferredFolder()
-                }
-            } label: {
-                Label(String(localized: "Save", table: "Editor"), systemImage: "square.and.arrow.down")
-            } primaryAction: {
-                actions.saveImage()
-            }
-            .menuStyle(.button)
-            .fixedSize()
-            .help(String(localized: "Save the image (⌘S)", table: "Editor"))
-            Button {
-                actions.pin()
-            } label: {
-                Label(String(localized: "Pin", table: "Editor"), systemImage: "pin")
-            }
-            .help(String(localized: "Pin the image in a floating window", table: "Editor"))
-            Button {
-                actions.dragOut()
-            } label: {
-                Label(String(localized: "Drag Out", table: "Editor"), systemImage: "hand.draw")
-            }
-            .help(String(localized: "Prepare the image for dragging into another app", table: "Editor"))
+        Button {
+            actions.copyImage()
+        } label: {
+            Label(String(localized: "Copy", table: "Editor"), systemImage: "doc.on.doc")
         }
+        .help(String(localized: "Copy the image as PNG (⌘C)", table: "Editor"))
         .disabled(model.isExporting)
+        .accessibilityIdentifier("toolbar.copy")
+        Menu {
+            Button(String(localized: "Save…", table: "Editor")) { actions.saveImage() }
+            Button(String(localized: "Save to Preferred Folder", table: "Editor")) {
+                actions.saveToPreferredFolder()
+            }
+        } label: {
+            Label(String(localized: "Save", table: "Editor"), systemImage: "square.and.arrow.down")
+        } primaryAction: {
+            actions.saveImage()
+        }
+        .help(String(localized: "Save the image (⌘S)", table: "Editor"))
+        .disabled(model.isExporting)
+        .accessibilityIdentifier("toolbar.save")
+        Button {
+            actions.pin()
+        } label: {
+            Label(String(localized: "Pin", table: "Editor"), systemImage: "pin")
+        }
+        .help(String(localized: "Pin the image in a floating window", table: "Editor"))
+        .disabled(model.isExporting)
+        .accessibilityIdentifier("toolbar.pin")
+        Button {
+            actions.dragOut()
+        } label: {
+            Label(String(localized: "Drag Out", table: "Editor"), systemImage: "hand.draw")
+        }
+        .help(String(localized: "Prepare the image for dragging into another app", table: "Editor"))
+        .disabled(model.isExporting)
+        .accessibilityIdentifier("toolbar.dragOut")
     }
 }
 

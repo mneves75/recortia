@@ -45,6 +45,9 @@
             let root = try context.unwrap("shortcuts tab hosted", window.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "held-by-macos")
+            await context.darkHosted(
+                tab.frame(width: 560, height: 760), light: root, shot: "held-by-macos",
+                surface: "Shortcuts held by macOS")
 
             // The user turns the macOS shortcuts off; the watch that holding started picks it up.
             harness.systemShortcuts.enabled = []
@@ -58,6 +61,8 @@
             context.check("a press now runs the command", status.admitPress(named: "captureRegion"))
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "active")
+            await context.darkHosted(
+                tab.frame(width: 560, height: 760), light: root, shot: "active", surface: "Shortcuts active")
 
             // Binding-backed recorders must repaint even when both old and new keys stay active.
             let alternate = KeyboardShortcuts.Shortcut(.r, modifiers: [.command, .option])
@@ -152,7 +157,9 @@
             let window = E2ESnapshot.host(nsView: selection, size: SyntheticDesktop.size)
             defer { window.close() }
             await E2ESnapshot.settle(selection)
-            context.snapshot(selection, shot: "region-with-space-hint", over: harness.desktop)
+            let lightHint = context.snapshot(selection, shot: "region-with-space-hint", over: harness.desktop)
+            await context.darkOverlay(
+                selection, in: window, shot: "region-with-space-hint", over: harness.desktop, light: lightHint)
 
             let point = CGPoint(x: 400, y: 300)
             selection.mouseDown(with: try CaptureScenarios.mouseEvent(.leftMouseDown, at: point, in: selection))

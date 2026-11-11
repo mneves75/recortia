@@ -4,7 +4,7 @@ import Foundation
 /// Zoom and pan: view state only. Document geometry never depends on it (FR-04, EDIT-02); the
 /// canvas converts pointer locations to document space through it before calling the model.
 public struct EditorViewport: Hashable, Sendable {
-    public static let zoomRange: ClosedRange<Double> = 0.05...32
+    static let zoomRange: ClosedRange<Double> = 0.05...32
     /// Zoom presets for zoom in/out, in view points per document pixel.
     public static let steps: [Double] = [
         0.05, 0.1, 0.125, 0.25, 1.0 / 3, 0.5, 2.0 / 3, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32,
@@ -18,10 +18,6 @@ public struct EditorViewport: Hashable, Sendable {
     public init(zoom: Double = 1, offset: Point<ViewSpace> = .zero) {
         self.zoom = Self.clamp(zoom)
         self.offset = offset.isFinite ? offset : .zero
-    }
-
-    public var documentToView: AffineMap<DocumentSpace, ViewSpace> {
-        AffineMap(a: zoom, b: 0, c: 0, d: zoom, tx: offset.x, ty: offset.y)
     }
 
     public func viewPoint(_ p: Point<DocumentSpace>) -> Point<ViewSpace> {
@@ -41,7 +37,7 @@ public struct EditorViewport: Hashable, Sendable {
     }
 
     /// A length of `viewPoints` on screen, in document units at the current zoom.
-    public func documentLength(_ viewPoints: Double) -> Double { viewPoints / zoom }
+    func documentLength(_ viewPoints: Double) -> Double { viewPoints / zoom }
 
     /// Sets the zoom so the document point under `anchor` stays under it.
     public mutating func setZoom(_ newZoom: Double, anchor: Point<ViewSpace>) {
@@ -60,9 +56,9 @@ public struct EditorViewport: Hashable, Sendable {
         offset = offset.offset(dx: dx, dy: dy)
     }
 
-    public func nextZoomIn() -> Double { Self.steps.first { $0 > zoom * 1.0001 } ?? Self.zoomRange.upperBound }
+    func nextZoomIn() -> Double { Self.steps.first { $0 > zoom * 1.0001 } ?? Self.zoomRange.upperBound }
 
-    public func nextZoomOut() -> Double {
+    func nextZoomOut() -> Double {
         Self.steps.last { $0 < zoom / 1.0001 } ?? Self.zoomRange.lowerBound
     }
 

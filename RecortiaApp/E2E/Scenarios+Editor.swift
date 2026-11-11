@@ -41,11 +41,9 @@
                 "the native Save button is disabled for a duplicate",
                 try !E2EAccessibilityControl.isEnabled("palette.save", in: root, context))
             context.check(
-                "disabled Save exposes its palette limit and duplicate explanation",
+                "the Save button's tooltip is its label, as for every inspector action",
                 try E2EAccessibilityControl.text(.help, for: "palette.save", in: root, context)
-                    == String(
-                        localized: "Save up to 12 distinct annotation colors. Duplicate colors are already saved.",
-                        table: "Editor"))
+                    == String(localized: "Save Current Color", table: "Editor"))
             for index in 1...9 {
                 let color = RGBA(r: UInt8(index * 20), g: 80, b: 120)
                 model.setStrokeColor(color)
@@ -64,12 +62,9 @@
                 "the native Remove button is disabled for an unsaved color",
                 try !E2EAccessibilityControl.isEnabled("palette.remove", in: root, context))
             context.check(
-                "disabled Remove explains preservation of existing annotations",
+                "the Remove button's tooltip is its label, as for every inspector action",
                 try E2EAccessibilityControl.text(.help, for: "palette.remove", in: root, context)
-                    == String(
-                        localized:
-                            "Remove the current annotation color from saved colors. Existing annotations keep their color.",
-                        table: "Editor"))
+                    == String(localized: "Remove Current Color", table: "Editor"))
             model.setStrokeColor(.white)
             context.check("saving leaves the document and undo unchanged", model.document == document && !model.canUndo)
             context.check(

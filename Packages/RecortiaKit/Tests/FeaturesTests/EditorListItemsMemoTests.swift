@@ -59,4 +59,41 @@ struct EditorListItemsMemoTests {
             "a settled revision was resolved again: +\(model.listItemGeometryResolutions - settled)")
         #expect(model.listItems == afterMask)
     }
+
+    @Test("A mixed document lists every object topmost first, with kinds, ordinals, frames and step numbers")
+    func mixedDocumentOrderAndContent() throws {
+        // Large enough that every region-based object lies inside the image.
+        let harness = EditorHarness(session: EditorFixtures.session(width: 1200, height: 800))
+        defer { harness.model.close() }
+        let model = harness.model
+        let tools: [(EditorTool, (Double, Double), (Double, Double))] = [
+            (.blur, (40, 40), (140, 120)), (.rectangle, (200, 40), (320, 140)), (.arrow, (40, 300), (240, 380)),
+            (.pixelate, (400, 40), (500, 140)), (.arrow, (300, 300), (500, 420)), (.redact, (600, 40), (700, 140)),
+            (.spotlight, (40, 500), (200, 620)), (.magnifier, (600, 500), (680, 580)),
+        ]
+        for (tool, a, b) in tools {
+            model.selectTool(tool)
+            harness.drag(a, b)
+        }
+        model.selectTool(.step)
+        harness.click(800, 300)
+        harness.click(860, 300)
+
+        let items = model.listItems
+        #expect(
+            items.map(\.kind) == [
+                .magnifier, .spotlight, .redaction, .step, .step, .arrow, .arrow, .rectangle, .pixelate, .blur, .image,
+            ])
+        #expect(items.map(\.ordinal) == [1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1])
+        #expect(items.map(\.stepNumber) == [nil, nil, nil, 2, 1, nil, nil, nil, nil, nil, nil])
+        let d = model.session.document
+        let bottomUp: [EditorItemID] =
+            d.layers.map { .layer($0.id) } + d.obfuscations.map { .obfuscation($0.id) }
+            + d.annotations.map { .annotation($0.id) } + d.masks.map { .mask($0.id) }
+            + d.callouts.map { .callout($0.id) }
+        #expect(items.map(\.id) == bottomUp.reversed())
+        for item in items {
+            #expect(item.frame == model.frame(of: item.id), "\(item.kind) \(item.ordinal) frame")
+        }
+    }
 }

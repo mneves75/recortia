@@ -26,7 +26,7 @@ public enum PinExportAction: Hashable, Sendable {
 public struct Pin: Identifiable, Sendable {
     public let id: PinID
     public let image: CGImage
-    public let sourceDocumentID: DocumentID?
+    let sourceDocumentID: DocumentID?
     public let privacyEpoch: UInt64
     /// Names this pin's exports. Only a pin rendered from a document through the sanitizing
     /// renderer has one; an image added directly cannot be copied or dragged out.
@@ -43,11 +43,11 @@ public struct Pin: Identifiable, Sendable {
 @Observable
 public final class PinsModel {
     public static let opacityRange: ClosedRange<Double> = SettingsStore.opacityRange
-    public static let zoomRange: ClosedRange<Double> = 0.25...4
+    static let zoomRange: ClosedRange<Double> = 0.25...4
 
     public private(set) var pins: [Pin] = []
     /// Number of pins removed by the latest privacy invalidation, for a user-visible note.
-    public private(set) var lastInvalidatedCount = 0
+    private(set) var lastInvalidatedCount = 0
     /// Increments on Bring Pins Forward; pin windows observe it and order themselves front.
     public private(set) var bringForwardRequest = 0
 
@@ -67,10 +67,10 @@ public final class PinsModel {
     }
 
     /// True while a new pin has a free slot, counting renders already admitted.
-    public var canAddPin: Bool { pins.count + pendingRenders < PinLimits.maxPins }
+    var canAddPin: Bool { pins.count + pendingRenders < PinLimits.maxPins }
 
     /// Rendered pixels currently retained by all pins.
-    public var retainedPixelCount: Int { pins.reduce(0) { $0 + $1.image.width * $1.image.height } }
+    var retainedPixelCount: Int { pins.reduce(0) { $0 + $1.image.width * $1.image.height } }
 
     /// Renders `session` through the sanitizing renderer and pins the result, unless the live
     /// session moved on while rendering.

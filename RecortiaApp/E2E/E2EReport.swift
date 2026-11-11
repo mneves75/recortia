@@ -74,26 +74,56 @@
         func snapshot(_ view: NSView, shot: String? = nil, background: NSColor? = .windowBackgroundColor) {
             let name = output.nextScreenshotName(scenario: shot.map { "\(id)-\($0)" } ?? id)
             do {
-                let data = try E2ESnapshot.png(of: view, background: background)
+                let data = try E2ESnapshot.png(of: Self.rendered(view), background: background)
                 try data.write(to: output.directory.appending(path: name), options: .atomic)
                 screenshots.append(name)
-                check("screenshot \(name)", true, "\(Int(view.bounds.width))×\(Int(view.bounds.height)) pt at 2×")
+                check(
+                    "screenshot \(name)", true,
+                    "\(Int(Self.rendered(view).bounds.width))×\(Int(Self.rendered(view).bounds.height)) pt at 2×")
             } catch {
                 check("screenshot \(name)", false, "\(error)")
             }
         }
 
+        /// An editor's tools live in its window toolbar, outside the content view, so a screenshot of
+        /// an editor's content view renders the window's frame view (toolbar and content) instead.
+        static func rendered(_ view: NSView) -> NSView {
+            guard let window = view.window, window.windowController is EditorWindowController,
+                window.contentView === view, let frame = view.superview
+            else { return view }
+            return frame
+        }
+
         /// Like `snapshot`, but draws the view over `underlay` (see `E2ESnapshot.png(of:over:)`).
-        func snapshot(_ view: NSView, shot: String, over underlay: CGImage) {
+        /// Returns the PNG it wrote, or nil when rendering failed (already recorded).
+        @discardableResult
+        func snapshot(_ view: NSView, shot: String, over underlay: CGImage) -> Data? {
             let name = output.nextScreenshotName(scenario: "\(id)-\(shot)")
             do {
                 let data = try E2ESnapshot.png(of: view, over: underlay)
                 try data.write(to: output.directory.appending(path: name), options: .atomic)
                 screenshots.append(name)
                 check("screenshot \(name)", true, "\(Int(view.bounds.width))×\(Int(view.bounds.height)) pt at 2×")
+                return data
             } catch {
                 check("screenshot \(name)", false, "\(error)")
+                return nil
             }
+        }
+
+        /// For a surface drawn over user content with fixed two-tone colors: after its light
+        /// screenshot `light`, renders `view` in dark as `<shot>-dark` and requires identical pixels,
+        /// so the light contrast evidence holds in dark. Restores light afterwards.
+        func darkOverlay(_ view: NSView, in window: NSWindow, shot: String, over underlay: CGImage, light: Data?) async
+        {
+            window.appearance = NSAppearance(named: .darkAqua)
+            await E2ESnapshot.settle(view)
+            let dark = snapshot(view, shot: "\(shot)-dark", over: underlay)
+            check(
+                "\(shot): the overlay draws the same pixels in dark appearance (two-tone rule)",
+                light != nil && light == dark)
+            window.appearance = NSAppearance(named: .aqua)
+            await E2ESnapshot.settle(view)
         }
 
         func result(durationMs: Int) -> E2EScenarioResult {

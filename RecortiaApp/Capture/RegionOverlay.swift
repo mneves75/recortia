@@ -213,7 +213,8 @@ final class RegionSelectionView: NSView {
         if pointerLeftDisplay {
             lines.append(String(localized: "A selection stays on the display where it started."))
         }
-        drawBanner(lines.joined(separator: "\n"))
+        drawLabel(
+            lines.joined(separator: "\n"), anchoredAt: CGPoint(x: bounds.midX, y: bounds.minY + 48), centered: true)
     }
 
     private func drawSizeLabel(for rect: CGRect) {
@@ -221,10 +222,6 @@ final class RegionSelectionView: NSView {
         let text = String(localized: "\(size.width) × \(size.height) px")
         let origin = CGPoint(x: rect.maxX - 4, y: min(rect.maxY + 6, bounds.maxY - 28))
         drawLabel(text, anchoredAt: origin, alignRight: true)
-    }
-
-    private func drawBanner(_ text: String) {
-        drawLabel(text, anchoredAt: CGPoint(x: bounds.midX, y: bounds.minY + 48), centered: true)
     }
 
     private func drawLabel(_ text: String, anchoredAt point: CGPoint, alignRight: Bool = false, centered: Bool = false)

@@ -4,6 +4,10 @@ import SwiftUI
 /// A small AppKit panel hosting SwiftUI content, sized to that content.
 final class HostingPanel: NSPanel {
     private let allowsKey: Bool
+    /// The title bar is transparent and hidden; by default SwiftUI still insets the content by its
+    /// height. A panel whose window buttons are absent (the scrolling HUD) sets this to false
+    /// before `setContent`, so the content and the panel's size start at the top edge.
+    var reservesTitleBarArea = true
 
     /// - Parameters:
     ///   - activating: false for HUDs that must not take focus from the app being captured.
@@ -33,6 +37,7 @@ final class HostingPanel: NSPanel {
     ///   through constraint passes until AppKit throws, so such content must use this.
     func setContent<Content: View>(_ view: Content, fixedToFittingSize: Bool = false) {
         let controller = NSHostingController(rootView: view)
+        if !reservesTitleBarArea { controller.safeAreaRegions = [] }
         if fixedToFittingSize {
             controller.sizingOptions = []
             contentViewController = controller
@@ -43,13 +48,27 @@ final class HostingPanel: NSPanel {
         }
     }
 
+    /// Right after `setContent` the tracked size has not arrived and the frame is zero; AppKit
+    /// later grows the panel from its top-left corner, so `present` would leave it half its width
+    /// right of centre and its top at the bottom edge it computed. Sizing to the content's fitting
+    /// size first fixes both; a height that still misses the title-bar inset grows downward.
+    func sizeToContentIfUnsized() {
+        guard frame.width == 0, let content = contentViewController?.view else { return }
+        setContentSize(content.fittingSize)
+    }
+
+    /// Sizes an unsized panel to its content and places it near the top center of the screen with
+    /// the pointer, without showing it.
+    func placeNearTop() {
+        sizeToContentIfUnsized()
+        guard let visible = ScreenChoice.screen()?.visibleFrame else { return }
+        let size = frame.size
+        setFrameOrigin(CGPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - visible.height * 0.18))
+    }
+
     /// Shows the panel near the top center of the screen with the pointer.
     func present(activate: Bool) {
-        if let visible = ScreenChoice.screen()?.visibleFrame {
-            let size = frame.size
-            setFrameOrigin(
-                CGPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - visible.height * 0.18))
-        }
+        placeNearTop()
         if activate {
             NSApp.activate()
             makeKeyAndOrderFront(nil)

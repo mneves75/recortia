@@ -138,7 +138,7 @@
             }
             model.zoomToFit()
             model.select(.annotation(curved.id))
-            await E2EActions.scrollInspector(controller, to: 0.1)
+            await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
             context.check("curve controls fit the minimum editor width", abs(root.bounds.width - 980) < 1)
             context.snapshot(root, shot: "arrow-compact-dark")

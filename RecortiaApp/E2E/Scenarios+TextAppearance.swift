@@ -184,7 +184,7 @@
                 window.setContentSize(NSSize(width: 980, height: 560))
                 window.appearance = NSAppearance(named: .darkAqua)
                 wrappedController.model.zoomToFit()
-                await E2EActions.scrollInspector(wrappedController, to: 0.35)
+                await E2EActions.scrollInspector(wrappedController, to: 1)
                 await E2ESnapshot.settle(wrappedRoot)
                 context.check("text styles fit minimum editor width", abs(wrappedRoot.bounds.width - 980) < 1)
                 context.snapshot(wrappedRoot, shot: "text-styles-compact-dark")

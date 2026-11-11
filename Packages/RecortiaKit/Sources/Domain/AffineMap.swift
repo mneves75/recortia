@@ -37,7 +37,7 @@ public struct AffineMap<From, To>: Hashable, Sendable, Codable {
         return AffineMap(a: cosine, b: sine, c: -sine, d: cosine, tx: 0, ty: 0)
     }
 
-    public var determinant: Double { a * d - b * c }
+    var determinant: Double { a * d - b * c }
 
     public var isFinite: Bool { [a, b, c, d, tx, ty].allSatisfy(\.isFinite) }
 

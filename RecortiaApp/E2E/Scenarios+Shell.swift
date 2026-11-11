@@ -23,7 +23,16 @@
             harness.accessibility.isTrusted = false
             KeyboardShortcuts.setShortcut(.init(.f12, modifiers: [.control, .option]), for: .captureText)
             let shortcuts = ShortcutBinding.all.map { KeyboardShortcuts.getShortcut(for: $0.name) }
+            // Opening the tour shows its first page; only showing the shortcuts page counts as the
+            // person looking at shortcuts (it restarts the held-shortcut watch).
+            let attentionHandler = harness.app.shortcutStatus.onAttention
+            var attentionCount = 0
+            harness.app.shortcutStatus.onAttention = {
+                attentionCount += 1
+                attentionHandler?()
+            }
             defer {
+                harness.app.shortcutStatus.onAttention = attentionHandler
                 harness.permission.isGranted = permissionGranted
                 harness.accessibility.isTrusted = accessibilityTrusted
                 for (binding, shortcut) in zip(ShortcutBinding.all, originalShortcuts) {
@@ -40,7 +49,27 @@
             defer { window.close() }
             let root = try context.unwrap("onboarding window has content", window.contentView)
             await E2ESnapshot.settle(root)
+            context.check(
+                "opening the tour does not note attention to shortcuts", attentionCount == 0,
+                "\(attentionCount) notes")
+            let defaultSize = window.contentRect(forFrameRect: window.frame).size
+            context.check(
+                "the tour opens at the fixed default 580 × 615 pt", defaultSize == NSSize(width: 580, height: 615),
+                "\(defaultSize)")
+            context.check(
+                "the tour keeps its 540 × 480 pt minimum", window.contentMinSize == NSSize(width: 540, height: 480),
+                "\(window.contentMinSize)")
+            context.check("the tour stays resizable", window.styleMask.contains(.resizable))
+            var pageHeights: [String: CGFloat] = [:]
+            var viewport: CGFloat = 0
+            func measure(_ page: String) {
+                guard let fit = tourFit(root, context, page: page) else { return }
+                pageHeights[page] = fit.page
+                viewport = fit.visible
+            }
+            measure("local-processing")
             context.snapshot(root, shot: "local-processing")
+            await context.darkCompanion(root, in: window, shot: "local-processing", surface: "tour local-processing")
 
             try pressTourControl("tour.next", in: root, context)
             await E2ESnapshot.settle(root)
@@ -60,7 +89,15 @@
                     "completion is not written at \(page)", !harness.settings.preferences.hasCompletedOnboarding)
                 context.check("Back is available at \(page)", onboarding.canGoBack)
                 await E2ESnapshot.settle(root)
+                if page == .shortcuts {
+                    // The tallest page is the shortcuts page while macOS holds the defaults.
+                    context.check(
+                        "the shortcuts page is measured while macOS holds the default shortcuts",
+                        harness.app.shortcutStatus.isHoldingAny)
+                }
+                measure("\(page)")
                 context.snapshot(root, shot: "\(page)")
+                await context.darkCompanion(root, in: window, shot: "\(page)", surface: "tour \(page)")
                 window.setContentSize(NSSize(width: 540, height: 480))
                 window.appearance = NSAppearance(named: .darkAqua)
                 await E2ESnapshot.settle(root)
@@ -70,10 +107,22 @@
                 try pressTourControl("tour.next", in: root, context)
                 await E2ESnapshot.settle(root)
                 context.check("Back and Continue return to \(page)", onboarding.step == page)
-                window.setContentSize(NSSize(width: 580, height: 640))
+                window.setContentSize(defaultSize)
                 window.appearance = NSAppearance(named: .aqua)
                 await E2ESnapshot.settle(root)
             }
+            E2ERunner.log(
+                "tour fit: content \(defaultSize), viewport \(viewport), pages "
+                    + pageHeights.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " "))
+            // Each page's own check (`tourFit`) asserts it fits the default window without scrolling.
+            context.check(
+                "every tour page was measured at the default size", pageHeights.count == OnboardingModel.pageCount,
+                "\(pageHeights.count)")
+            E2ERunner.log(
+                "tour fill: "
+                    + pageHeights.sorted { $0.key < $1.key }.map {
+                        "\($0.key)=\(Int(($0.value / max(viewport, 1) * 100).rounded()))%"
+                    }.joined(separator: " "))
 
             harness.app.perform(.featureTour)
             context.check("repeating the command preserves the open page", onboarding.step == .shortcuts)
@@ -140,6 +189,37 @@
             harness.settings.update { $0 = completedPreferences }
         }
 
+        /// The shown page's height (its `tour.page` accessibility frame and margins) and the tour's
+        /// scroll viewport at the window's current size. The document view alone cannot show empty space:
+        /// a short page's document is stretched to the viewport.
+        private static func tourFit(_ root: NSView, _ context: ScenarioContext, page: String)
+            -> (page: CGFloat, visible: CGFloat)?
+        {
+            root.layoutSubtreeIfNeeded()
+            guard let scroll = EditorWindowController.first(NSScrollView.self, in: root) else {
+                context.check("\(page): the tour page is in a scroll view", false, "no NSScrollView")
+                return nil
+            }
+            let visible = scroll.contentView.bounds.height
+            let document = scroll.documentView?.frame.height ?? .infinity
+            context.check(
+                "\(page) fits without vertical scrolling at the default size", document <= visible + 1,
+                "document \(document), visible \(visible)")
+            guard let frame = try? E2EAccessibilityControl.frame("tour.page", in: root, context),
+                let window = scroll.window
+            else { return nil }
+            // The page's accessibility frame spans its content; its margin is the gap above the
+            // content, repeated below it.
+            let viewportTop = window.convertToScreen(scroll.contentView.convert(scroll.contentView.bounds, to: nil))
+                .maxY
+            let margin = viewportTop - frame.maxY
+            let height = frame.height + 2 * margin
+            context.check(
+                "\(page) fits in the default window", height <= visible + 1,
+                "page \(height) (content \(frame.height), margin \(margin)), visible \(visible)")
+            return (height, visible)
+        }
+
         private static func pressTourControl(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
             try E2EAccessibilityControl.press(identifier, in: root, context)
         }
@@ -175,6 +255,7 @@
             let root = try context.unwrap("menu content hosted", window.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root)
+            await context.darkHosted(menu, light: root, shot: nil, surface: "menu")
         }
 
         /// Quit asks before discarding edits that were never exported (FR-04). Window close already
@@ -218,37 +299,186 @@
             let window = SettingsWindowController.makeWindow(model: harness.app)
             window.appearance = NSAppearance(named: .aqua)
             E2ESnapshot.park(window)
-            window.setContentSize(NSSize(width: 560, height: 540))
             defer { window.close() }
             let root = try context.unwrap("settings window has content", window.contentView)
             await E2ESnapshot.settle(root)
 
-            let tabs = [
-                "general", "shortcuts", "capture", "export", "github", "privacy", "text-recognition", "pins",
-                "scrolling",
-            ]
-            if let tabView = EditorWindowController.first(NSTabView.self, in: root) {
-                context.check(
-                    "Settings has one tab per area", tabView.numberOfTabViewItems == tabs.count,
-                    "\(tabView.numberOfTabViewItems) tabs")
-                for (index, name) in tabs.enumerated() where index < tabView.numberOfTabViewItems {
-                    tabView.selectTabViewItem(at: index)
-                    if name == "text-recognition" {
-                        let loaded = await E2EWait.until {
-                            if case .loaded = harness.features.ocrLanguages.state { return true }
-                            return false
-                        }
-                        context.check(
-                            "OCR languages load at runtime", loaded, "\(harness.features.ocrLanguages.state)")
+            let tabs = ["general", "shortcuts", "capture", "export", "github", "privacy", "text-recognition"]
+            let tabView = try context.unwrap("Settings exposes an AppKit tab view", first(NSTabView.self, in: root))
+            context.check(
+                "Settings has one tab per area", tabView.numberOfTabViewItems == tabs.count,
+                "\(tabView.numberOfTabViewItems) tabs")
+            for (index, name) in tabs.enumerated() where index < tabView.numberOfTabViewItems {
+                tabView.selectTabViewItem(at: index)
+                if name == "text-recognition" {
+                    let loaded = await E2EWait.until {
+                        if case .loaded = harness.features.ocrLanguages.state { return true }
+                        return false
                     }
-                    await E2ESnapshot.settle(root, for: .milliseconds(400))
-                    // The tab's own content: the toolbar tab strip belongs to the window and does
-                    // not render offscreen.
-                    context.snapshot(tabView.selectedTabViewItem?.view ?? root, shot: name)
+                    context.check("OCR languages load at runtime", loaded, "\(harness.features.ocrLanguages.state)")
                 }
-            } else {
-                context.check("Settings exposes an AppKit tab view", false, "no NSTabView in the hosted hierarchy")
+                await E2ESnapshot.settle(root, for: .milliseconds(400))
+                let pane = try context.unwrap("the \(name) pane", tabView.selectedTabViewItem?.view)
+                await checkPaneFits(name, index: index, pane: pane, harness.app, context)
+                // The tab's own content: the toolbar tab strip belongs to the window and does
+                // not render offscreen.
+                context.snapshot(pane, shot: name)
+                await context.darkCompanion(
+                    pane, in: window, shot: name, surface: "Settings \(name)", settle: .milliseconds(400))
+                switch name {
+                case "general":
+                    context.check(
+                        "General holds the Pins section",
+                        E2EAccessibilityControl.isPresent("settings.pinOpacity", in: pane))
+                case "capture":
+                    for identifier in ["settings.automaticScrolling", "settings.accessibilityStatus"] {
+                        context.check(
+                            "Capture holds the Scrolling Capture control \(identifier)",
+                            E2EAccessibilityControl.isPresent(identifier, in: pane))
+                    }
+                case "export":
+                    // A pane whose content grows after it is shown still fits it.
+                    harness.settings.update { $0.defaultExportFormat = .jpeg }
+                    await E2ESnapshot.settle(root, for: .milliseconds(400))
+                    await checkPaneFits("export with JPEG quality", index: index, pane: pane, harness.app, context)
+                    harness.settings.update { $0.defaultExportFormat = .png }
+                    await E2ESnapshot.settle(root, for: .milliseconds(400))
+                    await checkPaneFits("export back to PNG", index: index, pane: pane, harness.app, context)
+                default: break
+                }
             }
+            try await settingsMergedControls(harness, context)
+        }
+
+        /// The Pins and Scrolling Capture controls, now sections of General and Capture, change the
+        /// same preferences through pointer input on a visible, key, foreground Settings window.
+        private static func settingsMergedControls(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let preferences = harness.settings.preferences
+            let trusted = harness.accessibility.isTrusted
+            defer {
+                harness.accessibility.isTrusted = trusted
+                harness.settings.update {
+                    $0.pinDefaultOpacity = preferences.pinDefaultOpacity
+                    $0.automaticScrollingEnabled = preferences.automaticScrollingEnabled
+                }
+            }
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
+            let window = SettingsWindowController.makeWindow(model: harness.app)
+            window.appearance = NSAppearance(named: .aqua)
+            window.center(on: ScreenChoice.screen())
+            defer { window.close() }
+            let root = try context.unwrap("settings window has content", window.contentView)
+            let tabs = try context.unwrap("Settings tab view", first(NSTabView.self, in: root))
+            func activate() async throws {
+                if !E2EForegroundFixture.runnerIsForeground {
+                    try await foreground.restore()
+                    try await foreground.yieldToRunner()
+                }
+                try await E2EAccessibilityControl.showAndActivate(window, context)
+            }
+            func click(_ identifier: String, tab: Int) async throws {
+                tabs.selectTabViewItem(at: tab)
+                try await activate()
+                await E2ESnapshot.settle(root, for: .milliseconds(400))
+                let pane = try context.unwrap("the selected Settings pane", tabs.selectedTabViewItem?.view)
+                try E2EAccessibilityControl.click(identifier, in: pane, context)
+                await E2ESnapshot.settle(root, for: .milliseconds(400))
+            }
+
+            let opacity = harness.settings.preferences.pinDefaultOpacity
+            try await click("settings.pinOpacity", tab: 0)
+            let changed = harness.settings.preferences.pinDefaultOpacity
+            context.check(
+                "the General Pins slider changes the default pin opacity",
+                changed != opacity && SettingsStore.opacityRange.contains(changed), "\(opacity) -> \(changed)")
+            if let pane = tabs.selectedTabViewItem?.view { context.snapshot(pane, shot: "general-pins") }
+
+            harness.accessibility.isTrusted = false
+            let requests = harness.accessibility.requestCount
+            try await click("settings.automaticScrolling", tab: 2)
+            context.check(
+                "the Capture switch turns automatic scrolling on",
+                harness.settings.preferences.automaticScrollingEnabled)
+            context.check(
+                "turning it on without Accessibility asks exactly once",
+                harness.accessibility.requestCount == requests + 1, "\(harness.accessibility.requestCount - requests)")
+            let pane = try context.unwrap("the Capture pane", tabs.selectedTabViewItem?.view)
+            context.snapshot(pane, shot: "capture-scrolling")
+            try await click("settings.automaticScrolling", tab: 2)
+            context.check(
+                "the Capture switch turns automatic scrolling off",
+                !harness.settings.preferences.automaticScrollingEnabled)
+            context.check(
+                "turning it off asks nothing", harness.accessibility.requestCount == requests + 1,
+                "\(harness.accessibility.requestCount - requests)")
+
+            harness.accessibility.isTrusted = true
+            try await click("settings.accessibilityCheckAgain", tab: 2)
+            let status = try E2EAccessibilityControl.text(
+                .value, for: "settings.accessibilityStatus", in: pane, context)
+            context.check("Check Again reports the granted permission", status == String(localized: "Allowed"), status)
+            try await click("settings.automaticScrolling", tab: 2)
+            context.check(
+                "with Accessibility granted, the switch turns automatic scrolling on",
+                harness.settings.preferences.automaticScrollingEnabled)
+            context.check(
+                "with Accessibility granted, nothing is requested", harness.accessibility.requestCount == requests + 1,
+                "\(harness.accessibility.requestCount - requests)")
+            await foreground.stop(context)
+        }
+
+        /// A pane is as tall as its own content hosted alone at the pane width, and its form does
+        /// not scroll: no empty band below the content and nothing cut off.
+        private static func checkPaneFits(
+            _ name: String, index: Int, pane: NSView, _ model: AppModel, _ context: ScenarioContext
+        ) async {
+            pane.layoutSubtreeIfNeeded()
+            // Measured in its own offscreen window: switch rows only take their real height there.
+            guard let content = settingsContent(index, model) else { return }
+            let host = E2ESnapshot.host(nsView: content, size: NSSize(width: 560, height: 100))
+            defer { host.close() }
+            // Let the reference finish its own appearance work (Text Recognition reloads languages).
+            await E2ESnapshot.settle(content, for: .milliseconds(400))
+            let fitting = content.fittingSize.height
+            context.check(
+                "the \(name) pane is as tall as its content", abs(pane.frame.height - fitting) <= 1,
+                "pane \(pane.frame.height), content \(fitting)")
+            if let scroll = first(NSScrollView.self, in: pane), let document = scroll.documentView {
+                E2ERunner.log(
+                    "settings \(name): pane \(pane.frame.height), content \(fitting), document \(document.frame.height)"
+                )
+                context.check(
+                    "the \(name) pane does not scroll", document.frame.height <= scroll.contentView.bounds.height + 1,
+                    "document \(document.frame.height), visible \(scroll.contentView.bounds.height)")
+            }
+        }
+
+        /// Each pane's content as `SettingsWindowController` builds it, without the pane wrapper.
+        private static func settingsContent(_ index: Int, _ model: AppModel) -> NSView? {
+            func host(_ view: some View) -> NSView { NSHostingView(rootView: view.frame(width: 560)) }
+            return switch index {
+            case 0: host(GeneralSettingsTab(settings: model.settings, loginItem: model.features?.loginItem))
+            case 1:
+                host(
+                    ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)
+                )
+            case 2:
+                host(
+                    CaptureSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility))
+            case 3: host(ExportSettingsTab(settings: model.settings, folders: model.features?.services.folders))
+            case 4:
+                host(
+                    GitHubUploadSettings(
+                        settings: model.settings, credentials: model.features?.services.githubCredentials))
+            case 5: host(PrivacySettingsTab())
+            case 6: host(OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages))
+            default: nil
+            }
+        }
+
+        private static func first<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
+            EditorWindowController.first(type, in: view)
         }
     }
 #endif

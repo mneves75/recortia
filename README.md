@@ -40,9 +40,13 @@ The Homebrew cask (`brew install --cask mneves75/tap/recortia`) still installs t
   - Seven text appearances: standard, rounded, monospaced, outlined, boxed, rounded box and
     monospaced box, with a background color for boxed text.
   - A saved palette of up to 12 annotation colors is shared by all editors.
+  - Tools and export actions sit in the window toolbar; blur, pixelate, spotlight and magnifier
+    are under Effects, and the pixel tools under Measure. The inspector's Format tab shows only
+    the options for the selected objects or the active tool; its Image tab holds size, crop,
+    framing, added images, and text and QR recognition.
 - **Redact securely.** Solid redaction replaces source pixels before any resampling or effect,
   so the exported image does not depend on what was underneath. Blur and pixelate are available
-  and labeled cosmetic, never secure.
+  and labeled cosmetic, never secure, on both inspector tabs.
 - **Export deliberately.** Copy (one sanitized PNG), save (atomic, PNG or JPEG) or drag out.
   Every export is freshly encoded with an allowlist of metadata: no EXIF, GPS, text chunks or
   hidden layers. Automatic save, off by default, writes each still capture only to the folder you
@@ -62,9 +66,13 @@ The Homebrew cask (`brew install --cask mneves75/tap/recortia`) still installs t
   rounded corners, shadow, spotlight and magnifier callouts.
 - **Works on every desktop**: windows open on the Space you are using, including another app's
   fullscreen Space, and on the display you captured.
-- A skippable first-run tour, which you can replay from **Feature Tour** in the menu-bar menu.
+- A skippable first-run tour, one line per feature, which you can replay from **Feature Tour** in
+  the menu-bar menu. Settings has seven panes: General (with Pins), Shortcuts, Capture (with
+  Scrolling Capture), Export, GitHub, Privacy and Text Recognition.
   Every editor window opens at one size: the last size you chose, or a default that fits the
   screen.
+- Follows the system's light or dark appearance. The editor's transparency checkerboard follows
+  it on screen; exported and pinned images are unchanged.
 - English and Brazilian Portuguese; keyboard accessible, with VoiceOver labels.
 
 ## Privacy
@@ -136,6 +144,10 @@ in [docs/architecture/module-contracts.md](docs/architecture/module-contracts.md
   performance budgets. On the build Mac, the first opening of the editor and of Settings took
   longer than the 50 ms target (PERF-02).
 - Physical keyboard, Spaces and permission checks were not run on 0.13.0.
+- The editor's window toolbar has been checked only on macOS 27; on macOS 15 and 26 it may draw
+  differently.
+- VoiceOver and Full Keyboard Access have not been checked on the editor toolbar, its menu buttons,
+  or the inspector's style tiles and color swatches.
 - Automatic scrolling scrolls downward only.
 - There is no in-app updater; update with a new DMG.
 

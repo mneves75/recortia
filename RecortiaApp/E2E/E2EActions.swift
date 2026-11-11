@@ -94,6 +94,22 @@
             context.snapshot(root, shot: shot)
         }
 
+        /// After an editor screenshot: the same editor in dark as `<shot>-dark` (or `<scenario>-dark`),
+        /// with the chrome control in both appearances. The canvas view is user content and is
+        /// masked out; the toolbar, sidebar, inspector and status bar are the chrome.
+        static func darkEditor(
+            _ controller: EditorWindowController, _ context: ScenarioContext, shot: String?, surface: String
+        ) async {
+            guard let window = controller.window, let root = controller.contentRoot else {
+                context.check("\(surface): editor has content to render dark", false)
+                return
+            }
+            let canvas = controller.canvasView.map { [$0 as NSView] } ?? []
+            context.check("\(surface): the canvas view is found to mask it", !canvas.isEmpty)
+            await context.darkCompanion(
+                root, in: window, shot: shot, surface: surface, excluding: canvas, settle: .milliseconds(350))
+        }
+
         /// Scrolls the inspector (the rightmost scroll view) so `fraction` of it is above the fold.
         static func scrollInspector(_ controller: EditorWindowController, to fraction: Double) async {
             guard let root = controller.contentRoot else { return }
