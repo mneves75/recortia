@@ -127,7 +127,7 @@ struct EditorToolbarContent: ToolbarContent {
         }
         // Keeps Copy out of the history group's capsule.
         ToolbarItem(placement: .primaryAction) {
-            Spacer(minLength: 8)
+            Spacer(minLength: 8).accessibilityHidden(true)
         }
         ToolbarItemGroup(placement: .primaryAction) {
             ExportButtons(model: model, actions: actions)
