@@ -289,10 +289,7 @@ private struct SavedColorsGrid: View {
                 .buttonStyle(ChoiceButtonStyle(isSelected: false))
                 .accessibilityIdentifier("palette.save")
                 .disabled(!model.canSaveStrokeColor)
-                .help(
-                    String(
-                        localized: "Save up to 12 distinct annotation colors. Duplicate colors are already saved.",
-                        table: "Editor"))
+                .help(String(localized: "Save Current Color", table: "Editor"))
                 Button {
                     model.removeSavedColor(model.style.stroke)
                 } label: {
@@ -305,11 +302,7 @@ private struct SavedColorsGrid: View {
                 .buttonStyle(ChoiceButtonStyle(isSelected: false))
                 .accessibilityIdentifier("palette.remove")
                 .disabled(isUnavailable || !saved.contains(current))
-                .help(
-                    String(
-                        localized:
-                            "Remove the current annotation color from saved colors. Existing annotations keep their color.",
-                        table: "Editor"))
+                .help(String(localized: "Remove Current Color", table: "Editor"))
             }
             .labelStyle(.iconOnly)
             if isUnavailable {

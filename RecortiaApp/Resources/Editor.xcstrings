@@ -229,22 +229,10 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor atual" } }
       }
     },
-    "Remove the current annotation color from saved colors. Existing annotations keep their color.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Remove the current annotation color from saved colors. Existing annotations keep their color." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remova a cor atual da paleta. As anotações existentes mantêm sua cor." } }
-      }
-    },
     "Save Current Color": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Save Current Color" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar cor atual" } }
-      }
-    },
-    "Save up to 12 distinct annotation colors. Duplicate colors are already saved.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Save up to 12 distinct annotation colors. Duplicate colors are already saved." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salve até 12 cores de anotação diferentes. Cores repetidas já estão salvas." } }
       }
     },
     "Saved colors are unavailable while newer preferences are protected.": {
