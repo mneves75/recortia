@@ -69,7 +69,8 @@ A segmented picker at the top (`inspector.tab`): **Format** and **Image**.
    changed."
 4. **Cosmetic effect** (blur or pixelate tool active, or one selected): the warning label
    (`redaction.cosmeticWarning`): "Cosmetic, not secure: text can remain recoverable. Use Redact
-   for private information." FR-06 and RED acceptance require this distinction to stay visible.
+   for private information." FR-06 and RED acceptance require this distinction to stay visible,
+   so it is pinned between the tab picker and the form, shown on either tab (review fix 2026-11-10).
 5. **Pixel tools** (loupe, ruler, color picker): contents as today; the two unit captions move to
    tooltips, the empty prompts stay.
 
@@ -78,9 +79,11 @@ The always-on Redaction section is removed: the three tools are in the toolbar.
 ### Image tab, in this order
 
 1. **Size**: canvas size, crop with Reset, output scale, Fit Canvas to Content, Add Margin.
-2. **Background** (`image.background` on the picker): today's Presentation controls.
+2. **Framing** (pt-BR "Moldura"; `image.background` on the Background picker): today's
+   Presentation controls.
 3. **Images**: Add Image…, Paste Image, Side by Side, Compare Transparency.
-4. **Text & QR**: as today.
+4. **Text & QR**: as today; the chosen text format belongs to the editor and survives switching
+   tabs (review fix 2026-11-10).
 
 ### Density and copy
 
@@ -90,25 +93,41 @@ The always-on Redaction section is removed: the three tools are in the toolbar.
 - Every string, new or changed, is in `Editor.xcstrings` in English and pt-BR; strings no longer
   used are removed.
 
-## Slice 2 — window toolbar (not started)
+## Slice 2 — window toolbar (built 2026-11-10)
 
-Move tools and export actions from the in-content strip to the window's toolbar, so the title bar
+Tools and export actions moved from the in-content strip to the window's toolbar, so the title bar
 and tools are one native bar that takes the system's current look on each macOS release.
 
-- Mechanism: SwiftUI `.toolbar` on the editor root, bridged into the AppKit window with
-  `NSHostingController.sceneBridgingOptions = [.toolbars, .title]` (macOS 14+). The window stays
-  the AppKit window `EditorWindowController` builds; `SpacePolicy` and `AppPresence` are untouched.
-- Probe (2026-11-10, macOS 27.3, standalone script, not in the repository): an offscreen titled
-  window with a bridged toolbar of ten toggles and two buttons renders its title, groups and
-  selected state through `cacheDisplay` of the window's frame view (`contentView.superview`), in
-  light and dark. So E2E can keep the toolbar in editor screenshots by rendering the frame view
-  instead of the content view. The window is not key in that render (grey window buttons).
-- Step A: the same tools, groups, undo/redo and export actions as today, as toolbar items (tools
-  centred, undo/redo and export trailing), each with its title, symbol and `.help`. Snapshot at the
-  default and the minimum window width, light and dark, both languages.
-- Step B, decided on Step A's screenshots: if the tools do not fit at the default width, fold the
-  occasional ones into menu buttons that show the active tool (cosmetic effects; spotlight and
-  magnifier; loupe, ruler and color picker) rather than letting the system overflow menu hide them.
+- Mechanism: SwiftUI `.toolbar` on the editor root (`EditorToolbarContent`), bridged into the
+  AppKit window with `NSHostingController.sceneBridgingOptions = [.toolbars]`;
+  `toolbarStyle = .unified`, `titleVisibility = .hidden`, `title` kept. The window stays the one
+  `EditorWindowController` builds; `SpacePolicy`, `AppPresence`, collection behavior, tabbing mode,
+  minimum size and sizing rules are untouched. Nothing newer than macOS 15 and no `#available`.
+- Order: leading [select, hand, crop] [text, arrow, line, rectangle, ellipse, freehand,
+  highlighter, step] [redact] [Effects ▾: blur, pixelate, spotlight, magnifier] [Measure ▾: loupe,
+  ruler, color picker]; trailing [undo, redo], a spacer item (bridged as a flexible space), then [Copy, Save ▾, Pin, Drag Out].
+  On macOS 27 the spacer keeps Copy out of the undo/redo capsule; it is flexible, so at wide
+  windows the output group sits at the trailing edge.
+- Each item keeps its title, symbol, `.help` and disabled rule, shown icon-only, with identifiers
+  `tool.<raw>`, `toolMenu.effects`, `toolMenu.measure`, `toolbar.undo|redo|copy|save|pin|dragOut`.
+  A menu button shows its group symbol (`camera.filters`, `level`) and name, or, while one of its
+  tools is active, that tool's symbol in the accent color, the value "Selected tool" and a name
+  with both group and tool; its menu checks the active tool.
+- Bridging facts found on macOS 27.3: a Toggle in a bridged toolbar reports its on/off state as
+  its accessibility value, so tool buttons use a button `accessibilityRepresentation` that keeps
+  the name, "Selected tool" and Press. A bridged `Menu` ignores `accessibilityLabel` and exposes
+  its Label text as an attributed title, so that text carries the name. Bridged items perform
+  AXPress but `accessibilityPerformPress()` returns false; tests check the effect.
+- `contentRect(forFrameRect:)` excludes the toolbar, so the remembered editor size stays the
+  content size (`editor-window-size` unchanged and passing).
+- E2E: `editor-toolbar` (bilingual) drives the real window: toolbar present and strip gone; at 980
+  and 1100 pt every non-space item of `NSToolbar.items` is in `visibleItems` (20 of 20;
+  the spacer item is bridged as a flexible space, so `visibleItems` holds 21); AX press
+  of tools; the real Effects/Measure menus opened through accessibility and chosen inside their
+  tracking loop; undo/redo enablement; Copy through the export path; the canvas keeps first
+  responder. Editor screenshots render the window's frame view, so they show the toolbar.
+- Not verified: macOS 15 and 26 rendering (no such host; groups may draw differently there);
+  physical VoiceOver and Full Keyboard Access traversal of the toolbar; customization is off.
 
 ## Later slices
 

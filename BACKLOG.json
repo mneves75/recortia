@@ -1654,7 +1654,7 @@
       "id": "FP-045",
       "milestone": "M6",
       "title": "Editor redesign: contextual inspector and native window toolbar",
-      "status": "in_progress",
+      "status": "awaiting_manual_validation",
       "depends_on": [
         "FP-009"
       ],
@@ -1665,21 +1665,27 @@
       "acceptance_test_ids": [
         "EDIT-02"
       ],
-      "scope": "Owner request 2026-11-10 (docs/specs/editor-redesign/spec.md, which calls this FP-044; that id was already taken). Slice 1, done: the inspector shows only what the person works on, with Format/Image tabs that follow selection and tool until chosen; Format holds Object, Style (only the fill, line width and text size the renderer uses for the kinds in play), Arrow, Text Style, Redaction, Cosmetic Effect and Pixel Tools; Image holds Size, Background, Images and Text & QR; the always-on Redaction section is removed. Slice 2, not started: move tools and export actions to the native window toolbar.",
+      "scope": "Owner request 2026-11-10 (docs/specs/editor-redesign/spec.md, which calls this FP-044; that id was already taken). Slice 1, done: the inspector shows only what the person works on, with Format/Image tabs that follow selection and tool until chosen; Format holds Object, Style (only the fill, line width and text size the renderer uses for the kinds in play), Arrow, Text Style, Redaction and Pixel Tools; Image holds Size, Framing, Images and Text & QR; the always-on Redaction section is removed; the cosmetic warning is pinned above both tabs and the chosen OCR text format survives tab switches (review fixes). Slice 2, done: tools and export actions are in the window's native toolbar (bridged SwiftUI .toolbar, unified style), with Effects and Measure menu buttons that show the active tool.",
       "deliverables": [
         "RecortiaApp/Editor/EditorInspectorView.swift",
         "RecortiaApp/Resources/Editor.xcstrings",
-        "RecortiaApp/E2E/Scenarios+Inspector.swift (bilingual inspector-context) and E2EScenarios.swift"
+        "RecortiaApp/E2E/Scenarios+Inspector.swift (bilingual inspector-context) and E2EScenarios.swift",
+        "RecortiaApp/Editor/EditorRootView.swift (EditorToolbarContent) and EditorWindowManager.swift (toolbar bridging)",
+        "RecortiaApp/E2E/Scenarios+EditorToolbar.swift (bilingual editor-toolbar), E2EReport.swift (editor screenshots render the frame view), E2EAccessibilityControl.swift (pressCheckingEffect, chooseFromMenu, name)"
       ],
-      "completion_contract": "Slice 1: inspector-context passes in en and pt-BR, every existing inspector scenario passes with its assertions unchanged, check.sh passes. Slice 2: per spec, after the open snapshot question is settled.",
+      "completion_contract": "Slice 1: inspector-context passes in en and pt-BR, every existing inspector scenario passes with its assertions unchanged, check.sh passes. Slice 2: editor-toolbar passes in en and pt-BR with every toolbar item visible at 980 and 1100 pt, the 26 editor scenarios pass unchanged, check.sh passes.",
       "evidence": [
         ".scratch/e2e/20261110-205454-84946: inspector-context fails on the old inspector (image.background, style.fill, style.lineWidth, style.textSize, frame.* missing; no Format/Image picker)",
         ".scratch/e2e/20261110-223243-96790 (.scratch/logs/editor-redesign-e2e.log): 26/26 editor scenarios pass in en and pt-BR, including inspector-context, inspector-height, curved-arrows, saved-colors, text-font-designs, text-decorations, text-layout-failure, ocr-qr, redaction, annotations, pixel-tools, composition and crop-resize",
         ".scratch/logs/editor-redesign-check.log: './init.sh check --unsigned' ends 'check: all gates passed'; 626 extracted strings have pt-BR translations",
-        "Extracted .stringsdata for the Editor table matches Editor.xcstrings with no missing and no unused key"
+        "Extracted .stringsdata for the Editor table matches Editor.xcstrings with no missing and no unused key",
+        ".scratch/e2e/20261110-224906-20377: editor-toolbar fails on the in-content strip (no toolbar, no toolbar identifiers)",
+        ".scratch/e2e/20261110-231302-55337: review regressions fail before their fixes (cosmetic warning absent on the Image tab; OCR text format reverts after tab switches)",
+        ".scratch/e2e/20261110-232002-44052 (.scratch/logs/editor-redesign-e2e-2.log): 27/27 editor scenarios pass in en and pt-BR, including editor-toolbar; all 20 non-space toolbar items are in NSToolbar.visibleItems at 980 and 1100 pt (visibleItems holds 21 with the flexible space)",
+        ".scratch/logs/editor-redesign-check-2.log: './init.sh check --unsigned' ends 'check: all gates passed'"
       ],
       "authorization": "owner request 2026-11-10",
-      "status_note": "Slice 1 implemented; slice 2 not started. Synthetic E2E only: keyboard focus rings on the custom-styled tiles and swatches under Full Keyboard Access, and VoiceOver reading of the new controls, are not qualified."
+      "status_note": "Slices 1 and 2 implemented and synthetically verified on macOS 27.3 with Xcode 27.2. Not qualified: macOS 15/26 toolbar rendering (no host), VoiceOver and Full Keyboard Access traversal of the toolbar and of the custom-styled tiles and swatches, and a key-window render (E2E windows are inactive)."
     }
   ],
   "deferred_scope": [
