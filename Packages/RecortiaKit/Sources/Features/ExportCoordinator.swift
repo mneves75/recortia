@@ -328,7 +328,8 @@ public final class ExportCoordinator {
         let settings = self.settings
         // Frozen before the first await: the steps and the save folder are the ones chosen when the
         // capture was taken. A setting turned on or a folder chosen meanwhile applies to the next
-        // capture; the live checks below still stop a step turned off or a folder changed.
+        // capture. A step runs only if it is still allowed when it starts, and the same live check
+        // runs again after its render.
         let chosen = settings.preferences
         let saveFolder = chosen.autoSave ? chosen.preferredSaveFolderBookmark.flatMap(folders.resolveFolder) : nil
         let uploadConfiguration = chosen.githubUpload.flatMap { $0.automatic ? $0 : nil }
@@ -340,23 +341,27 @@ public final class ExportCoordinator {
                     isAllowed: { settings.preferences.autoCopy }))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if chosen.autoSave {
+        if chosen.autoSave, settings.preferences.autoSave {
             if let folder = saveFolder {
-                outcomes.append(
-                    await export(
-                        .saveToFolder(folder), session: session, currentSession: currentSession,
-                        isAllowed: { [folders] in
-                            // Compare folders, not bookmark bytes: a moved folder's bookmark is renewed.
-                            settings.preferences.autoSave
-                                && settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder)
-                                    == folder
-                        }))
+                let saveAllowed = { @MainActor [folders] in
+                    // Compare folders, not bookmark bytes: a moved folder's bookmark is renewed.
+                    settings.preferences.autoSave
+                        && settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder) == folder
+                }
+                if saveAllowed() {
+                    outcomes.append(
+                        await export(
+                            .saveToFolder(folder), session: session, currentSession: currentSession,
+                            isAllowed: saveAllowed))
+                }
             } else {
                 outcomes.append(.failed(.accessDenied))
             }
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if let configuration = uploadConfiguration {
+        if let configuration = uploadConfiguration, let live = settings.preferences.githubUpload, live.automatic,
+            live.destination == configuration.destination
+        {
             outcomes.append(
                 await export(
                     .upload(to: configuration.destination, intent: UUID()), session: session,

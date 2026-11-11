@@ -340,7 +340,7 @@ struct ExportCoordinatorTests {
         #expect(!h.files.uniqueSaves.contains { $0.folder == folderB }, "saved to a folder chosen after the capture")
         // Folder A is no longer the chosen folder, so it is not allowed either.
         #expect(h.files.uniqueSaves.isEmpty)
-        #expect(outcomes.first == .copied)
+        #expect(outcomes == [.copied])
     }
 
     @Test("Turning automatic save off while the copy renders still writes nothing")
@@ -353,9 +353,33 @@ struct ExportCoordinatorTests {
             $0.preferredSaveFolderBookmark = Data([1])
         }
         let outcomes = await batchChangingDuringCopy(h) { h.settings.update { $0.autoSave = false } }
-        #expect(outcomes.first == .copied)
-        #expect(!outcomes.contains { $0.didWrite && $0 != .copied })
+        #expect(outcomes == [.copied])
+        #expect(h.exporter.snapshotCount == 1, "a save turned off before its step still rendered")
         #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty)
+    }
+
+    @Test("Turning automatic upload off, or changing its repository, while the copy renders sends nothing")
+    func automaticBatchStillStopsARevokedUpload() async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        let changes: [(String, (inout Preferences) -> Void)] = [
+            ("off", { $0.githubUpload?.automatic = false }),
+            (
+                "other repository",
+                { $0.githubUpload?.destination = GitHubDestination(owner: "synthetic", repository: "other") }
+            ),
+        ]
+        for (label, change) in changes {
+            let upload = RecordingUpload()
+            let h = ExportHarness(upload: upload)
+            h.settings.update {
+                $0.autoCopy = true
+                $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true)
+            }
+            let outcomes = await batchChangingDuringCopy(h) { h.settings.update(change) }
+            #expect(outcomes == [.copied], "\(label)")
+            #expect(upload.requests == 0, "\(label): the upload was requested")
+            #expect(h.exporter.snapshotCount == 1, "\(label): a revoked upload still rendered")
+        }
     }
 
 }
