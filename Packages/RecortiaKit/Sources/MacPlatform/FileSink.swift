@@ -274,10 +274,11 @@ struct POSIXFileSystem: FileSystemOperations {
         var existing = stat()
         var copiedACL = false
         if stat(destination.path(percentEncoded: false), &existing) == 0 {
+            // ACL first, so a deny entry is in effect before the mode can widen access.
+            copiedACL = try copyACL(from: destination, to: descriptor)
+            afterReplaceStep(source)
             // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
             _ = fchmod(descriptor, existing.st_mode & 0o777)
-            afterReplaceStep(source)
-            copiedACL = try copyACL(from: destination, to: descriptor)
             afterReplaceStep(source)
         } else if errno != ENOENT {
             throw FileSystemFailure(code: errno)
@@ -286,8 +287,11 @@ struct POSIXFileSystem: FileSystemOperations {
             let failure = errno
             // The copied ACL can deny this user deleting the temporary file as well (an entry that
             // denies delete is also why the rename failed); drop it so the caller's cleanup works.
-            // Best effort, before cleanup of a failure that is already being reported.
+            // Owner-only first, so dropping a deny entry never widens access. Best effort, before
+            // cleanup of a failure that is already being reported.
             if copiedACL {
+                _ = fchmod(descriptor, 0o600)
+                afterReplaceStep(source)
                 try? Self.clearACL(descriptor)
                 afterReplaceStep(source)
             }
