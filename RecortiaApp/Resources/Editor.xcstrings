@@ -299,12 +299,6 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "A amostragem de área calcula a média das cores sRGB e do alfa. As amostras respeitam as bordas da imagem." } }
       }
     },
-    "Another image is still being opened. Try again when it finishes.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Another image is still being opened. Try again when it finishes." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Outra imagem ainda está sendo aberta. Tente novamente quando terminar." } }
-      }
-    },
     "Dismiss": {
       "localizations": {
         "en": {
@@ -335,12 +329,6 @@
             "value": "Fechar aviso"
           }
         }
-      }
-    },
-    "Opening the image was canceled.": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Opening the image was canceled." } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "A abertura da imagem foi cancelada." } }
       }
     },
     "Image uploaded to GitHub.": {
@@ -797,22 +785,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alfa"
-          }
-        }
-      }
-    },
-    "Animated or multi-page images are not supported.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Animated or multi-page images are not supported."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Imagens animadas ou com várias páginas não são compatíveis."
           }
         }
       }
@@ -2193,22 +2165,6 @@
         }
       }
     },
-    "Only PNG and JPEG images are supported.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Only PNG and JPEG images are supported."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Só imagens PNG e JPEG são compatíveis."
-          }
-        }
-      }
-    },
     "Only web links (http or https) can be opened.": {
       "localizations": {
         "en": {
@@ -3273,22 +3229,6 @@
         }
       }
     },
-    "The clipboard does not contain a PNG or JPEG image.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The clipboard does not contain a PNG or JPEG image."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A área de transferência não contém uma imagem PNG ou JPEG."
-          }
-        }
-      }
-    },
     "The export had already finished and cannot be undone.": {
       "localizations": {
         "en": {
@@ -3301,38 +3241,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "A exportação já tinha terminado e não pode ser desfeita."
-          }
-        }
-      }
-    },
-    "The file could not be read.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file could not be read."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Não foi possível ler o arquivo."
-          }
-        }
-      }
-    },
-    "The file is larger than 64 MB.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file is larger than 64 MB."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O arquivo tem mais de 64 MB."
           }
         }
       }
@@ -3365,54 +3273,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "A imagem mudou enquanto era fixada. Tente de novo."
-          }
-        }
-      }
-    },
-    "The image data is damaged.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The image data is damaged."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Os dados da imagem estão danificados."
-          }
-        }
-      }
-    },
-    "The image has invalid dimensions.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The image has invalid dimensions."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A imagem tem dimensões inválidas."
-          }
-        }
-      }
-    },
-    "The image is larger than 40 megapixels.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The image is larger than 40 megapixels."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A imagem tem mais de 40 megapixels."
           }
         }
       }

@@ -152,7 +152,7 @@
             let unavailable = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             context.check(
                 "a save to a folder that disappeared fails visibly",
-                await E2EWait.until { unavailable.model.notice == .exported(.failed(.accessDenied)) },
+                await E2EWait.until { unavailable.model.notice == .automaticExportFailed(.accessDenied) },
                 "\(String(describing: unavailable.model.notice))")
             context.check(
                 "and is not written anywhere else",

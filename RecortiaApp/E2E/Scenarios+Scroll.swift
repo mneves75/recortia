@@ -51,13 +51,16 @@
             }
             try context.require("frames are collected", held, "state \(model.state), accepted \(model.acceptedFrames)")
             _ = await E2EWait.until(timeout: .seconds(5)) { model.outputSize.height > fixture.viewportHeight }
-            let hud = HostingPanel(title: "", activating: false)
+            // The product's own panel, so its title-bar behavior is what the screenshot shows.
+            let hud = ScrollUIController.makeHUDPanel()
             hud.setContent(HUDFollower(model: model))
             E2ESnapshot.park(hud)
             defer { hud.close() }
             let hudRoot = try context.unwrap("HUD has content", hud.contentView)
             await E2ESnapshot.settle(hudRoot)
             context.snapshot(hudRoot, shot: "hud")
+            checkHUDPanel(hud, model: model, context)
+            await context.darkCompanion(hudRoot, in: hud, shot: "hud", surface: "scrolling HUD")
 
             harness.scrollFrames.release()
             let drained = await E2EWait.until(timeout: .seconds(30)) {
@@ -138,6 +141,29 @@
     }
 
     /// Mirrors the app's private HUD adapter over `ScrollSessionModel`.
+    /// The HUD panel keeps its focus, level and Space contract, and reserves no title-bar band:
+    /// its content is exactly as tall as the HUD view hosted alone.
+    @MainActor
+    private func checkHUDPanel(_ hud: HostingPanel, model: ScrollSessionModel, _ context: ScenarioContext) {
+        context.check(
+            "the HUD panel stays a titled, full-size-content, non-activating panel",
+            hud.styleMask == [.titled, .fullSizeContentView, .nonactivatingPanel], "\(hud.styleMask.rawValue)")
+        context.check("the HUD panel floats", hud.level == .floating && hud.isFloatingPanel, "\(hud.level.rawValue)")
+        context.check(
+            "the HUD panel joins all Spaces", hud.collectionBehavior == SpacePolicy.joinsAllSpaces,
+            "\(hud.collectionBehavior.rawValue)")
+        context.check("the HUD panel can become key on a click", hud.canBecomeKey)
+        let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].map {
+            hud.standardWindowButton($0).map { "\($0.isHidden ? "hidden" : "shown")/\($0.isEnabled ? "on" : "off")" }
+                ?? "none"
+        }
+        let content = hud.contentRect(forFrameRect: hud.frame).height
+        let bare = NSHostingView(rootView: HUDFollower(model: model)).fittingSize.height
+        context.check(
+            "the HUD reserves no empty band above its title", abs(content - bare) <= 1,
+            "panel content \(content) pt, HUD alone \(bare) pt; window buttons \(buttons)")
+    }
+
     private struct HUDFollower: View {
         let model: ScrollSessionModel
 

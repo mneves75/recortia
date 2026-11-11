@@ -115,7 +115,7 @@
             let busyEditor = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             context.check(
                 "busy automatic export shows a failure in the new capture's editor",
-                await E2EWait.until { busyEditor.model.notice == .exported(.failed(.busy)) },
+                await E2EWait.until { busyEditor.model.notice == .automaticExportFailed(.busy) },
                 "\(String(describing: busyEditor.model.notice))")
             context.check(
                 "an automatic-export failure with an editor open raises no modal alert",
@@ -280,6 +280,31 @@
             let checkGitHub = String(localized: "Check the GitHub upload")
             context.check(
                 "an upload whose completion is unknown still asks to check GitHub", unknown == checkGitHub, unknown)
+
+            // The editor route (R-2): a batch with one failure shows it as the editor notice, and
+            // that notice must not deny the batch's earlier writes either. It says what the alert says.
+            let editor = try await harness.openImported(harness.desktop, name: "feedback-routing.png")
+            defer { editor.window?.close() }
+            let editorDenials = denials.union(["Nothing was saved", "Nada foi salvo"])
+            var denied: [String] = [], unlike: [String] = []
+            for failure in failures + [.upload(.completionUnknown)] {
+                editor.model.reportAutomaticExport(.failed(failure))
+                let text = editor.model.notice.map(EditorStrings.message) ?? ""
+                if editorDenials.contains(where: { text.contains($0) }) { denied.append("\(failure): \(text)") }
+                if !text.hasPrefix(UserMessage.export(failure).title) { unlike.append("\(failure): \(text)") }
+                editor.model.dismissNotice()
+            }
+            context.check(
+                "no automatic-export editor notice denies the batch's earlier writes", denied.isEmpty,
+                denied.joined(separator: "; "))
+            context.check(
+                "an automatic-export editor notice starts with the alert's title", unlike.isEmpty,
+                unlike.joined(separator: "; "))
+            // A manual export is one write: when it fails, saying nothing was saved is true and stays.
+            let manual = EditorStrings.message(.exported(.failed(.diskFull)))
+            context.check(
+                "a failed manual save still says nothing was saved",
+                manual == String(localized: "Nothing was saved: the disk is full.", table: "Editor"), manual)
         }
     }
 #endif

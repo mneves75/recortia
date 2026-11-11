@@ -36,22 +36,25 @@
                 "a success notice dismisses itself after the delay", await E2EWait.until { model.notice == nil })
 
             // Failures stay until the person dismisses them, and say so to VoiceOver.
-            let failures: [(String, ExportOutcome)] = [
-                ("failed export", .failed(.diskFull)),
-                ("upload completion unknown", .failed(.upload(.completionUnknown))),
+            let failures: [(String, ExportFailure)] = [
+                ("failed export", .diskFull),
+                ("upload completion unknown", .upload(.completionUnknown)),
             ]
-            for (name, outcome) in failures {
+            for (name, failure) in failures {
                 announcements.removeAll()
-                model.reportAutomaticExport(outcome)
-                let text = EditorStrings.message(.exported(outcome))
+                model.reportAutomaticExport(.failed(failure))
+                let notice = EditorNotice.automaticExportFailed(failure)
+                let text = EditorStrings.message(notice)
                 context.check(
                     "\(name): announced", await E2EWait.until { announcements.contains(text) },
                     "announced: \(announcements)")
                 try? await Task.sleep(for: delay * 6)
-                context.check("\(name): stays past the delay", model.notice == .exported(outcome))
+                context.check("\(name): stays past the delay", model.notice == notice)
                 if name == "failed export" {
                     await E2ESnapshot.settle(root)
                     context.snapshot(root, shot: "failure-notice")
+                    await E2EActions.darkEditor(
+                        controller, context, shot: "failure-notice", surface: "editor failure notice")
                 }
                 model.dismissNotice()
                 context.check("\(name): dismissing clears the notice", model.notice == nil)
@@ -84,6 +87,8 @@
                 "uploaded: stays so the GitHub link stays usable", model.notice == .exported(.uploaded(linkURL)))
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "uploaded-link")
+            await E2EActions.darkEditor(
+                controller, context, shot: "uploaded-link", surface: "editor uploaded-link notice")
 
             // A newer notice replaces a sticky one and is announced in turn.
             announcements.removeAll()

@@ -23,8 +23,8 @@
             harness.accessibility.isTrusted = false
             KeyboardShortcuts.setShortcut(.init(.f12, modifiers: [.control, .option]), for: .captureText)
             let shortcuts = ShortcutBinding.all.map { KeyboardShortcuts.getShortcut(for: $0.name) }
-            // Sizing the window measures every page, the shortcuts page included; that must not
-            // count as the person looking at shortcuts (it restarts the held-shortcut watch).
+            // Opening the tour shows its first page; only showing the shortcuts page counts as the
+            // person looking at shortcuts (it restarts the held-shortcut watch).
             let attentionHandler = harness.app.shortcutStatus.onAttention
             var attentionCount = 0
             harness.app.shortcutStatus.onAttention = {
@@ -50,10 +50,16 @@
             let root = try context.unwrap("onboarding window has content", window.contentView)
             await E2ESnapshot.settle(root)
             context.check(
-                "measuring the tour pages does not note attention to shortcuts", attentionCount == 0,
+                "opening the tour does not note attention to shortcuts", attentionCount == 0,
                 "\(attentionCount) notes")
             let defaultSize = window.contentRect(forFrameRect: window.frame).size
-            context.check("the tour opens at the default 580 pt width", defaultSize.width == 580, "\(defaultSize)")
+            context.check(
+                "the tour opens at the fixed default 580 × 615 pt", defaultSize == NSSize(width: 580, height: 615),
+                "\(defaultSize)")
+            context.check(
+                "the tour keeps its 540 × 480 pt minimum", window.contentMinSize == NSSize(width: 540, height: 480),
+                "\(window.contentMinSize)")
+            context.check("the tour stays resizable", window.styleMask.contains(.resizable))
             var pageHeights: [String: CGFloat] = [:]
             var viewport: CGFloat = 0
             func measure(_ page: String) {
@@ -63,6 +69,7 @@
             }
             measure("local-processing")
             context.snapshot(root, shot: "local-processing")
+            await context.darkCompanion(root, in: window, shot: "local-processing", surface: "tour local-processing")
 
             try pressTourControl("tour.next", in: root, context)
             await E2ESnapshot.settle(root)
@@ -82,8 +89,15 @@
                     "completion is not written at \(page)", !harness.settings.preferences.hasCompletedOnboarding)
                 context.check("Back is available at \(page)", onboarding.canGoBack)
                 await E2ESnapshot.settle(root)
+                if page == .shortcuts {
+                    // The tallest page is the shortcuts page while macOS holds the defaults.
+                    context.check(
+                        "the shortcuts page is measured while macOS holds the default shortcuts",
+                        harness.app.shortcutStatus.isHoldingAny)
+                }
                 measure("\(page)")
                 context.snapshot(root, shot: "\(page)")
+                await context.darkCompanion(root, in: window, shot: "\(page)", surface: "tour \(page)")
                 window.setContentSize(NSSize(width: 540, height: 480))
                 window.appearance = NSAppearance(named: .darkAqua)
                 await E2ESnapshot.settle(root)
@@ -97,18 +111,13 @@
                 window.appearance = NSAppearance(named: .aqua)
                 await E2ESnapshot.settle(root)
             }
-            let tallest = pageHeights.max { $0.value < $1.value }
             E2ERunner.log(
                 "tour fit: content \(defaultSize), viewport \(viewport), pages "
                     + pageHeights.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " "))
+            // Each page's own check (`tourFit`) asserts it fits the default window without scrolling.
             context.check(
-                "every tour page was measured", pageHeights.count == OnboardingModel.pageCount, "\(pageHeights.count)")
-            context.check(
-                "the window opens at the height of its tallest page",
-                tallest.map { abs($0.value - viewport) <= 1 } == true,
-                "tallest \(String(describing: tallest)), viewport \(viewport)")
-            // The spec also asks that no page leave more than about a third empty; with the shortcut
-            // notice the shortcuts page is far taller than the others, so this is recorded, not met.
+                "every tour page was measured at the default size", pageHeights.count == OnboardingModel.pageCount,
+                "\(pageHeights.count)")
             E2ERunner.log(
                 "tour fill: "
                     + pageHeights.sorted { $0.key < $1.key }.map {
@@ -246,6 +255,7 @@
             let root = try context.unwrap("menu content hosted", window.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root)
+            await context.darkHosted(menu, light: root, shot: nil, surface: "menu")
         }
 
         /// Quit asks before discarding edits that were never exported (FR-04). Window close already
@@ -313,6 +323,8 @@
                 // The tab's own content: the toolbar tab strip belongs to the window and does
                 // not render offscreen.
                 context.snapshot(pane, shot: name)
+                await context.darkCompanion(
+                    pane, in: window, shot: name, surface: "Settings \(name)", settle: .milliseconds(400))
                 switch name {
                 case "general":
                     context.check(

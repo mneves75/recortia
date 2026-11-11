@@ -4,6 +4,10 @@ import SwiftUI
 /// A small AppKit panel hosting SwiftUI content, sized to that content.
 final class HostingPanel: NSPanel {
     private let allowsKey: Bool
+    /// The title bar is transparent and hidden; by default SwiftUI still insets the content by its
+    /// height. A panel whose window buttons are absent (the scrolling HUD) sets this to false
+    /// before `setContent`, so the content and the panel's size start at the top edge.
+    var reservesTitleBarArea = true
 
     /// - Parameters:
     ///   - activating: false for HUDs that must not take focus from the app being captured.
@@ -33,6 +37,7 @@ final class HostingPanel: NSPanel {
     ///   through constraint passes until AppKit throws, so such content must use this.
     func setContent<Content: View>(_ view: Content, fixedToFittingSize: Bool = false) {
         let controller = NSHostingController(rootView: view)
+        if !reservesTitleBarArea { controller.safeAreaRegions = [] }
         if fixedToFittingSize {
             controller.sizingOptions = []
             contentViewController = controller

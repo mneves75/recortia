@@ -63,10 +63,17 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
         guard hud == nil else { return }
         // Shown without taking focus from the page being scrolled; a click makes it key so
         // Escape cancels (FR-10) without a global key monitor.
-        let panel = HostingPanel(title: String(localized: "Scrolling Capture"), activating: false, keyOnClick: true)
+        let panel = Self.makeHUDPanel()
         panel.setContent(LiveScrollHUD(model: model))
         hud = panel
         panel.present(activate: false)
+    }
+
+    /// Shown without taking focus from the page being scrolled; a click makes it key.
+    static func makeHUDPanel() -> HostingPanel {
+        let panel = HostingPanel(title: String(localized: "Scrolling Capture"), activating: false, keyOnClick: true)
+        panel.reservesTitleBarArea = false
+        return panel
     }
 
     private func closeHUD() {

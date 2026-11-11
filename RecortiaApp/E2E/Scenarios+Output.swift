@@ -176,6 +176,7 @@
             let content = try context.unwrap("replacement sheet content", sheet.contentView)
             await E2ESnapshot.settle(content)
             context.snapshot(content, shot: "replacement-consent")
+            await context.darkCompanion(content, in: sheet, shot: "replacement-consent", surface: "replacement sheet")
             let buttons = EditorWindowController.all(NSButton.self, in: content)
             let cancel = try context.unwrap(
                 "replacement Cancel button",
@@ -200,6 +201,13 @@
             if let chip = harness.drag.panel?.contentView {
                 await E2ESnapshot.settle(chip)
                 context.snapshot(chip, shot: "drag-chip")
+                if let panel = harness.drag.panel {
+                    // The thumbnail is the exported image: user content, masked out.
+                    let thumbnail = EditorWindowController.all(DragChipView.self, in: chip).map { $0 as NSView }
+                    context.check("the drag chip's thumbnail is found to mask it", !thumbnail.isEmpty)
+                    await context.darkCompanion(
+                        chip, in: panel, shot: "drag-chip", surface: "drag chip", excluding: thumbnail)
+                }
             } else {
                 context.check("the drag chip panel was built", false)
             }
@@ -252,6 +260,7 @@
             let root = try context.unwrap("pin content hosted", host.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root)
+            await darkPin(pin, pins, light: root, context)
             await E2EPanelProbe.check(.pin, context)
 
             // A redaction changes the privacy epoch: pins of the old epoch are removed.
@@ -269,6 +278,17 @@
             let pixels = try E2EActions.pixels(of: repinned.image, "new pin", context)
             let center = pixels.pixel(x: Int(secret.midX * 2), y: Int(secret.midY * 2))
             context.check("the new pin shows the redaction", center == ChartFixture.Color(0, 0, 0), center.hex)
+        }
+
+        /// The pin in dark appearance. Its image is user content: the chrome is the control strip
+        /// below it, so the image's own rectangle (fit scale 1) is masked out.
+        private static func darkPin(_ pin: Pin, _ pins: PinsModel, light: NSView, _ context: ScenarioContext) async {
+            let image = CGRect(
+                x: 0, y: 0, width: Double(pin.image.width) * pin.zoom / pin.displayScale,
+                height: Double(pin.image.height) * pin.zoom / pin.displayScale)
+            await context.darkHosted(
+                PinContentView(pinID: pin.id, model: pins, fitScale: 1), light: light, shot: nil, surface: "pin",
+                areas: [image])
         }
 
         static func importAdmission(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
@@ -432,6 +452,21 @@
                 }
                 alert.window.close()
             }
+
+            // The alert and the editor notice say the same thing about an import failure: one
+            // mapping, so the two can no longer drift apart (they differed in pt-BR).
+            let failures: [ImportFailure] = [
+                .busy, .cancelled, .nothingToPaste, .tooLarge, .tooManyPixels, .invalidDimensions, .unsupportedFormat,
+                .multipleFrames, .corrupt, .unreadable,
+            ]
+            let differing = failures.filter {
+                EditorStrings.message(.importFailed($0)) != UserMessage.importFailure($0).detail
+            }
+            context.check(
+                "the editor notice and the alert word every import failure the same way", differing.isEmpty,
+                differing.map {
+                    "\($0): \(EditorStrings.message(.importFailed($0))) ≠ \(UserMessage.importFailure($0).detail)"
+                }.joined(separator: "; "))
         }
     }
 #endif

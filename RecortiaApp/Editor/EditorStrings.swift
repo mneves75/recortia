@@ -209,6 +209,7 @@ enum EditorStrings {
         case .pinsInvalidated(let count):
             String(localized: "Redactions changed, so \(count) older pins were closed.", table: "Editor")
         case .exported(let outcome): exportMessage(outcome)
+        case .automaticExportFailed(let failure): automaticExportFailure(failure)
         case .noPreferredFolder:
             String(localized: "No save folder is set. Choose one in Settings › Export.", table: "Editor")
         case .undoHistoryTrimmed:
@@ -223,20 +224,9 @@ enum EditorStrings {
         return String(localized: "Not available on this Mac: \(list)", table: "Editor")
     }
 
+    /// The alert's wording (`UserMessage.importFailure`), shown inline: one mapping for both.
     static func importMessage(_ failure: ImportFailure) -> String {
-        switch failure {
-        case .busy:
-            String(localized: "Another image is still being opened. Try again when it finishes.", table: "Editor")
-        case .cancelled: String(localized: "Opening the image was canceled.", table: "Editor")
-        case .nothingToPaste: String(localized: "The clipboard does not contain a PNG or JPEG image.", table: "Editor")
-        case .tooLarge: String(localized: "The file is larger than 64 MB.", table: "Editor")
-        case .tooManyPixels: String(localized: "The image is larger than 40 megapixels.", table: "Editor")
-        case .invalidDimensions: String(localized: "The image has invalid dimensions.", table: "Editor")
-        case .unsupportedFormat: String(localized: "Only PNG and JPEG images are supported.", table: "Editor")
-        case .multipleFrames: String(localized: "Animated or multi-page images are not supported.", table: "Editor")
-        case .corrupt: String(localized: "The image data is damaged.", table: "Editor")
-        case .unreadable: String(localized: "The file could not be read.", table: "Editor")
-        }
+        UserMessage.importFailure(failure).detail
     }
 
     static func exportMessage(_ outcome: ExportOutcome) -> String {
@@ -251,6 +241,13 @@ enum EditorStrings {
         case .rejectedBusy: String(localized: "Another export is still running.", table: "Editor")
         case .failed(let failure): exportFailure(failure)
         }
+    }
+
+    /// The alert's title and detail for the same failure (`UserMessage.export`): one step of an
+    /// automatic batch failed, so the notice never says that nothing was exported.
+    static func automaticExportFailure(_ failure: ExportFailure) -> String {
+        let message = UserMessage.export(failure)
+        return "\(message.title). \(message.detail)"
     }
 
     static func exportFailure(_ failure: ExportFailure) -> String {

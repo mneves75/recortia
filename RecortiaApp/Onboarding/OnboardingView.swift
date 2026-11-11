@@ -13,7 +13,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             ScrollView {
                 TourPage(step: onboarding.step, shortcutStatus: shortcutStatus)
-                    // Showing the shortcuts is attention to them; measuring that page is not.
+                    // Showing the shortcuts page is attention to them.
                     .onAppear {
                         if onboarding.step == .shortcuts || onboarding.step == .done {
                             shortcutStatus.noteUserAttention()
@@ -26,28 +26,6 @@ struct OnboardingView: View {
                 .padding(20)
         }
         .frame(minWidth: 540, minHeight: 480)
-    }
-
-    /// The window content height at which the tallest page needs no scrolling at `width`, in the
-    /// running language and current shortcut state: every page and the navigation, at their ideal
-    /// heights, as the scroll view lays them out.
-    static func fittingHeight(width: CGFloat, onboarding: OnboardingModel, shortcutStatus: ShortcutStatusModel)
-        -> CGFloat
-    {
-        // One hosting view and one layout pass: a stack of every page is as tall as the tallest.
-        let pages = ZStack(alignment: .top) {
-            ForEach(OnboardingModel.Step.allCases.filter { $0 != .done }, id: \.self) { step in
-                TourPage(step: step, shortcutStatus: shortcutStatus)
-            }
-        }
-        let content = VStack(spacing: 0) {
-            pages
-            Divider()
-            OnboardingNavigation(onboarding: onboarding, onClose: {}).padding(20)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(width: width)
-        return NSHostingView(rootView: content).fittingSize.height
     }
 }
 
@@ -339,6 +317,7 @@ private struct ShortcutsStep: View {
 
 /// Hosts the onboarding view in a standard titled window.
 final class OnboardingWindowController {
+    static let defaultContentSize = NSSize(width: 580, height: 615)
     private var window: NSWindow?
     var isVisible: Bool { window?.isVisible == true }
 
@@ -363,8 +342,10 @@ final class OnboardingWindowController {
         window = nil
     }
 
-    /// Opens at the default width and at the height of the tallest page, so no page scrolls and
-    /// none leaves most of the window empty; larger text or a smaller window scrolls.
+    /// Opens at a fixed default size at which no page scrolls in English or Portuguese, including
+    /// the shortcuts page while macOS holds the defaults (`onboarding` checks every page). Nothing
+    /// is measured at open, which kept the first frame over its budget; larger text or a smaller
+    /// window scrolls.
     static func makeWindow(
         onboarding: OnboardingModel, shortcutStatus: ShortcutStatusModel, onClose: @escaping () -> Void
     ) -> NSWindow {
@@ -373,11 +354,7 @@ final class OnboardingWindowController {
         window.title = String(localized: "Welcome to Recortia")
         window.identifier = NSUserInterfaceItemIdentifier("recortia.onboarding")
         window.styleMask = [.titled, .closable, .resizable]
-        let width: CGFloat = 580
-        let fitting = OnboardingView.fittingHeight(width: width, onboarding: onboarding, shortcutStatus: shortcutStatus)
-        let screen = ScreenChoice.screen()?.visibleFrame.height ?? .infinity
-        let titleBar = window.frame.height - window.contentLayoutRect.height
-        window.setContentSize(NSSize(width: width, height: min(fitting.rounded(.up), screen - titleBar)))
+        window.setContentSize(defaultContentSize)
         window.contentMinSize = NSSize(width: 540, height: 480)
         window.isReleasedWhenClosed = false
         SpacePolicy.follow(window)

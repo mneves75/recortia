@@ -334,6 +334,9 @@ public enum EditorNotice: Hashable, Sendable {
     /// Pins made before a redaction change were closed.
     case pinsInvalidated(Int)
     case exported(ExportOutcome)
+    /// One step of an automatic export batch failed; other steps of the same batch may have
+    /// written, so this is not the outcome of a single export.
+    case automaticExportFailed(ExportFailure)
     case noPreferredFolder
     /// The oldest undo steps were discarded to stay within the undo budget (FR-04).
     case undoHistoryTrimmed

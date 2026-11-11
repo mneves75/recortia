@@ -56,6 +56,7 @@
                 present: ["style.fill", "style.lineWidth", "frame.x", "frame.y", "frame.width", "frame.height"],
                 absent: ["style.textSize", "arrow.straight", "textAppearance.standard", "image.background"])
             await E2EActions.snapshotEditor(controller, context, shot: "rectangle-selected")
+            await E2EActions.darkEditor(controller, context, shot: "rectangle-selected", surface: "editor, Format tab")
             for identifier in ["style.fill", "style.lineWidth"] {
                 context.check(
                     "rectangle selected: \(identifier) is enabled",

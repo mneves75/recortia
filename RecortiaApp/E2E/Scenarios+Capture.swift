@@ -49,7 +49,8 @@
                 "the size label reports display pixels, not points", pixels == PixelSize(width: 1380, height: 940),
                 "\(pixels.width) × \(pixels.height) px")
             await E2ESnapshot.settle(selection)
-            context.snapshot(selection, shot: "dragging", over: harness.desktop)
+            let lightDrag = context.snapshot(selection, shot: "dragging", over: harness.desktop)
+            await context.darkOverlay(selection, in: window, shot: "dragging", over: harness.desktop, light: lightDrag)
 
             selection.mouseUp(with: try mouseEvent(.leftMouseUp, at: end, in: selection))
             let commit = try context.unwrap("mouse up commits the selection", committed)
@@ -76,6 +77,7 @@
             if let root = loading.contentView {
                 await E2ESnapshot.settle(root)
                 context.snapshot(root, shot: "loading")
+                await context.darkCompanion(root, in: loading, shot: "loading", surface: "window chooser loading")
             }
 
             let listed = await E2EWait.until {
@@ -103,10 +105,28 @@
             let root = try context.unwrap("chooser panel has content", panel.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "list")
+            await context.darkCompanion(root, in: panel, shot: "list", surface: "window chooser list")
 
             // Drive the chooser's own controls: select the second row in the hosted list, then
             // send Return as a key equivalent, which fires the default "Capture" button. `onChoose` must receive the
             // selected row's window, not the first one and not a value this scenario assigned.
+            checkChooserFits(root, rows: windows.count, label: "the synthetic windows", scrolls: false, context)
+            let many = (1...12).map {
+                WindowInfo(
+                    id: CGWindowID(9000 + $0), ownerName: "Synthetic App \($0)", ownerPID: pid_t(9000 + $0),
+                    title: $0.isMultiple(of: 3) ? nil : "Document \($0)",
+                    frame: Rect(x: 0, y: 0, width: 400, height: 300), displayID: harness.capture.display.id)
+            }
+            let long = HostingPanel(title: "", activating: true)
+            long.setContent(WindowChooserView(windows: many, onChoose: { _ in }, onCancel: {}))
+            E2ESnapshot.park(long)
+            if let longRoot = long.contentView {
+                await E2ESnapshot.settle(longRoot)
+                checkChooserFits(longRoot, rows: many.count, label: "twelve windows", scrolls: true, context)
+                context.snapshot(longRoot, shot: "long-list")
+            }
+            long.close()
+
             let table = try context.unwrap(
                 "the chooser hosts its window list", EditorWindowController.first(NSTableView.self, in: root))
             try context.require(
@@ -160,6 +180,9 @@
             let root = try context.unwrap("countdown HUD has content", hud.contentView)
             await E2ESnapshot.settle(root, for: .milliseconds(150))
             context.snapshot(root)
+            await context.darkHosted(
+                CountdownFollower(coordinator: coordinator), light: root, shot: nil, surface: "countdown",
+                settle: .milliseconds(150))
             hud.close()
             context.check(
                 "nothing is captured during the countdown", harness.capture.captures.count == capturesBefore,
@@ -223,6 +246,40 @@
                 "corner marker 1 is at the top-left",
                 E2EActions.distance(marker, E2EActions.color(SyntheticDesktop.markerColors[0])) <= 1, marker.hex)
             await E2EActions.snapshotEditor(controller, context)
+            await E2EActions.darkEditor(controller, context, shot: nil, surface: "editor, Image tab")
+        }
+
+        /// The chooser's list is as tall as its rows up to the maximum: the last row ends within a
+        /// few points of the visible bottom (no empty band), and only a list over the maximum scrolls.
+        private static func checkChooserFits(
+            _ root: NSView, rows: Int, label: String, scrolls: Bool, _ context: ScenarioContext
+        ) {
+            root.layoutSubtreeIfNeeded()
+            guard let table = EditorWindowController.first(NSTableView.self, in: root),
+                let scroll = table.enclosingScrollView, table.numberOfRows == rows, rows > 0
+            else {
+                context.check("\(label): the chooser hosts a table with \(rows) rows", false)
+                return
+            }
+            let visible = scroll.contentView.bounds.height
+            let document = scroll.documentView?.frame.height ?? 0
+            let lastRow = table.rect(ofRow: rows - 1).maxY
+            E2ERunner.log(
+                "chooser \(label): visible \(visible), document \(document), last row ends \(lastRow), rows "
+                    + (0..<rows).map { "\(table.rect(ofRow: $0).height)" }.joined(separator: " "))
+            if scrolls {
+                context.check(
+                    "\(label): the list stops at its maximum and scrolls",
+                    abs(scroll.frame.height - WindowChooserView.maximumListHeight) <= 1 && document > visible + 1,
+                    "list \(scroll.frame.height), visible \(visible), document \(document)")
+            } else {
+                context.check(
+                    "\(label): every row is visible without scrolling", document <= visible + 1,
+                    "visible \(visible), document \(document)")
+                context.check(
+                    "\(label): no empty band under the last row", visible - lastRow <= 12,
+                    "visible \(visible), last row ends \(lastRow)")
+            }
         }
 
         static func capturedGeometry(_ model: EditorModel) -> CaptureGeometry? {

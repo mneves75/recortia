@@ -21,7 +21,7 @@ struct WindowChooserView: View {
                 if windows.isEmpty {
                     Text("No windows are available to capture.")
                         .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: Self.placeholderHeight)
                 } else {
                     List(windows, selection: $selection) { window in
                         VStack(alignment: .leading, spacing: 2) {
@@ -35,6 +35,7 @@ struct WindowChooserView: View {
                         }
                         .accessibilityElement(children: .combine)
                     }
+                    .frame(height: Self.listHeight(windows))
                     .focused($listFocused)
                     .onAppear {
                         selection = windows.first?.id
@@ -43,7 +44,7 @@ struct WindowChooserView: View {
                 }
             } else {
                 ProgressView("Finding windows…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: Self.placeholderHeight)
             }
             HStack {
                 Spacer()
@@ -57,8 +58,27 @@ struct WindowChooserView: View {
             }
         }
         .padding(16)
-        .frame(width: 420, height: 360)
+        .frame(width: 420)
     }
+
+    /// Height of the loading and empty states.
+    static let placeholderHeight: CGFloat = 120
+    /// Beyond this the list scrolls (about eight two-line rows).
+    static let maximumListHeight: CGFloat = 340
+
+    /// The list's height: its rows (one or two lines, as the inset list style lays them out) and
+    /// the list's own vertical insets, up to `maximumListHeight`. `window-chooser` checks it
+    /// against the hosted table, so the panel shows neither an empty band nor a scroller early.
+    static func listHeight(_ windows: [WindowInfo]) -> CGFloat {
+        let rows = windows.reduce(CGFloat(0)) { total, window in
+            total + ((window.title ?? "").isEmpty ? oneLineRow : twoLineRow)
+        }
+        return min(rows + listInsets, maximumListHeight)
+    }
+
+    private static let oneLineRow: CGFloat = 24
+    private static let twoLineRow: CGFloat = 41
+    private static let listInsets: CGFloat = 20
 }
 
 /// Chooser shown when several displays are connected.

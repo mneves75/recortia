@@ -276,6 +276,11 @@
                     }, "\(harness.scrollFrames.deliveredCount)/\(frames.count), state \(model.state)")
                 model.stop()
                 try context.require("\(label): Stop opens the review", model.state == .reviewing, "\(model.state)")
+                // The preview arrives after Stop and rebuilds the review's content; pressing a button
+                // before it could press an element SwiftUI is about to replace (as `scrolling` waits).
+                try context.require(
+                    "\(label): the review's preview has arrived before any button is pressed",
+                    await E2EWait.until(timeout: .seconds(10)) { model.preview != nil })
             }
             try context.require(
                 "scroll review: the preference is off and no window keeps Recortia running",
