@@ -115,7 +115,7 @@ struct ScrollHUDView: View {
         case .automaticNeedsAccessibility:
             String(
                 localized:
-                    "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Scrolling."
+                    "Automatic scrolling needs Accessibility permission. Scroll manually, or allow it in Settings › Capture."
             )
         case .accessibilityRevoked:
             String(localized: "Accessibility permission was turned off. Continue scrolling manually.")
