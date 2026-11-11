@@ -187,3 +187,24 @@ the rollback target. Both records are corrected to say what exists instead of wh
   (`TOOLCHAIN.json`, `installed_stable_observation.native_e2e`).
 - `tests.json` regenerated from that evidence and checked by `scripts/tests-report.py --check`.
 - 0.12.5 build 24 is a source candidate: not tagged, notarized, published or installed.
+
+## Source candidate 0.14.0 build 28, 2026-11-11
+
+Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
+
+- `project.yml` moved to 0.14.0 build 28 and `xcodegen generate` rewrote only the two version
+  settings in both configurations (`bf5c0a1`).
+- CHANGELOG `[0.14.0]` is written as a source candidate; the `[Unreleased]` agent-instructions entry
+  moved into it. BACKLOG gains `source_candidate_0_14_0`; `current_candidate` and
+  `current_local_installation` stay on the published 0.13.0, as `2858cf1` left them for the 0.13.0
+  candidate. README describes the new editor, Settings and appearance; its version, install and
+  download lines still name 0.13.0. AGENTS.md and CLAUDE.md record the new invariants.
+- `SPEC.md`, `ACCEPTANCE_TESTS.md` and `docs/architecture/module-contracts.md` were searched and left
+  unchanged: no sentence had become false, and every public name in the contracts is still public.
+- Gate: `.scratch/logs/release-prep-check.log`, `./init.sh check --unsigned` at `896bce7`, ends
+  `check: all gates passed`; 530 package tests (105 + 126 + 261 + 38), 620 pt-BR strings.
+  `tests.json` did not need regenerating.
+- Not a clean E2E pass: `.scratch/logs/final-e2e.log` (at `4f8ec58`) is 52/54 en and 53/54 pt-BR,
+  with `capture-focus` and one `ocr-qr` foreground check failing while the Mac was in use. The full
+  bilingual run on the final tree, on an idle unlocked console, is still pending.
+- Not tagged, notarized, published or installed.
