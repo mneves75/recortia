@@ -150,9 +150,11 @@ was reproduced, and both require another local account with access to the folder
   at that moment is copied onto the new capture. An account that can rename entries in a shared,
   non-sticky folder can put a more permissive file, or a link to one, at that name, and the capture
   takes that broader access. NV-01 closed the other direction (the person's other files can no
-  longer receive the destination's access). The rename (a swap after the check can put other bytes
-  at the destination, but never moves the person's access to another file) and the cleanup `unlink`
-  (it removes a name, not what a link points to) are safe as they are.
+  longer receive the destination's access). The rename and the cleanup `unlink` still
+  act on names: a swap after the identity check can put other bytes at the destination or leave a
+  stray temporary name, but neither moves the person's access onto another file. That is a
+  narrower statement than "safe": the final audit lists the path-based rename, unlink and
+  parent lookup as hardening note H-01.
 
 Closing either needs a private staging location and a destination policy bound to an
 identity-checked descriptor: a design change, not a patch.

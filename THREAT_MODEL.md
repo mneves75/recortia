@@ -53,11 +53,13 @@ preferences never revives the old intent; the final pre-write check rejects it (
 | False security assurance | App claims universal secret detection, erasure, or compatibility | Scope-specific language; explicit unsupported cases; published validation status | RED-04; release review |
 
 Saving into a folder that other local accounts can write to, or that grants them inherited
-access, is outside what Recortia can protect (EXP-02). There Recortia guarantees that temporary
-files are owner-only while written, that a replaced file's mode and ACL are applied only to the
-file Recortia wrote (its ACL before its mode), that a temporary file substituted by another file
-or link is refused, and that no temporary file is left behind after a failure. It does not
-guarantee two things, both unreproduced and both needing another account with access to that
+access, is outside what Recortia can protect (EXP-02). There Recortia writes temporary files
+owner-only, applies a replaced file's mode and ACL only through the descriptor of the file it
+wrote (its ACL before its mode), refuses to apply them when, at that moment, the temporary name
+no longer leads to that file alone, and removes the temporary file after a failure on a best-effort
+basis. The final rename and the cleanup still act on names, and metadata calls a volume refuses
+are skipped, so these are limits on what Recortia itself does, not a promise about what another
+account with write access to that folder can cause. It also does not guarantee two things, both unreproduced and both needing another account with access to that
 folder: an account covered by an inherited entry that opens the temporary file in the instant
 before Recortia removes that entry, while it is still empty, can keep reading the bytes written
 afterwards; and because the replaced file's mode and ACL are read by pathname, an account that can
