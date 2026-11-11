@@ -342,7 +342,6 @@
     struct E2EMenuEntry: CustomStringConvertible {
         let title: String
         let checked: Bool
-        var toolTip: String?
         var description: String { "\(title)\(checked ? " ✓" : "")" }
     }
 
@@ -372,7 +371,7 @@
                 self, selector: #selector(ended(_:)), name: NSMenu.didEndTrackingNotification, object: menu)
             menu.update()
             entries = menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }
-                .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on, toolTip: $0.toolTip) }
+                .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on) }
             let index = title.flatMap { title in menu.items.firstIndex { $0.title == title } }
             chosen = index != nil
             // Choose on the next turn of the tracking loop, after the menu finished opening, as a
