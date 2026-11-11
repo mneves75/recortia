@@ -273,6 +273,12 @@ slice is evidence first, fixes where the evidence showed a defect. No appearance
   (the hosting controller's `safeAreaRegions` become empty). Style mask, level, Space behavior and
   key-on-click are asserted unchanged; the HUD panel has no window buttons. `scrolling` renders the
   product's `ScrollUIController.makeHUDPanel()`.
+- Panel position: `HostingPanel.present` ran right after `setContent`, before the tracked size
+  arrived, so it centred a zero-size frame; AppKit then grew the panel from its top-left corner,
+  leaving every tracked panel (chooser, HUD) half its width right of centre (210 pt for the
+  chooser). `present` now sizes an unsized panel to its content first
+  (`sizeToContentIfUnsized`); `window-chooser` repeats `present`'s arithmetic on the reused panel
+  and requires the top edge and centre to hold when the list replaces loading.
 - Follow-ups: the tour opens at a fixed 580 × 615 pt (Fit above); `last-window` waits for the
   review's preview before pressing Discard or Accept; an automatic batch's single failure is the
   editor notice `automaticExportFailed`, worded as the alert ("An automatic export step failed. The
