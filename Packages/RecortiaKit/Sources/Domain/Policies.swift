@@ -95,24 +95,8 @@ public enum CaptureMode: Hashable, Sendable, Codable, CaseIterable {
     case repeatRegion
 }
 
-public struct CaptureRequest: Identifiable, Hashable, Sendable {
-    public let id: RequestID
-    public var mode: CaptureMode
-    public var delaySeconds: Int
-    public var showsCursor: Bool
-    public var includesWindowShadow: Bool
-
-    public init(
-        id: RequestID = RequestID(), mode: CaptureMode, delaySeconds: Int = 0, showsCursor: Bool = false,
-        includesWindowShadow: Bool = true
-    ) {
-        self.id = id
-        self.mode = mode
-        self.delaySeconds = Self.clampedDelay(delaySeconds)
-        self.showsCursor = showsCursor
-        self.includesWindowShadow = includesWindowShadow
-    }
-
+/// The capture delay's limits, shared by Settings and the capture coordinator.
+public enum CaptureRequest {
     public static let maxDelaySeconds = 10
 
     public static func clampedDelay(_ seconds: Int) -> Int { min(max(seconds, 0), maxDelaySeconds) }

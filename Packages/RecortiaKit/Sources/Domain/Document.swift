@@ -130,10 +130,6 @@ public struct SecureMask: Identifiable, Hashable, Sendable, Codable {
         self.sourceRegions = sourceRegions
         self.fill = fill
     }
-
-    /// Source-bound masks apply to every render reference of the asset, including duplicates,
-    /// magnifiers, and pins. This is a property of the model, not an option.
-    public var appliesToEveryReference: Bool { true }
 }
 
 /// Blur or pixelation. Cosmetic only: never presented or treated as secure (FR-06, RED-04).

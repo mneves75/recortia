@@ -52,7 +52,6 @@ public struct DocumentSession: Sendable {
         return ids
     }
     public var undoCount: Int { undoStack.count }
-    public var undoLabel: String? { undoStack.last?.label }
     public var redoLabel: String? { redoStack.last?.label }
     public var isDirty: Bool { document != savedDocument }
     public var isGrouping: Bool { openGroup != nil }

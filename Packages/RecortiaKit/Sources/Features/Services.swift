@@ -138,7 +138,9 @@ public protocol DragSinkService: AnyObject {
 
 @MainActor
 public protocol SaveFolderService: AnyObject {
-    /// Resolves the preferred save folder bookmark, or nil when absent, stale, or revoked.
+    /// Resolves the preferred save folder bookmark to an existing folder, or nil when it cannot be
+    /// resolved or no longer names a folder. A stale bookmark (the folder moved or was renamed)
+    /// still resolves, and the stored bookmark is renewed.
     func resolveFolder(bookmark: Data) -> URL?
 }
 

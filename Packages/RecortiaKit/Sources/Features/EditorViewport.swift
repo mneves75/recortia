@@ -20,10 +20,6 @@ public struct EditorViewport: Hashable, Sendable {
         self.offset = offset.isFinite ? offset : .zero
     }
 
-    public var documentToView: AffineMap<DocumentSpace, ViewSpace> {
-        AffineMap(a: zoom, b: 0, c: 0, d: zoom, tx: offset.x, ty: offset.y)
-    }
-
     public func viewPoint(_ p: Point<DocumentSpace>) -> Point<ViewSpace> {
         Point(x: p.x * zoom + offset.x, y: p.y * zoom + offset.y)
     }

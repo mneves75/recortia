@@ -23,7 +23,9 @@ extension EditorModel {
             {
                 beginEditingText(id)
             } else {
-                beginNewText(at: p)
+                textEditing = EditorTextEditing(
+                    annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize,
+                    annotationStyle: style.textAnnotationStyle, maxWidth: nil, appearance: style.textAppearance)
             }
         case .step:
             let step = Annotation(
@@ -402,13 +404,6 @@ extension EditorModel {
     }
 
     // MARK: Text
-
-    private func beginNewText(at p: Point<DocumentSpace>) {
-        textEditing = EditorTextEditing(
-            annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize,
-            annotationStyle: style.textAnnotationStyle,
-            maxWidth: nil, appearance: style.textAppearance)
-    }
 
     /// Starts editing an existing text annotation (double-click, Return on a selected text).
     public func beginEditingText(_ id: AnnotationID) {
