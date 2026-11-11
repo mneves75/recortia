@@ -95,6 +95,39 @@
                 reopened.filter(\.checked).map(\.title) == [EditorStrings.name(.ruler)],
                 "\(reopened)")
 
+            // Each grouped tool keeps its own help, with its single-key shortcut, in the menu and on
+            // the menu button while it is active; otherwise the button shows the group's help.
+            let groups: [(String, [EditorTool], String)] = [
+                (
+                    "toolMenu.effects", [.blur, .pixelate, .spotlight, .magnifier],
+                    String(localized: "Effects: blur, pixelate, spotlight and magnifier", table: "Editor")
+                ),
+                (
+                    "toolMenu.measure", [.loupe, .ruler, .colorPicker],
+                    String(localized: "Measure: loupe, ruler and color picker", table: "Editor")
+                ),
+            ]
+            for (identifier, tools, groupHelp) in groups {
+                model.selectTool(.select)
+                await E2ESnapshot.settle(frameView)
+                context.check(
+                    "\(identifier) shows its group help with a tool outside it active",
+                    (try? E2EAccessibilityControl.help(for: identifier, in: frameView, context)) == groupHelp,
+                    "\(String(describing: try? E2EAccessibilityControl.help(for: identifier, in: frameView, context)))")
+                let entries = try await choose(nil, from: identifier, in: frameView, context)
+                context.check(
+                    "\(identifier) entries carry each tool's help",
+                    entries.map(\.toolTip) == tools.map { EditorStrings.help($0) }, "\(entries.map(\.toolTip))")
+                for tool in tools {
+                    model.selectTool(tool)
+                    await E2ESnapshot.settle(frameView)
+                    let shown = try? E2EAccessibilityControl.help(for: identifier, in: frameView, context)
+                    context.check(
+                        "\(identifier) shows \(tool.rawValue)'s help while it is active",
+                        shown == EditorStrings.help(tool), "\(String(describing: shown))")
+                }
+            }
+
             context.check(
                 "Undo is disabled with nothing to undo",
                 try !E2EAccessibilityControl.isEnabled("toolbar.undo", in: frameView, context))
@@ -127,11 +160,43 @@
                         && harness.exportGate.snapshotCount > snapshots
                 })
 
+            // Keyboard ownership qualifies only in a visible, key, active, frontmost window: the owned
+            // host takes the foreground and yields it, and missing readiness fails the scenario.
             let canvas = try context.unwrap("editor canvas", controller.canvasView)
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
+            window.center(on: ScreenChoice.screen())
+            if !E2EForegroundFixture.runnerIsForeground {
+                try await foreground.restore()
+                try await foreground.yieldToRunner()
+            }
+            try await E2EAccessibilityControl.showAndActivate(window, context)
+            await E2ESnapshot.settle(frameView, for: .milliseconds(300))
             try context.require("the canvas owns the keyboard", window.makeFirstResponder(canvas))
             try E2EAccessibilityControl.pressCheckingEffect("tool.rectangle", in: frameView, context)
             try context.require("toolbar Rectangle selects", await E2EWait.until { model.tool == .rectangle })
             context.check("a toolbar tool leaves the canvas first responder", window.firstResponder === canvas)
+            try E2EAccessibilityControl.click("tool.line", in: frameView, context)
+            await E2ESnapshot.settle(frameView)
+            try context.require("clicking toolbar Line selects it", await E2EWait.until { model.tool == .line })
+            context.check("a clicked toolbar tool leaves the canvas first responder", window.firstResponder === canvas)
+            for type in [NSEvent.EventType.keyDown, .keyUp] {
+                let event = try context.unwrap(
+                    "Ellipse shortcut event",
+                    NSEvent.keyEvent(
+                        with: type, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                        windowNumber: window.windowNumber, context: nil, characters: "o",
+                        charactersIgnoringModifiers: "o",
+                        isARepeat: false, keyCode: 31))
+                NSApp.postEvent(event, atStart: false)
+            }
+            await E2ESnapshot.settle(frameView)
+            context.check(
+                "after a toolbar click the canvas still receives keys (O selects Ellipse)",
+                await E2EWait.until { model.tool == .ellipse } && window.firstResponder === canvas,
+                "tool \(model.tool.rawValue), responder \(String(describing: window.firstResponder.map { type(of: $0) }))"
+            )
+            E2ESnapshot.park(window)
 
             // The remembered editor size is the content size, without the toolbar above it.
             let remembered = harness.settings.preferences.editorContentSize

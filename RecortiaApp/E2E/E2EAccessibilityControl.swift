@@ -47,6 +47,26 @@
                 "\(type(of: control)) candidates \(candidates.map { String(describing: $0) })")
         }
 
+        /// The help an assistive app reads for the element: its own help, or, for a SwiftUI node inside
+        /// a bridged toolbar item, the help of that toolbar item's element.
+        static func help(for identifier: String, in root: NSView, _ context: ScenarioContext) throws -> String {
+            let control = try control(identifier, in: root, context)
+            func own(_ object: NSObject?) -> [Any?] {
+                guard let object else { return [] }
+                return [
+                    object.responds(to: NSSelectorFromString("accessibilityHelp"))
+                        ? object.value(forKey: "accessibilityHelp") : nil,
+                    object.accessibilityAttributeValue(.help),
+                ]
+            }
+            let parent = control.value(forKey: "accessibilityParent") as? NSObject
+            let candidates = own(control) + own(parent)
+            return try context.unwrap(
+                "\(identifier) has help", candidates.compactMap { $0 as? String }.first { !$0.isEmpty },
+                "\(type(of: control)) / \(String(describing: parent.map { type(of: $0) })) candidates "
+                    + "\(candidates.map { String(describing: $0) })")
+        }
+
         static func press(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
             let control = try control(identifier, in: root, context)
             if let modern = control as? any NSAccessibilityProtocol {
@@ -322,6 +342,7 @@
     struct E2EMenuEntry: CustomStringConvertible {
         let title: String
         let checked: Bool
+        var toolTip: String?
         var description: String { "\(title)\(checked ? " ✓" : "")" }
     }
 
@@ -351,7 +372,7 @@
                 self, selector: #selector(ended(_:)), name: NSMenu.didEndTrackingNotification, object: menu)
             menu.update()
             entries = menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }
-                .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on) }
+                .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on, toolTip: $0.toolTip) }
             let index = title.flatMap { title in menu.items.firstIndex { $0.title == title } }
             chosen = index != nil
             // Choose on the next turn of the tracking loop, after the menu finished opening, as a
