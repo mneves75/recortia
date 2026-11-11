@@ -206,6 +206,9 @@
             // The batch is decided when the capture completes: a main-actor job queued right after
             // `handleCapture` returns (here, turning automatic save on) must not join this capture.
             // The folder is authorized again: the reset above cleared it, which would hide a save.
+            // The scenario ends with the folder state it found, so later scenarios start as before.
+            let foundBookmark = harness.settings.preferences.preferredSaveFolderBookmark
+            defer { harness.settings.update { $0.preferredSaveFolderBookmark = foundBookmark } }
             harness.settings.update {
                 $0.preferredSaveFolderBookmark = bookmark; $0.autoCopy = true; $0.autoSave = false
             }
