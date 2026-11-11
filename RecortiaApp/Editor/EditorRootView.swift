@@ -125,6 +125,10 @@ struct EditorToolbarContent: ToolbarContent {
             .disabled(!model.canRedo)
             .accessibilityIdentifier("toolbar.redo")
         }
+        // Keeps Copy out of the history group's capsule.
+        ToolbarItem(placement: .primaryAction) {
+            Spacer(minLength: 8)
+        }
         ToolbarItemGroup(placement: .primaryAction) {
             ExportButtons(model: model, actions: actions)
         }
