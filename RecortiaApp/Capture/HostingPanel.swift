@@ -57,14 +57,18 @@ final class HostingPanel: NSPanel {
         setContentSize(content.fittingSize)
     }
 
+    /// Sizes an unsized panel to its content and places it near the top center of the screen with
+    /// the pointer, without showing it.
+    func placeNearTop() {
+        sizeToContentIfUnsized()
+        guard let visible = ScreenChoice.screen()?.visibleFrame else { return }
+        let size = frame.size
+        setFrameOrigin(CGPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - visible.height * 0.18))
+    }
+
     /// Shows the panel near the top center of the screen with the pointer.
     func present(activate: Bool) {
-        sizeToContentIfUnsized()
-        if let visible = ScreenChoice.screen()?.visibleFrame {
-            let size = frame.size
-            setFrameOrigin(
-                CGPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - visible.height * 0.18))
-        }
+        placeNearTop()
         if activate {
             NSApp.activate()
             makeKeyAndOrderFront(nil)

@@ -87,6 +87,24 @@
             try context.require(
                 "the window list arrives", listed, "\(String(describing: coordinator.selectionContext))")
             guard case .window(let windows)? = coordinator.selectionContext else { throw E2EAbort("no window list") }
+            // `present` places a fresh panel through `placeNearTop`, which must size it to its
+            // content first: otherwise the size arrives later and the panel grows off centre. The
+            // panel is never ordered on screen; the screen is read in the same turn as the placement.
+            let placed = HostingPanel(title: "", activating: true)
+            defer { placed.close() }
+            placed.setContent(WindowChooserView(windows: nil, onChoose: { _ in }, onCancel: {}))
+            let visible = try context.unwrap("a screen to centre on", ScreenChoice.screen()?.visibleFrame)
+            placed.placeNearTop()
+            if let root = placed.contentView { await E2ESnapshot.settle(root) }
+            let placedFrame = placed.frame
+            let expectedTop = visible.maxY - visible.height * 0.18
+            context.check(
+                "a fresh panel placed by present settles centred near the top of the chosen screen (within 1 pt)",
+                placedFrame.width > 0 && abs(placedFrame.midX - visible.midX) <= 1
+                    && abs(placedFrame.maxY - expectedTop) <= 1,
+                "settled \(placedFrame); expected centre \(visible.midX), top \(expectedTop)")
+            context.check("placing the panel does not show it", !placed.isVisible)
+            E2ESnapshot.park(placed)
             // `CaptureUIController` reuses one panel for loading and the list and positions it in
             // `present` right after `setContent`, from whatever size the frame has then. Repeat that
             // arithmetic on the parked panel: once the list's size arrives, the top edge and the
