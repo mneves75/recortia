@@ -1649,6 +1649,37 @@
       ],
       "authorization": "owner request 2026-10-31 (two Settings requests); proceed without interviews",
   "status_note": "Scoped feature acceptance PASS: signed production-source gate (519 tests) and full 52/52 native scenarios per language at 3d2dba7; final expanded native flows 5/5 per language at .scratch/e2e/20261101-151339-27864 and isolated persistence 11/11. Fresh source-blind Sol PASS for all Opus criteria and Opus PASS for Sol criterion 4b, with a one-line mutant failure. Spec/Standards: zero P0-P3 findings. See validation.md for exact commands, provenance, original failures and synthetic limits. Published in 0.13.0 (v0.13.0 at 2858cf1; see current_candidate); the published bundle is installed locally (current_local_installation). Physical Spaces/TCC remain manual."
+    },
+    {
+      "id": "FP-045",
+      "milestone": "M6",
+      "title": "Editor redesign: contextual inspector and native window toolbar",
+      "status": "in_progress",
+      "depends_on": [
+        "FP-009"
+      ],
+      "requirement_ids": [
+        "FR-04",
+        "FR-06"
+      ],
+      "acceptance_test_ids": [
+        "EDIT-02"
+      ],
+      "scope": "Owner request 2026-11-10 (docs/specs/editor-redesign/spec.md, which calls this FP-044; that id was already taken). Slice 1, done: the inspector shows only what the person works on, with Format/Image tabs that follow selection and tool until chosen; Format holds Object, Style (only the fill, line width and text size the renderer uses for the kinds in play), Arrow, Text Style, Redaction, Cosmetic Effect and Pixel Tools; Image holds Size, Background, Images and Text & QR; the always-on Redaction section is removed. Slice 2, not started: move tools and export actions to the native window toolbar.",
+      "deliverables": [
+        "RecortiaApp/Editor/EditorInspectorView.swift",
+        "RecortiaApp/Resources/Editor.xcstrings",
+        "RecortiaApp/E2E/Scenarios+Inspector.swift (bilingual inspector-context) and E2EScenarios.swift"
+      ],
+      "completion_contract": "Slice 1: inspector-context passes in en and pt-BR, every existing inspector scenario passes with its assertions unchanged, check.sh passes. Slice 2: per spec, after the open snapshot question is settled.",
+      "evidence": [
+        ".scratch/e2e/20261110-205454-84946: inspector-context fails on the old inspector (image.background, style.fill, style.lineWidth, style.textSize, frame.* missing; no Format/Image picker)",
+        ".scratch/e2e/20261110-223243-96790 (.scratch/logs/editor-redesign-e2e.log): 26/26 editor scenarios pass in en and pt-BR, including inspector-context, inspector-height, curved-arrows, saved-colors, text-font-designs, text-decorations, text-layout-failure, ocr-qr, redaction, annotations, pixel-tools, composition and crop-resize",
+        ".scratch/logs/editor-redesign-check.log: './init.sh check --unsigned' ends 'check: all gates passed'; 626 extracted strings have pt-BR translations",
+        "Extracted .stringsdata for the Editor table matches Editor.xcstrings with no missing and no unused key"
+      ],
+      "authorization": "owner request 2026-11-10",
+      "status_note": "Slice 1 implemented; slice 2 not started. Synthetic E2E only: keyboard focus rings on the custom-styled tiles and swatches under Full Keyboard Access, and VoiceOver reading of the new controls, are not qualified."
     }
   ],
   "deferred_scope": [
