@@ -355,22 +355,38 @@ public final class EditorModel {
     }
 
     private func resolveListItems() -> [EditorListItem] {
+        let d = session.document
         var counters: [EditorItemKind: Int] = [:]
         var bottomUp: [EditorListItem] = []
-        let d = session.document
-        // Output order: layers, cosmetic effects, annotations, redactions, callouts.
-        for item in allItemIDs {
-            guard let kind = kind(of: item), let frame = frame(of: item) else { continue }
+        // An item whose geometry cannot be resolved (missing asset, failed text layout) is left out.
+        func append(_ id: EditorItemID, _ kind: EditorItemKind, _ frame: Rect<DocumentSpace>?, step: Int? = nil) {
+            guard let frame else { return }
             listItemGeometryResolutions += 1
             counters[kind, default: 0] += 1
-            var step: Int?
-            if case .annotation(let id) = item, let annotation = d.annotations.first(where: { $0.id == id }),
-                case .step(_, let number) = annotation.kind
-            {
-                step = number
-            }
             bottomUp.append(
-                EditorListItem(id: item, kind: kind, ordinal: counters[kind] ?? 1, frame: frame, stepNumber: step))
+                EditorListItem(id: id, kind: kind, ordinal: counters[kind] ?? 1, frame: frame, stepNumber: step))
+        }
+        // Output order: layers, cosmetic effects, annotations, redactions, callouts.
+        for layer in d.layers {
+            append(.layer(layer.id), .image, EditorGeometry.frame(of: layer, in: d))
+        }
+        for effect in d.obfuscations {
+            let kind: EditorItemKind = if case .blur = effect.style { .blur } else { .pixelate }
+            append(.obfuscation(effect.id), kind, effect.rect)
+        }
+        for annotation in d.annotations {
+            var step: Int?
+            if case .step(_, let number) = annotation.kind { step = number }
+            append(
+                .annotation(annotation.id), EditorItemKind(annotation.kind), EditorGeometry.frame(of: annotation),
+                step: step)
+        }
+        for mask in d.masks {
+            append(.mask(mask.id), .redaction, mask.outputRect)
+        }
+        for callout in d.callouts {
+            let kind: EditorItemKind = if case .spotlight = callout.kind { .spotlight } else { .magnifier }
+            append(.callout(callout.id), kind, EditorGeometry.frame(of: callout))
         }
         return bottomUp.reversed()
     }
