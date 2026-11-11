@@ -37,12 +37,12 @@ final class SettingsWindowController {
     }
 
     /// One toolbar tab per area, as macOS Settings windows show them; the window title follows
-    /// the selected tab.
+    /// the selected tab, and each pane is as tall as its content.
     static func makeTabs(model: AppModel) -> NSTabViewController {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
         func add<Content: View>(_ title: String, _ symbol: String, _ content: Content) {
-            let pane = NSHostingController(rootView: content.frame(width: 560).frame(minHeight: 360))
+            let pane = NSHostingController(rootView: content.frame(width: 560))
             pane.sizingOptions = [.preferredContentSize]
             pane.title = title
             let item = NSTabViewItem(viewController: pane)
@@ -56,7 +56,9 @@ final class SettingsWindowController {
         add(
             String(localized: "Shortcuts"), "keyboard",
             ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts))
-        add(String(localized: "Capture"), "camera.viewfinder", CaptureSettingsTab(settings: model.settings))
+        add(
+            String(localized: "Capture"), "camera.viewfinder",
+            CaptureSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility))
         add(
             String(localized: "Export"), "square.and.arrow.up",
             ExportSettingsTab(
@@ -69,10 +71,6 @@ final class SettingsWindowController {
         add(
             String(localized: "Text Recognition"), "text.viewfinder",
             OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages))
-        add(String(localized: "Pins"), "pin", PinsSettingsTab(settings: model.settings))
-        add(
-            String(localized: "Scrolling"), "arrow.up.and.down.text.horizontal",
-            ScrollingSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility))
         return tabs
     }
 }

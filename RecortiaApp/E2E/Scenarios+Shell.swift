@@ -297,7 +297,7 @@
                 }
                 await E2ESnapshot.settle(root, for: .milliseconds(400))
                 let pane = try context.unwrap("the \(name) pane", tabView.selectedTabViewItem?.view)
-                checkPaneFits(name, index: index, pane: pane, harness.app, context)
+                await checkPaneFits(name, index: index, pane: pane, harness.app, context)
                 // The tab's own content: the toolbar tab strip belongs to the window and does
                 // not render offscreen.
                 context.snapshot(pane, shot: name)
@@ -316,10 +316,10 @@
                     // A pane whose content grows after it is shown still fits it.
                     harness.settings.update { $0.defaultExportFormat = .jpeg }
                     await E2ESnapshot.settle(root, for: .milliseconds(400))
-                    checkPaneFits("export with JPEG quality", index: index, pane: pane, harness.app, context)
+                    await checkPaneFits("export with JPEG quality", index: index, pane: pane, harness.app, context)
                     harness.settings.update { $0.defaultExportFormat = .png }
                     await E2ESnapshot.settle(root, for: .milliseconds(400))
-                    checkPaneFits("export back to PNG", index: index, pane: pane, harness.app, context)
+                    await checkPaneFits("export back to PNG", index: index, pane: pane, harness.app, context)
                 default: break
                 }
             }
@@ -408,14 +408,22 @@
         /// not scroll: no empty band below the content and nothing cut off.
         private static func checkPaneFits(
             _ name: String, index: Int, pane: NSView, _ model: AppModel, _ context: ScenarioContext
-        ) {
+        ) async {
             pane.layoutSubtreeIfNeeded()
+            // Measured in its own offscreen window: switch rows only take their real height there.
             guard let content = settingsContent(index, model) else { return }
+            let host = E2ESnapshot.host(nsView: content, size: NSSize(width: 560, height: 100))
+            defer { host.close() }
+            // Let the reference finish its own appearance work (Text Recognition reloads languages).
+            await E2ESnapshot.settle(content, for: .milliseconds(400))
             let fitting = content.fittingSize.height
             context.check(
                 "the \(name) pane is as tall as its content", abs(pane.frame.height - fitting) <= 1,
                 "pane \(pane.frame.height), content \(fitting)")
             if let scroll = first(NSScrollView.self, in: pane), let document = scroll.documentView {
+                E2ERunner.log(
+                    "settings \(name): pane \(pane.frame.height), content \(fitting), document \(document.frame.height)"
+                )
                 context.check(
                     "the \(name) pane does not scroll", document.frame.height <= scroll.contentView.bounds.height + 1,
                     "document \(document.frame.height), visible \(scroll.contentView.bounds.height)")
@@ -431,7 +439,9 @@
                 host(
                     ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)
                 )
-            case 2: host(CaptureSettingsTab(settings: model.settings))
+            case 2:
+                host(
+                    CaptureSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility))
             case 3: host(ExportSettingsTab(settings: model.settings, folders: model.features?.services.folders))
             case 4:
                 host(
