@@ -210,3 +210,15 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   recorded the Mac as in use during the run. The full
   bilingual run on the final tree, on an idle unlocked console, is still pending.
 - Not tagged, notarized, published or installed.
+
+## Release 0.14.0 build 28, 2026-11-11
+
+- Three independent verifier passes found V-1 (scrolling review had no dark check), V-2
+  (`last-window` pressed through a click that needs a key window) and V-3 (saved-color tooltips
+  differed from the spec); each was fixed with a red control (`findings.md`).
+- Security audit of the final tree: no confirmed vulnerability; gate WAIVED for SEC-11, SEC-17 and
+  SEC-18 until 2026-11-25; independent acceptance PASS, including a full native E2E of 54/54 per
+  language on an idle, unlocked console.
+- PR #40 squash-merged as `cdffc96` (tree equal to the verified head), tagged `v0.14.0`,
+  `scripts/release.sh` exit 0, notarized, published, public download byte-identical, installed in
+  `/Applications`. Details: `docs/specs/editor-redesign/release-0.14.0.md`.

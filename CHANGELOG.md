@@ -17,11 +17,11 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [0.14.0] - 2026-11-11
 
-Build 28. A source candidate: untagged, not notarized, not published (see `BACKLOG.json`
-`source_candidate_0_14_0`). Not verified on this build: the window toolbar on macOS 15 and 26 (no
-such host), VoiceOver and Full Keyboard Access on the new toolbar, menu buttons, style tiles and
-color swatches, physical keyboard, Spaces and permission checks, and a clean run of the full
-end-to-end suite.
+Build 28. Notarized and published as
+[v0.14.0](https://github.com/mneves75/recortia/releases/tag/v0.14.0). Not verified on this build:
+the window toolbar on macOS 15 and 26 (no such host), VoiceOver and Full Keyboard Access on the
+new toolbar, menu buttons, style tiles and color swatches, and physical keyboard, Spaces and
+permission checks.
 
 ### Added
 
@@ -66,6 +66,8 @@ end-to-end suite.
 - Automatic copy, save and upload use the settings in effect when the capture completed: turning
   automatic save or upload on, or changing the folder, while a capture is being exported no longer
   adds steps or redirects the save. Each step still runs only while it is allowed.
+- The saved-color "+" and "−" buttons show their names as tooltips, as the other inspector
+  actions do.
 - Overwriting a saved file keeps its explicit access control list, and a refused overwrite no
   longer leaves a temporary file behind.
 - Saving a new image to an exFAT or FAT32 drive no longer fails. Those volumes refuse the

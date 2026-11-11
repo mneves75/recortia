@@ -4,8 +4,8 @@ A native, local-first macOS screenshot utility: capture, annotate, redact for re
 and share from the menu bar. Nothing leaves your Mac unless you turn on the optional GitHub
 upload, and Recortia keeps no screenshot archive.
 
-The current version is **0.13.0** (build 27), signed with Developer ID and notarized,
-available as a DMG from the [0.13.0 release](https://github.com/mneves75/recortia/releases/tag/v0.13.0).
+The current version is **0.14.0** (build 28), signed with Developer ID and notarized,
+available as a DMG from the [0.14.0 release](https://github.com/mneves75/recortia/releases/tag/v0.14.0).
 The physical checks listed under [Known limitations](#known-limitations) have not run. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -16,8 +16,8 @@ app.
 
 Requires macOS 15 or later on Apple Silicon.
 
-Download `Recortia-0.13.0.dmg` from the
-[0.13.0 release](https://github.com/mneves75/recortia/releases/tag/v0.13.0), open it and drag
+Download `Recortia-0.14.0.dmg` from the
+[0.14.0 release](https://github.com/mneves75/recortia/releases/tag/v0.14.0), open it and drag
 Recortia to Applications. To update, install a newer DMG the same way; there is no in-app updater
 yet.
 
@@ -143,7 +143,7 @@ in [docs/architecture/module-contracts.md](docs/architecture/module-contracts.md
   and 26 hosts, the scrolling compatibility matrix, VoiceOver and input-method passes, and the
   performance budgets. On the build Mac, the first opening of the editor and of Settings took
   longer than the 50 ms target (PERF-02).
-- Physical keyboard, Spaces and permission checks were not run on 0.13.0.
+- Physical keyboard, Spaces and permission checks were not run on 0.14.0.
 - The editor's window toolbar has been checked only on macOS 27; on macOS 15 and 26 it may draw
   differently.
 - VoiceOver and Full Keyboard Access have not been checked on the editor toolbar, its menu buttons,

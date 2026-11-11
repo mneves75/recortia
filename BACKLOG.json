@@ -5,6 +5,42 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.14.0",
+    "app_version": "0.14.0",
+    "build": 28,
+    "date": "2026-11-11",
+    "scope": "FP-045 (contextual inspector, native window toolbar, dark appearance, Settings and tour redesign) and FP-046 (2026-11 code review fixes and cleanups, save-path hardening, exFAT/FAT32 saves); see source_candidate_0_14_0 and CHANGELOG.md.",
+    "release": {
+      "tag": "v0.14.0",
+      "commit": "cdffc968b49d09d9303a0ade5aec635358aa6cad",
+      "tree": "e8822e377bb6ead8667df756923a27945a1d7328",
+      "url": "https://github.com/mneves75/recortia/releases/tag/v0.14.0",
+      "published_at": "2026-11-11T20:02:38Z",
+      "draft": false,
+      "prerelease": false,
+      "latest": true,
+      "dmg": "Recortia-0.14.0.dmg",
+      "dmg_sha256": "bf8aa72479543123ada95513179d3598ea734be3bc7270bd8520ec16d29603a9",
+      "dsym_uuid": "48FCDB8B-AF58-36C0-A1DC-73179968690C",
+      "notarization_submissions": {
+        "app": "5f77380b-9c5c-4453-be95-cfeb55e0dea7",
+        "dmg": "3a38be3f-5525-4767-bb42-037728f33e2e"
+      },
+      "notarization_status": "Accepted",
+      "security_gate": "WAIVED (SEC-11, SEC-17, SEC-18; expire 2026-11-25); independent acceptance PASS; record .scratch/security-gate/cdffc968b49d09d9303a0ade5aec635358aa6cad/production.json",
+      "artifact_directory": ".build/release/0.14.0",
+      "homebrew": "not changed: the separate mneves75/homebrew-tap cask still installs 0.12.4; the direct DMG is the 0.14.0 install path"
+    },
+    "status": "released",
+    "verification": "scripts/release.sh on the tag exits 0 (manifest: gate passed, notarized 1, toolchain Xcode 27.2 27B52): production gate 540 package tests and 620 translations, both notarization submissions Accepted, stapler and Gatekeeper pass for the app and the DMG. The public asset downloaded anonymously is byte-identical (SHA-256 above) to the qualified DMG. Independent acceptance by fresh GPT-6 (Codex) verifiers on the released tree e8822e3: criteria 1-9 and 11 PASS with no findings (.scratch/verify/), and the full native E2E 54/54 per language on an unlocked console with no input during the run (idle 71 s to 832 s over 760 s; .scratch/verify-c10/attempt-2/). Staging and GitHub CI were skipped as for 0.13.0; there is no staging infrastructure.",
+    "installation": "PASS: the published notarized bundle is installed at /Applications/Recortia.app and running; see current_local_installation.",
+    "note": "Sources and tag are frozen at cdffc96; this record is a later documentation-only bookkeeping commit. Evidence summary: docs/specs/editor-redesign/release-0.14.0.md.",
+    "limitations": [
+      "Physical keyboard, Spaces, TCC, IME, VoiceOver, Full Keyboard Access on the new toolbar, and macOS 15/26 rendering of the window toolbar were not run; native E2E uses the DEBUG harness with synthetic frames and sinks.",
+      "SEC-11, SEC-17 and SEC-18 remain open under the recorded waiver; NV-02 and NV-05 remain needs-validation (THREAT_MODEL.md)."
+    ]
+  },
+  "previous_release_0_13_0": {
     "version": "0.13.0",
     "app_version": "0.13.0",
     "build": 27,
@@ -166,6 +202,23 @@
     ]
   },
   "current_local_installation": {
+    "candidate": "0.14.0 notarized release, installed from the published DMG",
+    "app_version": "0.14.0",
+    "build": 28,
+    "date": "2026-11-11",
+    "source_commit": "cdffc968b49d09d9303a0ade5aec635358aa6cad",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Recortia-0.14.0.dmg produced by scripts/release.sh for v0.14.0 (.build/release/0.14.0), sha256 bf8aa72479543123ada95513179d3598ea734be3bc7270bd8520ec16d29603a9, identical to the published asset",
+    "backup_path": ".scratch/install-0.14.0/previous-0.13.0-27.app (the previous 0.13.0 bundle, preserved; strict signature verified)",
+    "executable_sha256": "71da9ca0b7d3e3c270cf847067613239bef100c7ae7fb79f1b0458b91632e3ec",
+    "installed_equals_production_export": true,
+    "launched": true,
+    "notarized": true,
+    "verification": "The entire installed bundle is identical (diff -rq) to the app in the notarized DMG; codesign strict signature, stapler and Gatekeeper pass; version 0.14.0 (28); no get-task-allow entitlement. The previous 0.13.0 instance ended through a normal quit, with no forced quit; the old bundle went to the Trash after the backup. The relaunched app runs from /Applications/Recortia.app.",
+    "qualification": "Release artifact installed and launched; physical Spaces, keyboard, TCC, IME, VoiceOver and minimum-macOS behaviour of this build not run.",
+    "note": "The 0.13.0 install record is kept below as previous_local_installation_0_13_0."
+  },
+  "previous_local_installation_0_13_0": {
     "candidate": "0.13.0 notarized release, installed from the published export",
     "app_version": "0.13.0",
     "build": 27,
@@ -498,7 +551,7 @@
     "build": 28,
     "date": "2026-11-11",
     "scope": "FP-045: contextual inspector with Format and Image tabs; tools and actions in the native window toolbar with Effects and Measure menu buttons; cosmetic-effect warning pinned above both tabs; feature tour with one line per item in a fixed 580x615 window; Settings in seven content-tall panes (Pins in General, Scrolling Capture in Capture); every surface rendered and checked dark (ChromeAppearance), the transparency checkerboard following the appearance on screen only; window chooser sized to its list, scrolling HUD without the empty title band, capture panels centred from their content size. FP-046: a confirmed Discard of the scrolling review quits like its close button when it closes the last window; automatic-export alerts no longer deny earlier writes; an automatic batch is decided when the capture completes (automaticExportPlan) and each step still runs only while allowed; overwriting a file keeps its explicit ACL and a refused overwrite strands no temporary file; one import-failure wording; dead code removed and module interfaces narrowed; docs/handoff/COMPLETE_HANDOFF.md removed. See CHANGELOG.md.",
-    "distribution_status": "Source candidate. Untagged, not notarized, not published and not installed. 0.13.0 remains the published release (current_candidate) and the installed build (current_local_installation).",
+    "distribution_status": "Released: tagged v0.14.0 at cdffc96 (squash of PR #40, same tree e8822e3 as the verified 5186294), notarized and published 2026-11-11; see current_candidate and docs/specs/editor-redesign/release-0.14.0.md. The published bundle is installed locally (current_local_installation).",
     "evidence": [
       ".scratch/logs/second-review-check.log: './init.sh check --unsigned' on the working tree that was committed minutes later as f98a6c1 (the log itself records no commit) ends 'check: all gates passed'; 530 package tests (105 + 126 + 261 + 38) and 620 extracted strings with pt-BR translations.",
       ".scratch/logs/second-review-e2e-final.log, .scratch/e2e/20261111-054004-61977: automatic-export and window-chooser pass in en and pt-BR on the finished second-review tree.",
