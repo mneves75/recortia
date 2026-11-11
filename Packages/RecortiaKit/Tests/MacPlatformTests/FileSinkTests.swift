@@ -396,6 +396,95 @@ struct FileSinkTests {
         #expect(Self.mode(saved) == control.mode, "the new file's mode changed")
     }
 
+    // NV-06 (final pre-release audit): an overwrite gave the temporary file the destination's mode
+    // before its ACL, so a 0644 file kept private by a deny entry had a replacement that was 0644
+    // without that entry for an instant: broader than the file it replaces.
+    @Test("Overwriting a file kept private by a deny entry never makes the new file broader than it")
+    func overwriteIsNeverBroaderThanDestination() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        try Self.addACL("nobody deny read", to: url)
+        let before = Self.extendedACL(url)
+        let denyRead = try Self.denyReadEntry(url)
+
+        let observed = Observation()
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterReplaceStep: { observed.replaceSteps.append(Self.access($0)) }))
+        _ = try sink.save(snapshot, to: url, overwrite: true)
+        try #require(
+            observed.replaceSteps.contains { $0.acl?.contains(denyRead) == true },
+            "control: the seam never saw the deny entry on the temporary file (\(observed.replaceSteps))")
+        let exposed = observed.replaceSteps.filter { Self.isBroader($0, without: denyRead) }
+        #expect(exposed.isEmpty, "the temporary file was broader than 0600 without the deny entry: \(exposed)")
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.mode(url) == 0o644)
+        #expect(Self.extendedACL(url) == before, "the replaced file lost its deny entry")
+    }
+
+    // NV-06: when the rename failed, the copied ACL was cleared while the temporary file still had
+    // the destination's broad mode, so the complete new image was briefly broader again.
+    @Test("A refused overwrite returns the temporary file to owner-only before clearing its copied entries")
+    func refusedOverwriteIsOwnerOnlyWhenEntriesAreCleared() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let denyDelete = "\(NSUserName()) deny delete"
+        // Control: in this directory the entry really refuses a rename onto the file.
+        let control = folder.appendingPathComponent("control.png")
+        let replacement = folder.appendingPathComponent("control-new.png")
+        try priorBytes.write(to: control)
+        try priorBytes.write(to: replacement)
+        try Self.addACL(denyDelete, to: control)
+        let renameResult = rename(replacement.path(percentEncoded: false), control.path(percentEncoded: false))
+        try #require(renameResult != 0, "control: the deny-delete entry did not refuse the rename")
+        Self.clearACLs(in: folder)
+        try FileManager.default.removeItem(at: control)
+        try FileManager.default.removeItem(at: replacement)
+
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        try Self.addACL("nobody deny read", to: url)
+        try Self.addACL(denyDelete, to: url)
+        let denyRead = try Self.denyReadEntry(url)
+
+        let observed = Observation()
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterReplaceStep: { observed.replaceSteps.append(Self.access($0)) }))
+        #expect(throws: SinkError.accessDenied) { try sink.save(snapshot, to: url, overwrite: true) }
+        let cleared = try #require(observed.replaceSteps.last, "the seam never saw the temporary file")
+        try #require(
+            observed.replaceSteps.dropLast().contains { $0.acl?.contains(denyRead) == true } && cleared.acl == nil,
+            "control: the copied entries were never cleared after the failed rename (\(observed.replaceSteps))")
+        #expect(cleared.mode == 0o600, "the copied entries were cleared while the temporary file was broader")
+        let exposed = observed.replaceSteps.filter { Self.isBroader($0, without: denyRead) }
+        #expect(exposed.isEmpty, "the temporary file was broader than 0600 without the deny entry: \(exposed)")
+        #expect(try Data(contentsOf: url) == priorBytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a temporary export was left behind")
+    }
+
+    /// The `nobody deny read` line of the file's ACL text; failing means the control entry is missing.
+    private static func denyReadEntry(_ url: URL) throws -> String {
+        let acl = try #require(extendedACL(url), "control: the destination has no ACL")
+        let line = acl.split(separator: "\n").first { $0.contains(":nobody:") && $0.hasSuffix(":deny:read") }
+        return String(try #require(line, "control: the destination has no deny-read entry (\(acl))"))
+    }
+
+    private static func access(_ url: URL) -> Observation.Access { .init(mode: mode(url), acl: extendedACL(url)) }
+
+    /// Readable beyond the owner by mode while the destination's deny entry is not in effect.
+    private static func isBroader(_ access: Observation.Access, without denyRead: String) -> Bool {
+        (access.mode ?? 0) & 0o077 != 0 && access.acl?.contains(denyRead) != true
+    }
+
     /// The ACL and mode of an empty file created in `folder` the way temporary files used to be.
     private static func createdWithMode0644(in folder: URL) throws -> (acl: String?, mode: mode_t?) {
         let path = folder.appendingPathComponent("mode-control").path(percentEncoded: false)
@@ -411,6 +500,13 @@ struct FileSinkTests {
         var temporaryMode: mode_t?
         var swapResolvesToVictim = false
         var temporaryACL: String?
+        var replaceSteps: [Access] = []
+
+        struct Access: CustomStringConvertible {
+            let mode: mode_t?
+            let acl: String?
+            var description: String { "(mode \(mode.map { String($0, radix: 8) } ?? "nil"), acl \(acl ?? "nil"))" }
+        }
     }
 
     /// The ACL a file created plainly in `folder` receives; the file is removed again.

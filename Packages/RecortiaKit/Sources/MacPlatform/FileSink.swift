@@ -134,10 +134,16 @@ struct POSIXFileSystem: FileSystemOperations {
     private let fileManager: FileManager
     /// Test seam: runs once the bytes are on disk, before a new file gets its final access.
     private let afterSync: (URL) -> Void
+    /// Test seam: runs after each change `replace` makes to the temporary file's mode or ACL.
+    private let afterReplaceStep: (URL) -> Void
 
-    init(fileManager: FileManager = .default, afterSync: @escaping (URL) -> Void = { _ in }) {
+    init(
+        fileManager: FileManager = .default, afterSync: @escaping (URL) -> Void = { _ in },
+        afterReplaceStep: @escaping (URL) -> Void = { _ in }
+    ) {
         self.fileManager = fileManager
         self.afterSync = afterSync
+        self.afterReplaceStep = afterReplaceStep
     }
 
     func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
@@ -270,7 +276,9 @@ struct POSIXFileSystem: FileSystemOperations {
         if stat(destination.path(percentEncoded: false), &existing) == 0 {
             // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
             _ = fchmod(descriptor, existing.st_mode & 0o777)
+            afterReplaceStep(source)
             copiedACL = try copyACL(from: destination, to: descriptor)
+            afterReplaceStep(source)
         } else if errno != ENOENT {
             throw FileSystemFailure(code: errno)
         }
@@ -279,7 +287,10 @@ struct POSIXFileSystem: FileSystemOperations {
             // The copied ACL can deny this user deleting the temporary file as well (an entry that
             // denies delete is also why the rename failed); drop it so the caller's cleanup works.
             // Best effort, before cleanup of a failure that is already being reported.
-            if copiedACL { try? Self.clearACL(descriptor) }
+            if copiedACL {
+                try? Self.clearACL(descriptor)
+                afterReplaceStep(source)
+            }
             throw FileSystemFailure(code: failure)
         }
     }
