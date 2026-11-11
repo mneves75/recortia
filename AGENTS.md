@@ -35,6 +35,11 @@ Region overlays use nonactivating panels so a shortcut does not activate an edit
 Space. CAP-01 synthetic evidence must verify an external foreground application and keyboard
 ownership; physical shortcut/display/Space qualification remains separate. NET-01 pending
 uploads must retain their original consent identity across every asynchronous batch step.
+An automatic export batch is decided synchronously when the capture completes
+(`ExportCoordinator.automaticExportPlan()` in `AppModel.runAutomaticExports`): a Settings change
+queued after that neither adds a step nor redirects the save. Each step still rechecks its
+preference, folder and consent right before it starts; those are staleness checks, never removed.
+Keep `automatic-export` in bilingual E2E.
 
 Curved arrows retain the existing arrow kind with an optional control; `ArrowCurve` maps the
 visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. Keep the
@@ -45,6 +50,19 @@ mutations. This feature does not qualify CAP-01 or add reference-product head-st
 Editor windows open at one size (`EditorWindowSizing`): the last user-resized content size,
 stored as the `editorContentSize` preference, or the default, limited to the target screen; never
 the captured image's size. Keep the bilingual `editor-window-size` E2E scenario.
+
+Editor chrome (FP-045, `docs/specs/editor-redesign/spec.md`): the inspector is contextual. Format
+shows only the properties of the selection or the active tool, Image the whole image, and the
+shown tab follows selection and tool until the person picks one. The cosmetic-effect warning
+(`redaction.cosmeticWarning`) is pinned above both tabs, never inside one (FR-06). Tools and export
+actions are a SwiftUI `.toolbar` bridged into the AppKit editor window with
+`sceneBridgingOptions = [.toolbars]`; the window is still the one `EditorWindowController` builds,
+so Space policy, presence, sizing and the remembered content size (which excludes the toolbar) do
+not change. No API newer than macOS 15 and no `#available`. Every toolbar item stays in
+`visibleItems` at the minimum content width (980 pt): no overflow chevron. Editor screenshots render
+the window's frame view so they show the toolbar. Bridged items perform AXPress while
+`accessibilityPerformPress()` returns false, so scenarios check the effect. Keep `inspector-context`
+and `editor-toolbar` in bilingual E2E.
 
 Full-source review invariants (2026-10, `docs/specs/full-source-review/plan.md`): every
 independent document edit settles an active move/resize first (`settleTransformGesture`), so a
@@ -101,6 +119,9 @@ turns it off in the same change. Keep `last-window` (with its child-process exit
 `automatic-save-settings` in bilingual E2E; scenarios inject termination and the folder panel,
 never quit the runner or open a panel. Settings control scenarios must establish a visible, key,
 active foreground window before input; an unshown hosting window does not qualify native input.
+Settings has seven tabs (General with Pins, Shortcuts, Capture with Scrolling Capture, Export,
+GitHub, Privacy, Text Recognition), each pane as tall as its content with no minimum height; keep
+`settings` checking both.
 Existing `E2EAccessibilityControl.press` callers still require accessibility Press; Settings uses
 its separate selected-pane pointer path, posting down then up through the runner's own event queue.
 The owned foreground fixture may reopen only its original PID; activation decisions check both
@@ -118,6 +139,14 @@ light and mid-grey content. The current marks are a keyline (white under-stroke,
 measures 19.17:1, 19.60:1 and 5.32:1 respectively and does not depend on the accent colour. Keep it in the bilingual gate: it is the only control
 that can see a mark disappear where app chrome meets page content, which is how a 1.08:1 seam
 marker survived every other test. A new user-visible mark over user content belongs under it.
+
+Every app surface also has a dark rendering judged by `ChromeAppearance`
+(`RecortiaApp/E2E/Scenarios+Appearance.swift`): with user content masked, dark chrome has a median
+relative luminance of at most 0.10 and at most 3% near-white fills, light chrome at least 0.60. Its
+planted fixed-white and fixed-black surfaces must keep failing. A new surface gets a `-dark`
+companion screenshot under it. The region overlay is two-tone by design and must render
+identically in both appearances. The editor's transparency checkerboard follows the appearance on
+screen only: export bytes, pins and the color picker keep alpha 0 there (`appearance-contrast`).
 
 The Xcode security posture is recorded once, in
 `docs/specs/release-review-0.12.5/xcode-security-settings.md`: it says which settings are already at
@@ -153,7 +182,10 @@ Use stable Xcode 27 / bundled Swift 6.4 / Swift 6 mode as the researched baselin
 
 Feature discovery (2026-10-14): specs and tickets for this owner-authorized work are tracked in
 `docs/specs/feature-discovery/` (not disposable scratch). Review the reference matrix when a
-capability changes; keep the tour truthful about existing features and qualification gaps. The
+capability changes; keep the tour truthful about existing features and qualification gaps. Each
+tour item is a title and one line; check every line against the shipped product when it changes.
+The tour window opens at a fixed 580 × 615 pt content size at which no page scrolls in either
+language (`onboarding` checks every page); nothing is measured at open. The
 tour requests no permission and starts no export. Replay preserves completion and preferences;
 closing an unfinished first run does not finish it. Keep the bilingual `onboarding` real-control
 E2E gate; `SpacePolicy` and `AppPresence` still own its ordinary window. Current comparison
@@ -216,7 +248,11 @@ including in `--dry-run`; inherited development mode cannot bypass the stable ba
 `scripts/e2e.sh` runs the same doctor and writes `provenance.json` (commit, working-tree
 fingerprint including untracked contents, Xcode and SDK builds, toolchain mode, app-bundle
 SHA-256) into each run; `--no-build` refuses a binary whose provenance differs, including one
-that `check.sh` rebuilt into the shared `.build/dd`. XcodeGen is mandatory: the freshness gate fails without it. `release.sh`
+that `check.sh` rebuilt into the shared `.build/dd`. Two runners fight for the foreground, so on a
+shared Mac a caller takes the directory lock `.scratch/e2e.lock` (`mkdir` to take, `rmdir` to
+release) around `scripts/e2e.sh`; the script does not take it itself. Foreground-dependent results
+from a locked console (`IOConsoleLocked`) or a Mac someone is using are void, neither a pass nor a
+failure: never change code against them. XcodeGen is mandatory: the freshness gate fails without it. `release.sh`
 reserves `.build/release/<label>/` atomically and refuses an existing one; never add a cleanup
 that deletes retained archives, dSYMs or DMGs.
 

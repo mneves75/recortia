@@ -87,9 +87,17 @@ candidate is recorded.
 - Quit goes through `AppModel.shouldTerminate()`; unexported edits need confirmation.
   Imports admit synchronously (`ImageImporter.admit`) before reading any bytes, drops included.
 - Pipe-free E2E: redirect `scripts/e2e.sh` output to a file; a pipe stays open for the
-  runner watchdog's 300 s sleep.
+  runner watchdog's 300 s sleep. On a shared Mac hold `.scratch/e2e.lock` around the run
+  (AGENTS.md); locked-console or in-use foreground results are void.
 - GitHub upload consent is session-versioned; capture-to-batch-to-sink carries the original
   identity, so revocation and restoring the same preferences cannot revive an old intent.
+  The automatic batch itself is decided at capture (`automaticExportPlan`); live per-step checks stay.
+- Editor chrome (FP-045): `Editor/EditorInspectorView.swift` (Format and Image tabs) and
+  `EditorToolbarContent` in `Editor/EditorRootView.swift`, bridged into the window by
+  `EditorWindowManager.swift`; AGENTS.md owns the warning, toolbar-width and screenshot invariants.
+  Keep `inspector-context` and `editor-toolbar` in bilingual E2E.
+- Appearance: `ChromeAppearance` in `E2E/Scenarios+Appearance.swift` judges the light and dark
+  rendering of every surface; give a new surface its dark companion (AGENTS.md).
 - Import admission and canvas keyboard ownership follow the corrective contract in `AGENTS.md`.
   `ImageImporter` is shared by the app and every editor; drop providers run only after admission.
   Keep the real-app synthetic `import-admission` and `canvas-focus` scenarios in EN/PT-BR runs.
