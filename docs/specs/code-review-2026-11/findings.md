@@ -109,8 +109,12 @@ physical Spaces or live alerts.
 | SR-2 (P2) | R-4's ACL copy could strand the temporary file: an ACL denying delete refuses both the rename and the cleanup `unlink`. | `9a3f09d` | `.scratch/logs/sr2-red.log`: with `<user> deny delete` (control: `rename` onto and `unlink` of such a file both refused), the save threw `accessDenied`, kept the prior bytes, and left `.recortia-<uuid>.tmp`. | `.scratch/logs/sr2-green.log`: all 10 FileSinkTests pass; a failed rename clears the copied ACL before cleanup. |
 | SR-3 (P2) | The panel-centring check repeated the sizing and arithmetic itself instead of calling `present`. | `512f654` | `.scratch/logs/sr3-planted-red.log`, `.scratch/e2e/20261111-053313-76687`: with the sizing call removed from `placeNearTop`, `window-chooser` failed on the new check (settled `(900, 678, 420, 248)`, expected centre 900). | `.scratch/logs/sr3-e2e-green.log`, `.scratch/e2e/20261111-053327-80022`: `window-chooser`, `region-overlay`, `countdown` pass in en and pt-BR. `present` now positions through `placeNearTop`, which the scenario calls on a fresh, never-shown panel. |
 
-Final gate: `.scratch/logs/second-review-check.log` (`./init.sh check --unsigned`). The full E2E
-run is still pending a clean session.
+The SR-1 scenario block restores the save-folder bookmark it found, so `automatic-export` still
+ends with the folder state later scenarios saw before. Final runs on the finished tree:
+`.scratch/logs/second-review-e2e-final.log`, `.scratch/e2e/20261111-054004-61977`
+(`automatic-export` and `window-chooser` pass in en and pt-BR) and
+`.scratch/logs/second-review-check.log` (`./init.sh check --unsigned`, "check: all gates passed").
+The full E2E run is still pending a clean session.
 
 Noticed and left: when the editor is open and an automatic batch has exactly one failure, the editor
 notice reuses `EditorStrings.exportFailure`, whose "Nothing was exported: ..." texts can also deny
