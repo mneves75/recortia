@@ -357,7 +357,58 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(folder) == [saved.lastPathComponent])
     }
 
+    // Security review of the NV-02 fix: a new file's temporary file was created 0644 and written
+    // with its inherited entries removed, inherited deny entries included, so others could read
+    // the bytes being written in a folder whose deny entry keeps them out of every finished file.
+    @Test(
+        "A new file stays owner-only while written and ends with the folder's deny and allow entries and its usual mode",
+        arguments: NewSave.allCases)
+    func newSaveIsPrivateWhileWritten(kind: NewSave) throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        try Self.addACL("nobody deny read,file_inherit", to: folder)
+        try Self.addACL("everyone allow read,file_inherit", to: folder)
+        // Control: what the previous creation call, open(2) with 0644, gives a file in this folder.
+        let control = try Self.createdWithMode0644(in: folder)
+        try #require(
+            control.acl?.contains(":deny") == true && control.acl?.contains(":allow") == true,
+            "control: the folder's deny and allow entries are not inherited (\(control.acl ?? "nil"))")
+
+        let observed = Observation()
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterSync: { temporary in
+                observed.temporaryMode = Self.mode(temporary)
+                observed.temporaryACL = Self.extendedACL(temporary)
+            }))
+        let url = folder.appendingPathComponent("shot.png")
+        let saved =
+            switch kind {
+            case .save: try sink.save(snapshot, to: url, overwrite: false)
+            case .overwriteMissing: try sink.save(snapshot, to: url, overwrite: true)
+            case .saveUnique: try sink.saveUnique(snapshot, in: folder)
+            }
+        let writtenMode = try #require(observed.temporaryMode, "the seam never saw the temporary file")
+        #expect(writtenMode == 0o600, "the temporary file was not owner-only while written")
+        #expect(writtenMode & 0o077 == 0, "others could read the bytes being written")
+        #expect(observed.temporaryACL == nil, "inherited entries were in effect while bytes were written")
+        #expect(try Data(contentsOf: saved) == snapshot.bytes)
+        #expect(Self.extendedACL(saved) == control.acl, "the new file lost the folder's inherited entries")
+        #expect(Self.mode(saved) == control.mode, "the new file's mode changed")
+    }
+
+    /// The ACL and mode of an empty file created in `folder` the way temporary files used to be.
+    private static func createdWithMode0644(in folder: URL) throws -> (acl: String?, mode: mode_t?) {
+        let path = folder.appendingPathComponent("mode-control").path(percentEncoded: false)
+        let descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o644)
+        try #require(descriptor >= 0, "control: could not create the mode control file")
+        close(descriptor)
+        defer { unlink(path) }
+        let url = URL(fileURLWithPath: path)
+        return (extendedACL(url), mode(url))
+    }
+
     final class Observation {
+        var temporaryMode: mode_t?
         var swapResolvesToVictim = false
         var temporaryACL: String?
     }

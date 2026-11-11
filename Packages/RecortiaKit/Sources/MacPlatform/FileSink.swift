@@ -134,9 +134,12 @@ struct POSIXFileSystem: FileSystemOperations {
     static let substitutedFailure = FileSystemFailure(code: EPERM)
 
     private let fileManager: FileManager
+    /// Test seam: runs once the bytes are on disk, before a new file gets its final access.
+    private let afterSync: (URL) -> Void
 
-    init(fileManager: FileManager = .default) {
+    init(fileManager: FileManager = .default, afterSync: @escaping (URL) -> Void = { _ in }) {
         self.fileManager = fileManager
+        self.afterSync = afterSync
     }
 
     func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
@@ -159,6 +162,7 @@ struct POSIXFileSystem: FileSystemOperations {
         defer { if let inherited { acl_free(UnsafeMutableRawPointer(inherited)) } }
         if failure == nil { failure = Self.writeAll(data, to: descriptor) }
         if failure == nil, fsync(descriptor) != 0 { failure = errno }
+        if failure == nil { afterSync(url) }
         if failure == nil, access == .newFile, let inherited,
             acl_set_fd_np(descriptor, inherited, ACL_TYPE_EXTENDED) != 0
         {
