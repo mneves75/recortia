@@ -97,6 +97,21 @@ neither a pass nor a failure: another session was sending real input to the desk
 and the screen was locked from before 01:15 (`IOConsoleLocked`), so foreground-dependent scenarios
 could not qualify.
 
+## Second review (2026-11-11)
+
+An independent review of the Resolution found three gaps, all closed test-first on
+`feat/editor-redesign`. The E2E runs are synthetic and offscreen; they do not qualify TCC,
+physical Spaces or live alerts.
+
+| ID | Finding | Commit | Red (before the fix) | Green (after it) |
+|---|---|---|---|---|
+| SR-1 (P1) | R-3 still froze the batch inside the coordinator's task, so a main-actor job queued between `handleCapture` and the task (a Settings toggle, a folder choice) joined the batch. | `b91015f` | `.scratch/logs/sr1-unit-red.log`: with `AutomaticExportPlan` in place but still ignored, save turned on later saved, folder A to B saved to B, upload turned on later uploaded (3 tests, 8 issues); the revoked-save guard passed. `.scratch/logs/sr1-e2e-red.log`, `.scratch/e2e/20261111-052755-2255`: on the unchanged code, `automatic-export` turning save on right after `handleCapture` saved a file and rendered twice. | `.scratch/logs/sr1-unit-green.log`: ExportCoordinator, EditorExportLifecycle and EditorIndependentEditSibling suites, 34 tests. `.scratch/logs/sr1-e2e-green.log`, `.scratch/e2e/20261111-053012-40509`: `automatic-export` and `export-sinks` pass in en and pt-BR; `automatic-save-settings` failed there only at the owned-foreground readiness control while the owner used the Mac (pending, not a product result). |
+| SR-2 (P2) | R-4's ACL copy could strand the temporary file: an ACL denying delete refuses both the rename and the cleanup `unlink`. | `9a3f09d` | `.scratch/logs/sr2-red.log`: with `<user> deny delete` (control: `rename` onto and `unlink` of such a file both refused), the save threw `accessDenied`, kept the prior bytes, and left `.recortia-<uuid>.tmp`. | `.scratch/logs/sr2-green.log`: all 10 FileSinkTests pass; a failed rename clears the copied ACL before cleanup. |
+| SR-3 (P2) | The panel-centring check repeated the sizing and arithmetic itself instead of calling `present`. | `512f654` | `.scratch/logs/sr3-planted-red.log`, `.scratch/e2e/20261111-053313-76687`: with the sizing call removed from `placeNearTop`, `window-chooser` failed on the new check (settled `(900, 678, 420, 248)`, expected centre 900). | `.scratch/logs/sr3-e2e-green.log`, `.scratch/e2e/20261111-053327-80022`: `window-chooser`, `region-overlay`, `countdown` pass in en and pt-BR. `present` now positions through `placeNearTop`, which the scenario calls on a fresh, never-shown panel. |
+
+Final gate: `.scratch/logs/second-review-check.log` (`./init.sh check --unsigned`). The full E2E
+run is still pending a clean session.
+
 Noticed and left: when the editor is open and an automatic batch has exactly one failure, the editor
 notice reuses `EditorStrings.exportFailure`, whose "Nothing was exported: ..." texts can also deny
 an earlier copy in the same batch (the R-2 defect on the editor route).
