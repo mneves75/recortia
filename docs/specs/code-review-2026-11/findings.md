@@ -159,6 +159,4 @@ identity-checked descriptor: a design change, not a patch.
 
 Not proven by a test: the FIFO guard, the failure paths of `fstat`, `acl_set_fd_np` and the mode
 probe, and volumes other than APFS, exFAT and FAT32 (for example SMB or NTFS). On exFAT and FAT32
-the claim is visible as an empty file under the final name until the rename replaces it. Since
-NV-06, a destination ACL that denies its owner changing security would make the later `fchmod`
-fail and leave the replacement 0600: narrower than the destination, never broader (not tested).
+the claim is visible as an empty file under the final name until the rename replaces it.
