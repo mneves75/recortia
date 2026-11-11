@@ -65,9 +65,13 @@
             }
             try context.require(
                 "every frame was offered", drained, "\(harness.scrollFrames.deliveredCount)/\(frames.count)")
+            // Relative: earlier scenarios (last-window's scroll review) stop their own sessions.
+            let stopsBefore = harness.scrollFrames.stopCount
             model.stop()
             context.check("Stop opens the review", model.state == .reviewing, "\(model.state)")
-            context.check("the stream was stopped", harness.scrollFrames.stopCount == 1)
+            context.check(
+                "the stream was stopped once", harness.scrollFrames.stopCount == stopsBefore + 1,
+                "\(harness.scrollFrames.stopCount - stopsBefore) stops")
             let expected = fixture.expectedOutput(lastOffset: offsets.last ?? 0)
             context.check(
                 "stitched size equals the page",

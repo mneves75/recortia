@@ -186,6 +186,7 @@ struct ScrollReviewView: View {
             HStack {
                 Button("Discard", role: .destructive, action: onDiscard)
                     .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("scroll.review.discard")
                 Spacer()
                 Button(
                     partialReason == nil ? LocalizedStringKey("Accept") : LocalizedStringKey("Accept Partial Result"),
@@ -193,6 +194,7 @@ struct ScrollReviewView: View {
                 )
                 .keyboardShortcut(.defaultAction)
                 .disabled(assemblyFailed)
+                .accessibilityIdentifier("scroll.review.accept")
             }
         }
         .padding(16)
