@@ -159,9 +159,11 @@ extension UserMessage {
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")
             case .system(let code): String(localized: "The system reported an error (\(code)).")
             }
+        // One step of an automatic batch failed; another may already have copied or saved, so the
+        // title never says that nothing was exported.
         let title =
             failure == .upload(.completionUnknown)
-            ? String(localized: "Check the GitHub upload") : String(localized: "Nothing was exported")
+            ? String(localized: "Check the GitHub upload") : String(localized: "An automatic export step failed")
         return UserMessage(title: title, detail: detail)
     }
 

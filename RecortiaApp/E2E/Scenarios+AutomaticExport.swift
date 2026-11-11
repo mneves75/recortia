@@ -233,6 +233,24 @@
                 "\(shown(double))")
             let closed = AppModel.routeAutomaticExport([.failed(.diskFull)], editorOpen: false)
             context.check("without an editor a failure is an alert", closed.alerts == [.diskFull], "\(closed)")
+
+            // An alert reports one failed step of a batch whose other steps may have written: its
+            // title must not say that nothing was exported (copy succeeds, save fails).
+            let denials: Set<String> = ["Nothing was exported", "Nada foi exportado"]
+            let failures: [ExportFailure] = [
+                .busy, .renderFailed, .encodeFailed, .budgetExceeded, .clipboardFailed, .accessDenied,
+                .destinationExists, .diskFull, .volumeUnavailable, .staleDocument, .system(code: 5),
+                .upload(.missingCredential),
+            ]
+            let titles = failures.map { "\($0): \(UserMessage.export($0).title)" }
+            let denying = zip(failures, titles).filter { denials.contains(UserMessage.export($0.0).title) }
+            context.check(
+                "no automatic-export alert title denies the batch's earlier writes", denying.isEmpty,
+                denying.map(\.1).joined(separator: "; "))
+            let unknown = UserMessage.export(.upload(.completionUnknown)).title
+            let checkGitHub = String(localized: "Check the GitHub upload")
+            context.check(
+                "an upload whose completion is unknown still asks to check GitHub", unknown == checkGitHub, unknown)
         }
     }
 #endif
