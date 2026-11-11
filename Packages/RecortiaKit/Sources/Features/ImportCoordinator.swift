@@ -43,7 +43,7 @@ public enum ImportFailure: Error, Hashable, Sendable {
 public final class ImportCoordinator {
     public var isImporting: Bool { imageImporter.isImporting }
     public let imageImporter: ImageImporter
-    public private(set) var lastFailure: ImportFailure?
+    private(set) var lastFailure: ImportFailure?
     @ObservationIgnored public var onImported: ((DocumentSession) -> Void)?
 
     public init(input: any ImageInputService, assets: any ImageAssetService) {
@@ -69,7 +69,7 @@ public final class ImportCoordinator {
         return result
     }
 
-    public func clearFailure() { lastFailure = nil }
+    func clearFailure() { lastFailure = nil }
 }
 
 /// An import admitted into the shared slot, with the source it read. It holds the slot until it is
@@ -95,7 +95,7 @@ public final class ImageImporter {
     /// Takes the slot, then calls `readSource`: a busy importer rejects without reading. Called on
     /// the main actor while a drop is performed, so a drag pasteboard is read while it is valid.
     /// The admission holds the slot until `importImage(_:)` or `release(_:)`.
-    public func admit(readSource: () throws(ImportFailure) -> ImportSource) throws(ImportFailure) -> ImportAdmission {
+    func admit(readSource: () throws(ImportFailure) -> ImportSource) throws(ImportFailure) -> ImportAdmission {
         guard !Task.isCancelled else { throw .cancelled }
         guard !isImporting else { throw .busy }
         isImporting = true

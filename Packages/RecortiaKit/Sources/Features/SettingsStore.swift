@@ -17,8 +17,8 @@ public final class SettingsStore {
         case unverifiedConsent
     }
 
-    public static let storageKey = "RecortiaPreferences"
-    public static let sealKey = "RecortiaPreferencesSeal"
+    static let storageKey = "RecortiaPreferences"
+    static let sealKey = "RecortiaPreferencesSeal"
     public static let opacityRange: ClosedRange<Double> = 0.2...1
 
     public private(set) var preferences: Preferences

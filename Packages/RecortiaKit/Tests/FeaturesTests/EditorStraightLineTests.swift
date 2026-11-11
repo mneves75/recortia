@@ -1,7 +1,8 @@
 import Domain
-import Features
 import Foundation
 import Testing
+
+@testable import Features
 
 @Suite("Straight-line editor behavior (FR-05, EDIT-01, EDIT-02)")
 @MainActor

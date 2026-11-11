@@ -5,7 +5,7 @@ import Imaging
 // Composition (FR-12) and presentation (FR-13). Layers scale uniformly only (the model has one
 // scale per layer), so no operation here can stretch an aspect ratio. Every change is one undo step.
 extension EditorModel {
-    public static let comparisonOpacity = 0.5
+    static let comparisonOpacity = 0.5
     public static let sideBySideSpacing = 24.0
 
     /// Imports an image through the bounded import services and adds it as a layer, centered and
@@ -239,7 +239,7 @@ extension EditorModel {
 
     // MARK: Presentation
 
-    public static let presentationRange: ClosedRange<Double> = 0...512
+    static let presentationRange: ClosedRange<Double> = 0...512
 
     public func setBackground(_ background: Presentation.Background) {
         edit("Background") { $0.presentation.background = background }

@@ -39,7 +39,7 @@ public final class EditorModel {
     public internal(set) var showsOutputPreview = false
     public internal(set) var outputPreview: CGImage?
     /// Asynchronous results discarded because the document changed meanwhile (diagnostics, tests).
-    public internal(set) var droppedResultCount = 0
+    internal(set) var droppedResultCount = 0
 
     // Recognition (EditorModel+Recognition.swift)
     public internal(set) var recognition: EditorRecognitionState = .idle
@@ -495,7 +495,7 @@ public final class EditorModel {
         }
     }
 
-    public static let duplicateOffset = 10.0
+    static let duplicateOffset = 10.0
 
     public func duplicateSelection() {
         let items = selection

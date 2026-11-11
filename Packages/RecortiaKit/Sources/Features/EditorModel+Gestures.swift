@@ -370,9 +370,9 @@ extension EditorModel {
             control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil)
     }
 
-    public static let defaultBlurRadius = 12.0
-    public static let defaultPixelBlock = 12.0
-    public static let defaultSpotlightDim = 0.55
+    static let defaultBlurRadius = 12.0
+    static let defaultPixelBlock = 12.0
+    static let defaultSpotlightDim = 0.55
     public static let magnification = 2.0
 
     /// Adds a secure, opaque redaction bound to the covered source pixels (FR-06).

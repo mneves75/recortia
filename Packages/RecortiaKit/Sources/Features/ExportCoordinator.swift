@@ -56,7 +56,7 @@ public enum ExportOutcome: Hashable, Sendable {
 @Observable
 public final class ExportCoordinator {
     public private(set) var state: ExportState?
-    public private(set) var lastOutcome: ExportOutcome?
+    private(set) var lastOutcome: ExportOutcome?
     private var operation: Operation?
     private var automaticBatch: Operation?
 
@@ -300,7 +300,7 @@ public final class ExportCoordinator {
     }
 
     /// The document changed or its editor closed: a drag offered for it can no longer commit.
-    public func invalidatePendingDrag(documentID: DocumentID) {
+    func invalidatePendingDrag(documentID: DocumentID) {
         guard pendingDrag?.documentID == documentID else { return }
         revokePendingDrag()
     }
