@@ -16,13 +16,15 @@ final class FaultInjectingFileSystem: FileSystemOperations {
         self.failCommit = failCommit
     }
 
-    func writeNewFile(_ data: Data, at url: URL, permissions: mode_t) throws(FileSystemFailure) {
+    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
+        -> FileIdentity
+    {
         if let failWrite {
             // Leave a partial temporary file behind, as a real mid-write failure would.
-            try base.writeNewFile(data.prefix(3), at: url, permissions: permissions)
+            _ = try base.writeNewFile(data.prefix(3), at: url, access: access)
             throw FileSystemFailure(code: failWrite)
         }
-        try base.writeNewFile(data, at: url, permissions: permissions)
+        return try base.writeNewFile(data, at: url, access: access)
     }
 
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
@@ -30,9 +32,9 @@ final class FaultInjectingFileSystem: FileSystemOperations {
         try base.moveExclusively(from: source, to: destination)
     }
 
-    func replace(from source: URL, to destination: URL) throws(FileSystemFailure) {
+    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {
         if let failCommit { throw FileSystemFailure(code: failCommit) }
-        try base.replace(from: source, to: destination)
+        try base.replace(from: source, to: destination, expecting: identity)
     }
 
     func removeItem(at url: URL) { base.removeItem(at: url) }
@@ -49,17 +51,20 @@ final class InterposingFileSystem: FileSystemOperations {
         self.afterWrite = afterWrite
     }
 
-    func writeNewFile(_ data: Data, at url: URL, permissions: mode_t) throws(FileSystemFailure) {
-        try base.writeNewFile(data, at: url, permissions: permissions)
+    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
+        -> FileIdentity
+    {
+        let identity = try base.writeNewFile(data, at: url, access: access)
         afterWrite(url)
+        return identity
     }
 
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
         try base.moveExclusively(from: source, to: destination)
     }
 
-    func replace(from source: URL, to destination: URL) throws(FileSystemFailure) {
-        try base.replace(from: source, to: destination)
+    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {
+        try base.replace(from: source, to: destination, expecting: identity)
     }
 
     func removeItem(at url: URL) { base.removeItem(at: url) }
