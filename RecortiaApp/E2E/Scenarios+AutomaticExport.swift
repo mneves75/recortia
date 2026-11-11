@@ -202,6 +202,36 @@
             harness.settings.update { $0.githubUpload?.automatic = false }
             _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
             context.check("upload opt-out prevents additional sends", harness.github.snapshots.count == uploads + 3)
+
+            // The batch is decided when the capture completes: a main-actor job queued right after
+            // `handleCapture` returns (here, turning automatic save on) must not join this capture.
+            // The folder is authorized again: the reset above cleared it, which would hide a save.
+            harness.settings.update {
+                $0.preferredSaveFolderBookmark = bookmark; $0.autoCopy = true; $0.autoSave = false
+            }
+            let wired = harness.features.capture.onCaptured
+            harness.features.capture.onCaptured = { [weak app = harness.app, settings = harness.settings] completion in
+                app?.handleCapture(completion)
+                settings.update { $0.autoSave = true }
+            }
+            defer { harness.features.capture.onCaptured = wired }
+            let copies = harness.clipboard.writeCount
+            let renders = harness.exportGate.snapshotCount
+            let savedBefore = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+            try context.require(
+                "frozen batch: the automatic copy chosen at capture runs",
+                await E2EWait.until { harness.clipboard.writeCount == copies + 1 && !harness.features.export.isBusy })
+            let savedAfter = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            context.check(
+                "frozen batch: automatic save turned on right after the capture does not save it",
+                savedAfter == savedBefore, "\(savedAfter)")
+            context.check(
+                "frozen batch: only the copy rendered", harness.exportGate.snapshotCount == renders + 1,
+                "\(harness.exportGate.snapshotCount - renders) renders")
+            harness.settings.update {
+                $0.autoCopy = false; $0.autoSave = false
+            }
         }
 
         /// A batch's failures are never hidden behind another notice in the editor's single slot.

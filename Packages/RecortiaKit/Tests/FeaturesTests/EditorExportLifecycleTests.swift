@@ -105,9 +105,10 @@ struct EditorExportLifecycleTests {
         h.folders.folder = URL(fileURLWithPath: "/tmp/recortia-tests/synthetic-folder", isDirectory: true)
         let gate = Pending<Result<Void, ExportServiceError>>()
         h.exporter.pending = gate
+        let plan = h.export.automaticExportPlan()
         let task = Task {
             await h.export.runAutomaticExports(
-                for: h.model.session, currentSession: { h.model.isClosed ? nil : h.model.session })
+                plan, for: h.model.session, currentSession: { h.model.isClosed ? nil : h.model.session })
         }
         await waitFor("batch snapshot suspended") { gate.waiterCount == 1 }
         (otherDocument ? other : h.model).close()

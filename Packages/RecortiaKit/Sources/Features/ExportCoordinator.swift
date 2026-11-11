@@ -43,6 +43,24 @@ public enum ExportOutcome: Hashable, Sendable {
     }
 }
 
+/// What one automatic batch does (R-3), decided synchronously when its capture completes. A step
+/// turned on or a folder chosen afterwards applies to the next capture; turning a step off still
+/// stops it, because each step also checks the live settings when it starts and after its render.
+public struct AutomaticExportPlan: Hashable, Sendable {
+    enum Save: Hashable, Sendable {
+        case folder(URL)
+        /// Automatic save was on, but its folder no longer resolves: the batch reports that.
+        case folderUnavailable
+    }
+
+    let copy: Bool
+    let save: Save?
+    let upload: GitHubDestination?
+    let uploadConsentID: UUID
+
+    public var isEmpty: Bool { !copy && save == nil && upload == nil }
+}
+
 /// Drives `ExportState` for Copy, Save, and Drag (FR-07, EXP-02).
 ///
 /// Order: take an immutable snapshot through the export pipeline, verify that it still matches
@@ -311,33 +329,43 @@ public final class ExportCoordinator {
         drag.dismiss()
     }
 
-    /// Automatic copy/save after a capture, only when the user enabled them (off by default).
+    /// The automatic batch the settings choose right now. Call it synchronously when the capture
+    /// completes, before anything else can run on the main actor, and pass it to
+    /// `runAutomaticExports`.
+    public func automaticExportPlan() -> AutomaticExportPlan {
+        let chosen = settings.preferences
+        let save: AutomaticExportPlan.Save? =
+            chosen.autoSave
+            ? chosen.preferredSaveFolderBookmark.flatMap(folders.resolveFolder).map { .folder($0) }
+                ?? .folderUnavailable : nil
+        return AutomaticExportPlan(
+            copy: chosen.autoCopy, save: save,
+            upload: chosen.githubUpload.flatMap { $0.automatic ? $0.destination : nil },
+            uploadConsentID: settings.githubUploadConsentID)
+    }
+
+    /// Automatic copy/save/upload after a capture, only the steps `plan` chose (off by default).
     public func runAutomaticExports(
-        for session: DocumentSession, currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
-        uploadConsentID: UUID? = nil
+        _ plan: AutomaticExportPlan, for session: DocumentSession,
+        currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
     ) async -> [ExportOutcome] {
         guard automaticBatch == nil, operation == nil else { return [.failed(.busy)] }
         automaticBatch = Operation(id: UUID(), documentID: session.document.id)
         defer { automaticBatch = nil }
-        let consentID = uploadConsentID ?? settings.githubUploadConsentID
         let settings = self.settings
-        // Frozen before the first await: the steps and the save folder are the ones chosen when the
-        // capture was taken. A setting turned on or a folder chosen meanwhile applies to the next
-        // capture. A step runs only if it is still allowed when it starts, and the same live check
-        // runs again after its render.
-        let chosen = settings.preferences
-        let saveFolder = chosen.autoSave ? chosen.preferredSaveFolderBookmark.flatMap(folders.resolveFolder) : nil
-        let uploadConfiguration = chosen.githubUpload.flatMap { $0.automatic ? $0 : nil }
+        // `plan` holds the steps and the save folder chosen when the capture was taken. A step runs
+        // only if it is still allowed when it starts, and the same live check runs again after its
+        // render.
         var outcomes: [ExportOutcome] = []
-        if chosen.autoCopy {
+        if plan.copy {
             outcomes.append(
                 await export(
                     .copy, session: session, currentSession: currentSession,
                     isAllowed: { settings.preferences.autoCopy }))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if chosen.autoSave, settings.preferences.autoSave {
-            if let folder = saveFolder {
+        if let save = plan.save, settings.preferences.autoSave {
+            if case .folder(let folder) = save {
                 let saveAllowed = { @MainActor [folders] in
                     // Compare folders, not bookmark bytes: a moved folder's bookmark is renewed.
                     settings.preferences.autoSave
@@ -354,13 +382,13 @@ public final class ExportCoordinator {
             }
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if let configuration = uploadConfiguration, let live = settings.preferences.githubUpload, live.automatic,
-            live.destination == configuration.destination
+        if let destination = plan.upload, let live = settings.preferences.githubUpload, live.automatic,
+            live.destination == destination
         {
             outcomes.append(
                 await export(
-                    .upload(to: configuration.destination, intent: UUID()), session: session,
-                    currentSession: currentSession, uploadConsentID: consentID))
+                    .upload(to: destination, intent: UUID()), session: session,
+                    currentSession: currentSession, uploadConsentID: plan.uploadConsentID))
         }
         return outcomes
     }

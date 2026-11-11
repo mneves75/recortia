@@ -315,11 +315,10 @@ final class AppModel: AppActions {
     /// export renders, or closing the editor, makes it stale, so the unedited capture is not sent.
     private func runAutomaticExports(for session: DocumentSession, editor: EditorModel?) {
         guard let export = features?.export else { return }
-        let preferences = settings.preferences
-        let uploadConsentID = settings.githubUploadConsentID
-        guard preferences.autoCopy || preferences.autoSave || preferences.githubUpload?.automatic == true else {
-            return
-        }
+        // Decided here, synchronously: a setting changed by a main-actor job queued before the task
+        // below runs belongs to the next capture (R-3).
+        let plan = export.automaticExportPlan()
+        guard !plan.isEmpty else { return }
         let opened = editor != nil
         let live: @MainActor @Sendable () -> DocumentSession? = { [weak editor] in
             // No editor wired: the capture itself is current. An editor that closed (or was
@@ -333,8 +332,7 @@ final class AppModel: AppActions {
         automaticExportsInFlight += 1
         Task {
             defer { automaticExportsInFlight -= 1 }
-            let outcomes = await export.runAutomaticExports(
-                for: session, currentSession: live, uploadConsentID: uploadConsentID)
+            let outcomes = await export.runAutomaticExports(plan, for: session, currentSession: live)
             let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
             for failure in route.alerts { showMessage(.export(failure)) }
             for outcome in route.editorNotices { editor?.reportAutomaticExport(outcome) }
