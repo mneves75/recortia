@@ -147,8 +147,6 @@ struct POSIXFileSystem: FileSystemOperations {
         let descriptor = open(url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
         guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
         var failure: Int32?
-        var status = stat()
-        if fstat(descriptor, &status) != 0 { failure = errno }
         var inherited: acl_t?
         if failure == nil {
             do throws(FileSystemFailure) {
@@ -160,6 +158,10 @@ struct POSIXFileSystem: FileSystemOperations {
         defer { if let inherited { acl_free(UnsafeMutableRawPointer(inherited)) } }
         if failure == nil { failure = Self.writeAll(data, to: descriptor) }
         if failure == nil, fsync(descriptor) != 0 { failure = errno }
+        // Identity once the bytes are on disk: exFAT and FAT number a file by its first cluster,
+        // so an empty new file carries a placeholder number that changes with its first write.
+        var status = stat()
+        if failure == nil, fstat(descriptor, &status) != 0 { failure = errno }
         if failure == nil { afterSync(url) }
         if failure == nil, access == .newFile, let inherited,
             acl_set_fd_np(descriptor, inherited, ACL_TYPE_EXTENDED) != 0
@@ -231,7 +233,32 @@ struct POSIXFileSystem: FileSystemOperations {
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
         let result = renamex_np(
             source.path(percentEncoded: false), destination.path(percentEncoded: false), UInt32(RENAME_EXCL))
-        if result != 0 { throw FileSystemFailure(code: errno) }
+        if result == 0 { return }
+        let failure = errno
+        // exFAT and FAT have no exclusive rename; they still report EEXIST for a taken name.
+        guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
+        try Self.claimThenRename(from: source, to: destination)
+    }
+
+    /// The exclusive move where the volume lacks one: an exclusive create claims `destination`, so
+    /// an existing file is never replaced, then the rename replaces that empty claim. If the
+    /// rename fails, the claim is removed only while it is still the empty file created here.
+    static func claimThenRename(from source: URL, to destination: URL) throws(FileSystemFailure) {
+        let path = destination.path(percentEncoded: false)
+        let claim = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
+        guard claim >= 0 else { throw FileSystemFailure(code: errno) }
+        var claimed = stat()
+        let claimStatus = fstat(claim, &claimed)
+        close(claim)
+        if rename(source.path(percentEncoded: false), path) == 0 { return }
+        let failure = errno
+        var current = stat()
+        if claimStatus == 0, lstat(path, &current) == 0, current.st_dev == claimed.st_dev,
+            current.st_ino == claimed.st_ino, current.st_size == 0
+        {
+            unlink(path)
+        }
+        throw FileSystemFailure(code: failure)
     }
 
     func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {

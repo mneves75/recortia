@@ -37,6 +37,32 @@ struct FileSinkVolumeTests {
     }
 
     @Test(
+        "Without exclusive rename, a taken name is kept and a failed move releases the name it claimed",
+        arguments: ScratchVolume.Format.allCases)
+    func claimedMoveKeepsAndReleasesNames(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let taken = folder.appendingPathComponent("taken.png")
+            try priorBytes.write(to: taken)
+            let source = folder.appendingPathComponent(".recortia-source.tmp")
+            try snapshot.bytes.write(to: source)
+            #expect(throws: FileSystemFailure(code: EEXIST)) {
+                try POSIXFileSystem.claimThenRename(from: source, to: taken)
+            }
+            #expect(try Data(contentsOf: taken) == priorBytes)
+            // The rename fails after the claim when its source is gone.
+            let missing = folder.appendingPathComponent(".recortia-missing.tmp")
+            let free = folder.appendingPathComponent("free.png")
+            #expect(throws: FileSystemFailure(code: ENOENT)) {
+                try POSIXFileSystem.claimThenRename(from: missing, to: free)
+            }
+            #expect(!FileManager.default.fileExists(atPath: free.path), "an empty claimed file was left behind")
+            try POSIXFileSystem.claimThenRename(from: source, to: free)
+            #expect(try Data(contentsOf: free) == snapshot.bytes)
+            #expect(TestSupport.directoryEntries(folder) == ["free.png", "taken.png"])
+        }
+    }
+
+    @Test(
         "A temporary file replaced by another file before the commit is still refused",
         arguments: ScratchVolume.Format.allCases)
     func substitutedTemporaryFileIsRefused(format: ScratchVolume.Format) throws {
