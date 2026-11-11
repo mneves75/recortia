@@ -432,4 +432,8 @@ Stop the affected operation, preserve safe progress, and report when the next ac
 
 ## Deferred backlog
 
+Proposed enhancements after 0.14.0 (2026-11-11, not approved work): see
+`docs/specs/enhancement-plan-2026-11/plan.md`. Class A items become backlog tasks only once the
+owner approves them; class B items each need a recorded decision first.
+
 FR-15 (S3 sharing) and FR-16 (automation/on-device assistance) require separate design, tests, threat-model updates, and approval. Their high-level constraints are in SPEC.md. Do not prebuild unused provider abstractions, a server, an agent runtime, or model downloads in the v1 implementation.

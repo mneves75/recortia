@@ -7,6 +7,11 @@ public product documentation and read-only inspection of installed app bundles, 
 Recortia's status for each. No third-party app was launched, nothing was copied, and no
 proprietary code or algorithm was inferred. Recortia baseline when written: 0.11.0/build 18.
 
+A second read-only pass on 2026-11-11 (bundle metadata and public pages of two installed reference
+utilities) produced the proposal in `docs/specs/enhancement-plan-2026-11/plan.md`, which classifies
+each gap below as fitting an approved requirement, needing a fresh decision, or excluded. This
+inventory remains the per-capability status record.
+
 Entry wording was updated on 2026-11-11 for the editor redesign (inspector tabs, toolbar menus,
 seven Settings tabs). An existing capability below is code/contract evidence, not a newly passed
 physical acceptance test. The full repository gate must recheck it; manual qualification remains in BACKLOG.json.
