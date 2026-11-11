@@ -146,30 +146,44 @@ struct POSIXFileSystem: FileSystemOperations {
 
     func replace(from source: URL, to destination: URL) throws(FileSystemFailure) {
         var existing = stat()
+        var copiedACL = false
         if stat(destination.path(percentEncoded: false), &existing) == 0 {
             // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
             _ = chmod(source.path(percentEncoded: false), existing.st_mode & 0o777)
-            try copyACL(from: destination, to: source)
+            copiedACL = try copyACL(from: destination, to: source)
         } else if errno != ENOENT {
             throw FileSystemFailure(code: errno)
         }
         if rename(source.path(percentEncoded: false), destination.path(percentEncoded: false)) != 0 {
-            throw FileSystemFailure(code: errno)
+            let failure = errno
+            // The copied ACL can deny this user deleting the temporary file as well (an entry that
+            // denies delete is also why the rename failed); drop it so the caller's cleanup works.
+            if copiedACL { clearACL(of: source) }
+            throw FileSystemFailure(code: failure)
         }
     }
 
     /// A replaced file in a shared folder may carry its own ACL entries; the new file must keep
     /// them. If they cannot be copied, the replace fails and the destination stays as it was.
-    private func copyACL(from destination: URL, to source: URL) throws(FileSystemFailure) {
+    /// Returns whether an ACL was applied to `source`.
+    private func copyACL(from destination: URL, to source: URL) throws(FileSystemFailure) -> Bool {
         guard let acl = acl_get_file(destination.path(percentEncoded: false), ACL_TYPE_EXTENDED) else {
             // ENOENT: the file has no ACL; ENOTSUP: the volume has no ACLs at all.
-            if errno == ENOENT || errno == ENOTSUP { return }
+            if errno == ENOENT || errno == ENOTSUP { return false }
             throw FileSystemFailure(code: errno)
         }
         defer { acl_free(UnsafeMutableRawPointer(acl)) }
         if acl_set_file(source.path(percentEncoded: false), ACL_TYPE_EXTENDED, acl) != 0 {
             throw FileSystemFailure(code: errno)
         }
+        return true
+    }
+
+    /// Best effort, before cleanup of a failure that is already being reported.
+    private func clearACL(of url: URL) {
+        guard let empty = acl_init(0) else { return }
+        defer { acl_free(UnsafeMutableRawPointer(empty)) }
+        _ = acl_set_file(url.path(percentEncoded: false), ACL_TYPE_EXTENDED, empty)
     }
 
     func removeItem(at url: URL) {

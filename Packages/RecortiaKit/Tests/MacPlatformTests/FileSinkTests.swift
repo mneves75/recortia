@@ -164,6 +164,61 @@ struct FileSinkTests {
         #expect(Self.extendedACL(url) == before, "the replaced file lost its ACL")
     }
 
+    // Failure mode (second review of R-4): the destination's ACL is copied onto the temporary file
+    // before the rename. When it denies this user delete, the rename is refused and, unless the
+    // copy is undone, so is the cleanup, stranding a complete export after a reported failure.
+    @Test("A refused overwrite of a file whose ACL denies delete leaves it intact and no temporary file")
+    func refusedOverwriteLeavesNoTemporaryFile() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let denyDelete = "\(NSUserName()) deny delete"
+        // Control: in this directory the entry really refuses both replacing and unlinking the file.
+        let control = folder.appendingPathComponent("control.png")
+        let replacement = folder.appendingPathComponent("control-new.png")
+        try priorBytes.write(to: control)
+        try priorBytes.write(to: replacement)
+        try Self.addACL(denyDelete, to: control)
+        let renameResult = rename(replacement.path(percentEncoded: false), control.path(percentEncoded: false))
+        let renameErrno = errno
+        let unlinkResult = unlink(control.path(percentEncoded: false))
+        let unlinkErrno = errno
+        try #require(
+            renameResult != 0 && unlinkResult != 0,
+            "control: the ACL did not stop replace/unlink (rename \(renameResult)/\(renameErrno), unlink \(unlinkResult)/\(unlinkErrno))"
+        )
+        Self.clearACLs(in: folder)
+        try FileManager.default.removeItem(at: control)
+        try FileManager.default.removeItem(at: replacement)
+
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try Self.addACL(denyDelete, to: url)
+        #expect(throws: SinkError.accessDenied) { try FileSink().save(snapshot, to: url, overwrite: true) }
+        #expect(try Data(contentsOf: url) == priorBytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a temporary export was left behind")
+    }
+
+    private static func addACL(_ entry: String, to url: URL) throws {
+        let chmod = Process()
+        chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+        chmod.arguments = ["+a", entry, url.path(percentEncoded: false)]
+        try chmod.run()
+        chmod.waitUntilExit()
+        try #require(chmod.terminationStatus == 0, "control: chmod +a could not set \(entry)")
+    }
+
+    /// Removes every explicit ACL in `folder`, so a deny entry cannot keep its files undeletable.
+    private static func clearACLs(in folder: URL) {
+        guard let empty = acl_init(0) else { return }
+        defer { acl_free(UnsafeMutableRawPointer(empty)) }
+        for name in (try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? [] {
+            _ = acl_set_file(folder.appendingPathComponent(name).path(percentEncoded: false), ACL_TYPE_EXTENDED, empty)
+        }
+    }
+
     /// The file's explicit ACL as text, or nil when it has none.
     private static func extendedACL(_ url: URL) -> String? {
         guard let acl = acl_get_file(url.path(percentEncoded: false), ACL_TYPE_EXTENDED) else { return nil }
