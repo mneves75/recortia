@@ -31,6 +31,51 @@
             "Ação, coração e informação",
         ]
 
+        /// The text format chosen in the inspector belongs to this editor: switching tabs keeps the
+        /// picker, and Copy Text copies that format, not the preference.
+        private static func formatSurvivesTabs(
+            _ harness: E2EHarness, _ controller: EditorWindowController, _ context: ScenarioContext
+        ) async throws {
+            let model = controller.model
+            let root = try context.unwrap("OCR editor content", controller.contentRoot)
+            let preferred = harness.settings.preferences.ocrTextMode
+            let chosen = try context.unwrap(
+                "a text format other than the preference",
+                OCRTextMode.allCases.first {
+                    $0 != preferred && model.recognizedText(mode: $0) != model.recognizedText(mode: preferred)
+                })
+            func showPicker() async -> Bool {
+                await E2EActions.scrollInspector(controller, to: 1)
+                await E2ESnapshot.settle(root)
+                return E2EAccessibilityControl.isPresent("recognition.format", in: root)
+            }
+            try context.require("the inspector shows the text format picker", await showPicker())
+            let offered = try await E2EAccessibilityControl.chooseFromMenu(
+                EditorStrings.name(chosen), opening: "recognition.format", in: root, context)
+            context.check(
+                "the format picker offers every text format",
+                offered.map(\.title) == OCRTextMode.allCases.map { EditorStrings.name($0) }, "\(offered)")
+            await E2ESnapshot.settle(root)
+            for tab in [0, 1] {
+                try InspectorScenarios.chooseTab(tab, controller, root, context)
+                await E2ESnapshot.settle(root)
+            }
+            try context.require("the format picker returns with the Image tab", await showPicker())
+            let reopened = try await E2EAccessibilityControl.chooseFromMenu(
+                nil, opening: "recognition.format", in: root, context)
+            context.check(
+                "the chosen text format survives switching tabs",
+                reopened.filter(\.checked).map(\.title) == [EditorStrings.name(chosen)], "\(reopened)")
+            await E2ESnapshot.settle(root)
+            harness.textPasteboard.clearContents()
+            try E2EAccessibilityControl.pressCheckingEffect("recognition.copyText", in: root, context)
+            _ = await E2EWait.until(timeout: .seconds(2)) { harness.textPasteboard.string(forType: .string) != nil }
+            context.check(
+                "Copy Text copies the chosen format after switching tabs",
+                harness.textPasteboard.string(forType: .string) == model.recognizedText(mode: chosen),
+                "\(String(describing: harness.textPasteboard.string(forType: .string)?.debugDescription))")
+        }
+
         static func ocrAndQR(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let sample: TextCorpus.Sample
             do {
@@ -78,6 +123,7 @@
                 harness.textPasteboard.string(forType: .string)?.contains("Relatório") == true)
             await E2EActions.scrollInspector(controller, to: 1)
             await E2EActions.snapshotEditor(controller, context, shot: "ocr")
+            try await formatSurvivesTabs(harness, controller, context)
 
             let fixtures: [QRFixture]
             do { fixtures = try QRFixture.all() } catch { throw E2EAbort("QR fixtures: \(error)") }

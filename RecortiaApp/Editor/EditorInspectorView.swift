@@ -1122,6 +1122,7 @@ private struct RecognitionSection: View {
                 ) {
                     ForEach(OCRTextMode.allCases, id: \.self) { Text(EditorStrings.name($0)).tag($0) }
                 }
+                .accessibilityIdentifier("recognition.format")
                 ScrollView {
                     Text(text)
                         .textSelection(.enabled)
@@ -1133,6 +1134,7 @@ private struct RecognitionSection: View {
                     Button(String(localized: "Copy Text", table: "Editor")) {
                         model.copyRecognizedText(mode: selectedMode)
                     }
+                    .accessibilityIdentifier("recognition.copyText")
                     Button(String(localized: "Clear", table: "Editor")) { model.clearRecognition() }
                 }
             }

@@ -56,6 +56,25 @@
                 present: ["style.fill", "style.lineWidth", "frame.x", "frame.y", "frame.width", "frame.height"],
                 absent: ["style.textSize", "arrow.straight", "textAppearance.standard", "image.background"])
             await E2EActions.snapshotEditor(controller, context, shot: "rectangle-selected")
+            for identifier in ["style.fill", "style.lineWidth"] {
+                context.check(
+                    "rectangle selected: \(identifier) is enabled",
+                    (try? E2EAccessibilityControl.isEnabled(identifier, in: root, context)) == true)
+            }
+            func rectangleFill() -> RGBA? { model.document.annotations.first { $0.id == rectangle.id }?.style.fill }
+            let fillBefore = rectangleFill()
+            try E2EAccessibilityControl.pressCheckingEffect("style.fill", in: root, context)
+            context.check(
+                "the Fill control changes the rectangle's fill",
+                await E2EWait.until { rectangleFill() != fillBefore },
+                "before \(String(describing: fillBefore)), after \(String(describing: rectangleFill()))")
+            model.undo()
+            await E2ESnapshot.settle(root)
+            context.check(
+                "one Undo restores the rectangle's fill", rectangleFill() == fillBefore,
+                "before \(String(describing: fillBefore)), now \(String(describing: rectangleFill()))")
+            model.select(.annotation(rectangle.id))
+            await E2ESnapshot.settle(root)
 
             E2EActions.click(model, .text, at: p(380, 80))
             try context.require(
@@ -123,6 +142,24 @@
                 "blur tool", present: ["redaction.cosmeticWarning"],
                 absent: ["redaction.color", "style.lineWidth", "image.background"])
             await E2EActions.snapshotEditor(controller, context, shot: "blur-tool")
+            for tool in [EditorTool.blur, .pixelate] {
+                model.selectTool(tool)
+                await E2ESnapshot.settle(root)
+                try chooseTab(1, controller, root, context)
+                await E2ESnapshot.settle(root)
+                checkWarning("\(tool.rawValue) tool on the Image tab", controller, root, context)
+            }
+            E2EActions.drag(model, .blur, from: p(420, 260), to: p(560, 340))
+            let cosmetic = try context.unwrap("cosmetic object", model.document.obfuscations.last)
+            model.selectTool(.select)
+            model.select(.obfuscation(cosmetic.id))
+            await E2ESnapshot.settle(root)
+            checkWarning("cosmetic object selected on the Format tab", controller, root, context)
+            try chooseTab(1, controller, root, context)
+            await E2ESnapshot.settle(root)
+            checkWarning("cosmetic object selected on the Image tab", controller, root, context)
+            await E2EActions.snapshotEditor(controller, context, shot: "cosmetic-image-tab")
+            model.clearSelection()
 
             model.selectTool(.redact)
             await E2ESnapshot.settle(root)
@@ -154,6 +191,58 @@
             model.zoomToFit()
             await E2ESnapshot.settle(root)
             context.check("the inspector fits the minimum editor width", abs(root.bounds.width - 980) < 1)
+            let compactSituations: [(String, () -> Void, [String])] = [
+                (
+                    "nothing selected",
+                    {
+                        model.selectTool(.select); model.clearSelection()
+                    }, ["inspector.tab", "image.background"]
+                ),
+                (
+                    "rectangle selected",
+                    {
+                        model.selectTool(.select); model.select(.annotation(rectangle.id))
+                    },
+                    ["style.fill", "style.lineWidth", "frame.x", "frame.y", "frame.width", "frame.height"]
+                ),
+                (
+                    "plain text selected",
+                    {
+                        model.selectTool(.select); model.select(.annotation(text.id))
+                    },
+                    ["style.textSize"] + TextAppearance.allCases.map { "textAppearance.\($0.rawValue)" }
+                ),
+                (
+                    "arrow tool",
+                    {
+                        model.clearSelection(); model.selectTool(.arrow)
+                    }, ["arrow.straight", "arrow.curved", "style.lineWidth"]
+                ),
+                (
+                    "blur tool",
+                    {
+                        model.clearSelection(); model.selectTool(.blur)
+                    }, ["redaction.cosmeticWarning"]
+                ),
+                (
+                    "redact tool",
+                    {
+                        model.clearSelection(); model.selectTool(.redact)
+                    }, ["redaction.color"]
+                ),
+            ]
+            for (situation, setUp, identifiers) in compactSituations {
+                setUp()
+                await E2ESnapshot.settle(root)
+                for identifier in identifiers {
+                    let frame = await visibleFrame(identifier, controller, root)
+                    context.check(
+                        "at 980 pt, \(situation): \(identifier) lies inside the inspector", frame.fits,
+                        "control \(String(describing: frame.control)), inspector \(inspectorBounds(controller, root))")
+                }
+            }
+            model.selectTool(.rectangle)
+            await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "saved-colors-compact-dark")
             model.selectTool(.select)
             model.select(.annotation(text.id))
@@ -187,9 +276,96 @@
             return found
         }
 
+        /// The inspector column beside the canvas, in screen coordinates.
+        static func inspectorBounds(_ controller: EditorWindowController, _ root: NSView) -> NSRect {
+            guard let window = root.window, let canvas = controller.canvasView else { return .zero }
+            let canvasFrame = canvas.convert(canvas.bounds, to: root)
+            let column = NSRect(
+                x: canvasFrame.maxX, y: canvasFrame.minY, width: root.bounds.maxX - canvasFrame.maxX,
+                height: canvasFrame.height)
+            return window.convertToScreen(root.convert(column, to: nil))
+        }
+
+        /// Whether the control lies fully inside the inspector column at some point of the
+        /// inspector's scroll range, and its last frame (screen coordinates).
+        static func visibleFrame(_ identifier: String, _ controller: EditorWindowController, _ root: NSView) async
+            -> (fits: Bool, control: NSRect?)
+        {
+            let bounds = inspectorBounds(controller, root).insetBy(dx: -0.5, dy: -0.5)
+            var last: NSRect?
+            for fraction in [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] {
+                await E2EActions.scrollInspector(controller, to: fraction)
+                await E2ESnapshot.settle(root, for: .milliseconds(100))
+                guard let frame = accessibilityFrame(identifier, in: root) else { continue }
+                last = frame
+                if frame.width > 0, frame.height > 0, bounds.contains(frame) {
+                    await E2EActions.scrollInspector(controller, to: 0)
+                    return (true, frame)
+                }
+            }
+            await E2EActions.scrollInspector(controller, to: 0)
+            return (false, last)
+        }
+
+        /// The cosmetic warning is shown exactly once, inside the inspector, without scrolling.
+        private static func checkWarning(
+            _ situation: String, _ controller: EditorWindowController, _ root: NSView, _ context: ScenarioContext
+        ) {
+            let identifier = "redaction.cosmeticWarning"
+            let count = elements(identifier, in: root)
+            let frame = accessibilityFrame(identifier, in: root)
+            let bounds = inspectorBounds(controller, root).insetBy(dx: -0.5, dy: -0.5)
+            context.check(
+                "\(situation): the cosmetic warning is shown once inside the inspector",
+                count == 1 && frame.map { $0.width > 0 && $0.height > 0 && bounds.contains($0) } == true,
+                "count \(count), warning \(String(describing: frame)), inspector \(bounds)")
+        }
+
+        private static func accessibilityFrame(_ identifier: String, in root: NSView) -> NSRect? {
+            let application = AXUIElementCreateApplication(ProcessInfo.processInfo.processIdentifier)
+            var windows: CFTypeRef?
+            _ = AXUIElementCopyAttributeValue(application, kAXWindowsAttribute as CFString, &windows)
+            guard E2EAccessibilityControl.isPresent(identifier, in: root) else { return nil }
+            return matches(identifier, in: root).first.flatMap {
+                ($0.value(forKey: "accessibilityFrame") as? NSValue)?.rectValue
+            }
+        }
+
+        /// How many accessibility elements under `root` carry `identifier`.
+        private static func elements(_ identifier: String, in root: NSView) -> Int {
+            matches(identifier, in: root).count
+        }
+
+        private static func matches(_ identifier: String, in root: NSView) -> [NSObject] {
+            var visited: Set<ObjectIdentifier> = []
+            var found: [NSObject] = []
+            var remaining = 8192
+            func walk(_ element: Any, depth: Int) {
+                guard depth < 64, remaining > 0, let object = element as? NSObject,
+                    visited.insert(ObjectIdentifier(object)).inserted
+                else { return }
+                remaining -= 1
+                if object.responds(to: NSSelectorFromString("accessibilityIdentifier")),
+                    object.value(forKey: "accessibilityIdentifier") as? String == identifier
+                {
+                    found.append(object)
+                }
+                if object.responds(to: NSSelectorFromString("accessibilityChildren")),
+                    let children = object.value(forKey: "accessibilityChildren") as? [Any]
+                {
+                    for child in children { walk(child, depth: depth + 1) }
+                }
+                if let view = element as? NSView {
+                    for subview in view.subviews { walk(subview, depth: depth + 1) }
+                }
+            }
+            walk(root, depth: 0)
+            return found
+        }
+
         /// Selects a segment of the inspector's Format/Image picker the way a click ends: the
         /// segmented control's own selection and action, inside this runner's window.
-        private static func chooseTab(
+        static func chooseTab(
             _ segment: Int, _ controller: EditorWindowController, _ root: NSView, _ context: ScenarioContext
         ) throws {
             let canvas = try context.unwrap("tab canvas", controller.canvasView)

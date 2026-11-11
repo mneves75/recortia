@@ -56,12 +56,11 @@
             try pressFrame(control, in: root, context)
         }
 
-        /// Presses a window toolbar item as an assistive app does. A bridged SwiftUI item is either
-        /// the toolbar item's own element, which lists AXPress and takes it through
-        /// `accessibilityPerformAction` (the path `AXUIElementPerformAction` reaches), or a SwiftUI
-        /// node (a menu button) that lists no legacy actions but answers `accessibilityPerformPress`.
-        /// Bridged items perform the press yet report false, so the caller verifies the effect.
-        static func pressToolbarItem(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
+        /// Presses a SwiftUI control as an assistive app does, for controls (bridged toolbar items,
+        /// switches, menu buttons) that perform the press yet report false: the legacy AXPress when the
+        /// element lists it (the path `AXUIElementPerformAction` reaches), else the element's own
+        /// `accessibilityPerformPress`. The caller verifies the effect instead of that flag.
+        static func pressCheckingEffect(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
             let control = try control(identifier, in: root, context)
             if control.accessibilityActionNames().contains(.press) {
                 control.accessibilityPerformAction(.press)
@@ -72,6 +71,32 @@
                 "\(identifier) offers Press", control.responds(to: press),
                 "\(type(of: control)) actions \(control.accessibilityActionNames().map(\.rawValue))")
             _ = control.perform(press)
+        }
+
+        /// Presses a menu button through accessibility, as a person or VoiceOver opens it, and while
+        /// the real menu tracks: records its items, chooses the item titled `title` (or nothing), and
+        /// ends tracking. A common-mode timer ends tracking after two seconds so a menu that never
+        /// matches cannot block the run.
+        static func chooseFromMenu(
+            _ title: String?, opening identifier: String, in root: NSView, _ context: ScenarioContext
+        ) async throws -> [E2EMenuEntry] {
+            let session = E2EMenuSession(choosing: title)
+            NotificationCenter.default.addObserver(
+                session, selector: #selector(E2EMenuSession.began(_:)), name: NSMenu.didBeginTrackingNotification,
+                object: nil)
+            defer { NotificationCenter.default.removeObserver(session) }
+            let safety = Timer(timeInterval: 2, repeats: false) { [weak session] _ in
+                MainActor.assumeIsolated { session?.menu?.cancelTrackingWithoutAnimation() }
+            }
+            RunLoop.main.add(safety, forMode: .common)
+            defer { safety.invalidate() }
+            try pressCheckingEffect(identifier, in: root, context)
+            try context.require(
+                "\(identifier) opens its menu", await E2EWait.until(timeout: .seconds(3)) { session.tracked })
+            if let title {
+                try context.require("\(identifier) offers \(title)", session.chosen, "items \(session.entries)")
+            }
+            return session.entries
         }
 
         /// Clicks a control of the selected Settings pane like a pointer would: one mouse-down then
@@ -283,6 +308,43 @@
                 }
             }
             return nil
+        }
+    }
+    struct E2EMenuEntry: CustomStringConvertible {
+        let title: String
+        let checked: Bool
+        var description: String { "\(title)\(checked ? " ✓" : "")" }
+    }
+
+    /// Observes the menu the next press opens; the notification arrives on the main thread,
+    /// inside the menu's tracking loop.
+    @MainActor
+    private final class E2EMenuSession: NSObject {
+        let title: String?
+        private(set) weak var menu: NSMenu?
+        private(set) var entries: [E2EMenuEntry] = []
+        private(set) var tracked = false
+        private(set) var chosen = false
+
+        init(choosing title: String?) { self.title = title }
+
+        @objc func began(_ note: Notification) {
+            guard let menu = note.object as? NSMenu, !tracked else { return }
+            tracked = true
+            self.menu = menu
+            menu.update()
+            entries = menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }
+                .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on) }
+            let index = title.flatMap { title in menu.items.firstIndex { $0.title == title } }
+            chosen = index != nil
+            // Choose on the next turn of the tracking loop, after the menu finished opening, as a
+            // person's click would; a menu chosen inside the notification did not open again.
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    if let index { menu.performActionForItem(at: index) }
+                    menu.cancelTracking()
+                }
+            }
         }
     }
 #endif
