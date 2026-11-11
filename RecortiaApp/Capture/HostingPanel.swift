@@ -48,8 +48,18 @@ final class HostingPanel: NSPanel {
         }
     }
 
+    /// Right after `setContent` the tracked size has not arrived and the frame is zero; AppKit
+    /// later grows the panel from its top-left corner, so `present` would leave it half its width
+    /// right of centre and its top at the bottom edge it computed. Sizing to the content's fitting
+    /// size first fixes both; a height that still misses the title-bar inset grows downward.
+    func sizeToContentIfUnsized() {
+        guard frame.width == 0, let content = contentViewController?.view else { return }
+        setContentSize(content.fittingSize)
+    }
+
     /// Shows the panel near the top center of the screen with the pointer.
     func present(activate: Bool) {
+        sizeToContentIfUnsized()
         if let visible = ScreenChoice.screen()?.visibleFrame {
             let size = frame.size
             setFrameOrigin(

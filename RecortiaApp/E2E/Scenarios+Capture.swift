@@ -87,6 +87,24 @@
             try context.require(
                 "the window list arrives", listed, "\(String(describing: coordinator.selectionContext))")
             guard case .window(let windows)? = coordinator.selectionContext else { throw E2EAbort("no window list") }
+            // `CaptureUIController` reuses one panel for loading and the list and positions it in
+            // `present` right after `setContent`, from whatever size the frame has then. Repeat that
+            // arithmetic on the parked panel: once the list's size arrives, the top edge and the
+            // horizontal centre must still be where `present` put them.
+            let top = loading.frame.maxY
+            let centre = loading.frame.midX
+            let loadingSize = loading.frame.size
+            loading.setContent(WindowChooserView(windows: windows, onChoose: { _ in }, onCancel: {}))
+            loading.sizeToContentIfUnsized()
+            let immediate = loading.frame.size
+            loading.setFrameOrigin(CGPoint(x: centre - immediate.width / 2, y: top - immediate.height))
+            if let swapped = loading.contentView { await E2ESnapshot.settle(swapped) }
+            let settled = loading.frame
+            context.check(
+                "the reused chooser panel keeps its top edge and centre when the list replaces loading",
+                abs(settled.maxY - top) <= 1 && abs(settled.midX - centre) <= 1,
+                "loading \(loadingSize), right after setContent \(immediate), settled \(settled.size); "
+                    + "top \(top) to \(settled.maxY), centre \(centre) to \(settled.midX)")
             context.check(
                 "the chooser lists every synthetic window", windows == harness.capture.windowList,
                 windows.map(\.ownerName).joined(separator: ", "))
