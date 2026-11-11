@@ -7,8 +7,9 @@ public product documentation and read-only inspection of installed app bundles, 
 Recortia's status for each. No third-party app was launched, nothing was copied, and no
 proprietary code or algorithm was inferred. Recortia baseline when written: 0.11.0/build 18.
 
-An existing capability below is code/contract evidence, not a newly passed physical acceptance
-test. The full repository gate must recheck it; manual qualification remains in BACKLOG.json.
+Entry wording was updated on 2026-11-11 for the editor redesign (inspector tabs, toolbar menus,
+seven Settings tabs). An existing capability below is code/contract evidence, not a newly passed
+physical acceptance test. The full repository gate must recheck it; manual qualification remains in BACKLOG.json.
 
 ## Behavior coverage and gaps
 
@@ -17,18 +18,18 @@ test. The full repository gate must recheck it; manual qualification remains in 
 | Region, display, chosen window | Menu capture commands / CaptureCoordinator | CAP-01/02, GEO | Capture / existing |
 | Timer, repeat region, cursor/shadow options | Menu and Settings › Capture | CAP-01 | Capture / existing |
 | PNG/JPEG import, paste/drop | Menu / ImportCoordinator | IO-01 | Capture / existing |
-| Vertical manual/automatic scroll | Scrolling Capture / ScrollSessionModel | SCR-01…04, PERM | Capture / existing, physical compatibility pending |
+| Vertical manual/automatic scroll | Scrolling Capture; automatic scrolling in Settings › Capture / ScrollSessionModel | SCR-01…04, PERM | Capture / existing, physical compatibility pending |
 | Text, straight arrows, shapes, freehand, highlight, steps | Editor / AnnotationRenderer | EDIT-01/02 | Editing / existing |
 | Crop, resize, zoom/pan, selection, ordering, undo; Shift constraints | Editor / EditorModel; Shift keeps aspect/squares and snaps arrows to 45°; layers retain aspect | EDIT, GEO, EditorCompositionTests | Editing / existing |
 | Secure opaque masks; cosmetic blur/pixelate | Editor / RenderPrivacyRenderer | RED-01…03 | Editing / preserve stronger source-pixel contract |
 | Local text recognition, QR | Capture Text / editor recognition / Vision | OCR-01/02 | Recognition / existing, EN/PT-BR qualification |
-| Pixel loupe, ruler, HEX/RGB sRGB | Editor pixel tools / PixelSampler | PIX-01, GEO | Recognition / existing |
+| Pixel loupe, ruler, HEX/RGB sRGB | Editor toolbar Measure menu / PixelSampler | PIX-01, GEO | Recognition / existing |
 | Multiple image layers, opacity, side-by-side | Editor composition / EditorModel+Composition | COMP-01, RED | Composition / existing |
-| Background, padding, corners, shadow, spotlight, magnifier | Editor presentation / RenderEffects | COMP-01, RED | Composition / existing |
-| Pins, opacity/zoom, sanitized Copy/Drag | Editor pin / PinsModel and PinPanels | PIN-01, window-presence | Composition / existing, normal-level policy |
+| Background, padding, corners, shadow, spotlight, magnifier | Editor inspector Image › Framing; Effects menu for spotlight and magnifier / RenderEffects | COMP-01, RED | Composition / existing |
+| Pins, opacity/zoom, sanitized Copy/Drag | Editor Pin; default opacity in Settings › General / PinsModel and PinPanels | PIN-01, window-presence | Composition / existing, normal-level policy |
 | PNG clipboard, PNG/JPEG atomic Save, Drag Out | Editor / ExportCoordinator and ShareSnapshot | EXP, RED | Sharing / existing |
 | Automatic copy/save and opt-in upload | Settings / AppModel and GitHubUploader | NET-01, automatic-export | Sharing / GitHub only, before later edits |
-| Shortcuts and native settings | Menu / shortcut recorder and SettingsWindowController | UX-01, PERM | Shortcuts / existing |
+| Shortcuts and native settings | Menu / shortcut recorder and SettingsWindowController (seven toolbar tabs) | UX-01, PERM | Shortcuts / existing |
 | Curved arrows | Optional quadratic control, shared painted geometry, native Curved/Straight and Bend X/Y | 683-test development gate, stable CI and independent code/security + bilingual native acceptance pass | Development acceptance; physical input/release excluded; see curved-arrows/acceptance-verdict.md |
 | Additional arrowhead styles | Existing filled head retained | No implementation gate yet | Gap: not implemented; curves do not establish other arrowhead styles |
 | Straight line tool without arrowheads | Distinct endpoint-based line annotation, shared renderer, native toolbar/shortcut D | EDIT/GEO/RED focused regressions and bilingual annotations E2E pass | Source implemented; final acceptance pending |

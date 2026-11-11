@@ -72,6 +72,52 @@ plan distinguish existing behavior, missing behavior, and unresolved product bou
 - Keep stable identity for navigation, localization in the app String Catalog, and active-Space
   policy at construction. Test the real controller, not a separately constructed probe window.
 
+## Tour copy (as shipped, editor redesign Slice 3, 2026-11-11)
+
+Every item is a title and one line (`docs/specs/editor-redesign/spec.md`). The window opens at
+the default 580 pt width and at the measured height of its tallest page in the running language
+and shortcut state; larger text or a smaller window scrolls. pt-BR is in `Localizable.xcstrings`.
+
+- Welcome to Recortia: unchanged (local processing, automatic exports off, Screen Recording asked
+  at the first capture).
+- Start with a capture — "Choose a capture mode from the Recortia menu-bar icon."
+  Region, display or window: "Drag a region, or press Space to pick a window. Return captures the
+  whole display; Escape cancels." Delay and repeat: "Capture with Delay catches menus and
+  temporary states. Repeat Last Region captures the same area again." Long pages and existing
+  images: "Scrolling Capture joins frames while you scroll. Open, paste or drop a PNG or JPEG to
+  edit it without Screen Recording permission."
+- Make the point clear — "Annotations stay editable; exports are flattened images."
+  Annotate and adjust: "Add text, arrows, shapes, highlights and numbered steps. The inspector
+  shows the options for what you selected." Crop, resize and navigate: "Crop to the relevant area
+  and resize the output. Hold Space and drag to pan." Redact with solid masks: "Redact replaces
+  the covered pixels in every export. Blur and Pixelate are cosmetic, not secure."
+- Read text and inspect pixels — "Recognition and pixel inspection run on this Mac."
+  Text recognition and QR codes: "Capture Text (OCR) recognizes text in a region, and the editor
+  recognizes it in an open image. QR contents are untrusted; only http and https links open,
+  after your click." Loupe and color picker: "Inspect exact pixels and copy a color as HEX or RGB,
+  from one pixel or an averaged area." Measure without guessing: "The ruler measures in image
+  pixels and, for captures, in points."
+- Compose and keep references — "Arrange images and add emphasis without leaving the editor."
+  Multiple images on one canvas: "Add images, then move, resize, reorder or place them side by
+  side." Framing and emphasis: "Add a background, padding, rounded corners and a shadow. Spotlight
+  and Magnifier draw attention to a detail." Reference pins: "Pin an image to keep it in its own
+  window on every Space. Up to five pins."
+- Choose what leaves the editor — "Sharing uses a flattened, freshly encoded image."
+  Copy, Save or Drag Out: "All three share the same sanitized image, without hidden layers or
+  location and text metadata." Automatic exports are optional: "Automatic copy and save run right
+  after a capture, before any redaction. Turn them off before capturing sensitive content."
+  Optional GitHub sharing: "Uploads leave this Mac and are off by default. Redacting or deleting
+  later does not remove a remote copy." Closing line: "Reopen this tour from Feature Tour in the
+  menu bar."
+- Assign shortcuts — "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the
+  display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later
+  in Settings."
+
+The shorter copy no longer details scrolling limits (uncertain matches pause for review;
+automatic scrolling asks for Accessibility only when turned on). Those stay where they apply:
+the scrolling capture notices and Settings › Capture › Scrolling Capture. Pin opacity is in
+Settings › General › Pins.
+
 ## Testing Decisions
 
 - Model seam: first launch, ordered navigation, Back bounds, Skip persistence, replay and
