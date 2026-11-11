@@ -120,3 +120,20 @@ Noticed then, fixed in `7fbac1d` (FP-045 slice 4): when the editor is open and a
 has exactly one failure, the editor notice reused `EditorStrings.exportFailure`, whose "Nothing was
 exported: ..." texts could also deny an earlier copy in the same batch (the R-2 defect on the
 editor route). The notice is now `EditorNotice.automaticExportFailed`, worded like the alert.
+
+## Pre-release security audit (2026-11-11)
+
+Two needs-validation records on the save path, closed test-first in `FileSink.swift`
+(`a18d0a5` red tests, `712ebe1` fix). Tests use real files in a temporary folder and synthetic data.
+
+| ID | Finding | Change | Red (before the fix) | Green (after it) |
+|---|---|---|---|---|
+| NV-01 | The temporary file was closed after writing, then `replace` set its mode with `chmod(path)` and its ACL with `acl_set_file(path)`. Another account allowed to rename entries in a shared, non-sticky folder could swap the name for a symlink or hard link to an unrelated file of the person, which then received the destination's access. | `writeNewFile` returns the file's device and inode (`FileIdentity`). `replace` opens the name with `O_NOFOLLOW \| O_NONBLOCK`, requires a regular file with that identity and one link, else fails with EPERM (`accessDenied`) and leaves the destination untouched; mode and ACL go through `fchmod` and `acl_set_fd_np`, and a failed rename clears the ACL through the same descriptor. | `.scratch/logs/nv-red.log`: for both swaps (control: the name resolved to the victim's inode) the save succeeded, the victim went from 0600 to 0644 and gained the destination's ACL, and the destination became the link or took the victim's bytes; a second name on the temporary file was accepted. | `.scratch/logs/nv-green.log`: 14 FileSinkTests pass; both swaps and the second name are refused, the victim and destination are unchanged and no temporary file remains. |
+| NV-02 | The temporary file inherited an inheritable folder entry (control: a plainly created file carries `everyone allow read`), so the new bytes were readable by others while written and the entry stayed after replacing a private file. | Inherited entries are removed through the descriptor before the first byte. For a new file (`save` without an existing destination, `saveUnique`) the exact inherited ACL read from the descriptor is restored through it after `fsync`, so the result matches a plainly created file; a replacement keeps none until it gets the replaced file's ACL. | `.scratch/logs/nv-red.log`: the temporary file and the replaced 0600 file carried the entry. The new-save guard passes on the old code and fails, for all three save routes, with the restore disabled (`.scratch/logs/nv-newsave-stripped-red.log`). | `.scratch/logs/nv-green.log`: no entry on the temporary file or the replaced file, mode 0600 kept; new saves carry the same ACL text as the control file. |
+
+Still path-based, and why that is safe: reading the destination's mode and ACL (the destination
+is not modified by them); the rename (a swap after the check can only put other bytes at the
+destination, never move the person's access to another file); the cleanup `unlink` (it removes a
+name, not what a link points to). Not proven by a test: the `ENOTSUP` branches (no ACL-less volume
+in the suite), and that entries are absent during the write itself for a new save (observable only
+after `writeNewFile` returns, when they are already restored).
