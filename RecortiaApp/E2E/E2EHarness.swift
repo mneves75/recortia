@@ -252,7 +252,7 @@
     }
 
     extension EditorWindowController {
-        /// The window's content view (toolbar, sidebar, canvas, inspector, status bar).
+        /// The window's content view (sidebar, canvas, inspector, status bar); the tools are in its toolbar.
         var contentRoot: NSView? { window?.contentView }
 
         /// The AppKit canvas, found in the hosted view hierarchy.

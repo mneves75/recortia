@@ -47,7 +47,7 @@
                 context.snapshot(frameView, shot: shot)
             }
 
-            try E2EAccessibilityControl.press("tool.arrow", in: frameView, context)
+            try E2EAccessibilityControl.pressToolbarItem("tool.arrow", in: frameView, context)
             try context.require("toolbar Arrow selects the arrow tool", await E2EWait.until { model.tool == .arrow })
             await E2ESnapshot.settle(frameView)
             context.check(
@@ -55,8 +55,12 @@
                 try E2EAccessibilityControl.text(.value, for: "tool.arrow", in: frameView, context)
                     == String(localized: "Selected tool", table: "Editor"))
 
-            let effects = try menu(containing: EditorTool.blur, in: toolbar, context)
-            try choose(.blur, from: effects, context)
+            let effectsItems = try await choose(.blur, from: "toolMenu.effects", in: frameView, context)
+            context.check(
+                "Effects lists blur, pixelate, spotlight and magnifier",
+                effectsItems.map(\.title)
+                    == [EditorTool.blur, .pixelate, .spotlight, .magnifier].map { EditorStrings.name($0) },
+                "\(effectsItems.map(\.title))")
             try context.require("Effects chooses Blur", await E2EWait.until { model.tool == .blur })
             await E2ESnapshot.settle(frameView)
             context.check(
@@ -65,10 +69,10 @@
                     == String(localized: "Selected tool", table: "Editor"))
             context.check(
                 "Effects names the active Blur tool",
-                try E2EAccessibilityControl.text(.label, for: "toolMenu.effects", in: frameView, context)
+                try E2EAccessibilityControl.name(for: "toolMenu.effects", in: frameView, context)
                     .contains(EditorStrings.name(EditorTool.blur)))
             context.snapshot(frameView, shot: "effects-active")
-            try E2EAccessibilityControl.press("tool.select", in: frameView, context)
+            try E2EAccessibilityControl.pressToolbarItem("tool.select", in: frameView, context)
             try context.require("toolbar Select selects", await E2EWait.until { model.tool == .select })
             await E2ESnapshot.settle(frameView)
             context.check(
@@ -76,11 +80,20 @@
                 try E2EAccessibilityControl.text(.value, for: "toolMenu.effects", in: frameView, context).isEmpty)
             context.check(
                 "Effects names its group again",
-                try E2EAccessibilityControl.text(.label, for: "toolMenu.effects", in: frameView, context)
+                try E2EAccessibilityControl.name(for: "toolMenu.effects", in: frameView, context)
                     == String(localized: "Effects", table: "Editor"))
-            let measure = try menu(containing: EditorTool.ruler, in: toolbar, context)
-            try choose(.ruler, from: measure, context)
+            let measureItems = try await choose(.ruler, from: "toolMenu.measure", in: frameView, context)
+            context.check(
+                "Measure lists loupe, ruler and color picker, none checked",
+                measureItems.map(\.title) == [EditorTool.loupe, .ruler, .colorPicker].map { EditorStrings.name($0) }
+                    && measureItems.allSatisfy { !$0.checked }, "\(measureItems)")
             try context.require("Measure chooses Ruler", await E2EWait.until { model.tool == .ruler })
+            await E2ESnapshot.settle(frameView)
+            let reopened = try await choose(nil, from: "toolMenu.measure", in: frameView, context)
+            context.check(
+                "Measure checks the active Ruler",
+                reopened.filter(\.checked).map(\.title) == [EditorStrings.name(.ruler)],
+                "\(reopened)")
 
             context.check(
                 "Undo is disabled with nothing to undo",
@@ -95,18 +108,18 @@
                 "Redo follows canRedo",
                 try E2EAccessibilityControl.isEnabled("toolbar.redo", in: frameView, context) == model.canRedo
                     && !model.canRedo)
-            try E2EAccessibilityControl.press("toolbar.undo", in: frameView, context)
+            try E2EAccessibilityControl.pressToolbarItem("toolbar.undo", in: frameView, context)
             try context.require("toolbar Undo undoes", await E2EWait.until { model.canRedo })
             await E2ESnapshot.settle(frameView)
             context.check(
                 "Redo becomes enabled after Undo",
                 try E2EAccessibilityControl.isEnabled("toolbar.redo", in: frameView, context))
-            try E2EAccessibilityControl.press("toolbar.redo", in: frameView, context)
+            try E2EAccessibilityControl.pressToolbarItem("toolbar.redo", in: frameView, context)
             try context.require("toolbar Redo redoes", await E2EWait.until { model.canUndo && !model.canRedo })
 
             let clipboardChanges = harness.clipboard.pasteboard.changeCount
             let snapshots = harness.exportGate.snapshotCount
-            try E2EAccessibilityControl.press("toolbar.copy", in: frameView, context)
+            try E2EAccessibilityControl.pressToolbarItem("toolbar.copy", in: frameView, context)
             try context.require(
                 "toolbar Copy writes the image clipboard through the export path",
                 await E2EWait.until {
@@ -116,7 +129,7 @@
 
             let canvas = try context.unwrap("editor canvas", controller.canvasView)
             try context.require("the canvas owns the keyboard", window.makeFirstResponder(canvas))
-            try E2EAccessibilityControl.press("tool.rectangle", in: frameView, context)
+            try E2EAccessibilityControl.pressToolbarItem("tool.rectangle", in: frameView, context)
             try context.require("toolbar Rectangle selects", await E2EWait.until { model.tool == .rectangle })
             context.check("a toolbar tool leaves the canvas first responder", window.firstResponder === canvas)
 
@@ -138,34 +151,69 @@
                 "items \(items.count), visible \(visible.count), overflow \(hidden.map(\.itemIdentifier.rawValue))")
         }
 
-        /// The toolbar menu whose items include `tool`.
-        private static func menu(containing tool: EditorTool, in toolbar: NSToolbar?, _ context: ScenarioContext)
-            throws -> NSMenu
-        {
-            let menus = (toolbar?.items ?? []).compactMap { ($0 as? NSMenuToolbarItem)?.menu }
-            for menu in menus {
-                menu.delegate?.menuNeedsUpdate?(menu)
+        struct MenuEntry: CustomStringConvertible {
+            let title: String
+            let checked: Bool
+            var description: String { "\(title)\(checked ? " ✓" : "")" }
+        }
+
+        /// Presses the toolbar menu button, as a person or VoiceOver opens it, and while the real menu
+        /// tracks: records its items, chooses `tool` (or nothing), and ends tracking. A common-mode
+        /// timer ends tracking after two seconds so a menu that never matches cannot block the run.
+        private static func choose(
+            _ tool: EditorTool?, from identifier: String, in root: NSView, _ context: ScenarioContext
+        ) async throws -> [MenuEntry] {
+            let session = MenuSession(choosing: tool.map(EditorStrings.name))
+            NotificationCenter.default.addObserver(
+                session, selector: #selector(MenuSession.began(_:)), name: NSMenu.didBeginTrackingNotification,
+                object: nil)
+            defer { NotificationCenter.default.removeObserver(session) }
+            let safety = Timer(timeInterval: 2, repeats: false) { [weak session] _ in
+                MainActor.assumeIsolated { session?.menu?.cancelTrackingWithoutAnimation() }
+            }
+            RunLoop.main.add(safety, forMode: .common)
+            defer { safety.invalidate() }
+            let title = session.title
+            try E2EAccessibilityControl.pressToolbarItem(identifier, in: root, context)
+            try context.require(
+                "\(identifier) opens its menu", await E2EWait.until(timeout: .seconds(3)) { session.tracked })
+            if let title {
+                try context.require(
+                    "\(identifier) offers \(title)", session.chosen, "items \(session.entries)")
+            }
+            return session.entries
+        }
+
+        /// Observes the menu the next press opens; the notification arrives on the main thread,
+        /// inside the menu's tracking loop.
+        @MainActor
+        private final class MenuSession: NSObject {
+            let title: String?
+            private(set) weak var menu: NSMenu?
+            private(set) var entries: [MenuEntry] = []
+            private(set) var tracked = false
+            private(set) var chosen = false
+
+            init(choosing title: String?) { self.title = title }
+
+            @objc func began(_ note: Notification) {
+                guard let menu = note.object as? NSMenu, !tracked else { return }
+                tracked = true
+                self.menu = menu
                 menu.update()
+                entries = menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }
+                    .map { MenuEntry(title: $0.title, checked: $0.state == .on) }
+                let index = title.flatMap { title in menu.items.firstIndex { $0.title == title } }
+                chosen = index != nil
+                // Choose on the next turn of the tracking loop, after the menu finished opening, as a
+                // person's click would; choosing inside the notification leaves it unable to reopen.
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        if let index { menu.performActionForItem(at: index) }
+                        menu.cancelTracking()
+                    }
+                }
             }
-            return try context.unwrap(
-                "a toolbar menu lists \(tool.rawValue)",
-                menus.first { index(of: tool, in: $0) != nil },
-                "menus \(menus.map { $0.items.map(\.title) })")
-        }
-
-        /// Sends the menu item's own action, as choosing it does, without a tracking loop.
-        private static func choose(_ tool: EditorTool, from menu: NSMenu, _ context: ScenarioContext) throws {
-            let found = try context.unwrap("menu item for \(tool.rawValue)", index(of: tool, in: menu))
-            found.menu.performActionForItem(at: found.index)
-        }
-
-        private static func index(of tool: EditorTool, in menu: NSMenu) -> (menu: NSMenu, index: Int)? {
-            let title = EditorStrings.name(tool)
-            for (position, item) in menu.items.enumerated() {
-                if item.title == title { return (menu, position) }
-                if let submenu = item.submenu, let found = index(of: tool, in: submenu) { return found }
-            }
-            return nil
         }
 
         /// Whether any view or accessibility element under `root` carries `label`.

@@ -7,7 +7,6 @@
         enum TextAttribute: String {
             case value = "accessibilityValue"
             case help = "accessibilityHelp"
-            case label = "accessibilityLabel"
         }
 
         static func text(
@@ -20,7 +19,32 @@
                 control.responds(to: NSSelectorFromString(attribute.rawValue)))
             return try context.unwrap(
                 "\(identifier) \(attribute.rawValue)",
-                control.value(forKey: attribute.rawValue) as? String)
+                control.value(forKey: attribute.rawValue) as? String,
+                "\(type(of: control)) returned \(String(describing: control.value(forKey: attribute.rawValue)))")
+        }
+
+        /// The name an assistive app reads for the element: its label, description or title, plain or
+        /// attributed. A bridged SwiftUI menu button exposes its Label text only as an attributed title.
+        static func name(for identifier: String, in root: NSView, _ context: ScenarioContext) throws -> String {
+            let control = try control(identifier, in: root, context)
+            func plain(_ value: Any?) -> String? {
+                switch value {
+                case let text as String: text
+                case let text as NSAttributedString: text.string
+                default: nil
+                }
+            }
+            let candidates: [Any?] = [
+                control.responds(to: NSSelectorFromString("accessibilityLabel"))
+                    ? control.value(forKey: "accessibilityLabel") : nil,
+                control.accessibilityAttributeValue(.description),
+                control.responds(to: NSSelectorFromString("accessibilityTitle"))
+                    ? control.value(forKey: "accessibilityTitle") : nil,
+                control.accessibilityAttributeValue(.title),
+            ]
+            return try context.unwrap(
+                "\(identifier) has an accessible name", candidates.compactMap(plain).first { !$0.isEmpty },
+                "\(type(of: control)) candidates \(candidates.map { String(describing: $0) })")
         }
 
         static func press(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
@@ -30,6 +54,24 @@
                 return
             }
             try pressFrame(control, in: root, context)
+        }
+
+        /// Presses a window toolbar item as an assistive app does. A bridged SwiftUI item is either
+        /// the toolbar item's own element, which lists AXPress and takes it through
+        /// `accessibilityPerformAction` (the path `AXUIElementPerformAction` reaches), or a SwiftUI
+        /// node (a menu button) that lists no legacy actions but answers `accessibilityPerformPress`.
+        /// Bridged items perform the press yet report false, so the caller verifies the effect.
+        static func pressToolbarItem(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws {
+            let control = try control(identifier, in: root, context)
+            if control.accessibilityActionNames().contains(.press) {
+                control.accessibilityPerformAction(.press)
+                return
+            }
+            let press = NSSelectorFromString("accessibilityPerformPress")
+            try context.require(
+                "\(identifier) offers Press", control.responds(to: press),
+                "\(type(of: control)) actions \(control.accessibilityActionNames().map(\.rawValue))")
+            _ = control.perform(press)
         }
 
         /// Clicks a control of the selected Settings pane like a pointer would: one mouse-down then

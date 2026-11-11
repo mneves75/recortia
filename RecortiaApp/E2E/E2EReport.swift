@@ -74,23 +74,36 @@
         func snapshot(_ view: NSView, shot: String? = nil, background: NSColor? = .windowBackgroundColor) {
             let name = output.nextScreenshotName(scenario: shot.map { "\(id)-\($0)" } ?? id)
             do {
-                let data = try E2ESnapshot.png(of: view, background: background)
+                let data = try E2ESnapshot.png(of: Self.rendered(view), background: background)
                 try data.write(to: output.directory.appending(path: name), options: .atomic)
                 screenshots.append(name)
-                check("screenshot \(name)", true, "\(Int(view.bounds.width))×\(Int(view.bounds.height)) pt at 2×")
+                check(
+                    "screenshot \(name)", true,
+                    "\(Int(Self.rendered(view).bounds.width))×\(Int(Self.rendered(view).bounds.height)) pt at 2×")
             } catch {
                 check("screenshot \(name)", false, "\(error)")
             }
+        }
+
+        /// An editor's tools live in its window toolbar, outside the content view, so a screenshot of
+        /// an editor's content view renders the window's frame view (toolbar and content) instead.
+        private static func rendered(_ view: NSView) -> NSView {
+            guard let window = view.window, window.windowController is EditorWindowController,
+                window.contentView === view, let frame = view.superview
+            else { return view }
+            return frame
         }
 
         /// Like `snapshot`, but draws the view over `underlay` (see `E2ESnapshot.png(of:over:)`).
         func snapshot(_ view: NSView, shot: String, over underlay: CGImage) {
             let name = output.nextScreenshotName(scenario: "\(id)-\(shot)")
             do {
-                let data = try E2ESnapshot.png(of: view, over: underlay)
+                let data = try E2ESnapshot.png(of: Self.rendered(view), over: underlay)
                 try data.write(to: output.directory.appending(path: name), options: .atomic)
                 screenshots.append(name)
-                check("screenshot \(name)", true, "\(Int(view.bounds.width))×\(Int(view.bounds.height)) pt at 2×")
+                check(
+                    "screenshot \(name)", true,
+                    "\(Int(Self.rendered(view).bounds.width))×\(Int(Self.rendered(view).bounds.height)) pt at 2×")
             } catch {
                 check("screenshot \(name)", false, "\(error)")
             }
