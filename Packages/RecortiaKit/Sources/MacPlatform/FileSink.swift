@@ -100,7 +100,7 @@ protocol FileSystemOperations {
     func writeNewFile(_ data: Data, at url: URL, permissions: mode_t) throws(FileSystemFailure)
     /// Atomically renames, failing with EEXIST if `destination` exists.
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure)
-    /// Atomically renames, replacing `destination` if it exists and keeping its permission bits.
+    /// Atomically renames, replacing `destination` if it exists and keeping its permission bits and ACL.
     func replace(from source: URL, to destination: URL) throws(FileSystemFailure)
     /// Best-effort cleanup of a temporary file.
     func removeItem(at url: URL)
@@ -149,10 +149,25 @@ struct POSIXFileSystem: FileSystemOperations {
         if stat(destination.path(percentEncoded: false), &existing) == 0 {
             // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
             _ = chmod(source.path(percentEncoded: false), existing.st_mode & 0o777)
+            try copyACL(from: destination, to: source)
         } else if errno != ENOENT {
             throw FileSystemFailure(code: errno)
         }
         if rename(source.path(percentEncoded: false), destination.path(percentEncoded: false)) != 0 {
+            throw FileSystemFailure(code: errno)
+        }
+    }
+
+    /// A replaced file in a shared folder may carry its own ACL entries; the new file must keep
+    /// them. If they cannot be copied, the replace fails and the destination stays as it was.
+    private func copyACL(from destination: URL, to source: URL) throws(FileSystemFailure) {
+        guard let acl = acl_get_file(destination.path(percentEncoded: false), ACL_TYPE_EXTENDED) else {
+            // ENOENT: the file has no ACL; ENOTSUP: the volume has no ACLs at all.
+            if errno == ENOENT || errno == ENOTSUP { return }
+            throw FileSystemFailure(code: errno)
+        }
+        defer { acl_free(UnsafeMutableRawPointer(acl)) }
+        if acl_set_file(source.path(percentEncoded: false), ACL_TYPE_EXTENDED, acl) != 0 {
             throw FileSystemFailure(code: errno)
         }
     }

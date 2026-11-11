@@ -146,6 +146,33 @@ struct FileSinkTests {
         #expect(mode == 0o640)
     }
 
+    @Test("Overwriting keeps an explicit ACL entry on the replaced file")
+    func overwriteKeepsACL() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        let chmod = Process()
+        chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+        chmod.arguments = ["+a", "everyone allow read", url.path(percentEncoded: false)]
+        try chmod.run()
+        chmod.waitUntilExit()
+        try #require(chmod.terminationStatus == 0, "control: chmod +a could not set the synthetic entry")
+        let before = try #require(Self.extendedACL(url), "control: the destination has no explicit ACL")
+        _ = try FileSink().save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.extendedACL(url) == before, "the replaced file lost its ACL")
+    }
+
+    /// The file's explicit ACL as text, or nil when it has none.
+    private static func extendedACL(_ url: URL) -> String? {
+        guard let acl = acl_get_file(url.path(percentEncoded: false), ACL_TYPE_EXTENDED) else { return nil }
+        defer { acl_free(UnsafeMutableRawPointer(acl)) }
+        guard let text = acl_to_text(acl, nil) else { return nil }
+        defer { acl_free(text) }
+        return String(cString: text)
+    }
+
     @Test("A missing destination folder is an unavailable volume")
     func missingFolder() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
