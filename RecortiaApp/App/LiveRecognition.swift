@@ -4,9 +4,12 @@ import Features
 import Foundation
 import Imaging
 
-/// On-device Vision OCR (FR-08). Recognition runs off the main actor inside `TextRecognizer`.
-final class LiveTextRecognition: TextRecognitionService {
+/// On-device Vision OCR (FR-08) and QR decoding. Recognition runs off the main actor inside
+/// `TextRecognizer`; QR payloads are decoded as untrusted data, and nothing here opens or follows
+/// them (OCR-02).
+final class LiveRecognition: TextRecognitionService, QRDecodingService {
     private let recognizer = TextRecognizer()
+    private let decoder = QRDecoder()
 
     func supportedLanguages() async -> [Locale.Language] {
         await recognizer.supportedLanguages()
@@ -15,11 +18,6 @@ final class LiveTextRecognition: TextRecognitionService {
     func recognize(_ image: CGImage, languages: [Locale.Language]) async throws -> OCRResult {
         try await recognizer.recognize(image, languages: languages)
     }
-}
-
-/// QR payloads are decoded as untrusted data; nothing here opens or follows them (OCR-02).
-final class LiveQRDecoding: QRDecodingService {
-    private let decoder = QRDecoder()
 
     func decode(_ image: CGImage) async throws -> [QRPayload] {
         try await decoder.decode(image)
@@ -82,13 +80,14 @@ extension AppServices {
         let capture = LiveCaptureService()
         let github = LiveGitHubUpload()
         let scrollFrames = LiveScrollFrames()
+        let recognition = LiveRecognition()
         return AppServices(
             githubUpload: github, githubCredentials: github,
             capture: capture, screenPermission: LiveScreenPermission(), accessibility: LiveAccessibilityPermission(),
             assets: LiveImageAssets(store: store), input: LiveImageInput(), renderer: LiveRenderer(store: store),
             exporter: LiveExporter(store: store), clipboard: LiveClipboard(), files: LiveFiles(), drag: LiveDragSink(),
-            folders: LiveSaveFolders.storing(in: settings), textRecognition: LiveTextRecognition(),
-            qrDecoder: LiveQRDecoding(),
+            folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
+            qrDecoder: recognition,
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
             loginItem: LiveLoginItem(), clock: SystemClock())
     }
