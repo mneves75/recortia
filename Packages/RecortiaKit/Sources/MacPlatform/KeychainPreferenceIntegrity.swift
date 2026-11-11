@@ -80,7 +80,7 @@ public final class PreferenceSeal {
 /// or delete; another same-user process cannot plant, replace, or roll back the secret. Without the
 /// entitlement (Debug builds) every call fails, so consent then lasts only for the session.
 @MainActor
-public final class DataProtectionSealStore: SealSecretStore {
+final class DataProtectionSealStore: SealSecretStore {
     static let service = "dev.mvneves.Recortia.preferences-seal"
     /// A 32-byte HMAC key followed by the big-endian 64-bit generation.
     private static let keyByteCount = 32

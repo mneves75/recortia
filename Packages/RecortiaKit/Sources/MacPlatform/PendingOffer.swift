@@ -31,7 +31,7 @@ public final class PendingOffer<Outcome: Sendable> {
     }
 
     /// Resolves whichever offer is current, if any (a new offer replaces it, or the user dismisses it).
-    public func resolveCurrent(with outcome: Outcome) {
+    func resolveCurrent(with outcome: Outcome) {
         guard let id = current?.id else { return }
         resolve(id, with: outcome)
     }

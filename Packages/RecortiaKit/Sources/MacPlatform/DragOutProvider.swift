@@ -11,7 +11,7 @@ import Domain
 /// revokes it and the stale snapshot is never written.
 @MainActor
 public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
-    public enum WriteError: Error, Equatable, Sendable {
+    enum WriteError: Error, Equatable, Sendable {
         /// The export was invalidated before the receiver requested the file.
         case revoked
     }

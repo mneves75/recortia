@@ -61,7 +61,7 @@ public final class ScrollFrameSource {
     }
 
     /// Maximum number of undelivered frames held (SPEC.md FR-10: at most two full-resolution buffers).
-    public static let bufferDepth = 2
+    static let bufferDepth = 2
 
     public nonisolated let frames: AsyncStream<CGImage>
     public private(set) var state: State = .idle
