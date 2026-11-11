@@ -93,17 +93,16 @@ struct FileSystemFailure: Error, Equatable, Sendable {
     let code: Int32
 }
 
-/// Who may read the temporary file while its bytes are written. Either way it starts without the
-/// ACL entries it inherits from its folder, so no inheritable entry exposes bytes being written.
+/// What the temporary file becomes. Either way its bytes are written while it is owner-only and
+/// without the ACL entries it inherited from its folder; those entries are removed right after
+/// creation, before the first byte.
 enum TemporaryFileAccess: Equatable, Sendable {
-    /// It will replace an existing file: owner-only and without ACL entries until `replace` gives
-    /// it the replaced file's access.
+    /// It will replace an existing file: it stays so until `replace` gives it the replaced file's
+    /// access.
     case replacement
-    /// It will become a new file: once written, it gets back exactly the entries the folder gives
-    /// any file created in it.
+    /// It will become a new file: once written, it gets back the entries the folder gives any file
+    /// created in it, then the mode a file created with 0644 gets under the umask.
     case newFile
-
-    var permissions: mode_t { self == .replacement ? 0o600 : 0o644 }
 }
 
 /// The written file itself, so later metadata changes reach it and not whatever its name points to.
@@ -114,9 +113,8 @@ struct FileIdentity: Equatable, Sendable {
 
 /// The few file operations the sink needs, reporting POSIX error codes so failures map precisely.
 protocol FileSystemOperations {
-    /// Creates `url` exclusively (fails if it exists) with `access`'s permissions (before the
-    /// umask) and inherited ACL entries as `access` describes, writes all bytes, flushes them to
-    /// disk, and returns the created file's identity.
+    /// Creates `url` exclusively (fails if it exists), writes all bytes, flushes them to disk,
+    /// gives the file the access `access` describes, and returns the created file's identity.
     func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure) -> FileIdentity
     /// Atomically renames, failing with EEXIST if `destination` exists.
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure)
@@ -145,8 +143,8 @@ struct POSIXFileSystem: FileSystemOperations {
     func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
         -> FileIdentity
     {
-        let descriptor = open(
-            url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, access.permissions)
+        let newFileMode = access == .newFile ? try newFileMode() : nil
+        let descriptor = open(url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
         guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
         var failure: Int32?
         var status = stat()
@@ -168,9 +166,31 @@ struct POSIXFileSystem: FileSystemOperations {
         {
             failure = errno
         }
+        // Mode last, after any inherited deny entry is back. Best effort, like `replace`: a volume
+        // that refuses it keeps the file owner-only.
+        if failure == nil, let newFileMode { _ = fchmod(descriptor, newFileMode) }
         if close(descriptor) != 0, failure == nil { failure = errno }
         if let failure { throw FileSystemFailure(code: failure) }
         return FileIdentity(device: status.st_dev, inode: status.st_ino)
+    }
+
+    /// The mode open(2) gives a file requested as 0644 under the current umask, which is what a new
+    /// save always ended with. Reading the umask needs macOS 27 or a process-wide change that other
+    /// threads would see, so an empty probe file is created and removed in this user's temporary
+    /// folder instead.
+    private func newFileMode() throws(FileSystemFailure) -> mode_t {
+        let probe = fileManager.temporaryDirectory.appendingPathComponent(
+            ".recortia-mode-\(UUID().uuidString)", isDirectory: false
+        ).path(percentEncoded: false)
+        let descriptor = open(probe, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o644)
+        guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
+        unlink(probe)
+        var status = stat()
+        let result = fstat(descriptor, &status)
+        let failure = errno
+        close(descriptor)
+        guard result == 0 else { throw FileSystemFailure(code: failure) }
+        return status.st_mode & 0o777
     }
 
     /// Returns the error code of the first failed write(2), or nil once every byte is written.
