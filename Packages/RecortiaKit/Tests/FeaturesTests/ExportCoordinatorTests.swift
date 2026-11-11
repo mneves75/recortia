@@ -21,14 +21,29 @@ final class ExportHarness {
     let coordinator: ExportCoordinator
     var session = TestFixtures.session()
 
-    init() {
+    init(upload: (any GitHubUploadService)? = nil) {
         coordinator = ExportCoordinator(
             exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: settings)
+            settings: settings, upload: upload)
     }
 
     func export(_ action: ExportAction) async -> ExportOutcome {
         await coordinator.export(action, session: session, currentSession: { [unowned self] in self.session })
+    }
+}
+
+/// Counts upload requests; succeeds only while the coordinator's live check still allows it.
+@MainActor
+private final class RecordingUpload: GitHubUploadService {
+    private(set) var requests = 0
+
+    func upload(
+        _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async throws(GitHubUploadFailure) -> URL {
+        requests += 1
+        guard isCurrent() else { throw .canceled }
+        return URL(fileURLWithPath: "/tmp/recortia-tests/never-uploaded.png")
     }
 }
 
@@ -269,6 +284,78 @@ struct ExportCoordinatorTests {
         let offOutcomes = await saveWhileRendering { h.settings.update { $0.autoSave = false } }
         #expect(offOutcomes == [.canceled])
         #expect(h.files.uniqueSaves.count == 1)
+    }
+
+    /// Runs an automatic batch whose copy step waits at the render, applies `change` there, and
+    /// lets the batch finish without any later step waiting.
+    private func batchChangingDuringCopy(_ h: ExportHarness, _ change: () -> Void) async -> [ExportOutcome] {
+        let copyRender = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = copyRender
+        let run = Task { await h.coordinator.runAutomaticExports(for: h.session, currentSession: { h.session }) }
+        await waitFor("automatic copy rendering") { copyRender.waiterCount == 1 }
+        change()
+        h.exporter.pending = nil
+        copyRender.resolve(.success(()))
+        return await run.value
+    }
+
+    @Test("Turning automatic save or upload on while the copy renders applies to the next capture only")
+    func automaticBatchFreezesItsActions() async {
+        let upload = RecordingUpload()
+        let h = ExportHarness(upload: upload)
+        let folder = URL(fileURLWithPath: "/tmp/recortia-tests/folder-a", isDirectory: true)
+        h.folders.folder = folder
+        h.settings.update {
+            $0.autoCopy = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        let outcomes = await batchChangingDuringCopy(h) {
+            h.settings.update {
+                $0.autoSave = true
+                $0.githubUpload = GitHubUploadPreferences(
+                    destination: GitHubDestination(owner: "synthetic", repository: "private-fixtures"),
+                    automatic: true)
+            }
+        }
+        #expect(outcomes == [.copied])
+        #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty, "a capture taken with saving off was saved")
+        #expect(upload.requests == 0, "a capture taken with upload off was sent")
+    }
+
+    @Test("Changing the save folder while the copy renders never saves this capture to the new folder")
+    func automaticBatchFreezesItsFolder() async {
+        let h = ExportHarness()
+        let folderA = URL(fileURLWithPath: "/tmp/recortia-tests/folder-a", isDirectory: true)
+        let folderB = URL(fileURLWithPath: "/tmp/recortia-tests/folder-b", isDirectory: true)
+        h.folders.folder = folderA
+        h.settings.update {
+            $0.autoCopy = true
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        let outcomes = await batchChangingDuringCopy(h) {
+            h.settings.update { $0.preferredSaveFolderBookmark = Data([2]) }
+            h.folders.folder = folderB
+        }
+        #expect(!h.files.uniqueSaves.contains { $0.folder == folderB }, "saved to a folder chosen after the capture")
+        // Folder A is no longer the chosen folder, so it is not allowed either.
+        #expect(h.files.uniqueSaves.isEmpty)
+        #expect(outcomes.first == .copied)
+    }
+
+    @Test("Turning automatic save off while the copy renders still writes nothing")
+    func automaticBatchStillStopsARevokedSave() async {
+        let h = ExportHarness()
+        h.folders.folder = URL(fileURLWithPath: "/tmp/recortia-tests/folder-a", isDirectory: true)
+        h.settings.update {
+            $0.autoCopy = true
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        let outcomes = await batchChangingDuringCopy(h) { h.settings.update { $0.autoSave = false } }
+        #expect(outcomes.first == .copied)
+        #expect(!outcomes.contains { $0.didWrite && $0 != .copied })
+        #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty)
     }
 
 }

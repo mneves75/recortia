@@ -326,19 +326,22 @@ public final class ExportCoordinator {
         defer { automaticBatch = nil }
         let consentID = uploadConsentID ?? settings.githubUploadConsentID
         let settings = self.settings
+        // Frozen before the first await: the steps and the save folder are the ones chosen when the
+        // capture was taken. A setting turned on or a folder chosen meanwhile applies to the next
+        // capture; the live checks below still stop a step turned off or a folder changed.
+        let chosen = settings.preferences
+        let saveFolder = chosen.autoSave ? chosen.preferredSaveFolderBookmark.flatMap(folders.resolveFolder) : nil
+        let uploadConfiguration = chosen.githubUpload.flatMap { $0.automatic ? $0 : nil }
         var outcomes: [ExportOutcome] = []
-        if settings.preferences.autoCopy {
+        if chosen.autoCopy {
             outcomes.append(
                 await export(
                     .copy, session: session, currentSession: currentSession,
                     isAllowed: { settings.preferences.autoCopy }))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        let preferences = settings.preferences
-        if preferences.autoSave {
-            if let bookmark = preferences.preferredSaveFolderBookmark,
-                let folder = folders.resolveFolder(bookmark: bookmark)
-            {
+        if chosen.autoSave {
+            if let folder = saveFolder {
                 outcomes.append(
                     await export(
                         .saveToFolder(folder), session: session, currentSession: currentSession,
@@ -353,7 +356,7 @@ public final class ExportCoordinator {
             }
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if let configuration = settings.preferences.githubUpload, configuration.automatic {
+        if let configuration = uploadConfiguration {
             outcomes.append(
                 await export(
                     .upload(to: configuration.destination, intent: UUID()), session: session,
