@@ -137,11 +137,10 @@ and tools are one native bar that takes the system's current look on each macOS 
 
 As built (native E2E pending: the console was locked, see the end of this section):
 
-- Tour: one `TourPage` view per step (`tour.page`), shared by the window and its measurement.
-  `OnboardingWindowController.makeWindow(onboarding:shortcutStatus:onClose:)` measures every page
-  plus the navigation in one hosting view at 580 pt, in the running language and current shortcut
-  state, and opens at that height (clamped to the screen); the 540×480 minimum stays because the
-  measured height is above it. Showing the shortcuts page notes attention; measuring it does not.
+- Tour: one `TourPage` view per step (`tour.page`). Slice 3 measured every page at open and
+  opened at the tallest page's height; Slice 4 replaced that with the fixed 580 × 615 pt default
+  (see Fit below), because the measurement kept the first frame over the 50 ms budget. Showing
+  the shortcuts page notes attention.
 - Measured 2026-11-11 00:36–00:40 (offscreen; the console may already have been locked, so an
   unlocked rerun must confirm), en and pt-BR, with the held-shortcut notice shown: window
   content 580×615, page viewport 524, tallest page Assign shortcuts (524). Other pages fill
@@ -213,9 +212,11 @@ exporting leaves annotations editable, and macOS may still hold the default shor
   display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in
   Settings."
 
-Fit: the window opens at the height of its tallest page in the current language, so no page
-scrolls at the default size and none leaves more than about a third of the window empty. The
-scroll view stays for larger text sizes and smaller windows.
+Fit (as shipped in Slice 4): the window opens at a fixed default content size of 580 × 615 pt,
+at which no page scrolls in English or Portuguese, the shortcuts page included while macOS holds
+the default shortcuts (`onboarding` checks every page at that size). Nothing is measured when the
+window opens. The 540 × 480 minimum stays, the window stays resizable, and the scroll view stays
+for larger text sizes and smaller windows.
 
 `docs/specs/feature-discovery/` (spec and reference matrix) is updated in the same change so the
 recorded tour copy matches what ships.
@@ -230,6 +231,61 @@ recorded tour copy matches what ships.
 - Open question for the owner, not a change: in the offscreen screenshots the empty shortcut
   recorders show "Record Shortcut" printed twice, slightly offset. That may be the snapshot path
   and not the real control; it needs one look at the real Settings window before anyone "fixes" it.
+
+## Slice 4 — dark appearance and capture panels (built 2026-11-11)
+
+The app already followed the system appearance; most surfaces had never been rendered dark. This
+slice is evidence first, fixes where the evidence showed a defect. No appearance setting was added.
+
+- Dark evidence: every surface below now has a `<light shot>-dark` screenshot next to its light
+  one, in en and pt-BR: the menu; the seven Settings panes; shortcuts held by macOS and active;
+  the region overlay while dragging (size label) and with its Space hint; the window chooser
+  (loading, list); the countdown; a pin with its control strip; the scrolling HUD; the drag chip;
+  the replacement sheet; the editor at full size (Image tab, Format tab with a rectangle
+  selected, a failure notice and the uploaded-link notice); every tour page at full size.
+  Helpers: `ScenarioContext.darkCompanion` (switches the real window, restores light),
+  `darkHosted` (a second host for content whose color scheme `E2ESnapshot.host` fixes),
+  `darkOverlay`, `E2EActions.darkEditor`.
+- Chrome control (`ChromeAppearance`, in `Scenarios+Appearance.swift`), on every light and dark
+  rendering of app chrome: median relative luminance of the chrome ≤ 0.10 in dark and ≥ 0.60 in
+  light, and in dark no more than 3% of the chrome in near-white fills (luminance ≥ 0.80 in a
+  horizontal run of at least 12 pt, measured with the surface over opaque black, so the fill can
+  only come from the surface). User content is masked by its view or rectangle: the editor
+  canvas, a pin's image, the drag chip's thumbnail. Measured: dark chrome medians 0.013–0.019,
+  dark fills 0–0.8%; light medians 0.93–1.00. Surfaces that paint no background of their own (tour,
+  menu, chooser, countdown, HUD, sheet, chip) are judged as shown over the window ground, as the
+  window draws it. Planted case in `appearance-contrast`: a hosted view with a fixed white
+  background rendered dark fails on the fill (100%) and the median (1.000); a fixed black one
+  rendered light fails the light floor.
+- Two-tone rule, not the chrome control: the region overlay (dim, keyline, size label, hint) draws
+  fixed colors over user content; `region-overlay` and `space-window` require its dark rendering to
+  be pixel-identical to the light one. Seam markers stay under `appearance-contrast`'s contrast
+  bands; selection handles and crop keylines are deliberate white/black marks and were not changed.
+- Defect found and fixed: the editor's transparency checkerboard was fixed light (mean luminance
+  0.743 under dark chrome). It now uses dark tones in dark appearance (0.22/0.15 white) and repaints
+  on appearance change. `appearance-contrast` proves it stays on screen: export bytes are identical
+  in light and dark, transparent pixels stay alpha 0 in the export and in a pin, and the color
+  picker samples alpha 0 there.
+- Capture panels: the window chooser's list is as tall as its rows (41 pt two-line, 24 pt one-line,
+  20 pt list insets, as the hosted table lays them out) up to 340 pt, then scrolls; `window-chooser`
+  checks the real table with three windows and with twelve. The scrolling HUD reserved a 32 pt
+  title-bar band (182 vs 150 pt); its panel now sets `HostingPanel.reservesTitleBarArea = false`
+  (the hosting controller's `safeAreaRegions` become empty). Style mask, level, Space behavior and
+  key-on-click are asserted unchanged; the HUD panel has no window buttons. `scrolling` renders the
+  product's `ScrollUIController.makeHUDPanel()`.
+- Follow-ups: the tour opens at a fixed 580 × 615 pt (Fit above); `last-window` waits for the
+  review's preview before pressing Discard or Accept; an automatic batch's single failure is the
+  editor notice `automaticExportFailed`, worded as the alert ("An automatic export step failed. The
+  disk is full." / "Uma etapa da exportação automática falhou. O disco está cheio."), while a
+  failed manual save still says nothing was saved; the editor's import-failure text is the alert's
+  detail (pt-BR "Apenas imagens…"), and ten Editor-table keys were removed.
+- Not verified: anything foreground-dependent (the console was locked for every run), so
+  `last-window`, the Settings and automatic-save click paths and `window-latency` (the tour's first
+  frame without the measurement) await an unlocked run; a key-window render of these surfaces;
+  real `NSVisualEffectView` materials, which do not render through `cacheDisplay`; macOS 15 and 26;
+  Increase Contrast and Reduce Transparency in dark.
+- Noticed and left: the window chooser still has an empty title-bar band above its heading (the
+  same safe-area inset the HUD had); it was not in this slice's brief.
 
 ## Later slices
 
