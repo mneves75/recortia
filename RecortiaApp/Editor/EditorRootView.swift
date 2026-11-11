@@ -239,6 +239,7 @@ private struct ToolMenu: View {
                 ) {
                     Label(EditorStrings.name(tool), systemImage: EditorStrings.symbol(tool))
                 }
+                .help(EditorStrings.help(tool))
             }
         } label: {
             // A bridged toolbar menu exposes its Label text as its accessible name, so the text
@@ -250,7 +251,8 @@ private struct ToolMenu: View {
                     .foregroundStyle(active == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.accentColor))
             }
         }
-        .help(group.help)
+        // The active tool's help carries its single-key shortcut; otherwise the group's.
+        .help(active.map(EditorStrings.help) ?? group.help)
         .accessibilityValue(active == nil ? "" : String(localized: "Selected tool", table: "Editor"))
         .accessibilityIdentifier(group.identifier)
     }
