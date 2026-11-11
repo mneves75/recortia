@@ -21,18 +21,6 @@ public enum DesktopGeometry {
             height: standardized.height)
     }
 
-    public static func appKitRect(fromDesktop rect: Rect<DesktopSpace>, primaryDisplayHeight: Double) -> CGRect {
-        CGRect(x: rect.minX, y: primaryDisplayHeight - rect.maxY, width: rect.width, height: rect.height)
-    }
-
-    public static func desktopPoint(fromAppKit point: CGPoint, primaryDisplayHeight: Double) -> Point<DesktopSpace> {
-        Point(x: point.x, y: primaryDisplayHeight - point.y)
-    }
-
-    public static func appKitPoint(fromDesktop point: Point<DesktopSpace>, primaryDisplayHeight: Double) -> CGPoint {
-        CGPoint(x: point.x, y: primaryDisplayHeight - point.y)
-    }
-
     // MARK: Displays
 
     /// Every connected display, in desktop space, with its own backing scale. The primary display
@@ -54,7 +42,7 @@ public enum DesktopGeometry {
     }
 
     /// Builds a `DisplayInfo` from AppKit values; `displays()` uses this so the mapping is testable.
-    public static func displayInfo(
+    static func displayInfo(
         id: CGDirectDisplayID, appKitFrame: CGRect, primaryDisplayHeight: Double, pointPixelScale: Double,
         rotationDegrees: Double
     ) -> DisplayInfo {
@@ -97,8 +85,7 @@ public enum DesktopGeometry {
 
     /// The region in the display's local points, clamped to the display and expanded outward to
     /// whole device pixels at the display's own scale. Nil when nothing remains.
-    public static func pixelAlignedLocalRect(_ rect: Rect<DesktopSpace>, on display: DisplayInfo) -> Rect<DisplaySpace>?
-    {
+    static func pixelAlignedLocalRect(_ rect: Rect<DesktopSpace>, on display: DisplayInfo) -> Rect<DisplaySpace>? {
         let scale = display.pointPixelScale
         guard scale.isFinite, scale > 0, let clamped = clamp(rect, to: display) else { return nil }
         let localMinX = clamped.minX - display.frame.minX
@@ -119,30 +106,5 @@ public enum DesktopGeometry {
         Rect(
             x: rect.minX + display.frame.minX, y: rect.minY + display.frame.minY, width: rect.width,
             height: rect.height)
-    }
-}
-
-/// The last captured region, bound to the display it was drawn on (FR-02 repeat-last-region).
-/// Session-only: it is valid only while a display with the same ID and fingerprint exists.
-public struct RepeatRegion: Sendable, Hashable {
-    public let rect: Rect<DesktopSpace>
-    public let displayID: CGDirectDisplayID
-    public let fingerprint: String
-
-    /// Clamps `rect` to `display`; nil when nothing of it lies on the display.
-    public init?(rect: Rect<DesktopSpace>, display: DisplayInfo) {
-        guard let clamped = DesktopGeometry.clamp(rect, to: display) else { return nil }
-        self.rect = clamped
-        displayID = display.id
-        fingerprint = display.fingerprint
-    }
-
-    /// The capture target to repeat, or nil when the display is gone or its configuration changed;
-    /// the caller then asks the user for a new selection.
-    public func target(in displays: [DisplayInfo]) -> CaptureTarget? {
-        guard let display = displays.first(where: { $0.id == displayID }), display.fingerprint == fingerprint else {
-            return nil
-        }
-        return .region(rect, display: display)
     }
 }

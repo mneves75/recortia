@@ -130,10 +130,6 @@ public struct SecureMask: Identifiable, Hashable, Sendable, Codable {
         self.sourceRegions = sourceRegions
         self.fill = fill
     }
-
-    /// Source-bound masks apply to every render reference of the asset, including duplicates,
-    /// magnifiers, and pins. This is a property of the model, not an option.
-    public var appliesToEveryReference: Bool { true }
 }
 
 /// Blur or pixelation. Cosmetic only: never presented or treated as secure (FR-06, RED-04).
@@ -312,7 +308,7 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
 
     /// Approximate bytes of unique data held by the document model (no pixels). Used with
     /// `structuralByteCost` to budget undo memory (FR-04).
-    public var estimatedByteCost: Int {
+    var estimatedByteCost: Int {
         annotations.reduce(0) { $0 + $1.estimatedByteCost }
             + masks.reduce(0) { $0 + 64 + $1.sourceRegions.values.reduce(0) { $0 + $1.count * 32 } }
             + (obfuscations.count + layers.count + callouts.count + assets.count) * 128
@@ -320,7 +316,7 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
 
     /// Bytes copied per undo snapshot for the document's element arrays. Element payloads such as
     /// stroke points are shared between snapshots (copy-on-write) and are not counted here.
-    public var structuralByteCost: Int {
+    var structuralByteCost: Int {
         (annotations.count + masks.count + obfuscations.count + layers.count + callouts.count + assets.count) * 64
     }
 

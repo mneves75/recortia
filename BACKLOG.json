@@ -1488,7 +1488,6 @@
       "title": "Full-source review P3 proposals",
       "milestone": "M2",
       "authorization": "proposal_requires_owner_approval",
-      "status": "not_started",
       "depends_on": ["FP-035"],
       "requirement_ids": ["FR-05", "FR-07", "FR-10"],
       "acceptance_test_ids": [],
@@ -1691,6 +1690,42 @@
       ],
       "authorization": "owner request 2026-11-10",
       "status_note": "Slices 1 and 2 implemented and synthetically verified on macOS 27.3 with Xcode 27.2. Not qualified: macOS 15/26 toolbar rendering (no host), VoiceOver and Full Keyboard Access traversal of the toolbar and of the custom-styled tiles and swatches, and a key-window render (E2E windows are inactive). Slice 3 built; its native E2E awaits an unlocked console (results taken while locked are void), the tour window exceeds the 50 ms window-latency budget, and while macOS holds the shortcuts three tour pages leave more than a third of the window empty."
+    },
+    {
+      "id": "FP-046",
+      "milestone": "M6",
+      "title": "2026-11 code review: fixes and cleanups",
+      "status": "awaiting_manual_validation",
+      "depends_on": [
+        "FP-045"
+      ],
+      "requirement_ids": [
+        "FR-01",
+        "FR-05",
+        "FR-07",
+        "FR-08",
+        "FR-10",
+        "FR-15"
+      ],
+      "acceptance_test_ids": [],
+      "scope": "Close the findings in docs/specs/code-review-2026-11/findings.md: R-1 a confirmed Discard of the scrolling review closes it like the close button (quits when it was the last window and the menu-bar preference is off); R-2 automatic-export alerts no longer say nothing was exported; R-3 an automatic batch keeps the steps and save folder chosen at capture and starts each only while still allowed; R-4 overwriting a file keeps its explicit ACL; C-1..C-7 cleanups; remove docs/handoff/COMPLETE_HANDOFF.md; object list built in one walk; public declarations no other module uses become internal in Domain, Imaging, MacPlatform and Features; one LiveRecognition adapter. Shared import-failure text was not done: the two catalogs word one pt-BR string differently.",
+      "deliverables": [
+        "RecortiaApp/Scroll/ScrollUIController.swift, ScrollViews.swift; RecortiaApp/E2E/Scenarios+LastWindow.swift, Scenarios+Scroll.swift",
+        "RecortiaApp/App/MessagePresenter.swift, Resources/Localizable.xcstrings; RecortiaApp/E2E/Scenarios+AutomaticExport.swift",
+        "Packages/RecortiaKit/Sources/Features/ExportCoordinator.swift and Tests/FeaturesTests/ExportCoordinatorTests.swift",
+        "Packages/RecortiaKit/Sources/MacPlatform/FileSink.swift and Tests/MacPlatformTests/FileSinkTests.swift",
+        "RecortiaApp/App/LiveServices.swift (refused options map to encodeFailed), LiveRecognition.swift",
+        "Packages/RecortiaKit/Sources/Features/EditorModel.swift, EditorGeometry.swift; Tests/FeaturesTests/EditorListItemsMemoTests.swift",
+        "docs/specs/code-review-2026-11/findings.md (Resolution)"
+      ],
+      "completion_contract": "Each defect has a failing test recorded before its fix; './init.sh check --unsigned' passes on the final tree; every E2E scenario except capture-focus and editor-presentation passes in en and pt-BR.",
+      "evidence": [
+        "docs/specs/code-review-2026-11/findings.md: per-item commits with red and green evidence",
+        ".scratch/logs/review-fixes-check.log: './init.sh check --unsigned' ends 'check: all gates passed'",
+        ".scratch/logs/review-fixes-e2e.log, .scratch/e2e/20261111-004639-68097: VOID, not evidence (screen locked and another session sending real input during the run); the full 54-scenario E2E in en and pt-BR is pending a clean run"
+      ],
+      "authorization": "owner request 2026-11-10",
+      "status_note": "Code complete; unit tests, per-item E2E runs from before the interference and './init.sh check --unsigned' pass on macOS 27.3 with Xcode 27.2. Not 'implemented' until the full E2E passes in a clean session. Not qualified: live alerts, TCC, physical Spaces; the ACL-copy failure path has no dedicated test."
     }
   ],
   "deferred_scope": [

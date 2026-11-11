@@ -21,7 +21,7 @@ public struct CaptureCompletion: Sendable {
 /// Pure region-selection rules shared by the coordinator and the overlay (FR-02).
 public enum RegionSelection {
     /// Minimum committed size in points; smaller drags (a click) do not capture.
-    public static let minimumSide = 1.0
+    static let minimumSide = 1.0
 
     /// Clamps `rect` to `display` (v1 regions never cross displays). Returns nil when nothing
     /// usable remains; `wasClamped` tells the overlay to explain the limitation.
@@ -81,7 +81,7 @@ public final class CaptureCoordinator {
     public private(set) var purpose: CapturePurpose = .edit
     public private(set) var selectionContext: SelectionContext?
     public private(set) var notice: Notice?
-    public private(set) var lastSelectionWasClamped = false
+    private(set) var lastSelectionWasClamped = false
     private var repeatRegion: RepeatRegion?
 
     @ObservationIgnored public var onCaptured: ((CaptureCompletion) -> Void)?
@@ -223,7 +223,7 @@ public final class CaptureCoordinator {
         }
     }
 
-    public func clearNotice() { notice = nil }
+    func clearNotice() { notice = nil }
 
     // MARK: Flow
 

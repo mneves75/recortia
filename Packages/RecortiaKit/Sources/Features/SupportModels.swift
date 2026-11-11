@@ -89,7 +89,7 @@ public final class ShortcutStatusModel {
     }
 
     public func state(of name: String) -> ShortcutState { states[name] ?? .unassigned }
-    public func hasFailed(_ name: String) -> Bool { state(of: name) == .failed }
+    func hasFailed(_ name: String) -> Bool { state(of: name) == .failed }
     /// True while a shortcut waits for macOS to let its keys go, so the caller keeps checking.
     public var isHoldingAny: Bool { states.values.contains(.heldBySystem) }
 

@@ -132,7 +132,6 @@ public struct DisplayInfo: Sendable, Hashable {
 public enum DesktopGeometry {                     // AppKit (bottom-left) <-> desktop (top-left), once
     @MainActor public static func displays() -> [DisplayInfo]
     public static func desktopRect(fromAppKit rect: CGRect, primaryDisplayHeight: Double) -> Rect<DesktopSpace>
-    public static func appKitRect(fromDesktop rect: Rect<DesktopSpace>, primaryDisplayHeight: Double) -> CGRect
 }
 public enum ScreenPermission {
     public static var isGranted: Bool { get }             // CGPreflightScreenCaptureAccess, no prompt

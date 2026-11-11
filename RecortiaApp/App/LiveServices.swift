@@ -137,9 +137,10 @@ final class LiveExporter: ExportService {
 
     static func failure(for error: ExportError) -> ExportFailure {
         switch error {
-        case .encodingFailed: .encodeFailed
+        // Refused options are the pipeline's admission check: reported as an encode failure.
+        case .encodingFailed, .invalidOptions: .encodeFailed
         case .render(.budgetExceeded): .budgetExceeded
-        case .render, .invalidOptions: .renderFailed
+        case .render: .renderFailed
         }
     }
 }

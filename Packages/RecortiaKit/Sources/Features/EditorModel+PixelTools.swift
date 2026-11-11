@@ -23,7 +23,7 @@ extension EditorModel {
     }
 
     /// Places ruler anchors directly (keyboard alternative to dragging), snapped to pixel edges.
-    public func setRuler(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) {
+    func setRuler(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) {
         guard start.isFinite, end.isFinite else { return }
         ruler = measurement(from: Self.snapped(start), to: Self.snapped(end))
     }
@@ -71,7 +71,7 @@ extension EditorModel {
     }
 
     /// Color picker click: keeps the sampled color for display and explicit copy.
-    public func pickColor(at p: Point<DocumentSpace>) {
+    func pickColor(at p: Point<DocumentSpace>) {
         guard !isClosed, let pixel = pixel(at: p) else { return }
         invalidateColorPick()
         let size = colorSampleSize

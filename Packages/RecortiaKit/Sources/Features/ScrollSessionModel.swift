@@ -37,7 +37,7 @@ public final class ScrollSessionModel {
         case assemblyFailed
     }
 
-    public static let previewMaxHeight = 2_000
+    static let previewMaxHeight = 2_000
 
     public private(set) var state: ScrollState = .idle
     public private(set) var mode: ScrollMode = .manual
@@ -54,7 +54,7 @@ public final class ScrollSessionModel {
 
     /// Automatic mode: how long after a scroll step a new frame must arrive before the step
     /// counts as exposing nothing new.
-    public static let automaticSettleInterval: Duration = .milliseconds(1_500)
+    static let automaticSettleInterval: Duration = .milliseconds(1_500)
     static let maxDuration = ScrollLimits.default.maxDuration
 
     @ObservationIgnored public var onAccepted: ((DocumentSession) -> Void)?
@@ -249,7 +249,7 @@ public final class ScrollSessionModel {
         onAccepted?(DocumentSession(document: Document(asset: info)))
     }
 
-    public func clearNotice() { notice = nil }
+    func clearNotice() { notice = nil }
 
     // MARK: Collection
 

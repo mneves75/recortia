@@ -25,20 +25,25 @@ enum EditorGeometry {
         case .annotation(let id):
             return document.annotations.first { $0.id == id }.flatMap(frame(of:))
         case .layer(let id):
-            guard let layer = document.layers.first(where: { $0.id == id }),
-                let asset = document.assets[layer.assetID]
-            else { return nil }
-            return layer.documentBounds(assetSize: asset.pixelSize)
+            return document.layers.first { $0.id == id }.flatMap { frame(of: $0, in: document) }
         case .mask(let id):
             return document.masks.first { $0.id == id }?.outputRect
         case .obfuscation(let id):
             return document.obfuscations.first { $0.id == id }?.rect
         case .callout(let id):
-            guard let callout = document.callouts.first(where: { $0.id == id }) else { return nil }
-            switch callout.kind {
-            case .spotlight(let rect, _): return rect
-            case .magnifier(_, let destination): return destination
-            }
+            return document.callouts.first { $0.id == id }.map(frame(of:))
+        }
+    }
+
+    /// Nil when the layer's asset is missing from the document.
+    static func frame(of layer: ImageLayer, in document: Document) -> Rect<DocumentSpace>? {
+        document.assets[layer.assetID].map { layer.documentBounds(assetSize: $0.pixelSize) }
+    }
+
+    static func frame(of callout: Callout) -> Rect<DocumentSpace> {
+        switch callout.kind {
+        case .spotlight(let rect, _): rect
+        case .magnifier(_, let destination): destination
         }
     }
 

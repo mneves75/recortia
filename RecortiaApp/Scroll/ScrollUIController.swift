@@ -93,6 +93,11 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     func requestDiscard() {
         guard confirmDiscard() else { return }
         model.discard()
+        // A discard is the person closing the review, as the close button does: `close()` (not the
+        // order-out that Accept's replacement uses) lets `AppPresence` see a real close.
+        // `close()` does not ask `windowShouldClose` again.
+        review?.close()
+        review = nil
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

@@ -5,7 +5,7 @@ import Domain
 /// The canvas fits the image inside that size.
 public enum EditorWindowSizing {
     public static let minimumContentSize = Size<DesktopSpace>(width: 980, height: 560)
-    public static let defaultContentSize = Size<DesktopSpace>(width: 1100, height: 720)
+    static let defaultContentSize = Size<DesktopSpace>(width: 1100, height: 720)
     /// Leaves room around the window on the target screen.
     static let screenFraction = 0.92
     static let maximumSide = 32_768.0

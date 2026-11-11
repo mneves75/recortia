@@ -1,7 +1,8 @@
 import Domain
-import Features
 import Foundation
 import Testing
+
+@testable import Features
 
 @Suite("Saved annotation preferences (FR-14, PRIV-01, NET-01)")
 @MainActor

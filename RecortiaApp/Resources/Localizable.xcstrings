@@ -289,6 +289,22 @@
         }
       }
     },
+    "An automatic export step failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An automatic export step failed"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma etapa da exportação automática falhou"
+          }
+        }
+      }
+    },
     "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them." : {
       "localizations" : {
         "en" : {
@@ -2125,22 +2141,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nada foi capturado"
-          }
-        }
-      }
-    },
-    "Nothing was exported" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing was exported"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nada foi exportado"
           }
         }
       }

@@ -62,13 +62,13 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
     }
 
     /// True only for the tool that performs secure source-pixel replacement.
-    public var isSecureRedaction: Bool { self == .redact }
+    var isSecureRedaction: Bool { self == .redact }
 
     /// Blur and pixelation: obfuscation that must always be labeled as not secure.
     public var isCosmeticObfuscation: Bool { self == .blur || self == .pixelate }
 
     /// Tools whose drag creates a new object in the document.
-    public var createsObject: Bool {
+    var createsObject: Bool {
         switch self {
         case .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
             .spotlight, .magnifier:
@@ -149,7 +149,7 @@ public struct EditorListItem: Hashable, Sendable, Identifiable {
 public enum EditorHandle: Hashable, Sendable, CaseIterable {
     case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left, start, end, bend
 
-    public var isCorner: Bool { [.topLeft, .topRight, .bottomRight, .bottomLeft].contains(self) }
+    var isCorner: Bool { [.topLeft, .topRight, .bottomRight, .bottomLeft].contains(self) }
 }
 
 public struct EditorModifiers: OptionSet, Hashable, Sendable {
@@ -293,7 +293,7 @@ public struct EditorMeasurement: Hashable, Sendable {
     public var distancePixels: Double { (dxPixels * dxPixels + dyPixels * dyPixels).squareRoot() }
     public var dxPoints: Double? { pointPixelScale.map { dxPixels / $0 } }
     public var dyPoints: Double? { pointPixelScale.map { dyPixels / $0 } }
-    public var distancePoints: Double? { pointPixelScale.map { distancePixels / $0 } }
+    var distancePoints: Double? { pointPixelScale.map { distancePixels / $0 } }
 }
 
 /// Nearest-neighbor loupe pixels: an exact crop of the sanitized base, never interpolated.

@@ -4,23 +4,23 @@ import Foundation
 import Vision
 
 /// Vision's normalized image space: the unit square with a bottom-left origin.
-public enum VisionNormalizedSpace {}
+enum VisionNormalizedSpace {}
 
 extension AffineMap where From == VisionNormalizedSpace, To == SourcePixelSpace {
     /// Normalized bottom-left coordinates to top-left pixels of a `width` x `height` image.
-    public static func visionToPixels(width: Int, height: Int) -> AffineMap {
+    static func visionToPixels(width: Int, height: Int) -> AffineMap {
         AffineMap(a: Double(width), b: 0, c: 0, d: -Double(height), tx: 0, ty: Double(height))
     }
 }
 
-public enum TextRecognitionError: Error, Equatable, Sendable {
+enum TextRecognitionError: Error, Equatable, Sendable {
     case noLanguages
     /// Requested languages this OS's recognizer does not support; nothing was recognized.
     case unsupportedLanguages([Locale.Language])
     case recognitionFailed
 }
 
-public struct LanguageAvailability: Sendable, Equatable {
+struct LanguageAvailability: Sendable, Equatable {
     public let available: [Locale.Language]
     public let unavailable: [Locale.Language]
 }
@@ -36,7 +36,7 @@ public struct TextRecognizer: Sendable {
     }
 
     @concurrent
-    public func availability(of languages: [Locale.Language]) async -> LanguageAvailability {
+    func availability(of languages: [Locale.Language]) async -> LanguageAvailability {
         let supported = Self.makeRequest().supportedRecognitionLanguages
         let resolved = languages.map { Self.match($0, in: supported) }
         return LanguageAvailability(

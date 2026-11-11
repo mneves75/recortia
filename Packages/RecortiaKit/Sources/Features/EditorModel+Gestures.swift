@@ -23,7 +23,9 @@ extension EditorModel {
             {
                 beginEditingText(id)
             } else {
-                beginNewText(at: p)
+                textEditing = EditorTextEditing(
+                    annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize,
+                    annotationStyle: style.textAnnotationStyle, maxWidth: nil, appearance: style.textAppearance)
             }
         case .step:
             let step = Annotation(
@@ -368,9 +370,9 @@ extension EditorModel {
             control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil)
     }
 
-    public static let defaultBlurRadius = 12.0
-    public static let defaultPixelBlock = 12.0
-    public static let defaultSpotlightDim = 0.55
+    static let defaultBlurRadius = 12.0
+    static let defaultPixelBlock = 12.0
+    static let defaultSpotlightDim = 0.55
     public static let magnification = 2.0
 
     /// Adds a secure, opaque redaction bound to the covered source pixels (FR-06).
@@ -402,13 +404,6 @@ extension EditorModel {
     }
 
     // MARK: Text
-
-    private func beginNewText(at p: Point<DocumentSpace>) {
-        textEditing = EditorTextEditing(
-            annotationID: nil, origin: p, initialString: "", fontSize: style.fontSize,
-            annotationStyle: style.textAnnotationStyle,
-            maxWidth: nil, appearance: style.textAppearance)
-    }
 
     /// Starts editing an existing text annotation (double-click, Return on a selected text).
     public func beginEditingText(_ id: AnnotationID) {

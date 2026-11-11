@@ -2,6 +2,7 @@
     import AppKit
     import Domain
     import Features
+    import RecortiaFixtures
 
     /// FR-01: "Keep running in the menu bar" in Settings › General. On (the default), closing the
     /// last window leaves Recortia in the menu bar; off, closing the person's last window requests
@@ -131,6 +132,7 @@
             context.check("cancelling that capture does not quit", requests() == 2, "\(requests()) requests")
 
             try await checkUnsavedEdits(harness, context, requests)
+            try await checkScrollReview(harness, context, requests)
             try await checkExportWait(harness, context, requests, shown)
 
             harness.settings.update { $0.keepsRunningInMenuBar = true }
@@ -246,6 +248,103 @@
                             && requests() == before)
                 }
             }
+        }
+
+        /// The scrolling review's Discard button (Escape is its shortcut) closes the review like its
+        /// close button: confirmed as the last window it quits once, declined it keeps everything.
+        /// Accept replaces the review with an editor and never quits.
+        private static func checkScrollReview(
+            _ harness: E2EHarness, _ context: ScenarioContext, _ requests: () -> Int
+        ) async throws {
+            let model = harness.features.scroll
+            let fixture = ScrollPageFixture(
+                seed: 0xE2E6, kind: .text, width: 320, viewportHeight: 240, pageHeight: 720)
+            let offsets = fixture.forwardOffsets(steps: 90...150)
+            let frames = offsets.enumerated().compactMap { fixture.frame(offset: $0.element, index: $0.offset) }
+            try context.require("scroll review: all fixture frames render", frames.count == offsets.count)
+            func review(_ label: String) async throws {
+                harness.scrollFrames.load(frames, holdAfter: nil)
+                try context.require("\(label): the session begins", await model.begin(), "\(model.state)")
+                model.chooseTarget(
+                    .region(
+                        Rect<DesktopSpace>(x: 300, y: 160, width: 160, height: 120), display: harness.capture.display))
+                model.start()
+                try context.require(
+                    "\(label): every frame is collected",
+                    await E2EWait.until(timeout: .seconds(20)) {
+                        harness.scrollFrames.isExhausted && harness.scrollFrames.isHolding && model.acceptedFrames > 0
+                    }, "\(harness.scrollFrames.deliveredCount)/\(frames.count), state \(model.state)")
+                model.stop()
+                try context.require("\(label): Stop opens the review", model.state == .reviewing, "\(model.state)")
+            }
+            try context.require(
+                "scroll review: the preference is off and no window keeps Recortia running",
+                !harness.settings.preferences.keepsRunningInMenuBar && !AppPresence.shared.hasUserWindow)
+
+            try await review("discard")
+            let before = requests()
+            let controller = ScrollUIController(model: model, displays: { [] })
+            var answers: [Bool] = []
+            var asked = 0
+            controller.confirmDiscard = {
+                asked += 1
+                return answers.isEmpty ? false : answers.removeFirst()
+            }
+            let window = try context.unwrap(
+                "the review window is shown",
+                await E2EWait.until { NSApp.windows.contains { $0.delegate === controller && $0.isVisible } }
+                    ? NSApp.windows.first { $0.delegate === controller } : nil)
+            window.ignoresMouseEvents = true
+            let root = try context.unwrap("the review has content", window.contentView)
+            await E2ESnapshot.settle(root)
+
+            answers = [false]
+            try E2EAccessibilityControl.press("scroll.review.discard", in: root, context)
+            try? await Task.sleep(for: .milliseconds(400))
+            context.check(
+                "declining Discard keeps the review and Recortia",
+                asked == 1 && window.isVisible && model.state == .reviewing && requests() == before,
+                "asked=\(asked), visible=\(window.isVisible), state=\(model.state), \(requests() - before) requests")
+
+            answers = [true]
+            try E2EAccessibilityControl.press("scroll.review.discard", in: root, context)
+            context.check(
+                "a confirmed Discard of the last window requests termination",
+                await E2EWait.until(timeout: .seconds(3)) { requests() == before + 1 },
+                "\(requests() - before) requests")
+            try? await Task.sleep(for: .milliseconds(400))
+            try context.require(
+                "a confirmed Discard requests termination exactly once, asked once",
+                requests() == before + 1 && asked == 2, "\(requests() - before) requests, asked=\(asked)")
+            context.check(
+                "the discarded review is gone", !window.isVisible && model.state == .canceled,
+                "visible=\(window.isVisible), state=\(model.state)")
+
+            try await review("accept")
+            let editorsBefore = harness.editors.controllers.count
+            let accepted = try context.unwrap(
+                "the second review window is shown",
+                await E2EWait.until { NSApp.windows.contains { $0.delegate === controller && $0.isVisible } }
+                    ? NSApp.windows.last { $0.delegate === controller && $0.isVisible } : nil)
+            accepted.ignoresMouseEvents = true
+            let acceptedRoot = try context.unwrap("the second review has content", accepted.contentView)
+            await E2ESnapshot.settle(acceptedRoot)
+            try E2EAccessibilityControl.press("scroll.review.accept", in: acceptedRoot, context)
+            let editor = try await E2EActions.waitForNewEditor(harness, after: editorsBefore, context)
+            try context.require(
+                "Accept closes the review", await E2EWait.until(timeout: .seconds(5)) { !accepted.isVisible })
+            try? await Task.sleep(for: .milliseconds(400))
+            context.check(
+                "Accept, which replaces the review with an editor, does not quit", requests() == before + 1,
+                "\(requests() - before) requests")
+            let editorWindow = try context.unwrap("the accepted editor has a window", editor.window)
+            editorWindow.ignoresMouseEvents = true
+            PresenceScenarios.show(editorWindow, AppPresence.shared)
+            editorWindow.close()
+            context.check(
+                "closing that editor, now the last window, requests termination once",
+                await E2EWait.until(timeout: .seconds(3)) { requests() == before + 2 },
+                "\(requests() - before) requests")
         }
 
         /// Quitting waits for an automatic export that belongs to no window, reports its result,
