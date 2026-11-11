@@ -90,9 +90,18 @@
             }
             RunLoop.main.add(safety, forMode: .common)
             defer { safety.invalidate() }
+            let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            let active = NSApp.isActive
             try pressCheckingEffect(identifier, in: root, context)
             try context.require(
                 "\(identifier) opens its menu", await E2EWait.until(timeout: .seconds(3)) { session.tracked })
+            _ = await E2EWait.until(timeout: .seconds(3)) { session.menu == nil || !session.isOpen }
+            context.check(
+                "\(identifier) menu leaves the foreground app and activation unchanged",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground && NSApp.isActive == active,
+                "foreground \(String(describing: foreground)) -> "
+                    + "\(String(describing: NSWorkspace.shared.frontmostApplication?.processIdentifier)), "
+                    + "active \(active) -> \(NSApp.isActive)")
             if let title {
                 try context.require("\(identifier) offers \(title)", session.chosen, "items \(session.entries)")
             }
@@ -325,13 +334,21 @@
         private(set) var entries: [E2EMenuEntry] = []
         private(set) var tracked = false
         private(set) var chosen = false
+        private(set) var isOpen = false
 
         init(choosing title: String?) { self.title = title }
+
+        @objc func ended(_ note: Notification) {
+            if note.object as? NSMenu === menu { isOpen = false }
+        }
 
         @objc func began(_ note: Notification) {
             guard let menu = note.object as? NSMenu, !tracked else { return }
             tracked = true
+            isOpen = true
             self.menu = menu
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(ended(_:)), name: NSMenu.didEndTrackingNotification, object: menu)
             menu.update()
             entries = menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }
                 .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on) }
