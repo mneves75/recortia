@@ -12,20 +12,13 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    switch onboarding.step {
-                    case .localProcessing: LocalProcessingStep()
-                    case .capture: CaptureTourStep()
-                    case .editing: EditingTourStep()
-                    case .recognition: RecognitionTourStep()
-                    case .composition: CompositionTourStep()
-                    case .sharing: SharingTourStep()
-                    case .shortcuts, .done: ShortcutsStep(shortcutStatus: shortcutStatus)
+                TourPage(step: onboarding.step, shortcutStatus: shortcutStatus)
+                    // Showing the shortcuts is attention to them; measuring that page is not.
+                    .onAppear {
+                        if onboarding.step == .shortcuts || onboarding.step == .done {
+                            shortcutStatus.noteUserAttention()
+                        }
                     }
-                }
-                .frame(maxWidth: 700, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(28)
             }
             .id(onboarding.step)
             Divider()
@@ -33,6 +26,53 @@ struct OnboardingView: View {
                 .padding(20)
         }
         .frame(minWidth: 540, minHeight: 480)
+    }
+
+    /// The window content height at which the tallest page needs no scrolling at `width`, in the
+    /// running language and current shortcut state: every page and the navigation, at their ideal
+    /// heights, as the scroll view lays them out.
+    static func fittingHeight(width: CGFloat, onboarding: OnboardingModel, shortcutStatus: ShortcutStatusModel)
+        -> CGFloat
+    {
+        // One hosting view and one layout pass: a stack of every page is as tall as the tallest.
+        let pages = ZStack(alignment: .top) {
+            ForEach(OnboardingModel.Step.allCases.filter { $0 != .done }, id: \.self) { step in
+                TourPage(step: step, shortcutStatus: shortcutStatus)
+            }
+        }
+        let content = VStack(spacing: 0) {
+            pages
+            Divider()
+            OnboardingNavigation(onboarding: onboarding, onClose: {}).padding(20)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: width)
+        return NSHostingView(rootView: content).fittingSize.height
+    }
+}
+
+/// One page's content, laid out as the tour's scroll view shows it.
+private struct TourPage: View {
+    let step: OnboardingModel.Step
+    let shortcutStatus: ShortcutStatusModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            switch step {
+            case .localProcessing: LocalProcessingStep()
+            case .capture: CaptureTourStep()
+            case .editing: EditingTourStep()
+            case .recognition: RecognitionTourStep()
+            case .composition: CompositionTourStep()
+            case .sharing: SharingTourStep()
+            case .shortcuts, .done: ShortcutsStep(shortcutStatus: shortcutStatus)
+            }
+        }
+        .frame(maxWidth: 700, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(28)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("tour.page")
     }
 }
 
@@ -117,17 +157,17 @@ private struct CaptureTourStep: View {
             TourFeature(
                 symbol: "viewfinder", title: "Region, display or window",
                 detail:
-                    "Capture Region lets you drag an area; press Space to choose a window, Return to confirm, or Escape to cancel. Capture Display and Capture Window select the source directly. Recortia hides its own windows during capture."
+                    "Drag a region, or press Space to pick a window. Return captures the whole display; Escape cancels."
             )
             TourFeature(
                 symbol: "timer", title: "Delay and repeat",
                 detail:
-                    "Use Capture with Delay for menus or temporary states, then Repeat Last Region for the same area. Settings › Capture controls the delay, cursor and window shadow."
+                    "Capture with Delay catches menus and temporary states. Repeat Last Region captures the same area again."
             )
             TourFeature(
                 symbol: "arrow.down.to.line", title: "Long pages and existing images",
                 detail:
-                    "Scrolling Capture joins vertical frames while you scroll manually. Uncertain matches pause for review; automatic scrolling is optional and requests Accessibility only when enabled. Open Image, Paste Image or drop a PNG/JPEG to edit without Screen Recording permission."
+                    "Scrolling Capture joins frames while you scroll. Open, paste or drop a PNG or JPEG to edit it without Screen Recording permission."
             )
         }
     }
@@ -138,21 +178,21 @@ private struct EditingTourStep: View {
         VStack(alignment: .leading, spacing: 24) {
             TourHeading(
                 title: "Make the point clear",
-                subtitle: "Annotations stay editable in the editor. Export creates a flattened image.")
+                subtitle: "Annotations stay editable; exports are flattened images.")
             TourFeature(
                 symbol: "pencil.tip", title: "Annotate and adjust",
                 detail:
-                    "Choose text, straight or curved arrows, lines, rectangles, ellipses, freehand, highlighter or numbered steps in the editor. Bend arrows with the middle handle or Bend X/Y fields. Text Style includes Standard, Rounded, Monospaced, Outlined, Boxed, Rounded Box and Monospaced Box. Background Color changes boxed text; Reset restores white. Select an annotation to move, resize, duplicate or reorder it; Undo and Redo recover changes. Save annotation colors in the inspector to reuse them in any editor."
+                    "Add text, arrows, shapes, highlights and numbered steps. The inspector shows the options for what you selected."
             )
             TourFeature(
                 symbol: "crop", title: "Crop, resize and navigate",
                 detail:
-                    "Use Crop to keep the relevant area and Resize to change output dimensions. Zoom in for details and hold Space while dragging to pan the canvas."
+                    "Crop to the relevant area and resize the output. Hold Space and drag to pan."
             )
             TourFeature(
                 symbol: "lock.shield", title: "Redact with solid masks",
                 detail:
-                    "Choose solid redaction and cover sensitive content before sharing. It replaces source pixels in exports. Blur and pixelate are cosmetic effects, not secure redaction. Review the final output before Copy, Save or Drag Out."
+                    "Redact replaces the covered pixels in every export. Blur and Pixelate are cosmetic, not secure."
             )
         }
     }
@@ -166,17 +206,17 @@ private struct RecognitionTourStep: View {
             TourFeature(
                 symbol: "text.viewfinder", title: "Text recognition and QR codes",
                 detail:
-                    "Use Capture Text (OCR) from the menu, or recognize text in an open image. Choose text formatting in Settings › Text Recognition and copy the result. QR content is untrusted; only http/https links can open, after your click."
+                    "Capture Text (OCR) recognizes text in a region, and the editor recognizes it in an open image. QR contents are untrusted; only http and https links open, after your click."
             )
             TourFeature(
                 symbol: "eyedropper", title: "Loupe and color picker",
                 detail:
-                    "Select the pixel tools in the editor for a nearest-neighbor loupe. In Color Picker, choose 1×1 for one pixel or 3×3/5×5 to average a neighborhood. Copy encoded sRGB as HEX or RGB; zoom does not change the sampled pixels."
+                    "Inspect exact pixels and copy a color as HEX or RGB, from one pixel or an averaged area."
             )
             TourFeature(
                 symbol: "ruler", title: "Measure without guessing",
                 detail:
-                    "Use the ruler to place measurement anchors. Dimensions distinguish image pixels from capture points; imported files have no invented screen scale."
+                    "The ruler measures in image pixels and, for captures, in points."
             )
         }
     }
@@ -191,17 +231,17 @@ private struct CompositionTourStep: View {
             TourFeature(
                 symbol: "square.on.square", title: "Multiple images on one canvas",
                 detail:
-                    "Add an image layer in the editor, then position, resize, reorder or adjust its opacity. Arrange images side by side to explain a comparison; secure masks remain attached to their source images."
+                    "Add images, then move, resize, reorder or place them side by side."
             )
             TourFeature(
-                symbol: "photo.artframe", title: "Presentation and emphasis",
+                symbol: "photo.artframe", title: "Framing and emphasis",
                 detail:
-                    "Use the presentation inspector for solid or gradient backgrounds, padding, rounded corners and shadows. Spotlight and magnifier effects emphasize details using sanitized image content."
+                    "Add a background, padding, rounded corners and a shadow. Spotlight and Magnifier draw attention to a detail."
             )
             TourFeature(
                 symbol: "pin", title: "Reference pins",
                 detail:
-                    "Pin an image from the editor to keep a reference in its own window. Adjust zoom and opacity, Copy or Drag Out, and close it when finished. Up to five pins join all Spaces and appear in window switchers; they are ordinary windows, not always-on-top overlays."
+                    "Pin an image to keep it in its own window on every Space. Up to five pins."
             )
         }
     }
@@ -215,22 +255,20 @@ private struct SharingTourStep: View {
             TourFeature(
                 symbol: "square.and.arrow.up", title: "Copy, Save or Drag Out",
                 detail:
-                    "Copy puts a sanitized PNG on the clipboard. Save writes PNG or JPEG atomically; Drag Out shares the same sanitized output. Exported files omit hidden layers and location or text metadata."
+                    "All three share the same sanitized image, without hidden layers or location and text metadata."
             )
             TourFeature(
                 symbol: "gearshape", title: "Automatic exports are optional",
                 detail:
-                    "Settings › Export can enable automatic copy or save after capture. Disable automatic copy, save and upload before capturing sensitive content: they run before redaction. Later edits cannot recall earlier clipboard, file or remote copies. Redact first, then export deliberately."
+                    "Automatic copy and save run right after a capture, before any redaction. Turn them off before capturing sensitive content."
             )
             TourFeature(
                 symbol: "network", title: "Optional GitHub sharing",
                 detail:
-                    "Settings › GitHub requires your destination, credentials and separate opt-in. Uploads leave this Mac; automatic upload is off by default and sends the capture before later edits. Disable it before sensitive captures. Local deletion or later redaction does not delete a remote copy."
+                    "Uploads leave this Mac and are off by default. Redacting or deleting later does not remove a remote copy."
             )
-            Text(
-                "Settings also controls Open at login, recognition, pins and scrolling. You can reopen this introduction from Feature Tour in the menu bar."
-            )
-            .font(.subheadline)
+            Text("Reopen this tour from Feature Tour in the menu bar.")
+                .font(.subheadline)
         }
     }
 }
@@ -278,7 +316,7 @@ private struct ShortcutsStep: View {
                 .font(.title)
                 .accessibilityAddTraits(.isHeader)
             Text(
-                "Recortia's default shortcuts are the macOS Screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region (press Space for a window), and ⇧⌘5 for every capture mode. If another screenshot app already uses them, clear them here; you can change them later in Settings."
+                "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings."
             )
             .fixedSize(horizontal: false, vertical: true)
             Form {
@@ -295,7 +333,6 @@ private struct ShortcutsStep: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .onAppear { shortcutStatus.noteUserAttention() }
         }
     }
 }
@@ -312,10 +349,9 @@ final class OnboardingWindowController {
             AppPresence.shared.activate()
             return
         }
-        let view = OnboardingView(onboarding: onboarding, shortcutStatus: shortcutStatus) { [weak self] in
+        let window = Self.makeWindow(onboarding: onboarding, shortcutStatus: shortcutStatus) { [weak self] in
             self?.close()
         }
-        let window = Self.makeWindow(NSHostingController(rootView: view))
         window.center(on: ScreenChoice.screen())
         self.window = window
         AppPresence.shared.activate()
@@ -327,12 +363,21 @@ final class OnboardingWindowController {
         window = nil
     }
 
-    static func makeWindow(_ content: NSViewController) -> NSWindow {
-        let window = NSWindow(contentViewController: content)
+    /// Opens at the default width and at the height of the tallest page, so no page scrolls and
+    /// none leaves most of the window empty; larger text or a smaller window scrolls.
+    static func makeWindow(
+        onboarding: OnboardingModel, shortcutStatus: ShortcutStatusModel, onClose: @escaping () -> Void
+    ) -> NSWindow {
+        let view = OnboardingView(onboarding: onboarding, shortcutStatus: shortcutStatus, onClose: onClose)
+        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
         window.title = String(localized: "Welcome to Recortia")
         window.identifier = NSUserInterfaceItemIdentifier("recortia.onboarding")
         window.styleMask = [.titled, .closable, .resizable]
-        window.setContentSize(NSSize(width: 580, height: 640))
+        let width: CGFloat = 580
+        let fitting = OnboardingView.fittingHeight(width: width, onboarding: onboarding, shortcutStatus: shortcutStatus)
+        let screen = ScreenChoice.screen()?.visibleFrame.height ?? .infinity
+        let titleBar = window.frame.height - window.contentLayoutRect.height
+        window.setContentSize(NSSize(width: width, height: min(fitting.rounded(.up), screen - titleBar)))
         window.contentMinSize = NSSize(width: 540, height: 480)
         window.isReleasedWhenClosed = false
         SpacePolicy.follow(window)

@@ -32,7 +32,10 @@
             }
 
             // Windows Recortia constructs.
-            checkFollows("the onboarding window", OnboardingWindowController.makeWindow(NSViewController()))
+            let onboarding = OnboardingWindowController.makeWindow(
+                onboarding: harness.app.onboarding, shortcutStatus: harness.app.shortcutStatus, onClose: {})
+            defer { onboarding.close() }
+            checkFollows("the onboarding window", onboarding)
             let scrollUIController = ScrollUIController(model: harness.features.scroll, displays: { [] })
             checkFollows("the scrolling review window", scrollUIController.makeReviewWindow())
             // Settings is Recortia's own window: SwiftUI's Settings scene orders its window inside
