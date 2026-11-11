@@ -35,7 +35,7 @@
             model.clearSelection()
             await E2ESnapshot.settle(root)
             await expect(
-                "nothing selected with Select", present: ["image.background"],
+                "nothing selected with Select", present: ["inspector.tab", "image.background"],
                 absent: ["style.fill", "style.lineWidth", "style.textSize", "frame.x"])
             await E2EActions.snapshotEditor(controller, context, shot: "image")
 

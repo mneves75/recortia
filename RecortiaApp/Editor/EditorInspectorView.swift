@@ -4,75 +4,382 @@ import Features
 import Imaging
 import SwiftUI
 
-/// The inspector: keyboard-editable geometry for the selection, style, the redaction choices
-/// with their security status in words, pixel tools, text/QR recognition, document, composition,
-/// and presentation controls.
+/// The inspector: what the person is working on, and nothing else. Format holds the selection,
+/// the active tool's style and the redaction wording; Image holds size, background, images and
+/// text/QR recognition. The shown tab follows selection and tool until the person picks one.
 struct EditorInspectorView: View {
     let model: EditorModel
     let actions: any EditorWindowActions
     @State private var coalescer = ChangeCoalescer()
+    /// The person's own choice, cleared whenever the selection or the tool changes.
+    @State private var chosenTab: InspectorTab?
+
+    private enum InspectorTab: Hashable { case format, image }
+
+    /// Tools whose options live in the Format tab.
+    private static let formatTools: Set<EditorTool> = [
+        .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
+        .loupe, .ruler, .colorPicker,
+    ]
 
     var body: some View {
-        Form {
-            if !model.selection.isEmpty {
-                SelectionSection(model: model, coalescer: coalescer)
+        let hasFormat = !model.selection.isEmpty || Self.formatTools.contains(model.tool)
+        let tab = chosenTab ?? (hasFormat ? .format : .image)
+        VStack(spacing: 0) {
+            Picker(selection: Binding(get: { tab }, set: { chosenTab = $0 })) {
+                Text("Format", tableName: "Editor").tag(InspectorTab.format)
+                Text("Image", tableName: "Editor").tag(InspectorTab.image)
+            } label: {
+                Text("Inspector", tableName: "Editor")
             }
-            ArrowCurveSection(model: model)
-            if model.tool.usesStyle
-                || model.selection.contains(where: { if case .annotation = $0 { true } else { false } })
-            {
-                SavedColorsSection(model: model)
-                StyleSection(model: model, coalescer: coalescer)
-            }
-            if model.tool == .text
-                || model.selection.contains(where: { item in
-                    guard case .annotation(let id) = item else { return false }
-                    return model.document.annotations.contains { annotation in
-                        guard annotation.id == id, case .text = annotation.kind else { return false }
-                        return true
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .accessibilityIdentifier("inspector.tab")
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 2)
+            Form {
+                switch tab {
+                case .format:
+                    if hasFormat {
+                        FormatTab(model: model, actions: actions, coalescer: coalescer)
+                    } else {
+                        Text("Select an object or choose a tool.", tableName: "Editor")
+                            .foregroundStyle(.secondary)
                     }
-                })
-            {
-                TextAppearanceSection(model: model)
+                case .image:
+                    SizeSection(model: model)
+                    BackgroundSection(model: model, coalescer: coalescer)
+                    ImagesSection(model: model, actions: actions)
+                    RecognitionSection(model: model)
+                }
             }
-            RedactionSection(model: model, actions: actions, coalescer: coalescer)
-            if [.loupe, .colorPicker, .ruler].contains(model.tool) {
-                PixelToolsSection(model: model)
-            }
-            RecognitionSection(model: model)
-            DocumentSection(model: model)
-            CompositionSection(model: model, actions: actions)
-            PresentationSection(model: model, coalescer: coalescer)
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
+        .controlSize(.small)
+        .onChange(of: model.selection) { chosenTab = nil }
+        .onChange(of: model.tool) { chosenTab = nil }
     }
 }
 
-// MARK: - Helpers
+// MARK: - Format
+
+private struct FormatTab: View {
+    let model: EditorModel
+    let actions: any EditorWindowActions
+    let coalescer: ChangeCoalescer
+
+    var body: some View {
+        let selection = model.selection
+        let tool = model.tool
+        let selectedAnnotations = model.document.annotations.filter { selection.contains(.annotation($0.id)) }
+        if !selection.isEmpty {
+            ObjectSection(model: model, coalescer: coalescer)
+        }
+        if (tool.usesStyle && tool != .select) || !selectedAnnotations.isEmpty {
+            StyleSection(model: model, annotations: selectedAnnotations, coalescer: coalescer)
+            ArrowCurveSection(model: model, annotations: selectedAnnotations)
+            if tool == .text || selectedAnnotations.contains(where: { if case .text = $0.kind { true } else { false } })
+            {
+                TextAppearanceSection(model: model)
+            }
+        }
+        let masks = model.document.masks.filter { selection.contains(.mask($0.id)) }
+        if tool == .redact || !masks.isEmpty {
+            RedactionSection(model: model, selectedMask: masks.first, coalescer: coalescer)
+        }
+        if tool.isCosmeticObfuscation
+            || selection.contains(where: { if case .obfuscation = $0 { true } else { false } })
+        {
+            CosmeticSection()
+        }
+        if [.loupe, .colorPicker, .ruler].contains(tool) {
+            PixelToolsSection(model: model)
+        }
+    }
+}
+
+/// Which style values the renderer reads for the kinds in play (`AnnotationRenderer.draw`,
+/// `TextLayout.operation`): fill paints shapes, step discs and plain-text backgrounds; line width
+/// strokes every shape, sizes step discs and outlines outlined text; text size is text only.
+private struct StyleUse {
+    var fill = false
+    var lineWidth = false
+    var textSize = false
+
+    init(annotations: [Annotation], tool: EditorTool, textAppearance: TextAppearance) {
+        if annotations.isEmpty {
+            add(tool: tool, textAppearance: textAppearance)
+        } else {
+            for annotation in annotations {
+                switch annotation.kind {
+                case .text(let text): add(tool: .text, textAppearance: text.resolvedAppearance)
+                case .arrow: add(tool: .arrow, textAppearance: textAppearance)
+                case .line: add(tool: .line, textAppearance: textAppearance)
+                case .rectangle: add(tool: .rectangle, textAppearance: textAppearance)
+                case .ellipse: add(tool: .ellipse, textAppearance: textAppearance)
+                case .freehand: add(tool: .freehand, textAppearance: textAppearance)
+                case .highlighter: add(tool: .highlighter, textAppearance: textAppearance)
+                case .step: add(tool: .step, textAppearance: textAppearance)
+                }
+            }
+        }
+    }
+
+    private mutating func add(tool: EditorTool, textAppearance: TextAppearance) {
+        switch tool {
+        case .text:
+            textSize = true
+            // Boxed text paints its background through the textBackground controls instead.
+            if !textAppearance.isBoxed { fill = true }
+            if textAppearance == .outlined { lineWidth = true }
+        case .rectangle, .ellipse, .step:
+            fill = true
+            lineWidth = true
+        case .arrow, .line, .freehand, .highlighter:
+            lineWidth = true
+        default:
+            break
+        }
+    }
+}
+
+private struct StyleSection: View {
+    let model: EditorModel
+    let annotations: [Annotation]
+    let coalescer: ChangeCoalescer
+
+    var body: some View {
+        let style = model.style
+        let use = StyleUse(annotations: annotations, tool: model.tool, textAppearance: style.textAppearance)
+        let boxedText = annotations.filter { annotation in
+            guard case .text(let text) = annotation.kind else { return false }
+            return text.resolvedAppearance.isBoxed
+        }
+        let backgroundColor = if let first = boxedText.first { first.style.fill } else { style.textBackgroundColor }
+        let canResetBackground = style.textBackgroundColor != nil || boxedText.contains { $0.style.fill != nil }
+        let usesSteps =
+            model.tool == .step || annotations.contains { if case .step = $0.kind { true } else { false } }
+        Section {
+            ColorPicker(
+                String(localized: "Color", table: "Editor"),
+                selection: colorBinding({ style.stroke }, { c in coalescer.run(model) { model.setStrokeColor(c) } }),
+                supportsOpacity: false)
+            SavedColorsGrid(model: model)
+            if !boxedText.isEmpty || (model.tool == .text && annotations.isEmpty && style.textAppearance.isBoxed) {
+                ColorPicker(
+                    String(localized: "Background Color", table: "Editor"),
+                    selection: colorBinding(
+                        { backgroundColor ?? .white },
+                        { c in coalescer.run(model) { model.setTextBackgroundColor(c) } })
+                )
+                .accessibilityIdentifier("textBackground.color")
+                .disabled(!model.canSetTextAppearance)
+                .help(
+                    String(
+                        localized: "Reset restores white. A transparent color keeps the background clear.",
+                        table: "Editor"))
+                if boxedText.contains(where: { $0.style.fill != backgroundColor }) {
+                    Text(String(localized: "Mixed backgrounds", table: "Editor"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("textBackground.mixed")
+                }
+                Button(String(localized: "Reset Background", table: "Editor")) {
+                    model.setTextBackgroundColor(nil)
+                }
+                .accessibilityIdentifier("textBackground.reset")
+                .disabled(!model.canSetTextAppearance || !canResetBackground)
+            }
+            if use.fill {
+                Toggle(
+                    String(localized: "Fill", table: "Editor"),
+                    isOn: Binding(
+                        get: { style.fill != nil },
+                        set: { model.setFillColor($0 ? RGBA.white.withAlpha(255) : nil) })
+                )
+                .accessibilityIdentifier("style.fill")
+                if let fill = style.fill {
+                    ColorPicker(
+                        String(localized: "Fill Color", table: "Editor"),
+                        selection: colorBinding({ fill }, { c in coalescer.run(model) { model.setFillColor(c) } }))
+                }
+            }
+            if use.lineWidth {
+                UndoableSlider(
+                    title: String(localized: "Line Width", table: "Editor"), identifier: "style.lineWidth",
+                    value: style.lineWidth, range: EditorStyle.lineWidthRange, model: model
+                ) { model.setLineWidth($0) }
+            }
+            UndoableSlider(
+                title: String(localized: "Opacity", table: "Editor"), identifier: "style.opacity",
+                value: style.opacity, range: EditorStyle.opacityRange, model: model,
+                format: { EditorFormat.percent($0 * 100) }
+            ) { model.setOpacity($0) }
+            if use.textSize {
+                let size = String(localized: "\(EditorFormat.number(style.fontSize)) px", table: "Editor")
+                LabeledContent(String(localized: "Text Size", table: "Editor")) {
+                    HStack(spacing: 4) {
+                        Text(size).monospacedDigit().accessibilityHidden(true)
+                        Stepper(
+                            value: Binding(get: { style.fontSize }, set: { model.setFontSize($0) }),
+                            in: EditorStyle.fontSizeRange, step: 2
+                        ) {
+                            Text(String(localized: "Text Size", table: "Editor"))
+                        }
+                        .labelsHidden()
+                        .accessibilityValue(size)
+                        .accessibilityIdentifier("style.textSize")
+                    }
+                }
+            }
+            if usesSteps {
+                Button(String(localized: "Renumber Steps", table: "Editor")) { model.renumberSteps() }
+                    .help(String(localized: "Number steps 1, 2, 3… in their stacking order", table: "Editor"))
+            }
+        } header: {
+            Text(String(localized: "Style", table: "Editor"))
+        }
+    }
+}
+
+/// Saved colors as swatches, then Save and Remove for the current color.
+private struct SavedColorsGrid: View {
+    let model: EditorModel
+
+    private var isUnavailable: Bool {
+        if case .unsupportedSchema = model.environment.settings.loadIssue { return true }
+        return model.isClosed
+    }
+
+    var body: some View {
+        let current = model.style.stroke.withAlpha(255)
+        let saved = model.savedAnnotationColors
+        VStack(alignment: .leading, spacing: 6) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 24, maximum: 24), spacing: 4)], alignment: .leading, spacing: 4
+            ) {
+                ForEach(saved, id: \.self) { color in
+                    Swatch(color: color, isSelected: color == current) { model.applySavedColor(color) }
+                        .disabled(isUnavailable)
+                        .contextMenu {
+                            Button(String(localized: "Remove Saved Color", table: "Editor")) {
+                                model.removeSavedColor(color)
+                            }
+                        }
+                }
+                Button {
+                    model.saveCurrentStrokeColor()
+                } label: {
+                    Label(String(localized: "Save Current Color", table: "Editor"), systemImage: "plus")
+                }
+                .accessibilityIdentifier("palette.save")
+                .disabled(!model.canSaveStrokeColor)
+                .help(
+                    String(
+                        localized: "Save up to 12 distinct annotation colors. Duplicate colors are already saved.",
+                        table: "Editor"))
+                Button {
+                    model.removeSavedColor(model.style.stroke)
+                } label: {
+                    Label(String(localized: "Remove Current Color", table: "Editor"), systemImage: "minus")
+                }
+                .accessibilityIdentifier("palette.remove")
+                .disabled(isUnavailable || !saved.contains(current))
+                .help(
+                    String(
+                        localized:
+                            "Remove the current annotation color from saved colors. Existing annotations keep their color.",
+                        table: "Editor"))
+            }
+            .labelStyle(.iconOnly)
+            if isUnavailable {
+                Text(
+                    String(
+                        localized: "Saved colors are unavailable while newer preferences are protected.",
+                        table: "Editor")
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+private struct Swatch: View {
+    let color: RGBA
+    let isSelected: Bool
+    let apply: () -> Void
+
+    var body: some View {
+        Button(action: apply) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color(cgColor: color.cgColor))
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.separator))
+                .frame(width: 16, height: 16)
+                .padding(4)
+                .overlay {
+                    // The ring uses the label color, so it shows on any swatch color.
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 6).strokeBorder(.primary, lineWidth: 2)
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("palette.apply.\(color.hex.dropFirst())")
+        .accessibilityLabel(color.hex)
+        .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
+        .help(color.hex)
+    }
+}
+
+/// One of several choices: a tile with a border that thickens and takes the accent when chosen.
+private struct ChoiceButtonStyle: ButtonStyle {
+    let isSelected: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 6)
+        configuration.label
+            .frame(maxWidth: .infinity, minHeight: 26)
+            .padding(.horizontal, 6)
+            .background(
+                shape.fill(isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor))
+            )
+            .overlay(
+                shape.strokeBorder(
+                    isSelected ? Color.accentColor : Color(nsColor: .separatorColor), lineWidth: isSelected ? 2 : 1)
+            )
+            .contentShape(shape)
+            .opacity(configuration.isPressed ? 0.7 : isEnabled ? 1 : 0.45)
+    }
+}
 
 private struct ArrowCurveSection: View {
     let model: EditorModel
+    let annotations: [Annotation]
 
     private var selectedStates: [Bool] {
-        model.document.annotations.compactMap { annotation in
-            guard model.selection.contains(.annotation(annotation.id)), case .arrow(_, _, let control) = annotation.kind
-            else { return nil }
+        annotations.compactMap { annotation in
+            guard case .arrow(_, _, let control) = annotation.kind else { return nil }
             return control != nil
         }
     }
 
-    private var state: Bool? {
-        let states = selectedStates
-        guard !states.isEmpty else { return model.style.curvedArrows }
-        guard states.allSatisfy({ $0 == states[0] }) else { return nil }
-        return states[0]
-    }
-
     var body: some View {
-        if model.tool == .arrow || !selectedStates.isEmpty {
+        let states = selectedStates
+        if model.tool == .arrow || !states.isEmpty {
+            let state: Bool? =
+                if states.isEmpty { model.style.curvedArrows } else if states.allSatisfy({ $0 == states[0] }) {
+                    states[0]
+                } else { nil }
             Section {
-                choice(false)
-                choice(true)
+                HStack(spacing: 6) {
+                    choice(false, state: state)
+                    choice(true, state: state)
+                }
                 if state == nil {
                     Text("Mixed arrow shapes", tableName: "Editor")
                         .foregroundStyle(.secondary)
@@ -103,23 +410,25 @@ private struct ArrowCurveSection: View {
         }
     }
 
-    private func choice(_ curved: Bool) -> some View {
+    private func choice(_ curved: Bool, state: Bool?) -> some View {
         let title =
             curved
             ? LocalizedStringResource("Curved", table: "Editor")
             : LocalizedStringResource("Straight", table: "Editor")
+        let isSelected = state == curved
         return Button {
             model.setArrowCurved(curved)
         } label: {
-            HStack {
+            Label {
                 Text(title)
-                Spacer()
-                if state == curved { Image(systemName: "checkmark") }
+            } icon: {
+                Image(systemName: curved ? "arrow.turn.up.right" : "arrow.up.right")
             }
         }
+        .buttonStyle(ChoiceButtonStyle(isSelected: isSelected))
         .accessibilityIdentifier(curved ? "arrow.curved" : "arrow.straight")
         .accessibilityLabel(Text(title))
-        .accessibilityValue(state == curved ? String(localized: "Selected", table: "Editor") : "")
+        .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
     }
 }
 
@@ -162,31 +471,115 @@ private struct TextAppearanceSection: View {
 
     var body: some View {
         Section {
-            ForEach(TextAppearance.allCases, id: \.self) { appearance in
-                Button {
-                    model.setTextAppearance(appearance)
-                } label: {
-                    HStack {
-                        Text(EditorStrings.name(appearance))
-                        Spacer()
-                        if model.style.textAppearance == appearance {
-                            Image(systemName: "checkmark")
-                        }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
+                ForEach(TextAppearance.allCases, id: \.self) { appearance in
+                    let isSelected = model.style.textAppearance == appearance
+                    Button {
+                        model.setTextAppearance(appearance)
+                    } label: {
+                        AppearancePreview(appearance: appearance)
                     }
+                    .buttonStyle(ChoiceButtonStyle(isSelected: isSelected))
+                    .accessibilityIdentifier("textAppearance.\(appearance.rawValue)")
+                    .accessibilityLabel(EditorStrings.name(appearance))
+                    .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
+                    .disabled(!model.canSetTextAppearance)
+                    .help(
+                        model.canSetTextAppearance
+                            ? EditorStrings.name(appearance)
+                            : String(localized: "Finish editing text before changing its style.", table: "Editor"))
                 }
-                .accessibilityIdentifier("textAppearance.\(appearance.rawValue)")
-                .accessibilityLabel(EditorStrings.name(appearance))
-                .accessibilityValue(
-                    model.style.textAppearance == appearance ? String(localized: "Selected", table: "Editor") : ""
-                )
-                .disabled(!model.canSetTextAppearance)
-                .help(String(localized: "Finish editing text before changing its style.", table: "Editor"))
             }
         } header: {
             Text(String(localized: "Text Style", table: "Editor"))
         }
     }
 }
+
+/// "Aa" drawn the way the appearance renders: its system font design, an outline, or a box.
+private struct AppearancePreview: View {
+    let appearance: TextAppearance
+
+    var body: some View {
+        let design: Font.Design =
+            switch appearance {
+            case .rounded, .roundedBoxed: .rounded
+            case .monospaced, .monospacedBoxed: .monospaced
+            case .standard, .outlined, .boxed: .default
+            }
+        let sample = Text(verbatim: "Aa").font(.system(size: 14, weight: .medium, design: design))
+        if appearance == .outlined {
+            ZStack {
+                ForEach(0..<8, id: \.self) { index in
+                    let angle = Double(index) * .pi / 4
+                    sample.foregroundStyle(.black).offset(x: cos(angle), y: sin(angle))
+                }
+                sample.foregroundStyle(.white)
+            }
+            .accessibilityHidden(true)
+        } else if appearance.isBoxed {
+            // The box takes the label color so it stands out from the tile in light and dark.
+            sample
+                .foregroundStyle(Color(nsColor: .controlBackgroundColor))
+                .padding(.horizontal, 4)
+                .background(.primary, in: RoundedRectangle(cornerRadius: appearance == .roundedBoxed ? 4 : 0))
+                .accessibilityHidden(true)
+        } else {
+            sample.accessibilityHidden(true)
+        }
+    }
+}
+
+private struct RedactionSection: View {
+    let model: EditorModel
+    let selectedMask: SecureMask?
+    let coalescer: ChangeCoalescer
+
+    var body: some View {
+        Section {
+            ColorPicker(
+                String(localized: "Redaction Color", table: "Editor"),
+                selection: colorBinding(
+                    { selectedMask?.fill ?? model.redactionFill },
+                    { c in coalescer.run(model) { model.setRedactionFill(c) } }),
+                supportsOpacity: false
+            )
+            .accessibilityIdentifier("redaction.color")
+            Text(
+                String(
+                    localized:
+                        "Covered pixels are replaced in every export. Other copies and earlier exports are not changed.",
+                    table: "Editor")
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        } header: {
+            Text(String(localized: "Redaction", table: "Editor"))
+        }
+    }
+}
+
+private struct CosmeticSection: View {
+    var body: some View {
+        Section {
+            Label(
+                String(
+                    localized:
+                        "Cosmetic, not secure: text can remain recoverable. Use Redact for private information.",
+                    table: "Editor"),
+                systemImage: "exclamationmark.triangle"
+            )
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("redaction.cosmeticWarning")
+        } header: {
+            Text(String(localized: "Cosmetic Effect", table: "Editor"))
+        }
+    }
+}
+
+// MARK: - Shared controls
 
 /// Groups rapid changes (color panel drags) into one undo step: the group ends after a pause.
 final class ChangeCoalescer {
@@ -228,6 +621,7 @@ private struct ButtonRow<Content: View>: View {
 /// A slider whose drag is one undo step.
 private struct UndoableSlider: View {
     let title: String
+    var identifier: String?
     let value: Double
     let range: ClosedRange<Double>
     let model: EditorModel
@@ -253,6 +647,7 @@ private struct UndoableSlider: View {
                     Text(title)
                 }
                 .labelsHidden()
+                .accessibilityIdentifier(identifier ?? "")
                 Text(format(value))
                     .monospacedDigit()
                     .frame(minWidth: 36, alignment: .trailing)
@@ -263,9 +658,10 @@ private struct UndoableSlider: View {
     }
 }
 
-/// X, Y, width, and height fields, committed on Return.
+/// X, Y, width and height in a 2×2 grid of labelled fields, committed on Return.
 private struct FrameFields: View {
     let frame: Rect<DocumentSpace>
+    let identifier: String
     var preservesAspectRatio = false
     let onCommit: (Rect<DocumentSpace>) -> Void
     @State private var x = 0.0
@@ -274,21 +670,33 @@ private struct FrameFields: View {
     @State private var height = 0.0
 
     var body: some View {
-        Group {
-            field(String(localized: "X", table: "Editor"), $x)
-            field(String(localized: "Y", table: "Editor"), $y)
-            field(String(localized: "Width", table: "Editor"), $width)
-            field(String(localized: "Height", table: "Editor"), $height)
+        Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 6) {
+            GridRow {
+                field(String(localized: "X", table: "Editor"), "x", $x)
+                field(String(localized: "Y", table: "Editor"), "y", $y)
+            }
+            GridRow {
+                field(String(localized: "Width", table: "Editor"), "width", $width)
+                field(String(localized: "Height", table: "Editor"), "height", $height)
+            }
         }
         .onAppear(perform: load)
         .onChange(of: frame) { load() }
     }
 
-    private func field(_ title: String, _ value: Binding<Double>) -> some View {
+    @ViewBuilder
+    private func field(_ title: String, _ name: String, _ value: Binding<Double>) -> some View {
+        Text(title)
+            .foregroundStyle(.secondary)
+            .gridColumnAlignment(.trailing)
+            .accessibilityHidden(true)
         TextField(title, value: value, format: .number.precision(.fractionLength(0...2)))
+            .labelsHidden()
+            .textFieldStyle(.roundedBorder)
             .monospacedDigit()
             .onSubmit(commit)
             .help(String(localized: "Document pixels. Press Return to apply.", table: "Editor"))
+            .accessibilityIdentifier("\(identifier).\(name)")
     }
 
     private func load() {
@@ -313,47 +721,56 @@ private struct FrameFields: View {
     }
 }
 
-// MARK: - Selection
+// MARK: - Object
 
-private struct SelectionSection: View {
+private struct ObjectSection: View {
     let model: EditorModel
     let coalescer: ChangeCoalescer
 
     var body: some View {
+        let item = single
         Section {
-            if model.selection.count == 1, let id = model.selection.first,
-                let item = model.listItems.first(where: { $0.id == id })
-            {
-                FrameFields(frame: item.frame, preservesAspectRatio: item.kind == .image) {
-                    model.setFrame($0, for: id)
+            if let item {
+                FrameFields(frame: item.frame, identifier: "frame", preservesAspectRatio: item.kind == .image) {
+                    model.setFrame($0, for: item.id)
                 }
                 details(for: item)
-            } else {
-                Text(String(localized: "\(model.selection.count) objects selected", table: "Editor"))
-                    .foregroundStyle(.secondary)
             }
             ButtonRow {
                 Button(String(localized: "Duplicate", table: "Editor")) { model.duplicateSelection() }
                     .help(String(localized: "Duplicate (⌘D)", table: "Editor"))
                 Button(String(localized: "Delete", table: "Editor"), role: .destructive) { model.deleteSelection() }
+                Menu(String(localized: "Arrange", table: "Editor")) {
+                    Button(String(localized: "Bring to Front", table: "Editor")) { model.reorderSelection(.front) }
+                    Button(String(localized: "Bring Forward", table: "Editor")) { model.reorderSelection(.forward) }
+                    Button(String(localized: "Send Backward", table: "Editor")) { model.reorderSelection(.backward) }
+                    Button(String(localized: "Send to Back", table: "Editor")) { model.reorderSelection(.back) }
+                }
+                .fixedSize()
             }
-            Menu(String(localized: "Arrange", table: "Editor")) {
-                Button(String(localized: "Bring to Front", table: "Editor")) { model.reorderSelection(.front) }
-                Button(String(localized: "Bring Forward", table: "Editor")) { model.reorderSelection(.forward) }
-                Button(String(localized: "Send Backward", table: "Editor")) { model.reorderSelection(.backward) }
-                Button(String(localized: "Send to Back", table: "Editor")) { model.reorderSelection(.back) }
+            HStack(spacing: 2) {
+                ForEach(EditorAlignment.allCases, id: \.self) { alignment in
+                    Button {
+                        model.align(alignment)
+                    } label: {
+                        Label(EditorStrings.name(alignment), systemImage: EditorStrings.symbol(alignment))
+                    }
+                    .labelStyle(.iconOnly)
+                    .help(EditorStrings.name(alignment))
+                }
             }
-            .fixedSize()
         } header: {
-            Text(title)
+            if let item {
+                Text(EditorStrings.label(item))
+            } else {
+                Text(String(localized: "\(model.selection.count) objects", table: "Editor"))
+            }
         }
     }
 
-    private var title: String {
-        guard model.selection.count == 1, let id = model.selection.first,
-            let item = model.listItems.first(where: { $0.id == id })
-        else { return String(localized: "Selection", table: "Editor") }
-        return EditorStrings.label(item)
+    private var single: EditorListItem? {
+        guard model.selection.count == 1, let id = model.selection.first else { return nil }
+        return model.listItems.first { $0.id == id }
     }
 
     @ViewBuilder
@@ -371,17 +788,9 @@ private struct SelectionSection: View {
                     model: model, format: { EditorFormat.percent($0 * 100) }
                 ) { model.setLayerScale($0, for: id) }
             }
-        case .mask(let id):
-            if let mask = document.masks.first(where: { $0.id == id }) {
-                ColorPicker(
-                    String(localized: "Redaction Color", table: "Editor"),
-                    selection: colorBinding(
-                        { mask.fill }, { color in coalescer.run(model) { model.setRedactionFill(color) } }),
-                    supportsOpacity: false)
-                Text(String(localized: "Always opaque. Covered pixels are replaced in every export.", table: "Editor"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        case .mask:
+            // The redaction color is in the Redaction section, which shows for a selected redaction.
+            EmptyView()
         case .obfuscation(let id):
             if let effect = document.obfuscations.first(where: { $0.id == id }) {
                 let amount: Double =
@@ -392,11 +801,6 @@ private struct SelectionSection: View {
                 UndoableSlider(
                     title: String(localized: "Strength", table: "Editor"), value: amount, range: 1...64, model: model
                 ) { model.setObfuscationAmount($0, for: id) }
-                Label(
-                    String(localized: "Cosmetic, not secure: text can remain recoverable.", table: "Editor"),
-                    systemImage: "exclamationmark.triangle"
-                )
-                .font(.caption)
             }
         case .callout(let id):
             if let callout = document.callouts.first(where: { $0.id == id }) {
@@ -410,7 +814,7 @@ private struct SelectionSection: View {
                     Text(String(localized: "Magnified area", table: "Editor"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    FrameFields(frame: source) { model.setMagnifierSource($0, for: id) }
+                    FrameFields(frame: source, identifier: "magnifier.source") { model.setMagnifierSource($0, for: id) }
                 }
             }
         case .annotation(let id):
@@ -422,261 +826,18 @@ private struct SelectionSection: View {
     }
 }
 
-// MARK: - Style
-
-private struct StyleSection: View {
-    let model: EditorModel
-    let coalescer: ChangeCoalescer
-
-    private var selectedBoxedText: [Annotation] {
-        model.document.annotations.filter { annotation in
-            guard model.selection.contains(.annotation(annotation.id)), case .text(let text) = annotation.kind else {
-                return false
-            }
-            return text.resolvedAppearance.isBoxed
-        }
-    }
-
-    var body: some View {
-        let style = model.style
-        let boxedText = selectedBoxedText
-        let backgroundColor = if let first = boxedText.first { first.style.fill } else { style.textBackgroundColor }
-        let canResetBackground = style.textBackgroundColor != nil || boxedText.contains { $0.style.fill != nil }
-        Section {
-            ColorPicker(
-                String(localized: "Color", table: "Editor"),
-                selection: colorBinding({ style.stroke }, { c in coalescer.run(model) { model.setStrokeColor(c) } }),
-                supportsOpacity: false)
-            if !boxedText.isEmpty || (model.tool == .text && style.textAppearance.isBoxed) {
-                ColorPicker(
-                    String(localized: "Background Color", table: "Editor"),
-                    selection: colorBinding(
-                        { backgroundColor ?? .white },
-                        { c in coalescer.run(model) { model.setTextBackgroundColor(c) } })
-                )
-                .accessibilityIdentifier("textBackground.color")
-                .disabled(!model.canSetTextAppearance)
-                .help(
-                    String(
-                        localized: "Reset restores white. A transparent color keeps the background clear.",
-                        table: "Editor"))
-                if boxedText.contains(where: { $0.style.fill != backgroundColor }) {
-                    Text(String(localized: "Mixed backgrounds", table: "Editor"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("textBackground.mixed")
-                }
-                Button(String(localized: "Reset Background", table: "Editor")) {
-                    model.setTextBackgroundColor(nil)
-                }
-                .accessibilityIdentifier("textBackground.reset")
-                .disabled(!model.canSetTextAppearance || !canResetBackground)
-            } else {
-                Toggle(
-                    String(localized: "Fill", table: "Editor"),
-                    isOn: Binding(
-                        get: { style.fill != nil },
-                        set: { model.setFillColor($0 ? RGBA.white.withAlpha(255) : nil) }))
-                if let fill = style.fill {
-                    ColorPicker(
-                        String(localized: "Fill Color", table: "Editor"),
-                        selection: colorBinding({ fill }, { c in coalescer.run(model) { model.setFillColor(c) } }))
-                }
-            }
-            UndoableSlider(
-                title: String(localized: "Line Width", table: "Editor"), value: style.lineWidth,
-                range: EditorStyle.lineWidthRange, model: model
-            ) { model.setLineWidth($0) }
-            UndoableSlider(
-                title: String(localized: "Opacity", table: "Editor"), value: style.opacity,
-                range: EditorStyle.opacityRange, model: model, format: { EditorFormat.percent($0 * 100) }
-            ) { model.setOpacity($0) }
-            Stepper(
-                value: Binding(get: { style.fontSize }, set: { model.setFontSize($0) }), in: EditorStyle.fontSizeRange,
-                step: 2
-            ) {
-                Text(String(localized: "Text Size: \(EditorFormat.number(style.fontSize)) px", table: "Editor"))
-            }
-            Button(String(localized: "Renumber Steps", table: "Editor")) { model.renumberSteps() }
-                .help(String(localized: "Number steps 1, 2, 3… in their stacking order", table: "Editor"))
-        } header: {
-            Text(String(localized: "Style", table: "Editor"))
-        }
-    }
-}
-
-// MARK: - Redaction
-
-private struct SavedColorsSection: View {
-    let model: EditorModel
-
-    private var isUnavailable: Bool {
-        if case .unsupportedSchema = model.environment.settings.loadIssue { return true }
-        return model.isClosed
-    }
-
-    var body: some View {
-        Section {
-            Button(String(localized: "Save Current Color", table: "Editor")) {
-                model.saveCurrentStrokeColor()
-            }
-            .accessibilityIdentifier("palette.save")
-            .disabled(!model.canSaveStrokeColor)
-            .help(
-                String(
-                    localized: "Save up to 12 distinct annotation colors. Duplicate colors are already saved.",
-                    table: "Editor"))
-            if isUnavailable {
-                Text(
-                    String(
-                        localized: "Saved colors are unavailable while newer preferences are protected.",
-                        table: "Editor")
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            } else if model.savedAnnotationColors.isEmpty {
-                Text(
-                    String(
-                        localized: "Save a color to reuse it in any editor. Only colors you choose are stored.",
-                        table: "Editor")
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
-                ForEach(model.savedAnnotationColors, id: \.self) { color in
-                    Button {
-                        model.applySavedColor(color)
-                    } label: {
-                        HStack(spacing: 5) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Color(cgColor: color.cgColor))
-                                .overlay(RoundedRectangle(cornerRadius: 3).stroke(.secondary, lineWidth: 1))
-                                .frame(width: 14, height: 14)
-                            Text(color.hex).font(.caption.monospaced())
-                            if color == model.style.stroke.withAlpha(255) {
-                                Image(systemName: "checkmark").font(.caption2)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .accessibilityIdentifier("palette.apply.\(color.hex.dropFirst())")
-                    .accessibilityLabel(color.hex)
-                    .accessibilityValue(
-                        color == model.style.stroke.withAlpha(255)
-                            ? String(localized: "Selected", table: "Editor") : ""
-                    )
-                    .disabled(isUnavailable)
-                    .contextMenu {
-                        Button(String(localized: "Remove Saved Color", table: "Editor")) {
-                            model.removeSavedColor(color)
-                        }
-                    }
-                    .help(
-                        String(
-                            localized: "Apply this annotation color. Use the context menu to remove it.",
-                            table: "Editor"))
-                }
-            }
-            Button(String(localized: "Remove Current Color", table: "Editor")) {
-                model.removeSavedColor(model.style.stroke)
-            }
-            .accessibilityIdentifier("palette.remove")
-            .disabled(isUnavailable || !model.savedAnnotationColors.contains(model.style.stroke.withAlpha(255)))
-            .help(
-                String(
-                    localized:
-                        "Remove the current annotation color from saved colors. Existing annotations keep their color.",
-                    table: "Editor"))
-        } header: {
-            Text(String(localized: "Saved Colors", table: "Editor"))
-        }
-    }
-}
-
-private struct RedactionSection: View {
-    let model: EditorModel
-    let actions: any EditorWindowActions
-    let coalescer: ChangeCoalescer
-
-    var body: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 6) {
-                Button {
-                    choose(.redact)
-                } label: {
-                    Label(EditorStrings.name(EditorTool.redact), systemImage: "checkmark.shield")
-                }
-                Text(
-                    String(
-                        localized:
-                            "Replaces the covered pixels with a solid, opaque color in every copy, save, drag, and pin.",
-                        table: "Editor")
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            ColorPicker(
-                String(localized: "Redaction Color", table: "Editor"),
-                selection: colorBinding(
-                    { model.redactionFill }, { c in coalescer.run(model) { model.setRedactionFill(c) } }),
-                supportsOpacity: false)
-            VStack(alignment: .leading, spacing: 6) {
-                ButtonRow {
-                    Button {
-                        choose(.blur)
-                    } label: {
-                        Label(
-                            String(localized: "Blur", table: "Editor"),
-                            systemImage: EditorStrings.symbol(EditorTool.blur))
-                    }
-                    .help(EditorStrings.help(.blur))
-                    Button {
-                        choose(.pixelate)
-                    } label: {
-                        Label(
-                            String(localized: "Pixelate", table: "Editor"),
-                            systemImage: EditorStrings.symbol(EditorTool.pixelate))
-                    }
-                    .help(EditorStrings.help(.pixelate))
-                }
-                Label(
-                    String(
-                        localized:
-                            "Blur and Pixelate are cosmetic, not secure: hidden text can sometimes be recovered. Use Redact for private information.",
-                        table: "Editor"),
-                    systemImage: "exclamationmark.triangle"
-                )
-                .font(.caption)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            Text(
-                String(
-                    localized:
-                        "Redactions change this image only. Copies you opened separately and images you exported earlier are not changed.",
-                    table: "Editor")
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-        } header: {
-            Text(String(localized: "Redaction", table: "Editor"))
-        }
-    }
-
-    private func choose(_ tool: EditorTool) {
-        actions.commitPendingText()
-        model.selectTool(tool)
-    }
-}
-
 // MARK: - Pixel tools
 
 private struct PixelToolsSection: View {
     @Bindable var model: EditorModel
 
     var body: some View {
+        let units =
+            model.measurementPointScale == nil
+            ? String(
+                localized: "Values are image pixels. This image has no screen scale, so points are not shown.",
+                table: "Editor")
+            : String(localized: "Values are image pixels; points use the capture's screen scale.", table: "Editor")
         Section {
             if model.tool == .colorPicker {
                 Picker(selection: $model.colorSampleSize) {
@@ -688,34 +849,37 @@ private struct PixelToolsSection: View {
                 }
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("color-sample-size")
-                Text("Area picks average sRGB colors and alpha. Samples stop at image edges.", tableName: "Editor")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                .help(
+                    String(
+                        localized: "Area picks average sRGB colors and alpha. Samples stop at image edges.",
+                        table: "Editor"))
             }
             let sample = model.tool == .colorPicker ? model.pickedColor : model.inspection
             if let sample {
-                LabeledContent(String(localized: "Pixel", table: "Editor")) {
-                    Text(String(localized: "\(sample.x), \(sample.y)", table: "Editor")).monospacedDigit()
-                }
-                LabeledContent(String(localized: "Color (sRGB)", table: "Editor")) {
-                    HStack(spacing: 6) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color(cgColor: sample.color.cgColor))
-                            .overlay(RoundedRectangle(cornerRadius: 3).stroke(.separator))
-                            .frame(width: 18, height: 14)
-                            .accessibilityHidden(true)
-                        Text(sample.hex).monospaced().textSelection(.enabled)
+                Group {
+                    LabeledContent(String(localized: "Pixel", table: "Editor")) {
+                        Text(String(localized: "\(sample.x), \(sample.y)", table: "Editor")).monospacedDigit()
+                    }
+                    LabeledContent(String(localized: "Color (sRGB)", table: "Editor")) {
+                        HStack(spacing: 6) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color(cgColor: sample.color.cgColor))
+                                .overlay(RoundedRectangle(cornerRadius: 3).stroke(.separator))
+                                .frame(width: 18, height: 14)
+                                .accessibilityHidden(true)
+                            Text(sample.hex).monospaced().textSelection(.enabled)
+                        }
+                    }
+                    LabeledContent(String(localized: "RGB", table: "Editor")) {
+                        Text(sample.rgbText).monospacedDigit().textSelection(.enabled)
+                    }
+                    if !sample.color.isOpaque {
+                        LabeledContent(String(localized: "Alpha", table: "Editor")) {
+                            Text(verbatim: "\(sample.color.a)").monospacedDigit()
+                        }
                     }
                 }
-                LabeledContent(String(localized: "RGB", table: "Editor")) {
-                    Text(sample.rgbText).monospacedDigit().textSelection(.enabled)
-                }
-                if !sample.color.isOpaque {
-                    LabeledContent(String(localized: "Alpha", table: "Editor")) {
-                        Text(verbatim: "\(sample.color.a)").monospacedDigit()
-                    }
-                }
+                .help(units)
                 if model.tool == .colorPicker {
                     ButtonRow {
                         Button(String(localized: "Copy HEX", table: "Editor")) { model.copyPickedColor(asHex: true) }
@@ -735,25 +899,180 @@ private struct PixelToolsSection: View {
                     Text(EditorFormat.measurement(ruler))
                         .monospacedDigit()
                         .textSelection(.enabled)
+                        .help(units)
                     Button(String(localized: "Clear Ruler", table: "Editor")) { model.clearRuler() }
                 } else {
                     Text(String(localized: "Drag across the image to measure.", table: "Editor"))
                         .foregroundStyle(.secondary)
                 }
             }
-            Text(
-                model.measurementPointScale == nil
-                    ? String(
-                        localized: "Values are image pixels. This image has no screen scale, so points are not shown.",
-                        table: "Editor")
-                    : String(
-                        localized: "Values are image pixels; points use the capture's screen scale.", table: "Editor")
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
         } header: {
             Text(String(localized: "Pixel Tools", table: "Editor"))
+        }
+    }
+}
+
+// MARK: - Image
+
+private struct SizeSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        let document = model.document
+        Section {
+            LabeledContent(String(localized: "Canvas", table: "Editor")) {
+                Text(EditorFormat.size(document.canvasSize)).monospacedDigit()
+            }
+            LabeledContent(String(localized: "Crop", table: "Editor")) {
+                HStack {
+                    Text(
+                        document.crop.map { EditorFormat.size($0.size) }
+                            ?? String(localized: "None", table: "Editor")
+                    )
+                    .monospacedDigit()
+                    Button(String(localized: "Reset", table: "Editor")) { model.setCrop(nil) }
+                        .disabled(document.crop == nil)
+                }
+            }
+            Stepper(
+                value: Binding(get: { document.resizeScale * 100 }, set: { model.setResizeScale($0 / 100) }),
+                in: (EditorModel.resizeRange.lowerBound * 100)...(EditorModel.resizeRange.upperBound * 100), step: 10
+            ) {
+                let output = document.outputPixelSize(exportScale: 1)
+                Text(
+                    String(
+                        localized:
+                            "Output: \(EditorFormat.percent(document.resizeScale * 100)), \(output.width) × \(output.height) px",
+                        table: "Editor"))
+            }
+            ButtonRow {
+                Button(String(localized: "Fit Canvas to Content", table: "Editor")) { model.fitCanvasToContent() }
+                Button(String(localized: "Add Margin", table: "Editor")) {
+                    model.expandCanvas(top: 40, left: 40, bottom: 40, right: 40)
+                }
+                .help(String(localized: "Add 40 pixels of empty canvas on every side", table: "Editor"))
+            }
+        } header: {
+            Text(String(localized: "Size", table: "Editor"))
+        }
+    }
+}
+
+private struct BackgroundSection: View {
+    let model: EditorModel
+    let coalescer: ChangeCoalescer
+
+    private enum BackgroundKind: Hashable { case plain, solid, gradient }
+
+    var body: some View {
+        let presentation = model.document.presentation
+        Section {
+            Picker(
+                String(localized: "Background", table: "Editor"),
+                selection: Binding(get: { kind(presentation.background) }, set: { setKind($0, presentation) })
+            ) {
+                Text(String(localized: "None", table: "Editor")).tag(BackgroundKind.plain)
+                Text(String(localized: "Solid", table: "Editor")).tag(BackgroundKind.solid)
+                Text(String(localized: "Gradient", table: "Editor")).tag(BackgroundKind.gradient)
+            }
+            .accessibilityIdentifier("image.background")
+            switch presentation.background {
+            case .none:
+                EmptyView()
+            case .solid(let color):
+                ColorPicker(
+                    String(localized: "Background Color", table: "Editor"),
+                    selection: colorBinding(
+                        { color }, { c in coalescer.run(model) { model.setBackground(.solid(c)) } }),
+                    supportsOpacity: false)
+            case .linearGradient(let from, let to, let angle):
+                ColorPicker(
+                    String(localized: "Start Color", table: "Editor"),
+                    selection: colorBinding(
+                        { from },
+                        { c in
+                            coalescer.run(model) {
+                                model.setBackground(.linearGradient(from: c, to: to, angleDegrees: angle))
+                            }
+                        }),
+                    supportsOpacity: false)
+                ColorPicker(
+                    String(localized: "End Color", table: "Editor"),
+                    selection: colorBinding(
+                        { to },
+                        { c in
+                            coalescer.run(model) {
+                                model.setBackground(.linearGradient(from: from, to: c, angleDegrees: angle))
+                            }
+                        }),
+                    supportsOpacity: false)
+            }
+            UndoableSlider(
+                title: String(localized: "Padding", table: "Editor"), value: presentation.padding, range: 0...256,
+                model: model
+            ) { model.setPadding($0.rounded()) }
+            UndoableSlider(
+                title: String(localized: "Corner Radius", table: "Editor"), value: presentation.cornerRadius,
+                range: 0...128, model: model
+            ) { model.setCornerRadius($0.rounded()) }
+            Toggle(
+                String(localized: "Shadow", table: "Editor"),
+                isOn: Binding(
+                    get: { presentation.shadow != nil },
+                    set: { model.setShadow($0 ? Presentation.Shadow() : nil) }))
+            Toggle(
+                String(localized: "Show Output Preview", table: "Editor"),
+                isOn: Binding(get: { model.showsOutputPreview }, set: { model.setShowsOutputPreview($0) })
+            )
+            .help(String(localized: "Show exactly what Copy and Save produce, including framing", table: "Editor"))
+        } header: {
+            Text(String(localized: "Background", table: "Editor"))
+        }
+    }
+
+    private func kind(_ background: Presentation.Background) -> BackgroundKind {
+        switch background {
+        case .none: .plain
+        case .solid: .solid
+        case .linearGradient: .gradient
+        }
+    }
+
+    private func setKind(_ kind: BackgroundKind, _ presentation: Presentation) {
+        switch kind {
+        case .plain: model.setBackground(.none)
+        case .solid: model.setBackground(.solid(RGBA(r: 242, g: 242, b: 247)))
+        case .gradient:
+            model.setBackground(
+                .linearGradient(from: RGBA(r: 90, g: 120, b: 220), to: RGBA(r: 170, g: 90, b: 200), angleDegrees: 135))
+        }
+    }
+}
+
+private struct ImagesSection: View {
+    let model: EditorModel
+    let actions: any EditorWindowActions
+
+    var body: some View {
+        let layers = model.document.layers.count
+        Section {
+            ButtonRow {
+                Button(String(localized: "Add Image…", table: "Editor")) { actions.addImageFromFile() }
+                Button(String(localized: "Paste Image", table: "Editor")) { actions.pasteImageLayer() }
+                    .help(String(localized: "Add the image on the clipboard as a new layer", table: "Editor"))
+            }
+            Button(String(localized: "Side by Side", table: "Editor")) { model.arrangeSideBySide() }
+                .disabled(layers < 2)
+                .help(String(localized: "Place all images in a row at the same height", table: "Editor"))
+            Toggle(
+                String(localized: "Compare Transparency", table: "Editor"),
+                isOn: Binding(
+                    get: { model.isComparingTransparency }, set: { _ in model.toggleTransparencyComparison() })
+            )
+            .disabled(layers < 2)
+            .help(String(localized: "Show the top image half-transparent over the others", table: "Editor"))
+        } header: {
+            Text(String(localized: "Images", table: "Editor"))
         }
     }
 }
@@ -845,186 +1164,6 @@ private struct RecognitionSection: View {
             }
         } header: {
             Text(String(localized: "Text & QR", table: "Editor"))
-        }
-    }
-}
-
-// MARK: - Document
-
-private struct DocumentSection: View {
-    let model: EditorModel
-
-    var body: some View {
-        let document = model.document
-        Section {
-            LabeledContent(String(localized: "Canvas", table: "Editor")) {
-                Text(EditorFormat.size(document.canvasSize)).monospacedDigit()
-            }
-            LabeledContent(String(localized: "Crop", table: "Editor")) {
-                HStack {
-                    Text(
-                        document.crop.map { EditorFormat.size($0.size) }
-                            ?? String(localized: "None", table: "Editor")
-                    )
-                    .monospacedDigit()
-                    Button(String(localized: "Reset", table: "Editor")) { model.setCrop(nil) }
-                        .disabled(document.crop == nil)
-                }
-            }
-            Stepper(
-                value: Binding(get: { document.resizeScale * 100 }, set: { model.setResizeScale($0 / 100) }),
-                in: (EditorModel.resizeRange.lowerBound * 100)...(EditorModel.resizeRange.upperBound * 100), step: 10
-            ) {
-                let output = document.outputPixelSize(exportScale: 1)
-                Text(
-                    String(
-                        localized:
-                            "Output: \(EditorFormat.percent(document.resizeScale * 100)), \(output.width) × \(output.height) px",
-                        table: "Editor"))
-            }
-            ButtonRow {
-                Button(String(localized: "Fit Canvas to Content", table: "Editor")) { model.fitCanvasToContent() }
-                Button(String(localized: "Add Margin", table: "Editor")) {
-                    model.expandCanvas(top: 40, left: 40, bottom: 40, right: 40)
-                }
-                .help(String(localized: "Add 40 pixels of empty canvas on every side", table: "Editor"))
-            }
-        } header: {
-            Text(String(localized: "Document", table: "Editor"))
-        }
-    }
-}
-
-// MARK: - Composition
-
-private struct CompositionSection: View {
-    let model: EditorModel
-    let actions: any EditorWindowActions
-
-    var body: some View {
-        let layers = model.document.layers.count
-        Section {
-            ButtonRow {
-                Button(String(localized: "Add Image…", table: "Editor")) { actions.addImageFromFile() }
-                Button(String(localized: "Paste Image", table: "Editor")) { actions.pasteImageLayer() }
-                    .help(String(localized: "Add the image on the clipboard as a new layer", table: "Editor"))
-            }
-            Button(String(localized: "Side by Side", table: "Editor")) { model.arrangeSideBySide() }
-                .disabled(layers < 2)
-                .help(String(localized: "Place all images in a row at the same height", table: "Editor"))
-            Toggle(
-                String(localized: "Compare Transparency", table: "Editor"),
-                isOn: Binding(
-                    get: { model.isComparingTransparency }, set: { _ in model.toggleTransparencyComparison() })
-            )
-            .disabled(layers < 2)
-            .help(String(localized: "Show the top image half-transparent over the others", table: "Editor"))
-            HStack(spacing: 2) {
-                ForEach(EditorAlignment.allCases, id: \.self) { alignment in
-                    Button {
-                        model.align(alignment)
-                    } label: {
-                        Label(EditorStrings.name(alignment), systemImage: EditorStrings.symbol(alignment))
-                    }
-                    .labelStyle(.iconOnly)
-                    .help(EditorStrings.name(alignment))
-                }
-            }
-            .disabled(model.selection.isEmpty)
-        } header: {
-            Text(String(localized: "Composition", table: "Editor"))
-        }
-    }
-}
-
-// MARK: - Presentation
-
-private struct PresentationSection: View {
-    let model: EditorModel
-    let coalescer: ChangeCoalescer
-
-    private enum BackgroundKind: Hashable { case plain, solid, gradient }
-
-    var body: some View {
-        let presentation = model.document.presentation
-        Section {
-            Picker(
-                String(localized: "Background", table: "Editor"),
-                selection: Binding(get: { kind(presentation.background) }, set: { setKind($0, presentation) })
-            ) {
-                Text(String(localized: "None", table: "Editor")).tag(BackgroundKind.plain)
-                Text(String(localized: "Solid", table: "Editor")).tag(BackgroundKind.solid)
-                Text(String(localized: "Gradient", table: "Editor")).tag(BackgroundKind.gradient)
-            }
-            switch presentation.background {
-            case .none:
-                EmptyView()
-            case .solid(let color):
-                ColorPicker(
-                    String(localized: "Background Color", table: "Editor"),
-                    selection: colorBinding(
-                        { color }, { c in coalescer.run(model) { model.setBackground(.solid(c)) } }),
-                    supportsOpacity: false)
-            case .linearGradient(let from, let to, let angle):
-                ColorPicker(
-                    String(localized: "Start Color", table: "Editor"),
-                    selection: colorBinding(
-                        { from },
-                        { c in
-                            coalescer.run(model) {
-                                model.setBackground(.linearGradient(from: c, to: to, angleDegrees: angle))
-                            }
-                        }),
-                    supportsOpacity: false)
-                ColorPicker(
-                    String(localized: "End Color", table: "Editor"),
-                    selection: colorBinding(
-                        { to },
-                        { c in
-                            coalescer.run(model) {
-                                model.setBackground(.linearGradient(from: from, to: c, angleDegrees: angle))
-                            }
-                        }),
-                    supportsOpacity: false)
-            }
-            UndoableSlider(
-                title: String(localized: "Padding", table: "Editor"), value: presentation.padding, range: 0...256,
-                model: model
-            ) { model.setPadding($0.rounded()) }
-            UndoableSlider(
-                title: String(localized: "Corner Radius", table: "Editor"), value: presentation.cornerRadius,
-                range: 0...128, model: model
-            ) { model.setCornerRadius($0.rounded()) }
-            Toggle(
-                String(localized: "Shadow", table: "Editor"),
-                isOn: Binding(
-                    get: { presentation.shadow != nil },
-                    set: { model.setShadow($0 ? Presentation.Shadow() : nil) }))
-            Toggle(
-                String(localized: "Show Output Preview", table: "Editor"),
-                isOn: Binding(get: { model.showsOutputPreview }, set: { model.setShowsOutputPreview($0) })
-            )
-            .help(String(localized: "Show exactly what Copy and Save produce, including framing", table: "Editor"))
-        } header: {
-            Text(String(localized: "Presentation", table: "Editor"))
-        }
-    }
-
-    private func kind(_ background: Presentation.Background) -> BackgroundKind {
-        switch background {
-        case .none: .plain
-        case .solid: .solid
-        case .linearGradient: .gradient
-        }
-    }
-
-    private func setKind(_ kind: BackgroundKind, _ presentation: Presentation) {
-        switch kind {
-        case .plain: model.setBackground(.none)
-        case .solid: model.setBackground(.solid(RGBA(r: 242, g: 242, b: 247)))
-        case .gradient:
-            model.setBackground(
-                .linearGradient(from: RGBA(r: 90, g: 120, b: 220), to: RGBA(r: 170, g: 90, b: 200), angleDegrees: 135))
         }
     }
 }
