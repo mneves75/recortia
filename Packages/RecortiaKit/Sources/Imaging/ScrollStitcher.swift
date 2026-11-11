@@ -2,7 +2,7 @@ import CoreGraphics
 import Domain
 import Foundation
 
-public enum ScrollStitchError: Error, Equatable, Sendable {
+enum ScrollStitchError: Error, Equatable, Sendable {
     case noFrames
     case imageCreationFailed
 }
@@ -28,7 +28,7 @@ public struct ScrollStitcher: Sendable {
     public static let endOfPageStationaryFrames = 3
 
     public private(set) var acceptedFrameCount = 0
-    public private(set) var consecutiveStationaryFrames = 0
+    private(set) var consecutiveStationaryFrames = 0
     public private(set) var outputSize = PixelSize(width: 0, height: 0)
 
     private var frameWidth = 0

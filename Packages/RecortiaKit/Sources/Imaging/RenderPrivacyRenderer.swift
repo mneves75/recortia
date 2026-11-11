@@ -25,9 +25,9 @@ public enum RenderError: Error, Equatable, Sendable {
 /// into one 40 MP output. Raw pixels already in `ImageStore`, ImageIO's encoder buffers, and
 /// framework allocations are outside this estimate; the process-wide 512 MiB target still needs
 /// measurement on hardware (SPEC §10) and is not claimed here.
-public enum RenderLimits {
-    public static let maxOutputPixels = ImportLimits.maxPixelArea
-    public static let maxOutputSide = 32_768
+enum RenderLimits {
+    static let maxOutputPixels = ImportLimits.maxPixelArea
+    static let maxOutputSide = 32_768
     public static let maxWorkingBytes = 384 * 1024 * 1024
 }
 

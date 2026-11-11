@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import Vision
 
-public enum QRDecodingError: Error, Equatable, Sendable {
+enum QRDecodingError: Error, Equatable, Sendable {
     case detectionFailed
 }
 
