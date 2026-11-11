@@ -98,12 +98,10 @@
         func snapshot(_ view: NSView, shot: String, over underlay: CGImage) {
             let name = output.nextScreenshotName(scenario: "\(id)-\(shot)")
             do {
-                let data = try E2ESnapshot.png(of: Self.rendered(view), over: underlay)
+                let data = try E2ESnapshot.png(of: view, over: underlay)
                 try data.write(to: output.directory.appending(path: name), options: .atomic)
                 screenshots.append(name)
-                check(
-                    "screenshot \(name)", true,
-                    "\(Int(Self.rendered(view).bounds.width))×\(Int(Self.rendered(view).bounds.height)) pt at 2×")
+                check("screenshot \(name)", true, "\(Int(view.bounds.width))×\(Int(view.bounds.height)) pt at 2×")
             } catch {
                 check("screenshot \(name)", false, "\(error)")
             }

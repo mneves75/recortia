@@ -133,6 +133,20 @@
             try context.require("toolbar Rectangle selects", await E2EWait.until { model.tool == .rectangle })
             context.check("a toolbar tool leaves the canvas first responder", window.firstResponder === canvas)
 
+            // The remembered editor size is the content size, without the toolbar above it.
+            let remembered = harness.settings.preferences.editorContentSize
+            defer { harness.settings.update { $0.editorContentSize = remembered } }
+            let chosen = NSSize(width: 1040, height: 640)
+            window.setContentSize(chosen)
+            await E2ESnapshot.settle(frameView)
+            NotificationCenter.default.post(name: NSWindow.didEndLiveResizeNotification, object: window)
+            let stored = harness.settings.preferences.editorContentSize
+            context.check(
+                "the remembered size is the content size, not content plus toolbar",
+                stored == Size(width: chosen.width, height: chosen.height)
+                    && content.frame.size == chosen && window.frame.height - content.frame.height > 40,
+                "stored \(String(describing: stored)), content \(content.frame.size), frame \(window.frame.size)")
+
             window.setContentSize(NSSize(width: 980, height: 560))
             window.appearance = NSAppearance(named: .darkAqua)
             await E2ESnapshot.settle(frameView)
