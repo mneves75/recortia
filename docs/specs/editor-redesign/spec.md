@@ -133,10 +133,77 @@ and tools are one native bar that takes the system's current look on each macOS 
 - Not verified: macOS 15 and 26 rendering (no such host; groups may draw differently there);
   physical VoiceOver and Full Keyboard Access traversal of the toolbar; customization is off.
 
+## Slice 3 — feature tour and Settings (not started)
+
+### Feature tour
+
+The tour reads like a manual: three paragraphs of up to 90 words per page, in a window whose lower
+half is empty on short pages. It also names things the editor no longer has ("the presentation
+inspector"). Same seven pages, same flow, same identifiers (`tour.*`), same window; only the copy
+and the fit change. Every item is a title and one line. The disclosures stay: solid redaction
+versus cosmetic effects, automatic exports running before redaction, uploads leaving the Mac.
+
+English copy (pt-BR follows the terms already in the string catalogs):
+
+- **Welcome to Recortia** — unchanged.
+- **Start with a capture** — "Choose a capture mode from the Recortia menu-bar icon."
+  - Region, display or window: "Drag a region, or press Space to pick a window. Return confirms
+    and Escape cancels."
+  - Delay and repeat: "Capture with Delay catches menus and temporary states. Repeat Last Region
+    captures the same area again."
+  - Long pages and existing images: "Scrolling Capture joins frames while you scroll. Open, paste
+    or drop a PNG or JPEG to edit it without Screen Recording permission."
+- **Make the point clear** — "Annotations stay editable until you export."
+  - Annotate and adjust: "Add text, arrows, shapes, highlights and numbered steps. The inspector
+    shows the options for what you selected."
+  - Crop, resize and navigate: "Crop to the relevant area and resize the output. Hold Space and
+    drag to pan."
+  - Redact with solid masks: "Redact replaces the covered pixels in every export. Blur and
+    Pixelate are cosmetic, not secure."
+- **Read text and inspect pixels** — "Recognition and pixel inspection run on this Mac."
+  - Text recognition and QR codes: "Capture Text (OCR) recognizes text in a region, and the editor
+    recognizes it in an open image. QR contents are untrusted; links open only after your click."
+  - Loupe and color picker: "Inspect exact pixels and copy a color as HEX or RGB, from one pixel or
+    an averaged area."
+  - Measure without guessing: "The ruler measures in image pixels and, for captures, in points."
+- **Compose and keep references** — "Arrange images and add emphasis without leaving the editor."
+  - Multiple images on one canvas: "Add images, then move, resize, reorder or place them side by
+    side."
+  - Framing and emphasis: "Add a background, padding, rounded corners and a shadow. Spotlight and
+    Magnifier draw attention to a detail."
+  - Reference pins: "Pin an image to keep it in its own window on every Space. Up to five pins."
+- **Choose what leaves the editor** — "Sharing uses a flattened, freshly encoded image."
+  - Copy, Save or Drag Out: "All three share the same sanitized image, without hidden layers or
+    location and text metadata."
+  - Automatic exports are optional: "Automatic copy and save run right after a capture, before any
+    redaction. Turn them off before capturing sensitive content."
+  - Optional GitHub sharing: "Uploads leave this Mac and are off by default. Redacting or deleting
+    later does not remove a remote copy."
+  - Closing line: "Reopen this tour from Feature Tour in the menu bar."
+- **Assign shortcuts** — "Recortia uses the macOS screenshot shortcuts: ⇧⌘3 for the display, ⇧⌘4
+  for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings."
+
+Fit: the window opens at the height of its tallest page in the current language, so no page
+scrolls at the default size and none leaves more than about a third of the window empty. The
+scroll view stays for larger text sizes and smaller windows.
+
+`docs/specs/feature-discovery/` (spec and reference matrix) is updated in the same change so the
+recorded tour copy matches what ships.
+
+### Settings
+
+- Each pane is as tall as its content: the 360 pt minimum height goes, so General no longer shows
+  two rows above an empty window.
+- Nine tabs become seven: "Pins" (one control) moves into General as its own section, and
+  "Scrolling" moves into Capture as its own section. No setting, default, consent flow or stored
+  preference changes; `GitHub`, `Privacy` and `Text Recognition` stay as they are.
+- Open question for the owner, not a change: in the offscreen screenshots the empty shortcut
+  recorders show "Record Shortcut" printed twice, slightly offset. That may be the snapshot path
+  and not the real control; it needs one look at the real Settings window before anyone "fixes" it.
+
 ## Later slices
 
-Settings and onboarding; capture overlays, HUDs and pins. Each starts from the finished editor as
-the visual reference.
+Capture overlays, HUDs and pins, starting from the finished editor as the visual reference.
 
 ## Not in scope
 
