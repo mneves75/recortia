@@ -68,6 +68,12 @@ end-to-end suite.
   adds steps or redirects the save. Each step still runs only while it is allowed.
 - Overwriting a saved file keeps its explicit access control list, and a refused overwrite no
   longer leaves a temporary file behind.
+- Saving a new image to an exFAT or FAT32 drive no longer fails. Those volumes refuse the
+  exclusive rename every new save ended with; Recortia now claims the name first and renames over
+  its own claim. A name that is already taken is still never replaced.
+- While a file is being saved, its temporary copy is readable only by its owner and does not take
+  the folder's inherited access entries; permissions and access lists are applied to that file
+  itself, and the save is refused if the temporary file was swapped for another file or a link.
 
 ## [0.13.0] - 2026-11-01
 
