@@ -1488,7 +1488,6 @@
       "title": "Full-source review P3 proposals",
       "milestone": "M2",
       "authorization": "proposal_requires_owner_approval",
-      "status": "not_started",
       "depends_on": ["FP-035"],
       "requirement_ids": ["FR-05", "FR-07", "FR-10"],
       "acceptance_test_ids": [],
