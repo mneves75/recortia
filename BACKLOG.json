@@ -1681,7 +1681,7 @@
         "Extracted .stringsdata for the Editor table matches Editor.xcstrings with no missing and no unused key",
         ".scratch/e2e/20261110-224906-20377: editor-toolbar fails on the in-content strip (no toolbar, no toolbar identifiers)",
         ".scratch/e2e/20261110-231302-55337: review regressions fail before their fixes (cosmetic warning absent on the Image tab; OCR text format reverts after tab switches)",
-        ".scratch/e2e/20261110-232002-44052 (.scratch/logs/editor-redesign-e2e-2.log): 27/27 editor scenarios pass in en and pt-BR, including editor-toolbar; all 20 non-space toolbar items are in NSToolbar.visibleItems at 980 and 1100 pt (visibleItems holds 21 with the flexible space)",
+        ".scratch/e2e/20261110-233712-32368 (.scratch/logs/editor-redesign-e2e-2.log): 27/27 editor scenarios pass in en and pt-BR, including editor-toolbar; all 20 non-space toolbar items are in NSToolbar.visibleItems at 980 and 1100 pt (visibleItems holds 21 with the flexible space); a control at a forced 600 pt width left the window at 832 pt with 17 of 20 visible, so the check can fail; the remembered size after a resize is 1040x640 for a 1040x692 frame",
         ".scratch/logs/editor-redesign-check-2.log: './init.sh check --unsigned' ends 'check: all gates passed'"
       ],
       "authorization": "owner request 2026-11-10",

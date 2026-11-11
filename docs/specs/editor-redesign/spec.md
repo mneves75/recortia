@@ -107,7 +107,9 @@ and tools are one native bar that takes the system's current look on each macOS 
   highlighter, step] [redact] [Effects ▾: blur, pixelate, spotlight, magnifier] [Measure ▾: loupe,
   ruler, color picker]; trailing [undo, redo], a spacer item (bridged as a flexible space), then [Copy, Save ▾, Pin, Drag Out].
   On macOS 27 the spacer keeps Copy out of the undo/redo capsule; it is flexible, so at wide
-  windows the output group sits at the trailing edge.
+  windows undo/redo stay beside Measure and the output group sits at the trailing edge, a
+  deviation from "undo/redo trailing". A second flexible spacer before undo/redo floated that group
+  mid-bar at 1320 pt (a fixed width on a toolbar `Spacer` is ignored), so it was not kept.
 - Each item keeps its title, symbol, `.help` and disabled rule, shown icon-only, with identifiers
   `tool.<raw>`, `toolMenu.effects`, `toolMenu.measure`, `toolbar.undo|redo|copy|save|pin|dragOut`.
   A menu button shows its group symbol (`camera.filters`, `level`) and name, or, while one of its
@@ -118,11 +120,13 @@ and tools are one native bar that takes the system's current look on each macOS 
   the name, "Selected tool" and Press. A bridged `Menu` ignores `accessibilityLabel` and exposes
   its Label text as an attributed title, so that text carries the name. Bridged items perform
   AXPress but `accessibilityPerformPress()` returns false; tests check the effect.
-- `contentRect(forFrameRect:)` excludes the toolbar, so the remembered editor size stays the
-  content size (`editor-window-size` unchanged and passing).
+- The remembered editor size stays the content size: `editor-toolbar` resizes to 1040×640 and
+  stores 1040×640 while the frame is 1040×692; `editor-window-size` unchanged and passing.
 - E2E: `editor-toolbar` (bilingual) drives the real window: toolbar present and strip gone; at 980
   and 1100 pt every non-space item of `NSToolbar.items` is in `visibleItems` (20 of 20;
-  the spacer item is bridged as a flexible space, so `visibleItems` holds 21); AX press
+  the spacer item is bridged as a flexible space, so `visibleItems` holds 21). A throwaway control
+  forcing 600 pt left the window at 832 pt with 17 of 20 visible and the overflow chevron shown,
+  so the check can fail.; AX press
   of tools; the real Effects/Measure menus opened through accessibility and chosen inside their
   tracking loop; undo/redo enablement; Copy through the export path; the canvas keeps first
   responder. Editor screenshots render the window's frame view, so they show the toolbar.
