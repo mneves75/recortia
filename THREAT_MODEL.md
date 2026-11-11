@@ -52,6 +52,20 @@ preferences never revives the old intent; the final pre-write check rejects it (
 | Dependency or release compromise | Mutable action/package, fork secrets, malicious update | Locked reviewed inputs; protected release path; signature verification; least privilege | REL-01/02 |
 | False security assurance | App claims universal secret detection, erasure, or compatibility | Scope-specific language; explicit unsupported cases; published validation status | RED-04; release review |
 
+Saving into a folder that other local accounts can write to, or that grants them inherited
+access, is outside what Recortia can protect (EXP-02). There Recortia guarantees that temporary
+files are owner-only while written, that a replaced file's mode and ACL are applied only to the
+file Recortia wrote (its ACL before its mode), that a temporary file substituted by another file
+or link is refused, and that no temporary file is left behind after a failure. It does not
+guarantee two things, both unreproduced and both needing another account with access to that
+folder: an account covered by an inherited entry that opens the temporary file in the instant
+before Recortia removes that entry, while it is still empty, can keep reading the bytes written
+afterwards; and because the replaced file's mode and ACL are read by pathname, an account that can
+rename entries in a shared, non-sticky folder can substitute a more permissive file and the new
+capture takes that access. Closing them needs a private staging location and a destination policy
+bound to an identity-checked descriptor (`docs/specs/code-review-2026-11/findings.md`, NV-02 and
+NV-05).
+
 ## Non-sandboxed build review
 
 This design avoids privileged helpers and assumes the app runs as the logged-in user. Hardened Runtime and TCC do not provide a general filesystem/network sandbox. Mitigations inside the application reduce accidental exposure but cannot prevent all behavior of compromised app code.

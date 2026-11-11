@@ -126,7 +126,8 @@ editor route). The notice is now `EditorNotice.automaticExportFailed`, worded li
 Two needs-validation records on the save path, closed test-first in `FileSink.swift`
 (`a18d0a5` red tests, `712ebe1` fix), one finding from a security review of that fix (`c22eed6`
 red test, `810085e` fix), and a volume regression found on real exFAT and FAT32 images (`e7da3dc`
-red tests, `e483823` fix). Tests use real files in a temporary folder or a disk image they attach
+red tests, `e483823` fix), and an ordering fix from the final audit (`6612b4d` red tests, `5975d14`
+fix). Tests use real files in a temporary folder or a disk image they attach
 themselves, and synthetic data.
 
 | ID | Finding | Change | Red (before the fix) | Green (after it) |
@@ -136,20 +137,28 @@ themselves, and synthetic data.
 
 | NV-03 (review of `712ebe1`) | A new save's temporary file was created 0644 and written with its inherited entries removed, inherited deny entries included, so others could read bytes being written in a folder whose deny entry keeps them out of every finished file. | Every temporary file is created 0600. For a new file, after `fsync`, the inherited ACL is restored through the descriptor and only then is the descriptor `fchmod`ed to the mode a 0644 creation gets under the umask (best effort: a refusal leaves it owner-only). The umask cannot be read before macOS 27 without a process-wide change, so that mode comes from an empty probe file created and removed in the user's temporary folder; a failing probe fails the save before the temporary file exists. A no-op `afterSync` seam on `POSIXFileSystem` lets the test observe the file between `fsync` and the final access. | `.scratch/logs/nv03-red.log` (`712ebe1` plus the no-op seam): in a folder with inheritable `nobody deny read` and `everyone allow read` entries (control: a file made by the old `open(..., 0644)` call carries both), the temporary file was 0o644 while written, on all three new-save routes. Its final ACL and mode already matched the control. | `.scratch/logs/nv03-green.log` (umask 022) and `.scratch/logs/nv03-green-umask027.log`: 15 FileSinkTests pass; the temporary file is 0600 with no ACL while written, and the new file ends with the control's deny and allow entries and its mode (0644 under umask 022, as before the change). |
 | NV-04 (exFAT, FAT32) | Every save to an exFAT or FAT32 drive failed with `writeFailed(code: 45)` (ENOTSUP): `renamex_np(RENAME_EXCL)` is refused there for a free name, and still reports EEXIST for a taken one. That predates this branch: the same probe fails the same way on `23a7fd3`. Behind it, `712ebe1` added a real regression: these volumes number a file by its first cluster, so the identity read at creation was a placeholder (2^64-8) that changed with the first write, and every overwrite would have been refused. | On ENOTSUP only, `moveExclusively` claims the name with an exclusive create and renames over that empty claim, so a taken name is still never replaced; a failed rename removes the claim only while it is the same empty file. `writeNewFile` reads the identity after `fsync`, when it is stable (same value on APFS). Measured on both volumes and left as they are: `acl_get_fd_np` and `acl_get_file` report ENOENT, so no `acl_set_fd_np` runs (it would return ENOTSUP, which `clearACL` already accepts); `fchmod` succeeds without effect (mode stays 0700, as before); `open` with `O_NOFOLLOW \| O_NONBLOCK` works; hard links return ENOTSUP, so the link count is always 1; the mode probe runs in the user's temporary folder. | `.scratch/logs/nv04-red.log`: on `5601f79`, the first new save fails with `writeFailed(code: 45)` on both formats (control: `statfs` reports `exfat` / `msdos`); `.scratch/logs/nv04-23a7fd3-{exfat,fat32}.log`: the same on `23a7fd3`. With only the move fallback, overwrites failed with `accessDenied` (`.scratch/logs/nv04-step1-identity-red.log`); with the claim's cleanup disabled, the claim test fails (`.scratch/logs/nv04-claim-cleanup-red.log`). | `.scratch/logs/nv04-green.log`: 18 tests in the two FileSink suites pass, including new, refused, overwriting and unique saves on both formats, a refused substitution (another file renamed over the temporary name), and the claim test. The main session's probe passes on its mounted volumes (`.scratch/logs/nv04-probe-{exfat,fat32}.log`). Where `hdiutil` cannot attach an image, the suite is reported skipped (`.scratch/logs/nv04-skip-check.log`). |
+| NV-06 (final audit; pre-existing) | An overwrite gave the temporary file the destination's mode before its ACL. For a 0644 destination kept private by a deny-read entry, the replacement was 0644 without that entry for an instant, broader than the file it replaces; after a failed rename the copied ACL was cleared while the mode was still broad, so the complete new image was briefly broader again. | `replace` copies the ACL through the descriptor first, then applies the mode (best effort, as before). After a failed rename that had copied an ACL, the descriptor is set to 0600 before the ACL is cleared, and the existing cleanup removes the file. A no-op `afterReplaceStep` seam runs after each change `replace` makes to the temporary file's mode or ACL. | `.scratch/logs/nv06-red.log` (`469f220` plus the no-op seam): with a 0644 destination carrying `nobody deny read` (control: the entry is read back before the save), the overwrite showed the temporary file at (mode 644, no ACL); with `<user> deny delete` added (control: it refuses a rename onto a file in the same folder) the save failed with `accessDenied` and the ACL was cleared at mode 0o644, again with no deny entry in effect. | `.scratch/logs/nv06-green.log`: 20 tests in the two FileSink suites pass; no observed state is broader than 0600 without the deny entry, the cleared temporary file is 0600, the destination keeps 0644, its entry and its bytes, and no temporary file remains. |
 
-Still path-based, and why: reading the destination's mode and ACL, which the design kept. It
-copies whatever the destination name yields at that moment onto the new capture, so an account that
-can rename entries in the folder can put a more permissive file, or a link to one, at that name and
-the capture takes that broader access. NV-01 closed the other direction (the person's other files
-can no longer receive the destination's access); this one stays open as an accepted residual. The
-rename (a swap after the check can put other bytes at the destination, but never moves the person's
-access to another file) and the cleanup `unlink` (it removes a name, not what a link points to) are
-safe as they are.
+Two residuals were left as needs-validation by the final audit. Both predate this branch, neither
+was reproduced, and both require another local account with access to the folder being saved into:
 
-Not closed: inherited entries are in effect from `open` until they are removed a few calls later,
-while the file is still empty. By POSIX semantics a descriptor another account opens in that instant
-keeps its access to the bytes written afterwards (not probed here: it needs a second account).
-Closing it needs a different design, for example creating the file in a private folder. Not proven
-by a test: the FIFO guard, the failure paths of `fstat`, `acl_set_fd_np` and the mode probe, and
-volumes other than APFS, exFAT and FAT32 (for example SMB or NTFS). On exFAT and FAT32 the claim
-is visible as an empty file under the final name until the rename replaces it.
+- **NV-02 residual.** Inherited entries are in effect from `open` until they are removed a few calls
+  later, while the temporary file is still empty. An account covered by an inherited entry that
+  opens the file in that instant keeps reading through its descriptor the bytes written afterwards
+  (POSIX semantics; not probed, it needs a second account).
+- **NV-05.** The destination's mode and ACL are still read by pathname, and whatever the name yields
+  at that moment is copied onto the new capture. An account that can rename entries in a shared,
+  non-sticky folder can put a more permissive file, or a link to one, at that name, and the capture
+  takes that broader access. NV-01 closed the other direction (the person's other files can no
+  longer receive the destination's access). The rename (a swap after the check can put other bytes
+  at the destination, but never moves the person's access to another file) and the cleanup `unlink`
+  (it removes a name, not what a link points to) are safe as they are.
+
+Closing either needs a private staging location and a destination policy bound to an
+identity-checked descriptor: a design change, not a patch.
+
+Not proven by a test: the FIFO guard, the failure paths of `fstat`, `acl_set_fd_np` and the mode
+probe, and volumes other than APFS, exFAT and FAT32 (for example SMB or NTFS). On exFAT and FAT32
+the claim is visible as an empty file under the final name until the rename replaces it. Since
+NV-06, a destination ACL that denies its owner changing security would make the later `fchmod`
+fail and leave the replacement 0600: narrower than the destination, never broader (not tested).
