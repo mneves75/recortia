@@ -146,9 +146,8 @@ in [docs/architecture/module-contracts.md](docs/architecture/module-contracts.md
 - Physical keyboard, Spaces and permission checks were not run on 0.13.0.
 - The editor's window toolbar has been checked only on macOS 27; on macOS 15 and 26 it may draw
   differently.
-- On the unpublished 0.14.0 candidate, VoiceOver and Full Keyboard Access on the toolbar, its menu
-  buttons and the inspector's style tiles and swatches, physical keyboard, Spaces and permission
-  checks, and a clean run of the full end-to-end suite have not been done.
+- VoiceOver and Full Keyboard Access have not been checked on the editor toolbar, its menu buttons,
+  or the inspector's style tiles and color swatches.
 - Automatic scrolling scrolls downward only.
 - There is no in-app updater; update with a new DMG.
 
