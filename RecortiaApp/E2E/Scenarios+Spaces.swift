@@ -44,7 +44,7 @@
                 "Settings uses native tabs", settings.contentViewController as? NSTabViewController)
             context.check("Settings shows toolbar tabs like macOS Settings", tabs.tabStyle == .toolbar)
             context.check(
-                "Settings has one tab per area", tabs.tabViewItems.count == 9, "\(tabs.tabViewItems.count) tabs")
+                "Settings has one tab per area", tabs.tabViewItems.count == 7, "\(tabs.tabViewItems.count) tabs")
             context.check(
                 "every Settings tab has a label and an icon",
                 tabs.tabViewItems.allSatisfy { !$0.label.isEmpty && $0.image != nil })
