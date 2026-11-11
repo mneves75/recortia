@@ -165,10 +165,12 @@ the claim is visible as an empty file under the final name until the rename repl
 
 ## Independent verification (2026-11-11)
 
-A fresh verifier on another model checked a378fa6 against the frozen release criteria and found
-two gaps in the E2E harness. The product code did not change.
+Fresh verifiers on another model checked the candidate against the frozen release criteria. At
+a378fa6 they found two gaps in the E2E harness (V-1, V-2; no product change); at 98c2faa, one
+deviation from the editor spec (V-3).
 
 | ID | Defect | Fix and proof |
 |---|---|---|
 | V-1 | The scrolling review had no dark rendering under `ChromeAppearance`: a fixed white review background still passed every scenario. | `scrolling` saves `review-dark` and judges the review's chrome in both appearances, with the stitched preview masked. A planted fixed white background now fails the dark check (median 1.000, near-white fill 100%; `.scratch/logs/fix-r2-mutant-review-white.log`). |
 | V-2 | `last-window` pressed the review's Discard and Accept through `press`, which fell back to a synthesized click for those elements. That click acts only while the review window is key, so the scenario failed whenever another app held the foreground. | The presses use `pressCheckingEffect` (accessibility Press), and the assertions are unchanged. With the runner deactivated before each Discard, the old press fails exactly as the verifier saw (asked=0, 0 requests) and the new one passes (`.scratch/logs/fix-r2-inactive-{old,new}.log`). |
+| V-3 | The saved-colors "+" and "−" buttons showed explanatory sentences as tooltips, where the editor spec (Slice 1) gives them their labels. | The tooltips are "Save Current Color" and "Remove Current Color" in both languages; the two unused sentences left the catalog, and `saved-colors` asserts the label. With the old sentence restored the scenario fails (`.scratch/logs/fix-r3-red-tooltip.log`); with the fix `saved-colors` and `inspector-context` pass in EN and PT-BR (`.scratch/logs/fix-r3-e2e.log`). |
