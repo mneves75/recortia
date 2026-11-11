@@ -37,12 +37,6 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "%@ px" } }
       }
     },
-    "Cosmetic Effect": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Cosmetic Effect" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Efeito cosmético" } }
-      }
-    },
     "Cosmetic, not secure: text can remain recoverable. Use Redact for private information.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Cosmetic, not secure: text can remain recoverable. Use Redact for private information." } },

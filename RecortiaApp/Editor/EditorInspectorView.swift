@@ -38,6 +38,12 @@ struct EditorInspectorView: View {
             .padding(.horizontal, 12)
             .padding(.top, 10)
             .padding(.bottom, 2)
+            // The cosmetic warning stays visible whichever tab is shown (FR-06).
+            if showsCosmeticWarning {
+                CosmeticWarning()
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+            }
             Form {
                 switch tab {
                 case .format:
@@ -59,6 +65,11 @@ struct EditorInspectorView: View {
         .controlSize(.small)
         .onChange(of: model.selection) { chosenTab = nil }
         .onChange(of: model.tool) { chosenTab = nil }
+    }
+
+    private var showsCosmeticWarning: Bool {
+        model.tool.isCosmeticObfuscation
+            || model.selection.contains(where: { if case .obfuscation = $0 { true } else { false } })
     }
 }
 
@@ -87,11 +98,6 @@ private struct FormatTab: View {
         let masks = model.document.masks.filter { selection.contains(.mask($0.id)) }
         if tool == .redact || !masks.isEmpty {
             RedactionSection(model: model, selectedMask: masks.first, coalescer: coalescer)
-        }
-        if tool.isCosmeticObfuscation
-            || selection.contains(where: { if case .obfuscation = $0 { true } else { false } })
-        {
-            CosmeticSection()
         }
         if [.loupe, .colorPicker, .ruler].contains(tool) {
             PixelToolsSection(model: model)
@@ -571,22 +577,22 @@ private struct RedactionSection: View {
     }
 }
 
-private struct CosmeticSection: View {
+/// The cosmetic-effect warning, pinned above the tabs.
+private struct CosmeticWarning: View {
     var body: some View {
-        Section {
-            Label(
-                String(
-                    localized:
-                        "Cosmetic, not secure: text can remain recoverable. Use Redact for private information.",
-                    table: "Editor"),
-                systemImage: "exclamationmark.triangle"
-            )
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("redaction.cosmeticWarning")
-        } header: {
-            Text(String(localized: "Cosmetic Effect", table: "Editor"))
-        }
+        Label(
+            String(
+                localized: "Cosmetic, not secure: text can remain recoverable. Use Redact for private information.",
+                table: "Editor"),
+            systemImage: "exclamationmark.triangle"
+        )
+        .font(.callout)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("redaction.cosmeticWarning")
     }
 }
 
