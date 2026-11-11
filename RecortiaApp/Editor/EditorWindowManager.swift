@@ -89,7 +89,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         canvas.actions = self
         let root = EditorRootView(
             model: model, canvas: canvas, actions: self, noticePresentation: noticePresentation)
-        window.contentViewController = NSHostingController(rootView: root)
+        let host = NSHostingController(rootView: root)
+        // The SwiftUI `.toolbar` becomes this window's NSToolbar; title and tools share one bar.
+        host.sceneBridgingOptions = [.toolbars]
+        window.contentViewController = host
+        window.toolbarStyle = .unified
+        window.titleVisibility = .hidden
         window.initialFirstResponder = canvas
         let visible = targetScreen()?.visibleFrame.size ?? NSSize(width: 1440, height: 900)
         let size = EditorWindowSizing.initialContentSize(

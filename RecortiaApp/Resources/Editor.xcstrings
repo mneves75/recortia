@@ -1,6 +1,30 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Effects": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Effects" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Efeitos" } }
+      }
+    },
+    "Effects: blur, pixelate, spotlight and magnifier": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Effects: blur, pixelate, spotlight and magnifier" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Efeitos: desfoque, pixelização, destaque e ampliador" } }
+      }
+    },
+    "Measure": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measure" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Medir" } }
+      }
+    },
+    "Measure: loupe, ruler and color picker": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Measure: loupe, ruler and color picker" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Medir: lupa de pixels, régua e conta-gotas" } }
+      }
+    },
     "%@ px": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "%@ px" } },
