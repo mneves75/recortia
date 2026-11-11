@@ -13,6 +13,9 @@ struct EditorInspectorView: View {
     @State private var coalescer = ChangeCoalescer()
     /// The person's own choice, cleared whenever the selection or the tool changes.
     @State private var chosenTab: InspectorTab?
+    /// The recognized-text format chosen in this editor; nil follows the preference. Kept here so
+    /// switching tabs does not discard it.
+    @State private var ocrTextMode: OCRTextMode?
 
     private enum InspectorTab: Hashable { case format, image }
 
@@ -57,7 +60,7 @@ struct EditorInspectorView: View {
                     SizeSection(model: model)
                     BackgroundSection(model: model, coalescer: coalescer)
                     ImagesSection(model: model, actions: actions)
-                    RecognitionSection(model: model)
+                    RecognitionSection(model: model, mode: $ocrTextMode)
                 }
             }
             .formStyle(.grouped)
@@ -1098,7 +1101,7 @@ private struct ImagesSection: View {
 
 private struct RecognitionSection: View {
     let model: EditorModel
-    @State private var mode: OCRTextMode?
+    @Binding var mode: OCRTextMode?
 
     var body: some View {
         let selectedMode = mode ?? model.environment.settings.preferences.ocrTextMode
