@@ -60,6 +60,9 @@
             E2EScenario(
                 id: "capture-admission", title: "One capture session across modes",
                 run: CaptureVisibilityScenarios.admission),
+            E2EScenario(
+                id: "editor-toolbar", title: "Tools and actions live in the window toolbar",
+                run: EditorToolbarScenarios.toolbar),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(

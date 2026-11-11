@@ -7,6 +7,7 @@
         enum TextAttribute: String {
             case value = "accessibilityValue"
             case help = "accessibilityHelp"
+            case label = "accessibilityLabel"
         }
 
         static func text(
