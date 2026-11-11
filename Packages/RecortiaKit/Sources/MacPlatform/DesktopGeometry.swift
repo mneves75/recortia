@@ -85,8 +85,7 @@ public enum DesktopGeometry {
 
     /// The region in the display's local points, clamped to the display and expanded outward to
     /// whole device pixels at the display's own scale. Nil when nothing remains.
-    static func pixelAlignedLocalRect(_ rect: Rect<DesktopSpace>, on display: DisplayInfo) -> Rect<DisplaySpace>?
-    {
+    static func pixelAlignedLocalRect(_ rect: Rect<DesktopSpace>, on display: DisplayInfo) -> Rect<DisplaySpace>? {
         let scale = display.pointPixelScale
         guard scale.isFinite, scale > 0, let clamped = clamp(rect, to: display) else { return nil }
         let localMinX = clamped.minX - display.frame.minX
