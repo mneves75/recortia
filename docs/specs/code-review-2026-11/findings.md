@@ -1,0 +1,69 @@
+# Code review 2026-11 — findings and triage
+
+Owner request (2026-11-10): find what is broken, inconsistent, inefficient or no longer needed; fix
+what is certain and list the rest. Target: `main` at `a069cbd`.
+
+## Method and limits
+
+- One read-only reviewer (gpt-6.1-sol through `codex-auto`, no edits, no builds), briefed to cite
+  `path:line` for every finding. Scope: defects in the 16 production Swift files changed since the
+  2026-10 full-source review (`4845e98..main`); structure across all production Swift; tracked
+  non-source files nothing reads. `EditorInspectorView.swift` was excluded because FP-045 rewrites it.
+- The main session then read the cited code for every item marked "verified" below. Nothing here
+  was reproduced by running the app: no item is closed until its failing test exists.
+- Repeated checks were classified before any removal: SHAPE (input validation done twice, a removal
+  candidate), STALENESS (identity, revision or consent re-checked after an `await`) and PRIVACY
+  (fail-closed redaction or export checks). Only SHAPE is ever removed.
+
+## Defects
+
+| ID | P | Finding | Verified | Disposition |
+|---|---|---|---|---|
+| R-1 | P2 | Discarding the scrolling review with the Discard button or Escape does not quit when "Keep running in the menu bar" is off. `ScrollUIController.closeReview()` orders the window out (`ScrollUIController.swift:122-126`); `AppPresence` reports a last-window close only from `NSWindow.willCloseNotification` (`AppPresence.swift:45-56`). The close button path does close the window, so the two ways out of the same review behave differently. | Read; not run | Fix: test first in `last-window` (confirmed Discard requests termination once; declining requests none; Accept, which replaces the review with an editor, requests none). |
+| R-2 | P3 | A failed automatic export is always titled "Nothing was exported" (`MessagePresenter.swift:162-164`), also when an earlier step of the same batch succeeded: copy succeeds, save fails, and the alert denies the copy. | Read; not run | Fix: a title that does not deny earlier writes, with a test on the routed messages. |
+| R-3 | P2 | An automatic batch reads save settings after its copy step has awaited (`ExportCoordinator.swift:337`), so a capture taken while automatic save was off can be saved if the person turns it on, or changes the folder, before the copy finishes. The existing post-render guard compares against the newly read folder, so it does not catch this. | Read; not run | **Owner decision.** Recommended: freeze the batch's actions and destination before the first `await`, keep the live revocation checks. It changes behavior only inside that short window. |
+| R-4 | P2 | Overwriting a saved file keeps the old file's mode bits (`FileSink.swift:151`) but not an explicit ACL, because the replacement is a new file renamed into place. | Read; effect on real access not reproduced | **Owner decision.** Needs a filesystem reproduction first; only matters for files with per-file ACLs in shared folders. |
+
+## Certain cleanups (no behavior change)
+
+Each was confirmed by search over `RecortiaApp`, `Packages/RecortiaKit` and `RecortiaUITests`.
+
+| ID | What | Where |
+|---|---|---|
+| C-1 | `CaptureRequest` has no instance anywhere; only its two static delay helpers are used. Keep those, drop the fields, initializer and conformances. | `Domain/Policies.swift:98` |
+| C-2 | `MacPlatform.RepeatRegion` is unused; `CaptureCoordinator` has its own private one. | `MacPlatform/DesktopGeometry.swift:127` |
+| C-3 | Unused members: `appliesToEveryReference`, `undoLabel`, `QRFixture.isMalformed`, `appKitRect`, `desktopPoint`, `appKitPoint`, `EditorViewport.documentToView`. | `Domain/Document.swift:136`, `Domain/DocumentSession.swift:55`, `RecortiaFixtures/QRFixture.swift:25`, `MacPlatform/DesktopGeometry.swift:24-32`, `Features/EditorViewport.swift:23` |
+| C-4 | One-call helpers that hide a single line: `drawBanner`, `beginNewText`. Inline them. | `Capture/RegionOverlay.swift:227`, `Features/EditorModel+Gestures.swift:407` |
+| C-5 | `FP-036` has two `status` keys; keep `closed_by_owner`. | `BACKLOG.json:1491` |
+| C-6 | The save-folder protocol comment says a stale bookmark resolves to nil; the live implementation resolves and renews it. Correct the comment. | `Features/Services.swift:141` |
+| C-7 | SHAPE: export options are validated in the coordinator and again in the pipeline. Keep the pipeline as the one admission point; keep the error mapping. | `Features/ExportCoordinator.swift:166`, `Imaging/ExportPipeline.swift:20,49` |
+
+## For the owner to decide
+
+- **Interface width.** A name search finds about 159 of 875 public names with no use outside their
+  module. The reviewer's shortlist of safe candidates (Domain cost and geometry internals, Imaging
+  error enums and render limits, MacPlatform auto-scroll policy and seal machinery, Features zoom
+  and recognition helpers) removes no lines; it shrinks what the app target can reach. It is
+  mechanical and compiler-checked, and tests need `@testable import`. `ArrowLayout`'s path fields
+  stay public: `module-contracts.md` promises them. Recommended: do it as one commit per module
+  after FP-045, not before.
+- **Performance, measure first.** (a) The object list is rebuilt with a linear search per item
+  (`EditorModel.swift:362`), quadratic in object count on every committed move. (b) Every draft
+  change redraws and re-lays-out all existing text (`EditorCanvasView.swift:114-124`,
+  `AnnotationRenderer.swift:71`). (c) Automatic copy and PNG save render the same document twice.
+  None was measured; (a) is a simplification worth doing on its own, (b) and (c) add state and need
+  a number before they are worth it.
+- **Two mappings of import failures** to text, one per string catalog (`MessagePresenter.swift:135`,
+  `EditorStrings.swift:234`). Sharing them removes about 15 lines and one translation to maintain.
+- **`LiveTextRecognition` and `LiveQRDecoding`** are two forwarding adapters that could be one type.
+  Small gain; `AppActions` (one conformer) is worth keeping as a narrow boundary.
+- **Token shape validated twice** on one synchronous path (`GitHubUploadSettings.swift:50`,
+  `GitHubTokenStore.swift:45`). Removable, but it is a credential path; left alone by default.
+- **`docs/handoff/COMPLETE_HANDOFF.md`** (1,984 lines) concatenates superseded root documents and
+  no gate reads it. `CLAUDE.md` says not to update `docs/handoff/`, so removal is the owner's call.
+
+## Checked and kept
+
+Staleness checks after awaits (`ExportCoordinator.swift:185,212`), the opaque-mask check at both
+admission and render (`DocumentSession.swift:129`, `RenderEngine.swift:120`), the handoff and plan
+files that record release evidence, `progress.md`, `tests.json`, `scripts/make-icon.swift`.
