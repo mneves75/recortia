@@ -159,14 +159,9 @@ public final class ExportCoordinator {
         apply(.sanitize)
         apply(.render)
 
-        let options: ExportOptions
-        do {
-            var requested = exportOptions(for: action)
-            if let fixedScale { requested.scale = fixedScale }
-            options = try requested.validated()
-        } catch {
-            return fail(.encodeFailed)
-        }
+        // The export pipeline is the one admission point for these options.
+        var options = exportOptions(for: action)
+        if let fixedScale { options.scale = fixedScale }
         let date = clock.now()
         let task = Task<ShareSnapshot, any Error> { try await makeSnapshot(options, date) }
         snapshotTask = task
