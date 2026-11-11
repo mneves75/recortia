@@ -205,6 +205,8 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   `check: all gates passed`; 530 package tests (105 + 126 + 261 + 38), 620 pt-BR strings.
   `tests.json` did not need regenerating.
 - Not a clean E2E pass: `.scratch/logs/final-e2e.log` (at `4f8ec58`) is 52/54 en and 53/54 pt-BR,
-  with `capture-focus` and one `ocr-qr` foreground check failing while the Mac was in use. The full
+  with `capture-focus` failing in both languages (en at the owned foreground fixture, pt-BR at its
+  foreground and keyboard-ownership assertions) and one `ocr-qr` foreground check in en; the session
+  recorded the Mac as in use during the run. The full
   bilingual run on the final tree, on an idle unlocked console, is still pending.
 - Not tagged, notarized, published or installed.
