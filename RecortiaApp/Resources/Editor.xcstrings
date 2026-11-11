@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Moldura" } }
+      }
+    },
     "Effects": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Effects" } },

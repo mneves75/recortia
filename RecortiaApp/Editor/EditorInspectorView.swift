@@ -1037,7 +1037,7 @@ private struct BackgroundSection: View {
             )
             .help(String(localized: "Show exactly what Copy and Save produce, including framing", table: "Editor"))
         } header: {
-            Text(String(localized: "Background", table: "Editor"))
+            Text(String(localized: "Framing", table: "Editor"))
         }
     }
 
