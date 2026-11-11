@@ -302,9 +302,12 @@
             window.ignoresMouseEvents = true
             let root = try context.unwrap("the review has content", window.contentView)
             await E2ESnapshot.settle(root)
+            // Press through accessibility, as VoiceOver does. `press` falls back to a synthesized
+            // click for these elements, and that click acts only while this window is key, which
+            // another app taking the foreground undoes. The checks below verify the effect.
 
             answers = [false]
-            try E2EAccessibilityControl.press("scroll.review.discard", in: root, context)
+            try E2EAccessibilityControl.pressCheckingEffect("scroll.review.discard", in: root, context)
             try? await Task.sleep(for: .milliseconds(400))
             context.check(
                 "declining Discard keeps the review and Recortia",
@@ -312,7 +315,7 @@
                 "asked=\(asked), visible=\(window.isVisible), state=\(model.state), \(requests() - before) requests")
 
             answers = [true]
-            try E2EAccessibilityControl.press("scroll.review.discard", in: root, context)
+            try E2EAccessibilityControl.pressCheckingEffect("scroll.review.discard", in: root, context)
             context.check(
                 "a confirmed Discard of the last window requests termination",
                 await E2EWait.until(timeout: .seconds(3)) { requests() == before + 1 },
@@ -334,7 +337,7 @@
             accepted.ignoresMouseEvents = true
             let acceptedRoot = try context.unwrap("the second review has content", accepted.contentView)
             await E2ESnapshot.settle(acceptedRoot)
-            try E2EAccessibilityControl.press("scroll.review.accept", in: acceptedRoot, context)
+            try E2EAccessibilityControl.pressCheckingEffect("scroll.review.accept", in: acceptedRoot, context)
             let editor = try await E2EActions.waitForNewEditor(harness, after: editorsBefore, context)
             try context.require(
                 "Accept closes the review", await E2EWait.until(timeout: .seconds(5)) { !accepted.isVisible })
