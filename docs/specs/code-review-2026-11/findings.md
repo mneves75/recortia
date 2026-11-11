@@ -19,10 +19,10 @@ what is certain and list the rest. Target: `main` at `a069cbd`.
 
 | ID | P | Finding | Verified | Disposition |
 |---|---|---|---|---|
-| R-1 | P2 | Discarding the scrolling review with the Discard button or Escape does not quit when "Keep running in the menu bar" is off. `ScrollUIController.closeReview()` orders the window out (`ScrollUIController.swift:122-126`); `AppPresence` reports a last-window close only from `NSWindow.willCloseNotification` (`AppPresence.swift:45-56`). The close button path does close the window, so the two ways out of the same review behave differently. | Read; not run | Fix: test first in `last-window` (confirmed Discard requests termination once; declining requests none; Accept, which replaces the review with an editor, requests none). |
-| R-2 | P3 | A failed automatic export is always titled "Nothing was exported" (`MessagePresenter.swift:162-164`), also when an earlier step of the same batch succeeded: copy succeeds, save fails, and the alert denies the copy. | Read; not run | Fix: a title that does not deny earlier writes, with a test on the routed messages. |
-| R-3 | P2 | An automatic batch reads save settings after its copy step has awaited (`ExportCoordinator.swift:337`), so a capture taken while automatic save was off can be saved if the person turns it on, or changes the folder, before the copy finishes. The existing post-render guard compares against the newly read folder, so it does not catch this. | Read; not run | **Owner decision.** Recommended: freeze the batch's actions and destination before the first `await`, keep the live revocation checks. It changes behavior only inside that short window. |
-| R-4 | P2 | Overwriting a saved file keeps the old file's mode bits (`FileSink.swift:151`) but not an explicit ACL, because the replacement is a new file renamed into place. | Read; effect on real access not reproduced | **Owner decision.** Needs a filesystem reproduction first; only matters for files with per-file ACLs in shared folders. |
+| R-1 | P2 | Discarding the scrolling review with the Discard button or Escape does not quit when "Keep running in the menu bar" is off. `ScrollUIController.closeReview()` orders the window out (`ScrollUIController.swift:122-126`); `AppPresence` reports a last-window close only from `NSWindow.willCloseNotification` (`AppPresence.swift:45-56`). The close button path does close the window, so the two ways out of the same review behave differently. | Reproduced | Fixed in `1bde99e` (see Resolution). |
+| R-2 | P3 | A failed automatic export is always titled "Nothing was exported" (`MessagePresenter.swift:162-164`), also when an earlier step of the same batch succeeded: copy succeeds, save fails, and the alert denies the copy. | Reproduced | Fixed in `51cfdf8` (see Resolution). |
+| R-3 | P2 | An automatic batch reads save settings after its copy step has awaited (`ExportCoordinator.swift:337`), so a capture taken while automatic save was off can be saved if the person turns it on, or changes the folder, before the copy finishes. The existing post-render guard compares against the newly read folder, so it does not catch this. | Reproduced | Owner approved 2026-11-10; fixed in `113caf0` and `aaa5a1b` (see Resolution). |
+| R-4 | P2 | Overwriting a saved file keeps the old file's mode bits (`FileSink.swift:151`) but not an explicit ACL, because the replacement is a new file renamed into place. | Reproduced (ACL lost) | Owner approved 2026-11-10; fixed in `7883059` (see Resolution). |
 
 ## Certain cleanups (no behavior change)
 
@@ -67,3 +67,36 @@ Each was confirmed by search over `RecortiaApp`, `Packages/RecortiaKit` and `Rec
 Staleness checks after awaits (`ExportCoordinator.swift:185,212`), the opaque-mask check at both
 admission and render (`DocumentSession.swift:129`, `RenderEngine.swift:120`), the handoff and plan
 files that record release evidence, `progress.md`, `tests.json`, `scripts/make-icon.swift`.
+
+## Resolution (FP-046, 2026-11-11)
+
+Owner approval 2026-11-10 ("yes to all"). Branch `fix/review-2026-11`, stacked on
+`feat/editor-redesign` at `9bf1159`. Paths are relative to the repository root; the E2E runs are
+synthetic and do not qualify TCC, physical Spaces or live alerts.
+
+| ID | Commit | Red (before the fix) | Green (after it) |
+|---|---|---|---|
+| R-1 | `1bde99e` | `.scratch/logs/r1-red.log`, `.scratch/e2e/20261110-235043-52657`: `last-window` (en) "a confirmed Discard of the last window requests termination: 0 requests" | `.scratch/logs/r1-green.log`, `.scratch/e2e/20261110-235309-82921`: `last-window`, `scrolling`, `scroll-target-binding` pass in en and pt-BR. The scenario presses the real Discard (declined, then confirmed) and Accept buttons; Escape is Discard's keyboard shortcut and runs the same action, so it was not pressed separately. `scrolling`'s stop-count check became relative (`== before + 1`) because the new scenario stops its own sessions first. |
+| R-2 | `51cfdf8` | `.scratch/logs/r2-red.log`, `.scratch/e2e/20261110-235629-20710`: every automatic-export alert titled "Nothing was exported" / "Nada foi exportado" | `.scratch/logs/r2-green.log`, `.scratch/e2e/20261110-235702-27980`: `export-feedback-routing` and `automatic-export` pass in en and pt-BR. New title "An automatic export step failed" / "Uma etapa da exportação automática falhou". |
+| R-3 | `113caf0`, `aaa5a1b` | `.scratch/logs/r3-red.log`: enabling save and upload mid-copy saved and uploaded; folder A to B saved to B (5 failed expectations). `.scratch/logs/r3b-red.log`: after the freeze, a revoked upload still reached the upload service and a revoked save still rendered (9 failed expectations) | `.scratch/logs/r3b-green.log`: ExportCoordinator, EditorExportLifecycle and EditorIndependentEditSibling suites, 30 tests. `.scratch/logs/r3-e2e.log`: `automatic-export`, `export-sinks` and `stale-folder` pass in both languages; `last-window` and `automatic-save-settings` failed there only at the foreground-readiness control while another app held the foreground; their clean run is pending with the full E2E. |
+| R-4 | `7883059` | `.scratch/logs/r4-red.log`: after an overwrite, the ACL set with `chmod +a "everyone allow read"` read back as nil | `.scratch/logs/r4-green.log`: all 9 FileSinkTests pass. A failure to copy the ACL fails the replace and leaves the destination untouched; that path has no dedicated test (no seam forces `acl_set_file` to fail). |
+| C-1..C-4, C-6 | `0299da0` | n/a (no behavior change) | `.scratch/logs/cleanup-tests.log`, `.scratch/logs/cleanup-app-build.log`. `module-contracts.md` no longer lists the deleted `appKitRect`. |
+| C-5 | `7179b52` | n/a | A duplicate-key scan of `BACKLOG.json` reports none. |
+| C-7 | `39d1463` | `.scratch/logs/c7-red.log`, `.scratch/e2e/20261111-002016-99663`: refused options through the live exporter mapped to `.renderFailed` | `.scratch/logs/c7-green.log`, `.scratch/e2e/20261111-002037-5496`, `.scratch/logs/c7-unit.log`. The pipeline is the only admission point; `LiveExporter` maps `invalidOptions` to `.encodeFailed`, the outcome the coordinator returned before. Through the coordinator, invalid options are unreachable (Settings sanitizes scale and quality; pins use scale 1). |
+| COMPLETE_HANDOFF.md | `98ed7ec` | n/a | Removed; the remaining mentions are dated records. |
+| Object list | `52771fe` | Guard test added first and passing on the old code: `.scratch/logs/i9-guard-before.log` | `.scratch/logs/i9-green.log` (133 editor tests), `.scratch/logs/i9-e2e.log`. No performance claim. |
+| Interface width | `1063bfa`, `49131aa`, `e730af9`, `2257fc5`, `dab3b43` | n/a | `.scratch/logs/i10-*.log`; each commit lists what became internal and what stayed public, and why. RecortiaFixtures was not narrowed (not in the brief's module list). |
+| Recognition adapters | `5a09346` | n/a | `.scratch/logs/i11-app.log`, `.scratch/logs/i11-e2e.log` (`ocr-qr`, both languages). |
+| Import-failure text | not done | Sharing would change visible text: "Only PNG and JPEG images are supported." is "Apenas imagens PNG e JPEG são compatíveis." in `Localizable` and "Só imagens PNG e JPEG são compatíveis." in `Editor`. Needs the owner to choose one wording. | |
+
+Final gates: `.scratch/logs/review-fixes-check.log` (`./init.sh check --unsigned`, "check: all gates
+passed"). The full E2E run (54 scenarios, every id in `E2EScenarios.swift` except `capture-focus`
+and `editor-presentation`) is **pending a clean run**. The attempt in `.scratch/logs/review-fixes-e2e.log`
+(`.scratch/e2e/20261111-004639-68097`: 51/54 en, 50/54 pt-BR) and its reruns are void as evidence,
+neither a pass nor a failure: another session was sending real input to the desktop around 00:47,
+and the screen was locked from before 01:15 (`IOConsoleLocked`), so foreground-dependent scenarios
+could not qualify.
+
+Noticed and left: when the editor is open and an automatic batch has exactly one failure, the editor
+notice reuses `EditorStrings.exportFailure`, whose "Nothing was exported: ..." texts can also deny
+an earlier copy in the same batch (the R-2 defect on the editor route).
