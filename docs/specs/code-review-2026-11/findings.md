@@ -162,3 +162,13 @@ identity-checked descriptor: a design change, not a patch.
 Not proven by a test: the FIFO guard, the failure paths of `fstat`, `acl_set_fd_np` and the mode
 probe, and volumes other than APFS, exFAT and FAT32 (for example SMB or NTFS). On exFAT and FAT32
 the claim is visible as an empty file under the final name until the rename replaces it.
+
+## Independent verification (2026-11-11)
+
+A fresh verifier on another model checked a378fa6 against the frozen release criteria and found
+two gaps in the E2E harness. The product code did not change.
+
+| ID | Defect | Fix and proof |
+|---|---|---|
+| V-1 | The scrolling review had no dark rendering under `ChromeAppearance`: a fixed white review background still passed every scenario. | `scrolling` saves `review-dark` and judges the review's chrome in both appearances, with the stitched preview masked. A planted fixed white background now fails the dark check (median 1.000, near-white fill 100%; `.scratch/logs/fix-r2-mutant-review-white.log`). |
+| V-2 | `last-window` pressed the review's Discard and Accept through `press`, which fell back to a synthesized click for those elements. That click acts only while the review window is key, so the scenario failed whenever another app held the foreground. | The presses use `pressCheckingEffect` (accessibility Press), and the assertions are unchanged. With the runner deactivated before each Discard, the old press fails exactly as the verifier saw (asked=0, 0 requests) and the new one passes (`.scratch/logs/fix-r2-inactive-{old,new}.log`). |
