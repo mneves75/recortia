@@ -271,8 +271,13 @@ private struct SavedColorsGrid: View {
                 Button {
                     model.saveCurrentStrokeColor()
                 } label: {
-                    Label(String(localized: "Save Current Color", table: "Editor"), systemImage: "plus")
+                    Label {
+                        Text(String(localized: "Save Current Color", table: "Editor"))
+                    } icon: {
+                        Image(systemName: "plus").frame(width: 12, height: 16)
+                    }
                 }
+                .buttonStyle(ChoiceButtonStyle(isSelected: false))
                 .accessibilityIdentifier("palette.save")
                 .disabled(!model.canSaveStrokeColor)
                 .help(
@@ -282,8 +287,13 @@ private struct SavedColorsGrid: View {
                 Button {
                     model.removeSavedColor(model.style.stroke)
                 } label: {
-                    Label(String(localized: "Remove Current Color", table: "Editor"), systemImage: "minus")
+                    Label {
+                        Text(String(localized: "Remove Current Color", table: "Editor"))
+                    } icon: {
+                        Image(systemName: "minus").frame(width: 12, height: 16)
+                    }
                 }
+                .buttonStyle(ChoiceButtonStyle(isSelected: false))
                 .accessibilityIdentifier("palette.remove")
                 .disabled(isUnavailable || !saved.contains(current))
                 .help(
@@ -343,7 +353,7 @@ private struct ChoiceButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let shape = RoundedRectangle(cornerRadius: 6)
         configuration.label
-            .frame(maxWidth: .infinity, minHeight: 26)
+            .frame(maxWidth: .infinity, minHeight: 24)
             .padding(.horizontal, 6)
             .background(
                 shape.fill(isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor))
@@ -512,9 +522,10 @@ private struct AppearancePreview: View {
             ZStack {
                 ForEach(0..<8, id: \.self) { index in
                     let angle = Double(index) * .pi / 4
-                    sample.foregroundStyle(.black).offset(x: cos(angle), y: sin(angle))
+                    sample.foregroundStyle(.primary).offset(x: cos(angle), y: sin(angle))
                 }
-                sample.foregroundStyle(.white)
+                // Outline in the label color around a fill in the tile color: legible in light and dark.
+                sample.foregroundStyle(Color(nsColor: .controlBackgroundColor))
             }
             .accessibilityHidden(true)
         } else if appearance.isBoxed {

@@ -98,6 +98,25 @@
             await expect(
                 "changing tool after a manual Image choice", present: ["style.fill"], absent: ["image.background"])
 
+            // The renderer fills step discs and sizes them by line width; outlined text strokes
+            // with line width, and boxed text paints its background through its own controls.
+            model.selectTool(.step)
+            await E2ESnapshot.settle(root)
+            await expect(
+                "step tool", present: ["style.fill", "style.lineWidth"], absent: ["style.textSize"])
+            model.selectTool(.text)
+            try context.require("outlined is the future text style", model.setTextAppearance(.outlined))
+            await E2ESnapshot.settle(root)
+            await expect(
+                "text tool with outlined style", present: ["style.lineWidth", "style.textSize", "style.fill"],
+                absent: ["textBackground.color"])
+            try context.require("boxed is the future text style", model.setTextAppearance(.boxed))
+            await E2ESnapshot.settle(root)
+            await expect(
+                "text tool with boxed style", present: ["textBackground.color", "style.textSize"],
+                absent: ["style.fill", "style.lineWidth"])
+            try context.require("standard is the future text style", model.setTextAppearance(.standard))
+
             model.selectTool(.blur)
             await E2ESnapshot.settle(root)
             await expect(

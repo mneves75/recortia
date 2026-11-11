@@ -76,7 +76,7 @@
             context.check(
                 "copied text went to the private text pasteboard",
                 harness.textPasteboard.string(forType: .string)?.contains("Relatório") == true)
-            await E2EActions.scrollInspector(controller, to: 0.55)
+            await E2EActions.scrollInspector(controller, to: 1)
             await E2EActions.snapshotEditor(controller, context, shot: "ocr")
 
             let fixtures: [QRFixture]
@@ -106,7 +106,7 @@
                 "opening Wi-Fi is refused", payloads.count > 1 && !qrModel.openQRPayload(payloads[1], at: 1))
             context.check(
                 "nothing was opened automatically", harness.links.requests.isEmpty, "\(harness.links.requests)")
-            await E2EActions.scrollInspector(qrController, to: 0.55)
+            await E2EActions.scrollInspector(qrController, to: 1)
             await E2EActions.snapshotEditor(qrController, context, shot: "qr")
             // Reading the general pasteboard cannot show which app wrote it; assert the injected sink.
             context.check(
