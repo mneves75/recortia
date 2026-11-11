@@ -124,16 +124,28 @@ editor route). The notice is now `EditorNotice.automaticExportFailed`, worded li
 ## Pre-release security audit (2026-11-11)
 
 Two needs-validation records on the save path, closed test-first in `FileSink.swift`
-(`a18d0a5` red tests, `712ebe1` fix). Tests use real files in a temporary folder and synthetic data.
+(`a18d0a5` red tests, `712ebe1` fix), and one finding from a security review of that fix (`c22eed6`
+red test, `810085e` fix). Tests use real files in a temporary folder and synthetic data.
 
 | ID | Finding | Change | Red (before the fix) | Green (after it) |
 |---|---|---|---|---|
 | NV-01 | The temporary file was closed after writing, then `replace` set its mode with `chmod(path)` and its ACL with `acl_set_file(path)`. Another account allowed to rename entries in a shared, non-sticky folder could swap the name for a symlink or hard link to an unrelated file of the person, which then received the destination's access. | `writeNewFile` returns the file's device and inode (`FileIdentity`). `replace` opens the name with `O_NOFOLLOW \| O_NONBLOCK`, requires a regular file with that identity and one link, else fails with EPERM (`accessDenied`) and leaves the destination untouched; mode and ACL go through `fchmod` and `acl_set_fd_np`, and a failed rename clears the ACL through the same descriptor. | `.scratch/logs/nv-red.log`: for both swaps (control: the name resolved to the victim's inode) the save succeeded, the victim went from 0600 to 0644 and gained the destination's ACL, and the destination became the link or took the victim's bytes; a second name on the temporary file was accepted. | `.scratch/logs/nv-green.log`: 14 FileSinkTests pass; both swaps and the second name are refused, the victim and destination are unchanged and no temporary file remains. |
 | NV-02 | The temporary file inherited an inheritable folder entry (control: a plainly created file carries `everyone allow read`), so the new bytes were readable by others while written and the entry stayed after replacing a private file. | Inherited entries are removed through the descriptor before the first byte. For a new file (`save` without an existing destination, `saveUnique`) the exact inherited ACL read from the descriptor is restored through it after `fsync`, so the result matches a plainly created file; a replacement keeps none until it gets the replaced file's ACL. | `.scratch/logs/nv-red.log`: the temporary file and the replaced 0600 file carried the entry. The new-save guard passes on the old code and fails, for all three save routes, with the restore disabled (`.scratch/logs/nv-newsave-stripped-red.log`). | `.scratch/logs/nv-green.log`: no entry on the temporary file or the replaced file, mode 0600 kept; new saves carry the same ACL text as the control file. |
 
-Still path-based, and why that is safe: reading the destination's mode and ACL (the destination
-is not modified by them); the rename (a swap after the check can only put other bytes at the
-destination, never move the person's access to another file); the cleanup `unlink` (it removes a
-name, not what a link points to). Not proven by a test: the `ENOTSUP` branches (no ACL-less volume
-in the suite), and that entries are absent during the write itself for a new save (observable only
-after `writeNewFile` returns, when they are already restored).
+| NV-03 (review of `712ebe1`) | A new save's temporary file was created 0644 and written with its inherited entries removed, inherited deny entries included, so others could read bytes being written in a folder whose deny entry keeps them out of every finished file. | Every temporary file is created 0600. For a new file, after `fsync`, the inherited ACL is restored through the descriptor and only then is the descriptor `fchmod`ed to the mode a 0644 creation gets under the umask (best effort: a refusal leaves it owner-only). The umask cannot be read before macOS 27 without a process-wide change, so that mode comes from an empty probe file created and removed in the user's temporary folder; a failing probe fails the save before the temporary file exists. A no-op `afterSync` seam on `POSIXFileSystem` lets the test observe the file between `fsync` and the final access. | `.scratch/logs/nv03-red.log` (`712ebe1` plus the no-op seam): in a folder with inheritable `nobody deny read` and `everyone allow read` entries (control: a file made by the old `open(..., 0644)` call carries both), the temporary file was 0o644 while written, on all three new-save routes. Its final ACL and mode already matched the control. | `.scratch/logs/nv03-green.log` (umask 022) and `.scratch/logs/nv03-green-umask027.log`: 15 FileSinkTests pass; the temporary file is 0600 with no ACL while written, and the new file ends with the control's deny and allow entries and its mode (0644 under umask 022, as before the change). |
+
+Still path-based, and why: reading the destination's mode and ACL, which the design kept. It
+copies whatever the destination name yields at that moment onto the new capture, so an account that
+can rename entries in the folder can put a more permissive file, or a link to one, at that name and
+the capture takes that broader access. NV-01 closed the other direction (the person's other files
+can no longer receive the destination's access); this one stays open as an accepted residual. The
+rename (a swap after the check can put other bytes at the destination, but never moves the person's
+access to another file) and the cleanup `unlink` (it removes a name, not what a link points to) are
+safe as they are.
+
+Not closed: inherited entries are in effect from `open` until they are removed a few calls later,
+while the file is still empty. By POSIX semantics a descriptor another account opens in that instant
+keeps its access to the bytes written afterwards (not probed here: it needs a second account).
+Closing it needs a different design, for example creating the file in a private folder. Not proven
+by a test: the `ENOTSUP` branches (no ACL-less volume in the suite), the FIFO guard, the failure
+paths of `fstat`, `acl_set_fd_np` and the mode probe, and behaviour on volumes other than APFS.
