@@ -95,6 +95,12 @@
             let reviewRoot = try context.unwrap("review has content", review.contentView)
             await E2ESnapshot.settle(reviewRoot)
             context.snapshot(reviewRoot, shot: "review")
+            // The stitched preview is user content; everything around it is the review's chrome.
+            let previewArea = try context.unwrap(
+                "the review's preview is in a scroll view",
+                EditorWindowController.first(NSScrollView.self, in: reviewRoot))
+            await context.darkCompanion(
+                reviewRoot, in: review, shot: "review", surface: "scrolling review", excluding: [previewArea])
 
             // A declined discard must leave the assembled stitch where it is: this is the only
             // place the model is really in `.reviewing`, so the survival claim is proved here.
