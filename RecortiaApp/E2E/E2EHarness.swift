@@ -252,8 +252,14 @@
     }
 
     extension EditorWindowController {
-        /// The window's content view (sidebar, canvas, inspector, status bar); the tools are in its toolbar.
+        /// The window's content view: the split view holding the object list, the canvas column
+        /// (canvas and status bar) and the inspector; the tools are in its toolbar.
         var contentRoot: NSView? { window?.contentView }
+
+        /// The window's split item with `behavior` (`.sidebar` or `.inspector`).
+        func splitItem(_ behavior: NSSplitViewItem.Behavior) -> NSSplitViewItem? {
+            (window?.contentViewController as? NSSplitViewController)?.splitViewItems.first { $0.behavior == behavior }
+        }
 
         /// The AppKit canvas, found in the hosted view hierarchy.
         var canvasView: EditorCanvasView? { contentRoot.flatMap { Self.first(EditorCanvasView.self, in: $0) } }

@@ -193,6 +193,41 @@
                 await E2EWait.until { model.tool == .ellipse } && window.firstResponder === canvas,
                 "tool \(model.tool.rawValue), responder \(String(describing: window.firstResponder.map { type(of: $0) }))"
             )
+
+            // The object list and the inspector are system split items. View › Toggle Sidebar and
+            // Toggle Inspector (⌃⌘S, ⌃⌘I) send the standard actions, which reach the split controller
+            // through the canvas's responder chain; the toolbar keeps every item either way.
+            let commands = menuItems(NSApp.mainMenu)
+            let toggles: [(NSSplitViewItem.Behavior, String, String, Selector)] = [
+                (
+                    .sidebar, String(localized: "Toggle Sidebar"), "s",
+                    #selector(NSSplitViewController.toggleSidebar(_:))
+                ),
+                (
+                    .inspector, String(localized: "Toggle Inspector"), "i",
+                    #selector(NSSplitViewController.toggleInspector(_:))
+                ),
+            ]
+            for (behavior, title, key, action) in toggles {
+                let item = try context.unwrap("the \(title) split item", controller.splitItem(behavior))
+                context.check(
+                    "the View menu has \(title) (⌃⌘\(key.uppercased()))",
+                    commands.contains {
+                        $0.title == title && $0.keyEquivalent == key
+                            && $0.keyEquivalentModifierMask == [.control, .command]
+                    }, commands.map(\.title).joined(separator: ", "))
+                context.check("\(title): the column starts expanded", !item.isCollapsed)
+                context.check(
+                    "\(title): the canvas's responder chain reaches the split controller",
+                    window.firstResponder?.tryToPerform(action, with: nil) == true)
+                await E2ESnapshot.settle(frameView, for: .milliseconds(600))
+                context.check("\(title) collapses the column", item.isCollapsed)
+                checkAllVisible(toolbar, width: window.contentLayoutRect.width, context)
+                _ = window.firstResponder?.tryToPerform(action, with: nil)
+                await E2ESnapshot.settle(frameView, for: .milliseconds(600))
+                context.check("\(title) restores the column", !item.isCollapsed)
+            }
+            context.check("the canvas keeps the keyboard after the toggles", window.firstResponder === canvas)
             E2ESnapshot.park(window)
 
             // The remembered editor size is the content size, without the toolbar above it.
@@ -225,6 +260,10 @@
             context.check(
                 "at \(Int(width)) pt every toolbar item is visible", !items.isEmpty && hidden.isEmpty,
                 "items \(items.count), visible \(visible.count), overflow \(hidden.map(\.itemIdentifier.rawValue))")
+        }
+
+        private static func menuItems(_ menu: NSMenu?) -> [NSMenuItem] {
+            (menu?.items ?? []).flatMap { [$0] + menuItems($0.submenu) }
         }
 
         private static func choose(

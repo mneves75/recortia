@@ -277,14 +277,12 @@
             return found
         }
 
-        /// The inspector column beside the canvas, in screen coordinates.
+        /// The inspector split item's column, in screen coordinates.
         static func inspectorBounds(_ controller: EditorWindowController, _ root: NSView) -> NSRect {
-            guard let window = root.window, let canvas = controller.canvasView else { return .zero }
-            let canvasFrame = canvas.convert(canvas.bounds, to: root)
-            let column = NSRect(
-                x: canvasFrame.maxX, y: canvasFrame.minY, width: root.bounds.maxX - canvasFrame.maxX,
-                height: canvasFrame.height)
-            return window.convertToScreen(root.convert(column, to: nil))
+            guard let window = root.window, let column = controller.splitItem(.inspector)?.viewController.view,
+                !column.isHiddenOrHasHiddenAncestor
+            else { return .zero }
+            return window.convertToScreen(column.convert(column.bounds, to: nil))
         }
 
         /// Whether the control lies fully inside the inspector column at some point of the
