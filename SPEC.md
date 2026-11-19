@@ -22,7 +22,7 @@ Only public behavior and documentation were inspected. No binary was executed, d
 | Area | Decision | Reason / boundary |
 |---|---|---|
 | Platform | Native macOS, Apple Silicon only for v1 | Focus effort on Mac integration and measurable responsiveness. Intel and other operating systems are not promised. |
-| Deployment target | macOS 15.0+ | Deliberate compatibility baseline, independent of the build SDK. Test on 15, 26, and 27 before declaring support. |
+| Deployment target | macOS 15.0+ through 0.14; macOS 26.0+ from 0.15 (owner, 2026-11-19; ADR-008) | Deliberate compatibility baseline, independent of the build SDK. Test on every supported major version before declaring support. |
 | Toolchain | Stable Xcode 27, its Swift 6.4 compiler, Swift 6 language mode | Apple's current support table lists this combination. Freeze the exact locally verified build in M0; exclude beta toolchains from releases. [S05] |
 | Build host | A Mac satisfying Xcode's host requirements | Apple currently lists macOS 26.6 or later for Xcode 27. A deployment target of 15 does not mean Xcode 27 can run on 15. [S05] |
 | UI | SwiftUI for settings and chrome; AppKit for capture overlays, editor canvas, panels, focus, and window lifecycle | Choose the simplest appropriate native API for each surface. |
@@ -59,8 +59,8 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-12 | Multiple-image canvas, transparency overlays, side-by-side comparison | 1.0 | COMP / RED |
 | FR-13 | Background, padding, corner radius, shadow, spotlight, magnifier callout | 1.0 | COMP / RED |
 | FR-14 | Native settings, accessibility, EN/PT-BR localization, release/update flow | Foundation in 0.1; complete in 1.0 | UX / REL |
-| FR-15 | Optional upload to user-controlled GitHub repository; S3 deferred | GitHub approved 2026-10-01, ADR-006 | NET |
-| FR-16 | Approved local automation and optional on-device writing assistance | Post-1.0, separate approval | AUTO / AI |
+| FR-15 | Optional upload to user-controlled GitHub repository; S3 deferred | GitHub approved 2026-10-01, ADR-006; further providers approved 2026-11-19, each after an owner-signed threat model (§13) | NET |
+| FR-16 | Approved local automation and optional on-device writing assistance | Automation approved 2026-11-19 behind an owner-signed ADR; writing assistance not approved | AUTO / AI |
 
 Deferred rather than silently omitted: horizontal scrolling; cross-display selections; arbitrary nested-scroll reliability; text-only object removal/inpainting; intelligent object snapping; hand-drawn styling; contrast analyzers; before/after animation; editable project files; persistent history/search; CLI/App Intents/URL integrations; HDR-preserving export; Intel/Windows/Linux support; cloud hosting.
 
@@ -179,6 +179,8 @@ Adding a mask to a composite maps intersected raster-layer regions into each ass
 Secure export MUST create a fresh, flattened raster with no original layer, undo record, alternate unredacted representation, textual OCR metadata, hidden thumbnail, or transparent RGB leak. Ordinary project/document models must never go directly to an export sink. OCR and magnifiers operate on the privacy-sanitized view of the document. A project-file format is deliberately outside v1.
 
 Do not promise that OCR-based “find sensitive data” is exhaustive. Do not promise secure erasure of memory, SSD blocks, backups, other apps' clipboard histories, or files the user exported earlier.
+
+**Automatic redaction at capture (owner amendment, 2026-11-19).** An opt-in setting, off by default, adds secure masks over e-mail addresses and phone numbers that on-device text recognition and fixed patterns find in a new capture, before the editor, a pin or any automatic export receives it. It uses no AI and no network. The masks are ordinary secure masks the person can select and delete. It is a review aid: the UI states how many areas it masked and never claims that nothing sensitive remains. When recognition fails, is cancelled or exceeds its deadline, the capture opens unmasked with a notice and that capture's automatic exports do not run. The automatic export plan is still fixed when the pixels arrive, so a Settings change during recognition does not alter it. Capture Text skips it. The pattern design is adapted from Fosco by Gabriel Buzzi (MIT), credited in the third-party notices.
 
 ### FR-07 — Export and explicit side effects
 
@@ -388,7 +390,9 @@ Document reproducible build **inputs**; do not claim byte-for-byte reproducible 
 ## 13. Optional extensions
 
 GitHub auto-upload (FR-15) was authorized on 2026-10-01. ADR-006 owns its provider, consent,
-token, retry and privacy contract. Other providers and FR-16 remain deferred.
+token, retry and privacy contract. On 2026-11-19 the owner approved further providers and FR-16
+automation, each built only after its threat model or ADR is signed off
+(`docs/specs/program-2026-11/plan.md`). On-device writing assistance remains unapproved.
 
 ### Optional S3-compatible sharing
 
