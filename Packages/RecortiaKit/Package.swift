@@ -9,7 +9,7 @@ import PackageDescription
 let package = Package(
     name: "RecortiaKit",
     defaultLocalization: "en",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v26)],
     products: [
         .library(name: "Domain", targets: ["Domain"]),
         .library(name: "Imaging", targets: ["Imaging"]),

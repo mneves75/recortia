@@ -3,12 +3,12 @@ name: Recortia
 options:
   bundleIdPrefix: dev.mvneves
   deploymentTarget:
-    macOS: "15.0"
+    macOS: "26.0"
   createIntermediateGroups: true
   developmentLanguage: en
 settings:
   base:
-    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
     ARCHS: arm64
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
