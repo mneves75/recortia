@@ -30,8 +30,6 @@ struct RecortiaApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Integration: pass the live `AppServices` built from Imaging and MacPlatform here. With nil,
-    // commands needing a backend are disabled and nothing is faked.
     private let integrity = KeychainPreferenceIntegrity()
     let model: AppModel
 

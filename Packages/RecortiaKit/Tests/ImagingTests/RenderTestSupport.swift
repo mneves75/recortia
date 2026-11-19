@@ -6,7 +6,6 @@ import Testing
 
 @testable import Imaging
 
-/// A store, renderer, and export pipeline wired together for one test.
 struct ImagingHarness {
     let store = ImageStore()
     var renderer: PrivacyRenderer { PrivacyRenderer(store: store) }
@@ -41,7 +40,7 @@ extension FixtureRect {
 extension ChartFixture.Color {
     var rgba: RGBA { RGBA(r: r, g: g, b: b, a: a) }
 
-    /// Channel-wise distance to another straight color.
+    /// Largest per-channel difference (RGBA) to another straight color.
     func distance(to other: ChartFixture.Color) -> Int {
         max(
             abs(Int(r) - Int(other.r)), abs(Int(g) - Int(other.g)), abs(Int(b) - Int(other.b)),
@@ -59,7 +58,6 @@ extension DecodedPixels {
     }
 }
 
-/// Distance helper for straight colors built from literals.
 func color(_ r: UInt8, _ g: UInt8, _ b: UInt8, _ a: UInt8 = 255) -> ChartFixture.Color {
     ChartFixture.Color(r, g, b, a)
 }

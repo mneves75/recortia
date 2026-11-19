@@ -121,7 +121,6 @@ public struct ScrollStitcher: Sendable {
                 return stop(limit)
             }
             if bands == nil {
-                // The first frame's bottom band becomes the (replaceable) footer.
                 rows.removeLast(frameBands.bottom * frameWidth * 4)
                 bands = frameBands
             }

@@ -112,7 +112,7 @@ class E2EIsolationTests(unittest.TestCase):
                 for rule in rules:
                     self.assertRegex(source, FORBIDDEN[rule], f"stale allowlist entry {name}: {rule}")
         harness = (E2E_DIRECTORY / "E2EHarness.swift").read_text()
-        # `str.index` counts comment lines, so a guard quoted in a comment used to satisfy this
+        # `str.index` counts comment lines, so a guard quoted in a comment would satisfy this
         # check on its own. Read the executable lines only, as `scan` already does.
         code = "\n".join(
             line for line in harness.splitlines() if not line.lstrip().startswith("//")

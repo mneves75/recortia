@@ -5,9 +5,7 @@ import MacPlatform
 import Observation
 
 public enum CapturePurpose: Hashable, Sendable {
-    /// Open the capture in the editor.
     case edit
-    /// Recognize text in the captured region (Capture Text).
     case recognizeText
 }
 

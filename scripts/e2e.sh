@@ -41,7 +41,6 @@ sdk_version=$(xcrun --sdk macosx --show-sdk-version)
 sdk_build_version=$(xcrun --sdk macosx --show-sdk-build-version)
 derived=.build/dd
 provenance="$derived-e2e-provenance.json"
-# Compare the source and the doctor-approved compiler, including its selected installation.
 source_provenance() {
 python3 - "$(git rev-parse HEAD)" "$toolchain_mode" "$DEVELOPER_DIR" "$xcode_version" "$sdk_version" "$sdk_build_version" <<'PY'
 import hashlib, json, os, pathlib, subprocess, sys
@@ -142,9 +141,8 @@ for language in $languages; do
   set +e
   "$app" "${args[@]}" 2>"$out/runner.log" &
   pid=$!
-  # Watchdog: a hang is "no progress", not "long run". A wall-clock cap per language punished a
-  # suite that was still passing scenarios (ocr-qr alone takes 76 s), so the guard now watches the
-  # runner log for silence and keeps a much larger absolute ceiling.
+  # Watchdog: a hang is "no progress", not "long run". The guard watches the runner log for
+  # silence, so slow scenarios that still pass can finish, and keeps a much larger absolute ceiling.
   (
     # Stop the whole process tree: a grandchild that survives keeps the job zsh waits on.
     stop_tree() {
@@ -181,8 +179,7 @@ for language in $languages; do
           print -u2 "e2e[$language]: reached the ${timeout_seconds}s ceiling; stopping this run"
         fi
         # Children first: TERM to the parent alone orphans its helpers, and zsh's `wait` then
-        # blocks until the whole job (including the orphans) exits. That is how a killed run kept
-        # the suite open for another 40 s.
+        # blocks until the whole job (including the orphans) exits.
         stop_tree TERM "$pid"
         ( sleep 3; stop_tree KILL "$pid" ) &
         break

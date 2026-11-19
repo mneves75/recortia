@@ -171,7 +171,7 @@ struct PinView: View {
             .labelStyle(.iconOnly)
             .help(Text("Close Pin"))
             .keyboardShortcut(.cancelAction)
-            // ⌘W closes the focused pin as well.
+            // ⌘W closes the focused pin too: a separate hidden button, so Close keeps Escape.
             Button("Close Pin", action: onClose)
                 .keyboardShortcut("w")
                 .frame(width: 0, height: 0)

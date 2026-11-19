@@ -144,7 +144,6 @@ struct ScrollSessionModelEndingTests {
         #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil))
     }
 
-    /// Runs automatic scrolling until the page stops answering scroll steps.
     static func runUntilStepsGoUnanswered(_ h: ScrollHarness) async {
         await h.startCollecting()
         h.frames.deliver()
@@ -206,7 +205,6 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.pageEndLikely)
         #expect(h.model.state == .collecting)
 
-        // A reader pausing mid-page: no frames, time passes, nothing stops.
         h.clock.advance(bySeconds: 30)
         await drain()
         #expect(h.model.state == .collecting)

@@ -19,7 +19,7 @@ public struct FileSink {
     /// Writes the snapshot to a user-selected `url` (FR-07, EXP-02). The bytes go to a temporary
     /// file in the same directory, then an atomic rename commits them. Without `overwrite`, an
     /// existing destination is refused, including one created concurrently. On any failure the
-    /// previous destination is untouched and the temporary file is removed.
+    /// previous destination is untouched and removing the temporary file is attempted.
     public func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) throws(SinkError) -> URL {
         guard url.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
         if !overwrite, fileSystem.itemExists(at: url) { throw .destinationExists }
@@ -182,8 +182,8 @@ struct POSIXFileSystem: FileSystemOperations {
         return FileIdentity(device: status.st_dev, inode: status.st_ino)
     }
 
-    /// The mode open(2) gives a file requested as 0644 under the current umask, which is what a new
-    /// save always ended with. Reading the umask needs macOS 27 or a process-wide change that other
+    /// The mode open(2) gives a file requested as 0644 under the current umask, which is the mode
+    /// a new save gets. Reading the umask needs macOS 27 or a process-wide change that other
     /// threads would see, so an empty probe file is created and removed in this user's temporary
     /// folder instead.
     private func newFileMode() throws(FileSystemFailure) -> mode_t {
@@ -201,7 +201,8 @@ struct POSIXFileSystem: FileSystemOperations {
         return status.st_mode & 0o777
     }
 
-    /// Returns the error code of the first failed write(2), or nil once every byte is written.
+    /// Retries interrupted writes. Returns the first non-EINTR write(2) error code, or nil once
+    /// every byte is written.
     private static func writeAll(_ data: Data, to descriptor: Int32) -> Int32? {
         // Invariant: `buffer` is valid only inside the closure; every access stays within
         // `buffer.count` because `offset` only advances by what write(2) reports it wrote.
@@ -348,8 +349,8 @@ struct POSIXFileSystem: FileSystemOperations {
     }
 
     func removeItem(at url: URL) {
-        // Cleanup after a failure that is already being reported; a leftover hidden temporary
-        // file is harmless and a second error would only mask the first.
+        // Best-effort cleanup after a failure that is already being reported: an unlink failure
+        // must not replace the original save error.
         _ = unlink(url.path(percentEncoded: false))
     }
 

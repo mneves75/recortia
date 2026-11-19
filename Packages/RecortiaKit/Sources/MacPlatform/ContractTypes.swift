@@ -2,8 +2,8 @@ import CoreGraphics
 import Domain
 import Foundation
 
-// Integrator-owned value types shared by MacPlatform, Features, and the app (module-contracts.md).
-// Workers extend these in their own files; they do not edit this one.
+// Value types shared by MacPlatform, Features, and the app. Boundary and signature-change rules:
+// docs/architecture/module-contracts.md.
 
 public struct DisplayInfo: Sendable, Hashable, Identifiable {
     public let id: CGDirectDisplayID

@@ -4,13 +4,13 @@ import Testing
 
 @testable import Domain
 
-// Failure mode (Codex review): a revoke that lands between the lease check and the write would
-// still let stale pixels out. A commit runs under the lease, so revoke lands before or after it.
+// Claiming the write and revoking the lease are ordered under one lock, so a revoke before the
+// claim keeps stale pixels from reaching the receiver.
 @Suite("ExportLease orders revocation against commits")
 struct ExportLeaseTests {
 
-    // Hardening (security run-2): the write must not hold the lease's lock, or a main-actor
-    // revoke during a slow write blocks the UI. A revoke during an in-flight write lands after it.
+    // The write must not hold the lease's lock, or a main-actor revoke during a slow write blocks
+    // the UI. A revoke during an in-flight write takes effect only if that write fails.
     @Test("A revoke during an in-flight commit returns at once and leaves the commit standing")
     func revokeDuringCommitDoesNotBlock() {
         let lease = ExportLease()

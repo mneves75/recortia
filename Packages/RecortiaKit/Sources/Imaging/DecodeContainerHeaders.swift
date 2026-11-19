@@ -251,7 +251,8 @@ enum DecodePNGStructure {
 }
 
 /// JPEG header parsing: dimensions come from the single SOFn segment, before any decode. The walk
-/// continues to SOS so a second frame header (which decoders resolve differently) is rejected.
+/// continues through every scan so a second frame header (which decoders resolve differently)
+/// is rejected.
 enum DecodeJPEGStructure {
     /// Progressive encoders write about 10 scans; the cap bounds decode work for crafted files.
     static let maxScans = 128

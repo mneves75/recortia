@@ -23,8 +23,8 @@
             harness.accessibility.isTrusted = false
             KeyboardShortcuts.setShortcut(.init(.f12, modifiers: [.control, .option]), for: .captureText)
             let shortcuts = ShortcutBinding.all.map { KeyboardShortcuts.getShortcut(for: $0.name) }
-            // Opening the tour shows its first page; only showing the shortcuts page counts as the
-            // person looking at shortcuts (it restarts the held-shortcut watch).
+            // Opening the tour shows its first page; only showing the shortcuts content counts as
+            // the person looking at shortcuts (it restarts the held-shortcut watch).
             let attentionHandler = harness.app.shortcutStatus.onAttention
             var attentionCount = 0
             harness.app.shortcutStatus.onAttention = {
@@ -350,7 +350,7 @@
             try await settingsMergedControls(harness, context)
         }
 
-        /// The Pins and Scrolling Capture controls, now sections of General and Capture, change the
+        /// The Pins and Scrolling Capture controls, sections of General and Capture, change the
         /// same preferences through pointer input on a visible, key, foreground Settings window.
         private static func settingsMergedControls(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let preferences = harness.settings.preferences

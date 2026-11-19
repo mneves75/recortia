@@ -7,8 +7,8 @@ import MacPlatform
 /// Shared helpers for MacPlatform tests. Nothing here touches the real screen, the general
 /// pasteboard, permissions, or input events.
 enum TestSupport {
-    /// PNG signature followed by arbitrary payload bytes. Sinks treat snapshots as opaque sanitized
-    /// bytes, so a structurally minimal payload is enough to verify byte-for-byte behavior.
+    /// The PNG signature; `snapshot` appends arbitrary bytes to it. Sinks treat snapshots as opaque
+    /// sanitized bytes, so these fixtures need no complete PNG container.
     static let pngSignature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 
     static func snapshot(
@@ -21,7 +21,6 @@ enum TestSupport {
             pixelSize: PixelSize(width: 4, height: 4), bytes: payload, suggestedFilename: suggestedFilename)
     }
 
-    /// A tiny opaque RGBA image created in memory.
     static func image(width: Int, height: Int) -> CGImage? {
         guard
             let context = CGContext(
@@ -45,7 +44,6 @@ enum TestSupport {
                 id: id, frame: frame, pointPixelScale: scale, rotationDegrees: rotation))
     }
 
-    /// A fresh, uniquely named directory under the system temporary directory.
     static func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("recortia-macplatform-tests-\(UUID().uuidString)", isDirectory: true)

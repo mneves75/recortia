@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Write tests.json from the real gate inventory, or check that the inventory is not lying.
+"""Write tests.json from the real gate inventory, or check that the inventory still holds.
 
-The point is narrow. A status file edited by hand is a claim without an instrument, and this
-repository already carries one too many of those. So:
+A status file edited by hand is a claim without an instrument. So:
 
 * the inventory below is the single source, and `--check` proves each gate still exists, still has
   its test, and is still invoked by a script that names it. A test file that nothing runs is a dead
-  gate, which is how the bundled-license check sat unexecuted;
+  gate;
 * every observed status is written with the evidence path and the commit it was observed at, so a
   reader can tell a local observation from a CI result and can tell a stale claim from a fresh one.
 
@@ -221,7 +220,6 @@ def inventory_problems() -> list[str]:
             for test in gate["tests"]:  # type: ignore[union-attr]
                 if pathlib.Path(test).name not in text:
                     problems.append(f"{gate['id']}: {caller} never invokes {test}")
-    # A test script that no gate names is a dead gate: it exists and never runs.
     named = {pathlib.Path(t).name for gate in GATES for t in gate["tests"]}  # type: ignore[union-attr]
     for path in sorted((ROOT / "scripts").glob("test-*.py")):
         if path.name not in named:
@@ -270,7 +268,6 @@ def staleness_problems(fresh: dict[str, object]) -> list[str]:
             continue
         if known.get("command") != suite["command"]:
             problems.append(f"tests.json records another command for {suite['id']}")
-        # A recorded verdict that disagrees with the evidence on disk is a stale claim.
         if suite["status"] in ("passed", "failed") and known.get("status") != suite["status"]:
             problems.append(
                 f"tests.json says {suite['id']} is {known.get('status')}, "

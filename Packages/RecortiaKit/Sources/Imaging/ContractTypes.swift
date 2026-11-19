@@ -91,7 +91,6 @@ public struct QRPayload: Sendable, Equatable {
     }
 }
 
-/// Outcome of offering one viewport frame to the scroll stitcher.
 public enum ScrollAppendResult: Sendable, Equatable {
     /// New rows appended; `offset` is the vertical displacement in pixels from the previous frame.
     case accepted(offset: Int)

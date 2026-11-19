@@ -41,7 +41,6 @@ struct EditorRecognitionTests {
         h.recognizer.languages = [Locale.Language(identifier: "ja-JP")]
         await h.model.recognizeText()
         #expect(h.recognizer.requestedLanguages.last?.map(\.minimalIdentifier) == ["ja"])
-        // FR-08: report unavailable language support instead of assuming it.
         #expect(h.model.unavailableRecognitionLanguages == ["en", "pt"])
         #expect(h.model.notice == .recognitionLanguagesUnavailable)
     }
@@ -196,7 +195,6 @@ struct EditorRecognitionTests {
         #expect(!h.model.openQRPayload(displayed, at: 1))
         #expect(h.model.notice == .linkNotAllowed)
 
-        // Cleared results open nothing either.
         h.model.clearQR()
         #expect(!h.model.openQRPayload(displayed, at: 1))
         #expect(h.links.opened.isEmpty)

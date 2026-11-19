@@ -9,7 +9,6 @@
     /// synthetic display layouts, and `scripts/space-probe` records the physical evidence.
     @MainActor
     enum DesktopScenarios {
-        /// A window AppKit reports as being on another Space.
         private final class OtherSpaceWindow: NSWindow {
             override var isOnActiveSpace: Bool { false }
         }

@@ -11,7 +11,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # One source for the reviewed pins: the real record. A copied literal here rots into a false
-# failure the moment the toolchain is re-observed, which is how this suite broke on 2026-10-28.
+# failure the moment the toolchain is re-observed.
 RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
 STABLE_VERSION = RECORD["stable_xcode_baseline"]["version"]
 STABLE_BUILD = RECORD["stable_xcode_baseline"]["build"]

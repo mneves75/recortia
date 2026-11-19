@@ -28,10 +28,9 @@ public struct TextLayoutMetrics: Hashable, Sendable {
 
 /// Stateless public-system-font resolution shared by native editing, selection and export.
 public enum TextLayout {
-    /// Bounded mitigation for transient nil font results: CI runs 38652457209 and 38795897584,
-    /// and sandbox E0 run 5/30 (monospaced, size 28). Reruns pass; the cause is not established.
-    /// Each stage repeats the same call at most twice after a nil. Under load, 100 sandboxed
-    /// runs saw three nils, each recovered by the first repeat (docs/specs/full-source-review).
+    /// Bounded mitigation for transient nil font results from AppKit; the cause is not
+    /// established. Each stage repeats the same call at most twice after a nil, then reports a
+    /// failure at that stage (docs/specs/full-source-review/plan.md, F-1).
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont {
         try nativeFont(
             for: appearance, size: size,

@@ -54,7 +54,6 @@ class TestsReportTests(unittest.TestCase):
             ).stdout
         )
         self.gates = inventory["gates"]
-        # Everything the inventory names exists and is invoked.
         for gate in self.gates:
             for relative in [gate["protected_file"], *gate["tests"]]:
                 path = self.root / relative
@@ -136,7 +135,6 @@ class TestsReportTests(unittest.TestCase):
         log = self.root / ".scratch/logs/check-1.log"
         log.write_text("check: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
-        # The evidence now says the run failed; the committed file still claims a pass.
         log.write_text("FAILED (failures=1)\n")
         result = self.run_report("--check")
         self.assertEqual(1, result.returncode)

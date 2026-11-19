@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   check:
-    # Xcode 27.0 (27A266a), matching the reviewed stable_xcode_baseline in TOOLCHAIN.json.
+    # The stable gate checks the runner's selected Xcode against TOOLCHAIN.json.
     runs-on: xcode-27
     timeout-minutes: 30
     env:

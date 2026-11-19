@@ -15,7 +15,6 @@ public enum PinError: Error, Hashable, Sendable {
     case staleDocument
 }
 
-/// What a pin can hand to another app (PIN-02).
 public enum PinExportAction: Hashable, Sendable {
     case copy
     case drag
@@ -69,7 +68,6 @@ public final class PinsModel {
     /// True while a new pin has a free slot, counting renders already admitted.
     var canAddPin: Bool { pins.count + pendingRenders < PinLimits.maxPins }
 
-    /// Rendered pixels currently retained by all pins.
     var retainedPixelCount: Int { pins.reduce(0) { $0 + $1.image.width * $1.image.height } }
 
     /// Renders `session` through the sanitizing renderer and pins the result, unless the live

@@ -5,10 +5,10 @@ import Foundation
 /// Vision's `BarcodeObservation.payloadData` is the raw data-codeword stream (mode indicators,
 /// character counts, segment data, terminator, padding), not the message. The symbol version,
 /// which sets the character-count widths, is not reported, so each of the three width classes is
-/// tried; a parse must consume the stream exactly and, when several classes parse, agree or be
-/// disambiguated by Vision's decoded string. When Vision reports a string, the chosen bytes must
-/// decode as UTF-8 to exactly that string, so Recortia never shows a payload other scanners would
-/// not. Anything else yields nil: no payload is better than wrong bytes.
+/// tried, preferring parses with standard padding; when the candidates disagree, exactly one must
+/// decode as UTF-8 to Vision's decoded string. Chosen bytes that decode as UTF-8 must equal that
+/// string, so Recortia never shows a payload other scanners would not; other bytes (Shift JIS, an
+/// ECI charset) stay binary. Anything else yields nil: no payload is better than wrong bytes.
 package enum QRBitstream {
     private enum VersionClass: CaseIterable {
         case small  // versions 1-9

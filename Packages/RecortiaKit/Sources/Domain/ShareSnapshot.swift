@@ -1,7 +1,7 @@
 import Foundation
 
-/// The only value any external sink (clipboard, file, drag-out, future upload) may accept
-/// (FR-07). It holds freshly encoded, sanitized bytes and no reference to source assets.
+/// The only value any external sink (clipboard, file, drag-out, GitHub upload) may accept
+/// (FR-07, NET-01). It holds freshly encoded, sanitized bytes and no reference to source assets.
 ///
 /// The initializer is `package`-scoped so code outside RecortiaKit cannot fabricate one;
 /// `ShareSnapshotConstructionTests` fails if anything other than the export pipeline calls it.

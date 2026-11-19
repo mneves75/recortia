@@ -13,7 +13,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             ScrollView {
                 TourPage(step: onboarding.step, shortcutStatus: shortcutStatus)
-                    // Showing the shortcuts page is attention to them.
+                    // Showing the shortcuts content (its page or the done state) is attention to them.
                     .onAppear {
                         if onboarding.step == .shortcuts || onboarding.step == .done {
                             shortcutStatus.noteUserAttention()
@@ -29,7 +29,6 @@ struct OnboardingView: View {
     }
 }
 
-/// One page's content, laid out as the tour's scroll view shows it.
 private struct TourPage: View {
     let step: OnboardingModel.Step
     let shortcutStatus: ShortcutStatusModel
@@ -315,7 +314,6 @@ private struct ShortcutsStep: View {
     }
 }
 
-/// Hosts the onboarding view in a standard titled window.
 final class OnboardingWindowController {
     static let defaultContentSize = NSSize(width: 580, height: 615)
     private var window: NSWindow?

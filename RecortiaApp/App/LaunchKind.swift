@@ -1,10 +1,8 @@
 import AppKit
 
-/// How this process was started (FR-01, ADR-007).
 enum LaunchKind: Equatable {
     /// Opened by the person (Finder, Spotlight, Dock, `open`).
     case user
-    /// Started by "Open at login".
     case loginItem
 
     /// Reads the open-application event, current during `applicationDidFinishLaunching`. macOS

@@ -552,7 +552,6 @@ struct FileSinkTests {
         }
     }
 
-    /// The file's explicit ACL as text, or nil when it has none.
     private static func extendedACL(_ url: URL) -> String? {
         guard let acl = acl_get_file(url.path(percentEncoded: false), ACL_TYPE_EXTENDED) else { return nil }
         defer { acl_free(UnsafeMutableRawPointer(acl)) }

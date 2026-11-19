@@ -292,7 +292,6 @@ struct ExportCoordinatorTests {
         }
         #expect(outcomes == [.canceled])
         #expect(h.files.uniqueSaves.count == 1)
-        // The user turned automatic saving off: the pending save does not happen.
         let offOutcomes = await saveWhileRendering { h.settings.update { $0.autoSave = false } }
         #expect(offOutcomes == [.canceled])
         #expect(h.files.uniqueSaves.count == 1)

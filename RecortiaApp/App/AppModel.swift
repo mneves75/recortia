@@ -5,7 +5,6 @@ import KeyboardShortcuts
 import Observation
 import UniformTypeIdentifiers
 
-/// Feature models that exist only when the live services are wired.
 struct FeatureModels {
     let services: AppServices
     let capture: CaptureCoordinator
@@ -38,10 +37,9 @@ struct FeatureModels {
 /// The composition root's shell model: owns settings, onboarding, the feature models, and the
 /// AppKit presenters, and implements `AppActions` for the menu and global shortcuts.
 ///
-/// Integration points left for the editor and OCR owners:
-/// - `openDocument` receives every new document (capture, import, paste, drop, scroll).
-/// - `recognizeText` receives Capture Text results.
-/// Commands that depend on an unset hook or on missing services are disabled.
+/// `openDocument` receives every new document (capture, import, paste, drop, scroll) and
+/// `recognizeText` receives Capture Text results. Commands that depend on an unset hook or on
+/// missing services are disabled.
 @MainActor
 @Observable
 final class AppModel: AppActions {
@@ -68,7 +66,8 @@ final class AppModel: AppActions {
     @ObservationIgnored private var heldShortcutWatch: Task<Void, Never>?
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var resignObserver: (any NSObjectProtocol)?
-    /// Gives Settings, About and alert windows a Space policy before the app activates (FR-01).
+    /// Adopts framework-made windows (About, alerts) that lack a Space policy before the app
+    /// activates, so activation cannot switch Spaces (FR-01).
     @ObservationIgnored private let spacePolicy = SpacePolicyMonitor()
     @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
     /// Open editors whose edits were never copied, saved, dragged, or pinned.
@@ -229,7 +228,6 @@ final class AppModel: AppActions {
         }
     }
 
-    /// Shows a message from Settings through the app's presenter.
     func report(_ message: UserMessage) {
         showMessage(message)
     }

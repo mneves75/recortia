@@ -4,11 +4,11 @@ import Domain
 /// Drag-out of a sanitized snapshot as a file promise (FR-07, EXP-02).
 ///
 /// Use `makeFilePromiseProvider()` as the dragging item. The returned provider holds this object in
-/// its `userInfo`, so the snapshot bytes live exactly as long as AppKit keeps the promise for the
-/// transfer, and are released when the drag ends or is canceled. Only the snapshot's encoded bytes
-/// are written; nothing is deleted after the write. The receiver asks for the file later, on a
-/// background queue, so the write re-checks `lease`: a document change, cancel, or editor close
-/// revokes it and the stale snapshot is never written.
+/// its `userInfo`, so the snapshot bytes live as long as AppKit keeps the promise, which can be
+/// after the drag session ends. Only the snapshot's encoded bytes are written; nothing is deleted
+/// after the write. The receiver asks for the file later, on a background queue, so the write
+/// claims `lease` first: a document change, cancel, or editor close revokes it before the claim.
+/// A write that already claimed the lease may finish.
 @MainActor
 public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
     enum WriteError: Error, Equatable, Sendable {
@@ -60,8 +60,8 @@ public final class DragOutProvider: NSObject, NSFilePromiseProviderDelegate {
         completionHandler: @escaping ((any Error)?) -> Void
     ) {
         do {
-            // Never replace a file the receiver already has at this URL. The lease is held during
-            // the write, so a redaction or close either prevents it or waits for it to finish.
+            // Never replace a file the receiver already has at this URL. The lease claim orders the
+            // write against revocation without holding its lock during disk I/O.
             let wrote: Void? = try lease.whileValid {
                 try snapshot.bytes.write(to: url, options: [.withoutOverwriting])
             }

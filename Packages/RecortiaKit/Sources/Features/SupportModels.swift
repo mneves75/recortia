@@ -157,11 +157,10 @@ public struct DefaultShortcut<Shortcut: Hashable>: Hashable {
     }
 }
 
-/// Default global shortcuts (ADR-005): which commands receive them, and what Restore Defaults sets.
 public enum ShortcutDefaultsPlan {
-    /// The defaults to apply: each default is offered once (a later version's new default is
-    /// offered on its first launch), only to a command without a shortcut, and never onto keys
-    /// another command already uses. A default the user cleared is never offered again.
+    /// The defaults to apply: those not yet offered, only to a command without a shortcut, and
+    /// never onto keys another command already uses. The caller decides when to seed and records
+    /// the offers, so a default the user cleared is not seeded again.
     public static func defaultsToSeed<Shortcut: Hashable>(
         _ defaults: [DefaultShortcut<Shortcut>], assigned: [String: Shortcut], alreadyOffered: Set<String>
     ) -> [DefaultShortcut<Shortcut>] {

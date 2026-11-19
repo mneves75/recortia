@@ -1,4 +1,3 @@
-/// What Recortia does after the person closed its last window (FR-01).
 public enum QuitAfterLastWindow: Equatable, Sendable {
     /// Keep running in the menu bar.
     case stay

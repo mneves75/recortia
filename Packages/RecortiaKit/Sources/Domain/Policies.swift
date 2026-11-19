@@ -49,9 +49,10 @@ public struct ScrollLimits: Hashable, Sendable {
     public var maxOutputArea: Int
     public var maxSide: Int
     public var defaultMaxHeight: Int
-    /// Peak bytes a single `append` may hold at once: the accepted output rows, the previous frame's
-    /// matching planes, and the incoming frame's pixel and matching planes. Checked before the
-    /// incoming frame is converted. The default is SPEC §10's 512 MiB target for the heavy workflow.
+    /// Peak bytes a single `append` may hold at once: the accepted output rows and previous-frame
+    /// planes, the incoming frame's storage, matcher scratch and bookkeeping, and reserved output
+    /// growth. Checked before the incoming frame is converted. The default is SPEC §10's 512 MiB
+    /// target for the heavy workflow.
     public var maxWorkingBytes: Int
 
     public init(
@@ -240,7 +241,6 @@ extension Preferences {
             || githubUpload?.automatic == true
     }
 
-    /// These preferences with every side-effect consent turned off.
     public var withoutSideEffectConsent: Preferences {
         var copy = self
         copy.autoCopy = false

@@ -52,7 +52,7 @@ public final class OnboardingModel {
         step = .localProcessing
     }
 
-    /// Completes onboarding (also used by Skip). Shortcuts stay unassigned unless the user set them.
+    /// Completes onboarding, from Skip or the final tour page. App launch seeds the shortcuts.
     public func finish() {
         step = .done
         settings.update { $0.hasCompletedOnboarding = true }

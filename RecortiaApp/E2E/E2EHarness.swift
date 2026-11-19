@@ -127,7 +127,6 @@
             return controller
         }
 
-        /// Closes editors and pins and resets per-scenario state.
         func reset() {
             exportGate.release()
             settings.update {
@@ -220,7 +219,6 @@
             return controller
         }
 
-        /// Editors whose edits were never exported, as `EditorWindowManager` counts them.
         var unexportedEditCount: Int { controllers.filter { $0.hasUnexportedEdits() }.count }
 
         func closeAll() {
@@ -237,7 +235,6 @@
     }
 
     enum E2EWait {
-        /// Polls `condition` on the main actor until it holds or `timeout` passes.
         @MainActor
         static func until(
             timeout: Duration = .seconds(10), poll: Duration = .milliseconds(20), _ condition: () -> Bool
@@ -255,7 +252,6 @@
         /// The window's content view (sidebar, canvas, inspector, status bar); the tools are in its toolbar.
         var contentRoot: NSView? { window?.contentView }
 
-        /// The AppKit canvas, found in the hosted view hierarchy.
         var canvasView: EditorCanvasView? { contentRoot.flatMap { Self.first(EditorCanvasView.self, in: $0) } }
 
         static func first<T: NSView>(_ type: T.Type, in view: NSView) -> T? {

@@ -155,7 +155,6 @@ struct EditorPixelToolsTests {
                         == PixelSampler.color(atX: 6 + dx, y: 5 + dy, in: chart))
             }
         }
-        // Clamped at the image corner.
         h.model.pointerMoved(to: Point(x: 0.5, y: 0.5))
         let corner = try #require(h.model.loupe(radius: 3))
         #expect(corner.originX == 0 && corner.originY == 0 && corner.image.width == 4)

@@ -37,7 +37,6 @@ public final class SettingsStore {
         loadIssue = issue
     }
 
-    /// Applies `change`, clamps the result to valid ranges, and persists it.
     public func update(_ change: (inout Preferences) -> Void) {
         var updated = preferences
         change(&updated)
@@ -91,7 +90,8 @@ public final class SettingsStore {
         let schemaVersion: Int
     }
 
-    /// Clamps every numeric preference into its documented range; invalid values become defaults.
+    /// Clamps capture delay, finite JPEG quality and finite pin opacity; non-finite quality or
+    /// opacity and an invalid export scale become defaults; an invalid window size is discarded.
     public static func sanitized(_ input: Preferences) -> Preferences {
         let defaults = Preferences()
         var output = input

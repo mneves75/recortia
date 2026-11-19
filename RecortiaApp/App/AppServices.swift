@@ -2,8 +2,7 @@ import Features
 import Foundation
 
 /// The live service implementations, built by the composition root from the Imaging and
-/// MacPlatform modules. Until that wiring lands, the app runs with `services == nil` and every
-/// command that needs one of these is disabled rather than faked.
+/// MacPlatform modules. A command that needs an absent service is disabled rather than faked.
 struct AppServices {
     var githubUpload: (any GitHubUploadService)? = nil
     var githubCredentials: (any GitHubCredentialService)? = nil
@@ -28,7 +27,6 @@ struct AppServices {
     let clock: any FeatureClock
 }
 
-/// Wall-clock implementation of `FeatureClock` for the countdown and scroll timing.
 final class SystemClock: FeatureClock {
     func now() -> Date { Date() }
 

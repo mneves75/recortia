@@ -255,7 +255,6 @@ struct ExportSettingsTab: View {
     }
 }
 
-/// The folder panel behind Settings › Export › Save folder.
 @MainActor
 enum SaveFolderPanel {
     static func choose() -> URL? {

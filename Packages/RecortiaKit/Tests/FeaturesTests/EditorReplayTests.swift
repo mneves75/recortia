@@ -13,8 +13,8 @@ import Testing
 @MainActor
 struct EditorReplayTests {
 
-    /// Runs one fixed script covering every annotation kind and editing operation; returns the
-    /// document after each undoable step, starting with the initial document.
+    /// Runs one fixed script of representative annotations and edits; returns the document after
+    /// each undoable step, starting with the initial document.
     private func runScript(_ h: EditorHarness) throws -> [Document] {
         let m = h.model
         var snapshots = [m.document]

@@ -150,12 +150,14 @@ final class EditorHarness {
             renderer: renderer, export: export, folders: folders, textRecognition: recognizer, qrDecoder: qr,
             assets: assets, input: input, pins: pins, textClipboard: textClipboard, links: links,
             settings: self.settings)
-        // Configure before the model's first render request.
+        // Initialization queues the first render on the main actor; configure synchronously
+        // before that task can call the fakes.
         model = EditorModel(session: session, environment: environment)
         configure(self)
     }
 
-    /// A pointer gesture from `a` to `b` in document space with `steps` intermediate moves.
+    /// A pointer gesture from `a` to `b` in document space: `max(1, steps)` drag updates, the last
+    /// at `b`.
     func drag(
         _ a: (Double, Double), _ b: (Double, Double), steps: Int = 8, modifiers: EditorModifiers = []
     ) {

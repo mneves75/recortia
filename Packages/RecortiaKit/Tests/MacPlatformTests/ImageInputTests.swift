@@ -9,7 +9,8 @@ import Testing
 
 @Suite("Image input: bounded file reads (FR-03, IO-01)")
 struct ImageInputFileTests {
-    /// A sparse file of exactly `size` bytes: fast to create, no real disk usage.
+    /// A file of exactly `size` bytes: the PNG signature, then a sparse extension, so it is fast
+    /// to create and uses no real disk space.
     private func sparseFile(size: UInt64, in folder: URL) throws -> URL {
         let url = folder.appendingPathComponent("input-\(size).png")
         #expect(FileManager.default.createFile(atPath: url.path, contents: TestSupport.pngSignature))

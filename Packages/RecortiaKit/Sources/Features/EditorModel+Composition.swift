@@ -105,7 +105,6 @@ extension EditorModel {
         }
     }
 
-    /// Whether the top image is shown half transparent over the one below it.
     public var isComparingTransparency: Bool {
         let layers = document.layers
         return layers.count >= 2 && layers.last?.opacity == Self.comparisonOpacity

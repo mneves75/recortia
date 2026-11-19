@@ -6,7 +6,6 @@ import Features
 struct UserMessage: Equatable {
     var title: String
     var detail: String
-    /// Offers a button that opens the Screen Recording pane of System Settings.
     var offersScreenRecordingSettings = false
 }
 
@@ -32,8 +31,8 @@ enum MessagePresenter {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(localized: "Discard this scrolling capture?")
-        // No count here: a counted sentence needs plural variants in two languages, which this
-        // release deliberately defers until the localization gate covers the plural branch.
+        // No count here: a counted sentence needs plural variants in two languages, which waits
+        // until the localization gate covers the plural branch.
         alert.informativeText = String(
             localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image.")
         let discard = alert.addButton(withTitle: String(localized: "Discard"))

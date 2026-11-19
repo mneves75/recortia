@@ -19,7 +19,8 @@
         static let argument = "-RecortiaE2E"
         static let onlyArgument = "-RecortiaE2EOnly"
 
-        /// Starts the runner when the launch argument is present. Returns false otherwise.
+        /// Runs a requested child-process probe, else starts the runner when its launch argument
+        /// is present. Returns false when neither was requested.
         static func startIfRequested(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
             if E2EPanelProbe.runIfRequested(arguments: arguments) { return true }
             if LastWindowProbe.runIfRequested(arguments: arguments) { return true }

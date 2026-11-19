@@ -93,9 +93,8 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
         session = nil
         current.output.detach()
         let stream = current.stream
-        // Removing the output cannot fail for an output that was added; if the stream already ended
-        // (for example, the system stopped it) the stop callback reports an error that changes nothing:
-        // the handlers are detached above and the stream is released with `current`.
+        // The handlers are detached above, so no callback reaches the session. Removing the output
+        // and stopping capture are best effort: the stream is released with `current` regardless.
         try? stream.removeStreamOutput(current.output, type: .screen)
         await stopCapture(stream)
     }

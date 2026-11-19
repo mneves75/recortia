@@ -70,8 +70,9 @@ struct BackendImage: Sendable {
     var content: ShareableContentSnapshot
 }
 
-/// The only boundary to ScreenCaptureKit. The live implementation uses the one-shot screenshot
-/// API; tests substitute a fake so they never capture the real screen.
+/// The ScreenCaptureKit boundary for still capture (scrolling capture has its own stream). The
+/// live implementation uses the one-shot screenshot API; tests substitute a fake so they never
+/// capture the real screen.
 protocol ScreenCaptureBackend: Sendable {
     func shareableContent() async throws -> ShareableContentSnapshot
     func captureImage(_ plan: CapturePlan) async throws -> BackendImage
@@ -175,7 +176,6 @@ public actor ScreenCaptureService {
         var expectedScale: Double?
         /// The selection-time display a display or region capture must still match; nil for windows.
         var expectedDisplay: DisplayInfo?
-        /// The window a window capture targets.
         var windowID: CGWindowID?
     }
 

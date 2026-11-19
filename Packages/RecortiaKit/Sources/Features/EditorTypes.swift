@@ -141,7 +141,6 @@ public struct EditorListItem: Hashable, Sendable, Identifiable {
     /// 1-based index among items of the same kind, bottom to top ("Arrow 2").
     public let ordinal: Int
     public let frame: Rect<DocumentSpace>
-    /// Step number for numbered steps.
     public let stepNumber: Int?
 }
 
@@ -213,7 +212,6 @@ public struct EditorStyle: Hashable, Sendable {
         return result
     }
 
-    /// Highlighter strokes are wide and translucent, derived from the same color.
     var highlighterStyle: Annotation.Style {
         Annotation.Style(stroke: stroke, fill: nil, lineWidth: max(lineWidth * 4, 12), opacity: min(opacity, 0.5))
     }
@@ -225,7 +223,6 @@ public struct EditorStyle: Hashable, Sendable {
 /// until the gesture ends.
 public enum EditorDraft: Hashable, Sendable {
     case annotation(Annotation)
-    /// A rectangle for crop, redaction, blur, pixelate, spotlight, magnifier, or marquee selection.
     case region(EditorTool, Rect<DocumentSpace>)
     case marquee(Rect<DocumentSpace>)
 }

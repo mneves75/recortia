@@ -321,7 +321,6 @@
             context.check(
                 "each gesture is one undo step", model.session.undoCount == 9, "undo steps: \(model.session.undoCount)")
 
-            // Select the rectangle by clicking its stroke with the select tool.
             E2EActions.click(model, .select, at: p(480, 200))
             let rectangle = model.document.annotations[2]
             context.check(

@@ -157,8 +157,8 @@ public enum ExportFailure: Hashable, Sendable {
 }
 
 /// Export: requested → snapshotting → sanitizing → rendering → encoding → committing → succeeded.
-/// Failure or cancellation before commit never reports success; cancellation during or after the
-/// commit reports that the action already completed.
+/// Before commit, cancellation enters `.canceled`; during commit it enters
+/// `.succeeded(canceledAfterCommit: true)`. Terminal states accept no further cancel event.
 public enum ExportState: Hashable, Sendable {
     case requested
     case snapshotting

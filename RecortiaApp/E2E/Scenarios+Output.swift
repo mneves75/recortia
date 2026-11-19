@@ -99,7 +99,6 @@
             E2EActions.drag(model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
             context.check("an edited document is dirty", model.isDirty)
 
-            // Copy: the private pasteboard receives exactly one PNG representation.
             let copied = await E2EActions.export(controller, .copy)
             try context.require("Copy succeeds", copied == .copied, "\(copied)")
             let pasteboard = harness.clipboard.pasteboard
@@ -112,7 +111,6 @@
             let copyPixels = try E2EActions.decode(copyData, "clipboard PNG", context)
             context.check("the export clears the dirty flag", !model.isDirty)
 
-            // Save to the preferred folder under the output directory.
             let folder = harness.output.workDirectory.appending(path: "saves", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let bookmark = try folder.bookmarkData()
@@ -454,7 +452,7 @@
             }
 
             // The alert and the editor notice say the same thing about an import failure: one
-            // mapping, so the two can no longer drift apart (they differed in pt-BR).
+            // mapping, so the two cannot drift apart in either language.
             let failures: [ImportFailure] = [
                 .busy, .cancelled, .nothingToPaste, .tooLarge, .tooManyPixels, .invalidDimensions, .unsupportedFormat,
                 .multipleFrames, .corrupt, .unreadable,

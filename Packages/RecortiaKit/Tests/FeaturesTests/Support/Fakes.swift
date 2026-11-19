@@ -483,7 +483,8 @@ final class FakeStitcher: ScrollStitchService {
     private(set) var resetCount = 0
     private(set) var acceptedFrameCount = 0
     private(set) var outputSize = PixelSize(width: 0, height: 0)
-    /// Mirrors `ScrollStitcher`: the page ends after this many consecutive stationary frames.
+    /// Mirrors `ScrollStitcher`'s stationarity threshold; the model still needs the target's
+    /// confirmation to call an automatic capture complete.
     var stationaryFramesForEnd = ScrollStitcher.endOfPageStationaryFrames
     private(set) var consecutiveStationary = 0
 

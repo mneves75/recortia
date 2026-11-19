@@ -56,7 +56,6 @@ extension EditorModel {
         }
     }
 
-    /// Recognized text in `mode`, or nil when there is none.
     public func recognizedText(mode: OCRTextMode) -> String? {
         guard case .recognized = recognition, let result = recognizedResult else { return nil }
         let text = result.text(mode: mode)

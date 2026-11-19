@@ -61,7 +61,6 @@ public final class EditorModel {
     @ObservationIgnored var hasFittedViewport = false
     @ObservationIgnored private var reportedEvictedUndoCount = 0
     @ObservationIgnored var continuousChangeID: UUID?
-    /// `listItems` memoised against the document revision that produced it.
     @ObservationIgnored private var listItemsMemo: (revision: UInt64, items: [EditorListItem])?
     /// Geometry resolutions performed while building `listItems`. Resolving a text frame is a full
     /// Core Text layout, so the memo is a performance invariant and tests assert this count instead
@@ -366,7 +365,6 @@ public final class EditorModel {
             bottomUp.append(
                 EditorListItem(id: id, kind: kind, ordinal: counters[kind] ?? 1, frame: frame, stepNumber: step))
         }
-        // Output order: layers, cosmetic effects, annotations, redactions, callouts.
         for layer in d.layers {
             append(.layer(layer.id), .image, EditorGeometry.frame(of: layer, in: d))
         }

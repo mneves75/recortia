@@ -152,7 +152,6 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         return copy
     }
 
-    /// Maps the annotation's geometry from `old` bounds into `new` bounds (resize handles).
     public func resized(from old: Rect<DocumentSpace>, to new: Rect<DocumentSpace>) -> Annotation {
         guard old.width > 0 || old.height > 0 else {
             return translated(dx: new.minX - old.minX, dy: new.minY - old.minY)

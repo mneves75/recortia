@@ -49,7 +49,6 @@ extension EditorModel {
         return baseImage
     }
 
-    /// True when the output preview matches the current document.
     public var isOutputPreviewCurrent: Bool { outputPreview != nil && installedOutputKey == currentOutputKey }
 
     func scheduleBaseRender() {

@@ -36,7 +36,8 @@ public enum AnnotationRenderer {
         }
     }
 
-    /// Whether every coordinate and style value is finite and sensible; others are skipped.
+    /// Whether every coordinate and style value is finite and sensible. `draw` rejects invalid
+    /// text and curved arrows and skips other invalid annotations.
     static func isDrawable(_ annotation: Annotation) -> Bool {
         let style = annotation.style
         guard style.lineWidth.isFinite, style.lineWidth >= 0, style.opacity.isFinite else { return false }
@@ -173,7 +174,7 @@ public enum AnnotationRenderer {
         let headHalfWidth = max(w * 3, 9)
         let ux = dx / length, uy = dy / length
         let base = CGPoint(x: end.x - ux * headLength, y: end.y - uy * headLength)
-        // The shaft stops inside the head so its round cap never pokes past the tip.
+        // The shaft ends inside the filled head, which hides its butt cap.
         let shaftEnd = CGPoint(x: end.x - ux * headLength * 0.8, y: end.y - uy * headLength * 0.8)
         context.setLineCap(.butt)
         context.addLines(between: [start, shaftEnd])

@@ -268,7 +268,7 @@
             context.check("without an editor a failure is an alert", closed.alerts == [.diskFull], "\(closed)")
 
             // The pipeline is the one admission point for export options: refused options reach
-            // the coordinator through the live exporter as the encode failure it always reported.
+            // the coordinator through the live exporter as an encode failure.
             let exporter = LiveExporter(store: ImageStore())
             let pixel = try E2EDrawing.image(size: CGSize(width: 4, height: 4), scale: 1) { rect in
                 NSColor.gray.setFill()

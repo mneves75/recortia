@@ -20,7 +20,6 @@ public final class GitHubTokenStore {
         "\(destination.owner)/\(destination.repository)".lowercased()
     }
 
-    /// Trims the whitespace and newlines a paste adds around a token, then checks what remains.
     public nonisolated static func validatedToken(_ pasted: String) throws(GitHubUploadFailure) -> String {
         let token = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty, token.utf8.count <= 4096, token.utf8.allSatisfy({ (33...126).contains($0) }) else {

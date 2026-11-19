@@ -7,9 +7,8 @@
     import MacPlatform
     import RecortiaFixtures
 
-    /// Regressions for the editor review fixes: notices (r4 P2), GitHub destination credentials
-    /// (r3 F11), stale save-folder bookmarks (r3 F12), and drops that outlive the drag
-    /// pasteboard (r4 P3).
+    /// Regressions for notice lifetime and announcement, GitHub destination credentials, stale
+    /// save-folder bookmarks, and drops that outlive the drag pasteboard.
     @MainActor
     enum EditorFixScenarios {
         // MARK: Notices
@@ -26,7 +25,6 @@
             let linkURL = try context.unwrap(
                 "fixture URL", URL(string: "https://github.com/fixture/private-captures/blob/main/screenshots/a.png"))
 
-            // A success-only notice is announced and still dismisses itself.
             model.reportAutomaticExport(.copied)
             let copied = EditorStrings.message(.exported(.copied))
             context.check(
@@ -35,7 +33,6 @@
             context.check(
                 "a success notice dismisses itself after the delay", await E2EWait.until { model.notice == nil })
 
-            // Failures stay until the person dismisses them, and say so to VoiceOver.
             let failures: [(String, ExportFailure)] = [
                 ("failed export", .diskFull),
                 ("upload completion unknown", .upload(.completionUnknown)),
@@ -90,7 +87,6 @@
             await E2EActions.darkEditor(
                 controller, context, shot: "uploaded-link", surface: "editor uploaded-link notice")
 
-            // A newer notice replaces a sticky one and is announced in turn.
             announcements.removeAll()
             model.reportAutomaticExport(.copied)
             context.check(
@@ -177,7 +173,6 @@
                 "the token for the respelled destination survives",
                 credentials.tokens[GitHubTokenStore.account(for: second)] == "ghp_three")
 
-            // A failed store leaves the saved destination and its token alone.
             credentials.failNextStore = true
             let before = credentials.calls.count
             let failed = save("ghp_four", first)
@@ -189,7 +184,6 @@
                 "a failed store removes nothing",
                 !credentials.calls.dropFirst(before).contains { $0.hasPrefix("remove") })
 
-            // A failed removal still saves the destination and says the old token remains.
             credentials.failNextRemove = true
             let stale = save("ghp_five", first)
             context.check(
@@ -197,7 +191,6 @@
             context.check(
                 "a failed removal still saves the destination", settings.preferences.githubUpload?.destination == first)
 
-            // A token that is only whitespace never reaches the Keychain.
             let calls = credentials.calls.count
             context.check(
                 "a whitespace-only token is a missing credential", save(" \n\t", second) == .failed(.missingCredential))
@@ -259,7 +252,6 @@
                 "the app resolver renews the stored bookmark",
                 await E2EWait.until { harness.settings.preferences.preferredSaveFolderBookmark != bookmark })
 
-            // Saving to the preferred folder works through the stale bookmark.
             harness.settings.update { $0.preferredSaveFolderBookmark = bookmark }
             let controller = try await harness.openImported(harness.desktop, name: "stale-folder.png")
             let outcome = await controller.model.export(.saveToPreferredFolder)
@@ -273,7 +265,6 @@
                 context.check("Save to Preferred Folder succeeds through a stale bookmark", false, "\(outcome)")
             }
 
-            // A folder that is gone is still unavailable and is never renewed.
             let gone = harness.output.workDirectory.appending(path: "folder-\(run)-gone", directoryHint: .isDirectory)
             try fileManager.createDirectory(at: gone, withIntermediateDirectories: true)
             let goneBookmark = try gone.bookmarkData()

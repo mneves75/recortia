@@ -16,7 +16,6 @@ struct ScrollHUDState: Equatable {
     var outputHeight: Int
 }
 
-/// Session HUD (FR-10): source, status, progress, and Start/Pause/Resume/Stop/Cancel.
 struct ScrollHUDView: View {
     let hud: ScrollHUDState
     let onStart: () -> Void
@@ -125,7 +124,6 @@ struct ScrollHUDView: View {
     }
 }
 
-/// Review window: stitched preview with seam markers, then Accept or Discard (SCR-02).
 struct ScrollReviewView: View {
     let preview: CGImage?
     let outputSize: PixelSize

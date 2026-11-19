@@ -17,7 +17,6 @@
     final class SyntheticAutoScroll: AutoScrollService {
         private(set) var steppedTargets: [CaptureTarget] = []
         private(set) var stopCount = 0
-        /// What `isAtEnd` reports; a scenario can make the target look finished.
         var atEnd: Bool?
 
         func step(_ target: CaptureTarget) async -> AutoScrollStep {
@@ -171,7 +170,6 @@
             return frame
         }
 
-        /// Lets a held feed continue.
         func release() {
             holdAfter = nil
             resumeWaiter()

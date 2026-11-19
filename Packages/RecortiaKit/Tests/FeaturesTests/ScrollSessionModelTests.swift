@@ -36,7 +36,6 @@ final class ScrollHarness {
         model.onAccepted = { [unowned self] in self.accepted.append($0) }
     }
 
-    /// Begins, chooses the target, and starts collecting.
     func startCollecting() async {
         _ = await model.begin()
         model.chooseTarget(target)

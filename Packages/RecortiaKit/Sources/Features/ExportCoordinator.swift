@@ -61,15 +61,16 @@ public struct AutomaticExportPlan: Hashable, Sendable {
     public var isEmpty: Bool { !copy && save == nil && upload == nil }
 }
 
-/// Drives `ExportState` for Copy, Save, and Drag (FR-07, EXP-02).
+/// Drives `ExportState` for Copy, Save, Drag, and GitHub upload (FR-07, EXP-02, NET-01).
 ///
 /// Order: take an immutable snapshot through the export pipeline, verify that it still matches
 /// the live document (revision and privacy epoch), then commit to exactly one sink. The pipeline
 /// performs sanitizing, rendering, and encoding in one call, so the state reports `.rendering`
 /// while it runs and `.encoding` once the encoded bytes are verified. Success is reported only
-/// after the sink returns. Cancel before the commit leaves every sink untouched; cancel during
-/// the commit lets the write finish and reports `.alreadyCompleted`. A drag stays uncommitted
-/// until a receiver accepts the file, so a drag the user abandons is a plain cancellation.
+/// after the sink returns. Cancel before the commit leaves every sink untouched; a confirmed
+/// write that a cancel reached reports `.alreadyCompleted`, while an interrupted upload can leave
+/// its completion unknown. A drag stays uncommitted until a receiver writes the promised file, so
+/// a drag the user abandons is a plain cancellation.
 @MainActor
 @Observable
 public final class ExportCoordinator {
@@ -317,7 +318,8 @@ public final class ExportCoordinator {
         }
     }
 
-    /// The document changed or its editor closed: a drag offered for it can no longer commit.
+    /// The document changed or its editor closed: revokes its pending drag, which blocks a write
+    /// not yet claimed. A receiver that already claimed the lease can finish.
     func invalidatePendingDrag(documentID: DocumentID) {
         guard pendingDrag?.documentID == documentID else { return }
         revokePendingDrag()

@@ -3,9 +3,9 @@ import Domain
 import Foundation
 import Imaging
 
-/// Draws the editable surface in document space, in the export renderer's order: sanitized base,
-/// annotations (through the same `AnnotationRenderer` export uses), secure masks as opaque fills
-/// over them, then callouts. The editor canvas calls it at any zoom; tests compare it with the
+/// Draws the editable surface in document space in the export renderer's layer order, through
+/// the same `AnnotationRenderer`. Opaque masks are drawn last so they cover annotation ink and
+/// callout destinations. The editor canvas calls it at any zoom; tests compare it with the
 /// export at scale 1 (EXP-01).
 public enum EditorCanvasRenderer {
     /// `context` must already map document space with a top-left origin and y growing downward.
