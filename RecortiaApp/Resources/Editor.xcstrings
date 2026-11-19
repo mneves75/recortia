@@ -73,9 +73,9 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Tamanho" } }
       }
     },
-    "Text Size": {
+    "Text size": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Text Size" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Text size" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Tamanho do texto" } }
       }
     },
@@ -151,12 +151,6 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Fundos diferentes" } }
       }
     },
-    "Background Color": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Background Color" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor do fundo" } }
-      }
-    },
     "Reset Background": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Reset Background" } },
@@ -193,9 +187,9 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Caixa monoespaçada" } }
       }
     },
-    "Text Style": {
+    "Text style": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Text Style" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Text style" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Estilo do texto" } }
       }
     },
@@ -793,22 +787,6 @@
         }
       }
     },
-    "Arrange": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrange"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Organizar"
-          }
-        }
-      }
-    },
     "Arrow": {
       "localizations": {
         "en": {
@@ -841,12 +819,12 @@
         }
       }
     },
-    "Background Color": {
+    "Background color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background Color"
+            "value": "Background color"
           }
         },
         "pt-BR": {
@@ -1113,12 +1091,12 @@
         }
       }
     },
-    "Compare Transparency": {
+    "Compare transparency": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compare Transparency"
+            "value": "Compare transparency"
           }
         },
         "pt-BR": {
@@ -1209,12 +1187,12 @@
         }
       }
     },
-    "Corner Radius": {
+    "Corner radius": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Corner Radius"
+            "value": "Corner radius"
           }
         },
         "pt-BR": {
@@ -1481,12 +1459,12 @@
         }
       }
     },
-    "End Color": {
+    "End color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "End Color"
+            "value": "End color"
           }
         },
         "pt-BR": {
@@ -1545,12 +1523,12 @@
         }
       }
     },
-    "Fill Color": {
+    "Fill color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fill Color"
+            "value": "Fill color"
           }
         },
         "pt-BR": {
@@ -1769,12 +1747,12 @@
         }
       }
     },
-    "Line Width": {
+    "Line width": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Line Width"
+            "value": "Line width"
           }
         },
         "pt-BR": {
@@ -2361,12 +2339,12 @@
         }
       }
     },
-    "Pixel Tools": {
+    "Pixel tools": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pixel Tools"
+            "value": "Pixel tools"
           }
         },
         "pt-BR": {
@@ -2601,12 +2579,12 @@
         }
       }
     },
-    "Redaction Color": {
+    "Redaction color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Redaction Color"
+            "value": "Redaction color"
           }
         },
         "pt-BR": {
@@ -2961,12 +2939,12 @@
         }
       }
     },
-    "Show Output Preview": {
+    "Show output preview": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Show Output Preview"
+            "value": "Show output preview"
           }
         },
         "pt-BR": {
@@ -3073,12 +3051,12 @@
         }
       }
     },
-    "Start Color": {
+    "Start color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start Color"
+            "value": "Start color"
           }
         },
         "pt-BR": {
@@ -3647,6 +3625,12 @@
             "value": "x %1$@, y %2$@, %3$@ × %4$@ px"
           }
         }
+      }
+    },
+    "Align": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Align" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Alinhar" } }
       }
     }
   },

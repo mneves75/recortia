@@ -39,13 +39,12 @@ struct EditorInspectorView: View {
             .labelsHidden()
             .accessibilityIdentifier("inspector.tab")
             .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 2)
+            .padding(.top, 8)
             // The cosmetic warning stays visible whichever tab is shown (FR-06).
             if showsCosmeticWarning {
                 CosmeticWarning()
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
             }
             Form {
                 switch tab {
@@ -64,6 +63,8 @@ struct EditorInspectorView: View {
                 }
             }
             .formStyle(.grouped)
+            // The inspector's system material shows behind the grouped sections.
+            .scrollContentBackground(.hidden)
         }
         .controlSize(.small)
         .onChange(of: model.selection) { chosenTab = nil }
@@ -177,7 +178,7 @@ private struct StyleSection: View {
             SavedColorsGrid(model: model)
             if !boxedText.isEmpty || (model.tool == .text && annotations.isEmpty && style.textAppearance.isBoxed) {
                 ColorPicker(
-                    String(localized: "Background Color", table: "Editor"),
+                    String(localized: "Background color", table: "Editor"),
                     selection: colorBinding(
                         { backgroundColor ?? .white },
                         { c in coalescer.run(model) { model.setTextBackgroundColor(c) } })
@@ -210,13 +211,13 @@ private struct StyleSection: View {
                 .accessibilityIdentifier("style.fill")
                 if let fill = style.fill {
                     ColorPicker(
-                        String(localized: "Fill Color", table: "Editor"),
+                        String(localized: "Fill color", table: "Editor"),
                         selection: colorBinding({ fill }, { c in coalescer.run(model) { model.setFillColor(c) } }))
                 }
             }
             if use.lineWidth {
                 UndoableSlider(
-                    title: String(localized: "Line Width", table: "Editor"), identifier: "style.lineWidth",
+                    title: String(localized: "Line width", table: "Editor"), identifier: "style.lineWidth",
                     value: style.lineWidth, range: EditorStyle.lineWidthRange, model: model
                 ) { model.setLineWidth($0) }
             }
@@ -227,14 +228,14 @@ private struct StyleSection: View {
             ) { model.setOpacity($0) }
             if use.textSize {
                 let size = String(localized: "\(EditorFormat.number(style.fontSize)) px", table: "Editor")
-                LabeledContent(String(localized: "Text Size", table: "Editor")) {
+                LabeledContent(String(localized: "Text size", table: "Editor")) {
                     HStack(spacing: 4) {
                         Text(size).monospacedDigit().accessibilityHidden(true)
                         Stepper(
                             value: Binding(get: { style.fontSize }, set: { model.setFontSize($0) }),
                             in: EditorStyle.fontSizeRange, step: 2
                         ) {
-                            Text(String(localized: "Text Size", table: "Editor"))
+                            Text(String(localized: "Text size", table: "Editor"))
                         }
                         .labelsHidden()
                         .accessibilityValue(size)
@@ -264,7 +265,7 @@ private struct SavedColorsGrid: View {
     var body: some View {
         let current = model.style.stroke.withAlpha(255)
         let saved = model.savedAnnotationColors
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 24, maximum: 24), spacing: 4)], alignment: .leading, spacing: 4
             ) {
@@ -326,15 +327,15 @@ private struct Swatch: View {
 
     var body: some View {
         Button(action: apply) {
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: EditorMetrics.chipRadius)
                 .fill(Color(cgColor: color.cgColor))
-                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.separator))
+                .overlay(RoundedRectangle(cornerRadius: EditorMetrics.chipRadius).strokeBorder(.separator))
                 .frame(width: 16, height: 16)
                 .padding(4)
                 .overlay {
                     // The ring uses the label color, so it shows on any swatch color.
                     if isSelected {
-                        RoundedRectangle(cornerRadius: 6).strokeBorder(.primary, lineWidth: 2)
+                        RoundedRectangle(cornerRadius: EditorMetrics.tileRadius).strokeBorder(.primary, lineWidth: 2)
                     }
                 }
                 .contentShape(Rectangle())
@@ -353,10 +354,10 @@ private struct ChoiceButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 6)
+        let shape = RoundedRectangle(cornerRadius: EditorMetrics.tileRadius)
         configuration.label
             .frame(maxWidth: .infinity, minHeight: 24)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 8)
             .background(
                 shape.fill(isSelected ? Color.accentColor.opacity(0.16) : Color(nsColor: .controlBackgroundColor))
             )
@@ -388,7 +389,7 @@ private struct ArrowCurveSection: View {
                     states[0]
                 } else { nil }
             Section {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     choice(false, state: state)
                     choice(true, state: state)
                 }
@@ -483,7 +484,7 @@ private struct TextAppearanceSection: View {
 
     var body: some View {
         Section {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                 ForEach(TextAppearance.allCases, id: \.self) { appearance in
                     let isSelected = model.style.textAppearance == appearance
                     Button {
@@ -503,7 +504,7 @@ private struct TextAppearanceSection: View {
                 }
             }
         } header: {
-            Text(String(localized: "Text Style", table: "Editor"))
+            Text(String(localized: "Text style", table: "Editor"))
         }
     }
 }
@@ -535,7 +536,10 @@ private struct AppearancePreview: View {
             sample
                 .foregroundStyle(Color(nsColor: .controlBackgroundColor))
                 .padding(.horizontal, 4)
-                .background(.primary, in: RoundedRectangle(cornerRadius: appearance == .roundedBoxed ? 4 : 0))
+                .background(
+                    .primary,
+                    in: RoundedRectangle(cornerRadius: appearance == .roundedBoxed ? EditorMetrics.chipRadius : 0)
+                )
                 .accessibilityHidden(true)
         } else {
             sample.accessibilityHidden(true)
@@ -551,42 +555,36 @@ private struct RedactionSection: View {
     var body: some View {
         Section {
             ColorPicker(
-                String(localized: "Redaction Color", table: "Editor"),
+                String(localized: "Redaction color", table: "Editor"),
                 selection: colorBinding(
                     { selectedMask?.fill ?? model.redactionFill },
                     { c in coalescer.run(model) { model.setRedactionFill(c) } }),
                 supportsOpacity: false
             )
             .accessibilityIdentifier("redaction.color")
-            Text(
-                String(
+            // A required disclosure (ACCEPTANCE_TESTS RED): what redaction changes, and what it does not.
+            EditorNoticeLabel(
+                text: String(
                     localized:
                         "Covered pixels are replaced in every export. Other copies and earlier exports are not changed.",
-                    table: "Editor")
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+                    table: "Editor"),
+                systemImage: "checkmark.shield")
         } header: {
             Text(String(localized: "Redaction", table: "Editor"))
         }
     }
 }
 
-/// The cosmetic-effect warning, pinned above the tabs.
+/// The cosmetic-effect warning, pinned above the tabs in the editor's notice style.
 private struct CosmeticWarning: View {
     var body: some View {
-        Label(
-            String(
+        EditorNoticeLabel(
+            text: String(
                 localized: "Cosmetic, not secure: text can remain recoverable. Use Redact for private information.",
                 table: "Editor"),
             systemImage: "exclamationmark.triangle"
         )
-        .font(.callout)
-        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("redaction.cosmeticWarning")
     }
@@ -683,7 +681,7 @@ private struct FrameFields: View {
     @State private var height = 0.0
 
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 6) {
+        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 8) {
             GridRow {
                 field(String(localized: "X", table: "Editor"), "x", $x)
                 field(String(localized: "Y", table: "Editor"), "y", $y)
@@ -749,29 +747,21 @@ private struct ObjectSection: View {
                 }
                 details(for: item)
             }
-            ButtonRow {
-                Button(String(localized: "Duplicate", table: "Editor")) { model.duplicateSelection() }
-                    .help(String(localized: "Duplicate (⌘D)", table: "Editor"))
-                Button(String(localized: "Delete", table: "Editor"), role: .destructive) { model.deleteSelection() }
-                Menu(String(localized: "Arrange", table: "Editor")) {
-                    Button(String(localized: "Bring to Front", table: "Editor")) { model.reorderSelection(.front) }
-                    Button(String(localized: "Bring Forward", table: "Editor")) { model.reorderSelection(.forward) }
-                    Button(String(localized: "Send Backward", table: "Editor")) { model.reorderSelection(.backward) }
-                    Button(String(localized: "Send to Back", table: "Editor")) { model.reorderSelection(.back) }
-                }
-                .fixedSize()
-            }
-            HStack(spacing: 2) {
-                ForEach(EditorAlignment.allCases, id: \.self) { alignment in
-                    Button {
-                        model.align(alignment)
-                    } label: {
-                        Label(EditorStrings.name(alignment), systemImage: EditorStrings.symbol(alignment))
+            LabeledContent(String(localized: "Align", table: "Editor")) {
+                HStack(spacing: 4) {
+                    ForEach(EditorAlignment.allCases, id: \.self) { alignment in
+                        Button {
+                            model.align(alignment)
+                        } label: {
+                            Label(EditorStrings.name(alignment), systemImage: EditorStrings.symbol(alignment))
+                        }
+                        .labelStyle(.iconOnly)
+                        .help(EditorStrings.name(alignment))
                     }
-                    .labelStyle(.iconOnly)
-                    .help(EditorStrings.name(alignment))
                 }
             }
+            Button(String(localized: "Duplicate", table: "Editor")) { model.duplicateSelection() }
+                .help(String(localized: "Duplicate (⌘D)", table: "Editor"))
         } header: {
             if let item {
                 Text(EditorStrings.label(item))
@@ -825,8 +815,6 @@ private struct ObjectSection: View {
                     ) { model.setSpotlightDim($0, for: id) }
                 case .magnifier(let source, _):
                     Text(String(localized: "Magnified area", table: "Editor"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     FrameFields(frame: source, identifier: "magnifier.source") { model.setMagnifierSource($0, for: id) }
                 }
             }
@@ -874,10 +862,10 @@ private struct PixelToolsSection: View {
                         Text(String(localized: "\(sample.x), \(sample.y)", table: "Editor")).monospacedDigit()
                     }
                     LabeledContent(String(localized: "Color (sRGB)", table: "Editor")) {
-                        HStack(spacing: 6) {
-                            RoundedRectangle(cornerRadius: 3)
+                        HStack(spacing: 8) {
+                            RoundedRectangle(cornerRadius: EditorMetrics.chipRadius)
                                 .fill(Color(cgColor: sample.color.cgColor))
-                                .overlay(RoundedRectangle(cornerRadius: 3).stroke(.separator))
+                                .overlay(RoundedRectangle(cornerRadius: EditorMetrics.chipRadius).stroke(.separator))
                                 .frame(width: 18, height: 14)
                                 .accessibilityHidden(true)
                             Text(sample.hex).monospaced().textSelection(.enabled)
@@ -920,7 +908,7 @@ private struct PixelToolsSection: View {
                 }
             }
         } header: {
-            Text(String(localized: "Pixel Tools", table: "Editor"))
+            Text(String(localized: "Pixel tools", table: "Editor"))
         }
     }
 }
@@ -994,13 +982,13 @@ private struct BackgroundSection: View {
                 EmptyView()
             case .solid(let color):
                 ColorPicker(
-                    String(localized: "Background Color", table: "Editor"),
+                    String(localized: "Background color", table: "Editor"),
                     selection: colorBinding(
                         { color }, { c in coalescer.run(model) { model.setBackground(.solid(c)) } }),
                     supportsOpacity: false)
             case .linearGradient(let from, let to, let angle):
                 ColorPicker(
-                    String(localized: "Start Color", table: "Editor"),
+                    String(localized: "Start color", table: "Editor"),
                     selection: colorBinding(
                         { from },
                         { c in
@@ -1010,7 +998,7 @@ private struct BackgroundSection: View {
                         }),
                     supportsOpacity: false)
                 ColorPicker(
-                    String(localized: "End Color", table: "Editor"),
+                    String(localized: "End color", table: "Editor"),
                     selection: colorBinding(
                         { to },
                         { c in
@@ -1025,7 +1013,7 @@ private struct BackgroundSection: View {
                 model: model
             ) { model.setPadding($0.rounded()) }
             UndoableSlider(
-                title: String(localized: "Corner Radius", table: "Editor"), value: presentation.cornerRadius,
+                title: String(localized: "Corner radius", table: "Editor"), value: presentation.cornerRadius,
                 range: 0...128, model: model
             ) { model.setCornerRadius($0.rounded()) }
             Toggle(
@@ -1034,7 +1022,7 @@ private struct BackgroundSection: View {
                     get: { presentation.shadow != nil },
                     set: { model.setShadow($0 ? Presentation.Shadow() : nil) }))
             Toggle(
-                String(localized: "Show Output Preview", table: "Editor"),
+                String(localized: "Show output preview", table: "Editor"),
                 isOn: Binding(get: { model.showsOutputPreview }, set: { model.setShowsOutputPreview($0) })
             )
             .help(String(localized: "Show exactly what Copy and Save produce, including framing", table: "Editor"))
@@ -1054,10 +1042,11 @@ private struct BackgroundSection: View {
     private func setKind(_ kind: BackgroundKind, _ presentation: Presentation) {
         switch kind {
         case .plain: model.setBackground(.none)
-        case .solid: model.setBackground(.solid(RGBA(r: 242, g: 242, b: 247)))
+        // Neutral graphite defaults: they frame any screenshot without tinting it.
+        case .solid: model.setBackground(.solid(RGBA(r: 72, g: 72, b: 74)))
         case .gradient:
             model.setBackground(
-                .linearGradient(from: RGBA(r: 90, g: 120, b: 220), to: RGBA(r: 170, g: 90, b: 200), angleDegrees: 135))
+                .linearGradient(from: RGBA(r: 99, g: 99, b: 102), to: RGBA(r: 44, g: 44, b: 46), angleDegrees: 135))
         }
     }
 }
@@ -1078,7 +1067,7 @@ private struct ImagesSection: View {
                 .disabled(layers < 2)
                 .help(String(localized: "Place all images in a row at the same height", table: "Editor"))
             Toggle(
-                String(localized: "Compare Transparency", table: "Editor"),
+                String(localized: "Compare transparency", table: "Editor"),
                 isOn: Binding(
                     get: { model.isComparingTransparency }, set: { _ in model.toggleTransparencyComparison() })
             )
@@ -1142,13 +1131,10 @@ private struct RecognitionSection: View {
             }
             let payloads = model.qrPayloads
             if !payloads.isEmpty {
-                Text(
-                    String(
-                        localized: "QR contents are untrusted. Recortia never opens them on its own.", table: "Editor")
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                EditorNoticeLabel(
+                    text: String(
+                        localized: "QR contents are untrusted. Recortia never opens them on its own.", table: "Editor"),
+                    systemImage: "exclamationmark.triangle")
                 ForEach(Array(payloads.enumerated()), id: \.offset) { index, payload in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(EditorStrings.payloadKind(payload.kind))
