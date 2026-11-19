@@ -747,17 +747,15 @@ private struct ObjectSection: View {
                 }
                 details(for: item)
             }
-            LabeledContent(String(localized: "Align", table: "Editor")) {
-                HStack(spacing: 4) {
-                    ForEach(EditorAlignment.allCases, id: \.self) { alignment in
-                        Button {
-                            model.align(alignment)
-                        } label: {
-                            Label(EditorStrings.name(alignment), systemImage: EditorStrings.symbol(alignment))
-                        }
-                        .labelStyle(.iconOnly)
-                        .help(EditorStrings.name(alignment))
+            HStack(spacing: 4) {
+                ForEach(EditorAlignment.allCases, id: \.self) { alignment in
+                    Button {
+                        model.align(alignment)
+                    } label: {
+                        Label(EditorStrings.name(alignment), systemImage: EditorStrings.symbol(alignment))
                     }
+                    .labelStyle(.iconOnly)
+                    .help(EditorStrings.name(alignment))
                 }
             }
             Button(String(localized: "Duplicate", table: "Editor")) { model.duplicateSelection() }

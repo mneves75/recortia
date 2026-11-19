@@ -3626,12 +3626,6 @@
           }
         }
       }
-    },
-    "Align": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Align" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Alinhar" } }
-      }
     }
   },
   "version": "1.0"
