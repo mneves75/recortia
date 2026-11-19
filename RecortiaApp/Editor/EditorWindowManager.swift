@@ -62,7 +62,7 @@ final class EditorWindowManager {
     func model(for id: DocumentID) -> EditorModel? { controllers[id]?.model }
 }
 
-/// One editor window: hosts the SwiftUI chrome around the AppKit canvas, asks before discarding
+/// One editor window: hosts the SwiftUI chrome around the AppKit canvas in a system split view, asks before discarding
 /// unexported edits, and closes the model when the window closes.
 final class EditorWindowController: NSWindowController, NSWindowDelegate, EditorWindowActions {
     let model: EditorModel
@@ -87,12 +87,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         super.init(window: window)
         window.delegate = self
         canvas.actions = self
-        let root = EditorRootView(
+        window.contentViewController = Self.splitController(
             model: model, canvas: canvas, actions: self, noticePresentation: noticePresentation)
-        let host = NSHostingController(rootView: root)
-        // The SwiftUI `.toolbar` becomes this window's NSToolbar; title and tools share one bar.
-        host.sceneBridgingOptions = [.toolbars]
-        window.contentViewController = host
         window.toolbarStyle = .unified
         window.titleVisibility = .hidden
         window.initialFirstResponder = canvas
@@ -105,6 +101,41 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
+
+    /// Object list, canvas column and inspector as system split items, so macOS draws the
+    /// sidebar and inspector itself. The canvas column carries the SwiftUI `.toolbar`, which
+    /// becomes this window's NSToolbar: title and tools share one bar. View › Toggle Sidebar and
+    /// Toggle Inspector (`toggleSidebar:`, `toggleInspector:`) reach the split controller through
+    /// the responder chain.
+    private static func splitController(
+        model: EditorModel, canvas: EditorCanvasView, actions: any EditorWindowActions,
+        noticePresentation: EditorNoticePresentation
+    ) -> NSSplitViewController {
+        let sidebar = NSHostingController(rootView: EditorSidebarView(model: model))
+        let content = NSHostingController(
+            rootView: EditorRootView(
+                model: model, canvas: canvas, actions: actions, noticePresentation: noticePresentation))
+        content.sceneBridgingOptions = [.toolbars]
+        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions))
+        // The split items own the column widths; the hosted views fill whatever they are given.
+        sidebar.sizingOptions = []
+        content.sizingOptions = []
+        inspector.sizingOptions = []
+        sidebar.view.frame.size.width = 210
+        inspector.view.frame.size.width = 290
+
+        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
+        sidebarItem.minimumThickness = 180
+        sidebarItem.maximumThickness = 320
+        let contentItem = NSSplitViewItem(viewController: content)
+        contentItem.minimumThickness = 360
+        let inspectorItem = NSSplitViewItem(inspectorWithViewController: inspector)
+        inspectorItem.minimumThickness = 260
+        inspectorItem.maximumThickness = 380
+        let split = NSSplitViewController()
+        for item in [sidebarItem, contentItem, inspectorItem] { split.addSplitViewItem(item) }
+        return split
+    }
 
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
     func present() {

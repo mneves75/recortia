@@ -104,6 +104,14 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override var acceptsFirstResponder: Bool { true }
     override var isOpaque: Bool { true }
 
+    /// The system focus ring shows while the canvas owns the keyboard. It is drawn just inside
+    /// the canvas, so the column edges and the split dividers never clip it.
+    override var focusRingMaskBounds: NSRect { bounds }
+
+    override func drawFocusRingMask() {
+        bounds.insetBy(dx: 4, dy: 4).fill()
+    }
+
     // MARK: - Model observation
 
     private func modelChanged() {
@@ -136,6 +144,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override func layout() {
         super.layout()
         reportViewport()
+        noteFocusRingMaskChanged()
     }
 
     override func viewDidChangeBackingProperties() {

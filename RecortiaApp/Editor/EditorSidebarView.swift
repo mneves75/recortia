@@ -9,28 +9,28 @@ struct EditorSidebarView: View {
 
     var body: some View {
         let items = model.listItems
-        VStack(spacing: 0) {
-            List(selection: Binding(get: { model.selection }, set: { model.setSelection($0) })) {
-                Section {
-                    ForEach(items) { item in
-                        ObjectRow(item: item)
-                            .tag(item.id)
-                            .contextMenu { contextMenu(for: item.id) }
-                    }
-                } header: {
-                    Text(String(localized: "Objects", table: "Editor"))
+        List(selection: Binding(get: { model.selection }, set: { model.setSelection($0) })) {
+            Section {
+                ForEach(items) { item in
+                    ObjectRow(item: item)
+                        .tag(item.id)
+                        .contextMenu { contextMenu(for: item.id) }
                 }
+            } header: {
+                Text(String(localized: "Objects", table: "Editor"))
             }
-            .listStyle(.sidebar)
-            .accessibilityLabel(String(localized: "Objects", table: "Editor"))
-            .overlay {
-                if items.isEmpty {
-                    Text(String(localized: "No objects yet.", table: "Editor"))
-                        .foregroundStyle(.secondary)
-                        .padding()
-                }
+        }
+        .listStyle(.sidebar)
+        .accessibilityLabel(String(localized: "Objects", table: "Editor"))
+        .overlay {
+            if items.isEmpty {
+                Text(String(localized: "No objects yet.", table: "Editor"))
+                    .foregroundStyle(.secondary)
+                    .padding(16)
             }
-            Divider()
+        }
+        // Stays below the list on the sidebar's own material instead of a bar of its own.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack(spacing: 4) {
                 Button {
                     model.reorderSelection(.forward)
@@ -55,9 +55,8 @@ struct EditorSidebarView: View {
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
             .disabled(model.selection.isEmpty)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color(nsColor: .windowBackgroundColor))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
     }
 
@@ -87,7 +86,7 @@ private struct ObjectRow: View {
     let item: EditorListItem
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: EditorStrings.symbol(item.kind))
                 .frame(width: 18)
                 .accessibilityHidden(true)
@@ -100,7 +99,7 @@ private struct ObjectRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
-                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(.separator))
+                    .overlay(RoundedRectangle(cornerRadius: EditorMetrics.chipRadius).stroke(.separator))
                     .fixedSize()
             }
         }

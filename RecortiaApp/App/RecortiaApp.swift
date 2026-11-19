@@ -23,6 +23,18 @@ struct RecortiaApp: App {
                 Button(AppCommand.settings.title) { appDelegate.model.showSettings() }
                     .keyboardShortcut(",")
             }
+            // The editor's object list and inspector are AppKit split items; these reach its
+            // NSSplitViewController through the responder chain and do nothing without an editor.
+            CommandGroup(replacing: .sidebar) {
+                Button(String(localized: "Toggle Sidebar")) {
+                    NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+                Button(String(localized: "Toggle Inspector")) {
+                    NSApp.sendAction(#selector(NSSplitViewController.toggleInspector(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("i", modifiers: [.control, .command])
+            }
             CommandGroup(replacing: .help) {}
         }
         // Settings is an AppKit window (SettingsWindowController) so it follows the active Space.

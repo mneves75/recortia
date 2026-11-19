@@ -4392,6 +4392,18 @@
           }
         }
       }
+    },
+    "Toggle Inspector" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle Inspector" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar ou ocultar inspetor" } }
+      }
+    },
+    "Toggle Sidebar" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle Sidebar" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar ou ocultar barra lateral" } }
+      }
     }
   },
   "version" : "1.0"
