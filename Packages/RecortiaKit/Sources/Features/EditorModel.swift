@@ -33,6 +33,8 @@ public final class EditorModel {
     /// Preferred OCR languages (English, Portuguese) the system does not offer; reported, never assumed (FR-08).
     public internal(set) var unavailableRecognitionLanguages: [String] = []
     public internal(set) var isClosed = false
+    /// Automatic masking of a new capture (EditorModel+AutoRedaction.swift).
+    public internal(set) var autoRedaction: AutoRedaction = .off
 
     // Preview (EditorModel+Preview.swift)
     public internal(set) var baseImage: CGImage?
@@ -81,6 +83,13 @@ public final class EditorModel {
     @ObservationIgnored var qrRequest: UUID?
     @ObservationIgnored var colorPickTask: Task<Void, Never>?
     @ObservationIgnored var colorPickRequest: UUID?
+    @ObservationIgnored var autoRedactionTasks: [Task<Void, Never>] = []
+    /// The document state detection started from; a result for any other state is stale.
+    @ObservationIgnored var autoRedactionRequest: RequestIdentity?
+    /// What the capture's automatic batch exports, frozen when masking settles: the capture itself
+    /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
+    @ObservationIgnored var automaticExportBaseline: DocumentSession?
+    @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
 
     enum Gesture {
         case idle
@@ -96,11 +105,27 @@ public final class EditorModel {
         case sample
     }
 
-    public init(session: DocumentSession, environment: EditorEnvironment) {
+    /// How long automatic masking may take before it fails closed (provisional, see
+    /// docs/specs/program-2026-11/spike-auto-redaction.md).
+    public static let autoRedactionDeadline: Duration = .seconds(8)
+
+    /// `autoRedacts`: a new capture whose e-mail addresses and phone numbers are masked before the
+    /// editor shows or exports its pixels (FR-06).
+    public init(session: DocumentSession, environment: EditorEnvironment, autoRedacts: Bool = false) {
         self.session = session
         self.environment = environment
         knownAssets = Set(session.document.assets.keys)
+        automaticExportBaseline = session
+        if autoRedacts {
+            autoRedaction = .pending
+            startAutoRedaction()
+        }
         scheduleBaseRender()
+    }
+
+    // An editor released without `close()` still stops its detection and deadline.
+    isolated deinit {
+        for task in autoRedactionTasks { task.cancel() }
     }
 
     public var document: Document { session.document }
@@ -193,6 +218,9 @@ public final class EditorModel {
     /// Groups a run of changes (a slider drag, a color well session) into one undo step.
     @discardableResult
     public func beginContinuousChange() -> UUID {
+        // Refused while masking runs, so no group can hold the masks' undo step (the returned ID
+        // then ends nothing).
+        guard !isMaskingPending else { return UUID() }
         if let continuousChangeID { return continuousChangeID }
         let id = UUID()
         continuousChangeID = id
@@ -238,8 +266,14 @@ public final class EditorModel {
     @discardableResult
     func edit(_ label: String, inPreview: Bool = false, _ change: (inout Document) throws -> Void) -> Bool {
         // Output Preview is read-only for selection and objects (F-04); whole-image presentation
-        // settings stay available there, where their effect is seen.
-        guard !isClosed, !showsOutputPreview || inPreview else { return false }
+        // settings stay available there, where their effect is seen. Nothing changes while
+        // automatic masking is pending.
+        guard !isClosed, !isMaskingPending, !showsOutputPreview || inPreview else { return false }
+        return performEdit(label, change)
+    }
+
+    /// `edit` without its guards; automatic masks land through it while masking is still pending.
+    func performEdit(_ label: String, _ change: (inout Document) throws -> Void) -> Bool {
         let before = session.document
         let epoch = session.privacyEpoch
         do {
@@ -304,7 +338,7 @@ public final class EditorModel {
     }
 
     public func undo() {
-        guard !isClosed, !showsOutputPreview, textEditing == nil else { return }
+        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Undo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canUndo else { return }
@@ -315,7 +349,7 @@ public final class EditorModel {
     }
 
     public func redo() {
-        guard !isClosed, !showsOutputPreview, textEditing == nil else { return }
+        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Redo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canRedo else { return }
@@ -501,7 +535,7 @@ public final class EditorModel {
     // MARK: - Selection
 
     public func select(_ item: EditorItemID, extending: Bool = false) {
-        guard !showsOutputPreview, allItemIDs.contains(item) else { return }
+        guard !isMaskingPending, !showsOutputPreview, allItemIDs.contains(item) else { return }
         if extending {
             if selection.contains(item) { selection.remove(item) } else { selection.insert(item) }
         } else {
@@ -512,7 +546,7 @@ public final class EditorModel {
 
     /// Replaces the selection (object list); unknown items are ignored.
     public func setSelection(_ items: Set<EditorItemID>) {
-        guard !showsOutputPreview else { return }
+        guard !isMaskingPending, !showsOutputPreview else { return }
         let existing = Set(allItemIDs)
         selection = items.filter(existing.contains)
         loadSelectedTextAppearance()
@@ -615,6 +649,29 @@ public final class EditorModel {
             Self.reorder(&document.masks, order) { items.contains(.mask($0.id)) }
             Self.reorder(&document.callouts, order) { items.contains(.callout($0.id)) }
         }
+    }
+
+    /// Moves one object `steps` places toward the front (positive) or the back (negative) within
+    /// its own stack, clamped at either end, as one undo step (the object list's drag to reorder).
+    public func moveItem(_ item: EditorItemID, by steps: Int) {
+        guard steps != 0 else { return }
+        endContinuousChange()
+        edit("Arrange") { document in
+            switch item {
+            case .layer(let id): Self.move(&document.layers, by: steps) { $0.id == id }
+            case .obfuscation(let id): Self.move(&document.obfuscations, by: steps) { $0.id == id }
+            case .annotation(let id): Self.move(&document.annotations, by: steps) { $0.id == id }
+            case .mask(let id): Self.move(&document.masks, by: steps) { $0.id == id }
+            case .callout(let id): Self.move(&document.callouts, by: steps) { $0.id == id }
+            }
+        }
+    }
+
+    static func move<Element>(_ array: inout [Element], by steps: Int, where matches: (Element) -> Bool) {
+        guard let from = array.firstIndex(where: matches) else { return }
+        let to = min(max(from + steps, 0), array.count - 1)
+        guard to != from else { return }
+        array.insert(array.remove(at: from), at: to)
     }
 
     /// Renumbers numbered steps 1…n in z-order (explicit command, FR-05).

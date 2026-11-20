@@ -87,6 +87,10 @@ The Homebrew cask (`brew install --cask mneves75/tap/recortia`) still installs t
   the Accessibility APIs that automatic scrolling needs
   ([ADR-002](docs/adr/0002-permission-and-sandbox-profile.md)).
 
+Optional automatic masking (Settings › Privacy, off by default) covers e-mail addresses and phone
+numbers that on-device text recognition finds in a new capture before the editor shows it or any
+automatic export sends it. It can miss text, so check the image before sharing it.
+
 Redaction protects the image you export. It cannot recall copies you exported earlier, including
 automatic exports made before you redacted, or other apps' clipboard histories. Turn off
 automatic copy, save and upload before capturing something sensitive.
@@ -168,3 +172,10 @@ is kept in [docs/handoff/](docs/handoff/).
 
 [MIT](LICENSE). The app bundle includes this license and the MIT notice of the pinned
 KeyboardShortcuts package.
+
+## Acknowledgements
+
+The e-mail and phone-number patterns, tiled sweep and fragment joining behind automatic masking
+are adapted from [Fosco](https://github.com/gabrielbuzziv/fosco) by Gabriel Buzzi, MIT, at commit
+`cf6ca8d4f176a5c6628a6ccfdb2c2db0abaa5ba8`. Its notice ships in the app bundle
+(`Fosco-LICENSE.txt`) and heads `Packages/RecortiaKit/Sources/Imaging/SensitiveText.swift`.

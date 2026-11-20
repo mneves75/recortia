@@ -322,4 +322,22 @@ public enum EditorNotice: Hashable, Sendable {
     case noPreferredFolder
     /// The oldest undo steps were discarded to stay within the undo budget (FR-04).
     case undoHistoryTrimmed
+    /// Automatic masking covered this many e-mail addresses or phone numbers (FR-06).
+    case sensitiveTextMasked(Int)
+    /// Automatic masking did not finish; nothing was masked.
+    case maskingFailed
+    /// The action waits until automatic masking finishes.
+    case maskingInProgress
+}
+
+/// Automatic masking of a new capture (FR-06). While `pending` the editor shows no capture pixels
+/// and refuses every edit, selection, export, pin and Output Preview.
+public enum AutoRedaction: Hashable, Sendable {
+    /// Not requested for this document.
+    case off
+    case pending
+    /// The masks landed as one undo step, or nothing was found.
+    case done
+    /// Detection failed, was cancelled or missed its deadline: nothing was masked.
+    case failed
 }

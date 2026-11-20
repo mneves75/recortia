@@ -87,7 +87,7 @@ extension AppServices {
             assets: LiveImageAssets(store: store), input: LiveImageInput(), renderer: LiveRenderer(store: store),
             exporter: LiveExporter(store: store), clipboard: LiveClipboard(), files: LiveFiles(), drag: LiveDragSink(),
             folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
-            qrDecoder: recognition,
+            qrDecoder: recognition, sensitiveText: LiveSensitiveText(store: store),
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
             loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound())
     }

@@ -53,9 +53,24 @@
             await E2ESnapshot.settle(root)
             await expect(
                 "rectangle selected",
-                present: ["style.fill", "style.lineWidth", "frame.x", "frame.y", "frame.width", "frame.height"],
-                absent: ["style.textSize", "arrow.straight", "textAppearance.standard", "image.background"])
+                present: [
+                    "inspector.header", "style.fill", "style.fillColor", "style.lineWidth", "inspector.positionAndSize",
+                ],
+                absent: ["frame.x", "style.textSize", "arrow.straight", "text.style", "image.background"])
             await E2EActions.snapshotEditor(controller, context, shot: "rectangle-selected")
+            context.check(
+                "the header names the selected object",
+                (try? E2EAccessibilityControl.name(for: "inspector.header", in: root, context))
+                    == EditorStrings.label(
+                        try context.unwrap(
+                            "rectangle list item", model.listItems.first { $0.id == .annotation(rectangle.id) })))
+            await E2EActions.scrollInspector(controller, to: 1)
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.pressCheckingEffect("inspector.positionAndSize", in: root, context)
+            await E2ESnapshot.settle(root)
+            await expect(
+                "Position and Size expanded", present: ["frame.x", "frame.y", "frame.width", "frame.height"],
+                absent: [])
             await E2EActions.darkEditor(controller, context, shot: "rectangle-selected", surface: "editor, Format tab")
             for identifier in ["style.fill", "style.lineWidth"] {
                 context.check(
@@ -91,8 +106,8 @@
             await E2ESnapshot.settle(root)
             await expect(
                 "plain text selected",
-                present: ["style.textSize"] + TextAppearance.allCases.map { "textAppearance.\($0.rawValue)" },
-                absent: ["style.lineWidth", "arrow.straight", "image.background"])
+                present: ["style.textSize", "style.textSizeField", "text.font", "text.style", "frame.x"],
+                absent: ["style.lineWidth", "arrow.straight", "image.background", "textBackground.color"])
             await E2EActions.snapshotEditor(controller, context, shot: "text-selected")
 
             try chooseTab(1, controller, root, context)
@@ -160,6 +175,22 @@
             await E2ESnapshot.settle(root)
             checkWarning("cosmetic object selected on the Image tab", controller, root, context)
             await E2EActions.snapshotEditor(controller, context, shot: "cosmetic-image-tab")
+            context.check(
+                "with the inspector shown, the status bar repeats no warning",
+                !E2EAccessibilityControl.isPresent("status.cosmeticWarning", in: root))
+            controller.toggle(.inspector)
+            await E2ESnapshot.settle(root, for: .milliseconds(600))
+            let statusWarning = accessibilityFrame("status.cosmeticWarning", in: root)
+            let windowFrame = root.window.map { $0.convertToScreen(root.convert(root.bounds, to: nil)) } ?? .zero
+            context.check(
+                "with the inspector collapsed, the cosmetic warning shows in the status bar",
+                statusWarning.map {
+                    $0.width > 0 && $0.height > 0 && windowFrame.insetBy(dx: -0.5, dy: -0.5).contains($0)
+                }
+                    == true, "warning \(String(describing: statusWarning)), window \(windowFrame)")
+            await E2EActions.snapshotEditor(controller, context, shot: "cosmetic-inspector-collapsed")
+            controller.toggle(.inspector)
+            await E2ESnapshot.settle(root, for: .milliseconds(600))
             model.clearSelection()
 
             model.selectTool(.redact)
@@ -182,8 +213,8 @@
             await E2ESnapshot.settle(root)
             await expect(
                 "twelve saved colors",
-                present: palette.map { "palette.apply.\($0.hex.dropFirst())" } + ["palette.save", "palette.remove"],
-                absent: [])
+                present: palette.map { "palette.apply.\($0.hex.dropFirst())" } + ["palette.save"],
+                absent: ["palette.remove"])
             await E2EActions.snapshotEditor(controller, context, shot: "saved-colors")
 
             let window = try context.unwrap("inspector editor window", controller.window)
@@ -204,6 +235,7 @@
                     {
                         model.selectTool(.select); model.select(.annotation(rectangle.id))
                     },
+                    // The disclosure was expanded above and keeps that state across selections.
                     ["style.fill", "style.lineWidth", "frame.x", "frame.y", "frame.width", "frame.height"]
                 ),
                 (
@@ -211,7 +243,7 @@
                     {
                         model.selectTool(.select); model.select(.annotation(text.id))
                     },
-                    ["style.textSize"] + TextAppearance.allCases.map { "textAppearance.\($0.rawValue)" }
+                    ["style.textSize", "text.font", "text.style"]
                 ),
                 (
                     "arrow tool",
@@ -251,6 +283,10 @@
             await E2EActions.scrollInspector(controller, to: 0)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "text-selected-compact-dark")
+            await E2EActions.scrollInspector(controller, to: 1)
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.pressCheckingEffect("inspector.positionAndSize", in: root, context)
+            await E2ESnapshot.settle(root)
         }
 
         /// Which of `identifiers` the editor shows anywhere along the inspector's scroll range. The
@@ -277,14 +313,12 @@
             return found
         }
 
-        /// The inspector column beside the canvas, in screen coordinates.
+        /// The inspector split item's column, in screen coordinates.
         static func inspectorBounds(_ controller: EditorWindowController, _ root: NSView) -> NSRect {
-            guard let window = root.window, let canvas = controller.canvasView else { return .zero }
-            let canvasFrame = canvas.convert(canvas.bounds, to: root)
-            let column = NSRect(
-                x: canvasFrame.maxX, y: canvasFrame.minY, width: root.bounds.maxX - canvasFrame.maxX,
-                height: canvasFrame.height)
-            return window.convertToScreen(root.convert(column, to: nil))
+            guard let window = root.window, let column = controller.splitItem(.inspector)?.viewController.view,
+                !column.isHiddenOrHasHiddenAncestor
+            else { return .zero }
+            return window.convertToScreen(column.convert(column.bounds, to: nil))
         }
 
         /// Whether the control lies fully inside the inspector column at some point of the

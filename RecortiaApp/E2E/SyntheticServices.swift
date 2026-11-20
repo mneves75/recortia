@@ -279,4 +279,38 @@
 
         func setPreferenceData(_ data: Data?, forKey key: String) { values[key] = data }
     }
+
+    /// Scripted automatic-masking detection (FR-06): returns the regions a scenario sets, can hold
+    /// until released, or fail. It reads no pixels and never runs Vision.
+    @MainActor
+    final class SyntheticSensitiveText: SensitiveTextService {
+        struct Failure: Error {}
+
+        var regions: [PixelRect] = []
+        var fails = false
+        var holds = false
+        private var waiter: CheckedContinuation<Void, Never>?
+        var isWaiting: Bool { waiter != nil }
+        private(set) var requestCount = 0
+
+        func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
+            requestCount += 1
+            if holds { await withCheckedContinuation { waiter = $0 } }
+            try Task.checkCancellation()
+            if fails { throw Failure() }
+            return regions
+        }
+
+        func release() {
+            waiter?.resume()
+            waiter = nil
+        }
+
+        func reset() {
+            release()
+            regions = []
+            fails = false
+            holds = false
+        }
+    }
 #endif

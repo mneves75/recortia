@@ -217,6 +217,9 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
     /// 0.13 have no such key, and synthesized Codable cannot default a missing non-optional one.
     public var keepsRunningInMenuBarChoice: Bool?
+    /// Stored only once the person changes it; read `autoRedactsSensitiveText`. Optional for the
+    /// same reason as `keepsRunningInMenuBarChoice`: blobs written before 0.15 have no such key.
+    public var autoRedactsSensitiveTextChoice: Bool?
     /// Stored only once the person sets one; read `filenameTemplate` (A-9).
     public var filenameTemplateChoice: FilenameTemplate?
     /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
@@ -242,6 +245,13 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var keepsRunningInMenuBar: Bool {
         get { keepsRunningInMenuBarChoice ?? true }
         set { keepsRunningInMenuBarChoice = newValue }
+    }
+
+    /// Whether a new capture opens with secure masks over the e-mail addresses and phone numbers
+    /// that on-device recognition finds (FR-06 amendment). Off by default.
+    public var autoRedactsSensitiveText: Bool {
+        get { autoRedactsSensitiveTextChoice ?? false }
+        set { autoRedactsSensitiveTextChoice = newValue }
     }
 
     public var exportOptions: ExportOptions {
