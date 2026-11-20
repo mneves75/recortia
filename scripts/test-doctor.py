@@ -3,6 +3,7 @@
 
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -296,6 +297,21 @@ else:
         (external / "added.txt").write_text("outside the bundle")
         reused = self.run_e2e("--no-build")
         self.assertEqual(0, reused.returncode, reused.stdout + reused.stderr)
+
+
+class SwiftEntryPointTests(unittest.TestCase):
+    def test_gate_scripts_run_swift_only_through_xcrun(self) -> None:
+        # doctor qualifies `xcrun swift`; a bare `swift` may resolve to another compiler on PATH.
+        bare = re.compile(r"(?:^|[;&|(]|\bthen|\bdo)[ \t]*swift[ \t]+[-a-z]", re.MULTILINE)
+        self.assertTrue(bare.search("x\nswift test --parallel\n"), "control: a bare call is seen")
+        self.assertFalse(bare.search("xcrun swift test\n"), "control: an xcrun call is allowed")
+        self.assertFalse(bare.search("    swift = record\n"), "control: an assignment is not a call")
+        offenders = []
+        for path in sorted((ROOT / "scripts").glob("*.sh")) + [ROOT / "init.sh"]:
+            source = path.read_text()
+            for match in bare.finditer(source):
+                offenders.append(f"{path.relative_to(ROOT)}:{source.count(chr(10), 0, match.start()) + 1}")
+        self.assertEqual([], offenders)
 
 
 class DoctorTests(unittest.TestCase):
