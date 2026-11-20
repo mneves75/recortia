@@ -21,7 +21,9 @@ private struct MaskingCapture {
     let model: EditorModel
 
     /// `green` changes the secret's pixels; everything else is the same.
-    init(green: UInt8 = 0, configure: (EditorHarness) -> Void = { _ in }) async throws {
+    init(
+        green: UInt8 = 0, upload: (any GitHubUploadService)? = nil, configure: (EditorHarness) -> Void = { _ in }
+    ) async throws {
         let store = ImageStore()
         let image = try SecretExport.image(width: 400, height: 300, secrets: [Self.secret], green: green)
         let info = await store.insert(
@@ -29,7 +31,7 @@ private struct MaskingCapture {
             origin: .captured(EditorFixtures.captureGeometry(width: 400, height: 300, scale: 2)))
         let session = DocumentSession(document: Document(asset: info))
         // The harness's own editor is a second, unmasked document; only `model` is the capture.
-        let harness = EditorHarness()
+        let harness = EditorHarness(upload: upload)
         harness.assets.store = store
         harness.exporter.pipeline = ExportPipeline(renderer: PrivacyRenderer(store: store))
         harness.sensitiveText.regions = [Self.region]
@@ -51,6 +53,28 @@ private struct MaskingCapture {
 
     func exportedPixels(_ snapshot: ShareSnapshot) throws -> DecodedPixels {
         try ContainerInspector.decodePixels(snapshot.bytes)
+    }
+
+    func secretPixels(_ snapshot: ShareSnapshot, green: UInt8 = 0) throws -> Int {
+        SecretExport.secretPixels(in: try exportedPixels(snapshot), Self.secret, green: green)
+    }
+}
+
+/// A synthetic upload sink: records every snapshot it receives and writes only a current one.
+@MainActor
+private final class MaskingUpload: GitHubUploadService {
+    private(set) var received: [ShareSnapshot] = []
+    private(set) var written: [ShareSnapshot] = []
+
+    func upload(
+        _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async throws(GitHubUploadFailure) -> URL {
+        received.append(snapshot)
+        guard isCurrent() else { throw .staleDocument }
+        written.append(snapshot)
+        return URL(fileURLWithPath: "/tmp/recortia-tests/synthetic-masked-upload.png")
     }
 }
 
@@ -101,8 +125,13 @@ struct EditorAutoRedactionTests {
         let before = model.session
         let id = before.document.id
 
+        model.selectTool(.loupe)
+        model.pointerMoved(to: Point(x: 50, y: 40))
+        #expect(model.notice == nil, "hovering the loupe over a pending capture says nothing")
         model.selectTool(.redact)
-        h.drag((10, 10), (90, 60))
+        model.pointerDown(at: Point(x: 10, y: 10))
+        model.pointerDragged(to: Point(x: 90, y: 60))
+        model.pointerUp(at: Point(x: 90, y: 60))
         model.selectTool(.rectangle)
         model.pointerDown(at: Point(x: 200, y: 100))
         model.pointerDragged(to: Point(x: 260, y: 160))
@@ -189,6 +218,121 @@ struct EditorAutoRedactionTests {
         await late.finishDetection()
         #expect(await lateBatch.value == [.copied])
         #expect(late.harness.files.uniqueSaves.isEmpty)
+    }
+
+    private func enableEverything(_ h: EditorHarness) {
+        enableCopyAndSave(h)
+        h.settings.update {
+            $0.githubUpload = GitHubUploadPreferences(
+                destination: GitHubDestination(owner: "synthetic", repository: "private-fixtures"), automatic: true)
+        }
+    }
+
+    @Test("An Undo queued between the masks landing and the batch resuming exports nothing unmasked")
+    func undoBeforeTheBatchResumes() async throws {
+        let upload = MaskingUpload()
+        let capture = try await MaskingCapture(upload: upload, configure: enableEverything)
+        let (h, model) = (capture.harness, capture.model)
+        defer { model.close() }
+        let plan = h.export.automaticExportPlan()
+        #expect(plan.copy && plan.save != nil && plan.upload != nil)
+        // Waiters resume in order on the main actor, so this Undo runs after the masks land and
+        // before the batch continues.
+        let undo = Task {
+            _ = await model.autoRedactionSettled()
+            model.undo()
+        }
+        await waitFor("undo waits") { model.autoRedactionWaiters.count == 1 }
+        let batch = Task { await model.runAutomaticExports(plan) }
+        await waitFor("batch waits") { model.autoRedactionWaiters.count == 2 }
+        await capture.waitForDetection()
+        await capture.finishDetection()
+        await undo.value
+        let outcomes = await batch.value
+        #expect(model.document.masks.isEmpty, "the person's Undo removed the masks")
+        #expect(outcomes.allSatisfy { !$0.didWrite }, "\(outcomes)")
+        #expect(h.clipboard.writes.isEmpty && h.files.uniqueSaves.isEmpty && upload.written.isEmpty)
+        for snapshot in upload.received { #expect(try capture.secretPixels(snapshot) == 0) }
+    }
+
+    @Test("The waiting batch uploads the masked capture")
+    func automaticUploadUsesTheMaskedSession() async throws {
+        let upload = MaskingUpload()
+        let capture = try await MaskingCapture(upload: upload, configure: enableEverything)
+        defer { capture.model.close() }
+        let plan = capture.harness.export.automaticExportPlan()
+        let batch = Task { await capture.model.runAutomaticExports(plan) }
+        await capture.waitForDetection()
+        await capture.finishDetection()
+        let outcomes = await batch.value
+        #expect(outcomes.count == 3 && outcomes.allSatisfy(\.didWrite), "\(outcomes)")
+        let sent = try #require(upload.written.first)
+        #expect(try capture.secretPixels(sent) == 0)
+        #expect(sent.revision == capture.model.session.revision && capture.model.document.masks.count == 1)
+    }
+
+    @Test("A continuous change begun while masking runs cannot fold the masks into its undo step")
+    func continuousChangeDuringMasking() async throws {
+        let capture = try await MaskingCapture()
+        let model = capture.model
+        defer { model.close() }
+        let padding = model.document.presentation.padding
+        await capture.waitForDetection()
+        let change = model.beginContinuousChange()
+        model.setPadding(10)
+        await capture.finishDetection()
+        #expect(model.document.masks.count == 1)
+        model.setPadding(24)
+        model.endContinuousChange(change)
+        model.undo()
+        #expect(model.document.masks.count == 1, "undoing the padding change keeps the automatic masks")
+        #expect(model.document.presentation.padding == padding)
+    }
+
+    @Test("A session change during detection makes its result stale: masking fails closed", arguments: [true, false])
+    func staleDetectionResult(found: Bool) async throws {
+        let capture = try await MaskingCapture { $0.sensitiveText.regions = found ? [MaskingCapture.region] : [] }
+        let model = capture.model
+        defer { model.close() }
+        await capture.waitForDetection()
+        // The editor refuses every change while masking runs; this stands for any path that would not.
+        try model.session.addSecureMask(covering: Rect(x: 300, y: 200, width: 40, height: 40))
+        let changed = model.document
+        await capture.finishDetection()
+        #expect(model.autoRedaction == .failed && model.notice == .maskingFailed)
+        #expect(model.document == changed, "no automatic mask landed on a document the result was not for")
+    }
+
+    @Test("An editor released without closing cancels its detection")
+    func releasedEditorCancelsDetection() async throws {
+        let harness: EditorHarness
+        weak var released: EditorModel?
+        do {
+            let capture = try await MaskingCapture()
+            harness = capture.harness
+            released = capture.model
+            await capture.waitForDetection()
+        }
+        #expect(released == nil)
+        harness.sensitiveText.pending?.resolve(())
+        await drain()
+        #expect(harness.sensitiveText.observedCancellation)
+    }
+
+    @Test("Only the person's Undo brings the secret back into exported bytes")
+    func undoRevealsTheSecretInExports() async throws {
+        let capture = try await MaskingCapture()
+        let (h, model) = (capture.harness, capture.model)
+        defer { model.close() }
+        await capture.waitForDetection()
+        await capture.finishDetection()
+        await model.settlePreviews()
+        #expect(await model.export(.copy) == .copied)
+        #expect(try capture.secretPixels(try #require(h.clipboard.writes.last)) == 0)
+        model.undo()
+        await model.settlePreviews()
+        #expect(await model.export(.copy) == .copied)
+        #expect(try capture.secretPixels(try #require(h.clipboard.writes.last)) > 0, "positive control")
     }
 
     enum Failure: String, CaseIterable { case error, cancellation, deadline }
@@ -299,5 +443,74 @@ extension SecretExport {
             }
         }
         return count
+    }
+}
+
+/// Hosted CI has no Vision text recognition and declares `RECORTIA_VISION_UNAVAILABLE=1`.
+private let visionAvailable = ConditionTrait.enabled(
+    if: ProcessInfo.processInfo.environment["RECORTIA_VISION_UNAVAILABLE"] != "1",
+    "Vision text recognition is declared unavailable on this runner")
+
+@Suite("Automatic masking with the live detector (FR-06 amendment)")
+@MainActor
+struct LiveAutoRedactionTests {
+    /// Whether every pixel of `rect` has one color: no glyph is visible there.
+    private func isUniform(_ pixels: DecodedPixels, _ rect: CGRect) -> Bool {
+        let first = pixels.pixel(x: Int(rect.minX), y: Int(rect.minY))
+        for y in Int(rect.minY)..<Int(rect.maxY) {
+            for x in Int(rect.minX)..<Int(rect.maxX) {
+                let p = pixels.pixel(x: x, y: y)
+                if p.r != first.r || p.g != first.g || p.b != first.b { return false }
+            }
+        }
+        return true
+    }
+
+    @Test("Vision finds the e-mail address, the masks land, and only Undo shows it in exported bytes", visionAvailable)
+    func liveDetectorMasksExportedBytes() async throws {
+        let scale = 2
+        let screen = try SensitiveScreen.renderItem(
+            "ana.souza@example.com", kind: .email, widthPoints: 600, heightPoints: 200, scale: scale, pointSize: 14,
+            x: 60, top: 80)
+        let item = try #require(screen.planted.first).rect
+        let store = ImageStore()
+        let info = await store.insert(
+            try ImageDecoder.canonicalize(screen.image),
+            origin: .captured(
+                EditorFixtures.captureGeometry(
+                    width: screen.image.width, height: screen.image.height, scale: Double(scale))))
+        let h = EditorHarness()
+        h.assets.store = store
+        h.exporter.pipeline = ExportPipeline(renderer: PrivacyRenderer(store: store))
+        let environment = EditorEnvironment(
+            renderer: h.renderer, export: h.export, folders: h.folders, textRecognition: h.recognizer,
+            qrDecoder: h.qr, sensitiveText: LiveSensitiveText(store: store), assets: h.assets, input: h.input,
+            pins: h.pins, textClipboard: h.textClipboard, links: h.links, settings: h.settings, clock: h.clock)
+        let model = EditorModel(
+            session: DocumentSession(document: Document(asset: info)), environment: environment, autoRedacts: true)
+        defer { model.close() }
+        // The deadline runs on the harness's manual clock, so only Vision decides here.
+        let clock = ContinuousClock()
+        let start = clock.now
+        while model.isMaskingPending, clock.now - start < .seconds(60) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(model.autoRedaction == .done)
+        let mask = try #require(model.document.masks.first)
+        #expect(model.document.masks.count == 1)
+        let covered = CGRect(
+            x: mask.outputRect.minX, y: mask.outputRect.minY, width: mask.outputRect.width,
+            height: mask.outputRect.height)
+        #expect(covered.contains(item), "\(covered) does not cover \(item)")
+
+        await model.settlePreviews()
+        #expect(await model.export(.copy) == .copied)
+        let masked = try ContainerInspector.decodePixels(try #require(h.clipboard.writes.last).bytes)
+        #expect(isUniform(masked, item), "the exported address shows no glyph")
+        model.undo()
+        await model.settlePreviews()
+        #expect(await model.export(.copy) == .copied)
+        let unmasked = try ContainerInspector.decodePixels(try #require(h.clipboard.writes.last).bytes)
+        #expect(!isUniform(unmasked, item), "positive control: after Undo the address is exported")
     }
 }
