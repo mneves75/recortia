@@ -7,6 +7,7 @@ import CoreGraphics
 import Domain
 import Foundation
 import RecortiaFixtures
+import Synchronization
 import Testing
 
 @testable import Imaging
@@ -303,6 +304,42 @@ struct SensitiveTextSweepTests {
         task.cancel()
         await #expect(throws: CancellationError.self) { _ = try await task.value }
     }
+
+    @Test(
+        "A sweep cancelled while its first tiles run starts no further tile and drops its result",
+        VisionRuntime.required)
+    func sweepCancelledMidway() async throws {
+        let screen = try SensitiveScreen.render(
+            widthPoints: 1512, heightPoints: 982, scale: 2, pointSize: 12, theme: .dark, language: .english,
+            layout: .denseColumns)
+        let jobs = try SensitiveTextScanner.tileJobs(
+            for: CGSize(width: screen.image.width, height: screen.image.height), pixelsPerPoint: 2, fineTileSide: 1024)
+        try #require(jobs.count > 2 * SensitiveTextScanner.concurrentTiles, "\(jobs.count) tiles")
+        let started = TileCounter()
+        let (firstTile, signal) = AsyncStream<Void>.makeStream()
+        let task = Task {
+            try await SensitiveTextScanner().sensitiveRegions(
+                in: screen.image, pixelsPerPoint: 2, languages: [OCRRecognitionTests.english],
+                tileStarted: {
+                    started.count.add(1, ordering: .relaxed)
+                    signal.yield()
+                })
+        }
+        var tiles = firstTile.makeAsyncIterator()
+        _ = await tiles.next()
+        let clock = ContinuousClock()
+        let cancelledAt = clock.now
+        task.cancel()
+        await #expect(throws: CancellationError.self) { _ = try await task.value }
+        let elapsed = clock.now - cancelledAt
+        // Only the tiles already running when the cancellation arrived ever started.
+        #expect(started.count.load(ordering: .relaxed) <= SensitiveTextScanner.concurrentTiles)
+        #expect(elapsed < .seconds(10), "ended \(elapsed) after cancellation")
+    }
+}
+
+private final class TileCounter: Sendable {
+    let count = Atomic<Int>(0)
 }
 
 @Suite("SensitiveText: review findings (2026-11-19)")

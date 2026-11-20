@@ -590,11 +590,13 @@ public struct SensitiveTextScanner: Sendable {
     /// Regions of `image` that show e-mail addresses or phone numbers. `pixelsPerPoint` is the
     /// capture's backing scale. Throws `CancellationError` when cancelled and a recognition error
     /// when any tile cannot be read, so a caller never takes a partial sweep for a complete one.
-    /// `method` other than `.patterns` exists for the benchmark harness only.
+    /// `method` other than `.patterns` exists for the benchmark harness only; `tileStarted` runs as
+    /// each tile's scan begins, for the cancellation test.
     @concurrent
     func sensitiveRegions(
         in image: CGImage, pixelsPerPoint: Double, languages: [Locale.Language],
-        kinds: Set<SensitiveTextKind> = Set(SensitiveTextKind.allCases), method: SensitiveTextMethod = .patterns
+        kinds: Set<SensitiveTextKind> = Set(SensitiveTextKind.allCases), method: SensitiveTextMethod = .patterns,
+        tileStarted: @escaping @Sendable () -> Void = {}
     ) async throws -> [SensitiveRegion] {
         try Task.checkCancellation()
         guard !kinds.isEmpty else { return [] }
@@ -614,8 +616,10 @@ public struct SensitiveTextScanner: Sendable {
                 guard next < jobs.count else { return }
                 let job = jobs[next]
                 next += 1
-                group.addTask {
-                    try await Self.scanTile(
+                // A cancelled sweep starts no further tile.
+                _ = group.addTaskUnlessCancelled {
+                    tileStarted()
+                    return try await Self.scanTile(
                         of: image, sourceRect: job.rect, layout: job.layout, kinds: kinds, languages: languages,
                         matcher: matcher, recognizer: recognizer)
                 }
