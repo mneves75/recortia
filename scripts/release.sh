@@ -22,6 +22,16 @@ elif (( $# != 0 )); then
   exit 2
 fi
 
+# Every exit after this point leaves a verdict scripts/tests-report.py reads: the success marker is
+# the last line, so set -e reaches it only after every step; any other exit prints this failure.
+src=""
+finish() {
+  local exit_status=$?
+  [[ -n "$src" ]] && { git -C "$root" worktree remove --force "$src" 2>/dev/null || true; }
+  (( exit_status == 0 )) || echo "release: failed (exit $exit_status)" >&2
+}
+trap finish EXIT
+
 # Development mode cannot qualify an archive, including a release-pipeline dry run.
 scripts/doctor.sh --release
 export RECORTIA_TOOLCHAIN_MODE=stable
@@ -63,7 +73,6 @@ git worktree prune
 # ignored or cached in the working tree can reach the signed binary.
 src=$out/src
 git worktree add --quiet --detach "$src" "$source_commit"
-trap 'git -C "$root" worktree remove --force "$src" 2>/dev/null || true' EXIT
 
 gate="skipped (dry run)"
 if (( ! dry_run )); then
@@ -190,3 +199,6 @@ PY
   echo "sha256: $sha"
 } > "$out/manifest.txt"
 cat "$out/manifest.txt"
+if (( dry_run )); then echo "release: dry run complete ($label, manifest $out/manifest.txt)"
+else echo "release: complete ($label, manifest $out/manifest.txt)"
+fi

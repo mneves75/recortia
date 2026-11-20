@@ -151,11 +151,11 @@ def e2e_status(text: str) -> str | None:
 
 
 def release_status(text: str) -> str | None:
-    if "release: dry run complete" in text:
-        return "passed"
-    if "release:" in text and "error" in text.lower():
-        return "failed"
-    return None
+    # scripts/release.sh prints exactly one of these as its last line.
+    markers = last_marker(text, ("release: dry run complete", "release: failed ("))
+    if markers is None:
+        return None
+    return "passed" if markers[1] == "release: dry run complete" else "failed"
 
 
 STATUS = {"check": check_status, "e2e": e2e_status, "release-dry-run": release_status}

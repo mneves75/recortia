@@ -2,6 +2,7 @@
 """REL-01 checks for source provenance and the shipped dependency notice."""
 
 import argparse
+import importlib.util
 import json
 import pathlib
 import re
@@ -22,6 +23,15 @@ SWIFT_XCRUN = f"#!/bin/sh\necho 'Apple Swift version {RECORD['expected_bundled_s
 RELEASE = ROOT / "scripts/release.sh"
 RESOLVED = ROOT / "Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
 NOTICE = "KeyboardShortcuts-LICENSE.txt"
+
+
+def inventory_release_status(text: str) -> str | None:
+    """The verdict scripts/tests-report.py gives a release log, from the real parser."""
+    spec = importlib.util.spec_from_file_location("tests_report", ROOT / "scripts/tests-report.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.release_status(text)
 
 
 class ReleaseFixture:
@@ -141,6 +151,31 @@ class ReleaseContractTests(unittest.TestCase):
         fresh = list(older.parent.glob("0.12.2-dev-*"))
         self.assertEqual(2, len(fresh), "each dry run needs its own reservation")
         self.assertTrue((fixture.root / "archive-reached").exists(), "dry run control reaches archive")
+
+    def test_a_failed_dry_run_reads_as_failed_never_as_complete(self) -> None:
+        fixture = self.fixture()
+        result = fixture.run("--dry-run")  # the fixture's xcodebuild fails the archive step
+        self.assertNotEqual(0, result.returncode)
+        output = result.stdout + result.stderr
+        self.assertIn(f"release: failed (exit {result.returncode})", result.stderr)
+        self.assertNotIn("dry run complete", output)
+        self.assertEqual("failed", inventory_release_status(output))
+
+    def test_the_success_marker_is_the_last_step_and_the_inventory_reads_it(self) -> None:
+        # The full success path needs codesign, hdiutil and /usr/libexec/PlistBuddy, which this
+        # fixture cannot stand in for; set -e makes the last line reachable only after every step.
+        script = RELEASE.read_text()
+        self.assertRegex(script, r"(?m)^set -euo pipefail$")
+        last = [line for line in script.splitlines() if line.strip()][-3:]
+        self.assertEqual([
+            'if (( dry_run )); then echo "release: dry run complete ($label, manifest $out/manifest.txt)"',
+            'else echo "release: complete ($label, manifest $out/manifest.txt)"',
+            "fi",
+        ], last)
+        self.assertEqual("passed", inventory_release_status(
+            "release: commit " + "a" * 40 + "\nrelease: dry run complete (0.1-dev, manifest m)\n"))
+        self.assertEqual("failed", inventory_release_status(
+            "release: dry run complete (0.1-dev, manifest m)\nrelease: failed (exit 1)\n"))
 
     def test_unknown_arguments_stop_before_the_toolchain_or_release_path(self) -> None:
         for arguments in (("--dryrun",), ("dry-run",), ("--dry-run", "extra"), ("",)):
