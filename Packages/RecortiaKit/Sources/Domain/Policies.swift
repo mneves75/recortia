@@ -201,6 +201,9 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var captureIncludesWindowShadow = true
     public var autoCopy = false
     public var autoSave = false
+    /// Never read or set: the login item is the truth. Encoded only because 0.14.0 and earlier
+    /// require the key, so rolling back keeps the person's preferences (PREF-01).
+    private var launchAtLogin = false
     public var updateChecksEnabled = false
     public var automaticScrollingEnabled = false
     public var defaultExportFormat = ExportFormatKind.png
