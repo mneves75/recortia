@@ -235,6 +235,18 @@
                     "closing an edited editor asks first",
                     await E2EWait.until(timeout: .seconds(5)) { window.attachedSheet != nil }
                         ? window.attachedSheet : nil)
+                if !discard {
+                    // R3-D17: a pin keeps no edits, so the warning names only copy and save.
+                    let expected =
+                        context.output.language.hasPrefix("pt")
+                        ? "Esta imagem tem alterações que não foram copiadas nem salvas. Fechar descarta essas alterações."
+                        : "This image has changes that were not copied or saved. Closing discards them."
+                    let texts = sheet.contentView.map { EditorWindowController.all(NSTextField.self, in: $0) } ?? []
+                    context.check(
+                        "the close warning says the edits were not copied or saved",
+                        texts.contains { $0.stringValue == expected }, texts.map(\.stringValue).joined(separator: " | ")
+                    )
+                }
                 window.endSheet(sheet, returnCode: discard ? .alertFirstButtonReturn : .alertSecondButtonReturn)
                 if discard {
                     context.check(

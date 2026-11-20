@@ -77,18 +77,18 @@
         }
       }
     },
-    "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them." : {
+    "%lld open images have changes that were not copied or saved. Quitting discards them." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+            "value" : "%lld open images have changes that were not copied or saved. Quitting discards them."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld imagens abertas têm alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+            "value" : "%lld imagens abertas têm alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
           }
         }
       }
@@ -359,18 +359,18 @@
         }
       }
     },
-    "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them." : {
+    "An open image has changes that were not copied or saved. Quitting discards them." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+            "value" : "An open image has changes that were not copied or saved. Quitting discards them."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma imagem aberta tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+            "value" : "Uma imagem aberta tem alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
           }
         }
       }

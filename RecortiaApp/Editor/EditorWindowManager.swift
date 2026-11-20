@@ -56,7 +56,7 @@ final class EditorWindowManager {
 
     var openDocumentIDs: [DocumentID] { Array(controllers.keys) }
 
-    /// Editors whose edits were never copied, saved, dragged, or pinned.
+    /// Editors whose edits were never copied or saved (a drag out saves; a pin does not).
     var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
 
     func model(for id: DocumentID) -> EditorModel? { controllers[id]?.model }
@@ -148,15 +148,19 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     // MARK: NSWindowDelegate
 
+    /// What closing an edited editor discards. Only a copy or save keeps edits; a pin does not.
+    static var discardOnCloseDetail: String {
+        String(
+            localized: "This image has changes that were not copied or saved. Closing discards them.", table: "Editor")
+    }
+
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         canvas.finishTextEditing(commit: true)
         guard model.isDirty, !discardConfirmed else { return true }
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(localized: "Discard your edits?", table: "Editor")
-        alert.informativeText = String(
-            localized: "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them.",
-            table: "Editor")
+        alert.informativeText = Self.discardOnCloseDetail
         let discard = alert.addButton(withTitle: String(localized: "Discard", table: "Editor"))
         discard.hasDestructiveAction = true
         alert.addButton(withTitle: String(localized: "Cancel", table: "Editor"))
