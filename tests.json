@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-01T04:00:11Z",
-  "commit": "7713c6b8444d91367483d6f357f55744ff0fc8c5",
+  "generated_at": "2026-11-20T01:38:24Z",
+  "commit": "15f094df9e378ba63aa02b236319597e59f33aff",
   "toolchain": {
     "xcode": "27.2 (27B52)",
     "channel": "stable",
@@ -12,18 +12,14 @@
     {
       "id": "check",
       "command": "./init.sh check --unsigned",
-      "status": "passed",
-      "evidence": ".scratch/logs/check-18.log",
-      "observed_at": "2026-10-28T21:16:23Z",
-      "note": "local observation of the evidence file above, not a CI result"
+      "status": "not_run",
+      "evidence": null
     },
     {
       "id": "e2e",
       "command": "./init.sh e2e --lang all",
-      "status": "passed",
-      "evidence": ".scratch/logs/e2e-final3.log",
-      "observed_at": "2026-10-28T14:07:28Z",
-      "note": "local observation of the evidence file above, not a CI result"
+      "status": "not_run",
+      "evidence": null
     },
     {
       "id": "release-dry-run",
@@ -97,7 +93,8 @@
       "id": "project-freshness",
       "protected_file": "scripts/check-project-fresh.sh",
       "tests": [
-        "scripts/test-project-freshness.py"
+        "scripts/test-project-freshness.py",
+        "scripts/test-xcodegen-wrapper.py"
       ],
       "invoked_by": [
         "scripts/check.sh"

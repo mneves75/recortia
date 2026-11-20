@@ -69,7 +69,7 @@ GATES: list[dict[str, object]] = [
     {
         "id": "project-freshness",
         "file": "scripts/check-project-fresh.sh",
-        "tests": ["scripts/test-project-freshness.py"],
+        "tests": ["scripts/test-project-freshness.py", "scripts/test-xcodegen-wrapper.py"],
         "invoked_by": ["scripts/check.sh"],
     },
     {
