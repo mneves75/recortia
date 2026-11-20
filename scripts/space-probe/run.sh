@@ -34,7 +34,9 @@ fi
 rc=0
 work=$(mktemp -d)
 for variant in "$@"; do
-  rm -f "$work/ready" "$work/hostpid" "$work/result"
+  rm -f "$work/ready" "$work/hostpid" "$work/result" "$work/fullscreen"
+  # The host creates this file from windowDidEnterFullScreen; the probe measures only after it.
+  export FULLSCREEN_FILE=$work/fullscreen
   if [[ $mode == stale ]]; then
     READY_FILE=$work/ready HOST_PID_FILE=$work/hostpid "$bin/probe" "$variant" stale >"$work/result" &
     probe=$!
@@ -64,9 +66,11 @@ except json.JSONDecodeError:
 if not isinstance(result, dict):
     sys.exit(1)
 count = result.get("spaceChanges")
-# A count measures a Space change only from the requested mode with the fullscreen host in front.
+# A count measures a Space change only from the requested mode, after the host entered its
+# fullscreen Space, with the host still in front.
 valid = (result.get("variant") == sys.argv[1] and result.get("mode") == sys.argv[3]
-         and result.get("hostFrontBefore") is True and type(count) is int)
+         and result.get("hostFrontBefore") is True and result.get("hostEnteredFullScreen") is True
+         and type(count) is int)
 sys.exit(0 if valid else 1)
 PY
   then
