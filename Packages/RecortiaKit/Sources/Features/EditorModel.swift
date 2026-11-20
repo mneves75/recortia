@@ -617,6 +617,29 @@ public final class EditorModel {
         }
     }
 
+    /// Moves one object `steps` places toward the front (positive) or the back (negative) within
+    /// its own stack, clamped at either end, as one undo step (the object list's drag to reorder).
+    public func moveItem(_ item: EditorItemID, by steps: Int) {
+        guard steps != 0 else { return }
+        endContinuousChange()
+        edit("Arrange") { document in
+            switch item {
+            case .layer(let id): Self.move(&document.layers, by: steps) { $0.id == id }
+            case .obfuscation(let id): Self.move(&document.obfuscations, by: steps) { $0.id == id }
+            case .annotation(let id): Self.move(&document.annotations, by: steps) { $0.id == id }
+            case .mask(let id): Self.move(&document.masks, by: steps) { $0.id == id }
+            case .callout(let id): Self.move(&document.callouts, by: steps) { $0.id == id }
+            }
+        }
+    }
+
+    static func move<Element>(_ array: inout [Element], by steps: Int, where matches: (Element) -> Bool) {
+        guard let from = array.firstIndex(where: matches) else { return }
+        let to = min(max(from + steps, 0), array.count - 1)
+        guard to != from else { return }
+        array.insert(array.remove(at: from), at: to)
+    }
+
     /// Renumbers numbered steps 1…n in z-order (explicit command, FR-05).
     public func renumberSteps() {
         endContinuousChange()
