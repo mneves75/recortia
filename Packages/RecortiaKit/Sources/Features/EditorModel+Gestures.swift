@@ -10,7 +10,8 @@ extension EditorModel {
 
     public func pointerDown(at p: Point<DocumentSpace>, modifiers: EditorModifiers = []) {
         guard !isClosed, textEditing == nil, p.isFinite else { return }
-        if tool != .select && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
+        // Beginning text input keeps an open adjustment; committing the text closes it.
+        if tool != .select && tool != .text && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
         cancelGesture()
         switch tool {
         case .hand:
