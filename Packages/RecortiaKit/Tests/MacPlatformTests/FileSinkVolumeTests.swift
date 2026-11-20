@@ -89,6 +89,66 @@ struct FileSinkVolumeTests {
         }
     }
 
+    // R09 (second review of T1a): the size was checked only before the read-back, so bytes another
+    // writer appended while it ran left the compared prefix equal and the save reported success.
+    @Test(
+        "A claimed file that grows while it is read back is reported, not saved",
+        arguments: ScratchVolume.Format.allCases)
+    func claimGrownDuringReadBackFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            var grew = false
+            let fileSystem = POSIXFileSystem(afterReadBack: { claimed in
+                guard let handle = try? FileHandle(forUpdating: claimed) else { return }
+                grew = (try? handle.seekToEnd()) != nil && (try? handle.write(contentsOf: Data([0x41]))) != nil
+                try? handle.close()
+            })
+            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+            }
+            try #require(grew, "control: the claimed file never grew")
+            #expect(FileManager.default.fileExists(atPath: url.path), "a file Recortia did not finish was removed")
+        }
+    }
+
+    // N05 (second review of T1a): the read-back is compared in fixed chunks; a change past the
+    // first chunk must still be seen.
+    @Test(
+        "A large claimed file changed past its first read-back chunk is reported, not saved",
+        arguments: ScratchVolume.Format.allCases)
+    func claimChangedPastFirstChunkFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let large = TestSupport.snapshot(bytes: Data((0..<200_000).map { UInt8(truncatingIfNeeded: $0 * 7) }))
+            let url = folder.appendingPathComponent("shot.png")
+            var changed = false
+            let fileSystem = POSIXFileSystem(afterClaimWrite: { claimed in
+                guard let handle = try? FileHandle(forUpdating: claimed) else { return }
+                let offset: UInt64 = 150_000
+                let original = large.bytes[Int(offset)]
+                changed =
+                    (try? handle.seek(toOffset: offset)) != nil
+                    && (try? handle.write(contentsOf: Data([original ^ 0xFF]))) != nil
+                try? handle.synchronize()
+                try? handle.close()
+            })
+            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+                try FileSink(fileSystem: fileSystem).save(large, to: url, overwrite: false)
+            }
+            try #require(changed, "control: the claimed file was never changed")
+        }
+    }
+
+    @Test("A write that makes no progress is an I/O failure, not a hang", arguments: ScratchVolume.Format.allCases)
+    func zeroProgressClaimWriteFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let fileSystem = POSIXFileSystem(writeBytes: { _, _, _ in 0 })
+            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+                try FileSink(fileSystem: fileSystem).save(
+                    snapshot, to: folder.appendingPathComponent("shot.png"), overwrite: false)
+            }
+        }
+    }
+
     // Security review of 855447f: an overwrite there falls back to a plain rename, and the
     // stage's private folder has no owners or modes on these volumes, so another user could
     // change the staged bytes before the rename and the save reported success.

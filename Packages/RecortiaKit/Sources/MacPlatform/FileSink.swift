@@ -139,6 +139,10 @@ struct POSIXFileSystem {
     var afterClaim: (URL) -> Void = { _ in }
     /// Runs once the snapshot is written into such a claimed file, before it is flushed.
     var afterClaimWrite: (URL) -> Void = { _ in }
+    /// Runs once a claimed file has been read back, before its size is checked again.
+    var afterReadBack: (URL) -> Void = { _ in }
+    /// Writes bytes like write(2); every write of the snapshot goes through it.
+    var writeBytes: @Sendable (Int32, UnsafeRawPointer, Int) -> Int = { Darwin.write($0, $1, $2) }
     /// Fails the stage's write with this code after its first bytes.
     var failWrite: Int32?
     /// Fails the publishing rename with this code.
@@ -366,7 +370,7 @@ struct POSIXFileSystem {
             failure = EEXIST
         }
         if failure == nil {
-            failure = Self.writeAll(data, to: claim, written: &written)
+            failure = Self.writeAll(data, to: claim, written: &written, using: writeBytes)
             removable = failure != nil
         }
         if failure == nil { afterClaimWrite(folder.appendingPathComponent(name, isDirectory: false)) }
@@ -376,7 +380,13 @@ struct POSIXFileSystem {
             failure = errno
             removable = true
         }
-        if failure == nil, !Self.readBack(claim, equals: data) { failure = EIO }
+        if failure == nil,
+            !Self.readBack(
+                claim, equals: data,
+                afterRead: { afterReadBack(folder.appendingPathComponent(name, isDirectory: false)) })
+        {
+            failure = EIO
+        }
         var identity: FileIdentity?
         if fstat(claim, &status) == 0 { identity = FileIdentity(status) }
         let named = identity.map { Self.entry(name, in: directory, is: $0, type: S_IFREG) } ?? false
@@ -403,39 +413,58 @@ struct POSIXFileSystem {
             && (type != S_IFREG || status.st_nlink == 1)
     }
 
-    /// Whether the file open as `descriptor` holds exactly `data`.
-    private static func readBack(_ descriptor: Int32, equals data: Data) -> Bool {
-        var status = stat()
-        guard fstat(descriptor, &status) == 0, status.st_size == off_t(data.count) else { return false }
-        var buffer = Data(count: data.count)
-        var offset = 0
-        while offset < data.count {
-            // Invariant: each read stays within the `data.count` bytes `buffer` holds.
-            let count = buffer.withUnsafeMutableBytes { bytes in
-                pread(descriptor, bytes.baseAddress.map { $0 + offset }, data.count - offset, off_t(offset))
+    /// Bytes compared per read during a read-back, so verifying never holds a second full copy.
+    static let readBackChunk = 64 * 1024
+
+    /// Whether the file open as `descriptor` holds exactly `data`: its size before, its bytes
+    /// compared chunk by chunk, then its size again after `afterRead`, so bytes appended while it
+    /// is read are seen.
+    private static func readBack(_ descriptor: Int32, equals data: Data, afterRead: () -> Void = {}) -> Bool {
+        guard size(of: descriptor) == off_t(data.count) else { return false }
+        var buffer = [UInt8](repeating: 0, count: min(readBackChunk, max(data.count, 1)))
+        let matches = data.withUnsafeBytes { expected -> Bool in
+            guard let base = expected.baseAddress else { return data.isEmpty }
+            var offset = 0
+            while offset < data.count {
+                let wanted = min(buffer.count, data.count - offset)
+                // Invariant: each read stays within `buffer`, and each compare within both buffers.
+                let count = buffer.withUnsafeMutableBytes { pread(descriptor, $0.baseAddress, wanted, off_t(offset)) }
+                if count < 0, errno == EINTR { continue }
+                guard count > 0, memcmp(buffer, base + offset, count) == 0 else { return false }
+                offset += count
             }
-            if count < 0, errno == EINTR { continue }
-            guard count > 0 else { return false }
-            offset += count
+            return true
         }
-        return buffer == data
+        guard matches else { return false }
+        afterRead()
+        return size(of: descriptor) == off_t(data.count)
+    }
+
+    private static func size(of descriptor: Int32) -> off_t? {
+        var status = stat()
+        return fstat(descriptor, &status) == 0 ? status.st_size : nil
     }
 
     /// Writes all of `data` (or its first `failAfter` bytes), retrying interrupted writes and
     /// counting each successful one in `written` at once. Returns the first other write(2) error
     /// code, or nil once everything asked for is written.
-    static func writeAll(_ data: Data, to descriptor: Int32, written: inout Int, failAfter: Int? = nil) -> Int32? {
+    static func writeAll(
+        _ data: Data, to descriptor: Int32, written: inout Int, failAfter: Int? = nil,
+        using write: (Int32, UnsafeRawPointer, Int) -> Int
+    ) -> Int32? {
         // Invariant: `buffer` is valid only inside the closure; every access stays within
         // `buffer.count` because `written` only advances by what write(2) reports it wrote.
         data.withUnsafeBytes { buffer -> Int32? in
             guard let base = buffer.baseAddress else { return nil }
             let end = min(buffer.count, failAfter ?? buffer.count)
             while written < end {
-                let result = Darwin.write(descriptor, base + written, end - written)
+                let result = write(descriptor, base + written, end - written)
                 if result < 0 {
                     if errno == EINTR { continue }
                     return errno
                 }
+                // No progress would repeat forever.
+                if result == 0 { return EIO }
                 written += result
             }
             return nil
@@ -536,7 +565,8 @@ final class Stage {
         var written = 0
         if failure == nil {
             failure = POSIXFileSystem.writeAll(
-                data, to: file, written: &written, failAfter: fileSystem.failWrite.map { _ in 3 })
+                data, to: file, written: &written, failAfter: fileSystem.failWrite.map { _ in 3 },
+                using: fileSystem.writeBytes)
             if failure == nil, let injected = fileSystem.failWrite { failure = injected }
         }
         if failure == nil, fsync(file) != 0 { failure = errno }

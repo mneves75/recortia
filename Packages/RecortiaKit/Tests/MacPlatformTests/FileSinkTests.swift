@@ -94,6 +94,19 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
     }
 
+    // R11 (second review of T1a): a write(2) that reported zero bytes looped forever.
+    @Test("A stage write that makes no progress is an I/O failure that keeps the prior file")
+    func zeroProgressStageWriteFails() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        let sink = FileSink(fileSystem: POSIXFileSystem(writeBytes: { _, _, _ in 0 }))
+        #expect(throws: SinkError.writeFailed(code: Int(EIO))) { try sink.save(snapshot, to: url, overwrite: true) }
+        #expect(try Data(contentsOf: url) == priorBytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
+    }
+
     @Test("A failed commit keeps the prior file and removes the temporary file")
     func injectedCommitFailure() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
