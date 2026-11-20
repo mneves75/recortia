@@ -12,9 +12,10 @@ extension EditorModel {
     /// Starts detection and its deadline; whichever settles first decides (`finishAutoRedaction`).
     func startAutoRedaction() {
         guard let asset = document.layers.first.flatMap({ document.assets[$0.assetID] }) else {
-            return finishAutoRedaction(.failure(SensitiveTextUnavailable()))
+            return finishAutoRedaction(.failure(SensitiveTextUnavailable()), for: nil)
         }
-        autoRedactionRequest = session.requestIdentity()
+        let request = session.requestIdentity()
+        autoRedactionRequest = request
         let service = environment.sensitiveText
         let clock = environment.clock
         let detection = Task { [weak self] in
@@ -24,13 +25,13 @@ extension EditorModel {
             } catch {
                 result = .failure(error)
             }
-            self?.finishAutoRedaction(result)
+            self?.finishAutoRedaction(result, for: request)
         }
         let deadline = Task { [weak self] in
             do { try await clock.sleep(for: Self.autoRedactionDeadline) } catch { return }
             // Stops the sweep even when no editor is left to settle.
             detection.cancel()
-            self?.finishAutoRedaction(.failure(CancellationError()))
+            self?.finishAutoRedaction(.failure(CancellationError()), for: request)
         }
         autoRedactionTasks = [detection, deadline]
     }
@@ -48,13 +49,14 @@ extension EditorModel {
         settleAutoRedaction(.failed)
     }
 
-    private func finishAutoRedaction(_ result: Result<[PixelRect], any Error>) {
-        // The first of detection and deadline decides; a late result is ignored.
-        guard isMaskingPending, !isClosed else { return }
+    /// `request` is the identity detection started with; nil only when there was nothing to scan.
+    private func finishAutoRedaction(_ result: Result<[PixelRect], any Error>, for request: RequestIdentity?) {
+        // The first of detection and deadline decides; a late result, or one for a superseded
+        // request, is ignored.
+        guard isMaskingPending, !isClosed, request == autoRedactionRequest else { return }
         // A result counts only for the document state it was computed from, from a task that was
         // not cancelled; anything else fails closed, an empty result included.
-        let isCurrent =
-            !Task.isCancelled && autoRedactionRequest.map { session.accepts($0) } == true
+        let isCurrent = !Task.isCancelled && request.map { session.accepts($0) } == true
         if isCurrent, case .success(let regions) = result, landAutoMasks(regions) {
             settleAutoRedaction(.done)
             if !regions.isEmpty { post(.sensitiveTextMasked(regions.count)) }

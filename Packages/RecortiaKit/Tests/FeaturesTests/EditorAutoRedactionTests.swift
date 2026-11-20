@@ -303,6 +303,22 @@ struct EditorAutoRedactionTests {
         #expect(model.document == changed, "no automatic mask landed on a document the result was not for")
     }
 
+    @Test("A result for a superseded request is dropped even when the document did not change")
+    func supersededRequestIsDropped() async throws {
+        let capture = try await MaskingCapture(configure: enableCopyAndSave)
+        let (h, model) = (capture.harness, capture.model)
+        defer { model.close() }
+        await capture.waitForDetection()
+        let revision = model.session.revision
+        // Stands for a later masking request on the same, unchanged document state.
+        model.autoRedactionRequest = model.session.requestIdentity()
+        h.sensitiveText.pending?.resolve(())
+        await drain()
+        #expect(model.session.revision == revision)
+        #expect(model.isMaskingPending && model.document.masks.isEmpty, "the superseded result settled nothing")
+        #expect(h.clipboard.writes.isEmpty && h.files.uniqueSaves.isEmpty)
+    }
+
     @Test("An editor released without closing cancels its detection")
     func releasedEditorCancelsDetection() async throws {
         let harness: EditorHarness
