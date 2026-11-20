@@ -38,6 +38,7 @@
         private let desktop: CGImage
         /// Delay before `windows()` returns, so the chooser's loading state is observable.
         var windowsDelay: Duration = .milliseconds(400)
+        var fixedCaptureDate: Date?
         private(set) var captures: [CaptureTarget] = []
 
         init(desktop: CGImage) {
@@ -99,7 +100,7 @@
             guard let image = desktop.cropping(to: pixels) else { throw .system(code: -1) }
             let geometry = CaptureGeometry(
                 source: source, desktopBounds: clipped, pointPixelScale: scale,
-                pixelSize: PixelSize(width: image.width, height: image.height), capturedAt: Date())
+                pixelSize: PixelSize(width: image.width, height: image.height), capturedAt: fixedCaptureDate ?? Date())
             return (image, geometry)
         }
     }
