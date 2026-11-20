@@ -152,8 +152,24 @@ extension UserMessage {
             case .multipleFrames: String(localized: "Animated or multi-page images are not supported.")
             case .corrupt: String(localized: "The image data is damaged.")
             case .unreadable: String(localized: "The file could not be read.")
+            case .tooManyFiles:
+                String(localized: "Recortia opens at most \(ImportCoordinator.maximumOpenedFiles) images at a time.")
             }
         return UserMessage(title: title, detail: detail)
+    }
+
+    /// One report for the files of one open request that were refused, each reason once;
+    /// content-free: no file names (PRIV-01).
+    static func openFailures(_ failures: [ImportFailure]) -> UserMessage? {
+        guard let first = failures.first else { return nil }
+        guard failures.count > 1 else { return importFailure(first) }
+        var reasons: [String] = []
+        for failure in failures {
+            let reason = importFailure(failure).detail
+            if !reasons.contains(reason) { reasons.append(reason) }
+        }
+        return UserMessage(
+            title: String(localized: "Some images could not be opened"), detail: reasons.joined(separator: "\n"))
     }
 
     static func export(_ failure: ExportFailure) -> UserMessage {
@@ -168,6 +184,9 @@ extension UserMessage {
             case .accessDenied:
                 String(localized: "Recortia cannot write to that folder. Choose a folder in Settings › Export.")
             case .destinationExists: String(localized: "A file with that name already exists.")
+            case .nameTooLong:
+                String(
+                    localized: "The file name is too long for that folder. Choose a shorter name in Settings › Export.")
             case .diskFull: String(localized: "The disk is full.")
             case .volumeUnavailable: String(localized: "The destination volume is not available.")
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")
@@ -176,6 +195,11 @@ extension UserMessage {
                 String(
                     localized:
                         "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it."
+                )
+            case .maskingUnfinished:
+                String(
+                    localized:
+                        "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically."
                 )
             }
         // One step of an automatic batch failed; another may already have copied or saved, so the

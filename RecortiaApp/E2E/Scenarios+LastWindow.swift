@@ -389,7 +389,7 @@
             func saved() -> Int { (try? FileManager.default.contentsOfDirectory(atPath: folder.path).count) ?? -1 }
             let openDocument = harness.app.openDocument
             // No editor: the automatic save then belongs to no window and closing one cannot cancel it.
-            harness.app.openDocument = { _ in nil }
+            harness.app.openDocument = { _, _, _ in nil }
             defer {
                 harness.app.openDocument = openDocument
                 harness.terminations.onRequest = nil

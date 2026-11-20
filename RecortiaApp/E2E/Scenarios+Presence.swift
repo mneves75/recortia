@@ -42,9 +42,40 @@
                 await E2EWait.until(timeout: .seconds(3)) { NSApp.activationPolicy() == .accessory }, policy())
             context.check("that return is one demotion", presence.demotions == demotionsBefore + 1)
 
+            let portuguese = context.output.language == "pt-BR"
+            do {
+                let capturedAt = Date.now.addingTimeInterval(-3_600)
+                harness.capture.fixedCaptureDate = capturedAt
+                defer { harness.capture.fixedCaptureDate = nil }
+                let captured = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+                let captureWindow = try context.unwrap("the capture has a window", captured.window)
+                let captureLabel = portuguese ? "Captura" : "Capture"
+                let captureTime = capturedAt.formatted(.dateTime.hour().minute())
+                context.check(
+                    "the capture title uses its capture time", captureWindow.title == "\(captureLabel) \(captureTime)")
+                context.check("the capture title has no slash", !captureWindow.title.contains("/"))
+
+                harness.importInput.pastedImage = try E2EDrawing.png(harness.desktop)
+                defer { harness.importInput.pastedImage = nil }
+                let beforePaste = Date.now
+                let previousCount = harness.editors.controllers.count
+                harness.app.perform(.pasteImage)
+                let pasted = try await E2EActions.waitForNewEditor(harness, after: previousCount, context)
+                let pastedWindow = try context.unwrap("the pasted image has a window", pasted.window)
+                let pasteLabel = portuguese ? "Imagem colada" : "Pasted Image"
+                let pasteTitles = [beforePaste, Date.now].map {
+                    "\(pasteLabel) \($0.formatted(.dateTime.hour().minute()))"
+                }
+                context.check("the pasted image title uses its opening time", pasteTitles.contains(pastedWindow.title))
+                context.check("the pasted image title has no slash", !pastedWindow.title.contains("/"))
+            }
+            harness.editors.closeAll()
+
             // An editor: minimizing, capture suspension and Hide keep Recortia regular.
             let controller = try await harness.openImported(harness.desktop, name: "presence.png")
             let editor = try context.unwrap("the editor has a window", controller.window)
+            context.check("the imported image title is its filename with extension", editor.title == "presence.png")
+            context.check("the imported image title has no slash", !editor.title.contains("/"))
             editor.ignoresMouseEvents = true
             show(editor, presence)
             context.check("an open editor makes Recortia regular", NSApp.activationPolicy() == .regular, policy())
@@ -141,14 +172,18 @@
             context.check("a launch without an event counts as the person's", LaunchKind(openEvent: nil) == .user)
             context.check(
                 "first launch shows onboarding",
-                LaunchWindow.choose(onboardingPending: true, kind: .user) == .onboarding
-                    && LaunchWindow.choose(onboardingPending: true, kind: .loginItem) == .onboarding)
+                LaunchWindow.choose(onboardingPending: true, kind: .user, opensFiles: false) == .onboarding
+                    && LaunchWindow.choose(onboardingPending: true, kind: .loginItem, opensFiles: false) == .onboarding)
             context.check(
                 "opening Recortia shows Settings",
-                LaunchWindow.choose(onboardingPending: false, kind: .user) == .settings)
+                LaunchWindow.choose(onboardingPending: false, kind: .user, opensFiles: false) == .settings)
             context.check(
                 "Open at login shows no window",
-                LaunchWindow.choose(onboardingPending: false, kind: .loginItem) == .none)
+                LaunchWindow.choose(onboardingPending: false, kind: .loginItem, opensFiles: false) == .none)
+            context.check(
+                "a launch to open files shows only their editors, even during onboarding",
+                LaunchWindow.choose(onboardingPending: true, kind: .user, opensFiles: true) == .none
+                    && LaunchWindow.choose(onboardingPending: false, kind: .user, opensFiles: true) == .none)
         }
 
         /// Orders `window` in the way presenting code does, parked offscreen and transparent.

@@ -15,11 +15,14 @@ enum LaunchKind: Equatable {
     }
 }
 
-/// The window a launch shows: a menu-bar app is otherwise invisible after being opened.
+/// The window a launch shows: a menu-bar app is otherwise invisible after being opened. A launch
+/// to open files (Open With, a drop on the Dock icon, `open -a`) shows their editors instead, even
+/// before onboarding is finished; the tour still appears on the next plain launch.
 enum LaunchWindow: Equatable {
     case onboarding, settings, none
 
-    static func choose(onboardingPending: Bool, kind: LaunchKind) -> LaunchWindow {
+    static func choose(onboardingPending: Bool, kind: LaunchKind, opensFiles: Bool) -> LaunchWindow {
+        if opensFiles { return .none }
         if onboardingPending { return .onboarding }
         return kind == .user ? .settings : .none
     }

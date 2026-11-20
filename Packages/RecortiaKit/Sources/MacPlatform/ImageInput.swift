@@ -11,7 +11,13 @@ public enum ImageInput {
     /// file that grows in between is still rejected without an unbounded allocation. The source is
     /// opened read-only and never modified. The open is non-blocking and does not follow a final
     /// symbolic link, so a FIFO or device is refused at once instead of blocking the caller.
+    /// Only a file that starts with a PNG or JPEG signature is read past its first bytes.
     public static func readFile(at url: URL) throws(ImportError) -> Data {
+        try readFile(at: url) { try $0.read(upToCount: $1) }
+    }
+
+    /// `read` reads up to a count of bytes from the open file, like `FileHandle.read(upToCount:)`.
+    static func readFile(at url: URL, reading read: (FileHandle, Int) throws -> Data?) throws(ImportError) -> Data {
         guard url.isFileURL else { throw .unreadable }
         // The path pointer and `&info` are valid for their calls only; open(2) and fstat(2) keep neither.
         let descriptor = unsafe url.withUnsafeFileSystemRepresentation { path in
@@ -32,9 +38,16 @@ public enum ImageInput {
         let limit = ImportLimits.maxCompressedBytes
         guard info.st_size >= 0, info.st_size <= off_t(limit) else { throw .tooManyBytes }
 
+        let head: Data
+        do {
+            head = try read(handle, ImageSignature.length) ?? Data()
+        } catch {
+            throw .unreadable
+        }
+        guard ImageSignature.isSupported(head) else { throw .unsupportedFormat }
         let data: Data
         do {
-            data = try handle.read(upToCount: limit + 1) ?? Data()
+            data = try head + (read(handle, limit + 1 - head.count) ?? Data())
         } catch {
             throw .unreadable
         }

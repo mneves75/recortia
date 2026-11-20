@@ -19,7 +19,7 @@ struct FeatureModels {
         self.services = services
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
-            clock: services.clock, settings: settings)
+            clock: services.clock, settings: settings, sound: services.captureSound)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
             folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
@@ -49,7 +49,7 @@ final class AppModel: AppActions {
     let features: FeatureModels?
     private var isStartingScrollingCapture = false
 
-    var openDocument: ((DocumentSession) -> EditorModel?)?
+    var openDocument: ((DocumentSession, EditorInitialAction, _ importedFileName: String?) -> EditorModel?)?
     var recognizeText: ((DocumentSession) -> Void)?
     @ObservationIgnored private lazy var settingsWindow = SettingsWindowController(model: self)
 
@@ -58,6 +58,10 @@ final class AppModel: AppActions {
     @ObservationIgnored private var pinsUI: PinsUIController?
     @ObservationIgnored private var captureWindowVisibility: CaptureWindowVisibility?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
+    /// Open requests the system made before launch wired the editors, each kept apart: a cold
+    /// launch by Open With, a drop on the Dock icon or `open -a` delivers them before
+    /// `applicationDidFinishLaunching`.
+    @ObservationIgnored private var requestsBeforeLaunch: [[URL]] = []
     @ObservationIgnored private let editors = EditorWindowManager()
     @ObservationIgnored private var systemEvents: SystemEventMonitor?
     @ObservationIgnored private var didLaunch = false
@@ -122,11 +126,14 @@ final class AppModel: AppActions {
             wire(features)
         }
         registerShortcutHandlers()
-        switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind) {
+        switch LaunchWindow.choose(
+            onboardingPending: onboarding.shouldPresent, kind: kind, opensFiles: !requestsBeforeLaunch.isEmpty)
+        {
         case .onboarding: showOnboarding()
         case .settings: showSettings()
         case .none: break
         }
+        openFilesRequestedBeforeLaunch()
     }
 
     func showOnboarding() {
@@ -259,17 +266,43 @@ final class AppModel: AppActions {
         }
     }
 
+    /// Open With, a drop on the Dock icon and `open -a` (FR-03): one editor per file through the
+    /// same admission as Open Image, and one report for every file that was refused.
+    func openFiles(_ urls: [URL]) {
+        guard openDocument != nil else {
+            requestsBeforeLaunch.append(urls)
+            return
+        }
+        open([urls])
+    }
+
+    /// Replays, in order, the requests that arrived before the editors were wired.
+    func openFilesRequestedBeforeLaunch() {
+        let requests = requestsBeforeLaunch
+        requestsBeforeLaunch = []
+        if !requests.isEmpty { open(requests) }
+    }
+
+    private func open(_ requests: [[URL]]) {
+        guard let importer = features?.importer else { return }
+        Task {
+            for failures in await importer.openRequests(requests) {
+                if let message = UserMessage.openFailures(failures) { showMessage(message) }
+            }
+        }
+    }
+
     // MARK: Wiring
 
     private func wire(_ features: FeatureModels) {
         features.capture.onCaptured = { [weak self] completion in
             self?.handleCapture(completion)
         }
-        features.importer.onImported = { [weak self] session in
-            _ = self?.openDocument?(session)
+        features.importer.onImported = { [weak self] session, fileName in
+            _ = self?.openDocument?(session, .none, fileName)
         }
         features.scroll.onAccepted = { [weak self] session in
-            _ = self?.openDocument?(session)
+            _ = self?.openDocument?(session, .none, nil)
         }
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
@@ -278,10 +311,13 @@ final class AppModel: AppActions {
         let services = features.services
         let environment = EditorEnvironment(
             renderer: services.renderer, export: features.export, folders: services.folders,
-            textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
-            input: services.input, pins: features.pins, textClipboard: PasteboardTextClipboard(),
-            links: WorkspaceLinkOpener(), settings: settings, imageImporter: features.importer.imageImporter)
-        openDocument = { [editors] session in editors.open(session, environment: environment) }
+            textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
+            sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
+            pins: features.pins, textClipboard: PasteboardTextClipboard(), links: WorkspaceLinkOpener(),
+            settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
+        openDocument = { [editors] session, action, fileName in
+            editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)
+        }
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
         let monitor = SystemEventMonitor { event in
             switch event {
@@ -303,36 +339,42 @@ final class AppModel: AppActions {
     func handleCapture(_ completion: CaptureCompletion) {
         switch completion.purpose {
         case .edit:
-            let editor = openDocument?(completion.session)
-            runAutomaticExports(for: completion.session, editor: editor)
+            // Decided here, synchronously, before anything else can run on the main actor: a
+            // setting changed by a job queued after this belongs to the next capture (R-3).
+            let plan = features?.export.automaticExportPlan()
+            let masks = settings.preferences.autoRedactsSensitiveText
+            // Opening orders the editor window front before it returns.
+            let toEditor = LatencySignposts.begin(.captureToEditor)
+            let editor = openDocument?(completion.session, masks ? .maskSensitiveText : .none, nil)
+            toEditor.end()
+            runAutomaticExports(plan, for: completion.session, editor: editor, masks: masks)
         case .recognizeText:
             recognizeText?(completion.session)
         }
     }
 
     /// Auto-copy/auto-save run on the fresh capture, before any later edit, and only when enabled.
-    /// Freshness is checked against the editor's live session: an edit or redaction made while the
-    /// export renders, or closing the editor, makes it stale, so the unedited capture is not sent.
-    private func runAutomaticExports(for session: DocumentSession, editor: EditorModel?) {
-        guard let export = features?.export else { return }
-        // Decided here, synchronously: a setting changed by a main-actor job queued before the task
-        // below runs belongs to the next capture (R-3).
-        let plan = export.automaticExportPlan()
-        guard !plan.isEmpty else { return }
-        let opened = editor != nil
-        let live: @MainActor @Sendable () -> DocumentSession? = { [weak editor] in
-            // No editor wired: the capture itself is current. An editor that closed (or was
-            // released) makes the export stale.
-            guard opened else { return session }
-            guard let editor, !editor.isClosed else { return nil }
-            return editor.session
-        }
+    /// With an editor they run through it: on the masked document when `masks`, after the masks
+    /// land, and freshness is checked against its live session, so an edit made while the export
+    /// renders, or closing the editor, keeps the earlier state from being sent.
+    private func runAutomaticExports(
+        _ plan: AutomaticExportPlan?, for session: DocumentSession, editor: EditorModel?, masks: Bool
+    ) {
+        guard let export = features?.export, let plan, !plan.isEmpty else { return }
         // Counted until reported, so quitting after the last window waits for the save and shows
         // its failure first.
         automaticExportsInFlight += 1
         Task {
             defer { automaticExportsInFlight -= 1 }
-            let outcomes = await export.runAutomaticExports(plan, for: session, currentSession: live)
+            let outcomes: [ExportOutcome]
+            if let editor {
+                outcomes = await editor.runAutomaticExports(plan)
+            } else if masks {
+                // Nothing could mask this capture, so nothing exports it automatically.
+                outcomes = [.failed(.maskingUnfinished)]
+            } else {
+                outcomes = await export.runAutomaticExports(plan, for: session, currentSession: { session })
+            }
             let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
             for failure in route.alerts { showMessage(.export(failure)) }
             for outcome in route.editorNotices { editor?.reportAutomaticExport(outcome) }

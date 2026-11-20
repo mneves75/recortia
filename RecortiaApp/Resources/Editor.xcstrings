@@ -1,6 +1,140 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Nothing was saved: the file name is too long for that folder.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Nothing was saved: the file name is too long for that folder." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Nada foi salvo: o nome do arquivo é longo demais para essa pasta." } }
+      }
+    },
+    "Scrolling Capture %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scrolling Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura com rolagem %@" } }
+      }
+    },
+    "Pasted Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pasted Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem colada %@" } }
+      }
+    },
+    "Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem %@" } }
+      }
+    },
+    "Capture %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura %@" } }
+      }
+    },
+    "Automatic masking did not finish, so nothing was masked. Check the image before you share it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic masking did not finish, so nothing was masked. Check the image before you share it."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O mascaramento automático não terminou, então nada foi mascarado. Confira a imagem antes de compartilhar."
+          }
+        }
+      }
+    },
+    "Masked %lld e-mail addresses or phone numbers. Check the image for anything else before you share it.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Masked %lld e-mail address or phone number. Check the image for anything else before you share it."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Masked %lld e-mail addresses or phone numbers. Check the image for anything else before you share it."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld e-mail ou número de telefone foi mascarado. Confira se resta algo na imagem antes de compartilhar."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld e-mails ou números de telefone foram mascarados. Confira se resta algo na imagem antes de compartilhar."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Masking e-mail addresses and phone numbers. Try again when it finishes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masking e-mail addresses and phone numbers. Try again when it finishes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mascarando e-mails e números de telefone. Tente de novo quando terminar."
+          }
+        }
+      }
+    },
+    "Masking e-mail addresses and phone numbers…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masking e-mail addresses and phone numbers…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mascarando e-mails e números de telefone…"
+          }
+        }
+      }
+    },
+    "Nothing was exported: automatic masking did not finish.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was exported: automatic masking did not finish."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada foi exportado: o mascaramento automático não terminou."
+          }
+        }
+      }
+    },
     "Framing": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Framing" } },
@@ -1485,22 +1619,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Formato"
-          }
-        }
-      }
-    },
-    "Recortia Editor": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recortia Editor"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Editor do Recortia"
           }
         }
       }

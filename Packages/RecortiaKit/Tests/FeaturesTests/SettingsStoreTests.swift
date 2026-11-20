@@ -70,6 +70,7 @@ struct SettingsStoreTests {
             "captureIncludesWindowShadow", "autoCopy", "autoSave", "launchAtLogin", "updateChecksEnabled",
             "automaticScrollingEnabled", "defaultExportFormat", "jpegQuality", "defaultExportScale", "ocrTextMode",
             "pinDefaultOpacity", "preferredSaveFolderBookmark", "editorContentSize", "keepsRunningInMenuBarChoice",
+            "autoRedactsSensitiveTextChoice",
         ]
         #expect(Set(object.keys).isSubset(of: allowed))
     }
@@ -133,6 +134,28 @@ struct SettingsStoreTests {
         #expect(loaded.loadIssue == nil)
         #expect(loaded.preferences.captureDelaySeconds == 5)
         #expect(loaded.preferences.keepsRunningInMenuBar)
+    }
+
+    // Failure mode: the masking choice as a required key would make every 0.14 blob fail to
+    // decode, resetting all settings and the sealed export consent.
+    @Test("Automatic masking defaults off, persists on, and blobs written before it existed still load")
+    func autoRedactsSensitiveText() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(!store.preferences.autoRedactsSensitiveText)
+        store.update { $0.autoRedactsSensitiveText = true }
+        #expect(SettingsStore(storage: storage).preferences.autoRedactsSensitiveText)
+
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("autoRedacts") }
+        old["captureDelaySeconds"] = 2
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 2)
+        #expect(!loaded.preferences.autoRedactsSensitiveText)
     }
 
     @Test("Works against a real, isolated UserDefaults suite")

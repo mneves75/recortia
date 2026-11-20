@@ -1,5 +1,6 @@
 import Domain
 import Foundation
+import Imaging
 import Synchronization
 import Testing
 
@@ -49,6 +50,63 @@ struct FileSinkTests {
         let base = "Recortia 2026-09-26 at 10.00.00"
         #expect(names == ["\(base).png", "\(base) (2).png", "\(base) (3).png"])
         #expect(TestSupport.directoryEntries(folder).count == 3)
+    }
+
+    @Test("A counting template resumes above the highest number already in the folder (A-9)")
+    func countingNames() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        for unrelated in ["Shot 2.png", "Shot 007.png", "Shot 9 copy.png", "Other 50.png", "Shot 40.jpg"] {
+            try priorBytes.write(to: folder.appendingPathComponent(unrelated))
+        }
+        let filename = try FilenameTemplate(validating: "Shot {counter}").name(for: Date(), format: .png)
+        let sink = FileSink()
+        let names = try (0..<3).map { _ in
+            try sink.saveUnique(TestSupport.snapshot(filename: filename), in: folder).lastPathComponent
+        }
+        #expect(names == ["Shot 3.png", "Shot 4.png", "Shot 5.png"])
+        #expect(try Data(contentsOf: folder.appendingPathComponent("Shot 2.png")) == priorBytes)
+    }
+
+    @Test("With Shot 1 to Shot 1000 present, a counting save takes Shot 1001 (A-9)")
+    func countingPastTheAttemptBound() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        for number in 1...1000 { try priorBytes.write(to: folder.appendingPathComponent("Shot \(number).png")) }
+        let filename = try FilenameTemplate(validating: "Shot {counter}").name(for: Date(), format: .png)
+        let url = try FileSink().saveUnique(TestSupport.snapshot(filename: filename), in: folder)
+        #expect(url.lastPathComponent == "Shot 1001.png")
+    }
+
+    @Test("A name longer than the destination volume allows is refused by name, and nothing is written")
+    func nameLongerThanTheVolumeAllows() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        var fileSystem = POSIXFileSystem()
+        fileSystem.nameLimit = { _ in 20 }
+        let sink = FileSink(fileSystem: fileSystem)
+        #expect(throws: SinkError.nameTooLong) { try sink.saveUnique(snapshot, in: folder) }
+        #expect(throws: SinkError.nameTooLong) {
+            try sink.save(
+                snapshot, to: folder.appendingPathComponent(String(repeating: "a", count: 17) + ".png"),
+                overwrite: false)
+        }
+        #expect(TestSupport.directoryEntries(folder).isEmpty)
+        let fits = try sink.save(snapshot, to: folder.appendingPathComponent("short.png"), overwrite: false)
+        #expect(fits.lastPathComponent == "short.png")
+    }
+
+    @Test("The export pipeline names the snapshot from the chosen template, so a save takes its next number")
+    func pipelineUsesTheTemplate() async throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        try priorBytes.write(to: folder.appendingPathComponent("Captura 1.png"))
+        let image = try #require(TestSupport.image(width: 4, height: 4))
+        let options = ExportOptions(filenameTemplate: try FilenameTemplate(validating: "Captura {counter}"))
+        let snapshot = try await ExportPipeline(renderer: PrivacyRenderer(store: ImageStore())).snapshot(
+            ofPinned: image, exportID: DocumentID(), privacyEpoch: 0, options: options, date: Date())
+        let url = try FileSink().saveUnique(snapshot, in: folder)
+        #expect(url.lastPathComponent == "Captura 2.png")
     }
 
     @Test(

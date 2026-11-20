@@ -19,12 +19,15 @@ struct AppServices {
     let folders: any SaveFolderService
     let textRecognition: any TextRecognitionService
     let qrDecoder: any QRDecodingService
+    let sensitiveText: any SensitiveTextService
     let scrollFrames: any ScrollFrameSourceService
     let stitcher: any ScrollStitchService
     /// Nil when automatic scrolling is not built; manual scrolling still works.
     let autoScroller: (any AutoScrollService)?
     let loginItem: any LoginItemService
     let clock: any FeatureClock
+    /// Nil in the E2E runner, which plays no sound.
+    var captureSound: (any CaptureSoundService)? = nil
 }
 
 final class SystemClock: FeatureClock {

@@ -19,6 +19,10 @@ extension EditorModel {
     @discardableResult
     public func addImageLayer(readSource: () throws(ImportFailure) -> ImportSource) async -> Bool {
         guard !isClosed else { return false }
+        guard !isMaskingPending else {
+            post(.maskingInProgress)
+            return false
+        }
         let admission: ImportAdmission
         do throws(ImportFailure) {
             admission = try environment.imageImporter.admit(readSource: readSource)
@@ -34,6 +38,10 @@ extension EditorModel {
     /// the drop is refused; otherwise pass the admission to `addImageLayer(admitted:)`.
     public func admitDroppedImage(readSource: () throws(ImportFailure) -> ImportSource) -> ImportAdmission? {
         guard !isClosed else { return nil }
+        guard !isMaskingPending else {
+            post(.maskingInProgress)
+            return nil
+        }
         do throws(ImportFailure) {
             return try environment.imageImporter.admit(readSource: readSource)
         } catch {
@@ -45,7 +53,7 @@ extension EditorModel {
     /// Decodes an admitted image and adds it as a layer. Always frees the importer's slot.
     @discardableResult
     public func addImageLayer(admitted admission: ImportAdmission) async -> Bool {
-        guard !isClosed else {
+        guard !isClosed, !isMaskingPending else {
             environment.imageImporter.release(admission)
             return false
         }

@@ -49,6 +49,16 @@ queued after that neither adds a step nor redirects the save. Each step still re
 preference, folder and consent right before it starts; those are staleness checks, never removed.
 Keep `automatic-export` in bilingual E2E.
 
+Automatic masking (FR-06 amendment) is decided in that same synchronous step
+(`autoRedactsSensitiveText`). Until its masks land as one undo step, the editor renders no base and
+refuses every edit, selection, export, pin, Output Preview and recognition, and the batch waits
+(`EditorModel.runAutomaticExports`). The batch exports the session frozen when masking settles,
+before any waiter resumes; a later change, Undo included, makes it stale, never unmasked. A result
+counts only for the request identity it started from. Error, cancellation, a stale result and the
+deadline fail closed and skip the batch. Continuous-change groups cannot open while masking runs.
+Detection reads pixels only inside Imaging (`SensitiveTextScanner.sensitiveRegions(of:in:)`).
+Keep `auto-redaction` in bilingual E2E.
+
 Curved arrows retain the existing arrow kind with an optional control; `ArrowCurve` maps the
 visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. Keep the
 `curved-arrows` bilingual native gate: real numeric commits, mixed/future defaults, zoom pixels

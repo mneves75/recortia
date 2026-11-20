@@ -91,6 +91,11 @@ public final class CaptureCoordinator {
     @ObservationIgnored private let assets: any ImageAssetService
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
+    @ObservationIgnored private let sound: (any CaptureSoundService)?
+    /// The current request's start-to-overlay interval (A-13).
+    @ObservationIgnored private var overlayInterval: LatencyInterval?
+    /// Each capture call's own interval, so a stale one closes only its own.
+    @ObservationIgnored private var captureIntervals: [RequestID: LatencyInterval] = [:]
     @ObservationIgnored private var active: ActiveCapture?
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -108,13 +113,14 @@ public final class CaptureCoordinator {
 
     public init(
         capture: any CaptureService, permission: any ScreenPermissionService, assets: any ImageAssetService,
-        clock: any FeatureClock, settings: SettingsStore
+        clock: any FeatureClock, settings: SettingsStore, sound: (any CaptureSoundService)?
     ) {
         self.capture = capture
         self.permission = permission
         self.assets = assets
         self.clock = clock
         self.settings = settings
+        self.sound = sound
     }
 
     public var hasRepeatRegion: Bool { repeatRegion != nil }
@@ -136,6 +142,7 @@ public final class CaptureCoordinator {
         if replaced { abortActive() }
         if !state.isActive, state != .idle { apply(.reset) }
 
+        overlayInterval = LatencySignposts.begin(.startToOverlay)
         let id = RequestID()
         active = ActiveCapture(id: id, delaySeconds: CaptureRequest.clampedDelay(delaySeconds))
         self.mode = mode
@@ -174,6 +181,7 @@ public final class CaptureCoordinator {
     @discardableResult
     public func commitSelection(_ target: CaptureTarget) -> Bool {
         guard state == .selecting, let active else { return false }
+        abandonOverlayInterval()
         selectionContext = nil
         apply(.selectionCommitted(delaySeconds: active.delaySeconds))
         let id = active.id
@@ -287,11 +295,14 @@ public final class CaptureCoordinator {
 
         let preferences = settings.preferences
         let captured: (CGImage, CaptureGeometry)
+        captureIntervals[id] = LatencySignposts.begin(.selectionToCapture)
         do throws(CaptureError) {
             captured = try await capture.capture(
                 target, showsCursor: preferences.captureShowsCursor,
                 includesShadow: preferences.captureIncludesWindowShadow)
+            captureIntervals.removeValue(forKey: id)?.end()
         } catch {
+            captureIntervals.removeValue(forKey: id)?.abandon()
             guard isCurrent(id) else { return }
             handle(error)
             return
@@ -320,6 +331,8 @@ public final class CaptureCoordinator {
             requestID: id, session: DocumentSession(document: Document(asset: info)), purpose: purpose)
         apply(.captureSucceeded)
         finish()
+        // A capture to edit, not Capture Text: its result is copied text, not a screenshot.
+        if purpose == .edit, settings.preferences.playsCaptureSound { sound?.playCaptureSound() }
         onCaptured?(completion)
     }
 
@@ -346,7 +359,26 @@ public final class CaptureCoordinator {
         active?.id == id && !Task.isCancelled
     }
 
+    /// The overlay or chooser for the current request is on screen.
+    public func selectionDidAppear() {
+        overlayInterval?.end()
+        overlayInterval = nil
+    }
+
+    /// Ends the current request's overlay interval when it finishes without one (Repeat Last
+    /// Region, a single display, a cancel); after `selectionDidAppear` this does nothing.
+    private func abandonOverlayInterval() {
+        overlayInterval?.abandon()
+        overlayInterval = nil
+    }
+
+    /// The latency intervals still open, for tests.
+    var openLatencyIntervals: [LatencySignposts.Interval] {
+        captureIntervals.values.filter(\.isOpen).map(\.kind) + (overlayInterval.map { [$0.kind] } ?? [])
+    }
+
     private func abortActive() {
+        abandonOverlayInterval()
         task?.cancel()
         task = nil
         active = nil
@@ -355,6 +387,7 @@ public final class CaptureCoordinator {
     }
 
     private func finish() {
+        abandonOverlayInterval()
         active = nil
         task = nil
         selectionContext = nil

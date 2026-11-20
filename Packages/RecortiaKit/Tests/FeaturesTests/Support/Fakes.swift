@@ -202,6 +202,12 @@ final class FakeCaptureService: CaptureService {
 }
 
 @MainActor
+final class FakeCaptureSound: CaptureSoundService {
+    private(set) var playCount = 0
+    func playCaptureSound() { playCount += 1 }
+}
+
+@MainActor
 final class FakeScreenPermission: ScreenPermissionService {
     var isGranted: Bool
     /// When set, `request` suspends until resolved; otherwise it answers `grantOnRequest`.
@@ -276,7 +282,10 @@ final class FakeAssetService: ImageAssetService {
         return info
     }
 
-    func release(_ id: AssetID) { released.append(id) }
+    func release(_ id: AssetID) {
+        released.append(id)
+        if let store { Task { await store.remove(id) } }
+    }
 }
 
 @MainActor
@@ -325,6 +334,8 @@ final class FakeRenderService: RenderService {
 final class FakeExportService: ExportService {
     var pending: Pending<Result<Void, ExportServiceError>>?
     var failure: ExportFailure?
+    /// When set, document snapshots come from this real pipeline, so their bytes are the export's.
+    var pipeline: ExportPipeline?
     private(set) var snapshotCount = 0
     private(set) var snapshotCancellationCount = 0
 
@@ -335,10 +346,15 @@ final class FakeExportService: ExportService {
         if let pending { try await pending.wait().get() }
         if Task.isCancelled { snapshotCancellationCount += 1 }
         if let failure { throw ExportServiceError(failure) }
+        if let pipeline {
+            do { return try await pipeline.snapshot(of: session, options: options, date: date) } catch {
+                throw ExportServiceError(.renderFailed)
+            }
+        }
         return ShareSnapshot(
             documentID: session.document.id, revision: session.revision, privacyEpoch: session.privacyEpoch,
             format: options.format, pixelSize: PixelSize(width: 8, height: 8), bytes: Data([0x89, 0x50]),
-            suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
+            filename: options.filenameTemplate.name(for: date, format: options.format, timeZone: .gmt))
     }
 
     private(set) var pinnedRequests: [(image: CGImage, exportID: DocumentID, options: ExportOptions)] = []
@@ -353,7 +369,7 @@ final class FakeExportService: ExportService {
         return ShareSnapshot(
             documentID: exportID, revision: 0, privacyEpoch: privacyEpoch, format: options.format,
             pixelSize: PixelSize(width: image.width, height: image.height), bytes: Data([0x89, 0x50]),
-            suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
+            filename: options.filenameTemplate.name(for: date, format: options.format, timeZone: .gmt))
     }
 }
 

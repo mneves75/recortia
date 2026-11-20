@@ -327,7 +327,8 @@
             var occupied: [String: Data] = [:]
             let now = Date()
             for second in 0..<60 {
-                let name = ExportFilename.make(for: now.addingTimeInterval(Double(second)), format: .png)
+                let name = FilenameTemplate.default.name(for: now.addingTimeInterval(Double(second)), format: .png)
+                    .name(attempt: 1)
                 let data = Data("not a capture \(second)".utf8)
                 try data.write(to: folder.appending(path: name), options: .withoutOverwriting)
                 occupied[name] = data

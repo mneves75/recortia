@@ -56,6 +56,13 @@ targets:
         NSHumanReadableCopyright: Recortia contributors
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, pt-BR]
+        # Open With, a drop on the Dock icon and `open -a` (FR-03). Viewer at Alternate rank: Recortia
+        # never saves back to the opened file and never becomes the default app by itself.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: PNG or JPEG image
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.png, public.jpeg]
     settings:
       configs:
         # Release: the data-protection keychain holds the preferences seal secret, which needs an

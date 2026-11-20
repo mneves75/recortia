@@ -13,12 +13,13 @@ enum TestSupport {
 
     static func snapshot(
         format: ExportFormat = .png, bytes: Data? = nil,
-        suggestedFilename: String = "Recortia 2026-09-26 at 10.00.00.png"
+        suggestedFilename: String = "Recortia 2026-09-26 at 10.00.00.png", filename: ExportName? = nil
     ) -> ShareSnapshot {
         let payload = bytes ?? (pngSignature + Data((0..<256).map { UInt8($0 & 0xFF) }))
         return ShareSnapshot(
             documentID: DocumentID(), revision: 3, privacyEpoch: 1, format: format,
-            pixelSize: PixelSize(width: 4, height: 4), bytes: payload, suggestedFilename: suggestedFilename)
+            pixelSize: PixelSize(width: 4, height: 4), bytes: payload,
+            filename: filename ?? ExportName(literal: suggestedFilename))
     }
 
     static func image(width: Int, height: Int) -> CGImage? {

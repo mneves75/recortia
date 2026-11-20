@@ -65,6 +65,8 @@ struct EditorInspectorView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            // No edit can start while automatic masking runs (FR-06 amendment).
+            .disabled(model.isMaskingPending)
         }
         .controlSize(.small)
         // An opaque column over the window background (decisions 2026-11-20).

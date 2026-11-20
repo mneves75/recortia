@@ -83,6 +83,28 @@ final class EditorFakeQRDecoder: QRDecodingService {
     }
 }
 
+/// Returns scripted regions; optionally suspends until the test resolves `pending`. Records whether
+/// the caller had cancelled it by the time it would have returned.
+@MainActor
+final class FakeSensitiveText: SensitiveTextService {
+    var regions: [PixelRect] = []
+    var pending: Pending<Void>?
+    var error: (any Error)?
+    private(set) var requests: [ImageAssetInfo] = []
+    private(set) var observedCancellation = false
+
+    func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
+        requests.append(asset)
+        if let pending { await pending.wait() }
+        if Task.isCancelled {
+            observedCancellation = true
+            throw CancellationError()
+        }
+        if let error { throw error }
+        return regions
+    }
+}
+
 @MainActor
 final class FakeTextClipboard: TextClipboardService {
     var fails = false
@@ -135,6 +157,7 @@ final class EditorHarness {
     let settings: SettingsStore
     let recognizer = EditorFakeTextRecognition()
     let qr = EditorFakeQRDecoder()
+    let sensitiveText = FakeSensitiveText()
     let assets = FakeAssetService()
     let input = FakeImageInput()
     let textClipboard = FakeTextClipboard()
@@ -155,8 +178,8 @@ final class EditorHarness {
         pins = PinsModel(renderer: renderer, settings: self.settings, export: export)
         let environment = EditorEnvironment(
             renderer: renderer, export: export, folders: folders, textRecognition: recognizer, qrDecoder: qr,
-            assets: assets, input: input, pins: pins, textClipboard: textClipboard, links: links,
-            settings: self.settings)
+            sensitiveText: sensitiveText, assets: assets, input: input, pins: pins, textClipboard: textClipboard,
+            links: links, settings: self.settings, clock: clock)
         // Initialization queues the first render on the main actor; configure synchronously
         // before that task can call the fakes.
         model = EditorModel(session: session, environment: environment)

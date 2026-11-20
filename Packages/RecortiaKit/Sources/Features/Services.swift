@@ -161,6 +161,16 @@ public protocol QRDecodingService: AnyObject {
     func decode(_ image: CGImage) async throws -> [QRPayload]
 }
 
+/// Finds e-mail addresses and phone numbers in a new capture for automatic masking (FR-06). The
+/// live service reads the asset's pixels inside Imaging; Features receives only rectangles.
+@MainActor
+public protocol SensitiveTextService: AnyObject {
+    /// Whole-pixel rectangles of `asset`'s source pixels that show an e-mail address or a phone
+    /// number. Throws when any part of the image could not be read, and on cancellation, so a
+    /// partial result is never returned as complete.
+    func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect]
+}
+
 // MARK: - Scrolling capture
 
 @MainActor
@@ -211,6 +221,13 @@ public protocol AutoScrollService: AnyObject {
 public protocol LoginItemService: AnyObject {
     var isEnabled: Bool { get }
     func setEnabled(_ enabled: Bool) throws
+}
+
+/// One short sound for a completed capture (FR-01, A-12): a system sound, silent when the system's
+/// interface sound effects are off. Never records anything.
+@MainActor
+public protocol CaptureSoundService: AnyObject {
+    func playCaptureSound()
 }
 
 @MainActor

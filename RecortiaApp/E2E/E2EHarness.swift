@@ -27,6 +27,8 @@
         let exportGate: SyntheticExportGate
         let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
+        /// Scripted detection for automatic masking; never reads the screen or runs Vision.
+        let sensitiveText = SyntheticSensitiveText()
         let messages = RecordingMessagePresenter()
         let quit = RecordingQuitConfirmation()
         /// Termination requests from quit-after-last-window; the runner process itself never quits.
@@ -73,7 +75,8 @@
                 capture: capture, screenPermission: permission, accessibility: accessibility,
                 assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
-                textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,
+                textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
+                scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: live.clock)
             let system = systemShortcuts
             let messages = self.messages
@@ -89,10 +92,10 @@
             self.features = features
             environment = EditorEnvironment(
                 renderer: services.renderer, export: features.export, folders: services.folders,
-                textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
-                input: services.input, pins: features.pins,
-                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links, settings: settings,
-                imageImporter: features.importer.imageImporter)
+                textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
+                sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
+                pins: features.pins, textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links,
+                settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
             editors = E2EEditorHost(environment: environment)
             wire()
             // What a normal launch does (ADR-005), without registering any handler.
@@ -106,9 +109,9 @@
             features.capture.onCaptured = { [weak app] completion in
                 app?.handleCapture(completion)
             }
-            features.importer.onImported = { editors.open($0) }
+            features.importer.onImported = { editors.open($0, importedFileName: $1) }
             features.scroll.onAccepted = { editors.open($0) }
-            app.openDocument = { editors.open($0).model }
+            app.openDocument = { editors.open($0, importedFileName: $2, initialAction: $1).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
             app.unexportedEditCount = { editors.unexportedEditCount }
         }
@@ -129,9 +132,10 @@
 
         func reset() {
             exportGate.release()
+            sensitiveText.reset()
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
-                $0.keepsRunningInMenuBar = true
+                $0.keepsRunningInMenuBar = true; $0.autoRedactsSensitiveText = false
             }
             folderChooser.answers = []
             editors.closeAll()
@@ -204,9 +208,13 @@
         }
 
         @discardableResult
-        func open(_ session: DocumentSession, initialAction: EditorInitialAction = .none) -> EditorWindowController {
-            let model = EditorModel(session: session, environment: environment)
-            let controller = EditorWindowController(model: model, noticePresentation: noticePresentation)
+        func open(
+            _ session: DocumentSession, importedFileName: String? = nil, initialAction: EditorInitialAction = .none
+        ) -> EditorWindowController {
+            let model = EditorModel(
+                session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
+            let controller = EditorWindowController(
+                model: model, importedFileName: importedFileName, noticePresentation: noticePresentation)
             if let window = controller.window {
                 window.setContentSize(E2ESnapshot.editorSize)
                 E2ESnapshot.park(window)
