@@ -221,8 +221,9 @@ struct VolumeTraits {
     /// replaces the first when `overwrite` allows, and returns the saved file's URL in the admitted
     /// folder, which a link retargeted after admission cannot redirect. `names` receives a reader
     /// of the admitted folder's entry names. Without `overwrite`, a taken name moves on to the
-    /// next; when none is left the save fails with EEXIST. Before anything is written, a candidate
-    /// longer than the folder's volume accepts fails the save with ENAMETOOLONG.
+    /// next; when none is left the save fails with EEXIST. Candidates are tried in order up to the
+    /// first that is longer than the folder's volume accepts: when that is the first, nothing is
+    /// written; either way the save then fails with ENAMETOOLONG rather than EEXIST.
     func save(
         _ data: Data, in folder: URL, overwrite: Bool, names candidates: (_ existing: () -> [String]) -> [String]
     ) throws(FileSystemFailure) -> URL {
@@ -236,9 +237,14 @@ struct VolumeTraits {
         let names = candidates { Self.entryNames(at: admitted) }
         let limit = nameLimit(directory)
         guard limit > 0 else { throw FileSystemFailure(code: errno) }
-        guard names.allSatisfy({ $0.utf8.count <= limit }) else { throw FileSystemFailure(code: ENAMETOOLONG) }
-        let name = try saveName(data, in: directory, folder: folder, names: names, overwrite: overwrite)
-        return admitted.appendingPathComponent(name, isDirectory: false)
+        let fitting = Array(names.prefix { $0.utf8.count <= limit })
+        guard !fitting.isEmpty else { throw FileSystemFailure(code: ENAMETOOLONG) }
+        do throws(FileSystemFailure) {
+            let name = try saveName(data, in: directory, folder: folder, names: fitting, overwrite: overwrite)
+            return admitted.appendingPathComponent(name, isDirectory: false)
+        } catch  where error.code == EEXIST && error.leftover == nil && fitting.count < names.count {
+            throw FileSystemFailure(code: ENAMETOOLONG)
+        }
     }
 
     /// The admitted folder's entry names: only a hint for where a counting name resumes, since

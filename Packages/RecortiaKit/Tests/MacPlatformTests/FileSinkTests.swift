@@ -102,6 +102,25 @@ struct FileSinkTests {
         #expect(fits.lastPathComponent == "short.png")
     }
 
+    // T1 security 1G: every fallback name was checked before the first was tried, so a volume
+    // with shorter names refused the save although the first name fit and was free.
+    @Test("A unique save takes a name that fits even when later fallback names would not")
+    func laterFallbackNamesTooLong() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        var fileSystem = POSIXFileSystem()
+        // "Recortia 2026-09-26 at 10.00.00.png" is 35 bytes; up to " (99)" fits, " (100)" does not.
+        fileSystem.nameLimit = { _ in 40 }
+        let sink = FileSink(fileSystem: fileSystem)
+        let base = "Recortia 2026-09-26 at 10.00.00"
+        #expect(try sink.saveUnique(snapshot, in: folder).lastPathComponent == "\(base).png")
+        #expect(try sink.saveUnique(snapshot, in: folder).lastPathComponent == "\(base) (2).png")
+        for attempt in 3...99 { try priorBytes.write(to: folder.appendingPathComponent("\(base) (\(attempt)).png")) }
+        // Every name that fits is taken: the next one is too long, which is what the person can fix.
+        #expect(throws: SinkError.nameTooLong) { try sink.saveUnique(snapshot, in: folder) }
+        #expect(TestSupport.directoryEntries(folder).count == 99)
+    }
+
     @Test("The export pipeline names the snapshot from the chosen template, so a save takes its next number")
     func pipelineUsesTheTemplate() async throws {
         let folder = try TestSupport.makeTemporaryDirectory()
