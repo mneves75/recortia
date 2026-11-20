@@ -53,6 +53,28 @@ struct GitHubTokenStoreTests {
         #expect(throws: GitHubUploadFailure.missingCredential) { try GitHubTokenStore.validatedToken(longest + "a") }
     }
 
+    // Classic tokens issued before GitHub added prefixes are 40 lowercase hex characters; people
+    // may still hold one, and a stored one must not read as missing.
+    static let legacyHex = "0123456789abcdef0123456789abcdef01234567"
+
+    @Test("a legacy classic token of exactly 40 lowercase hex characters is accepted")
+    func acceptsLegacyClassicToken() throws {
+        #expect(try GitHubTokenStore.validatedToken(Self.legacyHex).value == Self.legacyHex)
+        #expect(try GitHubTokenStore.validatedToken(" \(Self.legacyHex)\n").value == Self.legacyHex)
+    }
+
+    @Test(
+        "only the exact legacy shape is accepted without a prefix",
+        arguments: [
+            String(legacyHex.dropLast()) + "z",  // 40 characters, not all hex
+            legacyHex.uppercased(),  // 40 hex characters, not lowercase
+            String(legacyHex.dropLast()),  // 39 hex characters
+            legacyHex + "8",  // 41 hex characters
+        ])
+    func rejectsNearLegacyShapes(pasted: String) {
+        #expect(throws: GitHubUploadFailure.missingCredential) { try GitHubTokenStore.validatedToken(pasted) }
+    }
+
     @Test("a token's description never contains the token")
     func descriptionIsRedacted() throws {
         let token = try GitHubTokenStore.validatedToken("ghp_syntheticsecret")

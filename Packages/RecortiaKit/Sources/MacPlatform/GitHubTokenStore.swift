@@ -42,13 +42,19 @@ public final class GitHubTokenStore {
 
     /// Admits a pasted or stored token: surrounding whitespace is trimmed; what remains must be a
     /// personal-token prefix and more, at most 4096 bytes of printable ASCII, so no control
-    /// character or space can reach a request header.
+    /// character or space can reach a request header, or a legacy classic token.
     public nonisolated static func validatedToken(_ pasted: String) throws(GitHubUploadFailure) -> GitHubToken {
         let token = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard token.utf8.count <= 4096, token.utf8.allSatisfy({ (33...126).contains($0) }),
-            personalTokenPrefixes.contains(where: { token.hasPrefix($0) && token.count > $0.count })
-        else { throw .missingCredential }
+        let prefixed =
+            token.utf8.count <= 4096 && token.utf8.allSatisfy({ (33...126).contains($0) })
+            && personalTokenPrefixes.contains(where: { token.hasPrefix($0) && token.count > $0.count })
+        guard prefixed || isLegacyClassic(token) else { throw .missingCredential }
         return GitHubToken(value: token)
+    }
+
+    /// A classic token issued before GitHub added prefixes: exactly 40 lowercase hex characters.
+    private nonisolated static func isLegacyClassic(_ token: String) -> Bool {
+        token.utf8.count == 40 && token.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
     }
 
     private func query(_ destination: GitHubDestination) -> [CFString: Any] {
