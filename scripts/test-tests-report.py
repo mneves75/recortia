@@ -390,6 +390,7 @@ class CheckGateRunsTheListTests(unittest.TestCase):
             "doctor.sh": "#!/bin/sh\nexit 0\n",
             "check-project-fresh.sh": "#!/bin/sh\nexit 0\n",
             "check-localization.py": "#!/bin/sh\nexit 0\n",
+            "test-e2e-isolation.py": "import sys\nsys.exit(0)\n",
             # The dispatcher: --run-tests prints the completion line for STUB_RAN tests.
             "tests-report.py": (
                 "import os, sys\n"

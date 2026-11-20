@@ -52,7 +52,8 @@ xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug 
 echo "== E2E binary refuses missing or malformed launch requests"
 # A binary that failed to refuse would start the real runner, which drives the foreground; hold the
 # shared E2E lock (in the primary checkout) so it can never run beside another E2E run.
-e2e_lock="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/.scratch/e2e.lock"
+common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || common_dir="$PWD/.git"
+e2e_lock="${common_dir:h}/.scratch/e2e.lock"
 mkdir -p "${e2e_lock:h}"
 until mkdir "$e2e_lock" 2>/dev/null; do
   echo "check: waiting for $e2e_lock"
