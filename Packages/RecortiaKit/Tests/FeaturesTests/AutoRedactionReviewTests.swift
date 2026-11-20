@@ -69,10 +69,71 @@ struct AutoRedactionReviewTests {
         }
     }
 
-    /// Finding R-3 (P3): masking defers the batch by up to the deadline, and the batch still
-    /// refuses to queue behind another editor's export, so the capture's automatic copy and save
-    /// are dropped with a busy failure instead of running once the slot is free.
-    @Test("An export in another editor when masking settles drops the capture's automatic copy and save")
+    /// T1 security 3C: with masking on, the person always learns its outcome, none found included.
+    @Test("Masking that finds nothing says so")
+    func zeroMatchesSayNoneFound() async throws {
+        let (h, model) = try await Self.capture(regions: [])
+        defer { model.close() }
+        await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
+        h.sensitiveText.pending?.resolve(())
+        await waitFor("masking settled") { model.autoRedaction != .pending }
+        #expect(model.autoRedaction == .done && model.document.masks.isEmpty)
+        #expect(model.notice == .sensitiveTextMasked(0))
+    }
+
+    /// T1 security 3C: an automatic export failure never silently replaces the masking count and
+    /// its review reminder; the editor refuses it so the app raises it as an alert instead.
+    @Test("An automatic export failure leaves the masking notice in place")
+    func exportFailureKeepsMaskingNotice() async throws {
+        let model = try await Self.masked()
+        defer { model.close() }
+        #expect(!model.reportAutomaticExport(.failed(.diskFull)), "refused, so the app raises it as an alert")
+        #expect(model.notice == .sensitiveTextMasked(1))
+        // Once the person dismissed it, the slot is free again.
+        model.dismissNotice()
+        #expect(model.reportAutomaticExport(.failed(.diskFull)))
+        #expect(model.notice == .automaticExportFailed(.diskFull))
+    }
+
+    private static let uploaded = ExportOutcome.uploaded(URL(fileURLWithPath: "/review-masking/image.png"))
+
+    /// T1 security 3C: an automatic upload's notice and its link wait behind the masking count and
+    /// take the slot once that is dismissed (or times out, which dismisses it).
+    @Test("An automatic upload's notice waits for the masking notice, then takes the slot")
+    func uploadNoticeWaitsForMaskingNotice() async throws {
+        let model = try await Self.masked()
+        defer { model.close() }
+        #expect(model.reportAutomaticExport(Self.uploaded), "the editor keeps it, so no alert")
+        #expect(model.notice == .sensitiveTextMasked(1))
+        model.dismissNotice()
+        #expect(model.notice == .exported(Self.uploaded))
+        model.dismissNotice()
+        #expect(model.notice == nil, "it was shown once")
+    }
+
+    @Test("A waiting upload notice is dropped when the editor closes")
+    func waitingUploadNoticeDroppedOnClose() async throws {
+        let model = try await Self.masked()
+        #expect(model.reportAutomaticExport(Self.uploaded))
+        model.close()
+        model.dismissNotice()
+        #expect(model.notice != .exported(Self.uploaded))
+    }
+
+    /// A capture whose masking landed one mask and shows its count.
+    private static func masked() async throws -> EditorModel {
+        let (h, model) = try await capture(regions: [region])
+        await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
+        h.sensitiveText.pending?.resolve(())
+        await waitFor("masking settled") { model.autoRedaction != .pending }
+        #expect(model.notice == .sensitiveTextMasked(1))
+        return model
+    }
+
+    /// Finding R-2 (P3): masking defers the batch by up to the deadline, so another editor's
+    /// export may hold the shared slot when it settles. The batch waits for the slot instead of
+    /// dropping the capture's automatic copy and save with a busy failure.
+    @Test("An export in another editor when masking settles delays the capture's automatic copy and save")
     func batchCollidesWithAnotherEditorsExport() async throws {
         let (h, model) = try await Self.capture(regions: [Self.region])
         defer { model.close() }
@@ -87,15 +148,58 @@ struct AutoRedactionReviewTests {
         h.sensitiveText.pending?.resolve(())
         await waitFor("masking settled") { model.autoRedaction != .pending }
         await drain()
-        h.exporter.pending?.resolve(.success(()))
-        await drain()
+        // Detached first: the waiting batch renders as soon as the slot frees.
+        let rendering = h.exporter.pending
         h.exporter.pending = nil
+        rendering?.resolve(.success(()))
+        await drain()
         let outcomes = await batch.value
         #expect(await manual.value == .copied)
         #expect(model.autoRedaction == .done)
-        withKnownIssue("R-3: the deferred automatic batch is refused as busy instead of waiting for the slot") {
-            #expect(outcomes.count == 2 && outcomes.allSatisfy(\.didWrite), "\(outcomes)")
+        #expect(outcomes.count == 2 && outcomes.allSatisfy(\.didWrite), "\(outcomes)")
+    }
+
+    enum WhileWaiting: CaseIterable { case close, edit }
+
+    @MainActor final class BatchEnded { var value = false }
+
+    /// R-2: a batch waiting for the slot still fails closed when its editor closes or its document
+    /// changes before the slot frees.
+    @Test(
+        "A batch waiting for another editor's export writes nothing once its editor closes or changes",
+        arguments: WhileWaiting.allCases)
+    func waitingBatchFailsClosed(_ event: WhileWaiting) async throws {
+        let (h, model) = try await Self.capture(regions: [Self.region])
+        defer { model.close() }
+        await h.settle()
+        let plan = h.export.automaticExportPlan()
+        let ended = BatchEnded()
+        let batch = Task {
+            let outcomes = await model.runAutomaticExports(plan)
+            ended.value = true
+            return outcomes
         }
-        #expect(outcomes == [.failed(.busy)], "documents today's behaviour")
+        await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
+        let rendering = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = rendering
+        let manual = Task { await h.model.export(.copy) }
+        await waitFor("manual export rendering") { rendering.waiterCount == 1 }
+        h.exporter.pending = nil
+        h.sensitiveText.pending?.resolve(())
+        await waitFor("masking settled") { model.autoRedaction == .done }
+        await drain()
+        #expect(!ended.value, "the batch waits for the slot")
+        switch event {
+        case .close:
+            model.close()
+            // Closing wakes the batch at once; it does not wait for the other editor's export.
+            await waitFor("the closed editor's batch ended") { ended.value }
+        case .edit: model.undo()
+        }
+        rendering.resolve(.success(()))
+        #expect(await manual.value == .copied)
+        let outcomes = await batch.value
+        #expect(outcomes == [event == .close ? .canceled : .failed(.staleDocument)], "\(outcomes)")
+        #expect(h.clipboard.writes.count == 1 && h.files.uniqueSaves.isEmpty, "only the manual copy was written")
     }
 }

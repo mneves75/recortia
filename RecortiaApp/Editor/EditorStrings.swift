@@ -218,6 +218,11 @@ enum EditorStrings {
             String(localized: "No save folder is set. Choose one in Settings › Export.", table: "Editor")
         case .undoHistoryTrimmed:
             String(localized: "The oldest undo steps were discarded to limit memory use.", table: "Editor")
+        case .sensitiveTextMasked(0):
+            String(
+                localized:
+                    "No e-mail addresses or phone numbers were found to mask. Check the image before you share it.",
+                table: "Editor")
         case .sensitiveTextMasked(let count):
             String(
                 localized:

@@ -90,6 +90,10 @@ public final class EditorModel {
     /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
     @ObservationIgnored var automaticExportBaseline: DocumentSession?
     @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
+    /// An automatic upload's notice that waits until the masking count is dismissed (3C).
+    @ObservationIgnored var waitingNotice: EditorNotice?
+    /// The deferred automatic batch waiting for the shared export slot (`waitForExportSlot`).
+    @ObservationIgnored var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
 
     enum Gesture {
         case idle
@@ -141,7 +145,14 @@ public final class EditorModel {
         noticeSerial += 1
     }
 
-    public func dismissNotice() { notice = nil }
+    /// Dismissal, the person's or the timeout's, frees the slot for a notice waiting behind it.
+    public func dismissNotice() {
+        notice = nil
+        if let waiting = waitingNotice {
+            waitingNotice = nil
+            post(waiting)
+        }
+    }
 
     // MARK: - Tools and style
 
@@ -844,9 +855,7 @@ public final class EditorModel {
                 return layer.sourceToDocument(assetSize: size)
             }
             for region in bound
-            where
-                !(visible.map { box in footprints.allSatisfy { Self.contains(box, $0.apply(region.asRect)) } } ?? false)
-            {
+            where !(visible.map { box in footprints.allSatisfy { Self.contains(box, region, under: $0) } } ?? false) {
                 if !(regions[asset]?.contains(region) ?? false) { regions[asset, default: []].append(region) }
             }
         }
@@ -854,10 +863,19 @@ public final class EditorModel {
         document.masks[index].sourceRegions = regions
     }
 
-    private static func contains(_ outer: Rect<DocumentSpace>, _ inner: Rect<DocumentSpace>) -> Bool {
-        let e = 1e-9
-        return outer.minX <= inner.minX + e && outer.minY <= inner.minY + e && outer.maxX >= inner.maxX - e
-            && outer.maxY >= inner.maxY - e
+    /// Whether `box` holds the footprint of `region` beyond doubt (T1 security 3A). An integral map
+    /// is evaluated exactly on integral pixels, so an edge on the box counts as inside. Any other
+    /// map has rounding error, so the footprint must clear the box's edges by a margin far above
+    /// it: an ambiguous footprint counts as outside and its binding is kept.
+    private static func contains(
+        _ box: Rect<DocumentSpace>, _ region: PixelRect, under map: AffineMap<SourcePixelSpace, DocumentSpace>
+    ) -> Bool {
+        let footprint = map.apply(region.asRect)
+        let isExact = [map.a, map.b, map.c, map.d, map.tx, map.ty].allSatisfy { $0.rounded() == $0 && abs($0) < 0x1p26 }
+        let magnitude = [footprint.minX, footprint.minY, footprint.maxX, footprint.maxY].map(abs).max() ?? 0
+        let margin = isExact ? 0 : 1e-9 * max(1, magnitude)
+        return box.minX <= footprint.minX - margin && box.minY <= footprint.minY - margin
+            && box.maxX >= footprint.maxX + margin && box.maxY >= footprint.maxY + margin
     }
 
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).

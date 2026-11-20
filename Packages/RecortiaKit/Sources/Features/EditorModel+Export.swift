@@ -13,23 +13,41 @@ public enum EditorExportRequest: Hashable, Sendable {
 // Export (FR-07) and pinning (FR-09). Every external write goes through `ExportCoordinator`
 // (sanitized ShareSnapshot) or `PinsModel` (sanitized render); nothing here encodes or writes.
 extension EditorModel {
-    public func reportAutomaticExport(_ outcome: ExportOutcome) {
-        guard !isClosed else { return }
+    /// Shows an automatic export's outcome in the notice slot and returns true, or returns false
+    /// when the editor is closed or a failure meets the masking count and its review reminder,
+    /// which an export report never replaces (T1 security 3C); the caller raises that failure as
+    /// an alert. A success waits instead and takes the slot once the count is dismissed.
+    @discardableResult
+    public func reportAutomaticExport(_ outcome: ExportOutcome) -> Bool {
+        guard !isClosed else { return false }
+        if case .sensitiveTextMasked = notice {
+            if case .failed = outcome { return false }
+            waitingNotice = .exported(outcome)
+            return true
+        }
         if case .failed(let failure) = outcome {
             post(.automaticExportFailed(failure))
         } else {
             post(.exported(outcome))
         }
+        return true
     }
 
     /// Runs the automatic batch planned when this editor's capture completed (R-3) on the capture
     /// as it opened or, with automatic masking, as the masks left it. That state is frozen when
     /// masking settles; any later change, the person's Undo included, makes the batch stale rather
     /// than exporting it. Masking that failed skips the batch, and closing the editor cancels it.
+    /// Masking defers the batch, so it waits for another editor's export to free the shared slot
+    /// instead of failing busy (T1 review R-2).
     public func runAutomaticExports(_ plan: AutomaticExportPlan) async -> [ExportOutcome] {
         let baseline = await autoRedactionSettled()
         guard !isClosed else { return [.canceled] }
         guard let baseline else { return [.failed(.maskingUnfinished)] }
+        if environment.export.isBusy {
+            guard await waitForExportSlot() else { return [.canceled] }
+            // An edit while it waited makes the frozen capture stale: nothing is rendered.
+            guard session.accepts(baseline.requestIdentity()) else { return [.failed(.staleDocument)] }
+        }
         return await environment.export.runAutomaticExports(
             plan, for: baseline,
             currentSession: { [weak self] in
@@ -85,6 +103,30 @@ extension EditorModel {
         return outcome
     }
 
+    /// Suspends until no export runs; false when the editor closed first. The coordinator sets and
+    /// clears its operation without suspending between a batch's steps, so a free slot observed on
+    /// the main actor is still free when the batch starts.
+    private func waitForExportSlot() async -> Bool {
+        let export = environment.export
+        while export.isBusy, !isClosed {
+            await withCheckedContinuation { (waiter: CheckedContinuation<Void, Never>) in
+                exportSlotWaiters.append(waiter)
+                withObservationTracking {
+                    _ = export.isBusy
+                } onChange: { [weak self] in
+                    Task { @MainActor in self?.resumeExportSlotWaiters() }
+                }
+            }
+        }
+        return !isClosed
+    }
+
+    func resumeExportSlotWaiters() {
+        let waiters = exportSlotWaiters
+        exportSlotWaiters = []
+        for waiter in waiters { waiter.resume() }
+    }
+
     /// This editor's own export: drives its progress and Cancel Export.
     public var isExporting: Bool { environment.export.isBusy(documentID: session.document.id) }
 
@@ -125,6 +167,8 @@ extension EditorModel {
         textEditing = nil
         isClosed = true
         cancelAutoRedaction()
+        resumeExportSlotWaiters()
+        waitingNotice = nil
         environment.export.cancel(documentID: session.document.id)
         invalidateColorPick()
         baseTask?.cancel()
