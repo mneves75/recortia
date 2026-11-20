@@ -2781,6 +2781,22 @@
         }
       }
     },
+    "Recortia opens at most %lld images at a time." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia opens at most %lld images at a time."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia abre no máximo %lld imagens por vez."
+          }
+        }
+      }
+    },
     "Recortia saves only these settings. It writes an image to disk or the clipboard only when you choose Copy, Save, drag an image out, or turn on automatic export." : {
       "localizations" : {
         "en" : {
@@ -3391,6 +3407,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A tarja sólida substitui os pixels cobertos por uma cor opaca na imagem exportada. Ela é a ferramenta segura."
+          }
+        }
+      }
+    },
+    "Some images could not be opened" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some images could not be opened"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir algumas imagens"
           }
         }
       }

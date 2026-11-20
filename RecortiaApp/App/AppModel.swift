@@ -58,6 +58,9 @@ final class AppModel: AppActions {
     @ObservationIgnored private var pinsUI: PinsUIController?
     @ObservationIgnored private var captureWindowVisibility: CaptureWindowVisibility?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
+    /// Files the system handed over before launch wired the editors: a cold launch by Open With,
+    /// a drop on the Dock icon or `open -a` delivers them before `applicationDidFinishLaunching`.
+    @ObservationIgnored private var filesBeforeLaunch: [URL] = []
     @ObservationIgnored private let editors = EditorWindowManager()
     @ObservationIgnored private var systemEvents: SystemEventMonitor?
     @ObservationIgnored private var didLaunch = false
@@ -122,11 +125,15 @@ final class AppModel: AppActions {
             wire(features)
         }
         registerShortcutHandlers()
-        switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind) {
+        let files = filesBeforeLaunch
+        filesBeforeLaunch = []
+        switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind, opensFiles: !files.isEmpty)
+        {
         case .onboarding: showOnboarding()
         case .settings: showSettings()
         case .none: break
         }
+        if !files.isEmpty { openFiles(files) }
     }
 
     func showOnboarding() {
@@ -255,6 +262,21 @@ final class AppModel: AppActions {
         Task {
             if case .failure(let failure) = await importer.importImage(from: source) {
                 showMessage(.importFailure(failure))
+            }
+        }
+    }
+
+    /// Open With, a drop on the Dock icon and `open -a` (FR-03): one editor per file through the
+    /// same admission as Open Image, and one report for every file that was refused.
+    func openFiles(_ urls: [URL]) {
+        guard openDocument != nil else {
+            filesBeforeLaunch += urls
+            return
+        }
+        guard let importer = features?.importer else { return }
+        Task {
+            if let message = UserMessage.openFailures(await importer.openFiles(urls)) {
+                showMessage(message)
             }
         }
     }

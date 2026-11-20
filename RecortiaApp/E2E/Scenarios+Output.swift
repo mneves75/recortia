@@ -445,6 +445,62 @@
             }
         }
 
+        /// Open With, a drop on the Dock icon and `open -a` (FR-03, A-2): a real Open Documents
+        /// Apple event sent to this process reaches the app delegate, which opens one editor per
+        /// image through the shared admission and reports the refused files once.
+        private static func openEvent(
+            _ harness: E2EHarness, chart: CGImage, oversized: Data, _ context: ScenarioContext
+        ) async throws {
+            let work = harness.output.workDirectory
+            let files: [(name: String, data: Data)] = [
+                ("open-first.png", try E2EDrawing.png(chart)),
+                ("open-oversized.png", oversized),
+                ("open-notes.png", Data("not an image".utf8)),
+                ("open-last.jpg", try E2EDrawing.jpeg(chart)),
+            ]
+            for file in files { try file.data.write(to: work.appending(path: file.name), options: .atomic) }
+            let urls = files.map { work.appending(path: $0.name) }
+            let before = harness.editors.controllers.count
+            let messages = harness.messages.values.count
+            let reads = harness.importInput.fileReads
+            let event = NSAppleEventDescriptor(
+                eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEOpenDocuments),
+                targetDescriptor: .currentProcess(), returnID: AEReturnID(kAutoGenerateReturnID),
+                transactionID: AETransactionID(kAnyTransactionID))
+            let list = NSAppleEventDescriptor.list()
+            for (index, url) in urls.enumerated() { list.insert(NSAppleEventDescriptor(fileURL: url), at: index + 1) }
+            event.setParam(list, forKeyword: keyDirectObject)
+            do { _ = try event.sendEvent(options: [.noReply, .neverInteract], timeout: 10) } catch {
+                throw E2EAbort("open-documents event: \(error)")
+            }
+            let reported = await E2EWait.until(timeout: .seconds(10)) {
+                harness.messages.values.count == messages + 1
+            }
+            context.check(
+                "the open event's refusals are reported once", reported, "\(harness.messages.values.count - messages)")
+            context.check(
+                "the open event opens one editor per image", harness.editors.controllers.count == before + 2,
+                "editors: \(harness.editors.controllers.count - before)")
+            let titles = harness.editors.controllers.dropFirst(before).compactMap { $0.window?.title }
+            context.check(
+                "the opened editors are named after their files", titles == ["open-first.png", "open-last.jpg"],
+                titles.joined(separator: ", "))
+            context.check(
+                "every opened file is admitted and read once, in order",
+                harness.importInput.fileReads == reads + urls.count, "\(harness.importInput.fileReads - reads)")
+            if let message = harness.messages.values.last {
+                let expected = UserMessage.openFailures([.tooManyPixels, .unsupportedFormat])
+                context.check("the report names both reasons", message == expected, message.detail)
+            }
+            for (file, url) in zip(files, urls) {
+                context.check("\(file.name) is left untouched", (try? Data(contentsOf: url)) == file.data)
+            }
+            if let last = harness.editors.controllers.last {
+                try await harness.editors.waitForBase(last.model)
+                await E2EActions.snapshotEditor(last, context, shot: "open-event")
+            }
+        }
+
         static func importFiles(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let importer = harness.features.importer
             let chart: CGImage
@@ -505,11 +561,13 @@
                 alert.window.close()
             }
 
+            try await openEvent(harness, chart: chart, oversized: oversized, context)
+
             // The alert and the editor notice say the same thing about an import failure: one
             // mapping, so the two cannot drift apart in either language.
             let failures: [ImportFailure] = [
                 .busy, .cancelled, .nothingToPaste, .tooLarge, .tooManyPixels, .invalidDimensions, .unsupportedFormat,
-                .multipleFrames, .corrupt, .unreadable,
+                .multipleFrames, .corrupt, .unreadable, .tooManyFiles,
             ]
             let differing = failures.filter {
                 EditorStrings.message(.importFailed($0)) != UserMessage.importFailure($0).detail

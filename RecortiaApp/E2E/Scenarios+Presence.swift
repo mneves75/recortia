@@ -172,14 +172,18 @@
             context.check("a launch without an event counts as the person's", LaunchKind(openEvent: nil) == .user)
             context.check(
                 "first launch shows onboarding",
-                LaunchWindow.choose(onboardingPending: true, kind: .user) == .onboarding
-                    && LaunchWindow.choose(onboardingPending: true, kind: .loginItem) == .onboarding)
+                LaunchWindow.choose(onboardingPending: true, kind: .user, opensFiles: false) == .onboarding
+                    && LaunchWindow.choose(onboardingPending: true, kind: .loginItem, opensFiles: false) == .onboarding)
             context.check(
                 "opening Recortia shows Settings",
-                LaunchWindow.choose(onboardingPending: false, kind: .user) == .settings)
+                LaunchWindow.choose(onboardingPending: false, kind: .user, opensFiles: false) == .settings)
             context.check(
                 "Open at login shows no window",
-                LaunchWindow.choose(onboardingPending: false, kind: .loginItem) == .none)
+                LaunchWindow.choose(onboardingPending: false, kind: .loginItem, opensFiles: false) == .none)
+            context.check(
+                "a launch to open files shows only their editors, even during onboarding",
+                LaunchWindow.choose(onboardingPending: true, kind: .user, opensFiles: true) == .none
+                    && LaunchWindow.choose(onboardingPending: false, kind: .user, opensFiles: true) == .none)
         }
 
         /// Orders `window` in the way presenting code does, parked offscreen and transparent.

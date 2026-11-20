@@ -152,8 +152,24 @@ extension UserMessage {
             case .multipleFrames: String(localized: "Animated or multi-page images are not supported.")
             case .corrupt: String(localized: "The image data is damaged.")
             case .unreadable: String(localized: "The file could not be read.")
+            case .tooManyFiles:
+                String(localized: "Recortia opens at most \(ImportCoordinator.maximumOpenedFiles) images at a time.")
             }
         return UserMessage(title: title, detail: detail)
+    }
+
+    /// One report for the files of one open request that were refused, each reason once;
+    /// content-free: no file names (PRIV-01).
+    static func openFailures(_ failures: [ImportFailure]) -> UserMessage? {
+        guard let first = failures.first else { return nil }
+        guard failures.count > 1 else { return importFailure(first) }
+        var reasons: [String] = []
+        for failure in failures {
+            let reason = importFailure(failure).detail
+            if !reasons.contains(reason) { reasons.append(reason) }
+        }
+        return UserMessage(
+            title: String(localized: "Some images could not be opened"), detail: reasons.joined(separator: "\n"))
     }
 
     static func export(_ failure: ExportFailure) -> UserMessage {

@@ -23,6 +23,8 @@ public enum ImportFailure: Error, Hashable, Sendable {
     case multipleFrames
     case corrupt
     case unreadable
+    /// Beyond `ImportCoordinator.maximumOpenedFiles` in one request from the system; never read.
+    case tooManyFiles
 
     init(_ error: ImportError) {
         switch error {
@@ -63,6 +65,24 @@ public final class ImportCoordinator {
             lastFailure = error
             return .failure(error)
         }
+    }
+
+    /// The most files one Open With, Dock-icon drop or `open -a` request opens: each is a decoded
+    /// image in its own editor.
+    public static let maximumOpenedFiles = 10
+
+    /// Opens files handed over by the system, one editor each, through the same admission as
+    /// File › Open. Files are imported one after another so the shared slot admits each in turn;
+    /// a refused file does not stop the rest. Returns the refusals, in order, for one report.
+    public func openFiles(_ urls: [URL]) async -> [ImportFailure] {
+        var failures: [ImportFailure] = []
+        for url in urls.prefix(Self.maximumOpenedFiles) {
+            if case .failure(let failure) = await importImage(from: .file(url)) {
+                failures.append(failure)
+            }
+        }
+        failures += repeatElement(.tooManyFiles, count: max(0, urls.count - Self.maximumOpenedFiles))
+        return failures
     }
 }
 

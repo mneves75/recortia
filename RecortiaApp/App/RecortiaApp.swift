@@ -67,6 +67,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
     }
 
+    /// Open With, a drop on the Dock icon and `open -a` (FR-03). A cold launch delivers this before
+    /// `applicationDidFinishLaunching`; the model keeps the files until launch wires the editors.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        #if RECORTIA_E2E
+            E2ERunner.openFiles?(urls)
+        #else
+            model.openFiles(urls)
+        #endif
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         model.shouldTerminate() ? .terminateNow : .terminateCancel
     }
