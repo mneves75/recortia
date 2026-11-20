@@ -1,4 +1,4 @@
-// Detection of e-mail addresses and phone numbers in captures (FR-06 automatic redaction, spike).
+// Detection of e-mail addresses and phone numbers in captures (FR-06 automatic redaction).
 //
 // The patterns, the tiled sweep, fragment joining and region merging are adapted from Fosco by
 // Gabriel Buzzi, https://github.com/gabrielbuzziv/fosco at commit
@@ -53,8 +53,8 @@ public enum SensitiveTextError: Error, Equatable, Sendable {
     case tileUnavailable
     /// The document recognizer failed on both its default and CPU compute paths.
     case documentRecognitionFailed
-    /// The requested method needs a newer macOS than the running one.
-    case methodUnavailable
+    /// The asset is no longer in the image store (its editor closed).
+    case assetUnavailable
     /// A match's box could not be mapped onto the image. The sweep fails rather than drop the match.
     case regionOutsideImage
     /// The capture needs more tiles than one sweep may read (`SensitiveTextScanner.maximumTiles`).
@@ -543,9 +543,9 @@ struct DataDetectorMatcher: Sendable {
 
 // MARK: - Sweep
 
-/// How lines are searched. `documents` asks Vision's document recognizer for its own detected
-/// data instead of reading lines (macOS 26 or later).
-public enum SensitiveTextMethod: String, Sendable, CaseIterable {
+/// How lines are searched (benchmark harness; the product uses `patterns`). `documents` asks
+/// Vision's document recognizer for its own detected data instead of reading lines.
+enum SensitiveTextMethod: String, Sendable, CaseIterable {
     case patterns
     case dataDetector
     case documents
@@ -575,11 +575,24 @@ public struct SensitiveTextScanner: Sendable {
     /// For the tile-size experiment in the benchmark.
     init(fineTileSide: CGFloat) { self.fineTileSide = fineTileSide }
 
+    /// Regions of the stored asset `id` that show e-mail addresses or phone numbers, found by the
+    /// pattern matcher (decisions.md, 2026-11-20). The pixels are read here, inside Imaging, and
+    /// never leave it. Throws `assetUnavailable` when the store no longer holds the asset, and
+    /// otherwise as `sensitiveRegions(in:pixelsPerPoint:languages:kinds:method:)` does.
+    @concurrent
+    public func sensitiveRegions(
+        of id: AssetID, in store: ImageStore, pixelsPerPoint: Double, languages: [Locale.Language]
+    ) async throws -> [SensitiveRegion] {
+        guard let image = await store.images(for: [id])[id] else { throw SensitiveTextError.assetUnavailable }
+        return try await sensitiveRegions(in: image, pixelsPerPoint: pixelsPerPoint, languages: languages)
+    }
+
     /// Regions of `image` that show e-mail addresses or phone numbers. `pixelsPerPoint` is the
     /// capture's backing scale. Throws `CancellationError` when cancelled and a recognition error
     /// when any tile cannot be read, so a caller never takes a partial sweep for a complete one.
+    /// `method` other than `.patterns` exists for the benchmark harness only.
     @concurrent
-    public func sensitiveRegions(
+    func sensitiveRegions(
         in image: CGImage, pixelsPerPoint: Double, languages: [Locale.Language],
         kinds: Set<SensitiveTextKind> = Set(SensitiveTextKind.allCases), method: SensitiveTextMethod = .patterns
     ) async throws -> [SensitiveRegion] {
@@ -589,9 +602,7 @@ public struct SensitiveTextScanner: Sendable {
         switch method {
         case .patterns: matcher = .patterns(try SensitiveTextMatcher.shared.get())
         case .dataDetector: matcher = .dataDetector(try DataDetectorMatcher())
-        case .documents:
-            guard #available(macOS 26, *) else { throw SensitiveTextError.methodUnavailable }
-            matcher = .documents
+        case .documents: matcher = .documents
         }
         let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
         let jobs = try Self.tileJobs(for: bounds.size, pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide)
@@ -686,7 +697,6 @@ public struct SensitiveTextScanner: Sendable {
         let tileSize = CGSize(width: tile.width, height: tile.height)
         var matches = TileMatches()
         if case .documents = matcher {
-            guard #available(macOS 26, *) else { throw SensitiveTextError.methodUnavailable }
             for match in try await documentMatches(in: tile, languages: languages, kinds: kinds) {
                 try matches.append(match.kind, match.box)
             }
@@ -801,7 +811,6 @@ public struct SensitiveTextScanner: Sendable {
     // MARK: Variant C
 
     /// Matches that Vision's document recognizer reports as detected data, in the tile's unit square.
-    @available(macOS 26, *)
     private static func documentMatches(
         in tile: CGImage, languages: [Locale.Language], kinds: Set<SensitiveTextKind>
     ) async throws -> [(kind: SensitiveTextKind, box: CGRect)] {
@@ -857,7 +866,8 @@ public struct SensitiveTextScanner: Sendable {
         let height = Int((sourceRect.height * scale).rounded())
         guard width > 0, height > 0, let crop = image.cropping(to: sourceRect),
             let space = CGColorSpace(name: CGColorSpace.sRGB),
-            let context = CGContext(
+            // A nil data pointer: Core Graphics owns the bitmap memory.
+            let context = unsafe CGContext(
                 data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
                 bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
         else { throw SensitiveTextError.tileUnavailable }

@@ -37,7 +37,7 @@ enum RedactBench {
         var list = [Configuration(method: .patterns, tileSide: 2048), Configuration(method: .patterns, tileSide: 1024)]
         if allMethods {
             list.append(Configuration(method: .dataDetector, tileSide: 2048))
-            if #available(macOS 26, *) { list.append(Configuration(method: .documents, tileSide: 2048)) }
+            list.append(Configuration(method: .documents, tileSide: 2048))
         }
         return list
     }

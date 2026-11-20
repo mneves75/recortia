@@ -271,6 +271,26 @@ struct SensitiveTextSweepTests {
         }
     }
 
+    @Test("The store entry point sweeps the stored pixels, and fails when the asset is gone", VisionRuntime.required)
+    func storeEntryPoint() async throws {
+        let screen = try SensitiveScreen.render(
+            widthPoints: 600, heightPoints: 160, scale: 2, pointSize: 14, theme: .light, language: .english,
+            layout: .singleColumn)
+        let store = ImageStore()
+        let info = await store.insert(try ImageDecoder.canonicalize(screen.image), origin: .imported)
+        let languages = [OCRRecognitionTests.english, OCRRecognitionTests.portuguese]
+        let direct = try await SensitiveTextScanner().sensitiveRegions(
+            in: screen.image, pixelsPerPoint: 2, languages: languages)
+        let stored = try await SensitiveTextScanner().sensitiveRegions(
+            of: info.id, in: store, pixelsPerPoint: 2, languages: languages)
+        #expect(!stored.isEmpty && stored == direct)
+        await store.remove(info.id)
+        await #expect(throws: SensitiveTextError.assetUnavailable) {
+            _ = try await SensitiveTextScanner().sensitiveRegions(
+                of: info.id, in: store, pixelsPerPoint: 2, languages: languages)
+        }
+    }
+
     @Test("A cancelled sweep throws CancellationError", VisionRuntime.required)
     func sweepHonoursCancellation() async throws {
         let screen = try SensitiveScreen.render(
