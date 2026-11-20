@@ -171,10 +171,9 @@ struct SensitiveTextBenchmarkTests {
                 }
             }
         }
-        let seams = try await Self.seamExperiment(configurations: configurations.filter { $0.method == .patterns })
         Self.report(
             configurations: configurations, outcomes: outcomes, falsePositives: falsePositives, scans: scans,
-            seams: seams, wall: Date().timeIntervalSince(started))
+            wall: Date().timeIntervalSince(started))
         #expect(!outcomes.isEmpty)
     }
 
@@ -196,6 +195,23 @@ struct SensitiveTextBenchmarkTests {
         let placement: String
         let status: Status
         let regions: Int
+    }
+
+    @Test(
+        "Seam experiment: one address inside a fine tile and across a seam", RedactBench.enabled, VisionRuntime.required
+    )
+    func seams() async throws {
+        let seams = try await Self.seamExperiment(
+            configurations: RedactBench.configurations.filter { $0.method == .patterns })
+        print("\n### Seam experiment (2560x400 pt at 2x; one address inside a fine tile and across a seam)\n")
+        print("| configuration | font | placement | result | regions |")
+        print("|---|---|---|---|---|")
+        for seam in seams {
+            print(
+                "| \(seam.configuration.label) | \(Int(seam.pointSize)) pt | \(seam.placement) | \(seam.status.rawValue) | "
+                    + "\(seam.regions) |")
+        }
+        #expect(!seams.isEmpty)
     }
 
     /// The same long address, wholly inside the first fine tile and across the overlap of the first
@@ -220,7 +236,10 @@ struct SensitiveTextBenchmarkTests {
                 else { continue }
                 let across = (columns[0].1 + 30 - local.maxX).rounded()
                 var placements: [(String, CGFloat)] = [("inside a tile", 40)]
-                if across + ink.minX < columns[1].0 - 40 { placements.append(("across a seam", across)) }
+                // Only when the whole address stays on the image and still starts well before the second tile.
+                if across + ink.minX >= 40, across + ink.minX < columns[1].0 - 40 {
+                    placements.append(("across a seam", across))
+                }
                 for (placement, x) in placements {
                     let screen = try item(address, at: x)
                     guard let planted = screen.planted.first else { continue }
@@ -301,7 +320,7 @@ struct SensitiveTextBenchmarkTests {
 
     static func report(
         configurations: [RedactBench.Configuration], outcomes: [Outcome], falsePositives: [FalsePositive],
-        scans: [Scan], seams: [SeamResult], wall: TimeInterval
+        scans: [Scan], wall: TimeInterval
     ) {
         func percent(_ part: Int, _ whole: Int) -> String {
             whole == 0 ? "n/a" : String(format: "%.1f%%", 100 * Double(part) / Double(whole))
@@ -390,15 +409,6 @@ struct SensitiveTextBenchmarkTests {
         recallTable("kind") { $0.kind }
         recallTable("format") { $0.format }
         recallTable("image x font size") { "\($0.screen.size) \(Int($0.screen.pointSize)) pt" }
-
-        print("\n### Seam experiment (2560x400 pt at 2x; one address inside a fine tile and across a seam)\n")
-        print("| configuration | font | placement | result | regions |")
-        print("|---|---|---|---|---|")
-        for seam in seams {
-            print(
-                "| \(seam.configuration.label) | \(Int(seam.pointSize)) pt | \(seam.placement) | \(seam.status.rawValue) | "
-                    + "\(seam.regions) |")
-        }
 
         for configuration in configurations {
             print("\n### Worst screens for \(configuration.label) (recall, planted)\n")
