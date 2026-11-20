@@ -95,6 +95,15 @@
                 "the swatch's Remove Saved Color removes the saved color",
                 await E2EWait.until { model.savedAnnotationColors == remainingColors })
             context.check("removing a saved color leaves annotations unchanged", model.document == beforeRemoval)
+            let second = try context.unwrap("a second saved color", remainingColors.first)
+            await E2ESnapshot.settle(root)
+            _ = try await E2EAccessibilityControl.chooseFromMenu(
+                String(localized: "Remove Saved Color", table: "Editor"),
+                opening: "palette.apply.\(second.hex.dropFirst())", in: root, context, byRightClick: true)
+            try context.require(
+                "the swatch's context menu removes a second saved color",
+                await E2EWait.until { model.savedAnnotationColors == Array(remainingColors.dropFirst()) })
+            context.check("the context menu leaves annotations unchanged", model.document == beforeRemoval)
             await E2EActions.snapshotEditor(controller, context, shot: "palette")
             if let window = controller.window {
                 window.setContentSize(NSSize(width: 980, height: 560))
@@ -214,7 +223,7 @@
             // Position and Size starts collapsed; open it as a person does, and close it at the end.
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.pressCheckingEffect("inspector.positionAndSize", in: root, context)
+            try E2EAccessibilityControl.setDisclosure("inspector.positionAndSize", expanded: true, in: root, context)
             await E2ESnapshot.settle(root)
             await E2EActions.scrollInspector(controller, to: 0)
             await E2ESnapshot.settle(root)
@@ -247,8 +256,16 @@
             await E2EActions.snapshotEditor(controller, context)
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.pressCheckingEffect("inspector.positionAndSize", in: root, context)
+            try E2EAccessibilityControl.setDisclosure("inspector.positionAndSize", expanded: false, in: root, context)
             await E2ESnapshot.settle(root)
+            context.check(
+                "closing Position and Size reports it collapsed",
+                (try? E2EAccessibilityControl.disclosureIsExpanded("inspector.positionAndSize", in: root, context))
+                    == false)
+            context.check(
+                "closing Position and Size removes the height field",
+                !E2EAccessibilityControl.isPresent("frame.height", in: root)
+                    && !EditorWindowController.all(NSTextField.self, in: root).contains { $0 === field })
         }
 
         static func annotations(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
