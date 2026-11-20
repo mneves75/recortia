@@ -314,6 +314,60 @@ class SwiftEntryPointTests(unittest.TestCase):
         self.assertEqual([], offenders)
 
 
+class SelectXcodeTests(unittest.TestCase):
+    """CI picks its Xcode with scripts/select-xcode.sh; candidates are fake app folders."""
+
+    def run_selector(self, candidates: list[tuple[str, str, str]]) -> subprocess.CompletedProcess[str]:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = pathlib.Path(directory.name)
+        (root / "scripts").mkdir()
+        shutil.copy(ROOT / "scripts/select-xcode.sh", root / "scripts/select-xcode.sh")
+        (root / "TOOLCHAIN.json").write_text(json.dumps(RECORD))
+        applications = root / "Applications"
+        for name, version, build in candidates:
+            developer = applications / name / "Contents/Developer"
+            developer.mkdir(parents=True)
+            (developer / "fixture-version").write_text(f"Xcode {version}\nBuild version {build}\n")
+        binaries = root / "bin"
+        binaries.mkdir()
+        (binaries / "python3").symlink_to(sys.executable)
+        xcodebuild = binaries / "xcodebuild"
+        xcodebuild.write_text('#!/bin/sh\n[ "$1" = -version ] || exit 64\ncat "$DEVELOPER_DIR/fixture-version"\n')
+        xcodebuild.chmod(0o755)
+        self.applications = applications
+        return subprocess.run(
+            ["/bin/zsh", str(root / "scripts/select-xcode.sh"), str(applications)],
+            cwd=root, capture_output=True, text=True, timeout=15,
+            env={"PATH": f"{binaries}:/usr/bin:/bin"},
+        )
+
+    def test_a_same_version_wrong_build_listed_first_is_not_selected(self) -> None:
+        result = self.run_selector([
+            ("Xcode-a.app", STABLE_VERSION, DEVELOPMENT_BUILD),
+            ("Xcode-b.app", STABLE_VERSION, STABLE_BUILD),
+        ])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(f"{self.applications}/Xcode-b.app/Contents/Developer", result.stdout.strip())
+        self.assertIn("Xcode-a.app", result.stderr, "every candidate is listed")
+
+    def test_no_matching_build_fails_naming_expected_and_available(self) -> None:
+        result = self.run_selector([
+            ("Xcode-a.app", STABLE_VERSION, DEVELOPMENT_BUILD),
+            ("Xcode.app", "26.9", STABLE_BUILD),
+        ])
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertIn(f"stable baseline {STABLE_VERSION} ({STABLE_BUILD})", result.stderr)
+        self.assertIn(f"{STABLE_VERSION} ({DEVELOPMENT_BUILD})", result.stderr)
+        self.assertIn(f"26.9 ({STABLE_BUILD})", result.stderr)
+
+    def test_no_installed_xcode_fails(self) -> None:
+        result = self.run_selector([])
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("available: none", result.stderr)
+
+
 class DoctorTests(unittest.TestCase):
     def run_doctor(
         self, swift_exit: int = 0, *, version: str = STABLE_VERSION, build: str = STABLE_BUILD,
