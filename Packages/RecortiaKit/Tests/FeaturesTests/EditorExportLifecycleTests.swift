@@ -170,4 +170,22 @@ struct EditorExportLifecycleTests {
         #expect(h.files.saves.isEmpty && h.files.uniqueSaves.isEmpty)
         #expect(!h.export.isBusy)
     }
+
+    @Test("Cancel Export in another editor neither shows nor stops this editor's export")
+    func cancelExportIsScopedToItsEditor() async {
+        let h = EditorHarness()
+        let other = EditorModel(session: EditorFixtures.session(), environment: h.model.environment)
+        defer { h.model.close(); other.close() }
+        let gate = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = gate
+        let task = Task { await h.model.export(.copy) }
+        await waitFor("snapshot suspended") { gate.waiterCount == 1 }
+        #expect(h.model.isExporting)
+        #expect(!other.isExporting, "the other editor offers no Cancel Export")
+        other.cancelExport()
+        h.exporter.pending = nil
+        gate.resolve(.success(()))
+        #expect(await task.value == .copied)
+        #expect(h.clipboard.writes.count == 1)
+    }
 }

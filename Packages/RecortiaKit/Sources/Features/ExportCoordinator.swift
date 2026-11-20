@@ -133,6 +133,9 @@ public final class ExportCoordinator {
 
     public var isBusy: Bool { operation != nil }
 
+    /// Whether the running export belongs to `documentID`; each editor shows and cancels only its own.
+    public func isBusy(documentID: DocumentID) -> Bool { operation?.documentID == documentID }
+
     /// Exports `session` through one sink. `currentSession` returns the live session (nil once
     /// its editor closed) and is consulted after the snapshot, before anything is committed.
     public func export(

@@ -56,9 +56,9 @@ extension EditorModel {
         return outcome
     }
 
-    public var isExporting: Bool { environment.export.isBusy }
+    public var isExporting: Bool { environment.export.isBusy(documentID: session.document.id) }
 
-    public func cancelExport() { environment.export.cancel() }
+    public func cancelExport() { environment.export.cancel(documentID: session.document.id) }
 
     /// Pins a sanitized render of the current document.
     public func pin() async {
