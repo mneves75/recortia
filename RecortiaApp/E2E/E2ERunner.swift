@@ -19,6 +19,15 @@
         static let argument = "-RecortiaE2E"
         static let onlyArgument = "-RecortiaE2EOnly"
 
+        /// Exits unless this process was launched for the runner or one of its child probes. Opened
+        /// from Finder, the E2E binary would otherwise build the live composition root (R3-D01).
+        static func refuseUnlessRequested(arguments: [String] = ProcessInfo.processInfo.arguments) {
+            let requests = [argument, E2EPanelProbe.argument, LastWindowProbe.argument]
+            guard !arguments.contains(where: requests.contains) else { return }
+            log("RecortiaE2E runs only for scripts/e2e.sh: launch it with \(argument) <absolute output dir>")
+            exit(2)
+        }
+
         /// Runs a requested child-process probe, else starts the runner when its launch argument
         /// is present. Returns false when neither was requested.
         static func startIfRequested(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {

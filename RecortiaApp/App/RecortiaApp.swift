@@ -36,7 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     override init() {
         #if RECORTIA_E2E
             // The E2E binary exists only for the scenario runner and its probe processes: it never
-            // reads or writes the user's preferences or keychain, whatever it was launched with.
+            // reads or writes the user's preferences or keychain, whatever it was launched with,
+            // and it refuses to launch at all without a runner or probe request.
+            E2ERunner.refuseUnlessRequested()
             let settings = SettingsStore.e2eInMemory()
         #else
             let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)

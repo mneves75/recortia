@@ -128,5 +128,52 @@ class E2EIsolationTests(unittest.TestCase):
         self.assertLess(guard, first_use, "the bundle-identifier guard must precede the first defaults access")
 
 
+APP_ENTRY = ROOT / "RecortiaApp/App/RecortiaApp.swift"
+RUNNER = E2E_DIRECTORY / "E2ERunner.swift"
+
+
+def launch_guard_problems(entry: str, runner: str) -> list[str]:
+    """Why the E2E binary could start its live composition root without a runner request (R3-D01)."""
+    problems: list[str] = []
+    code = "\n".join(line for line in entry.splitlines() if not line.lstrip().startswith("//"))
+    init = re.search(r"override init\(\)\s*\{(.*?)\n    \}", code, re.S)
+    if init is None:
+        return ["AppDelegate.init not found"]
+    body = init.group(1)
+    branch = re.search(r"#if RECORTIA_E2E(.*?)#else", body, re.S)
+    if branch is None or "E2ERunner.refuseUnlessRequested()" not in branch.group(1):
+        problems.append("the RECORTIA_E2E branch of AppDelegate.init does not call E2ERunner.refuseUnlessRequested()")
+    elif body.index("E2ERunner.refuseUnlessRequested()") > body.find("AppModel("):
+        problems.append("E2ERunner.refuseUnlessRequested() must run before AppModel is built")
+    guard = re.search(r"static func refuseUnlessRequested\(.*?\n        \}", runner, re.S)
+    if guard is None:
+        problems.append("E2ERunner.refuseUnlessRequested is missing")
+    else:
+        for name in ("argument", "E2EPanelProbe.argument", "LastWindowProbe.argument"):
+            if not re.search(rf"(?<![\w.]){re.escape(name)}\b", guard.group(0)):
+                problems.append(f"refuseUnlessRequested does not accept {name}")
+        if "exit(" not in guard.group(0):
+            problems.append("refuseUnlessRequested does not exit")
+    return problems
+
+
+class E2ELaunchGuardTests(unittest.TestCase):
+    def test_e2e_binary_refuses_to_launch_without_a_runner_request(self) -> None:
+        self.assertEqual([], launch_guard_problems(APP_ENTRY.read_text(), RUNNER.read_text()))
+
+    def test_planted_launch_guard_regressions_are_reported(self) -> None:
+        entry, runner = APP_ENTRY.read_text(), RUNNER.read_text()
+        removed = entry.replace("E2ERunner.refuseUnlessRequested()", "")
+        self.assertTrue(launch_guard_problems(removed, runner), "a removed call must fail")
+        commented = entry.replace("E2ERunner.refuseUnlessRequested()", "// E2ERunner.refuseUnlessRequested()")
+        self.assertTrue(launch_guard_problems(commented, runner), "a commented-out call must fail")
+        no_exit = runner.replace("exit(2)\n        }\n\n        /// Runs", "\n        }\n\n        /// Runs")
+        self.assertNotEqual(runner, no_exit, "the planted control no longer matches the guard")
+        self.assertTrue(launch_guard_problems(entry, no_exit), "a guard that never exits must fail")
+        probe_only = runner.replace("LastWindowProbe.argument]", "]")
+        self.assertNotEqual(runner, probe_only, "the planted control no longer matches the guard")
+        self.assertTrue(launch_guard_problems(entry, probe_only), "a guard that rejects a probe must fail")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
