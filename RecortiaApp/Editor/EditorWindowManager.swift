@@ -126,6 +126,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
     func present() {
         guard let window else { return }
+        let wasVisible = window.isVisible
         if NSApp.isHidden { NSApp.unhideWithoutActivation() }
         if window.isMiniaturized { window.deminiaturize(nil) }
         if !window.isVisible, let visible = targetScreen()?.visibleFrame {
@@ -141,6 +142,10 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         // Cooperative activation is asynchronous and can be declined. A completed, explicit
         // capture must still show its result; normal-level ordering does not force activation.
         if !NSApp.isActive { window.orderFrontRegardless() }
+        if !wasVisible {
+            LatencySignposts.end(.captureToEditor)
+            LatencySignposts.begin(.editorToFirstDraw)
+        }
     }
 
     private func targetScreen() -> NSScreen? {

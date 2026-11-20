@@ -100,6 +100,7 @@ final class CaptureUIController {
                     onChoose: { [weak coordinator] in coordinator?.commitSelection(.display($0)) }, onCancel: cancel))
         }
         panel.present(activate: true)
+        LatencySignposts.end(.shortcutToOverlay)
     }
 
     private func closeChooser() {

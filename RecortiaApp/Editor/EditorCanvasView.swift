@@ -247,6 +247,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             return
         }
         if !model.showsOutputPreview { model.reportCanvasDrawSucceeded() }
+        if model.baseImage != nil { LatencySignposts.end(.editorToFirstDraw) }
 
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()

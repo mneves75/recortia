@@ -289,11 +289,14 @@ public final class CaptureCoordinator {
 
         let preferences = settings.preferences
         let captured: (CGImage, CaptureGeometry)
+        LatencySignposts.begin(.selectionToCapture)
         do throws(CaptureError) {
             captured = try await capture.capture(
                 target, showsCursor: preferences.captureShowsCursor,
                 includesShadow: preferences.captureIncludesWindowShadow)
+            LatencySignposts.end(.selectionToCapture)
         } catch {
+            LatencySignposts.end(.selectionToCapture)
             guard isCurrent(id) else { return }
             handle(error)
             return

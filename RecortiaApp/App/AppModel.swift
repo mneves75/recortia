@@ -327,6 +327,7 @@ final class AppModel: AppActions {
     func handleCapture(_ completion: CaptureCompletion) {
         switch completion.purpose {
         case .edit:
+            LatencySignposts.begin(.captureToEditor)
             let editor = openDocument?(completion.session, nil)
             runAutomaticExports(for: completion.session, editor: editor)
         case .recognizeText:
@@ -426,6 +427,7 @@ final class AppModel: AppActions {
                 guard let self else { return }
                 guard self.shortcutStatus.admitPress(named: name.rawValue) else { return }
                 if let command = binding.command {
+                    if AppCommand.overlayCaptures.contains(command) { LatencySignposts.begin(.shortcutToOverlay) }
                     self.perform(command)
                 } else if name == .scrollingToggle {
                     self.toggleScrollingCapture()
