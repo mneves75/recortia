@@ -196,6 +196,7 @@ struct POSIXFileSystem {
     ) throws(FileSystemFailure) -> String {
         let stage = try Stage(
             in: directory, folder: folder, data: data, privateNamespace: volume.enforcesOwners, fileSystem: self)
+        stage.sweepLeftovers()
         beforePublish(stage.url)
         let result: Result<String, FileSystemFailure>
         do { result = .success(try body(stage)) } catch { result = .failure(error) }
@@ -590,6 +591,8 @@ final class Stage {
         }
         self.folder = folder
         folderIdentity = FileIdentity(status)
+        // Held until the folder is closed, so another save's sweep leaves this folder alone.
+        _ = flock(folder, LOCK_EX | LOCK_NB)
         url = destination.appendingPathComponent(folderName, isDirectory: true)
             .appendingPathComponent(POSIXFileSystem.stageName, isDirectory: false)
         // From here on `remove()` cleans up. The folder's inherited entries go first, so no entry
@@ -622,6 +625,59 @@ final class Stage {
             throw FileSystemFailure(code: failure, leftover: remove())
         }
         fileSystem.afterSync(url)
+    }
+
+    /// At most this many leftover folders, and entries in each, are swept per save.
+    static let sweepLimit = 32
+
+    /// Removes this user's leftover staging folders in the destination folder, left by a crash or
+    /// a failed save: private (owner-only), named `.recortia-<UUID>`, not locked by another save,
+    /// each regular file of this user in it removed by the `discard` rule, then the folder if
+    /// empty. Only the destination folder itself is searched, and only where owners are enforced.
+    func sweepLeftovers() {
+        guard privateNamespace else { return }
+        for name in Self.entries(of: directory, where: isLeftoverName) { sweep(name) }
+    }
+
+    private func isLeftoverName(_ name: String) -> Bool {
+        name != folderName && name.hasPrefix(".recortia-") && UUID(uuidString: String(name.dropFirst(10))) != nil
+    }
+
+    private func sweep(_ name: String) {
+        let leftover = openat(directory, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard leftover >= 0 else { return }
+        defer { close(leftover) }
+        var status = stat()
+        guard fstat(leftover, &status) == 0, status.st_uid == geteuid(), status.st_mode & 0o077 == 0,
+            flock(leftover, LOCK_EX | LOCK_NB) == 0
+        else { return }
+        let user = geteuid()
+        for entry in Self.entries(of: leftover, where: { _ in true }) {
+            // Something not Recortia's goes back where it was; only a failed move back is reported.
+            try? discard(entry, from: leftover) { $0.st_mode & S_IFMT == S_IFREG && $0.st_uid == user }
+        }
+        if POSIXFileSystem.entry(name, in: directory, is: FileIdentity(status), type: S_IFDIR) {
+            unlinkat(directory, name, AT_REMOVEDIR)
+        }
+    }
+
+    /// Up to `sweepLimit` names of the open folder's entries that match, without "." and "..".
+    private static func entries(of folder: Int32, where matches: (String) -> Bool) -> [String] {
+        let listing = dup(folder)
+        guard listing >= 0 else { return [] }
+        guard let stream = fdopendir(listing) else {
+            close(listing)
+            return []
+        }
+        defer { closedir(stream) }
+        var names: [String] = []
+        while names.count < sweepLimit, let entry = readdir(stream) {
+            let name = withUnsafeBytes(of: entry.pointee.d_name) {
+                String(decoding: $0.prefix(Int(entry.pointee.d_namlen)), as: UTF8.self)
+            }
+            if name != ".", name != "..", matches(name) { names.append(name) }
+        }
+        return names
     }
 
     /// Fails unless the stage's name still leads to the written file and nothing else does.

@@ -548,6 +548,57 @@ struct FileSinkTests {
         #expect(!FileManager.default.fileExists(atPath: url.path))
     }
 
+    // N04 (second review of T1a): a crash, or a failed open, left a private staging folder that no
+    // later save removed, so a hidden copy of a screenshot could stay in the folder indefinitely.
+    @Test("A save removes this user's leftover private staging folders in its folder")
+    func leftoverStagingFolderIsRemoved() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let leftover = try Self.makeLeftover(in: folder, files: ["stage", "discard-\(UUID().uuidString)"])
+        // More ordinary files than the sweep's limit, so the limit counts staging folders only.
+        let others = (0...Stage.sweepLimit).map { "other \($0).png" }
+        for name in others { try priorBytes.write(to: folder.appendingPathComponent(name)) }
+        _ = try FileSink().save(snapshot, to: folder.appendingPathComponent("shot.png"), overwrite: false)
+        #expect(!FileManager.default.fileExists(atPath: leftover.path), "the leftover staging folder stayed")
+        #expect(TestSupport.directoryEntries(folder) == (others + ["shot.png"]).sorted())
+    }
+
+    @Test("The sweep leaves everything that is not a private, unused staging folder holding only files")
+    func sweepKeepsWhatIsNotItsOwn() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let manager = FileManager.default
+        let notUUID = try Self.makeLeftover(in: folder, name: ".recortia-not-a-uuid", files: ["stage"])
+        let shared = try Self.makeLeftover(in: folder, files: ["stage"])
+        try #require(chmod(shared.path(percentEncoded: false), 0o755) == 0)
+        let nested = try Self.makeLeftover(in: folder, files: [])
+        try manager.createDirectory(at: nested.appendingPathComponent("sub"), withIntermediateDirectories: false)
+        try manager.createSymbolicLink(
+            at: nested.appendingPathComponent("link"), withDestinationURL: folder.appendingPathComponent("x"))
+        let inUse = try Self.makeLeftover(in: folder, files: ["stage"])
+        let lock = open(inUse.path(percentEncoded: false), O_RDONLY | O_DIRECTORY)
+        defer { close(lock) }
+        try #require(lock >= 0 && flock(lock, LOCK_EX | LOCK_NB) == 0, "control: the folder could not be locked")
+        let plainFile = folder.appendingPathComponent(".recortia-\(UUID().uuidString)")
+        try Data("a file, not a folder".utf8).write(to: plainFile)
+
+        _ = try FileSink().save(snapshot, to: folder.appendingPathComponent("shot.png"), overwrite: false)
+        #expect(manager.fileExists(atPath: notUUID.appendingPathComponent("stage").path))
+        #expect(manager.fileExists(atPath: shared.appendingPathComponent("stage").path))
+        #expect(TestSupport.directoryEntries(nested) == ["link", "sub"])
+        #expect(manager.fileExists(atPath: inUse.appendingPathComponent("stage").path))
+        #expect(manager.fileExists(atPath: plainFile.path))
+    }
+
+    /// A private (0700) folder named like a staging folder, holding the given files.
+    private static func makeLeftover(in folder: URL, name: String? = nil, files: [String]) throws -> URL {
+        let leftover = folder.appendingPathComponent(name ?? ".recortia-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: leftover, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        for file in files { try Data("a staged screenshot".utf8).write(to: leftover.appendingPathComponent(file)) }
+        return leftover
+    }
+
     @Test("A temporary file that gained a second name before the commit is refused")
     func temporaryFileWithSecondNameIsRefused() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
