@@ -19,10 +19,16 @@ Xcode 27.2 SDK interfaces; nothing in it was built or run on a macOS 26 host.
    and `TOOLCHAIN.json` (`minimum_deployment_target`) carry the same value.
 2. **No availability gates:** code uses no API newer than macOS 26 and no `#available`. An API
    introduced in macOS 27 waits for a later floor decision.
-3. **Adopted with the floor (T1c):** `.strictMemorySafety()` for Imaging and MacPlatform,
-   `Span`-based pixel access where it removes an unsafe pointer without copying, and
-   `.onChange(of:initial:)` where an `.onAppear` and `.onChange` pair do the same work.
-   `ToolbarSpacer` belongs to the editor refresh slice.
+3. **Adopted with the floor (T1c):** `.strictMemorySafety()` for Imaging and MacPlatform, with
+   each remaining `unsafe` expression next to its invariant. `RenderRaster.fill`, `pixels(in:)`
+   and `replace` use bounds-checked `Data` row operations (`replaceSubrange`, range slices)
+   instead of raw pointers, and the JPEG marker scan reads `Data.span`. Indexing a `MutableSpan`
+   byte by byte measured 1.6–2× slower, so `normalizeTransparentPixels` keeps its raw buffer, and
+   `withContext` keeps the pointer `CGContext(data:)` needs.
+4. **Not adopted:** `.onChange(of:initial:)`. The only `.onAppear` and `.onChange` pair outside the
+   editor is the Export settings pane, which lives in an `NSTabViewController` and must refresh
+   each time it reappears; `initial: true` runs once. The editor's pairs and `ToolbarSpacer`
+   belong to the editor refresh slice.
 
 ## APIs the floor unlocks
 
