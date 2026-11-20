@@ -54,10 +54,10 @@ final class CaptureUIController {
         case (.selecting, .display(let displays)?):
             overlay.dismiss()
             showChooser(.displays(displays))
-        case (.countdown(let remaining), _):
+        case (.countdown, _):
             overlay.dismiss()
             closeChooser()
-            showCountdown(remaining)
+            showCountdown()
         default:
             overlay.dismiss()
             closeChooser()
@@ -108,7 +108,7 @@ final class CaptureUIController {
         chooserKind = nil
     }
 
-    private func showCountdown(_ remaining: Int) {
+    private func showCountdown() {
         guard countdown == nil else { return }  // the hosted view follows the coordinator itself
         let panel = Self.makeCountdownPanel()
         countdown = panel

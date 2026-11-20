@@ -54,12 +54,9 @@ final class EditorWindowManager {
         return model
     }
 
-    var openDocumentIDs: [DocumentID] { Array(controllers.keys) }
-
     /// Editors whose edits were never copied or saved (a drag out saves; a pin does not).
     var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
 
-    func model(for id: DocumentID) -> EditorModel? { controllers[id]?.model }
 }
 
 /// One editor window: hosts the SwiftUI chrome around the AppKit canvas, asks before discarding
