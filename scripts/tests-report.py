@@ -11,10 +11,11 @@ can never be true for X. So:
   run them. `--check` proves each gate still exists and still has its test, that every
   scripts/test-*.py is in the list, that each caller still has the `--run-tests` command line, and
   that tests.json still records this inventory. A test file that nothing runs is a dead gate;
-* run statuses go to .scratch/tests-report.json, never committed. Each comes from a log that
-  records the commit it ran at (`<suite>: commit <sha>`). A verdict from another commit, or from a
-  log that records none, is `stale`; an E2E run of one language or of selected scenarios is
-  `partial`, never the bilingual suite.
+* run statuses go to .scratch/tests-report.json, never committed. Each comes from the latest run
+  in a log, which records its commit and tree at both ends (scripts/lib/run-identity.sh). A
+  verdict from another commit, or from a log that records none, is `stale`; a dirty tree is
+  `dirty`, a commit change during the run `moved`; an E2E run of one language or of selected
+  scenarios is `partial`, and one whose provenance names another commit `stale`.
 
 Usage:
   scripts/tests-report.py            write tests.json and .scratch/tests-report.json
@@ -200,11 +201,36 @@ def evidence_commit(run: str, prefix: str) -> str | None:
     return found.group(1) if found else None
 
 
-def ran_on_clean_tree(run: str, prefix: str) -> bool:
-    """A commit's verdict needs the committed tree: clean when the run started and when it ended."""
-    start = re.search(rf"(?m)^{re.escape(prefix)}: commit [0-9a-f]{{40}} tree (\S+)", run)
-    ends = re.findall(rf"(?m)^{re.escape(prefix)}: end tree (\S+)$", run)
-    return start is not None and start.group(1) == "clean" and bool(ends) and ends[-1] == "clean"
+def source_state(run: str, prefix: str) -> str:
+    """`clean` when the run started and ended on the same commit with a clean tree (the identity
+    scripts/lib/run-identity.sh prints at both ends), `moved` when the commit changed, else `dirty`."""
+    start = re.search(rf"(?m)^{re.escape(prefix)}: commit ([0-9a-f]{{40}}) tree (\S+)", run)
+    ends = re.findall(rf"(?m)^{re.escape(prefix)}: end commit (\S+) tree (\S+)$", run)
+    if start is None or not ends:
+        return "dirty"
+    if ends[-1][0] != start.group(1):
+        return "moved"
+    return "clean" if start.group(2) == "clean" and ends[-1][1] == "clean" else "dirty"
+
+
+def e2e_output_directory(run: str) -> pathlib.Path | None:
+    found = re.findall(r"(?m)^e2e: output in (.+)$", run)
+    return pathlib.Path(found[-1]) if found else None
+
+
+def e2e_provenance_matches(run: str, sha: str) -> bool:
+    """Each language's provenance.json must name the commit the run's header names."""
+    output = e2e_output_directory(run)
+    if output is None:
+        return False
+    for language in ("en", "pt-BR"):
+        try:
+            record = json.loads((output / language / "provenance.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(record, dict) or record.get("git_sha") != sha:
+            return False
+    return True
 
 
 def e2e_is_full_suite(text: str) -> bool:
@@ -260,11 +286,13 @@ def observe(suite: dict[str, str], head: str) -> dict[str, object]:
     elif ran_at != head:
         # A verdict proves only the commit it ran at; the report speaks for HEAD.
         status = "stale"
-    elif status == "passed" and not ran_on_clean_tree(run or "", suite["prefix"]):
-        # Uncommitted changes were tested, not HEAD.
-        status = "dirty"
+    elif status == "passed" and (state := source_state(run or "", suite["prefix"])) != "clean":
+        # Uncommitted changes, or another commit by the end, were tested, not HEAD.
+        status = state
     elif suite["id"] == "e2e" and status == "passed" and not e2e_is_full_suite(run or ""):
         status = "partial"
+    elif suite["id"] == "e2e" and status == "passed" and not e2e_provenance_matches(run or "", head):
+        status = "stale"
     return {
         "id": suite["id"],
         "command": suite["command"],

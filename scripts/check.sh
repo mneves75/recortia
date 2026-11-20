@@ -12,10 +12,8 @@ if [[ "${1:-}" == "--unsigned" ]]; then
   sign_args=(CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-)
 fi
 
-# scripts/tests-report.py credits this log's verdict to the commit named here only when the tree
-# was clean at both ends of the run.
-tree_state() { local s; s=$(git status --porcelain --untracked-files=all) || { echo unknown; return; }; [[ -z $s ]] && echo clean || echo dirty; }
-echo "check: commit $(git rev-parse HEAD) tree $(tree_state)"
+source scripts/lib/run-identity.sh
+echo "check: $(run_identity)"
 scripts/doctor.sh
 
 echo "== script regressions (the list is GATES in scripts/tests-report.py)"
@@ -56,5 +54,5 @@ if [[ "$tests_ran" != "$expected_ran" ]]; then
   echo "check: the gate test list did not run in this gate (expected '$expected_ran')" >&2
   exit 1
 fi
-echo "check: end tree $(tree_state)"
+echo "check: end $(run_identity)"
 echo "check: all gates passed"

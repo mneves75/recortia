@@ -42,6 +42,7 @@ class ReleaseFixture:
         (root / "scripts").mkdir()
         for name in ("release.sh", "doctor.sh"):
             shutil.copy(ROOT / "scripts" / name, root / "scripts" / name)
+        shutil.copytree(ROOT / "scripts/lib", root / "scripts/lib")
         shutil.copy(ROOT / "TOOLCHAIN.json", root / "TOOLCHAIN.json")
         self.bin = root / "bin"
         self.bin.mkdir()
@@ -167,13 +168,13 @@ class ReleaseContractTests(unittest.TestCase):
         """Run release.sh's own EXIT handler: the success path needs codesign, hdiutil and
         /usr/libexec/PlistBuddy, which no fixture stands in for, so this drives its last step."""
         script = RELEASE.read_text()
-        handler = re.search(r"(?ms)^tree_state\(\) \{.*?\n^finish\(\) \{\n.*?\n^\}\n", script)
-        self.assertIsNotNone(handler, "release.sh must define tree_state and finish together")
+        handler = re.search(r"(?ms)^finish\(\) \{\n.*?\n^\}\n", script)
+        self.assertIsNotNone(handler, "release.sh must define finish")
         assert handler is not None
         fixture = self.fixture()
         if cleanup_fails:
             (fixture.root / "fail-cleanup").write_text("")
-        body = (handler.group(0) + f"root={fixture.root}\nsrc={fixture.root}/src\nlabel=0.1-dev\nout=/out\n"
+        body = (f"source {ROOT / 'scripts/lib/run-identity.sh'}\n" + handler.group(0) + f"root={fixture.root}\nsrc={fixture.root}/src\nlabel=0.1-dev\nout=/out\n"
                 f"dry_run=1\ncompleted=0\ntrap finish EXIT\n{'completed=1' if completed else ':'}\nexit {exit_status}\n")
         return subprocess.run(["/bin/zsh", "-c", body], cwd=fixture.root, capture_output=True, text=True,
                               env={"PATH": f"{fixture.bin}:/usr/bin:/bin"}, timeout=15)
@@ -224,6 +225,7 @@ class ReleaseContractTests(unittest.TestCase):
         shutil.copy(ROOT / "scripts/check.sh", gate / "scripts/check.sh")
         for name in ("doctor.sh", "check-project-fresh.sh", "xcodegen.sh"):
             shutil.copy(ROOT / "scripts" / name, gate / "scripts" / name)
+        shutil.copytree(ROOT / "scripts/lib", gate / "scripts/lib")
         shutil.copy(ROOT / "TOOLCHAIN.json", gate / "TOOLCHAIN.json")
         # Earlier gate steps are independently exercised by their own suites.
         for name in re.findall(r"python3 scripts/([\w-]+\.py)", (ROOT / "scripts/check.sh").read_text()):
@@ -247,6 +249,7 @@ class ReleaseContractTests(unittest.TestCase):
                 script = root / "scripts" / name
                 script.write_bytes((ROOT / "scripts" / name).read_bytes())
                 script.chmod(0o755)
+            shutil.copytree(ROOT / "scripts/lib", root / "scripts/lib")
             (root / "TOOLCHAIN.json").write_bytes((ROOT / "TOOLCHAIN.json").read_bytes())
             binaries = root / "bin"
             binaries.mkdir()

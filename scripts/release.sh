@@ -30,7 +30,7 @@ echo "release: run mode $mode"
 # cleanup: success only when the last step set `completed` and the checkout was removed.
 src=""
 completed=0
-tree_state() { local s; s=$(git status --porcelain --untracked-files=all) || { echo unknown; return; }; [[ -z $s ]] && echo clean || echo dirty; }
+source scripts/lib/run-identity.sh
 finish() {
   local exit_status=$?
   if [[ -n "$src" ]] && ! git -C "$root" worktree remove --force "$src"; then
@@ -41,7 +41,7 @@ finish() {
   if (( exit_status != 0 )); then
     echo "release: failed (exit $exit_status)" >&2
   else
-    echo "release: end tree $(tree_state)"
+    echo "release: end $(run_identity)"
     if (( dry_run )); then echo "release: dry run complete ($label, manifest $out/manifest.txt)"
     else echo "release: complete ($label, manifest $out/manifest.txt)"
     fi
@@ -60,7 +60,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 source_commit=$(git rev-parse HEAD)
-echo "release: commit $source_commit tree $(tree_state)"
+echo "release: $(run_identity)"
 version=$(git show "${source_commit}:project.yml" | sed -n 's/^ *MARKETING_VERSION: *//p')
 build=$(git show "${source_commit}:project.yml" | sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p')
 if [[ ! "$version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' || ! "$build" =~ '^[0-9]+$' ]]; then

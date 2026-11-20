@@ -43,6 +43,7 @@ class E2EToolchainTests(unittest.TestCase):
         (self.root / "scripts").mkdir()
         for name in ("e2e.sh", "doctor.sh"):
             shutil.copy(ROOT / "scripts" / name, self.root / "scripts" / name)
+        shutil.copytree(ROOT / "scripts/lib", self.root / "scripts/lib")
         (self.root / "TOOLCHAIN.json").write_text(json.dumps(FIXTURE_RECORD))
         self.bin = self.root / "bin"
         self.bin.mkdir()

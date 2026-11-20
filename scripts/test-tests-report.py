@@ -79,6 +79,15 @@ class TestsReportTests(unittest.TestCase):
         self.head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root, check=True,
                                    capture_output=True, text=True).stdout.strip()
 
+    def e2e_output(self, *, provenance_sha: str | None = "", languages: tuple[str, ...] = ("en", "pt-BR")) -> pathlib.Path:
+        """An E2E output directory as e2e.sh leaves it; provenance names HEAD unless told otherwise."""
+        run = pathlib.Path(tempfile.mkdtemp(dir=self.root / ".scratch"))
+        for language in languages:
+            (run / language).mkdir()
+            if provenance_sha is not None:
+                (run / language / "provenance.json").write_text(json.dumps({"git_sha": provenance_sha or self.head}))
+        return run
+
     def suites(self) -> dict[str, dict[str, object]]:
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / ".scratch/tests-report.json").read_text())
@@ -141,13 +150,13 @@ class TestsReportTests(unittest.TestCase):
         log = self.root / ".scratch/logs/check-1.log"
         for ran in ("", f"tests-report: ran {len(self.tests) - 1} gate tests\n"):
             with self.subTest(ran=ran):
-                log.write_text(f"check: commit {self.head} tree clean\n{ran}check: end tree clean\n"
+                log.write_text(f"check: commit {self.head} tree clean\n{ran}check: end commit {self.head} tree clean\n"
                                "check: all gates passed\n")
                 self.assertEqual("failed", self.suites()["check"]["status"])
 
     def test_a_pass_from_another_commit_is_stale_not_passed(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {'b' * 40} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {'b' * 40} tree clean\n{self.ran}check: end commit {'b' * 40} tree clean\ncheck: all gates passed\n")
         suite = self.suites()["check"]
         self.assertEqual("stale", suite["status"])
         self.assertEqual("b" * 40, suite["evidence_commit"])
@@ -158,16 +167,22 @@ class TestsReportTests(unittest.TestCase):
         log = self.root / ".scratch/logs/check-1.log"
         for start, end in (("dirty", "clean"), ("clean", "dirty"), ("dirty", "dirty")):
             with self.subTest(start=start, end=end):
-                log.write_text(f"check: commit {self.head} tree {start}\n{self.ran}check: end tree {end}\n"
+                log.write_text(f"check: commit {self.head} tree {start}\n{self.ran}check: end commit {self.head} tree {end}\n"
                                "check: all gates passed\n")
                 self.assertEqual("dirty", self.suites()["check"]["status"])
         log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: all gates passed\n")
         self.assertEqual("dirty", self.suites()["check"]["status"], "a pass without its end state proves nothing")
 
+    def test_a_run_that_ends_on_another_commit_does_not_qualify(self) -> None:
+        log = self.root / ".scratch/logs/check-1.log"
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end commit {'b' * 40} tree clean\n"
+                       "check: all gates passed\n")
+        self.assertEqual("moved", self.suites()["check"]["status"])
+
     def test_release_verdicts_count_only_for_a_dry_run_record(self) -> None:
         log = self.root / ".scratch/logs/release-1.log"
         identity = f"release: commit {self.head} tree clean\n"
-        log.write_text("release: run mode dry-run\n" + identity + "release: end tree clean\n"
+        log.write_text("release: run mode dry-run\n" + identity + f"release: end commit {self.head} tree clean\n"
                        "release: dry run complete (0.1-dev, manifest m)\n")
         self.assertEqual("passed", self.suites()["release-dry-run"]["status"])
         log.write_text("release: run mode dry-run\nrelease: failed (exit 1)\n")
@@ -175,7 +190,7 @@ class TestsReportTests(unittest.TestCase):
                          "a preflight failure is a failed run, not a stale one")
         log.write_text("release: run mode release\n" + identity + "release: failed (exit 1)\n")
         self.assertEqual("not_dry_run", self.suites()["release-dry-run"]["status"])
-        log.write_text("release: run mode dry-run\n" + identity + "release: end tree clean\n"
+        log.write_text("release: run mode dry-run\n" + identity + f"release: end commit {self.head} tree clean\n"
                        "release: dry run complete (0.1-dev, manifest m)\nrelease: run mode dry-run\n")
         self.assertIn(self.suites()["release-dry-run"]["status"], ("running", "incomplete"))
 
@@ -185,7 +200,7 @@ class TestsReportTests(unittest.TestCase):
 
         # Review §2: a pass at commit A, then only the header of a run at HEAD.
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {'a' * 40} tree clean\ncheck: end tree clean\ncheck: all gates passed\ncheck: commit {self.head} tree clean\n")
+        log.write_text(f"check: commit {'a' * 40} tree clean\ncheck: end commit {'a' * 40} tree clean\ncheck: all gates passed\ncheck: commit {self.head} tree clean\n")
         os.utime(log, (time.time() - 3600, time.time() - 3600))
         self.assertEqual("incomplete", self.suites()["check"]["status"])
         # Older E2E summaries cannot supply the language the latest run lacks.
@@ -193,7 +208,8 @@ class TestsReportTests(unittest.TestCase):
         portuguese = "e2e[pt-BR]: 1/1 scenarios passed, 2 screenshots (exit 0)\n"
         header = f"e2e: commit {self.head} tree clean lang all only -\n"
         (self.root / ".scratch/logs/e2e-1.log").write_text(
-            header + english + portuguese + "e2e: end tree clean\ne2e: output in /tmp/a\n" + header + english + "e2e: end tree clean\ne2e: output in /tmp/b\n"
+            header + english + portuguese + f"e2e: end commit {self.head} tree clean\ne2e: output in /tmp/a\n" + header + english
+            + f"e2e: end commit {self.head} tree clean\ne2e: output in /tmp/b\n"
         )
         self.assertEqual("partial", self.suites()["e2e"]["status"])
 
@@ -207,31 +223,50 @@ class TestsReportTests(unittest.TestCase):
             (f"e2e: commit {self.head} tree clean lang all only -\n", english),
         ):
             with self.subTest(header=header, body=body):
-                log.write_text(header + body + "e2e: end tree clean\ne2e: output in /tmp/run\n")
+                log.write_text(header + body + f"e2e: end commit {self.head} tree clean\ne2e: output in /tmp/run\n")
                 self.assertEqual("partial", self.suites()["e2e"]["status"])
         log.write_text(f"e2e: commit {self.head} tree clean lang all only -\n" + english + portuguese
-                       + "e2e: end tree clean\ne2e: output in /tmp/run\n")
+                       + f"e2e: end commit {self.head} tree clean\ne2e: output in {self.e2e_output()}\n")
         self.assertEqual("passed", self.suites()["e2e"]["status"])
 
-    def test_every_suite_script_prints_the_commit_header_the_report_reads(self) -> None:
-        headers = {
-            "scripts/check.sh": r'(?m)^echo "check: commit \$\(git rev-parse HEAD\) tree \$\(tree_state\)"$',
-            "scripts/e2e.sh": r'(?m)^echo "e2e: commit \$\(git rev-parse HEAD\) tree \$\(tree_state\) lang \$lang only \$\{only:--\}"$',
-            "scripts/release.sh": r'(?m)^echo "release: commit \$source_commit tree \$\(tree_state\)"$',
+    def test_e2e_provenance_must_name_the_runs_commit(self) -> None:
+        log = self.root / ".scratch/logs/e2e-1.log"
+        summaries = "".join(f"e2e[{language}]: 1/1 scenarios passed, 2 screenshots (exit 0)\n"
+                            for language in ("en", "pt-BR"))
+        for output in (self.e2e_output(provenance_sha="b" * 40), self.e2e_output(provenance_sha=None)):
+            with self.subTest(output=output):
+                log.write_text(f"e2e: commit {self.head} tree clean lang all only -\n" + summaries
+                               + f"e2e: end commit {self.head} tree clean\ne2e: output in {output}\n")
+                self.assertEqual("stale", self.suites()["e2e"]["status"])
+
+    def test_every_suite_script_prints_the_identity_the_report_reads(self) -> None:
+        lines = {
+            "scripts/check.sh": ('echo "check: $(run_identity)"', 'echo "check: end $(run_identity)"'),
+            "scripts/e2e.sh": ('echo "e2e: $(run_identity) lang $lang only ${only:--}"', 'echo "e2e: end $(run_identity)"'),
+            "scripts/release.sh": ('echo "release: $(run_identity)"', 'echo "release: end $(run_identity)"'),
         }
-        ends = {"scripts/check.sh": "check", "scripts/e2e.sh": "e2e", "scripts/release.sh": "release"}
-        for script, prefix in ends.items():
-            with self.subTest(script=script, end=True):
-                text = (ROOT / script).read_text()
-                self.assertIn(f'echo "{prefix}: end tree $(tree_state)"', text)
-                self.assertIn('tree_state() { local s; s=$(git status --porcelain --untracked-files=all) || { echo unknown; return; }; [[ -z $s ]] && echo clean || echo dirty; }', text)
-        for script, header in headers.items():
+        for script, (start_line, end_line) in lines.items():
             with self.subTest(script=script):
-                self.assertRegex((ROOT / script).read_text(), header)
+                text = (ROOT / script).read_text()
+                self.assertRegex(text, r"(?m)^source scripts/lib/run-identity\.sh$")
+                self.assertIn(start_line, text)
+                self.assertIn(end_line, text)
+                self.assertNotIn("tree_state", text, "one shared helper, not a copy per script")
+
+    def test_run_identity_names_the_commit_and_tree_state(self) -> None:
+        helper = ROOT / "scripts/lib/run-identity.sh"
+        def identity(directory: pathlib.Path) -> str:
+            return subprocess.run(["/bin/zsh", "-c", f"source {helper}; run_identity"], cwd=directory,
+                                  capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual(f"commit {self.head} tree clean", identity(self.root))
+        (self.root / "untracked.txt").write_text("new\n")
+        self.assertEqual(f"commit {self.head} tree dirty", identity(self.root))
+        with tempfile.TemporaryDirectory() as outside:
+            self.assertEqual("commit unknown tree unknown", identity(pathlib.Path(outside)))
 
     def test_status_comes_from_the_evidence_marker(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\n== package tests\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head} tree clean\n== package tests\n{self.ran}check: end commit {self.head} tree clean\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
@@ -261,7 +296,7 @@ class TestsReportTests(unittest.TestCase):
     def test_committed_inventory_carries_no_run_status(self) -> None:
         # A status committed at commit X can never be true for X, so only the report holds runs.
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end commit {self.head} tree clean\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         inventory = json.loads((self.root / "tests.json").read_text())
         self.assertEqual({"schema_version", "suites", "gates"}, set(inventory))
@@ -271,7 +306,7 @@ class TestsReportTests(unittest.TestCase):
 
     def test_check_validates_the_inventory_not_the_runs(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end commit {self.head} tree clean\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         log.write_text(f"check: commit {self.head} tree clean\nFAILED (failures=1)\n")
         result = self.run_report("--check")
@@ -289,7 +324,7 @@ class TestsReportTests(unittest.TestCase):
 
     def test_a_later_failure_is_not_hidden_by_an_earlier_pass(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\nFAILED (failures=1)\n")
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end commit {self.head} tree clean\ncheck: all gates passed\nFAILED (failures=1)\n")
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
