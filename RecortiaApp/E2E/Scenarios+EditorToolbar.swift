@@ -218,7 +218,8 @@
                 context.check(
                     "\(hide) uses ⌃⌘\(key.uppercased())",
                     command.keyEquivalent == key && command.keyEquivalentModifierMask == [.control, .command])
-                context.check("\(hide) is enabled for the key editor", command.isEnabled)
+                context.check(
+                    "\(hide) is enabled for the key editor", command.isEnabled, menuState(command, window))
                 let menu = try context.unwrap("\(hide) has a menu", command.menu)
                 menu.performActionForItem(at: menu.index(of: command))
                 await E2ESnapshot.settle(frameView, for: .milliseconds(600))
@@ -268,7 +269,7 @@
             let shape = try context.unwrap("a drawn rectangle", model.document.annotations.last)
             model.select(.annotation(shape.id))
             await E2ESnapshot.settle(frameView, for: .milliseconds(300))
-            arrange.update()
+            prepare(arrange)
             let expected =
                 [
                     EditorArrangeCommand.order(.forward), .order(.backward), .order(.front), .order(.back),
@@ -331,11 +332,25 @@
             (menu?.items ?? []).flatMap { [$0] + menuItems($0.submenu) }
         }
 
+        /// What decides a main-menu command's state, for a failing check's detail.
+        private static func menuState(_ item: NSMenuItem, _ window: NSWindow) -> String {
+            "active \(NSApp.isActive), editor key \(window.isKeyWindow), keyWindow \(String(describing: NSApp.keyWindow.map { type(of: $0) })), "
+                + "tracked editor \(EditorCommands.shared.keyEditor != nil), target \(String(describing: item.target.map { type(of: $0) })), "
+                + "action \(String(describing: item.action)), menu delegate \(String(describing: item.menu?.delegate.map { type(of: $0) }))"
+        }
+
+        /// Brings a menu up to date as opening it does: its delegate refreshes the items, then the
+        /// menu validates them.
+        private static func prepare(_ menu: NSMenu) {
+            menu.delegate?.menuNeedsUpdate?(menu)
+            menu.update()
+        }
+
         /// The main menu's item titled `title`, after the menus validate their items.
         private static func viewCommand(_ title: String) -> NSMenuItem? {
-            let items = menuItems(NSApp.mainMenu)
-            for menu in Set(items.compactMap(\.menu)) { menu.update() }
-            return items.first { $0.title == title }
+            for menu in Set(menuItems(NSApp.mainMenu).compactMap(\.menu)) { prepare(menu) }
+            // The refresh may replace items, so search the updated menus.
+            return menuItems(NSApp.mainMenu).first { $0.title == title }
         }
 
         private static func choose(
