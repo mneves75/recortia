@@ -20,7 +20,7 @@ private func detect(_ text: String) throws -> [String] {
 struct SensitiveTextPatternTests {
     @Test("Every built-in pattern compiles, and the shared matcher is available")
     func everyPatternCompiles() throws {
-        for pattern in SensitiveTextMatcher.patterns {
+        for pattern in SensitiveTextMatcher.patterns + SensitiveTextMatcher.overlongRunPatterns {
             #expect(throws: Never.self, "pattern \(pattern.name)") {
                 _ = try NSRegularExpression(pattern: pattern.source, options: [.caseInsensitive])
             }
@@ -427,5 +427,55 @@ struct SensitiveTextSweepReviewTests {
             SensitiveTextScanner.mergeRegions(order).map { "\($0.kind.rawValue) \($0.rect)" }
         }
         #expect(Set(results.map { $0.joined(separator: "; ") }).count == 1, "\(results)")
+    }
+}
+
+@Suite("SensitiveText: security review findings (2026-11-19)")
+struct SensitiveTextSecurityReviewTests {
+    /// 130 local-part letters outside the BMP (two UTF-16 units each), apostrophes included.
+    private static let longLocalPart: String = {
+        let letter = "\u{1D4B6}"
+        return String(repeating: letter, count: 64) + "'" + String(repeating: letter, count: 32) + "'"
+            + String(repeating: letter, count: 32)
+    }()
+
+    @Test(
+        "A letter run longer than a local part glued to an address still masks the address",
+        arguments: [
+            String(repeating: "漢字", count: 50), String(repeating: "x", count: 100),
+            String(repeating: "สวัสดีครับ", count: 10),
+        ])
+    func gluedRunBeforeAnAddress(prefix: String) throws {
+        let text = "Contato: " + prefix + "ana@example.com fim"
+        let matches = try SensitiveTextMatcher.shared.get().matches(in: text)
+        try #require(matches.count == 1, "\(matches.map { text[$0.range] })")
+        let masked = String(text[matches[0].range])
+        #expect(matches[0].kind == .email)
+        #expect(masked.hasSuffix("ana@example.com"))
+        // The last 64 characters before the "@" are masked (RFC 5321's local-part limit).
+        #expect(masked.unicodeScalars.split(separator: "@")[0].count == 64)
+    }
+
+    @Test("The window overlap exceeds every pattern's longest match, and the bound is not loose")
+    func windowOverlapCoversTheLongestMatch() {
+        #expect(SensitiveTextMatcher.longestMatchUTF16 < SensitiveTextMatcher.windowOverlap)
+        #expect(SensitiveTextMatcher.patterns.allSatisfy { $0.maximumUTF16Length > 0 })
+        let domain =
+            String(repeating: String(repeating: "a", count: 63) + ".", count: 8) + String(repeating: "a", count: 24)
+        let address = Self.longLocalPart + ". " + Self.longLocalPart + "@" + domain
+        #expect(address.utf16.count <= SensitiveTextMatcher.longestMatchUTF16)
+        #expect(address.utf16.count + 16 >= SensitiveTextMatcher.longestMatchUTF16)
+    }
+
+    @Test("A maximum-length non-BMP address across a window seam is found once and whole")
+    func longestAddressAcrossAWindowSeam() throws {
+        let domain =
+            String(repeating: String(repeating: "a", count: 63) + ".", count: 8) + String(repeating: "a", count: 24)
+        let address = Self.longLocalPart + ". " + Self.longLocalPart + "@" + domain
+        #expect(address.utf16.count > 1024)
+        // Start ten units before the second window, so the address crosses the first window's overlap.
+        let start = SensitiveTextMatcher.windowLength - SensitiveTextMatcher.windowOverlap - 10
+        let text = String(repeating: " ", count: start) + address + String(repeating: " ", count: 9_000)
+        #expect(try detect(text) == ["email:\(address)"])
     }
 }

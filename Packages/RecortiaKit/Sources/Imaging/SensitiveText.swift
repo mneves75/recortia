@@ -78,6 +78,9 @@ public struct SensitiveTextMatcher: Sendable {
         let kind: SensitiveTextKind
         let source: String
         let refinement: Refinement
+        /// Upper bound on a match's length in UTF-16 units, derived from the pattern's repetition
+        /// bounds. `windowOverlap` must exceed the largest (checked when the matcher is built).
+        var maximumUTF16Length = 0
     }
 
     private struct Compiled: Sendable {
@@ -86,6 +89,7 @@ public struct SensitiveTextMatcher: Sendable {
     }
 
     private let compiled: [Compiled]
+    private let overlongRunEmails: [Compiled]
     private let digitRuns: Compiled
 
     /// Compiled once per process; every caller shares it.
@@ -95,6 +99,11 @@ public struct SensitiveTextMatcher: Sendable {
         var compiled: [Compiled] = []
         for pattern in Self.patterns { compiled.append(try Self.compile(pattern)) }
         self.compiled = compiled
+        var overlong: [Compiled] = []
+        for pattern in Self.overlongRunPatterns { overlong.append(try Self.compile(pattern)) }
+        overlongRunEmails = overlong
+        // A pattern whose longest match outgrows the window overlap could be cut by every window.
+        guard Self.longestMatchUTF16 < Self.windowOverlap else { throw .patternInvalid("window-overlap") }
         digitRuns = try Self.compile(Pattern(name: "digit-runs", kind: .phone, source: #"\d+"#, refinement: .none))
     }
 
@@ -108,11 +117,12 @@ public struct SensitiveTextMatcher: Sendable {
     }
 
     /// Longest text, in UTF-16 units, that one regex call reads. Longer lines are read in windows
-    /// that overlap by `windowOverlap`, which exceeds the longest match any pattern can make (every
-    /// repetition is bounded), so each match is whole in at least one window and the work grows
-    /// linearly with the line.
-    static let windowLength = 4096
-    static let windowOverlap = 1024
+    /// that overlap by `windowOverlap`, which exceeds the longest match any pattern can make
+    /// (`longestMatchUTF16`; every repetition is bounded), so each match is whole in at least one
+    /// window and the work grows linearly with the line.
+    static let windowLength = 8192
+    static let windowOverlap = 2048
+    static let longestMatchUTF16 = patterns.map(\.maximumUTF16Length).max() ?? 0
 
     public func matches(
         in text: String, kinds: Set<SensitiveTextKind> = Set(SensitiveTextKind.allCases)
@@ -135,8 +145,76 @@ public struct SensitiveTextMatcher: Sendable {
                 }
             }
         }
+        if kinds.contains(.email) { found += overlongRunMatches(in: source, bridged) }
         return Self.mergeOverlapping(found).compactMap { item in
             Range(item.range, in: text).map { SensitiveTextMatch(kind: item.kind, range: $0) }
+        }
+    }
+
+    /// The e-mail patterns start only where a run of local characters starts (`localStart`), so an
+    /// "@" after a longer run than a local part holds (a glued prefix, a CJK or Thai line without
+    /// spaces) starts no match there. For each such "@", match again from `localRun` characters
+    /// before it: the mask can be wider than the address, never narrower. Each "@" costs one bounded
+    /// backward walk and one anchored match, so the work stays linear in the line.
+    private func overlongRunMatches(
+        in source: NSString, _ bridged: String
+    ) -> [(kind: SensitiveTextKind, range: NSRange)] {
+        var found: [(kind: SensitiveTextKind, range: NSRange)] = []
+        var searchFrom = 0
+        while searchFrom < source.length {
+            let at = source.range(
+                of: "@", options: .literal, range: NSRange(location: searchFrom, length: source.length - searchFrom)
+            ).location
+            guard at != NSNotFound else { break }
+            searchFrom = at + 1
+            var start = at
+            var count = 0
+            while count < Self.localRun, let previous = Self.scalar(before: start, in: source),
+                Self.continuesLocalRun(previous.scalar)
+            {
+                start -= previous.width
+                count += 1
+            }
+            guard count == Self.localRun, let previous = Self.scalar(before: start, in: source),
+                Self.continuesLocalRun(previous.scalar)
+            else { continue }
+            let end = min(source.length, at + 1 + Self.domainUnits)
+            for detector in overlongRunEmails {
+                guard
+                    let result = detector.regex.firstMatch(
+                        in: bridged, options: [.anchored, .withTransparentBounds, .withoutAnchoringBounds],
+                        range: NSRange(location: start, length: end - start)),
+                    let range = refine(detector.pattern.refinement, source, result.range)
+                else { continue }
+                found.append((.email, range))
+            }
+        }
+        return found
+    }
+
+    /// The scalar that ends just before UTF-16 offset `index`, and its width in units.
+    private static func scalar(before index: Int, in source: NSString) -> (scalar: Unicode.Scalar, width: Int)? {
+        guard index > 0 else { return nil }
+        let unit = source.character(at: index - 1)
+        if UTF16.isTrailSurrogate(unit), index >= 2 {
+            let lead = source.character(at: index - 2)
+            if UTF16.isLeadSurrogate(lead),
+                let scalar = Unicode.Scalar(0x10000 + ((UInt32(lead) - 0xD800) << 10) + (UInt32(unit) - 0xDC00))
+            {
+                return (scalar, 2)
+            }
+        }
+        return Unicode.Scalar(unit).map { ($0, 1) }
+    }
+
+    /// `localChars` plus apostrophes, as scalars.
+    private static func continuesLocalRun(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.properties.generalCategory {
+        case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter, .nonspacingMark,
+            .spacingMark, .enclosingMark:
+            return true
+        default:
+            return ("0"..."9").contains(scalar) || "._%+-…'’".unicodeScalars.contains(scalar)
         }
     }
 
@@ -159,15 +237,32 @@ public struct SensitiveTextMatcher: Sendable {
     /// Every pattern that starts with it starts only where a run of local characters starts
     /// (`localStart`), so a line is not retried at every character of a long run. A run longer than
     /// RFC 5321's 64 characters before the "@" is therefore not taken for an address.
-    private static let localPart = #"\#(localChars){1,64}(?:['’]\#(localChars){1,32}){0,2}"#
+    private static let localPart =
+        #"\#(localChars){1,\#(localRun)}(?:['’]\#(localChars){1,\#(apostropheRun)}){0,\#(apostrophes)}"#
     private static let localStart = #"(?<!\#(localChars))"#
+
+    // Repetition bounds, shared by the patterns and by their UTF-16 length bounds.
+    static let localRun = 64
+    private static let apostropheRun = 32
+    private static let apostrophes = 2
+    private static let labelLength = 63
+    private static let labels = 8
+    private static let topLevelLength = 24
+    private static let looseDomainLength = 253
+    /// A local character can lie outside the BMP (two UTF-16 units); an apostrophe is one.
+    private static let localPartUnits = 2 * (localRun + apostrophes * apostropheRun) + apostrophes
+    /// Domain characters are ASCII; a label and its ". " separator take at most labelLength + 2.
+    private static let domainUnits = max(labels * (labelLength + 2) + topLevelLength, looseDomainLength + 3)
+    private static let emailTail = #"@(?:\#(fullDomain)|\#(truncatedDomain))"#
+    private static let damagedTail =
+        #"@[a-z][a-z0-9.\-]{0,\#(looseDomainLength)}[.,\-][a-z0-9]{2,5}(?![a-z0-9\-])"#
     /// Suffixes accepted after an OCR-inserted space ("gmail. com"). Lowercase only, and no suffix
     /// that doubles as a word ("me", "us"), so "x@exemplo.com. Me liga" keeps its next sentence.
     private static let spacedSuffix = #"(?-i:com|net|org|br|io|dev|app|edu|gov)(?![a-z0-9\-])"#
     private static let fullDomain =
-        #"(?:[a-z0-9\-]{1,63}(?:\.\s(?=\#(spacedSuffix))|\.)){1,8}[a-z]{2,24}(?![a-z0-9\-])"#
+        #"(?:[a-z0-9\-]{1,\#(labelLength)}(?:\.\s(?=\#(spacedSuffix))|\.)){1,\#(labels)}[a-z]{2,\#(topLevelLength)}(?![a-z0-9\-])"#
     /// Domain cut off by the UI: "maria@gm…".
-    private static let truncatedDomain = #"[a-z0-9.\-]{0,253}(?:…|\.{3})"#
+    private static let truncatedDomain = #"[a-z0-9.\-]{0,\#(looseDomainLength)}(?:…|\.{3})"#
     private static let mailProviders = "gmail|hotmail|outlook|yahoo|icloud|live|uol|bol|terra|proton(?:mail)?"
     /// One separator between digit groups (space, dot, any hyphen or dash).
     private static let sep = #"[\s.\-‐-—]"#
@@ -185,35 +280,35 @@ public struct SensitiveTextMatcher: Sendable {
         // name@domain.tld, with an optional OCR space after a dot in the local part.
         Pattern(
             name: "email", kind: .email,
-            source: #"\#(localStart)(?:\#(localPart)\.\s)?\#(localPart)@(?:\#(fullDomain)|\#(truncatedDomain))"#,
-            refinement: .rejectGitRemote),
+            source: #"\#(localStart)(?:\#(localPart)\.\s)?\#(localPart)\#(emailTail)"#,
+            refinement: .rejectGitRemote, maximumUTF16Length: 2 * localPartUnits + 2 + 1 + domainUnits),
         // Top-level domain damaged by OCR: "x@startup-io", "x@startup.1o", "x@gmail,corn".
         Pattern(
             name: "email-damaged-domain", kind: .email,
-            source: #"\#(localStart)\#(localPart)@[a-z][a-z0-9.\-]{0,253}[.,\-][a-z0-9]{2,5}(?![a-z0-9\-])"#,
-            refinement: .acceptDamagedDomain),
+            source: #"\#(localStart)\#(localPart)\#(damagedTail)"#,
+            refinement: .acceptDamagedDomain, maximumUTF16Length: localPartUnits + looseDomainLength + 8),
         // "@" misread as a letter in front of a well-known mail provider ("anadgmail.com").
         Pattern(
             name: "email-lost-at", kind: .email,
             source:
                 #"(?<![a-z0-9._%+\-])[a-z0-9._%+\-]{2,64}(?<![.@])(?:\#(mailProviders))\.(?:com|me)(?:\.br)?(?![a-z0-9\-])"#,
-            refinement: .none),
+            refinement: .none, maximumUTF16Length: 2 * (64 + 10 + 7)),
         // Brazil: optional +55, area code, then mobile (9 + 8 digits) or landline (8 digits).
         Pattern(
             name: "phone-br", kind: .phone,
             source:
                 #"\#(leftEdge)(?:\+?55\#(sep)?)?\(?0?\#(areaCode)\)?\#(sep)?(?:9\#(sep)?\d{4}|[2-8]\d{3})\#(sep)?\d{4}\#(rightEdge)"#,
-            refinement: .none),
+            refinement: .none, maximumUTF16Length: 2 * 21),
         // Brazilian mobile without area code: 90765-4321.
         Pattern(
             name: "phone-br-local", kind: .phone, source: #"\#(leftEdge)9\#(sep)?\d{4}-\d{4}\#(rightEdge)"#,
-            refinement: .none),
+            refinement: .none, maximumUTF16Length: 2 * 11),
         // North America: (415) 555-0132, 415-555-0199, +1 415 555 0199.
         Pattern(
             name: "phone-nanp", kind: .phone,
             source:
                 #"\#(leftEdge)(?:\+?1\#(sep)?)?(?:\([2-9]\d{2}\)\s?|[2-9]\d{2}\#(sep))\d{3}\#(sep)\d{4}\#(rightEdge)"#,
-            refinement: .none),
+            refinement: .none, maximumUTF16Length: 2 * 17),
         // A digit run with no separators, or a Brazilian number without its area code, only right after
         // a word that announces a phone ("Phone: 2025550100", "Celular: 987654321", "Tel 4004-5566").
         // Elsewhere such runs are IDs, timestamps and amounts.
@@ -221,11 +316,22 @@ public struct SensitiveTextMatcher: Sendable {
             name: "phone-labelled", kind: .phone,
             source:
                 #"\#(phoneLabel)(?:[2-9]\d{9}|9\#(sep)?\d{4}\#(sep)?\d{4}|[2-5]\d{3}\#(sep)?\d{4})\#(rightEdge)"#,
-            refinement: .none),
+            refinement: .none, maximumUTF16Length: 2 * 11),
         // Any other number written with a country code: +351 912 345 678.
         Pattern(
             name: "phone-international", kind: .phone, source: #"(?<![\d#])\+\d{1,3}(?:\#(sep)?\(?\d{1,12}\)?){1,8}"#,
-            refinement: .trimInternationalNumber),
+            refinement: .trimInternationalNumber, maximumUTF16Length: 2 * (1 + 3 + 8 * 15)),
+    ]
+
+    /// The e-mail forms without `localStart`, applied by `overlongRunMatches` only; a leading
+    /// apostrophe is allowed because the backward walk can stop right after one.
+    static let overlongRunPatterns: [Pattern] = [
+        Pattern(
+            name: "email-overlong-run", kind: .email, source: #"['’]?\#(localPart)\#(emailTail)"#,
+            refinement: .rejectGitRemote),
+        Pattern(
+            name: "email-damaged-overlong-run", kind: .email, source: #"['’]?\#(localPart)\#(damagedTail)"#,
+            refinement: .acceptDamagedDomain),
     ]
 
     /// "git@github.com:org/repo.git" is an SSH remote, not an address: "git@" followed by the host,
