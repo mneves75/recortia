@@ -44,7 +44,7 @@ public final class ImportCoordinator {
     public var isImporting: Bool { imageImporter.isImporting }
     public let imageImporter: ImageImporter
     private(set) var lastFailure: ImportFailure?
-    @ObservationIgnored public var onImported: ((DocumentSession) -> Void)?
+    @ObservationIgnored public var onImported: ((DocumentSession, _ fileName: String?) -> Void)?
 
     public init(input: any ImageInputService, assets: any ImageAssetService) {
         imageImporter = ImageImporter(input: input, assets: assets)
@@ -52,21 +52,17 @@ public final class ImportCoordinator {
 
     @discardableResult
     public func importImage(from source: ImportSource) async -> Result<DocumentSession, ImportFailure> {
-        let result: Result<DocumentSession, ImportFailure>
         do throws(ImportFailure) {
-            let info = try await imageImporter.importImage(from: source)
-            result = .success(DocumentSession(document: Document(asset: info)))
-        } catch {
-            result = .failure(error)
-        }
-        switch result {
-        case .success(let session):
+            let admission = try imageImporter.admit { source }
+            let info = try await imageImporter.importImage(admission)
+            let session = DocumentSession(document: Document(asset: info))
             lastFailure = nil
-            onImported?(session)
-        case .failure(let failure):
-            lastFailure = failure
+            onImported?(session, admission.fileName)
+            return .success(session)
+        } catch {
+            lastFailure = error
+            return .failure(error)
         }
-        return result
     }
 }
 
@@ -74,6 +70,7 @@ public final class ImportCoordinator {
 /// imported or released.
 public struct ImportAdmission: Sendable {
     public let source: ImportSource
+    let fileName: String?
 }
 
 /// One read/decode admission slot, shared by the app's new-document and editor-layer paths.
@@ -98,7 +95,13 @@ public final class ImageImporter {
         guard !isImporting else { throw .busy }
         isImporting = true
         do throws(ImportFailure) {
-            return ImportAdmission(source: try readSource())
+            let source = try readSource()
+            let fileName: String? =
+                switch source {
+                case .file(let url), .droppedFile(let url): url.lastPathComponent
+                case .pasteboard, .droppedData: nil
+                }
+            return ImportAdmission(source: source, fileName: fileName)
         } catch {
             isImporting = false
             throw error

@@ -59,6 +59,7 @@
     final class SyntheticImportInput: ImageInputService {
         private let input: any ImageInputService
         var holdNextRead = false
+        var pastedImage: Data?
         private var waiter: CheckedContinuation<Void, Never>?
         var isWaiting: Bool { waiter != nil }
         private(set) var fileReads = 0
@@ -77,7 +78,7 @@
 
         func readPasteboardImage() -> Data? {
             pasteboardReads += 1
-            return nil
+            return pastedImage
         }
 
         func release() {
@@ -348,6 +349,7 @@
             let input = harness.importInput
             let initialEditors = harness.editors.controllers.count
             let initialReads = input.fileReads
+            let initialPasteboardReads = input.pasteboardReads
             let initialMessages = harness.messages.values.count
             input.holdNextRead = true
             defer { input.release() }
@@ -358,7 +360,7 @@
             context.check("Paste Image is disabled during import", !harness.app.isEnabled(.pasteImage))
             let rejected = await model.addImageLayer(from: .pasteboard)
             context.check("layer import shares the app's busy slot", !rejected && model.notice == .importFailed(.busy))
-            context.check("busy Paste never reads the clipboard", input.pasteboardReads == 0)
+            context.check("busy Paste never reads the clipboard", input.pasteboardReads == initialPasteboardReads)
             let canvas = try context.unwrap("real editor canvas", controller.canvasView)
             let droppedPNG = try E2EDrawing.png(harness.desktop)
             let busyProvider = SyntheticDropDataProvider(png: droppedPNG)

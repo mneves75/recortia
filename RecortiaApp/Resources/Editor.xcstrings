@@ -1593,20 +1593,28 @@
         }
       }
     },
-    "Recortia Editor": {
+    "Capture %@": {
       "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recortia Editor"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Editor do Recortia"
-          }
-        }
+        "en": { "stringUnit": { "state": "translated", "value": "Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura %@" } }
+      }
+    },
+    "Scrolling Capture %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scrolling Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura com rolagem %@" } }
+      }
+    },
+    "Pasted Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pasted Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem colada %@" } }
+      }
+    },
+    "Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem %@" } }
       }
     },
     "Gradient": {

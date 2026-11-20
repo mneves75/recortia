@@ -106,9 +106,9 @@
             features.capture.onCaptured = { [weak app] completion in
                 app?.handleCapture(completion)
             }
-            features.importer.onImported = { editors.open($0) }
+            features.importer.onImported = { editors.open($0, importedFileName: $1) }
             features.scroll.onAccepted = { editors.open($0) }
-            app.openDocument = { editors.open($0).model }
+            app.openDocument = { editors.open($0, importedFileName: $1).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
             app.unexportedEditCount = { editors.unexportedEditCount }
         }
@@ -204,9 +204,12 @@
         }
 
         @discardableResult
-        func open(_ session: DocumentSession, initialAction: EditorInitialAction = .none) -> EditorWindowController {
+        func open(
+            _ session: DocumentSession, importedFileName: String? = nil, initialAction: EditorInitialAction = .none
+        ) -> EditorWindowController {
             let model = EditorModel(session: session, environment: environment)
-            let controller = EditorWindowController(model: model, noticePresentation: noticePresentation)
+            let controller = EditorWindowController(
+                model: model, importedFileName: importedFileName, noticePresentation: noticePresentation)
             if let window = controller.window {
                 window.setContentSize(E2ESnapshot.editorSize)
                 E2ESnapshot.park(window)
