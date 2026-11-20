@@ -10,6 +10,7 @@ the same scan function the real check uses.
 import os
 import pathlib
 import re
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -146,12 +147,34 @@ def launch_guard_problems(entry: str) -> list[str]:
     if init is None:
         return ["AppDelegate.init not found"]
     body = init.group(1)
-    branch = re.search(r"#if RECORTIA_E2E(.*?)#else", body, re.S)
-    if branch is None or ADMIT not in branch.group(1):
-        return [f"the RECORTIA_E2E branch of AppDelegate.init does not call {ADMIT}"]
+    branches = re.findall(r"#if RECORTIA_E2E(.*?)#(?:else|endif)", body, re.S)
+    if not any(ADMIT in branch for branch in branches):
+        return [f"no RECORTIA_E2E branch of AppDelegate.init calls {ADMIT}"]
     if body.index(ADMIT) > body.find("AppModel("):
         return [f"{ADMIT} must run before AppModel is built"]
     return []
+
+
+def run_supervised(arguments: list[str], timeout: float = 30) -> tuple[int | None, str, bool]:
+    """Runs the binary in its own process group. Returns its exit status (None on timeout), its
+    stderr, and whether any process of the group outlived it; the group is always killed."""
+    process = subprocess.Popen(
+        [BINARY, *arguments], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
+        start_new_session=True,
+    )
+    try:
+        _, stderr = process.communicate(timeout=timeout)
+        status: int | None = process.returncode
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        _, stderr = process.communicate()
+        return None, stderr, True
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+        survived = True
+    except ProcessLookupError:
+        survived = False
+    return status, stderr, survived
 
 
 class E2ELaunchGuardTests(unittest.TestCase):
@@ -160,39 +183,46 @@ class E2ELaunchGuardTests(unittest.TestCase):
 
     def test_planted_launch_guard_regressions_are_reported(self) -> None:
         entry = APP_ENTRY.read_text()
-        self.assertIn(ADMIT, entry)
-        self.assertTrue(launch_guard_problems(entry.replace(ADMIT, "")), "a removed call must fail")
         line = re.compile(r"^(\s*)(.*" + re.escape(ADMIT) + r".*)$", re.M)
         self.assertRegex(entry, line)
+        self.assertTrue(launch_guard_problems(line.sub("", entry, count=1)), "a removed call must fail")
         commented = line.sub(r"\1// \2", entry, count=1)
         self.assertTrue(launch_guard_problems(commented), "a commented-out call must fail")
-        late = line.sub("", entry, count=1).replace("super.init()", f"_ = {ADMIT}\n        super.init()", 1)
-        self.assertTrue(launch_guard_problems(late), "admission after AppModel must fail")
+        # Still inside a RECORTIA_E2E branch, but after AppModel: only the ordering check catches it.
+        late = line.sub("", entry, count=1).replace(
+            "super.init()", f"#if RECORTIA_E2E\n            _ = {ADMIT}\n        #endif\n        super.init()", 1
+        )
+        self.assertEqual([f"{ADMIT} must run before AppModel is built"], launch_guard_problems(late))
 
     @unittest.skipUnless(BINARY, "RECORTIA_E2E_BINARY is set by scripts/check.sh after the E2E build")
     def test_built_binary_refuses_missing_or_malformed_requests(self) -> None:
         # Negative controls only: a valid request starts the runner, which scripts/e2e.sh exercises.
-        refused = {
-            "no arguments (opened from Finder)": [],
-            "runner flag without a directory": ["-RecortiaE2E"],
-            "relative output directory": ["-RecortiaE2E", "relative/output"],
-            "only flag without ids": ["-RecortiaE2E", "/nonexistent/recortia-e2e", "-RecortiaE2EOnly"],
-            "unknown scenario id": ["-RecortiaE2E", "/nonexistent/recortia-e2e", "-RecortiaE2EOnly", "no-such-id"],
-            "unknown panel probe": ["-RecortiaE2EProbe", "no-such-probe"],
-            "panel probe without a kind": ["-RecortiaE2EProbe"],
-            "unknown last-window probe": ["-RecortiaE2ELastWindowProbe", "no-such-probe"],
-        }
-        for name, arguments in refused.items():
-            with self.subTest(name):
-                try:
-                    result = subprocess.run(
-                        [BINARY, *arguments], capture_output=True, text=True, timeout=30, check=False
-                    )
-                except subprocess.TimeoutExpired:
-                    self.fail(f"{name}: the binary kept running instead of refusing")
-                self.assertEqual(2, result.returncode, f"{name}: {result.stderr.strip()}")
-                self.assertIn(REFUSAL, result.stderr, f"{name}: refused by something other than admission")
-                self.assertFalse(pathlib.Path("/nonexistent/recortia-e2e").exists())
+        with tempfile.TemporaryDirectory() as scratch:
+            out = str(pathlib.Path(scratch) / "never-created")
+            refused = {
+                "no arguments (opened from Finder)": [],
+                "runner flag without a directory": ["-RecortiaE2E"],
+                "relative output directory": ["-RecortiaE2E", "relative/output"],
+                "only flag without ids": ["-RecortiaE2E", out, "-RecortiaE2EOnly"],
+                "unknown scenario id": ["-RecortiaE2E", out, "-RecortiaE2EOnly", "no-such-id"],
+                "duplicate runner flag": ["-RecortiaE2E", out, "-RecortiaE2E", out],
+                "duplicate only flag": ["-RecortiaE2E", out, "-RecortiaE2EOnly", "settings", "-RecortiaE2EOnly", "settings"],
+                "unknown panel probe": ["-RecortiaE2EProbe", "no-such-probe"],
+                "panel probe without a kind": ["-RecortiaE2EProbe"],
+                "duplicate panel probe": ["-RecortiaE2EProbe", "pin-panel", "-RecortiaE2EProbe", "pin-panel"],
+                "unknown last-window probe": ["-RecortiaE2ELastWindowProbe", "no-such-probe"],
+                "probe and runner": ["-RecortiaE2EProbe", "pin-panel", "-RecortiaE2E", out],
+                "two probe modes": ["-RecortiaE2EProbe", "pin-panel", "-RecortiaE2ELastWindowProbe", "launch-without-window"],
+                "probe with a scenario list": ["-RecortiaE2EProbe", "pin-panel", "-RecortiaE2EOnly", "settings"],
+            }
+            for name, arguments in refused.items():
+                with self.subTest(name):
+                    status, stderr, survived = run_supervised(arguments)
+                    self.assertIsNotNone(status, f"{name}: the binary kept running instead of refusing")
+                    self.assertEqual(2, status, f"{name}: {stderr.strip()}")
+                    self.assertIn(REFUSAL, stderr, f"{name}: refused by something other than admission")
+                    self.assertFalse(survived, f"{name}: a child process outlived the refused launch")
+                    self.assertFalse(pathlib.Path(out).exists(), f"{name}: the runner created its output")
 
 
 if __name__ == "__main__":

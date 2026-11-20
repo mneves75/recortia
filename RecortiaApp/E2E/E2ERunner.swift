@@ -28,6 +28,18 @@
                 guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else { return nil }
                 return arguments[index + 1]
             }
+            // One mode, and each launch flag at most once; system arguments such as
+            // -AppleLanguages pass through untouched.
+            let flags = [E2ERunner.argument, E2ERunner.onlyArgument, E2EPanelProbe.argument, LastWindowProbe.argument]
+            if let repeated = flags.first(where: { flag in arguments.filter { $0 == flag }.count > 1 }) {
+                return .failure(Refusal(reason: "\(repeated) appears more than once"))
+            }
+            let modes = [E2ERunner.argument, E2EPanelProbe.argument, LastWindowProbe.argument].filter(
+                arguments.contains)
+            guard modes.count <= 1 else { return .failure(Refusal(reason: "more than one launch mode: \(modes)")) }
+            if modes.first != E2ERunner.argument, arguments.contains(E2ERunner.onlyArgument) {
+                return .failure(Refusal(reason: "\(E2ERunner.onlyArgument) needs \(E2ERunner.argument)"))
+            }
             if arguments.contains(E2EPanelProbe.argument) {
                 guard let kind = value(after: E2EPanelProbe.argument).flatMap(E2EPanelProbe.Kind.init(rawValue:))
                 else {
