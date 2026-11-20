@@ -8,6 +8,10 @@ deployment target stays macOS 15. Variant C uses `@available(macOS 26, *)`, so `
 was not changed. Other agents were working on the same Mac, so timings are noisy (see the two runs
 below). The recall numbers were identical in both runs.
 
+The detector was then hardened against the cross-model review (R02–R17) and two security findings,
+and the benchmark rerun for method A only; see [Hardening](#hardening-review-2026-11-19) and
+[Hardened detector results](#hardened-detector-2048-vs-1024-fine-tiles).
+
 ## What was built
 
 - `Packages/RecortiaKit/Sources/Imaging/SensitiveText.swift`:
@@ -16,8 +20,9 @@ below). The recall numbers were identical in both runs.
     Patterns compile once in `SensitiveTextMatcher.shared` (a `Result` with a typed
     `SensitiveTextError`). There is no `try!`, `fatalError` or force unwrap.
   - `SensitiveTextScanner.sensitiveRegions(in:pixelsPerPoint:languages:kinds:method:)`, which is
-    `@concurrent` and honours cancellation. It uses Fosco's tile layout: a fine sweep at about 2 px/pt
-    with 2048-px tiles overlapping by half, plus a coarse sweep at a quarter of that for headline text.
+    `@concurrent` and honours cancellation. It started from Fosco's tile layout: a fine sweep at about
+    2 px/pt with 2048-px tiles overlapping by half, plus a coarse sweep at a quarter of that for
+    headline text. Hardening added a middle sweep (see below).
   - Up to 3 tiles at a time go through `TextRecognizer`'s new internal `recognizedObservations` entry
     point. The public `recognize` behaviour is unchanged; the existing OCR suites pass.
   - Fragments split by Vision are joined into lines before matching. Matches are boxed with
@@ -46,7 +51,8 @@ below). The recall numbers were identical in both runs.
   are git remotes, versions, ISO and BR dates, times, `#` IDs, R$ amounts, IPs, UUIDs and hex
   colours. Content is seeded from the screen id, so it varies between screens and is identical
   across runs.
-- Tests (`ImagingTests/SensitiveTextTests.swift`, 23 tests in 8 suites):
+- Tests (`ImagingTests/SensitiveTextTests.swift`, 23 tests in 8 suites at the spike; 39 tests in 12
+  suites after hardening, plus 3 in the gated benchmark file):
   - every pattern compiles;
   - Fosco's detector cases, ported with credit;
   - the brief's look-alike negatives;
@@ -55,8 +61,30 @@ below). The recall numbers were identical in both runs.
   - a Vision sweep over a planted screen;
   - cancellation.
 - Benchmark (`ImagingTests/SensitiveTextBenchmarkTests.swift`): runs only with
-  `RECORTIA_REDACT_BENCH=1` and is skipped when `RECORTIA_VISION_UNAVAILABLE=1`. The tile sweep needs
-  `RECORTIA_REDACT_BENCH_TILES=1`.
+  `RECORTIA_REDACT_BENCH=1` and is skipped when `RECORTIA_VISION_UNAVAILABLE=1`. After hardening it
+  measures A at 2048 and 1024 fine tiles; `RECORTIA_REDACT_BENCH_ALL_METHODS=1` adds B and C at 2048.
+  The seam experiment is the separate test `SensitiveTextBenchmarkTests/seams`.
+
+## Hardening (review 2026-11-19)
+
+Each change has a regression test that failed first. Commits are on `spike/auto-redact`.
+
+| item | change | commit |
+|---|---|---|
+| R02 | International numbers keep whole digit groups up to 11 digits (+1), 13 (+55) or 15 (E.164), instead of stopping after 10. | 9875be5 |
+| R03 | Middle sweep at 1 px/pt in 2048-px tiles overlapping by half: text up to 1024 pt wide lies whole in one tile. Without it, an address whose "@" fell past one 1024 tile's edge left 82 px of ink unmasked. | f1134d6 |
+| R04 | A fragment run is also read with the gaps next to "@", a dot or a hyphen closed. | c7486f5 |
+| R05 | A match that cannot be mapped onto the image throws `regionOutsideImage`. | c7486f5 |
+| R06 | `git@` suppresses a match only before `:path` (SSH remote syntax). | 9875be5 |
+| R07 | Local parts accept letters of any script and inner apostrophes. | 9875be5 |
+| R08 | Compact NANP numbers and BR numbers without an area code are found after a phone label ("Phone:", "Celular", "Tel" ...); bare digit runs stay unmasked. | 9875be5 |
+| R09 | Cancellation is checked again after the final merge. | c7486f5 |
+| R12 | Budgets of 1024 tiles, 512 matches per tile and 4096 per sweep; exceeding one throws. | c7486f5 |
+| R13 | Bounded repetitions, run-start anchoring, 8192-unit windows with transparent bounds, phone label as a prefix. 64 KB pathological lines take under a second each. | 9875be5, 56b6f7b |
+| R17 | Regions are merged in a total geometry order. | c7486f5 |
+| S1 | An "@" after more than 64 local characters (glued prefix, CJK or Thai without spaces) is matched from 64 characters before it. The mask may be wider than the address but never narrower. | 5c120be |
+| S2 | Patterns declare a UTF-16 length bound from their own repetition limits (longest: 1067 units). The window overlap is 2048, and the matcher refuses to build if any bound reaches it. | 5c120be |
+| R10, R11, R14–R16 | Benchmark: area precision, ground truth from painted pixels in the composed line, metadata-only outcomes with absolute and baseline memory, content fixed across conditions, 1024 tiles at 2560×1440. | 21f8d51, 791abfb |
 
 ## Method
 
@@ -66,9 +94,10 @@ below). The recall numbers were identical in both runs.
   - Image sizes: region 1200×800 pt, display 1512×982 pt, display 2560×1440 pt.
   - Single-column rows: label, item, decoy, then prose.
   - Dense rows: a name, e-mail, phone, date, amount and decoy table, repeated across the width.
-- **Ground truth is ink.** A planted rectangle is the item's glyph image bounds, rounded outward to
-  the pixels it touches. A first version used the typographic ascent box, which includes empty space
-  above the glyphs; that would have scored correct masks as partial.
+- **Ground truth is ink.** In the spike run, a planted rectangle was the item's glyph image bounds,
+  rounded outward. That estimate sat about 1 px above the painted ink. After hardening it is the
+  bounding box of every pixel the item's glyphs touch in the composed line, and a unit test checks it
+  against the painted pixels.
 - **Full** means every pixel of the planted rectangle lies inside the union of the returned regions.
   **Partial** means some pixels are covered, but not all. **Missed** means none are.
 - A **false positive** is a returned region that overlaps no planted item. It is labelled with the
@@ -78,7 +107,7 @@ below). The recall numbers were identical in both runs.
 - **Peak memory** is the process's `phys_footprint` sampled every 5 ms during a scan, minus the
   value at scan start. It is a rough figure: Vision keeps model buffers alive between scans.
 
-Commands (log: `.scratch/logs/redact-bench.log`, ignored by git, not committed):
+Commands for the spike run (log: `.scratch/logs/redact-bench.log`, ignored by git, not committed):
 
 ```sh
 swift test --package-path Packages/RecortiaKit --filter SensitiveText          # 23 tests in 8 suites passed
@@ -87,9 +116,72 @@ RECORTIA_REDACT_BENCH_TILES=1 swift test --package-path Packages/RecortiaKit --f
 xcrun swift format lint --strict --recursive Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests
 ```
 
+Commands for the hardened run (logs `.scratch/logs/t1d-bench-full.log`, `t1d-bench-seams.log`,
+`t1d-full-tests.log`, ignored by git):
+
+```sh
+RECORTIA_REDACT_BENCH=1 xcrun swift test --package-path Packages/RecortiaKit --filter SensitiveTextBenchmark
+RECORTIA_REDACT_BENCH=1 xcrun swift test --package-path Packages/RecortiaKit --filter SensitiveTextBenchmarkTests/seams
+xcrun swift test --package-path Packages/RecortiaKit --parallel                    # all suites passed
+xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests
+```
+
 ## Results
 
-### Overall (identical in both runs)
+### Hardened detector, 2048 vs 1024 fine tiles
+
+Run 2026-11-19 to 2026-11-20 (wall time 2117 s), method A, the full matrix (288 screens, 33,472
+planted items). Content is now the same across scale, font size and theme, so these counts are not
+comparable item for item with the spike run below.
+
+**Timings are not usable as absolute figures.** Load average was 157–183 on 18 cores when the run
+ended, against an unknown but lower load during the spike run. The same 2048 configuration measured
+about 5 times slower here than in the spike, so read only the ratio between tile sizes.
+Area precision is masked pixels on planted ink divided by masked pixels. About half of every mask
+is the 15% outset and the line-height box around the ink, so roughly 54% is the ceiling of the
+current boxing, not a sign of masks swallowing content.
+
+| fine tile | recall (full) | partial | missed | false-positive regions | area precision |
+|---|---|---|---|---|---|
+| 2048 | 96.6% (32340) | 242 | 890 | 387 | 53.4% |
+| 1024 | 99.2% (33220) | 30 | 222 | 495 | 53.7% |
+
+| image | scale | 2048: recall, area precision, p50 / p95 ms, peak MB above baseline / absolute | 1024: same |
+|---|---|---|---|
+| region 1200×800 | 1× | 97.1%, 53.8%, 378 / 650, 132 / 336 | 99.9%, 54.0%, 641 / 1136, 109 / 310 |
+| region 1200×800 | 2× | (recall as above), 450 / 799, 80 / 407 | (as above), 821 / 1625, 43 / 388 |
+| display 1512×982 | 1× | 90.4%, 50.8%, 837 / 2299, 156 / 451 | 99.8%, 50.9%, 2039 / 4856, 104 / 415 |
+| display 1512×982 | 2× | (as above), 1135 / 4858, 180 / 392 | (as above), 3334 / 8283, 125 / 350 |
+| display 2560×1440 | 1× | 99.0%, 54.4%, 3289 / 14356, 249 / 426 | 98.9%, 54.9%, 6844 / 24029, 230 / 409 |
+| display 2560×1440 | 2× | (as above), 2356 / 11599, 268 / 551 | (as above), 6092 / 14540, 197 / 540 |
+
+Recall and area precision are per image size, both scales together. Recall by font size, 2048 → 1024:
+8 pt 91.7–92.9% → 98.2–98.6%; 10 pt 96.9–98.7% → 99.2–99.8%; 12 pt 98.5–99.9% → 99.7–99.8%; from
+14 pt up both are 99.9–100%.
+
+False positives by decoy, 2048 / 1024: git remotes 302 / 388, UUIDs 38 / 51, `#` IDs 37 / 45, other
+categories 1–4 each. Git remotes went from 22 in the spike to about 300. OCR reads the remote itself
+correctly at 10 pt and up (a probe printed `git@github.com:org/repo2.git`), so the likely cause,
+inferred and not proven, is R06: a tile that cuts the line just after `.com` leaves no `:path` to
+suppress the match, while the whole copy in the neighbouring tile is suppressed. Dropping matches at
+tile edges would fail open for text wider than the overlap, so this is left as a precision cost. The
+UUID rise was not analysed.
+
+Seam experiment (review §2, `SensitiveTextBenchmarkTests/seams`: 2560×400 pt at 2×, the address
+`firstname.middlename.lastname.department.team.region@example.com` inside the first fine tile, and
+with its "@" just past that tile's edge while it starts at least 40 px before the next tile):
+
+| fine tile | inside a tile (12, 14, 18, 24 pt) | across a seam |
+|---|---|---|
+| 2048 | full, 1 region each | 24 pt: full, 1 region (smaller sizes cannot straddle a 2048 tile) |
+| 1024 | full, 1 region each | 14 and 18 pt: full, 1 region (12 pt cannot straddle; 24 pt would leave the image) |
+
+Before the middle sweep, the 1024 unit test version of this experiment masked from x 467 an address
+whose ink began at x 385.
+
+### Spike run: method comparison (before hardening)
+
+#### Overall (identical in both runs)
 
 | method | planted | full (recall) | partial | missed | false-positive regions |
 |---|---|---|---|---|---|
@@ -97,7 +189,7 @@ xcrun swift format lint --strict --recursive Packages/RecortiaKit/Sources Packag
 | B NSDataDetector | 33086 | 30484 (92.1%) | 437 | 2165 | 3303 |
 | C Vision documents | 33086 | 30266 (91.5%) | 438 | 2382 | 3205 |
 
-### False positives by decoy category
+#### False positives by decoy category
 
 | category | A | B | C |
 |---|---|---|---|
@@ -114,7 +206,7 @@ The system detectors treat `git@github.com:…` as an address and an 11-digit `#
 number. A's remaining false positives come from OCR damage: a `#` or `-` was lost before a digit run,
 or a git remote was misread.
 
-### Time and memory per image (second run; p50 / p95 / max ms, peak MB)
+#### Time and memory per image (second run; p50 / p95 / max ms, peak MB)
 
 | image | scale | A | B | C |
 |---|---|---|---|---|
@@ -129,60 +221,25 @@ In the first run, on a busier machine, A's p95 was 1403, 989, 1599, 1629, 3377 a
 same row order, and C's p95 reached 9170 ms. Treat these as order-of-magnitude figures. A and B cost
 the same, because OCR dominates. C costs about 1.5–3× more.
 
-### Misses by category (A; B and C follow the same shape, 1–3 points lower)
-
-| font | 1× | 2× |
-|---|---|---|
-| 8 pt | 85.9% | 86.0% |
-| 10 pt | 95.7% | 94.8% |
-| 12 pt | 99.5% | 99.8% |
-| 14 pt | 99.6% | 99.6% |
-| 18 pt | 99.9% | 99.7% |
-| 24 pt | 99.9% | 99.9% |
-
-- **Size** decides the outcome. From 12 pt up, A covers 99.5–100% of items. At 8 and 10 pt it does
-  not.
-- **Scale** barely matters: 93.7% at both 1× and 2×. The fine sweep already resamples to 2 px/pt.
-- **Theme:** dark 96.3%, light 91.1%. The gap is only at 8–10 pt: light 8 pt 80.8% versus dark
-  8 pt 91.0%. From 12 pt up the themes match.
-- **Language:** EN 93.9%, PT-BR 93.6%, which is no difference.
-- **Layout:** dense 94.0%, single-column 91.8%. Single-column screens hold fewer items, so a few bad
-  8 pt screens weigh more.
-- **Kind and format:** for A, phones score 94.8% and e-mails 92.6%; every format is between 91% and
-  96%. B and C lose BR formats most: br-mobile 86.9%, against 93.5% for A.
-- **Image size** looks odd until it is crossed with font size. At 8 pt: 1512×982 65.7%,
-  1200×800 81.5%, 2560×1440 94.4%. At 10 pt: 81.0%, 99.1% and 99.8%.
-  - The worst screens are 8–10 pt on 1512×982, down to 0% on `1512x982@2x-8pt-dark-en-US-singleColumn`.
-  - They fail almost the same way for all three methods, so the loss is in OCR, not in the matching.
-  - These are the screens whose fine tiles are largest: about 2024×1964 px, close to 4 MP. Vision
-    downsamples such a tile, and 8–10 pt text is lost.
-
-### Fine tile side vs small-text recall (A only; 16 screens per row)
-
-| image | font | 2048 (current) | 1448 | 1024 | p50 / p95 ms at 2048 → 1024 |
-|---|---|---|---|---|---|
-| region 1200×800 | 8 pt | 81.5% | 99.2% | 99.5% | 329 / 480 → 623 / 1182 |
-| region 1200×800 | 10 pt | 99.1% | 99.0% | 99.2% | 383 / 459 → 577 / 675 |
-| region 1200×800 | 12 pt | 99.3% | 93.4% | 99.9% | 292 / 336 → 751 / 1123 |
-| display 1512×982 | 8 pt | 65.7% | 99.4% | 98.9% | 511 / 656 → 1040 / 1310 |
-| display 1512×982 | 10 pt | 81.0% | 98.4% | 99.7% | 488 / 762 → 1014 / 1616 |
-| display 1512×982 | 12 pt | 99.9% | 99.8% | 99.9% | 412 / 508 → 975 / 1184 |
-
-1024-px fine tiles (about 1 MP) bring 8–10 pt text to 98.9–99.7%, at roughly 2–3× the time. 1448 is
-not monotonic (93.4% at 12 pt on the region), so it is not a safe middle ground. I did not change
-the default; the committed code and the main log both use 2048.
+The spike's per-font recall and its 2048/1448/1024 tile-side table are superseded by the
+hardened results above.
 
 ## Recommendation
 
-**Use A, the pattern matcher, with 1024-px fine tiles, and build the plan's alternative wait
-design.**
+**Use A, the pattern matcher, with 1024-px fine tiles (plus the middle and coarse sweeps), and build
+the plan's alternative wait design.**
 
-- **Accuracy:** A has the highest recall in every cut, and about 50 times fewer false positives than
-  B and C: 63 against more than 3,200.
+- **Tile size:** 1024 misses 222 items against 890 for 2048 (recall 99.2% against 96.6%). It keeps
+  8 pt text at 98.2–98.6% where 2048 loses 7–8%, with the same area precision (53.7% / 53.4%) and
+  peak memory no higher (at most 230 MB above baseline, 540 MB absolute). It costs about 2× the
+  time (p50 at 2560×1440: 6.8 s / 6.1 s against 3.3 s / 2.4 s under this run's load) and 108 more
+  false-positive regions, mostly git remotes.
+- **Accuracy (spike run):** A has the highest recall in every cut, and about 50 times fewer false
+  positives than B and C: 63 against more than 3,200.
 - **Formats:** A covers Brazilian notations that the system detectors miss.
 - **Platform:** A runs on macOS 15 and needs no macOS 26 API.
-- **Small text:** the tile sweep shows that A's remaining small-text loss is tile size, not the
-  patterns.
+- **Small text:** A's remaining small-text loss was tile size, not the patterns; 1024 tiles recover
+  most of it.
 
 **Latency:** p95 is above the plan's ~0.5 s threshold at every size, even with 2048 tiles. 1024 tiles
 roughly double it. So the visible-wait design is out. The plan's alternative fits:
@@ -191,8 +248,11 @@ roughly double it. So the visible-wait design is out. The plan's alternative fit
 2. Lock its exports and the automatic batch until the masks land as one undo step.
 3. Fail closed on error, cancel or deadline.
 
-A deadline around 5–8 s would cover the measured 2560×1440 max under load (about 3–3.8 s with 2048
-tiles; not yet measured with 1024).
+The editor-timing decision itself is settled in `decisions.md` (R01).
+
+**The deadline is not yet measurable.** The hardened run's 2560×1440 p95 with 1024 tiles was 14.5–24 s
+at load average about 170. That shows only that a 5–8 s deadline needs a measurement on an idle Mac,
+cold and warm, before it is chosen.
 
 **Strongest alternative: C, Vision `RecognizeDocumentsRequest` detected data.**
 
@@ -214,9 +274,11 @@ B adds nothing over A: it costs the same, has lower recall and the same false-po
 - Synthetic system-font text on flat backgrounds only. There are no photos, coloured UI chrome, link
   styling, sub-pixel AA, emoji or non-Latin scripts. Real captures will score lower. This benchmark
   ranks the methods; it does not qualify the feature.
-- **About 6% of planted items are still missed with 2048 tiles.** The feature must remain the review
-  aid the spec describes. It cannot promise that nothing sensitive remains.
+- **About 0.8% of planted items are still missed with 1024 tiles (3.4% with 2048).** The feature
+  must remain the review aid the spec describes. It cannot promise that nothing sensitive remains.
+- Misses are not yet attributed: the benchmark does not record OCR candidates or match ranges for a
+  failed item, so a miss in OCR, in matching and in boxing look the same (review R15, second half).
 - Peak memory is approximate: process footprint sampled at 5 ms, with Vision caches warm.
-- Partial coverage, 299 items for A: I did not analyse the cause, and the benchmark does not
+- Partial coverage (299 items in the spike run; 30 with 1024 tiles after hardening): I did not analyse the cause, and the benchmark does not
   separate a short sub-line box from a match on only part of the item. The 15% outset was not tuned
   against the benchmark.
