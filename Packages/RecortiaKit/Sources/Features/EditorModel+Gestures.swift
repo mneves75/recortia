@@ -13,23 +13,9 @@ extension EditorModel {
         // Beginning text input keeps an open adjustment; committing the text closes it.
         if tool != .select && tool != .text && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
         cancelGesture()
-        // Output Preview shows no handles or drafts, so only selecting, panning and color picking
-        // work there: nothing may change geometry the person cannot see (R4-04).
-        if showsOutputPreview {
-            switch tool {
-            case .select:
-                if let hit = item(at: p) {
-                    select(hit, extending: modifiers.contains(.shift))
-                } else if !modifiers.contains(.shift) {
-                    clearSelection()
-                }
-                return
-            case .hand, .colorPicker:
-                break
-            default:
-                return
-            }
-        }
+        // Output Preview is read-only and shows no selection, handles or drafts: only panning and
+        // color picking work there (R4-04, F-04).
+        if showsOutputPreview, tool != .hand, tool != .colorPicker { return }
         switch tool {
         case .hand:
             break
@@ -233,7 +219,7 @@ extension EditorModel {
     }
 
     private func replaceDocumentInGesture(_ label: String, with updated: Document) {
-        guard updated != document else { return }
+        guard !showsOutputPreview, updated != document else { return }
         endContinuousChange()
         session.beginGroup(label)
         let before = session.document, epoch = session.privacyEpoch
@@ -457,7 +443,7 @@ extension EditorModel {
 
     /// Starts editing an existing text annotation (double-click, Return on a selected text).
     public func beginEditingText(_ id: AnnotationID) {
-        guard !isClosed, let annotation = document.annotations.first(where: { $0.id == id }),
+        guard !isClosed, !showsOutputPreview, let annotation = document.annotations.first(where: { $0.id == id }),
             case .text(let text) = annotation.kind
         else { return }
         cancelGesture()

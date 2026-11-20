@@ -236,7 +236,8 @@ public final class EditorModel {
     func edit(
         _ label: String, explicitMasks: Set<MaskID> = [], _ change: (inout Document) throws -> Void
     ) -> Bool {
-        guard !isClosed else { return false }
+        // Output Preview is read-only: what it shows cannot be selected or edited (F-04).
+        guard !isClosed, !showsOutputPreview else { return false }
         let before = session.document
         let epoch = session.privacyEpoch
         do {
@@ -301,7 +302,7 @@ public final class EditorModel {
     }
 
     public func undo() {
-        guard !isClosed, textEditing == nil else { return }
+        guard !isClosed, !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Undo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canUndo else { return }
@@ -312,7 +313,7 @@ public final class EditorModel {
     }
 
     public func redo() {
-        guard !isClosed, textEditing == nil else { return }
+        guard !isClosed, !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Redo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canRedo else { return }
@@ -498,7 +499,7 @@ public final class EditorModel {
     // MARK: - Selection
 
     public func select(_ item: EditorItemID, extending: Bool = false) {
-        guard allItemIDs.contains(item) else { return }
+        guard !showsOutputPreview, allItemIDs.contains(item) else { return }
         if extending {
             if selection.contains(item) { selection.remove(item) } else { selection.insert(item) }
         } else {
@@ -509,6 +510,7 @@ public final class EditorModel {
 
     /// Replaces the selection (object list); unknown items are ignored.
     public func setSelection(_ items: Set<EditorItemID>) {
+        guard !showsOutputPreview else { return }
         let existing = Set(allItemIDs)
         selection = items.filter(existing.contains)
         loadSelectedTextAppearance()

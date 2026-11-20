@@ -90,8 +90,13 @@ extension EditorModel {
 
     /// Shows the full sanitized output (crop, presentation, callouts) instead of the editing surface.
     public func setShowsOutputPreview(_ shows: Bool) {
-        // A drag in progress is abandoned: the preview disables geometry gestures (R4-04).
-        if shows { cancelGesture() }
+        // The preview is read-only (F-04): a drag in progress and text input are abandoned, and
+        // the selection, which it would not show, is cleared.
+        if shows {
+            cancelGesture()
+            cancelTextEditing()
+            clearSelection()
+        }
         showsOutputPreview = shows
         if shows {
             scheduleOutputRender()

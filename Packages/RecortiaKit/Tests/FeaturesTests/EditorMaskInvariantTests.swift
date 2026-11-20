@@ -389,6 +389,35 @@ struct EditorMaskInvariantTests {
         #expect(m.document == before)
     }
 
+    @Test("Output Preview is read-only: entering it clears the selection, and Delete or a nudge does nothing (F-04)")
+    func outputPreviewIsReadOnly() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.select(.mask(mask.id))
+        m.setShowsOutputPreview(true)
+        #expect(m.selection.isEmpty)
+        let before = m.document
+        h.click(110, 110)
+        m.select(.mask(mask.id))
+        m.setSelection([.mask(mask.id)])
+        m.selectAll()
+        #expect(m.selection.isEmpty)
+        m.deleteSelection()
+        m.nudgeSelection(dx: 10, dy: 0)
+        m.setFrame(Rect(x: 110, y: 100, width: 20, height: 20), for: .mask(mask.id))
+        #expect(m.document == before)
+        m.undo()
+        #expect(m.document == before, "Undo is a document change too")
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels) == 0)
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
+    }
+
     @Test("A stationary press while the canvas would pan is a click: the mask stays")
     func panDuringPressIsInert() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
