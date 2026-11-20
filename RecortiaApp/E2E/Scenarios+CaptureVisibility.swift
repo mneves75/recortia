@@ -42,9 +42,9 @@
             defer { foregroundFixture.requestStop() }
             var controller: EditorWindowController?
             let originalOpenDocument = harness.app.openDocument
-            harness.app.openDocument = { session in
+            harness.app.openDocument = { session, fileName in
                 let model = EditorModel(session: session, environment: harness.environment)
-                let opened = EditorWindowController(model: model)
+                let opened = EditorWindowController(model: model, importedFileName: fileName)
                 // Exercise production presentation without exposing desktop pixels or
                 // intercepting real input. Snapshots render this synthetic view only.
                 opened.window?.alphaValue = 1

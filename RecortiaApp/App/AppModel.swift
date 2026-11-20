@@ -51,7 +51,7 @@ final class AppModel: AppActions {
     let features: FeatureModels?
     private var isStartingScrollingCapture = false
 
-    var openDocument: ((DocumentSession) -> EditorModel?)?
+    var openDocument: ((DocumentSession, _ importedFileName: String?) -> EditorModel?)?
     var recognizeText: ((DocumentSession) -> Void)?
     @ObservationIgnored private lazy var settingsWindow = SettingsWindowController(model: self)
 
@@ -265,11 +265,11 @@ final class AppModel: AppActions {
         features.capture.onCaptured = { [weak self] completion in
             self?.handleCapture(completion)
         }
-        features.importer.onImported = { [weak self] session in
-            _ = self?.openDocument?(session)
+        features.importer.onImported = { [weak self] session, fileName in
+            _ = self?.openDocument?(session, fileName)
         }
         features.scroll.onAccepted = { [weak self] session in
-            _ = self?.openDocument?(session)
+            _ = self?.openDocument?(session, nil)
         }
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
@@ -281,7 +281,9 @@ final class AppModel: AppActions {
             textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
             input: services.input, pins: features.pins, textClipboard: PasteboardTextClipboard(),
             links: WorkspaceLinkOpener(), settings: settings, imageImporter: features.importer.imageImporter)
-        openDocument = { [editors] session in editors.open(session, environment: environment) }
+        openDocument = { [editors] session, fileName in
+            editors.open(session, environment: environment, importedFileName: fileName)
+        }
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
         let monitor = SystemEventMonitor { event in
             switch event {
@@ -303,7 +305,7 @@ final class AppModel: AppActions {
     func handleCapture(_ completion: CaptureCompletion) {
         switch completion.purpose {
         case .edit:
-            let editor = openDocument?(completion.session)
+            let editor = openDocument?(completion.session, nil)
             runAutomaticExports(for: completion.session, editor: editor)
         case .recognizeText:
             recognizeText?(completion.session)

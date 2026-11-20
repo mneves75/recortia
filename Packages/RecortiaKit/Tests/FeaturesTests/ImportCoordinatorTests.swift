@@ -14,10 +14,14 @@ final class ImportHarness {
     let permission = FakeScreenPermission(isGranted: false)
     let coordinator: ImportCoordinator
     var imported: [DocumentSession] = []
+    var fileNames: [String?] = []
 
     init() {
         coordinator = ImportCoordinator(input: input, assets: assets)
-        coordinator.onImported = { [unowned self] in self.imported.append($0) }
+        coordinator.onImported = { [unowned self] session, fileName in
+            self.imported.append(session)
+            self.fileNames.append(fileName)
+        }
     }
 }
 
@@ -34,6 +38,18 @@ struct ImportCoordinatorTests {
         _ = try await h.coordinator.importImage(from: .pasteboard).get()
         #expect(h.input.pasteboardReads == 1)
         #expect(h.assets.imported.first?.origin == .pasted)
+    }
+
+    @Test("A file import names its window by the file name alone; paste and dropped data carry none")
+    func fileName() async throws {
+        let h = ImportHarness()
+        h.input.files[file] = .success(Data([1]))
+        h.input.pasteboardData = Data([2])
+        _ = try await h.coordinator.importImage(from: .file(file)).get()
+        _ = try await h.coordinator.importImage(from: .droppedFile(file)).get()
+        _ = try await h.coordinator.importImage(from: .pasteboard).get()
+        _ = try await h.coordinator.importImage(from: .droppedData(Data([3]))).get()
+        #expect(h.fileNames == ["fixture.png", "fixture.png", nil, nil])
     }
 
     @Test(
