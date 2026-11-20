@@ -68,14 +68,20 @@ struct FileSinkTests {
         #expect(try Data(contentsOf: folder.appendingPathComponent("Shot 2.png")) == priorBytes)
     }
 
-    @Test("With Shot 1 to Shot 1000 present, a counting save takes Shot 1001 (A-9)")
-    func countingPastTheAttemptBound() throws {
+    // T1 security 1F: with a digit right after {counter}, the parser read those digits as part of
+    // the number, matched no existing name, restarted at 1 and failed once 1 to 1000 were taken.
+    @Test(
+        "With numbers 1 to 1000 present, a counting save takes number 1001 (A-9)",
+        arguments: [("Shot {counter}", "Shot 1001.png"), ("Shot {counter}2026", "Shot 10012026.png")])
+    func countingPastTheAttemptBound(template: String, expected: String) throws {
         let folder = try TestSupport.makeTemporaryDirectory()
         defer { TestSupport.removeDirectory(folder) }
-        for number in 1...1000 { try priorBytes.write(to: folder.appendingPathComponent("Shot \(number).png")) }
-        let filename = try FilenameTemplate(validating: "Shot {counter}").name(for: Date(), format: .png)
+        let filename = try FilenameTemplate(validating: template).name(for: Date(), format: .png)
+        for number in 1...1000 {
+            try priorBytes.write(to: folder.appendingPathComponent(filename.name(attempt: number)))
+        }
         let url = try FileSink().saveUnique(TestSupport.snapshot(filename: filename), in: folder)
-        #expect(url.lastPathComponent == "Shot 1001.png")
+        #expect(url.lastPathComponent == expected)
     }
 
     @Test("A name longer than the destination volume allows is refused by name, and nothing is written")
@@ -94,6 +100,25 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(folder).isEmpty)
         let fits = try sink.save(snapshot, to: folder.appendingPathComponent("short.png"), overwrite: false)
         #expect(fits.lastPathComponent == "short.png")
+    }
+
+    // T1 security 1G: every fallback name was checked before the first was tried, so a volume
+    // with shorter names refused the save although the first name fit and was free.
+    @Test("A unique save takes a name that fits even when later fallback names would not")
+    func laterFallbackNamesTooLong() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        var fileSystem = POSIXFileSystem()
+        // "Recortia 2026-09-26 at 10.00.00.png" is 35 bytes; up to " (99)" fits, " (100)" does not.
+        fileSystem.nameLimit = { _ in 40 }
+        let sink = FileSink(fileSystem: fileSystem)
+        let base = "Recortia 2026-09-26 at 10.00.00"
+        #expect(try sink.saveUnique(snapshot, in: folder).lastPathComponent == "\(base).png")
+        #expect(try sink.saveUnique(snapshot, in: folder).lastPathComponent == "\(base) (2).png")
+        for attempt in 3...99 { try priorBytes.write(to: folder.appendingPathComponent("\(base) (\(attempt)).png")) }
+        // Every name that fits is taken: the next one is too long, which is what the person can fix.
+        #expect(throws: SinkError.nameTooLong) { try sink.saveUnique(snapshot, in: folder) }
+        #expect(TestSupport.directoryEntries(folder).count == 99)
     }
 
     @Test("The export pipeline names the snapshot from the chosen template, so a save takes its next number")
@@ -660,6 +685,48 @@ struct FileSinkTests {
             "a later save deleted the file a failed save kept for recovery")
     }
 
+    // T1 security 1C: the rollback swapped back blindly, so a third file that took the public name
+    // after the swap moved into the private folder while the save reported a plain access failure.
+    @Test("A rollback restores the displaced file only into a vacant name and names it otherwise")
+    func swapRollbackNeverHidesAThirdFile() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        let aside = folder.appendingPathComponent("aside.png")
+        let third = folder.appendingPathComponent("third.png")
+        try priorBytes.write(to: url)
+        let displaced = Data("a file that took the name before the swap".utf8)
+        let arrived = Data("a file that took the name after the swap".utf8)
+        try arrived.write(to: third)
+        var steps = 0
+        var replaced = false
+        var arrivedAtName = false
+        let fileSystem = POSIXFileSystem(
+            afterReplaceStep: { _ in
+                steps += 1
+                guard steps == 2 else { return }
+                replaced =
+                    rename(url.path(percentEncoded: false), aside.path(percentEncoded: false)) == 0
+                    && (try? displaced.write(to: url)) != nil
+            },
+            afterSwap: { _ in
+                arrivedAtName = rename(third.path(percentEncoded: false), url.path(percentEncoded: false)) == 0
+            })
+        var thrown: SinkError?
+        do { _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true) } catch {
+            thrown = error
+        }
+        try #require(replaced && arrivedAtName, "control: the name was not taken before and after the swap")
+        #expect(try Data(contentsOf: aside) == priorBytes)
+        #expect(try Data(contentsOf: url) == arrived, "the file that took the name last was moved")
+        guard case .leftover(let name) = thrown else {
+            Issue.record("expected a leftover failure, got \(String(describing: thrown))")
+            return
+        }
+        #expect(name.hasPrefix(".recortia-") && name.hasSuffix("/stage"), "unexpected leftover \(name)")
+        #expect(try Data(contentsOf: folder.appendingPathComponent(name)) == displaced, "the displaced file was lost")
+    }
+
     // R3-03 (third review of T1a): on a swap-capable mount that ignores ownership, the swap installed
     // the screenshot and cleanup then had to report the displaced original as a leftover, so a
     // correct replacement was reported as failed.
@@ -676,6 +743,32 @@ struct FileSinkTests {
         _ = try sink.save(snapshot, to: url, overwrite: true)
         #expect(try Data(contentsOf: url) == snapshot.bytes)
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
+    }
+
+    // T1 security 1E: a new save on a mount with exclusive rename that ignores ownership staged
+    // the bytes in a folder anyone could change and published them unread, so bytes changed in
+    // place before the rename were reported as saved.
+    @Test("A new save on a volume that ignores ownership fails when its bytes change before they are verified")
+    func newSaveWithoutEnforcedOwnersIsReadBack() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        let tampered = Data(repeating: 0x41, count: snapshot.bytes.count)
+        var changed = false
+        let tamper: (URL) -> Void = { written in
+            guard let handle = try? FileHandle(forUpdating: written) else { return }
+            changed = (try? handle.seek(toOffset: 0)) != nil && (try? handle.write(contentsOf: tampered)) != nil
+            try? handle.close()
+        }
+        let fileSystem = POSIXFileSystem(
+            volumeTraits: { _ in VolumeTraits(exclusiveRename: true, swap: true, enforcesOwners: false) },
+            afterSync: tamper, afterClaimWrite: tamper)
+        #expect(throws: SinkError.leftover(name: "shot.png")) {
+            try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+        }
+        try #require(changed, "control: the bytes were never changed")
+        #expect(try Data(contentsOf: url) == tampered, "a file Recortia did not finish was removed")
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a stage was left behind")
     }
 
     @Test("Overwriting a destination that has a second hard link replaces the name and keeps the other link")

@@ -155,7 +155,13 @@ pasteboard is read synchronously on the main actor to produce an error (`ImageIn
   confidentiality promise; inode reuse on FAT can defeat the folder identity check (R3-07); a crash
   can leave a private staging folder, never swept; a failed save names the file it left. The empty
   private folder and the umask probe are still removed by name after an identity check. The
-  two-account exFAT privacy check has not been run.
+  two-account exFAT privacy check has not been run. Replace there is a plain rename: a file put at
+  the name after the destination was inspected is replaced (1D, declined).
+- **File save, folders above the chosen one.** A writer to a parent folder can swap the chosen folder
+  between bookmark resolution and the save, redirecting it (1A, R06; declined).
+- **File save, overwrite on any volume.** A destination substituted just before the swap leaves the
+  snapshot at the name, with the inspected file's access, until the rollback takes it out (1B,
+  declined).
 - **Auto-redaction detector.** Matches on git remotes and UUIDs are accepted as a precision cost;
   the deadline is still to be measured cold and warm on an idle Mac (T1d).
 - **E2E.** The `scrolling` scenario checks the HUD wording through its catalog key: the hosted

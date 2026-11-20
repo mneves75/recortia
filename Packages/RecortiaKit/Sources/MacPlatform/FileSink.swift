@@ -18,9 +18,10 @@ import Foundation
 //
 // The folder is admitted by identity and bound once as a descriptor; every create, metadata read,
 // publish and removal is relative to it. The volume's capabilities choose the path before anything
-// is written. With exclusive rename, the bytes are staged in a private folder (0700, no ACL)
-// created inside it; the stage gets its final access just before one rename publishes it, after
-// its identity is checked. Without it, a new file is written straight into an exclusive claim. An
+// is written. With exclusive rename on a volume that enforces owners, the bytes are staged in a
+// private folder (0700, no ACL) created inside it; the stage gets its final access just before one
+// rename publishes it, after its identity is checked. Elsewhere a new file is written straight
+// into an exclusive claim and read back, since a stage there is not private. An
 // entry is removed only from the private folder: it is moved there by exclusive rename, checked,
 // and removed if it is Recortia's, or moved back; whatever cannot be moved back, and anything a
 // failed save leaves where there is no exclusive rename, is reported by name, never deleted.
@@ -30,6 +31,8 @@ import Foundation
 // - R03: replacing a file on a volume without swap is a plain rename, which replaces whatever
 //   occupies the name at that moment. Acceptable under the contract: those volumes enforce no
 //   owners, and the name is checked to lead to the stage before and after the read-back.
+// - 1B: a destination substituted just before the swap leaves the snapshot at the name, with the
+//   inspected file's access (the access Replace approved), until the rollback takes it out.
 // - R06: a folder above the chosen one swapped before admission redirects the save; admission
 //   binds whatever folder the system resolves the path to at that moment.
 // - R01/R02: on a mount that accepts chmod without enforcing it, the private folder is not
@@ -221,8 +224,9 @@ struct VolumeTraits {
     /// replaces the first when `overwrite` allows, and returns the saved file's URL in the admitted
     /// folder, which a link retargeted after admission cannot redirect. `names` receives a reader
     /// of the admitted folder's entry names. Without `overwrite`, a taken name moves on to the
-    /// next; when none is left the save fails with EEXIST. Before anything is written, a candidate
-    /// longer than the folder's volume accepts fails the save with ENAMETOOLONG.
+    /// next; when none is left the save fails with EEXIST. Candidates are tried in order up to the
+    /// first that is longer than the folder's volume accepts: when that is the first, nothing is
+    /// written; either way the save then fails with ENAMETOOLONG rather than EEXIST.
     func save(
         _ data: Data, in folder: URL, overwrite: Bool, names candidates: (_ existing: () -> [String]) -> [String]
     ) throws(FileSystemFailure) -> URL {
@@ -236,9 +240,14 @@ struct VolumeTraits {
         let names = candidates { Self.entryNames(at: admitted) }
         let limit = nameLimit(directory)
         guard limit > 0 else { throw FileSystemFailure(code: errno) }
-        guard names.allSatisfy({ $0.utf8.count <= limit }) else { throw FileSystemFailure(code: ENAMETOOLONG) }
-        let name = try saveName(data, in: directory, folder: folder, names: names, overwrite: overwrite)
-        return admitted.appendingPathComponent(name, isDirectory: false)
+        let fitting = Array(names.prefix { $0.utf8.count <= limit })
+        guard !fitting.isEmpty else { throw FileSystemFailure(code: ENAMETOOLONG) }
+        do throws(FileSystemFailure) {
+            let name = try saveName(data, in: directory, folder: folder, names: fitting, overwrite: overwrite)
+            return admitted.appendingPathComponent(name, isDirectory: false)
+        } catch  where error.code == EEXIST && error.leftover == nil && fitting.count < names.count {
+            throw FileSystemFailure(code: ENAMETOOLONG)
+        }
     }
 
     /// The admitted folder's entry names: only a hint for where a counting name resumes, since
@@ -255,10 +264,11 @@ struct VolumeTraits {
     private func saveName(
         _ data: Data, in directory: Int32, folder: URL, names: [String], overwrite: Bool
     ) throws(FileSystemFailure) -> String {
-        // The publication path is chosen before anything is written.
+        // The publication path is chosen before anything is written. A stage is private only where
+        // the volume enforces owners; elsewhere its bytes could change unseen before the rename.
         let volume = volumeTraits(directory)
-        guard volume.exclusiveRename else {
-            return try saveWithoutExclusiveRename(
+        guard volume.exclusiveRename, volume.enforcesOwners else {
+            return try saveDirectly(
                 data, in: directory, folder: folder, names: names, overwrite: overwrite, volume: volume)
         }
         return try withStage(data, in: directory, folder: folder, volume: volume) { stage throws(FileSystemFailure) in
@@ -293,9 +303,10 @@ struct VolumeTraits {
         return try result.get()
     }
 
-    /// exFAT, FAT32 and some network volumes: a new file is written straight into an exclusively
-    /// created name, with no stage at all; only replacing an existing file stages the bytes.
-    private func saveWithoutExclusiveRename(
+    /// Volumes without exclusive rename or enforced owners (exFAT, FAT32, some network volumes): a
+    /// new file is written straight into an exclusively created name and read back, with no stage
+    /// at all; only replacing an existing file stages the bytes.
+    private func saveDirectly(
         _ data: Data, in directory: Int32, folder: URL, names: [String], overwrite: Bool, volume: VolumeTraits
     ) throws(FileSystemFailure) -> String {
         for name in names {
@@ -446,14 +457,22 @@ struct VolumeTraits {
                 try stage.removeOwnEntry(Self.stageName)
                 return
             }
-            // Something replaced the destination after its access was read: put it back, by swap,
-            // or by exclusive rename if the name is gone; otherwise report where it is.
-            if unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
-                throw Self.substitutedFailure
+            // Something replaced the destination after its access was read. It goes back only into a
+            // vacant name: the published stage is taken out of the name first, and whatever took the
+            // name since stays there. What cannot go back stays in the private folder, reported.
+            let published = stage.fileIdentity
+            do throws(FileSystemFailure) {
+                try stage.discard(name, from: directory) {
+                    $0.st_mode & S_IFMT == S_IFREG && FileIdentity($0) == published
+                }
+            } catch {
+                // A second foreign entry kept in the private folder: report the folder holding both.
+                if let kept = error.leftover, kept.hasPrefix(stage.folderName + "/") {
+                    throw FileSystemFailure(code: EIO, leftover: stage.folderName)
+                }
+                throw stage.hold(Self.stageName)
             }
-            if errno == ENOENT,
-                unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0
-            {
+            if unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 {
                 throw Self.substitutedFailure
             }
             throw stage.hold(Self.stageName)
