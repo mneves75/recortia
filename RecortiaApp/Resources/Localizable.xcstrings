@@ -162,7 +162,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma captura com rolagem aguarda revisão. Sair a descarta."
+            "value" : "Uma captura com rolagem está aguardando revisão e será descartada ao sair."
           }
         }
       }
@@ -4086,7 +4086,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A captura com rolagem que aguarda revisão também é descartada."
+            "value" : "A captura com rolagem que está aguardando revisão também será descartada."
           }
         }
       }
