@@ -181,12 +181,16 @@ enum RenderEngine {
         add(outputArea)
         if presented { add(outputArea) }
         var seen = Set<AssetID>()
+        // `RenderRaster.fill` writes from one temporary row, at most as wide as the widest raster.
+        var fillRow = outputSize.width
         for layer in document.layers {
             if seen.insert(layer.assetID).inserted, let image = sources[layer.assetID] {
                 add(image.width * image.height)
+                fillRow = max(fillRow, image.width)
             }
             if let crop = layer.sourceCrop { add(crop.width * crop.height) }
         }
+        add(fillRow)
         let outputBounds = PixelRect(x: 0, y: 0, width: outputSize.width, height: outputSize.height)
         let factor = abs(map.a * map.d - map.b * map.c).squareRoot()
         var scratch = 0
