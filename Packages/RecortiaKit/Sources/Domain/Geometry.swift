@@ -79,10 +79,12 @@ public struct Rect<Space>: Hashable, Sendable, Codable {
         [Point(x: minX, y: minY), Point(x: maxX, y: minY), Point(x: maxX, y: maxY), Point(x: minX, y: maxY)]
     }
 
-    /// Throws for NaN/infinite coordinates and negative spans; zero-sized rects are valid.
+    /// Throws for NaN/infinite coordinates or far edges and negative spans; zero-sized rects are valid.
     @discardableResult
     public func validated() throws -> Rect {
-        guard origin.isFinite, size.width.isFinite, size.height.isFinite else { throw GeometryError.nonFinite }
+        guard origin.isFinite, size.width.isFinite, size.height.isFinite, maxX.isFinite, maxY.isFinite else {
+            throw GeometryError.nonFinite
+        }
         guard size.width >= 0, size.height >= 0 else { throw GeometryError.negativeSize }
         return self
     }
