@@ -28,6 +28,9 @@ Not done, on purpose: neither app was launched or driven, no binary was disassem
 string-dumped, and no asset, sound, layout or wording was copied. Only ideas and interaction
 patterns are taken. Vendor timing claims are not Recortia measurements and set no budget here.
 
+That held for this plan. A later pass (2026-11-20, owner-authorized) decompiled one reference app;
+`docs/specs/feature-discovery/reference-matrix.md` records its boundary.
+
 ## What the references show
 
 | Observation | Source | Recortia today |
