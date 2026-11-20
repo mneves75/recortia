@@ -805,15 +805,25 @@ struct TileLayout: Equatable, Sendable {
     /// Matches on shorter text are ignored; lets a sweep leave small print to a finer one.
     var minimumTextHeight: CGFloat = 0
 
-    /// The fine sweep puts text at about two pixels per point, where Vision reads body text best,
-    /// with tiles overlapping by half so most text is read twice from different crops. The coarse
-    /// one looks at the capture shrunk four times as much, for headline-sized text wider than a
-    /// fine tile's overlap, and ignores anything smaller.
+    /// Text whose width is at most a sweep's horizontal overlap, and whose line is at most its
+    /// vertical overlap, lies whole inside one of that sweep's tiles; wider text is cut by every
+    /// tile, and each cut piece may not read as an address (R03). So the sweeps nest:
+    ///
+    /// - fine: about two pixels per point, where Vision reads small body text best, with tiles
+    ///   overlapping by half (256 pt of text with 1024-px tiles, 512 pt with 2048) and by 96 pt of
+    ///   line height;
+    /// - middle: one pixel per point in 2048-px tiles overlapping by half, so body text up to
+    ///   1024 pt wide is whole in one tile. At most a few tiles per capture;
+    /// - coarse: a quarter of the fine scale, for headline-sized text wider than that, ignoring
+    ///   anything smaller.
+    ///
+    /// A match found by several sweeps or tiles is merged into one region (`mergeRegions`).
     static func standard(pixelsPerPoint: Double, fineTileSide: CGFloat = 2048) -> [TileLayout] {
         let density = max(CGFloat(pixelsPerPoint), 1)
         return [
             TileLayout(
                 scale: 2 / density, tileSide: fineTileSide, horizontalOverlap: fineTileSide / 2, verticalOverlap: 192),
+            TileLayout(scale: 1 / density, tileSide: 2048, horizontalOverlap: 1024, verticalOverlap: 192),
             TileLayout(
                 scale: 0.5 / density, tileSide: 2880, horizontalOverlap: 1440, verticalOverlap: 384,
                 minimumTextHeight: 22),

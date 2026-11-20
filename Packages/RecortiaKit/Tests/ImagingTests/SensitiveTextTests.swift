@@ -479,3 +479,51 @@ struct SensitiveTextSecurityReviewTests {
         #expect(try detect(text) == ["email:\(address)"])
     }
 }
+
+@Suite("SensitiveText: tile seams (R03)")
+struct SensitiveTextSeamTests {
+    /// 512–1024 px of ink at 13 pt on a 2x capture: wider than a 1024 fine tile's 512 px overlap.
+    static let localPart = "firstname.middlename.lastname.department.team.region"
+    static let address = localPart + "@example.com"
+
+    @Test(
+        "An address wider than the fine overlap is masked once, inside a tile or across a seam",
+        VisionRuntime.required, arguments: [false, true])
+    func addressAcrossASeam(straddles: Bool) async throws {
+        let (widthPoints, heightPoints, scale, pointSize) = (1200, 200, 2, 13.0)
+        let size = CGSize(width: widthPoints * scale, height: heightPoints * scale)
+        let probe = try SensitiveScreen.renderItem(
+            Self.address, kind: .email, widthPoints: widthPoints, heightPoints: heightPoints, scale: scale,
+            pointSize: pointSize, x: 0, top: 150)
+        let ink = try #require(probe.planted.first).rect
+        try #require((512...1024).contains(ink.width), "ink width \(ink.width)")
+        let fine = try #require(TileLayout.standard(pixelsPerPoint: Double(scale), fineTileSide: 1024).first)
+        let columns = tileRects(for: size, layout: fine).map { ($0.minX, $0.maxX) }
+        func isInsideAFineTile(_ x: CGFloat) -> Bool {
+            columns.contains { $0.0 <= x + ink.minX - 4 && x + ink.maxX + 4 <= $0.1 }
+        }
+        // Inside: near the left edge of the first tile. Across: the "@" just past the first tile's right
+        // edge, so that tile sees only a local part, while the address starts well before the second
+        // tile, which sees only its tail.
+        let local = try #require(
+            try SensitiveScreen.renderItem(
+                Self.localPart, kind: .email, widthPoints: widthPoints, heightPoints: heightPoints, scale: scale,
+                pointSize: pointSize, x: 0, top: 150
+            ).planted.first
+        ).rect
+        let x = (straddles ? columns[0].1 + 30 - local.maxX : 40).rounded()
+        if straddles { try #require(x + ink.minX < columns[1].0 - 40, "x \(x), tiles \(columns)") }
+        try #require(isInsideAFineTile(x) != straddles, "x \(x), tiles \(columns)")
+        let screen = try SensitiveScreen.renderItem(
+            Self.address, kind: .email, widthPoints: widthPoints, heightPoints: heightPoints, scale: scale,
+            pointSize: pointSize, x: x, top: 150)
+        let item = try #require(screen.planted.first)
+        let regions = try await SensitiveTextScanner(fineTileSide: 1024).sensitiveRegions(
+            in: screen.image, pixelsPerPoint: Double(scale), languages: [OCRRecognitionTests.english])
+        let covering = regions.map {
+            CGRect(x: $0.rect.minX, y: $0.rect.minY, width: $0.rect.width, height: $0.rect.height)
+        }.filter { $0.intersects(item.rect) }
+        #expect(covering.count == 1, "x \(x): \(covering)")
+        #expect(covering.contains { $0.contains(item.rect) }, "x \(x): \(item.rect) not covered by \(covering)")
+    }
+}

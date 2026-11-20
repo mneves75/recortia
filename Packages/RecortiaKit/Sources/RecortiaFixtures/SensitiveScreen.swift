@@ -113,6 +113,31 @@ public enum SensitiveScreen {
             planted: canvas.planted, decoys: canvas.decoys)
     }
 
+    /// One planted item drawn alone with its left edge at `x` and its line top at `top` (image
+    /// pixels), on an otherwise empty screen: for placing the same item across a tile seam.
+    public static func renderItem(
+        _ text: String, kind: Kind, widthPoints: Int, heightPoints: Int, scale: Int, pointSize: Double,
+        x: CGFloat, top: CGFloat, theme: TextCorpus.Theme = .light
+    ) throws -> Screen {
+        let width = widthPoints * scale, height = heightPoints * scale
+        guard let font = CTFontCreateUIFontForLanguage(.system, CGFloat(pointSize) * CGFloat(scale), nil) else {
+            throw TextCorpus.RenderError.fontUnavailable
+        }
+        let context = try makeContext(width: width, height: height, theme: theme)
+        var canvas = Canvas(
+            context: context, font: font, height: CGFloat(height),
+            foreground: theme == .light ? CGColor(gray: 0.08, alpha: 1) : CGColor(gray: 0.92, alpha: 1))
+        canvas.drawRow(
+            [Segment(text: text, role: .planted(kind, format: "item"))], x: x, top: top,
+            maxWidth: .greatestFiniteMagnitude)
+        guard let image = context.makeImage() else { throw TextCorpus.RenderError.contextUnavailable }
+        return Screen(
+            id: "item-\(widthPoints)x\(heightPoints)@\(scale)x-\(Int(pointSize))pt-x\(Int(x))", image: image,
+            scale: scale,
+            pointSize: pointSize, theme: theme, language: .english, layout: .singleColumn, planted: canvas.planted,
+            decoys: [])
+    }
+
     // MARK: - Drawing
 
     /// A piece of a row. `role` decides whether its rectangle is recorded as planted or as a decoy.
