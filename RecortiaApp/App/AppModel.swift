@@ -58,9 +58,10 @@ final class AppModel: AppActions {
     @ObservationIgnored private var pinsUI: PinsUIController?
     @ObservationIgnored private var captureWindowVisibility: CaptureWindowVisibility?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
-    /// Files the system handed over before launch wired the editors: a cold launch by Open With,
-    /// a drop on the Dock icon or `open -a` delivers them before `applicationDidFinishLaunching`.
-    @ObservationIgnored private var filesBeforeLaunch: [URL] = []
+    /// Open requests the system made before launch wired the editors, each kept apart: a cold
+    /// launch by Open With, a drop on the Dock icon or `open -a` delivers them before
+    /// `applicationDidFinishLaunching`.
+    @ObservationIgnored private var requestsBeforeLaunch: [[URL]] = []
     @ObservationIgnored private let editors = EditorWindowManager()
     @ObservationIgnored private var systemEvents: SystemEventMonitor?
     @ObservationIgnored private var didLaunch = false
@@ -125,15 +126,14 @@ final class AppModel: AppActions {
             wire(features)
         }
         registerShortcutHandlers()
-        let files = filesBeforeLaunch
-        filesBeforeLaunch = []
-        switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind, opensFiles: !files.isEmpty)
+        switch LaunchWindow.choose(
+            onboardingPending: onboarding.shouldPresent, kind: kind, opensFiles: !requestsBeforeLaunch.isEmpty)
         {
         case .onboarding: showOnboarding()
         case .settings: showSettings()
         case .none: break
         }
-        if !files.isEmpty { openFiles(files) }
+        openFilesRequestedBeforeLaunch()
     }
 
     func showOnboarding() {
@@ -270,13 +270,24 @@ final class AppModel: AppActions {
     /// same admission as Open Image, and one report for every file that was refused.
     func openFiles(_ urls: [URL]) {
         guard openDocument != nil else {
-            filesBeforeLaunch += urls
+            requestsBeforeLaunch.append(urls)
             return
         }
+        open([urls])
+    }
+
+    /// Replays, in order, the requests that arrived before the editors were wired.
+    func openFilesRequestedBeforeLaunch() {
+        let requests = requestsBeforeLaunch
+        requestsBeforeLaunch = []
+        if !requests.isEmpty { open(requests) }
+    }
+
+    private func open(_ requests: [[URL]]) {
         guard let importer = features?.importer else { return }
         Task {
-            if let message = UserMessage.openFailures(await importer.openFiles(urls)) {
-                showMessage(message)
+            for failures in await importer.openRequests(requests) {
+                if let message = UserMessage.openFailures(failures) { showMessage(message) }
             }
         }
     }

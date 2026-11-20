@@ -48,16 +48,27 @@ struct OpenFilesTests {
         #expect(h.fileNames == ["first.png", "last.jpg"])
     }
 
-    @Test("Files beyond the batch limit are refused once each, without being read")
+    @Test("Eleven files in one request: the first ten are read and opened, the eleventh is refused unread")
     func batchLimit() async {
         let h = ImportHarness()
-        let limit = ImportCoordinator.maximumOpenedFiles
-        let files = (0..<(limit + 3)).map { url("\($0).png") }
+        let files = (0..<11).map { url("\($0).png") }
         for file in files { h.input.files[file] = .success(Data([1])) }
         let failures = await h.coordinator.openFiles(files)
-        #expect(h.imported.count == limit)
-        #expect(h.input.fileReads == Array(files.prefix(limit)))
-        #expect(failures == [.tooManyFiles, .tooManyFiles, .tooManyFiles])
+        #expect(h.imported.count == 10)
+        #expect(h.input.fileReads == Array(files.prefix(10)))
+        #expect(failures == [.tooManyFiles])
+    }
+
+    @Test("Requests queued before launch keep their own limit and open one after another")
+    func queuedRequestsKeepTheirBoundaries() async {
+        let h = ImportHarness()
+        let first = (0..<6).map { url("first-\($0).png") }
+        let second = (0..<6).map { url("second-\($0).png") }
+        for file in first + second { h.input.files[file] = .success(Data([1])) }
+        let failures = await h.coordinator.openRequests([first, second])
+        #expect(failures == [[], []])
+        #expect(h.imported.count == 12)
+        #expect(h.input.fileReads == first + second)
     }
 
     @Test("While another import holds the slot, opened files are refused as busy before any read")

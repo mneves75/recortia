@@ -448,6 +448,60 @@
         /// Open With, a drop on the Dock icon and `open -a` (FR-03, A-2): a real Open Documents
         /// Apple event sent to this process reaches the app delegate, which opens one editor per
         /// image through the shared admission and reports the refused files once.
+        /// A real Open Documents Apple event sent to this process, as Finder or `open -a` sends one.
+        private static func sendOpenDocuments(_ urls: [URL]) throws {
+            let event = NSAppleEventDescriptor(
+                eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEOpenDocuments),
+                targetDescriptor: .currentProcess(), returnID: AEReturnID(kAutoGenerateReturnID),
+                transactionID: AETransactionID(kAnyTransactionID))
+            let list = NSAppleEventDescriptor.list()
+            for (index, url) in urls.enumerated() { list.insert(NSAppleEventDescriptor(fileURL: url), at: index + 1) }
+            event.setParam(list, forKeyword: keyDirectObject)
+            do { _ = try event.sendEvent(options: [.noReply, .neverInteract], timeout: 10) } catch {
+                throw E2EAbort("open-documents event: \(error)")
+            }
+        }
+
+        /// A cold launch (A-2): two open requests of six images arrive before the editors are wired.
+        /// Nothing is read until launch replays them, and each keeps its own ten-file limit, so all
+        /// twelve open and nothing is refused.
+        private static func coldLaunchOpenEvents(_ harness: E2EHarness, chart: CGImage, _ context: ScenarioContext)
+            async throws
+        {
+            let work = harness.output.workDirectory
+            let png = try E2EDrawing.png(chart)
+            let requests = try (0..<2).map { request in
+                try (0..<6).map { index in
+                    let url = work.appending(path: "cold-\(request)-\(index).png")
+                    try png.write(to: url, options: .atomic)
+                    return url
+                }
+            }
+            let wired = harness.app.openDocument
+            harness.app.openDocument = nil
+            defer { harness.app.openDocument = wired }
+            let before = harness.editors.controllers.count
+            let messages = harness.messages.values.count
+            let reads = harness.importInput.fileReads
+            for urls in requests { try sendOpenDocuments(urls) }
+            await E2ESnapshot.settle(nil, for: .milliseconds(300))
+            context.check(
+                "before launch, opened files wait unread",
+                harness.importInput.fileReads == reads && harness.editors.controllers.count == before)
+            harness.app.openDocument = wired
+            harness.app.openFilesRequestedBeforeLaunch()
+            let opened = await E2EWait.until(timeout: .seconds(20)) {
+                harness.editors.controllers.count == before + 12
+            }
+            context.check(
+                "launch opens both waiting requests, each within its own limit", opened,
+                "editors: \(harness.editors.controllers.count - before)")
+            context.check(
+                "the waiting requests are read once each, in order", harness.importInput.fileReads == reads + 12,
+                "\(harness.importInput.fileReads - reads)")
+            context.check("nothing is refused", harness.messages.values.count == messages)
+        }
+
         private static func openEvent(
             _ harness: E2EHarness, chart: CGImage, oversized: Data, _ context: ScenarioContext
         ) async throws {
@@ -463,16 +517,7 @@
             let before = harness.editors.controllers.count
             let messages = harness.messages.values.count
             let reads = harness.importInput.fileReads
-            let event = NSAppleEventDescriptor(
-                eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEOpenDocuments),
-                targetDescriptor: .currentProcess(), returnID: AEReturnID(kAutoGenerateReturnID),
-                transactionID: AETransactionID(kAnyTransactionID))
-            let list = NSAppleEventDescriptor.list()
-            for (index, url) in urls.enumerated() { list.insert(NSAppleEventDescriptor(fileURL: url), at: index + 1) }
-            event.setParam(list, forKeyword: keyDirectObject)
-            do { _ = try event.sendEvent(options: [.noReply, .neverInteract], timeout: 10) } catch {
-                throw E2EAbort("open-documents event: \(error)")
-            }
+            try sendOpenDocuments(urls)
             let reported = await E2EWait.until(timeout: .seconds(10)) {
                 harness.messages.values.count == messages + 1
             }
@@ -562,6 +607,7 @@
             }
 
             try await openEvent(harness, chart: chart, oversized: oversized, context)
+            try await coldLaunchOpenEvents(harness, chart: chart, context)
 
             // The alert and the editor notice say the same thing about an import failure: one
             // mapping, so the two cannot drift apart in either language.

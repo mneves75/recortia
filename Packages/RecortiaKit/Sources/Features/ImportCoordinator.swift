@@ -84,6 +84,14 @@ public final class ImportCoordinator {
         failures += repeatElement(.tooManyFiles, count: max(0, urls.count - Self.maximumOpenedFiles))
         return failures
     }
+
+    /// Opens requests that queued up (before launch wired the editors) one after another, each
+    /// with its own limit, and returns each request's refusals for its own report.
+    public func openRequests(_ requests: [[URL]]) async -> [[ImportFailure]] {
+        var failures: [[ImportFailure]] = []
+        for urls in requests { failures.append(await openFiles(urls)) }
+        return failures
+    }
 }
 
 /// An import admitted into the shared slot, with the source it read. It holds the slot until it is

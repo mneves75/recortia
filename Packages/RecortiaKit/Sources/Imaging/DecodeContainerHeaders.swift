@@ -3,6 +3,14 @@ import Domain
 import Foundation
 
 /// Container formats accepted in v1 (FR-03).
+/// The leading bytes that identify a PNG or JPEG file (FR-03): an import reads these first and
+/// refuses anything else before reading the rest.
+public enum ImageSignature {
+    public static let length = 8
+
+    public static func isSupported(_ head: Data) -> Bool { DecodeFormat.sniff(head) != nil }
+}
+
 enum DecodeFormat: Equatable {
     case png
     case jpeg
