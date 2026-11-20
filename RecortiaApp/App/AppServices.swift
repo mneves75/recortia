@@ -19,6 +19,7 @@ struct AppServices {
     let folders: any SaveFolderService
     let textRecognition: any TextRecognitionService
     let qrDecoder: any QRDecodingService
+    let sensitiveText: any SensitiveTextService
     let scrollFrames: any ScrollFrameSourceService
     let stitcher: any ScrollStitchService
     /// Nil when automatic scrolling is not built; manual scrolling still works.

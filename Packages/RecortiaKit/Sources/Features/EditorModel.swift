@@ -33,6 +33,8 @@ public final class EditorModel {
     /// Preferred OCR languages (English, Portuguese) the system does not offer; reported, never assumed (FR-08).
     public internal(set) var unavailableRecognitionLanguages: [String] = []
     public internal(set) var isClosed = false
+    /// Automatic masking of a new capture (EditorModel+AutoRedaction.swift).
+    public internal(set) var autoRedaction: AutoRedaction = .off
 
     // Preview (EditorModel+Preview.swift)
     public internal(set) var baseImage: CGImage?
@@ -81,6 +83,8 @@ public final class EditorModel {
     @ObservationIgnored var qrRequest: UUID?
     @ObservationIgnored var colorPickTask: Task<Void, Never>?
     @ObservationIgnored var colorPickRequest: UUID?
+    @ObservationIgnored var autoRedactionTasks: [Task<Void, Never>] = []
+    @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<AutoRedaction, Never>] = []
 
     enum Gesture {
         case idle
@@ -96,10 +100,20 @@ public final class EditorModel {
         case sample
     }
 
-    public init(session: DocumentSession, environment: EditorEnvironment) {
+    /// How long automatic masking may take before it fails closed (provisional, see
+    /// docs/specs/program-2026-11/spike-auto-redaction.md).
+    public static let autoRedactionDeadline: Duration = .seconds(8)
+
+    /// `autoRedacts`: a new capture whose e-mail addresses and phone numbers are masked before the
+    /// editor shows or exports its pixels (FR-06).
+    public init(session: DocumentSession, environment: EditorEnvironment, autoRedacts: Bool = false) {
         self.session = session
         self.environment = environment
         knownAssets = Set(session.document.assets.keys)
+        if autoRedacts {
+            autoRedaction = .pending
+            startAutoRedaction()
+        }
         scheduleBaseRender()
     }
 
@@ -238,8 +252,14 @@ public final class EditorModel {
     @discardableResult
     func edit(_ label: String, inPreview: Bool = false, _ change: (inout Document) throws -> Void) -> Bool {
         // Output Preview is read-only for selection and objects (F-04); whole-image presentation
-        // settings stay available there, where their effect is seen.
-        guard !isClosed, !showsOutputPreview || inPreview else { return false }
+        // settings stay available there, where their effect is seen. Nothing changes while
+        // automatic masking is pending.
+        guard !isClosed, !isMaskingPending, !showsOutputPreview || inPreview else { return false }
+        return performEdit(label, change)
+    }
+
+    /// `edit` without its guards; automatic masks land through it while masking is still pending.
+    func performEdit(_ label: String, _ change: (inout Document) throws -> Void) -> Bool {
         let before = session.document
         let epoch = session.privacyEpoch
         do {
@@ -304,7 +324,7 @@ public final class EditorModel {
     }
 
     public func undo() {
-        guard !isClosed, !showsOutputPreview, textEditing == nil else { return }
+        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Undo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canUndo else { return }
@@ -315,7 +335,7 @@ public final class EditorModel {
     }
 
     public func redo() {
-        guard !isClosed, !showsOutputPreview, textEditing == nil else { return }
+        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Redo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canRedo else { return }
@@ -501,7 +521,7 @@ public final class EditorModel {
     // MARK: - Selection
 
     public func select(_ item: EditorItemID, extending: Bool = false) {
-        guard !showsOutputPreview, allItemIDs.contains(item) else { return }
+        guard !isMaskingPending, !showsOutputPreview, allItemIDs.contains(item) else { return }
         if extending {
             if selection.contains(item) { selection.remove(item) } else { selection.insert(item) }
         } else {
@@ -512,7 +532,7 @@ public final class EditorModel {
 
     /// Replaces the selection (object list); unknown items are ignored.
     public func setSelection(_ items: Set<EditorItemID>) {
-        guard !showsOutputPreview else { return }
+        guard !isMaskingPending, !showsOutputPreview else { return }
         let existing = Set(allItemIDs)
         selection = items.filter(existing.contains)
         loadSelectedTextAppearance()

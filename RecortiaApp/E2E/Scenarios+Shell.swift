@@ -526,7 +526,7 @@
                 host(
                     GitHubUploadSettings(
                         settings: model.settings, credentials: model.features?.services.githubCredentials))
-            case 5: host(PrivacySettingsTab())
+            case 5: host(PrivacySettingsTab(settings: model.settings))
             case 6: host(OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages))
             default: nil
             }

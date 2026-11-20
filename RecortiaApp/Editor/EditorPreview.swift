@@ -43,9 +43,11 @@
             )
             return EditorEnvironment(
                 renderer: renderer, export: export, folders: PreviewEditorSink(),
-                textRecognition: PreviewTextRecognition(), qrDecoder: PreviewEditorQR(), assets: PreviewEditorAssets(),
-                input: PreviewEditorAssets(), pins: PinsModel(renderer: renderer, settings: settings, export: export),
-                textClipboard: PreviewEditorSink(), links: PreviewEditorSink(), settings: settings)
+                textRecognition: PreviewTextRecognition(), qrDecoder: PreviewEditorQR(),
+                sensitiveText: PreviewEditorQR(), assets: PreviewEditorAssets(), input: PreviewEditorAssets(),
+                pins: PinsModel(renderer: renderer, settings: settings, export: export),
+                textClipboard: PreviewEditorSink(), links: PreviewEditorSink(), settings: settings,
+                clock: PreviewEditorClock())
         }
 
         static func rootView(for model: EditorModel, actions: any EditorWindowActions) -> some View {
@@ -125,8 +127,9 @@
         func sleep(for duration: Duration) async throws { try await Task.sleep(for: duration) }
     }
 
-    final class PreviewEditorQR: QRDecodingService {
+    final class PreviewEditorQR: QRDecodingService, SensitiveTextService {
         func decode(_ image: CGImage) async throws -> [QRPayload] { [] }
+        func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] { [] }
     }
 
     final class PreviewEditorAssets: ImageAssetService, ImageInputService {

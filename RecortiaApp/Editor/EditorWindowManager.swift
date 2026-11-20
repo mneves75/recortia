@@ -23,6 +23,8 @@ enum EditorInitialAction {
     case none
     /// Capture Text: open the editor and recognize text right away.
     case recognizeText
+    /// A new capture whose e-mail addresses and phone numbers are masked before it is shown (FR-06).
+    case maskSensitiveText
 }
 
 /// Opens one editor window per document (FR-04). The composition root calls
@@ -43,7 +45,8 @@ final class EditorWindowManager {
             existing.present()
             return existing.model
         }
-        let model = EditorModel(session: session, environment: environment)
+        let model = EditorModel(
+            session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
         let controller = EditorWindowController(model: model)
         controller.onClosed = { [weak self] in self?.controllers[id] = nil }
         controllers[id] = controller

@@ -55,12 +55,13 @@ struct EditorNoticePresentation {
     static func persists(_ notice: EditorNotice) -> Bool {
         switch notice {
         case .copyFailed, .recognitionFailed, .linkNotAllowed, .previewFailed, .redactionRefused, .importFailed,
-            .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed:
+            .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed, .sensitiveTextMasked,
+            .maskingFailed:
             true
         case .exported(let outcome): persists(outcome)
         case .noTextFound, .recognitionLanguagesUnavailable, .textCopied, .recognitionDiscarded,
             .recognitionInvalidated, .noQRCodeFound, .payloadCopied, .colorCopied, .previewNotReady, .pinned,
-            .pinsInvalidated, .undoHistoryTrimmed:
+            .pinsInvalidated, .undoHistoryTrimmed, .maskingInProgress:
             false
         }
     }

@@ -13,6 +13,7 @@ extension EditorModel {
     /// within the crop when one is set, else the whole canvas.
     public func recognizeText(in region: Rect<DocumentSpace>? = nil) async {
         guard !isClosed else { return }
+        guard !isMaskingPending else { return post(.maskingInProgress) }
         let request = UUID()
         recognitionRequest = request
         recognition = .running
@@ -103,6 +104,7 @@ extension EditorModel {
     /// Decodes QR codes in the sanitized base. Payloads are shown as untrusted data only.
     public func decodeQR() async {
         guard !isClosed else { return }
+        guard !isMaskingPending else { return post(.maskingInProgress) }
         let request = UUID()
         qrRequest = request
         qr = .running

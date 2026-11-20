@@ -156,6 +156,9 @@ public enum ExportFailure: Hashable, Sendable {
     case system(code: Int)
     /// A save failed and left this entry, relative to its folder.
     case leftover(name: String)
+    /// Automatic masking of the capture did not finish, so its automatic batch was skipped, or an
+    /// export was asked for while the masks were still on their way (FR-06).
+    case maskingUnfinished
 }
 
 /// Export: requested → snapshotting → sanitizing → rendering → encoding → committing → succeeded.

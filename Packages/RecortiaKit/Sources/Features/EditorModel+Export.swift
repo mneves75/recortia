@@ -22,9 +22,28 @@ extension EditorModel {
         }
     }
 
+    /// Runs the automatic batch planned when this editor's capture completed (R-3). With automatic
+    /// masking it waits for the masks and runs on the masked document, which is then its freshness
+    /// baseline; masking that failed skips the batch, and closing the editor cancels it.
+    public func runAutomaticExports(_ plan: AutomaticExportPlan) async -> [ExportOutcome] {
+        let masking = await autoRedactionSettled()
+        guard !isClosed else { return [.canceled] }
+        guard masking != .failed else { return [.failed(.maskingUnfinished)] }
+        return await environment.export.runAutomaticExports(
+            plan, for: session,
+            currentSession: { [weak self] in
+                guard let self, !self.isClosed else { return nil }
+                return self.session
+            })
+    }
+
     @discardableResult
     public func export(_ request: EditorExportRequest) async -> ExportOutcome {
         guard !isClosed else { return .failed(.staleDocument) }
+        guard !isMaskingPending else {
+            post(.maskingInProgress)
+            return .failed(.maskingUnfinished)
+        }
         guard isPreviewReady else {
             post(.previewFailed)
             return .failed(.renderFailed)
@@ -70,13 +89,14 @@ extension EditorModel {
 
     /// Whether the shared export slot is free. Copy, Save and Drag Out need it, so they are
     /// unavailable while any editor exports instead of opening a panel that would be refused.
-    public var canStartExport: Bool { !environment.export.isBusy }
+    public var canStartExport: Bool { !isMaskingPending && !environment.export.isBusy }
 
     public func cancelExport() { environment.export.cancel(documentID: session.document.id) }
 
     /// Pins a sanitized render of the current document.
     public func pin() async {
         guard !isClosed else { return }
+        guard !isMaskingPending else { return post(.maskingInProgress) }
         guard isPreviewReady else {
             post(.previewFailed)
             return
@@ -103,6 +123,7 @@ extension EditorModel {
         endContinuousChange()
         textEditing = nil
         isClosed = true
+        cancelAutoRedaction()
         environment.export.cancel(documentID: session.document.id)
         invalidateColorPick()
         baseTask?.cancel()

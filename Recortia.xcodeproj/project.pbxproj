@@ -22,6 +22,7 @@
 		147B112BD770EFE925854414 /* SyntheticServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */; };
 		16D05BE522E6D46802FC2C34 /* LaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2991DDE3A9E798D014496FC6 /* LaunchTests.swift */; };
 		1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
+		1747D52DBBAF6CC32809C0BB /* Scenarios+AutoRedaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE70A3F1D86B53E9296F402 /* Scenarios+AutoRedaction.swift */; };
 		182984EEB477BE03386FF93A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */; };
 		18A45AB75723F8BFA3916DBD /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
@@ -253,6 +254,7 @@
 		DDE275E3D7EEDDEF406E8DC9 /* AutoScrollRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoScrollRegression.swift; sourceTree = "<group>"; };
 		DED2B14CE42AB62F1B1F016E /* ScreenChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenChoice.swift; sourceTree = "<group>"; };
 		DFCE525587D4EDB1319159B1 /* Scenarios+EditorFixes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+EditorFixes.swift"; sourceTree = "<group>"; };
+		DFE70A3F1D86B53E9296F402 /* Scenarios+AutoRedaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+AutoRedaction.swift"; sourceTree = "<group>"; };
 		E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscapeHotKey.swift; sourceTree = "<group>"; };
 		E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEventMonitor.swift; sourceTree = "<group>"; };
 		E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EAccessibilityControl.swift; sourceTree = "<group>"; };
@@ -438,6 +440,7 @@
 				06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */,
 				143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */,
 				695E6CF017268288FAA2B8A3 /* Scenarios+AutomaticSave.swift */,
+				DFE70A3F1D86B53E9296F402 /* Scenarios+AutoRedaction.swift */,
 				7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */,
 				4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */,
 				F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */,
@@ -761,6 +764,7 @@
 				56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */,
 				F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */,
 				9574817EAC04B1ED3B058F71 /* Scenarios+Appearance.swift in Sources */,
+				1747D52DBBAF6CC32809C0BB /* Scenarios+AutoRedaction.swift in Sources */,
 				662B5EEB1979FE8CB55404C3 /* Scenarios+AutomaticExport.swift in Sources */,
 				1A98A7B62D4C8919FAF4D280 /* Scenarios+AutomaticSave.swift in Sources */,
 				C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */,

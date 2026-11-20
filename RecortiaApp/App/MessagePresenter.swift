@@ -177,6 +177,11 @@ extension UserMessage {
                     localized:
                         "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it."
                 )
+            case .maskingUnfinished:
+                String(
+                    localized:
+                        "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically."
+                )
             }
         // One step of an automatic batch failed; another may already have copied or saved, so the
         // title never says that nothing was exported.
