@@ -3,9 +3,10 @@ import AppKit
 /// Recortia is a menu-bar app (`LSUIElement`) that joins ⌘Tab and the Dock while it has a window
 /// the user can switch to, and leaves them when the last one closes (FR-01, ADR-007).
 ///
-/// Activation policy is process-wide, so there is one instance. Promotion is immediate: presenting
-/// code calls `activate()`, which becomes regular before activating, because a switch after
-/// activation leaves the previous app's menu in the menu bar. Demotion is coalesced to a later
+/// Activation policy is process-wide, so there is one instance. Promotion is immediate: an ordinary
+/// window is shown through `present(_:)`, and other presenting code calls `activate()`; both become
+/// regular before activating, because a switch after activation leaves the previous app's menu in
+/// the menu bar. Demotion is coalesced to a later
 /// main-actor turn, so one window replacing another never drops the Dock icon.
 ///
 /// The same coalesced turn reports that the person closed the last switchable window
@@ -55,7 +56,18 @@ final class AppPresence {
         setNeedsRefresh()
     }
 
-    /// Becomes regular, then activates: for code about to show a switchable window.
+    /// Shows an ordinary window (editor, Settings, onboarding, scrolling review): regular first, then
+    /// the Space policy, then order and activate, so the window moves to the person instead of macOS
+    /// switching to the Space where it was last shown (FR-01).
+    func present(_ window: NSWindow) {
+        windowWillAppear()
+        SpacePolicy.follow(window)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
+    /// Becomes regular, then activates: for code about to show a switchable window it does not
+    /// order itself (alerts, About, open panels, pins).
     func activate() {
         windowWillAppear()
         NSApp.activate()

@@ -164,8 +164,7 @@ public final class EditorModel {
     }
 
     public func setLineWidth(_ width: Double) {
-        guard width.isFinite else { return }
-        let value = min(max(width, EditorStyle.lineWidthRange.lowerBound), EditorStyle.lineWidthRange.upperBound)
+        guard let value = EditorStyle.lineWidthRange.admit(width) else { return }
         do {
             for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
                 var proposed = annotation
@@ -181,15 +180,13 @@ public final class EditorModel {
     }
 
     public func setOpacity(_ opacity: Double) {
-        guard opacity.isFinite else { return }
-        let value = min(max(opacity, EditorStyle.opacityRange.lowerBound), EditorStyle.opacityRange.upperBound)
+        guard let value = EditorStyle.opacityRange.admit(opacity) else { return }
         style.opacity = value
         restyleSelection("Opacity") { $0.opacity = value }
     }
 
     public func setFontSize(_ size: Double) {
-        guard size.isFinite else { return }
-        let value = min(max(size, EditorStyle.fontSizeRange.lowerBound), EditorStyle.fontSizeRange.upperBound)
+        guard let value = EditorStyle.fontSizeRange.admit(size) else { return }
         style.fontSize = value
         let ids = selectedAnnotationIDs
         guard !ids.isEmpty else { return }
@@ -378,14 +375,8 @@ public final class EditorModel {
         case .annotation(let id): return d.annotations.first { $0.id == id }.map { EditorItemKind($0.kind) }
         case .layer(let id): return d.layers.contains { $0.id == id } ? .image : nil
         case .mask(let id): return d.masks.contains { $0.id == id } ? .redaction : nil
-        case .obfuscation(let id):
-            guard let effect = d.obfuscations.first(where: { $0.id == id }) else { return nil }
-            if case .blur = effect.style { return .blur }
-            return .pixelate
-        case .callout(let id):
-            guard let callout = d.callouts.first(where: { $0.id == id }) else { return nil }
-            if case .spotlight = callout.kind { return .spotlight }
-            return .magnifier
+        case .obfuscation(let id): return d.obfuscations.first { $0.id == id }.map { EditorItemKind($0.style) }
+        case .callout(let id): return d.callouts.first { $0.id == id }.map { EditorItemKind($0.kind) }
         }
     }
 
@@ -419,8 +410,7 @@ public final class EditorModel {
             append(.layer(layer.id), .image, EditorGeometry.frame(of: layer, in: d))
         }
         for effect in d.obfuscations {
-            let kind: EditorItemKind = if case .blur = effect.style { .blur } else { .pixelate }
-            append(.obfuscation(effect.id), kind, effect.rect)
+            append(.obfuscation(effect.id), EditorItemKind(effect.style), effect.rect)
         }
         for annotation in d.annotations {
             var step: Int?
@@ -433,8 +423,7 @@ public final class EditorModel {
             append(.mask(mask.id), .redaction, mask.outputRect)
         }
         for callout in d.callouts {
-            let kind: EditorItemKind = if case .spotlight = callout.kind { .spotlight } else { .magnifier }
-            append(.callout(callout.id), kind, EditorGeometry.frame(of: callout))
+            append(.callout(callout.id), EditorItemKind(callout.kind), EditorGeometry.frame(of: callout))
         }
         return bottomUp.reversed()
     }
@@ -832,7 +821,7 @@ public final class EditorModel {
     /// any layer: those are still hidden where they are, and only deleting the mask releases them.
     static func setMaskRect(_ document: inout Document, index: Int, _ rect: Rect<DocumentSpace>) throws {
         let snapped = EditorGeometry.outwardIntegral(rect)
-        guard EditorGeometry.isFinite(snapped), !snapped.isEmpty else { throw DocumentError.invalidGeometry }
+        guard snapped.isValid, !snapped.isEmpty else { throw DocumentError.invalidGeometry }
         let old = document.masks[index]
         // An unchanged rectangle keeps its binding (a click within the slop changes nothing).
         guard snapped != old.outputRect else { return }
@@ -868,7 +857,7 @@ public final class EditorModel {
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).
     /// Image layers keep their aspect ratio: the width decides the uniform scale.
     static func setFrame(_ document: inout Document, item: EditorItemID, to rect: Rect<DocumentSpace>) throws {
-        guard EditorGeometry.isFinite(rect), rect.width >= 0, rect.height >= 0 else {
+        guard rect.isValid else {
             throw DocumentError.invalidGeometry
         }
         if rect.width == 0 || rect.height == 0 {
@@ -889,7 +878,7 @@ public final class EditorModel {
             guard EditorGeometry.frame(of: resized) != nil else { throw DocumentError.invalidGeometry }
             try validateArrow(resized)
             if case .line(let start, let end) = resized.kind {
-                guard start.isFinite, end.isFinite, EditorGeometry.isFinite(resized.bounds) else {
+                guard start.isFinite, end.isFinite, resized.bounds.isValid else {
                     throw DocumentError.invalidGeometry
                 }
             }
@@ -943,7 +932,7 @@ public final class EditorModel {
 
     /// Moves a magnifier's source rectangle (what it magnifies) without moving the callout.
     public func setMagnifierSource(_ rect: Rect<DocumentSpace>, for id: CalloutID) {
-        guard EditorGeometry.isFinite(rect), rect.width > 0, rect.height > 0 else { return }
+        guard rect.isValid, !rect.isEmpty else { return }
         edit("Magnifier Source") { document in
             guard let index = document.callouts.firstIndex(where: { $0.id == id }),
                 case .magnifier(_, let destination) = document.callouts[index].kind
@@ -961,7 +950,7 @@ public final class EditorModel {
             edit("Reset Crop") { $0.crop = nil }
             return
         }
-        guard EditorGeometry.isFinite(rect) else { return }
+        guard rect.isValid else { return }
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard let clipped = snapped.intersection(session.document.canvasRect), clipped.width >= 1, clipped.height >= 1
         else { return }
@@ -973,8 +962,7 @@ public final class EditorModel {
 
     /// Reversible output resize (FR-04), on top of the export scale.
     public func setResizeScale(_ scale: Double) {
-        guard scale.isFinite else { return }
-        let value = min(max(scale, Self.resizeRange.lowerBound), Self.resizeRange.upperBound)
+        guard let value = Self.resizeRange.admit(scale) else { return }
         edit("Resize") { $0.resizeScale = value }
     }
 }

@@ -159,11 +159,7 @@ public final class ExportCoordinator {
             action, documentID: session.document.id, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
             makeSnapshot: { options, date in try await exporter.makeSnapshot(of: session, options: options, date: date)
             },
-            isCurrent: { snapshot in
-                guard let current = currentSession() else { return false }
-                return current.document.id == snapshot.documentID && current.revision == snapshot.revision
-                    && current.privacyEpoch == snapshot.privacyEpoch
-            })
+            isCurrent: { snapshot in currentSession()?.accepts(snapshot) == true })
     }
 
     /// Exports a pin's sanitized raster (FR-09, ADR-007) at its own size. `isCurrent` is false once

@@ -13,11 +13,7 @@ struct UserMessage: Equatable {
 /// window titles, or paths (PRIV-01).
 enum MessagePresenter {
     static func present(_ message: UserMessage) {
-        AppPresence.shared.activate()
-        let alert = makeAlert(message)
-        let response = alert.runModal()
-        // A finished alert is ordered out, not closed: re-evaluate the Dock presence.
-        AppPresence.shared.setNeedsRefresh()
+        let response = runModal(makeAlert(message))
         if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
             let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
         {
@@ -28,20 +24,14 @@ enum MessagePresenter {
     /// Asks before a scrolling capture is thrown away. Close, Escape, and Discard all route here,
     /// so the review window can be closed without silently destroying an assembled result.
     static func confirmDiscardScrollingCapture() -> Bool {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(localized: "Discard this scrolling capture?")
         // No count here: a counted sentence needs plural variants in two languages, which waits
         // until the localization gate covers the plural branch.
-        alert.informativeText = String(
-            localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image.")
-        let discard = alert.addButton(withTitle: String(localized: "Discard"))
-        discard.hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        SpacePolicy.follow(alert.window)
-        AppPresence.shared.activate()
-        defer { AppPresence.shared.setNeedsRefresh() }
-        return alert.runModal() == .alertFirstButtonReturn
+        let alert = makeConfirmation(
+            title: String(localized: "Discard this scrolling capture?"),
+            detail: String(
+                localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image."),
+            action: String(localized: "Discard"))
+        return runModal(alert) == .alertFirstButtonReturn
     }
 
     /// What Quit discards. Only a copy or save keeps edits: a pin is closed by quitting too.
@@ -68,21 +58,36 @@ enum MessagePresenter {
 
     /// Asks before Quit discards what `discards` describes. True means quit.
     static func confirmDiscardOnQuit(_ discards: QuitDiscards) -> Bool {
-        let count = discards.editedImages
+        let alert = makeConfirmation(
+            title: discards.editedImages == 0
+                ? String(localized: "Quit and discard the scrolling capture?")
+                : String(localized: "Quit and discard your edits?"),
+            detail: discardOnQuitDetail(discards), action: String(localized: "Quit"))
+        return runModal(alert) == .alertFirstButtonReturn
+    }
+
+    /// A warning that asks before something is thrown away: the destructive action first, then
+    /// Cancel. App-modal confirmations run it through `runModal`; editor sheets attach it.
+    static func makeConfirmation(
+        title: String, detail: String, action: String, cancel: String = String(localized: "Cancel")
+    ) -> NSAlert {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText =
-            count == 0
-            ? String(localized: "Quit and discard the scrolling capture?")
-            : String(localized: "Quit and discard your edits?")
-        alert.informativeText = discardOnQuitDetail(discards)
-        let quit = alert.addButton(withTitle: String(localized: "Quit"))
-        quit.hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.messageText = title
+        alert.informativeText = detail
+        alert.addButton(withTitle: action).hasDestructiveAction = true
+        alert.addButton(withTitle: cancel)
+        return alert
+    }
+
+    /// Runs `alert` app-modally on the current Space: its Space policy comes before activation, so
+    /// activating cannot switch the person to another Space (FR-01).
+    private static func runModal(_ alert: NSAlert) -> NSApplication.ModalResponse {
         SpacePolicy.follow(alert.window)
         AppPresence.shared.activate()
+        // A finished alert is ordered out, not closed: re-evaluate the Dock presence.
         defer { AppPresence.shared.setNeedsRefresh() }
-        return alert.runModal() == .alertFirstButtonReturn
+        return alert.runModal()
     }
 
     static func makeAlert(_ message: UserMessage) -> NSAlert {

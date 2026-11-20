@@ -556,21 +556,21 @@
         private static func settingsContent(_ index: Int, _ model: AppModel) -> NSView? {
             func host(_ view: some View) -> NSView { NSHostingView(rootView: view.frame(width: 560)) }
             return switch index {
-            case 0: host(GeneralSettingsTab(settings: model.settings, loginItem: model.features?.loginItem))
+            case 0: host(GeneralSettingsTab(settings: model.settings, loginItem: model.features.loginItem))
             case 1:
                 host(
                     ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)
                 )
             case 2:
                 host(
-                    CaptureSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility))
-            case 3: host(ExportSettingsTab(settings: model.settings, folders: model.features?.services.folders))
+                    CaptureSettingsTab(settings: model.settings, accessibility: model.features.services.accessibility))
+            case 3: host(ExportSettingsTab(settings: model.settings, folders: model.features.services.folders))
             case 4:
                 host(
                     GitHubUploadSettings(
-                        settings: model.settings, credentials: model.features?.services.githubCredentials))
+                        settings: model.settings, credentials: model.features.services.githubCredentials))
             case 5: host(PrivacySettingsTab(settings: model.settings))
-            case 6: host(OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages))
+            case 6: host(OCRSettingsTab(settings: model.settings, languages: model.features.ocrLanguages))
             default: nil
             }
         }

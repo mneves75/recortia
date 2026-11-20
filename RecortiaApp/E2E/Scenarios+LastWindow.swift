@@ -574,8 +574,10 @@
             NSApp.appearance = NSAppearance(named: .aqua)
             let settings = SettingsStore.e2eInMemory()
             settings.update { $0.keepsRunningInMenuBar = kind == .keepsRunning }
-            // Production defaults: termination is `NSApp.terminate(nil)`.
-            let model = AppModel(settings: settings, services: nil, shortcutRegistry: KeyboardShortcutsRegistry())
+            // Production defaults: termination is `NSApp.terminate(nil)`. Inert services keep the probe
+            // away from the screen, pasteboard and keychain.
+            let model = AppModel(
+                settings: settings, services: PreviewSupport.services(), shortcutRegistry: KeyboardShortcutsRegistry())
             defer { withExtendedLifetime(model) {} }
             let presence = AppPresence.shared
             switch kind {
