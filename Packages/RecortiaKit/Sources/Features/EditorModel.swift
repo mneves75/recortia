@@ -539,44 +539,56 @@ public final class EditorModel {
     public func duplicateSelection() {
         let items = selection
         guard !items.isEmpty else { return }
-        var created: Set<EditorItemID> = []
+        // IDs are allocated here, not in the edit closure, which must build the same document on
+        // each of its passes.
+        var fresh: [EditorItemID: EditorItemID] = [:]
+        for item in items {
+            switch item {
+            case .layer: fresh[item] = .layer(LayerID())
+            case .obfuscation: fresh[item] = .obfuscation(MaskID())
+            case .annotation: fresh[item] = .annotation(AnnotationID())
+            case .mask: fresh[item] = .mask(MaskID())
+            case .callout: fresh[item] = .callout(CalloutID())
+            }
+        }
         let offset = Self.duplicateOffset
         endContinuousChange()
         let ok = edit("Duplicate") { document in
-            created = []
-            for index in document.layers.indices where items.contains(.layer(document.layers[index].id)) {
+            for index in document.layers.indices {
+                guard case .layer(let id)? = fresh[.layer(document.layers[index].id)] else { continue }
                 var copy = document.layers[index]
-                copy.id = LayerID()
+                copy.id = id
                 copy.placement.translation = copy.placement.translation.offset(dx: offset, dy: offset)
                 document.layers.append(copy)
-                created.insert(.layer(copy.id))
             }
-            for effect in document.obfuscations where items.contains(.obfuscation(effect.id)) {
-                let copy = CosmeticObfuscation(rect: effect.rect.offsetBy(dx: offset, dy: offset), style: effect.style)
-                document.obfuscations.append(copy)
-                created.insert(.obfuscation(copy.id))
+            for effect in document.obfuscations {
+                guard case .obfuscation(let id)? = fresh[.obfuscation(effect.id)] else { continue }
+                document.obfuscations.append(
+                    CosmeticObfuscation(id: id, rect: effect.rect.offsetBy(dx: offset, dy: offset), style: effect.style)
+                )
             }
-            for annotation in document.annotations where items.contains(.annotation(annotation.id)) {
+            for annotation in document.annotations {
+                guard case .annotation(let id)? = fresh[.annotation(annotation.id)] else { continue }
                 var copy = annotation.translated(dx: offset, dy: offset)
                 try Self.validateArrow(copy)
-                copy.id = AnnotationID()
+                copy.id = id
                 document.annotations.append(copy)
-                created.insert(.annotation(copy.id))
             }
-            for mask in document.masks where items.contains(.mask(mask.id)) {
+            for mask in document.masks {
+                guard case .mask(let id)? = fresh[.mask(mask.id)] else { continue }
                 let rect = mask.outputRect.offsetBy(dx: offset, dy: offset)
-                let copy = SecureMask(
-                    outputRect: rect, sourceRegions: try document.sourceRegions(for: rect), fill: mask.fill)
-                document.masks.append(copy)
-                created.insert(.mask(copy.id))
+                document.masks.append(
+                    SecureMask(
+                        id: id, outputRect: rect, sourceRegions: try document.sourceRegions(for: rect), fill: mask.fill)
+                )
             }
-            for callout in document.callouts where items.contains(.callout(callout.id)) {
-                let copy = Callout(kind: Self.translated(callout.kind, dx: offset, dy: offset, movesSource: true))
-                document.callouts.append(copy)
-                created.insert(.callout(copy.id))
+            for callout in document.callouts {
+                guard case .callout(let id)? = fresh[.callout(callout.id)] else { continue }
+                document.callouts.append(
+                    Callout(id: id, kind: Self.translated(callout.kind, dx: offset, dy: offset, movesSource: true)))
             }
         }
-        if ok { selection = created }
+        if ok { selection = Set(fresh.values).intersection(allItemIDs) }
     }
 
     /// Moves the selection by whole document pixels (arrow keys: 1, with Shift: 10).
@@ -716,6 +728,11 @@ public final class EditorModel {
         }
         var updated = preserved
         try change(&updated)
+        // `change` runs twice, so it must build the same document each time and touch nothing
+        // else: allocate IDs before `edit`. Only the source bindings may differ, by design.
+        assert(
+            Self.withoutBindings(trial) == Self.withoutBindings(updated),
+            "an edit closure built different documents on its trial and real passes")
         if changesLayers {
             if let refusal { throw refusal }
             let kept = Dictionary(uniqueKeysWithValues: preserved.masks.map { ($0.id, $0.sourceRegions) })
@@ -728,6 +745,12 @@ public final class EditorModel {
             }
         }
         return (preserved, updated)
+    }
+
+    private static func withoutBindings(_ document: Document) -> Document {
+        var copy = document
+        for index in copy.masks.indices { copy.masks[index].sourceRegions = [:] }
+        return copy
     }
 
     /// Before any edit: every mask other than `explicit` also binds the source pixels now under
