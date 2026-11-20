@@ -26,6 +26,8 @@ struct AppServices {
     let autoScroller: (any AutoScrollService)?
     let loginItem: any LoginItemService
     let clock: any FeatureClock
+    /// Nil in the E2E runner, which plays no sound.
+    var captureSound: (any CaptureSoundService)? = nil
 }
 
 final class SystemClock: FeatureClock {

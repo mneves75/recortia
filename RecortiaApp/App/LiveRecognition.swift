@@ -89,6 +89,6 @@ extension AppServices {
             folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
             qrDecoder: recognition, sensitiveText: LiveSensitiveText(store: store),
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
-            loginItem: LiveLoginItem(), clock: SystemClock())
+            loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound())
     }
 }

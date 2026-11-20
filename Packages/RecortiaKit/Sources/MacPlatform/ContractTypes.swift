@@ -61,6 +61,8 @@ public enum CaptureError: Error, Equatable, Sendable {
 public enum SinkError: Error, Equatable, Sendable {
     case clipboardWriteFailed
     case destinationExists
+    /// The name is longer than the destination's volume accepts.
+    case nameTooLong
     case accessDenied
     case diskFull
     case volumeUnavailable

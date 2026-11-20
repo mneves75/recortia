@@ -135,11 +135,16 @@ public struct ExportOptions: Hashable, Sendable, Codable {
     public var scale: Double
     /// JPEG has no alpha: transparency is flattened against this opaque color (FR-07).
     public var jpegBackground: RGBA
+    public var filenameTemplate: FilenameTemplate
 
-    public init(format: ExportFormat = .png, scale: Double = 1, jpegBackground: RGBA = .white) {
+    public init(
+        format: ExportFormat = .png, scale: Double = 1, jpegBackground: RGBA = .white,
+        filenameTemplate: FilenameTemplate = .default
+    ) {
         self.format = format
         self.scale = scale
         self.jpegBackground = jpegBackground
+        self.filenameTemplate = filenameTemplate
     }
 
     public static let validScaleRange: ClosedRange<Double> = 0.1...8
@@ -155,17 +160,9 @@ public struct ExportOptions: Hashable, Sendable, Codable {
     }
 }
 
-/// Screenshot filenames: timestamp only. Never window titles, recognized text, account IDs, or URLs (FR-07).
+/// Screenshot filenames come from a `FilenameTemplate`: never window titles, recognized text,
+/// account IDs, or URLs (FR-07).
 public enum ExportFilename {
-    public static func make(for date: Date, format: ExportFormat, timeZone: TimeZone = .current) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = timeZone
-        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-        return "Recortia \(formatter.string(from: date)).\(format.fileExtension)"
-    }
-
     /// `attempt` 1 returns `name`; later attempts insert " (n)" before the extension.
     public static func deduplicated(_ name: String, attempt: Int) -> String {
         guard attempt > 1 else { return name }
@@ -223,8 +220,25 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// Stored only once the person changes it; read `autoRedactsSensitiveText`. Optional for the
     /// same reason as `keepsRunningInMenuBarChoice`: blobs written before 0.15 have no such key.
     public var autoRedactsSensitiveTextChoice: Bool?
+    /// Stored only once the person sets one; read `filenameTemplate` (A-9).
+    public var filenameTemplateChoice: FilenameTemplate?
+    /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
+    public var playsCaptureSoundChoice: Bool?
 
     public init() {}
+
+    /// Whether a completed capture plays a short sound (FR-01). Off by default.
+    public var playsCaptureSound: Bool {
+        get { playsCaptureSoundChoice ?? false }
+        set { playsCaptureSoundChoice = newValue }
+    }
+
+    /// How saved and dragged files are named (FR-07). GitHub uploads keep their per-intent path
+    /// (ADR-006).
+    public var filenameTemplate: FilenameTemplate {
+        get { filenameTemplateChoice ?? .default }
+        set { filenameTemplateChoice = newValue }
+    }
 
     /// Whether Recortia stays in the menu bar after its last window closes (FR-01). On by default;
     /// off, closing the last window quits.
@@ -242,7 +256,7 @@ public struct Preferences: Hashable, Sendable, Codable {
 
     public var exportOptions: ExportOptions {
         let format: ExportFormat = defaultExportFormat == .png ? .png : .jpeg(quality: jpegQuality)
-        return ExportOptions(format: format, scale: defaultExportScale)
+        return ExportOptions(format: format, scale: defaultExportScale, filenameTemplate: filenameTemplate)
     }
 }
 

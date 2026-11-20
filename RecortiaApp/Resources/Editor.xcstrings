@@ -1,6 +1,36 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Nothing was saved: the file name is too long for that folder.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Nothing was saved: the file name is too long for that folder." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Nada foi salvo: o nome do arquivo é longo demais para essa pasta." } }
+      }
+    },
+    "Scrolling Capture %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scrolling Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura com rolagem %@" } }
+      }
+    },
+    "Pasted Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pasted Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem colada %@" } }
+      }
+    },
+    "Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem %@" } }
+      }
+    },
+    "Capture %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura %@" } }
+      }
+    },
     "Automatic masking did not finish, so nothing was masked. Check the image before you share it.": {
       "localizations": {
         "en": {
@@ -1589,22 +1619,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Formato"
-          }
-        }
-      }
-    },
-    "Recortia Editor": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recortia Editor"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Editor do Recortia"
           }
         }
       }

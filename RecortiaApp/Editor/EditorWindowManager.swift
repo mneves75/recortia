@@ -38,7 +38,8 @@ final class EditorWindowManager {
     /// Opens `session` in a new window, or brings its existing window forward.
     @discardableResult
     func open(
-        _ session: DocumentSession, environment: EditorEnvironment, initialAction: EditorInitialAction = .none
+        _ session: DocumentSession, environment: EditorEnvironment, importedFileName: String? = nil,
+        initialAction: EditorInitialAction = .none
     ) -> EditorModel {
         let id = session.document.id
         if let existing = controllers[id] {
@@ -47,7 +48,7 @@ final class EditorWindowManager {
         }
         let model = EditorModel(
             session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
-        let controller = EditorWindowController(model: model)
+        let controller = EditorWindowController(model: model, importedFileName: importedFileName)
         controller.onClosed = { [weak self] in self?.controllers[id] = nil }
         controllers[id] = controller
         controller.present()
@@ -71,14 +72,33 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     private let canvas: EditorCanvasView
     private var discardConfirmed = false
 
-    init(model: EditorModel, noticePresentation: EditorNoticePresentation = EditorNoticePresentation()) {
+    init(
+        model: EditorModel, importedFileName: String? = nil,
+        noticePresentation: EditorNoticePresentation = EditorNoticePresentation()
+    ) {
+        let openedAt = Date.now
         self.model = model
         canvas = EditorCanvasView(model: model)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.title = String(localized: "Recortia Editor", table: "Editor")
+        let origin = model.document.layers.first.flatMap { model.document.assets[$0.assetID]?.origin }
+        let time = Date.FormatStyle.dateTime.hour().minute()
+        switch origin {
+        case .captured(let geometry):
+            window.title = String(localized: "Capture \(geometry.capturedAt.formatted(time))", table: "Editor")
+        case .scrollCapture:
+            window.title = String(localized: "Scrolling Capture \(openedAt.formatted(time))", table: "Editor")
+        case .pasted:
+            window.title = String(localized: "Pasted Image \(openedAt.formatted(time))", table: "Editor")
+        case .imported, nil:
+            if let importedFileName, !importedFileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                window.title = importedFileName
+            } else {
+                window.title = String(localized: "Image \(openedAt.formatted(time))", table: "Editor")
+            }
+        }
         // The capture result follows the current Space, including another app's fullscreen
         // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
         window.collectionBehavior = SpacePolicy.followsActiveSpace
@@ -170,6 +190,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
     func present() {
         guard let window else { return }
+        let wasVisible = window.isVisible
         if NSApp.isHidden { NSApp.unhideWithoutActivation() }
         if window.isMiniaturized { window.deminiaturize(nil) }
         if !window.isVisible, let visible = targetScreen()?.visibleFrame {
@@ -185,6 +206,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         // Cooperative activation is asynchronous and can be declined. A completed, explicit
         // capture must still show its result; normal-level ordering does not force activation.
         if !NSApp.isActive { window.orderFrontRegardless() }
+        if !wasVisible {
+            canvas.firstDrawInterval = LatencySignposts.begin(.editorToFirstDraw)
+        }
     }
 
     private func targetScreen() -> NSScreen? {
@@ -279,10 +303,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     func saveImage() {
         commitPendingText()
         guard let window, exportSlotIsFree() else { return }
-        let format = model.environment.settings.preferences.exportOptions.format
+        let options = model.environment.settings.preferences.exportOptions
+        let format = options.format
         let panel = NSSavePanel()
         panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
-        panel.nameFieldStringValue = ExportFilename.make(for: Date(), format: format)
+        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: format).name(attempt: 1)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.beginSheetModal(for: window) { [weak self] response in

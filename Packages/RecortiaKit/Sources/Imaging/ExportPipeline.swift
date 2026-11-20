@@ -61,7 +61,7 @@ public struct ExportPipeline: Sendable {
         return ShareSnapshot(
             documentID: documentID, revision: revision, privacyEpoch: privacyEpoch, format: options.format,
             pixelSize: PixelSize(width: image.width, height: image.height), bytes: bytes,
-            suggestedFilename: ExportFilename.make(for: date, format: options.format))
+            filename: options.filenameTemplate.name(for: date, format: options.format))
     }
 }
 
