@@ -74,6 +74,25 @@ struct EditorRedactionTests {
         #expect(mask.sourceRegions[assetID] == [PixelRect(x: 5, y: 5, width: 11, height: 10)])
     }
 
+    @Test("A stationary click on a mask handle keeps the mask; a drag moves the edge by the pointer's delta")
+    func handleClickKeepsMask() throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let assetID = try #require(m.document.layers.first?.assetID)
+        m.selectTool(.select)
+        let historyBefore = m.session.undoCount
+        h.click(26, 20)
+        var mask = try #require(m.document.masks.first)
+        #expect(mask.outputRect == Rect(x: 10, y: 10, width: 20, height: 20))
+        #expect(m.session.undoCount == historyBefore)
+        h.drag((26, 20), (36, 20))
+        mask = try #require(m.document.masks.first)
+        #expect(mask.outputRect == Rect(x: 10, y: 10, width: 30, height: 20))
+        #expect(mask.sourceRegions[assetID] == [PixelRect(x: 10, y: 10, width: 30, height: 20)])
+    }
+
     @Test("A redaction over a layer whose transform cannot be inverted is refused")
     func unmappableLayerRefused() {
         let asset = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 100, height: 100), origin: .imported)

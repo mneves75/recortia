@@ -83,10 +83,11 @@ extension EditorModel {
                 return
             }
             replaceDocumentInGesture("Move", with: moved)
-        case .resize(let item, let handle, let frame, let original):
+        case .resize(let item, let handle, let frame, let original, let grab):
             var resized = original
+            let target = Point<DocumentSpace>(x: p.x + grab.dx, y: p.y + grab.dy)
             do {
-                try resize(&resized, item: item, handle: handle, frame: frame, to: p, modifiers: modifiers)
+                try resize(&resized, item: item, handle: handle, frame: frame, to: target, modifiers: modifiers)
             } catch {
                 if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
@@ -162,8 +163,12 @@ extension EditorModel {
     // MARK: Select tool
 
     private func beginSelectGesture(at p: Point<DocumentSpace>, modifiers: EditorModifiers) {
-        if let handle = handle(at: p), let item = selection.first, let frame = frame(of: item) {
-            gesture = .resize(item: item, handle: handle, frame: frame, original: document)
+        if let handle = handle(at: p), let item = selection.first, let frame = frame(of: item),
+            let point = selectionHandles.first(where: { $0.handle == handle })?.point
+        {
+            gesture = .resize(
+                item: item, handle: handle, frame: frame, original: document,
+                grab: (dx: point.x - p.x, dy: point.y - p.y))
             return
         }
         if let hit = item(at: p) {
