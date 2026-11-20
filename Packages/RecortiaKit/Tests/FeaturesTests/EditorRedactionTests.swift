@@ -93,6 +93,25 @@ struct EditorRedactionTests {
         #expect(mask.sourceRegions[assetID] == [PixelRect(x: 10, y: 10, width: 30, height: 20)])
     }
 
+    @Test("A click on a mask covering a magnifier selects the mask, which draws on top")
+    func maskOverMagnifierWinsHitTest() throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.magnifier)
+        h.drag((100, 100), (130, 120))
+        guard case .magnifier(_, let destination) = try #require(m.document.callouts.first).kind else {
+            Issue.record("expected a magnifier")
+            return
+        }
+        m.selectTool(.redact)
+        h.drag((destination.minX - 2, destination.minY - 2), (destination.maxX + 2, destination.maxY + 2))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.clearSelection()
+        h.click(destination.midX, destination.midY)
+        #expect(m.selection == [.mask(mask.id)])
+    }
+
     @Test("A redaction over a layer whose transform cannot be inverted is refused")
     func unmappableLayerRefused() {
         let asset = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 100, height: 100), origin: .imported)
