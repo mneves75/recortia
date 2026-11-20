@@ -643,6 +643,9 @@ public final class EditorModel {
     static func setMaskRect(_ document: inout Document, index: Int, _ rect: Rect<DocumentSpace>) throws {
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard EditorGeometry.isFinite(snapped), !snapped.isEmpty else { throw DocumentError.invalidGeometry }
+        // An unchanged rectangle keeps its binding: remapping it after its layer moved would drop
+        // the source pixels it still hides.
+        guard snapped != document.masks[index].outputRect else { return }
         document.masks[index].outputRect = snapped
         document.masks[index].sourceRegions = try document.sourceRegions(for: snapped)
     }
