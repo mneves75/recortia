@@ -36,29 +36,28 @@ struct FileSinkVolumeTests {
         }
     }
 
+    // R09 (adversarial review of T1a): a writer with access to the claimed file could change its
+    // bytes after Recortia wrote them without changing its size, and the save reported success.
     @Test(
-        "Without exclusive rename, a taken name is kept and a failed move releases the name it claimed",
+        "A claimed file changed after the snapshot was written into it is reported, not saved, and kept",
         arguments: ScratchVolume.Format.allCases)
-    func claimedMoveKeepsAndReleasesNames(format: ScratchVolume.Format) throws {
+    func claimChangedAfterWriteIsNotSaved(format: ScratchVolume.Format) throws {
         try ScratchVolume.withMounted(format) { folder in
-            let taken = folder.appendingPathComponent("taken.png")
-            try priorBytes.write(to: taken)
-            let source = folder.appendingPathComponent(".recortia-source.tmp")
-            try snapshot.bytes.write(to: source)
-            #expect(throws: FileSystemFailure(code: EEXIST)) {
-                try POSIXFileSystem.claimThenWrite(from: source, to: taken)
+            let url = folder.appendingPathComponent("shot.png")
+            let tampered = Data(repeating: 0x41, count: snapshot.bytes.count)
+            var changed = false
+            let fileSystem = POSIXFileSystem(afterClaimWrite: { claimed in
+                guard let handle = try? FileHandle(forUpdating: claimed) else { return }
+                changed = (try? handle.seek(toOffset: 0)) != nil && (try? handle.write(contentsOf: tampered)) != nil
+                try? handle.synchronize()
+                try? handle.close()
+            })
+            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
             }
-            #expect(try Data(contentsOf: taken) == priorBytes)
-            // The rename fails after the claim when its source is gone.
-            let missing = folder.appendingPathComponent(".recortia-missing.tmp")
-            let free = folder.appendingPathComponent("free.png")
-            #expect(throws: FileSystemFailure(code: ENOENT)) {
-                try POSIXFileSystem.claimThenWrite(from: missing, to: free)
-            }
-            #expect(!FileManager.default.fileExists(atPath: free.path), "an empty claimed file was left behind")
-            try POSIXFileSystem.claimThenWrite(from: source, to: free)
-            #expect(try Data(contentsOf: free) == snapshot.bytes)
-            #expect(TestSupport.directoryEntries(folder) == ["free.png", "taken.png"])
+            try #require(changed, "control: the claimed file was never changed")
+            #expect(try Data(contentsOf: url) == tampered, "a file Recortia did not finish was removed or changed")
+            #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a stage was left behind")
         }
     }
 
@@ -112,7 +111,7 @@ struct FileSinkVolumeTests {
             let decoy = folder.appendingPathComponent("decoy.txt")
             try Data("another file".utf8).write(to: decoy)
             var substituted = false
-            let fileSystem = InterposingFileSystem { temporary in
+            let fileSystem = POSIXFileSystem.interposing { temporary in
                 // Another account renames its own file over the temporary name.
                 substituted =
                     rename(decoy.path(percentEncoded: false), temporary.path(percentEncoded: false)) == 0

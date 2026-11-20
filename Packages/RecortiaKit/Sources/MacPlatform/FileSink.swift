@@ -2,41 +2,46 @@ import Darwin
 import Domain
 import Foundation
 
+// Threat model (program 2026-11, T1a security review). In scope: another user, or a process
+// without the person's access, that can write to the chosen destination folder (a shared or
+// group-writable folder, a FAT volume). Out of scope: a process running as the same user, which
+// can already read everything the user can. Within scope a save never publishes bytes other than
+// the sanitized snapshot, never publishes with permissions wider than the destination's, never
+// follows a symbolic link, and never deletes a file it did not create.
+//
+// The folder is bound once as a descriptor; every create, metadata read, publish and cleanup is
+// relative to it, never by pathname. The bytes are staged in a private folder (0700, no ACL)
+// created inside it, which no other user can enter, so nobody else can read or substitute the
+// stage; the stage gets its final access just before one rename publishes it, after its identity
+// is checked. exFAT and FAT32 have neither exclusive rename nor private folders: a new file there
+// is written straight into an exclusively created file and read back before success is reported.
+
 public struct FileSink {
-    private let fileSystem: any FileSystemOperations
+    private let fileSystem: POSIXFileSystem
 
     /// Upper bound on collision attempts in `saveUnique`, so a hostile folder cannot spin forever.
     static let maxUniqueAttempts = 1_000
 
-    public init(fileManager: FileManager = .default) {
-        self.init(fileSystem: POSIXFileSystem(fileManager: fileManager))
+    public init() {
+        self.init(fileSystem: POSIXFileSystem())
     }
 
-    init(fileSystem: any FileSystemOperations) {
+    init(fileSystem: POSIXFileSystem) {
         self.fileSystem = fileSystem
     }
 
-    /// Writes the snapshot to a user-selected `url` (FR-07, EXP-02). The bytes go to a temporary
-    /// file in the same directory, then an atomic rename commits them. Without `overwrite`, an
+    /// Writes the snapshot to a user-selected `url` (FR-07, EXP-02). Without `overwrite`, an
     /// existing destination is refused, including one created concurrently. On any failure the
-    /// previous destination is untouched and removing the temporary file is attempted.
+    /// previous destination is untouched and the staged bytes are removed.
     public func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) throws(SinkError) -> URL {
-        guard url.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
-        if !overwrite, fileSystem.itemExists(at: url) { throw .destinationExists }
-        // A replaced file may be private: write it owner-only and let `replace` copy its access.
-        let replacing = overwrite && fileSystem.itemExists(at: url)
-        let (temporary, identity) = try writeTemporary(
-            snapshot, in: url.deletingLastPathComponent(), access: replacing ? .replacement : .newFile)
-        do {
-            if overwrite {
-                try fileSystem.replace(from: temporary, to: url, expecting: identity)
-            } else {
-                try fileSystem.moveExclusively(from: temporary, to: url)
-            }
-        } catch {
-            fileSystem.removeItem(at: temporary)
-            throw Self.map(error)
+        let name = url.lastPathComponent
+        guard url.isFileURL, !name.isEmpty, name != ".", name != "..", !name.contains("/") else {
+            throw .writeFailed(code: Int(EINVAL))
         }
+        do {
+            _ = try fileSystem.save(
+                snapshot.bytes, in: url.deletingLastPathComponent(), names: [name], overwrite: overwrite)
+        } catch { throw Self.map(error) }
         return url
     }
 
@@ -45,35 +50,11 @@ public struct FileSink {
     public func saveUnique(_ snapshot: ShareSnapshot, in folder: URL) throws(SinkError) -> URL {
         guard folder.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
         let name = SafeFilename.sanitize(snapshot.suggestedFilename, fallbackExtension: snapshot.format.fileExtension)
-        let (temporary, _) = try writeTemporary(snapshot, in: folder, access: .newFile)
-        for attempt in 1...Self.maxUniqueAttempts {
-            let candidate = folder.appendingPathComponent(
-                ExportFilename.deduplicated(name, attempt: attempt), isDirectory: false)
-            do {
-                try fileSystem.moveExclusively(from: temporary, to: candidate)
-                return candidate
-            } catch  where error.code == EEXIST {
-                continue
-            } catch {
-                fileSystem.removeItem(at: temporary)
-                throw Self.map(error)
-            }
-        }
-        fileSystem.removeItem(at: temporary)
-        throw .destinationExists
-    }
-
-    private func writeTemporary(_ snapshot: ShareSnapshot, in folder: URL, access: TemporaryFileAccess)
-        throws(SinkError) -> (URL, FileIdentity)
-    {
-        let temporary = folder.appendingPathComponent(".recortia-\(UUID().uuidString).tmp", isDirectory: false)
+        let names = (1...Self.maxUniqueAttempts).map { ExportFilename.deduplicated(name, attempt: $0) }
         do {
-            let identity = try fileSystem.writeNewFile(snapshot.bytes, at: temporary, access: access)
-            return (temporary, identity)
-        } catch {
-            fileSystem.removeItem(at: temporary)
-            throw Self.map(error)
-        }
+            let saved = try fileSystem.save(snapshot.bytes, in: folder, names: names, overwrite: false)
+            return folder.appendingPathComponent(saved, isDirectory: false)
+        } catch { throw Self.map(error) }
     }
 
     static func map(_ failure: FileSystemFailure) -> SinkError {
@@ -87,122 +68,300 @@ public struct FileSink {
     }
 }
 
-// MARK: - File-system seam
+// MARK: - File system
 
 struct FileSystemFailure: Error, Equatable, Sendable {
     let code: Int32
 }
 
-/// What the temporary file becomes. Either way its bytes are written while it is owner-only and
-/// without the ACL entries it inherited from its folder; those entries are removed right after
-/// creation, before the first byte.
-enum TemporaryFileAccess: Equatable, Sendable {
-    /// It will replace an existing file: it stays so until `replace` gives it the replaced file's
-    /// access.
-    case replacement
-    /// It will become a new file: once written, it gets back the entries the folder gives any file
-    /// created in it, then the mode a file created with 0644 gets under the umask.
-    case newFile
-}
-
-/// The written file itself, so later metadata changes reach it and not whatever its name points to.
+/// A file or folder by device and inode, so a check reaches the object and not whatever its name
+/// now leads to.
 struct FileIdentity: Equatable, Sendable {
     let device: dev_t
     let inode: ino_t
-}
 
-/// The few file operations the sink needs, reporting POSIX error codes so failures map precisely.
-protocol FileSystemOperations {
-    /// Creates `url` exclusively (fails if it exists), writes all bytes, flushes them to disk,
-    /// gives the file the access `access` describes, and returns the created file's identity.
-    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure) -> FileIdentity
-    /// Moves `source` to `destination`, failing with EEXIST if `destination` exists or another
-    /// writer reaches it first: an atomic rename, or on volumes without one a write into an
-    /// exclusively created file (`claimThenWrite`).
-    func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure)
-    /// Atomically renames, replacing `destination` if it exists and keeping its permission bits and
-    /// ACL. Fails with EPERM, leaving `destination` untouched, unless `source` still names the
-    /// file `identity` describes and nothing else does.
-    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure)
-    /// Best-effort cleanup of a temporary file.
-    func removeItem(at url: URL)
-    func itemExists(at url: URL) -> Bool
-}
-
-struct POSIXFileSystem: FileSystemOperations {
-    /// Reported when the temporary file's name no longer leads to the written file alone.
-    static let substitutedFailure = FileSystemFailure(code: EPERM)
-
-    private let fileManager: FileManager
-    /// Test seam: runs once the bytes are on disk, before a new file gets its final access.
-    private let afterSync: (URL) -> Void
-    /// Test seam: runs after each change `replace` makes to the temporary file's mode or ACL.
-    private let afterReplaceStep: (URL) -> Void
-    /// Test seam: gives the open temporary file a group, returning 0 or -1 with `errno` like fchown(2).
-    private let changeGroup: (Int32, gid_t) -> Int32
-    /// Test seam: runs once a volume without exclusive rename has claimed the destination name.
-    private let afterClaim: (URL) -> Void
-
-    init(
-        fileManager: FileManager = .default, afterSync: @escaping (URL) -> Void = { _ in },
-        afterReplaceStep: @escaping (URL) -> Void = { _ in },
-        changeGroup: @escaping (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) },
-        afterClaim: @escaping (URL) -> Void = { _ in }
-    ) {
-        self.fileManager = fileManager
-        self.afterSync = afterSync
-        self.afterReplaceStep = afterReplaceStep
-        self.changeGroup = changeGroup
-        self.afterClaim = afterClaim
+    init(_ status: stat) {
+        device = status.st_dev
+        inode = status.st_ino
     }
+}
 
-    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
-        -> FileIdentity
-    {
-        let newFileMode = access == .newFile ? try newFileMode() : nil
-        let descriptor = open(url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
-        guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
-        var failure: Int32?
-        var inherited: acl_t?
-        if failure == nil {
-            do throws(FileSystemFailure) {
-                inherited = try Self.takeInheritedACL(descriptor)
-            } catch {
-                failure = error.code
+/// The POSIX operations behind `FileSink`, reporting error codes so failures map precisely. The
+/// closures and injected codes are test seams; the app uses the defaults.
+struct POSIXFileSystem {
+    /// Reported when a name no longer leads to the object Recortia holds, or leads to a link.
+    static let substitutedFailure = FileSystemFailure(code: EPERM)
+    /// The stage's name inside its private folder.
+    static let stageName = "stage"
+
+    /// Runs once the stage's bytes are on disk, while it is still owner-only and without an ACL.
+    var afterSync: (URL) -> Void = { _ in }
+    /// Runs before the destination is examined and the stage is published.
+    var beforePublish: (URL) -> Void = { _ in }
+    /// Runs after each change an overwrite makes to the stage's mode or ACL.
+    var afterReplaceStep: (URL) -> Void = { _ in }
+    /// Gives the open stage a group, returning 0 or -1 with `errno` like fchown(2).
+    var changeGroup: (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) }
+    /// Runs once a volume without exclusive rename has claimed the destination name.
+    var afterClaim: (URL) -> Void = { _ in }
+    /// Runs once the snapshot is written into such a claimed file, before it is flushed.
+    var afterClaimWrite: (URL) -> Void = { _ in }
+    /// Fails the stage's write with this code after its first bytes.
+    var failWrite: Int32?
+    /// Fails the publishing rename with this code.
+    var failPublish: Int32?
+
+    /// Writes `data` under the first of `names` that it can take in `folder`, or replaces
+    /// `names[0]` when `overwrite` allows, and returns the name used. Without `overwrite`, a taken
+    /// name moves on to the next; when none is left the save fails with EEXIST.
+    func save(_ data: Data, in folder: URL, names: [String], overwrite: Bool) throws(FileSystemFailure) -> String {
+        let directory = try Self.openFolder(folder)
+        defer { close(directory) }
+        let stage = try Stage(in: directory, folder: folder, data: data, fileSystem: self)
+        defer { stage.remove() }
+        beforePublish(stage.url)
+        for name in names {
+            do {
+                try publish(stage, data: data, as: name, in: directory, folder: folder, overwrite: overwrite)
+                return name
+            } catch  where error.code == EEXIST && !overwrite {
+                continue
             }
         }
-        defer { if let inherited { acl_free(UnsafeMutableRawPointer(inherited)) } }
-        if failure == nil { failure = Self.writeAll(data, to: descriptor) }
-        if failure == nil, fsync(descriptor) != 0 { failure = errno }
-        // Identity once the bytes are on disk: exFAT and FAT number a file by its first cluster,
-        // so an empty new file carries a placeholder number that changes with its first write.
-        var status = stat()
-        if failure == nil, fstat(descriptor, &status) != 0 { failure = errno }
-        if failure == nil { afterSync(url) }
-        if failure == nil, access == .newFile, let inherited,
-            acl_set_fd_np(descriptor, inherited, ACL_TYPE_EXTENDED) != 0
-        {
-            failure = errno
+        throw FileSystemFailure(code: EEXIST)
+    }
+
+    // MARK: Folder
+
+    /// The approved folder as a descriptor: not a link, and the folder its path names now, so a
+    /// renamed ancestor cannot redirect the save. macOS's own /var, /tmp and /etc links lead to
+    /// /private.
+    static func openFolder(_ url: URL) throws(FileSystemFailure) -> Int32 {
+        var path = url.standardizedFileURL.path(percentEncoded: false)
+        while path.count > 1, path.hasSuffix("/") { path.removeLast() }
+        let directory = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard directory >= 0 else {
+            throw errno == ELOOP || errno == ENOTDIR ? substitutedFailure : FileSystemFailure(code: errno)
         }
-        // Mode last, after any inherited deny entry is back. Best effort, like `replace`: a volume
-        // that refuses it keeps the file owner-only.
-        if failure == nil, let newFileMode { _ = fchmod(descriptor, newFileMode) }
-        if close(descriptor) != 0, failure == nil { failure = errno }
-        if let failure { throw FileSystemFailure(code: failure) }
-        return FileIdentity(device: status.st_dev, inode: status.st_ino)
+        var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+        guard fcntl(directory, F_GETPATH, &buffer) == 0 else {
+            let failure = errno
+            close(directory)
+            throw FileSystemFailure(code: failure)
+        }
+        let actual = String(cString: buffer).precomposedStringWithCanonicalMapping
+        let expected = path.precomposedStringWithCanonicalMapping
+        let systemLink = ["/var/", "/tmp/", "/etc/"].contains { expected.hasPrefix($0) }
+        guard actual == expected || (systemLink && actual == "/private" + expected) else {
+            close(directory)
+            throw substitutedFailure
+        }
+        return directory
+    }
+
+    // MARK: Publishing
+
+    private func publish(
+        _ stage: Stage, data: Data, as name: String, in directory: Int32, folder: URL, overwrite: Bool
+    ) throws(FileSystemFailure) {
+        var existing = stat()
+        if fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
+            guard overwrite else { throw FileSystemFailure(code: EEXIST) }
+            // Never through a link, and never over a folder or a device.
+            guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
+            try replace(stage, named: name, in: directory)
+            return
+        }
+        guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
+        try stage.giveNewFileAccess(in: directory)
+        try stage.checkStillStaged()
+        if let failPublish { throw FileSystemFailure(code: failPublish) }
+        if renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 { return }
+        let failure = errno
+        // exFAT and FAT have no exclusive rename; they still report EEXIST for a taken name.
+        guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
+        try claimThenWrite(data, as: name, in: directory, folder: folder)
+    }
+
+    /// Gives the stage the destination's ACL, group and mode, all read from one descriptor that
+    /// does not follow a link, then swaps it in. The swapped-out entry is removed only while it is
+    /// that same destination; otherwise the swap is undone.
+    private func replace(_ stage: Stage, named name: String, in directory: Int32) throws(FileSystemFailure) {
+        let destination = openat(directory, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard destination >= 0 else {
+            throw errno == ELOOP ? Self.substitutedFailure : FileSystemFailure(code: errno)
+        }
+        // Read-only and used for metadata only: closing it cannot lose data.
+        defer { close(destination) }
+        var existing = stat()
+        guard fstat(destination, &existing) == 0 else { throw FileSystemFailure(code: errno) }
+        guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
+        let replaced = FileIdentity(existing)
+        // ACL first, so a deny entry is in effect before the mode can widen access.
+        let copiedACL = try Self.copyACL(from: destination, to: stage.file)
+        afterReplaceStep(stage.url)
+        var mode = existing.st_mode & 0o777
+        var written = stat()
+        guard fstat(stage.file, &written) == 0 else { throw FileSystemFailure(code: errno) }
+        // A group that cannot be kept leaves the file owner-only: dropping only the group bits
+        // could move a member of the old group into the "other" class.
+        if written.st_gid != existing.st_gid, changeGroup(stage.file, existing.st_gid) != 0 {
+            mode &= 0o700
+        }
+        // Best effort: a volume that refuses chmod keeps the owner-only staging mode.
+        _ = fchmod(stage.file, mode)
+        afterReplaceStep(stage.url)
+        do throws(FileSystemFailure) {
+            try stage.checkStillStaged()
+            if let failPublish { throw FileSystemFailure(code: failPublish) }
+            try swap(stage, with: name, in: directory, replacing: replaced)
+        } catch {
+            // The copied ACL can deny this user deleting the stage (an entry that denies delete
+            // is also why the rename failed); drop it so cleanup works. Owner-only first, so
+            // dropping a deny entry never widens access.
+            if copiedACL {
+                _ = fchmod(stage.file, 0o600)
+                afterReplaceStep(stage.url)
+                try? Self.clearACL(stage.file)
+                afterReplaceStep(stage.url)
+            }
+            throw error
+        }
+    }
+
+    private func swap(_ stage: Stage, with name: String, in directory: Int32, replacing replaced: FileIdentity)
+        throws(FileSystemFailure)
+    {
+        if renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
+            // The stage's name now holds what was at `name`: the confirmed file, removed as the
+            // overwrite the person approved.
+            if Self.entry(Self.stageName, in: stage.folder, is: replaced, type: S_IFREG) {
+                _ = unlinkat(stage.folder, Self.stageName, 0)
+                return
+            }
+            // Something replaced the destination after its access was read: put it back.
+            _ = renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP))
+            throw Self.substitutedFailure
+        }
+        let failure = errno
+        // Volumes without swap (exFAT, FAT32, some network volumes) replace by plain rename; the
+        // destination may change between reading its access and this rename there.
+        guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
+        try stage.checkStillStaged()
+        if renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
+    }
+
+    /// A new file where the volume has no exclusive rename: an exclusive create claims `name` and
+    /// the snapshot buffer is appended to that claimed file through its descriptor, so no rename
+    /// can replace a file another writer puts there. Success only if, once on disk, the file read
+    /// back through the descriptor is exactly `data` and the name still leads to it. A claim that
+    /// was not empty when writing began, or that the name no longer leads to, is EEXIST. The name
+    /// is removed only after an I/O failure, once bytes were written, while it still leads to the
+    /// claimed file; a read-back mismatch leaves it.
+    private func claimThenWrite(_ data: Data, as name: String, in directory: Int32, folder: URL)
+        throws(FileSystemFailure)
+    {
+        let mode = try Self.newFileMode()
+        let claim = openat(directory, name, O_RDWR | O_APPEND | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        guard claim >= 0 else { throw FileSystemFailure(code: errno) }
+        afterClaim(folder.appendingPathComponent(name, isDirectory: false))
+        var written = 0
+        var failure: Int32?
+        var removable = false
+        var status = stat()
+        if fstat(claim, &status) != 0 {
+            failure = errno
+        } else if status.st_size != 0 {
+            failure = EEXIST
+        }
+        if failure == nil {
+            failure = Self.writeAll(data, to: claim, written: &written)
+            removable = failure != nil
+        }
+        if failure == nil { afterClaimWrite(folder.appendingPathComponent(name, isDirectory: false)) }
+        // Best effort: these volumes keep a mount-wide mode anyway.
+        if failure == nil { _ = fchmod(claim, mode) }
+        if failure == nil, fsync(claim) != 0 {
+            failure = errno
+            removable = true
+        }
+        if failure == nil, !Self.readBack(claim, equals: data) { failure = EIO }
+        var identity: FileIdentity?
+        if fstat(claim, &status) == 0 { identity = FileIdentity(status) }
+        let named = identity.map { Self.entry(name, in: directory, is: $0, type: S_IFREG) } ?? false
+        if failure == nil, !named { failure = EEXIST }
+        if close(claim) != 0, failure == nil {
+            failure = errno
+            removable = true
+        }
+        guard let failure else { return }
+        if removable, written > 0, let identity, Self.entry(name, in: directory, is: identity, type: S_IFREG) {
+            unlinkat(directory, name, 0)
+        }
+        throw FileSystemFailure(code: failure)
+    }
+
+    // MARK: Helpers
+
+    /// Whether `name` in `directory` is, without following a link, the object `identity` names,
+    /// of `type`, and (for a file) its only name.
+    static func entry(_ name: String, in directory: Int32, is identity: FileIdentity, type: mode_t) -> Bool {
+        var status = stat()
+        guard fstatat(directory, name, &status, AT_SYMLINK_NOFOLLOW) == 0 else { return false }
+        return status.st_mode & S_IFMT == type && FileIdentity(status) == identity
+            && (type != S_IFREG || status.st_nlink == 1)
+    }
+
+    /// Whether the file open as `descriptor` holds exactly `data`.
+    private static func readBack(_ descriptor: Int32, equals data: Data) -> Bool {
+        var status = stat()
+        guard fstat(descriptor, &status) == 0, status.st_size == off_t(data.count) else { return false }
+        var buffer = Data(count: data.count)
+        var offset = 0
+        while offset < data.count {
+            // Invariant: each read stays within the `data.count` bytes `buffer` holds.
+            let count = buffer.withUnsafeMutableBytes { bytes in
+                pread(descriptor, bytes.baseAddress.map { $0 + offset }, data.count - offset, off_t(offset))
+            }
+            if count < 0, errno == EINTR { continue }
+            guard count > 0 else { return false }
+            offset += count
+        }
+        return buffer == data
+    }
+
+    /// Writes all of `data` (or its first `failAfter` bytes), retrying interrupted writes and
+    /// counting each successful one in `written` at once. Returns the first other write(2) error
+    /// code, or nil once everything asked for is written.
+    static func writeAll(_ data: Data, to descriptor: Int32, written: inout Int, failAfter: Int? = nil) -> Int32? {
+        // Invariant: `buffer` is valid only inside the closure; every access stays within
+        // `buffer.count` because `written` only advances by what write(2) reports it wrote.
+        data.withUnsafeBytes { buffer -> Int32? in
+            guard let base = buffer.baseAddress else { return nil }
+            let end = min(buffer.count, failAfter ?? buffer.count)
+            while written < end {
+                let result = Darwin.write(descriptor, base + written, end - written)
+                if result < 0 {
+                    if errno == EINTR { continue }
+                    return errno
+                }
+                written += result
+            }
+            return nil
+        }
     }
 
     /// The mode open(2) gives a file requested as 0644 under the current umask, which is the mode
     /// a new save gets. Reading the umask needs macOS 27 or a process-wide change that other
     /// threads would see, so an empty probe file is created and removed in this user's temporary
     /// folder instead.
-    private func newFileMode() throws(FileSystemFailure) -> mode_t {
-        let probe = fileManager.temporaryDirectory.appendingPathComponent(
+    static func newFileMode() throws(FileSystemFailure) -> mode_t {
+        let probe = FileManager.default.temporaryDirectory.appendingPathComponent(
             ".recortia-mode-\(UUID().uuidString)", isDirectory: false
         ).path(percentEncoded: false)
-        let descriptor = open(probe, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o644)
+        let descriptor = open(probe, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o644)
         guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
-        unlink(probe)
+        Darwin.unlink(probe)
         var status = stat()
         let result = fstat(descriptor, &status)
         let failure = errno
@@ -211,249 +370,146 @@ struct POSIXFileSystem: FileSystemOperations {
         return status.st_mode & 0o777
     }
 
-    /// Retries interrupted writes. Returns the first non-EINTR write(2) error code, or nil once
-    /// every byte is written.
-    private static func writeAll(_ data: Data, to descriptor: Int32) -> Int32? {
-        // Invariant: `buffer` is valid only inside the closure; every access stays within
-        // `buffer.count` because `offset` only advances by what write(2) reports it wrote.
-        data.withUnsafeBytes { buffer -> Int32? in
-            guard let base = buffer.baseAddress else { return nil }
-            var offset = 0
-            while offset < buffer.count {
-                let written = Darwin.write(descriptor, base + offset, buffer.count - offset)
-                if written < 0 {
-                    if errno == EINTR { continue }
-                    return errno
-                }
-                offset += written
-            }
-            return nil
-        }
-    }
-
-    /// Removes, through the descriptor, the ACL a new file inherited from its folder and returns it
-    /// for the caller to free; nil when there was none or the volume has no ACLs.
-    private static func takeInheritedACL(_ descriptor: Int32) throws(FileSystemFailure) -> acl_t? {
-        guard let inherited = acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED) else {
-            if errno == ENOENT || errno == ENOTSUP { return nil }
+    /// Gives `target` the ACL of the open `source`. Returns whether an ACL was applied; a source
+    /// without one leaves `target` as it is.
+    static func copyACL(from source: Int32, to target: Int32) throws(FileSystemFailure) -> Bool {
+        guard let acl = acl_get_fd_np(source, ACL_TYPE_EXTENDED) else {
+            // ENOENT: the file has no ACL; ENOTSUP: the volume has no ACLs at all.
+            if errno == ENOENT || errno == ENOTSUP { return false }
             throw FileSystemFailure(code: errno)
-        }
-        do throws(FileSystemFailure) {
-            try clearACL(descriptor)
-        } catch {
-            acl_free(UnsafeMutableRawPointer(inherited))
-            throw error
-        }
-        return inherited
-    }
-
-    func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
-        let result = renamex_np(
-            source.path(percentEncoded: false), destination.path(percentEncoded: false), UInt32(RENAME_EXCL))
-        if result == 0 { return }
-        let failure = errno
-        // exFAT and FAT have no exclusive rename; they still report EEXIST for a taken name.
-        guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
-        try Self.claimThenWrite(from: source, to: destination, afterClaim: afterClaim)
-    }
-
-    /// The exclusive move where the volume lacks one (exFAT, FAT32): an exclusive create claims
-    /// `destination` and the bytes are appended to that claimed file through its descriptor, so
-    /// no rename can replace a file another writer puts at the name. Fails with EEXIST, leaving
-    /// the name alone, unless the claim is still empty when writing starts and the name still
-    /// leads to it, holding exactly the bytes written here, once they are on disk. On any other
-    /// failure the name is removed only under that same condition. On success the source is
-    /// removed, best effort.
-    static func claimThenWrite(from source: URL, to destination: URL, afterClaim: (URL) -> Void = { _ in })
-        throws(FileSystemFailure)
-    {
-        let input = open(source.path(percentEncoded: false), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard input >= 0 else { throw FileSystemFailure(code: errno) }
-        defer { close(input) }
-        var sourceStatus = stat()
-        guard fstat(input, &sourceStatus) == 0 else { throw FileSystemFailure(code: errno) }
-        guard sourceStatus.st_mode & S_IFMT == S_IFREG else { throw substitutedFailure }
-        let path = destination.path(percentEncoded: false)
-        // Append-only: bytes another writer put in the claim are never overwritten.
-        let claim = open(path, O_WRONLY | O_APPEND | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
-        guard claim >= 0 else { throw FileSystemFailure(code: errno) }
-        afterClaim(destination)
-        var written: off_t = 0
-        var failure: Int32?
-        var status = stat()
-        if fstat(claim, &status) != 0 {
-            failure = errno
-        } else if status.st_size != 0 {
-            failure = EEXIST
-        }
-        if failure == nil { failure = copyAll(from: input, to: claim, written: &written) }
-        // Best effort, like `replace`: these volumes keep a mount-wide mode anyway.
-        if failure == nil { _ = fchmod(claim, sourceStatus.st_mode & 0o777) }
-        if failure == nil, fsync(claim) != 0 { failure = errno }
-        let ours = isOnlyWrittenFile(at: path, descriptor: claim, size: written)
-        if failure == nil, !ours { failure = EEXIST }
-        if close(claim) != 0, failure == nil { failure = errno }
-        if let failure {
-            if ours { unlink(path) }
-            throw FileSystemFailure(code: failure)
-        }
-        _ = unlink(source.path(percentEncoded: false))
-    }
-
-    /// Copies everything `input` holds to `output`, retrying interrupted calls. Returns the first
-    /// other read(2) or write(2) error code, or nil once all bytes are written.
-    private static func copyAll(from input: Int32, to output: Int32, written: inout off_t) -> Int32? {
-        var buffer = [UInt8](repeating: 0, count: 64 * 1024)
-        while true {
-            let count = buffer.withUnsafeMutableBytes { read(input, $0.baseAddress, $0.count) }
-            if count < 0 {
-                if errno == EINTR { continue }
-                return errno
-            }
-            if count == 0 { return nil }
-            // Invariant: every access stays within the `count` bytes read(2) reported.
-            let failure = buffer.withUnsafeBytes { bytes -> Int32? in
-                guard let base = bytes.baseAddress else { return nil }
-                var offset = 0
-                while offset < count {
-                    let result = Darwin.write(output, base + offset, count - offset)
-                    if result < 0 {
-                        if errno == EINTR { continue }
-                        return errno
-                    }
-                    offset += result
-                }
-                return nil
-            }
-            if let failure { return failure }
-            written += off_t(count)
-        }
-    }
-
-    /// Whether `path` is still the regular file open as `descriptor` and holds exactly `size`
-    /// bytes. exFAT and FAT renumber a file at its first write, so both sides are read now.
-    private static func isOnlyWrittenFile(at path: String, descriptor: Int32, size: off_t) -> Bool {
-        var opened = stat()
-        var named = stat()
-        guard fstat(descriptor, &opened) == 0, lstat(path, &named) == 0 else { return false }
-        return named.st_mode & S_IFMT == S_IFREG && named.st_dev == opened.st_dev && named.st_ino == opened.st_ino
-            && opened.st_size == size && named.st_size == size
-    }
-
-    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {
-        let descriptor = try Self.openWritten(source, expecting: identity)
-        // Read-only and used for metadata only: closing it cannot lose data.
-        defer { close(descriptor) }
-        var existing = stat()
-        var copiedACL = false
-        if stat(destination.path(percentEncoded: false), &existing) == 0 {
-            // ACL first, so a deny entry is in effect before the mode can widen access.
-            copiedACL = try copyACL(from: destination, to: descriptor)
-            afterReplaceStep(source)
-            // The temporary file took its folder's group; the destination's group permission must
-            // not pass to that group. While still owner-only, give it the destination's group, or,
-            // when that is refused, grant no group access at all.
-            var mode = existing.st_mode & 0o777
-            var written = stat()
-            guard fstat(descriptor, &written) == 0 else { throw FileSystemFailure(code: errno) }
-            if written.st_gid != existing.st_gid, changeGroup(descriptor, existing.st_gid) != 0 {
-                mode &= ~mode_t(0o070)
-            }
-            // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
-            _ = fchmod(descriptor, mode)
-            afterReplaceStep(source)
-        } else if errno != ENOENT {
-            throw FileSystemFailure(code: errno)
-        }
-        if rename(source.path(percentEncoded: false), destination.path(percentEncoded: false)) != 0 {
-            let failure = errno
-            // The copied ACL can deny this user deleting the temporary file as well (an entry that
-            // denies delete is also why the rename failed); drop it so the caller's cleanup works.
-            // Owner-only first, so dropping a deny entry never widens access. Best effort, before
-            // cleanup of a failure that is already being reported.
-            if copiedACL {
-                _ = fchmod(descriptor, 0o600)
-                afterReplaceStep(source)
-                try? Self.clearACL(descriptor)
-                afterReplaceStep(source)
-            }
-            throw FileSystemFailure(code: failure)
-        }
-    }
-
-    /// Opens `url` for metadata changes only while it names the written file and nothing else: not
-    /// a link (O_NOFOLLOW) or a FIFO (O_NONBLOCK, then the regular-file check), the same device and
-    /// inode, and a single name, so a link planted by another account cannot redirect them.
-    private static func openWritten(_ url: URL, expecting identity: FileIdentity) throws(FileSystemFailure) -> Int32 {
-        let descriptor = open(url.path(percentEncoded: false), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard descriptor >= 0 else {
-            throw errno == ELOOP ? substitutedFailure : FileSystemFailure(code: errno)
-        }
-        var status = stat()
-        guard fstat(descriptor, &status) == 0 else {
-            let failure = errno
-            close(descriptor)
-            throw FileSystemFailure(code: failure)
-        }
-        guard status.st_mode & S_IFMT == S_IFREG, status.st_dev == identity.device,
-            status.st_ino == identity.inode, status.st_nlink == 1
-        else {
-            close(descriptor)
-            throw substitutedFailure
-        }
-        return descriptor
-    }
-
-    /// A replaced file in a shared folder may carry its own ACL entries; the new file must keep
-    /// them. If they cannot be copied, the replace fails and the destination stays as it was.
-    /// Returns whether an ACL was applied to the temporary file.
-    private func copyACL(from destination: URL, to descriptor: Int32) throws(FileSystemFailure) -> Bool {
-        guard let acl = acl_get_file(destination.path(percentEncoded: false), ACL_TYPE_EXTENDED) else {
-            // ENOTSUP: the volume has no ACLs at all.
-            if errno == ENOTSUP { return false }
-            guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
-            // The file has no ACL, so the replacement must have none either. It can carry its
-            // folder's inherited entries when it was staged as a new file because the destination
-            // was missing then and came back before this commit.
-            try Self.dropStagedACL(descriptor)
-            return false
         }
         defer { acl_free(UnsafeMutableRawPointer(acl)) }
-        if acl_set_fd_np(descriptor, acl, ACL_TYPE_EXTENDED) != 0 {
-            throw FileSystemFailure(code: errno)
-        }
+        if acl_set_fd_np(target, acl, ACL_TYPE_EXTENDED) != 0 { throw FileSystemFailure(code: errno) }
         return true
     }
 
-    /// Removes the staged file's ACL, if it has one, after making it owner-only, so removing an
-    /// inherited deny entry never widens access. Fails rather than clear entries at a broader mode.
-    private static func dropStagedACL(_ descriptor: Int32) throws(FileSystemFailure) {
-        guard let staged = acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED) else {
-            if errno == ENOENT || errno == ENOTSUP { return }
-            throw FileSystemFailure(code: errno)
-        }
-        acl_free(UnsafeMutableRawPointer(staged))
-        guard fchmod(descriptor, 0o600) == 0 else { throw FileSystemFailure(code: errno) }
-        try clearACL(descriptor)
-    }
-
-    /// Removes every ACL entry of the open file; a volume without ACLs has none to remove.
-    private static func clearACL(_ descriptor: Int32) throws(FileSystemFailure) {
+    /// Removes every ACL entry of the open file or folder; a volume without ACLs has none.
+    static func clearACL(_ descriptor: Int32) throws(FileSystemFailure) {
         guard let empty = acl_init(0) else { throw FileSystemFailure(code: errno) }
         defer { acl_free(UnsafeMutableRawPointer(empty)) }
         if acl_set_fd_np(descriptor, empty, ACL_TYPE_EXTENDED) != 0, errno != ENOTSUP {
             throw FileSystemFailure(code: errno)
         }
     }
+}
 
-    func removeItem(at url: URL) {
-        // Best-effort cleanup after a failure that is already being reported: an unlink failure
-        // must not replace the original save error.
-        _ = unlink(url.path(percentEncoded: false))
+/// The staged bytes: a file in a private folder created inside the destination folder. Only its
+/// creator can enter that folder, so no other user can read, replace or link the stage.
+final class Stage {
+    /// The destination folder, the private folder inside it and the staged file, all open.
+    let directory: Int32
+    let folder: Int32
+    let file: Int32
+    let folderName: String
+    let folderIdentity: FileIdentity
+    private(set) var fileIdentity: FileIdentity
+    /// The stage's path, for test seams only.
+    let url: URL
+
+    init(in directory: Int32, folder destination: URL, data: Data, fileSystem: POSIXFileSystem)
+        throws(FileSystemFailure)
+    {
+        self.directory = directory
+        folderName = ".recortia-\(UUID().uuidString)"
+        guard mkdirat(directory, folderName, 0o700) == 0 else { throw FileSystemFailure(code: errno) }
+        let folder = openat(directory, folderName, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        // Not opened, or not the folder just made: leave whatever the name leads to.
+        guard folder >= 0 else { throw FileSystemFailure(code: errno) }
+        var status = stat()
+        guard fstat(folder, &status) == 0, status.st_uid == geteuid(),
+            POSIXFileSystem.entry(folderName, in: directory, is: FileIdentity(status), type: S_IFDIR)
+        else {
+            close(folder)
+            throw POSIXFileSystem.substitutedFailure
+        }
+        self.folder = folder
+        folderIdentity = FileIdentity(status)
+        url = destination.appendingPathComponent(folderName, isDirectory: true)
+            .appendingPathComponent(POSIXFileSystem.stageName, isDirectory: false)
+        // From here on `remove()` cleans up. The folder's inherited entries go first, so no entry
+        // lets anyone else in; then the file is created inside it, owner-only.
+        var failure: Int32?
+        do throws(FileSystemFailure) { try POSIXFileSystem.clearACL(folder) } catch { failure = error.code }
+        if failure == nil, fchmod(folder, 0o700) != 0 { failure = errno }
+        var file: Int32 = -1
+        if failure == nil {
+            file = openat(
+                folder, POSIXFileSystem.stageName, O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+            if file < 0 { failure = errno }
+        }
+        self.file = file
+        fileIdentity = FileIdentity(stat())
+        if failure == nil {
+            do throws(FileSystemFailure) { try POSIXFileSystem.clearACL(file) } catch { failure = error.code }
+        }
+        var written = 0
+        if failure == nil {
+            failure = POSIXFileSystem.writeAll(
+                data, to: file, written: &written, failAfter: fileSystem.failWrite.map { _ in 3 })
+            if failure == nil, let injected = fileSystem.failWrite { failure = injected }
+        }
+        if failure == nil, fsync(file) != 0 { failure = errno }
+        // Identity once the bytes are on disk: exFAT and FAT number a file by its first cluster.
+        if file >= 0, fstat(file, &status) == 0 { fileIdentity = FileIdentity(status) }
+        if let failure {
+            remove()
+            throw FileSystemFailure(code: failure)
+        }
+        fileSystem.afterSync(url)
     }
 
-    func itemExists(at url: URL) -> Bool {
-        fileManager.fileExists(atPath: url.path(percentEncoded: false))
+    /// Fails unless the stage's name still leads to the written file and nothing else does.
+    func checkStillStaged() throws(FileSystemFailure) {
+        var status = stat()
+        guard fstat(file, &status) == 0 else { throw FileSystemFailure(code: errno) }
+        fileIdentity = FileIdentity(status)
+        guard POSIXFileSystem.entry(POSIXFileSystem.stageName, in: folder, is: fileIdentity, type: S_IFREG) else {
+            throw POSIXFileSystem.substitutedFailure
+        }
+    }
+
+    /// The access a file created in the destination folder gets: the entries the folder gives a
+    /// new file, then the mode a file created with 0644 gets under the umask. The entries are read
+    /// from an empty probe file created there, removed only while it is still that file.
+    func giveNewFileAccess(in directory: Int32) throws(FileSystemFailure) {
+        let mode = try POSIXFileSystem.newFileMode()
+        if let folderACL = acl_get_fd_np(directory, ACL_TYPE_EXTENDED) {
+            acl_free(UnsafeMutableRawPointer(folderACL))
+            let name = ".recortia-probe-\(UUID().uuidString)"
+            let probe = openat(directory, name, O_RDONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+            guard probe >= 0 else { throw FileSystemFailure(code: errno) }
+            defer { close(probe) }
+            var status = stat()
+            if fstat(probe, &status) == 0,
+                POSIXFileSystem.entry(name, in: directory, is: FileIdentity(status), type: S_IFREG)
+            {
+                unlinkat(directory, name, 0)
+            }
+            _ = try POSIXFileSystem.copyACL(from: probe, to: file)
+        } else if errno != ENOENT, errno != ENOTSUP {
+            throw FileSystemFailure(code: errno)
+        }
+        // Mode last, after any inherited deny entry is in place. Best effort, like an overwrite: a
+        // volume that refuses it keeps the file owner-only.
+        _ = fchmod(file, mode)
+    }
+
+    /// Removes the stage and its private folder, each only while its name still leads to it. A
+    /// published stage is gone from the folder already; a folder something else entered stays.
+    func remove() {
+        if file >= 0 {
+            var status = stat()
+            if fstat(file, &status) == 0,
+                POSIXFileSystem.entry(POSIXFileSystem.stageName, in: folder, is: FileIdentity(status), type: S_IFREG)
+            {
+                unlinkat(folder, POSIXFileSystem.stageName, 0)
+            }
+            close(file)
+        }
+        close(folder)
+        if POSIXFileSystem.entry(folderName, in: directory, is: folderIdentity, type: S_IFDIR) {
+            unlinkat(directory, folderName, AT_REMOVEDIR)
+        }
     }
 }
 

@@ -5,70 +5,12 @@ import Testing
 
 @testable import MacPlatform
 
-/// Real POSIX file operations with scripted failures at the write or commit step.
-final class FaultInjectingFileSystem: FileSystemOperations {
-    let base = POSIXFileSystem()
-    let failWrite: Int32?
-    let failCommit: Int32?
-
-    init(failWrite: Int32? = nil, failCommit: Int32? = nil) {
-        self.failWrite = failWrite
-        self.failCommit = failCommit
+extension POSIXFileSystem {
+    /// Real POSIX file operations that let a test act on the stage after it is written and before
+    /// it is published, as another process could.
+    static func interposing(_ beforePublish: @escaping (URL) -> Void) -> POSIXFileSystem {
+        POSIXFileSystem(beforePublish: beforePublish)
     }
-
-    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
-        -> FileIdentity
-    {
-        if let failWrite {
-            // Leave a partial temporary file behind, as a real mid-write failure would.
-            _ = try base.writeNewFile(data.prefix(3), at: url, access: access)
-            throw FileSystemFailure(code: failWrite)
-        }
-        return try base.writeNewFile(data, at: url, access: access)
-    }
-
-    func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
-        if let failCommit { throw FileSystemFailure(code: failCommit) }
-        try base.moveExclusively(from: source, to: destination)
-    }
-
-    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {
-        if let failCommit { throw FileSystemFailure(code: failCommit) }
-        try base.replace(from: source, to: destination, expecting: identity)
-    }
-
-    func removeItem(at url: URL) { base.removeItem(at: url) }
-    func itemExists(at url: URL) -> Bool { base.itemExists(at: url) }
-}
-
-/// Real POSIX file operations that let a test act on the temporary file after it is written and
-/// before it is committed, as another account sharing the folder could.
-final class InterposingFileSystem: FileSystemOperations {
-    let base = POSIXFileSystem()
-    let afterWrite: (URL) -> Void
-
-    init(afterWrite: @escaping (URL) -> Void) {
-        self.afterWrite = afterWrite
-    }
-
-    func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
-        -> FileIdentity
-    {
-        let identity = try base.writeNewFile(data, at: url, access: access)
-        afterWrite(url)
-        return identity
-    }
-
-    func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
-        try base.moveExclusively(from: source, to: destination)
-    }
-
-    func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {
-        try base.replace(from: source, to: destination, expecting: identity)
-    }
-
-    func removeItem(at url: URL) { base.removeItem(at: url) }
-    func itemExists(at url: URL) -> Bool { base.itemExists(at: url) }
 }
 
 @Suite("File sink: atomic, collision-safe, failure-preserving saves (FR-07, EXP-02)")
@@ -146,7 +88,7 @@ struct FileSinkTests {
         defer { TestSupport.removeDirectory(folder) }
         let url = folder.appendingPathComponent("shot.png")
         try priorBytes.write(to: url)
-        let sink = FileSink(fileSystem: FaultInjectingFileSystem(failWrite: code))
+        let sink = FileSink(fileSystem: POSIXFileSystem(failWrite: code))
         #expect(throws: expected) { try sink.save(snapshot, to: url, overwrite: true) }
         #expect(try Data(contentsOf: url) == priorBytes)
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
@@ -158,11 +100,117 @@ struct FileSinkTests {
         defer { TestSupport.removeDirectory(folder) }
         let url = folder.appendingPathComponent("shot.png")
         try priorBytes.write(to: url)
-        let sink = FileSink(fileSystem: FaultInjectingFileSystem(failCommit: ENOSPC))
+        let sink = FileSink(fileSystem: POSIXFileSystem(failPublish: ENOSPC))
         #expect(throws: SinkError.diskFull) { try sink.save(snapshot, to: url, overwrite: true) }
         #expect(throws: SinkError.diskFull) { try sink.saveUnique(snapshot, in: folder) }
         #expect(try Data(contentsOf: url) == priorBytes)
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
+    }
+
+    // R01 (adversarial review of T1a): a no-overwrite save renamed the stage by name without
+    // checking it was still the file written, so a substituted stage was published as the save.
+    @Test(
+        "A stage substituted before a new save is published is refused and never appears under the name",
+        arguments: [false, true])
+    func substitutedStageIsNeverPublished(unique: Bool) throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let marker = Data("not the sanitized snapshot".utf8)
+        var substituted = false
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterSync: { stage in
+                let planted = stage.deletingLastPathComponent().appendingPathComponent("planted.tmp")
+                substituted =
+                    (try? marker.write(to: planted)) != nil
+                    && rename(planted.path(percentEncoded: false), stage.path(percentEncoded: false)) == 0
+            }))
+        let url = folder.appendingPathComponent("shot.png")
+        #expect(throws: SinkError.accessDenied) {
+            if unique {
+                _ = try sink.saveUnique(snapshot, in: folder)
+            } else {
+                _ = try sink.save(snapshot, to: url, overwrite: false)
+            }
+        }
+        try #require(substituted, "control: the stage was never substituted")
+        for name in TestSupport.directoryEntries(folder) where !name.hasPrefix(".recortia-") {
+            #expect(
+                (try? Data(contentsOf: folder.appendingPathComponent(name))) != marker,
+                "the substituted bytes were published as \(name)")
+        }
+    }
+
+    enum Redirect: String, CaseIterable, Sendable {
+        /// The chosen folder's own name became a link.
+        case folder
+        /// A folder above it became a link to a look-alike tree.
+        case ancestor
+    }
+
+    // R06 (adversarial review of T1a): the folder was opened by path for each step, so a writer
+    // who could rename the chosen folder or a folder above it redirected the save elsewhere.
+    @Test("A save to a folder reached through a link writes nothing anywhere", arguments: Redirect.allCases)
+    func redirectedFolderIsRefused(redirect: Redirect) throws {
+        let root = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(root) }
+        let elsewhere = root.appendingPathComponent("elsewhere", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: elsewhere.appendingPathComponent("shots"), withIntermediateDirectories: true)
+        let chosen: URL
+        switch redirect {
+        case .folder:
+            chosen = root.appendingPathComponent("shots", isDirectory: true)
+            try FileManager.default.createSymbolicLink(
+                at: chosen, withDestinationURL: elsewhere.appendingPathComponent("shots"))
+        case .ancestor:
+            let parent = root.appendingPathComponent("team", isDirectory: true)
+            try FileManager.default.createSymbolicLink(at: parent, withDestinationURL: elsewhere)
+            chosen = parent.appendingPathComponent("shots", isDirectory: true)
+        }
+        #expect(throws: SinkError.accessDenied) {
+            try FileSink().save(snapshot, to: chosen.appendingPathComponent("shot.png"), overwrite: false)
+        }
+        #expect(throws: SinkError.accessDenied) { try FileSink().saveUnique(snapshot, in: chosen) }
+        #expect(TestSupport.directoryEntries(elsewhere.appendingPathComponent("shots")).isEmpty)
+    }
+
+    // R03 (adversarial review of T1a): the destination's mode and ACL were read by path, following
+    // a link, so they could come from different objects.
+    @Test("Overwriting a destination that is a link is refused and the linked file is untouched")
+    func overwriteOfLinkIsRefused() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let target = folder.appendingPathComponent("target.png")
+        try priorBytes.write(to: target)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: target.path)
+        let url = folder.appendingPathComponent("shot.png")
+        try FileManager.default.createSymbolicLink(at: url, withDestinationURL: target)
+        #expect(throws: SinkError.accessDenied) { try FileSink().save(snapshot, to: url, overwrite: true) }
+        #expect(Self.isSymbolicLink(url), "the link was replaced")
+        #expect(try Data(contentsOf: target) == priorBytes)
+        #expect(Self.mode(target) == 0o644)
+        #expect(throws: SinkError.destinationExists) { try FileSink().save(snapshot, to: url, overwrite: false) }
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png", "target.png"])
+    }
+
+    // R02 (adversarial review of T1a): the stage sat in the destination folder, where an inherited
+    // entry could let another user open it before its final access was set.
+    @Test("The stage is written inside a private folder that no inherited entry opens to others")
+    func stageFolderIsPrivate() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        try Self.addACL("everyone allow list,add_file,search,read,file_inherit,directory_inherit", to: folder)
+        var stageFolder: (mode: mode_t?, acl: String?)?
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterSync: { stage in
+                let parent = stage.deletingLastPathComponent()
+                stageFolder = (Self.mode(parent), Self.extendedACL(parent))
+            }))
+        let saved = try sink.saveUnique(snapshot, in: folder)
+        let observed = try #require(stageFolder, "the seam never saw the stage")
+        #expect(observed.mode == 0o700)
+        #expect(observed.acl == nil, "the stage's folder inherited an entry that lets others in")
+        #expect(TestSupport.directoryEntries(folder) == [saved.lastPathComponent])
     }
 
     @Test("Overwriting keeps the replaced file's permissions, so a restricted file stays restricted")
@@ -195,7 +243,7 @@ struct FileSinkTests {
         #expect(Self.mode(url) == 0o640)
     }
 
-    @Test("When the replaced file's group cannot be applied, the replacement grants its group nothing")
+    @Test("When the replaced file's group cannot be applied, the replacement is owner-only")
     func overwriteWithoutGroupDropsGroupAccess() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
         defer { TestSupport.removeDirectory(folder) }
@@ -215,7 +263,8 @@ struct FileSinkTests {
         #expect(observed.requestedGroups == [other], "control: the seam never refused the destination's group")
         #expect(try Data(contentsOf: url) == snapshot.bytes)
         #expect(Self.group(url) != other)
-        #expect(Self.mode(url) == 0o604, "a group the replaced file never granted can read the replacement")
+        // R04: dropping only the group bits would move a member of the old group into "other".
+        #expect(Self.mode(url) == 0o600, "the replacement is not owner-only without the replaced file's group")
     }
 
     @Test("Overwriting keeps an explicit ACL entry on the replaced file")
@@ -301,7 +350,9 @@ struct FileSinkTests {
         try #require(Self.extendedACL(victim) == nil, "control: the victim already has an ACL")
 
         let observed = Observation()
-        let fileSystem = InterposingFileSystem { temporary in
+        var planted: URL?
+        let fileSystem = POSIXFileSystem.interposing { temporary in
+            planted = temporary
             // Keep the real temporary file under another name, so cleanup is still the sink's job.
             let aside = folder.appendingPathComponent("moved-aside")
             guard rename(temporary.path(percentEncoded: false), aside.path(percentEncoded: false)) == 0 else { return }
@@ -324,7 +375,10 @@ struct FileSinkTests {
         #expect(try Data(contentsOf: victim) == victimBytes)
         #expect(Self.mode(victim) == 0o600, "the destination's mode reached the victim")
         #expect(Self.extendedACL(victim) == nil, "the destination's ACL reached the victim")
-        #expect(!TestSupport.directoryEntries(folder).contains { $0.hasPrefix(".recortia-") })
+        // R05: the planted link is not Recortia's, so it and the private folder holding it stay.
+        let link = try #require(planted)
+        var status = stat()
+        #expect(lstat(link.path(percentEncoded: false), &status) == 0, "cleanup deleted an entry it did not create")
     }
 
     @Test("A temporary file that gained a second name before the commit is refused")
@@ -334,7 +388,7 @@ struct FileSinkTests {
         let url = folder.appendingPathComponent("shot.png")
         try priorBytes.write(to: url)
         let observed = Observation()
-        let fileSystem = InterposingFileSystem { temporary in
+        let fileSystem = POSIXFileSystem.interposing { temporary in
             let second = folder.appendingPathComponent("second-name")
             observed.swapResolvesToVictim =
                 link(temporary.path(percentEncoded: false), second.path(percentEncoded: false)) == 0
@@ -362,7 +416,7 @@ struct FileSinkTests {
         try #require(control?.contains("everyone") == true, "control: the folder entry is not inherited")
 
         let observed = Observation()
-        let fileSystem = InterposingFileSystem { temporary in
+        let fileSystem = POSIXFileSystem.interposing { temporary in
             observed.temporaryACL = Self.extendedACL(temporary)
         }
         _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
@@ -374,15 +428,18 @@ struct FileSinkTests {
 
     // R2-D03 (program 2026-11): an overwrite whose destination was missing staged a new file with
     // the folder's inherited entries; a private destination restored before the commit (a sync
-    // client, another app) was then replaced by a file that kept those entries.
+    // client, another app) was then replaced by a file that kept those entries. The stage now has
+    // no entries until it is published (R02).
     @Test("A private file that reappears during an overwrite is replaced without the folder's inherited entry")
     func reappearingPrivateDestinationGetsNoInheritedEntry() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
         defer { TestSupport.removeDirectory(folder) }
         try Self.addACL("everyone allow read,file_inherit", to: folder)
         let url = folder.appendingPathComponent("shot.png")
+        let control = try Self.plainFileACL(in: folder)
+        try #require(control?.contains("everyone") == true, "control: the folder entry is not inherited")
         let observed = Observation()
-        let fileSystem = InterposingFileSystem { temporary in
+        let fileSystem = POSIXFileSystem.interposing { temporary in
             observed.temporaryACL = Self.extendedACL(temporary)
             // The private file comes back: owner-only, with no ACL of its own.
             try? priorBytes.write(to: url)
@@ -394,9 +451,7 @@ struct FileSinkTests {
             _ = chmod(url.path(percentEncoded: false), 0o600)
         }
         _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
-        try #require(
-            observed.temporaryACL?.contains("everyone") == true,
-            "control: the staged file did not carry the folder's inherited entry")
+        #expect(observed.temporaryACL == nil, "the stage carried the folder's entry before publishing")
         try #require(observed.destinationACLCleared, "control: the restored destination kept an ACL")
         #expect(try Data(contentsOf: url) == snapshot.bytes)
         #expect(Self.extendedACL(url) == nil, "the replaced private file gained the folder's entry")
