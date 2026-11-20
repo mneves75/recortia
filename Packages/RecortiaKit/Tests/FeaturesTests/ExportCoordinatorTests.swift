@@ -50,6 +50,22 @@ private final class RecordingUpload: GitHubUploadService {
     }
 }
 
+/// Runs a test's script in place of the uploader, with the coordinator's own checks.
+@MainActor
+private final class ScriptedUpload: GitHubUploadService {
+    var script: (_ isLive: () -> Bool, _ isCurrent: () -> Bool) throws(GitHubUploadFailure) -> URL = { _, _ in
+        throw .network
+    }
+
+    func upload(
+        _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async throws(GitHubUploadFailure) -> URL {
+        try script(isLive, isCurrent)
+    }
+}
+
 @Suite("ExportCoordinator (FR-07, EXP-02)")
 @MainActor
 struct ExportCoordinatorTests {
@@ -484,6 +500,49 @@ struct ExportCoordinatorTests {
         #expect(upload.requests == 0, "a request was sent for consent that was no longer live")
         // Revoking consent is the person's own action, not a failure to report.
         #expect(outcomes == [.canceled])
+    }
+
+    enum Revocation: String, CaseIterable, Sendable {
+        /// Upload turned off while a lookup runs; the lookup then fails (a 403, a timeout).
+        case duringLookup
+        /// Upload turned off after the image request started.
+        case afterImageRequest
+        /// Nothing revoked: the lookup's failure is reported.
+        case none
+    }
+
+    // R10 (adversarial review of T1a): turning upload off while a lookup ran, then that lookup
+    // failing, reported an upload failure the person had opted out of.
+    @Test(
+        "A failure after the person revoked consent is silent before the image request, reported after",
+        arguments: Revocation.allCases)
+    func failureAfterRevocation(revocation: Revocation) async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        let upload = ScriptedUpload()
+        let h = ExportHarness(upload: upload)
+        h.settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true) }
+        upload.script = { isLive, isCurrent throws(GitHubUploadFailure) in
+            guard isLive() else { throw .staleDocument }
+            switch revocation {
+            case .duringLookup:
+                h.settings.update { $0.githubUpload?.automatic = false }
+                throw .accessDenied
+            case .afterImageRequest:
+                guard isCurrent() else { throw .staleDocument }
+                h.settings.update { $0.githubUpload?.automatic = false }
+                throw .completionUnknown
+            case .none:
+                throw .accessDenied
+            }
+        }
+        let plan = h.coordinator.automaticExportPlan()
+        let session = h.session
+        let outcomes = await h.coordinator.runAutomaticExports(plan, for: session, currentSession: { session })
+        switch revocation {
+        case .duringLookup: #expect(outcomes == [.canceled])
+        case .afterImageRequest: #expect(outcomes == [.failed(.upload(.completionUnknown))])
+        case .none: #expect(outcomes == [.failed(.upload(.accessDenied))])
+        }
     }
 
     @Test("A document that changes before the upload's first request still fails the upload visibly")

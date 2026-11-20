@@ -273,9 +273,11 @@ public final class ExportCoordinator {
                 case .success(let url): completed = .uploaded(url)
                 case .failure(let error):
                     let failure = (error as? GitHubUploadFailure) ?? .completionUnknown
-                    // Consent revoked before the image was sent is the person's own action: it
-                    // ends the upload silently, as a revocation before the step does.
-                    if failure == .canceled || (failure == .staleDocument && !consentHolds()) {
+                    // Consent revoked before the image request started is the person's own
+                    // action: any failure then (a lookup's 403 or timeout included) ends the upload
+                    // silently, as a revocation before the step does. Once the image request has
+                    // started (`.committing`), its failed or unknown result is reported.
+                    if failure == .canceled || (!consentHolds() && state != .committing) {
                         if state != .canceled { apply(.cancel) }
                         return finish(.canceled)
                     }
