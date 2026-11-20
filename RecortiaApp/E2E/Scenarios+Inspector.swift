@@ -66,14 +66,18 @@
                             "rectangle list item", model.listItems.first { $0.id == .annotation(rectangle.id) })))
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure("inspector.positionAndSize", expanded: true, in: root, context)
+            try E2EAccessibilityControl.setDisclosure(
+                "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                expanded: true, in: root, context)
             await E2ESnapshot.settle(root)
             await expect(
                 "Position and Size expanded", present: ["frame.x", "frame.y", "frame.width", "frame.height"],
                 absent: [])
             context.check(
                 "Position and Size reports its expanded state",
-                (try? E2EAccessibilityControl.disclosureIsExpanded("inspector.positionAndSize", in: root, context))
+                (try? E2EAccessibilityControl.disclosureIsExpanded(
+                    "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                    in: root, context))
                     == true)
             await E2EActions.darkEditor(controller, context, shot: "rectangle-selected", surface: "editor, Format tab")
             for identifier in ["style.fill", "style.lineWidth"] {
@@ -289,7 +293,9 @@
             context.snapshot(root, shot: "text-selected-compact-dark")
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure("inspector.positionAndSize", expanded: false, in: root, context)
+            try E2EAccessibilityControl.setDisclosure(
+                "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                expanded: false, in: root, context)
             await E2ESnapshot.settle(root)
         }
 

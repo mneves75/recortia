@@ -223,7 +223,9 @@
             // Position and Size starts collapsed; open it as a person does, and close it at the end.
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure("inspector.positionAndSize", expanded: true, in: root, context)
+            try E2EAccessibilityControl.setDisclosure(
+                "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                expanded: true, in: root, context)
             await E2ESnapshot.settle(root)
             await E2EActions.scrollInspector(controller, to: 0)
             await E2ESnapshot.settle(root)
@@ -256,11 +258,15 @@
             await E2EActions.snapshotEditor(controller, context)
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure("inspector.positionAndSize", expanded: false, in: root, context)
+            try E2EAccessibilityControl.setDisclosure(
+                "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                expanded: false, in: root, context)
             await E2ESnapshot.settle(root)
             context.check(
                 "closing Position and Size reports it collapsed",
-                (try? E2EAccessibilityControl.disclosureIsExpanded("inspector.positionAndSize", in: root, context))
+                (try? E2EAccessibilityControl.disclosureIsExpanded(
+                    "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                    in: root, context))
                     == false)
             context.check(
                 "closing Position and Size removes the height field",
