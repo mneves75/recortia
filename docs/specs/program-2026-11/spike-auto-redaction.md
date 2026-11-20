@@ -277,6 +277,35 @@ cold and warm, before it is chosen.
 
 B adds nothing over A: it costs the same, has lower recall and the same false-positive problem as C.
 
+## Integration and deadline (T1d, 2026-11-20)
+
+Branch `feat/t1d-auto-redact` merges this spike into `train/t1` and ships method A with 1024-px fine
+tiles behind the opt-in Privacy setting. The editor opens at once and stays locked until the masks
+land (decisions.md, "Auto-redaction timing"). Detection runs through
+`SensitiveTextScanner.sensitiveRegions(of:in:pixelsPerPoint:languages:)`, which reads the capture
+from `ImageStore` inside Imaging. The data-detector and document variants remain for this benchmark
+only.
+
+**Deadline: 8 s, provisional.** The rule is 1.5 × the warm p99 at 2560×1440 2×, rounded up to a
+whole second and clamped to 3–10 s, measured when the console is unlocked and idle (HIDIdleTime at
+least 300 s) and the load average is under 8. No such window came during T1d. Every check found the
+console locked, with load averages between 17 and 42 on 18 cores. So the deadline is the brief's
+fallback, `EditorModel.autoRedactionDeadline = .seconds(8)`, until the measurement below runs.
+
+Measurement, one process per case so its first scan is the cold one after launch:
+
+```sh
+for c in 2560x1440@2 2560x1440@1 1440x900@2 1440x900@1; do
+  RECORTIA_REDACT_LATENCY=1 RECORTIA_REDACT_LATENCY_CASE=$c RECORTIA_REDACT_LATENCY_RUNS=30 \
+    xcrun swift test --package-path Packages/RecortiaKit --filter SensitiveTextLatencyTests \
+    >> .scratch/logs/t1d-latency.log 2>&1
+done
+```
+
+The only run so far was a functional smoke test, not a measurement: 1440×900 1×, cold 847 ms,
+2 warm runs at 624 and 757 ms, with the console locked and load about 36
+(`.scratch/logs/t1d-latency-smoke.log`).
+
 ## Limits
 
 - Synthetic system-font text on flat backgrounds only. There are no photos, coloured UI chrome, link
