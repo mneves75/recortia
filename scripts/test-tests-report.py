@@ -68,6 +68,17 @@ class TestsReportTests(unittest.TestCase):
             path = self.root / caller
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("#!/bin/sh\n" + "".join(f"python3 scripts/{n}\n" for n in names))
+        # The fixture is its own repository, so evidence binds to a commit this test controls.
+        for arguments in (("init", "-q"), ("add", "-A"), ("-c", "user.name=fixture", "-c",
+                          "user.email=fixture@example.invalid", "commit", "-qm", "fixture")):
+            subprocess.run(["git", *arguments], cwd=self.root, check=True, capture_output=True)
+        self.head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root, check=True,
+                                   capture_output=True, text=True).stdout.strip()
+
+    def suites(self) -> dict[str, dict[str, object]]:
+        self.assertEqual(0, self.run_report().returncode)
+        document = json.loads((self.root / "tests.json").read_text())
+        return {suite["id"]: suite for suite in document["suites"]}
 
     def run_report(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -102,16 +113,63 @@ class TestsReportTests(unittest.TestCase):
         self.assertEqual(1, result.returncode)
         self.assertIn("scripts/check.sh never invokes scripts/test-doctor.py", result.stderr)
 
+    def test_commented_or_echoed_mention_is_not_an_invocation(self) -> None:
+        check = self.root / "scripts/check.sh"
+        for mention in ("# python3 scripts/test-doctor.py\n", 'echo "skipped test-doctor.py"\n',
+                        ": python3 scripts/test-doctor.py\n"):
+            with self.subTest(mention=mention):
+                original = check.read_text()
+                check.write_text(original.replace("python3 scripts/test-doctor.py\n", mention))
+                result = self.run_report("--check")
+                check.write_text(original)
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("scripts/check.sh never invokes scripts/test-doctor.py", result.stderr)
+
+    def test_a_pass_from_another_commit_is_stale_not_passed(self) -> None:
+        log = self.root / ".scratch/logs/check-1.log"
+        log.write_text(f"check: commit {'b' * 40}\ncheck: all gates passed\n")
+        suite = self.suites()["check"]
+        self.assertEqual("stale", suite["status"])
+        self.assertEqual("b" * 40, suite["evidence_commit"])
+        log.write_text("check: all gates passed\n")
+        self.assertEqual("stale", self.suites()["check"]["status"], "an unbound log proves no commit")
+
+    def test_a_partial_e2e_run_is_not_the_bilingual_suite(self) -> None:
+        log = self.root / ".scratch/logs/e2e-1.log"
+        english = "e2e[en]: 1/1 scenarios passed, 2 screenshots (exit 0)\n"
+        portuguese = "e2e[pt-BR]: 1/1 scenarios passed, 2 screenshots (exit 0)\n"
+        for header, body in (
+            (f"e2e: commit {self.head} lang en only -\n", english),
+            (f"e2e: commit {self.head} lang all only canvas-focus\n", english + portuguese),
+            (f"e2e: commit {self.head} lang all only -\n", english),
+        ):
+            with self.subTest(header=header, body=body):
+                log.write_text(header + body + "e2e: output in /tmp/run\n")
+                self.assertEqual("partial", self.suites()["e2e"]["status"])
+        log.write_text(f"e2e: commit {self.head} lang all only -\n" + english + portuguese
+                       + "e2e: output in /tmp/run\n")
+        self.assertEqual("passed", self.suites()["e2e"]["status"])
+
+    def test_every_suite_script_prints_the_commit_header_the_report_reads(self) -> None:
+        headers = {
+            "scripts/check.sh": r'(?m)^echo "check: commit \$\(git rev-parse HEAD\)"$',
+            "scripts/e2e.sh": r'(?m)^echo "e2e: commit \$\(git rev-parse HEAD\) lang \$lang only \$\{only:--\}"$',
+            "scripts/release.sh": r'(?m)^echo "release: commit \$source_commit"$',
+        }
+        for script, header in headers.items():
+            with self.subTest(script=script):
+                self.assertRegex((ROOT / script).read_text(), header)
+
     def test_status_comes_from_the_evidence_marker(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text("== package tests\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head}\n== package tests\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / "tests.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
         self.assertEqual("passed", by_id["check"]["status"])
         self.assertEqual(".scratch/logs/check-1.log", by_id["check"]["evidence"])
         self.assertEqual("not_run", by_id["e2e"]["status"])
-        log.write_text("FAILED (failures=1)\n")
+        log.write_text(f"check: commit {self.head}\nFAILED (failures=1)\n")
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / "tests.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
@@ -133,16 +191,16 @@ class TestsReportTests(unittest.TestCase):
 
     def test_stale_recorded_status_is_reported(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text("check: all gates passed\n")
+        log.write_text(f"check: commit {self.head}\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
-        log.write_text("FAILED (failures=1)\n")
+        log.write_text(f"check: commit {self.head}\nFAILED (failures=1)\n")
         result = self.run_report("--check")
         self.assertEqual(1, result.returncode)
         self.assertIn("tests.json says check is passed", result.stderr)
 
     def test_a_later_failure_is_not_hidden_by_an_earlier_pass(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text("check: all gates passed\nFAILED (failures=1)\n")
+        log.write_text(f"check: commit {self.head}\ncheck: all gates passed\nFAILED (failures=1)\n")
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / "tests.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}

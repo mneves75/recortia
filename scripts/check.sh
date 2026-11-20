@@ -12,6 +12,8 @@ if [[ "${1:-}" == "--unsigned" ]]; then
   sign_args=(CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-)
 fi
 
+# scripts/tests-report.py binds this log's verdict to the commit named here.
+echo "check: commit $(git rev-parse HEAD)"
 scripts/doctor.sh
 
 echo "== toolchain and E2E isolation regressions"

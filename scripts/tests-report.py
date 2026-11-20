@@ -4,10 +4,11 @@
 A status file edited by hand is a claim without an instrument. So:
 
 * the inventory below is the single source, and `--check` proves each gate still exists, still has
-  its test, and is still invoked by a script that names it. A test file that nothing runs is a dead
-  gate;
-* every observed status is written with the evidence path and the commit it was observed at, so a
-  reader can tell a local observation from a CI result and can tell a stale claim from a fresh one.
+  its test, and is still invoked by a command line of its caller (a comment or an echo that names
+  the test runs nothing). A test file that nothing runs is a dead gate;
+* every observed status comes from a log that records the commit it ran at (`<suite>: commit <sha>`).
+  A verdict from another commit, or from a log that records none, is `stale`; an E2E run of one
+  language or of selected scenarios is `partial`, never the bilingual suite.
 
 Usage:
   scripts/tests-report.py            write tests.json for the current tree
@@ -92,21 +93,25 @@ GATES: list[dict[str, object]] = [
     },
 ]
 
+# `prefix` is how the suite's script names itself in its log, including the commit header.
 SUITES = (
     {
         "id": "check",
         "command": "./init.sh check --unsigned",
         "evidence": ".scratch/logs/check-*.log",
+        "prefix": "check",
     },
     {
         "id": "e2e",
         "command": "./init.sh e2e --lang all",
         "evidence": ".scratch/logs/e2e-*.log",
+        "prefix": "e2e",
     },
     {
         "id": "release-dry-run",
         "command": "scripts/release.sh --dry-run",
         "evidence": ".scratch/logs/release-*.log",
+        "prefix": "release",
     },
 )
 
@@ -156,6 +161,21 @@ def release_status(text: str) -> str | None:
 STATUS = {"check": check_status, "e2e": e2e_status, "release-dry-run": release_status}
 
 
+def evidence_commit(text: str, prefix: str) -> str | None:
+    """The commit the log says it ran at; the last header wins in an appended log."""
+    found = re.findall(rf"(?m)^{re.escape(prefix)}: commit ([0-9a-f]{{40}})\b", text)
+    return found[-1] if found else None
+
+
+def e2e_is_full_suite(text: str) -> bool:
+    """Both languages and every scenario: the selection the suite's command names."""
+    headers = re.findall(r"(?m)^e2e: commit [0-9a-f]{40} lang (\S+) only (\S+)$", text)
+    if not headers or headers[-1] != ("all", "-"):
+        return False
+    languages = set(re.findall(r"(?m)^e2e\[([^\]]+)\]: \d+/\d+ scenarios passed", text))
+    return languages == {"en", "pt-BR"}
+
+
 def commit() -> str:
     result = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=False
@@ -178,7 +198,7 @@ def toolchain() -> dict[str, str]:
     }
 
 
-def observe(suite: dict[str, str]) -> dict[str, object]:
+def observe(suite: dict[str, str], head: str) -> dict[str, object]:
     """Newest evidence for one suite, with only the verdict that evidence actually shows."""
     paths = sorted(ROOT.glob(suite["evidence"]), key=lambda p: p.stat().st_mtime)
     if not paths:
@@ -187,18 +207,31 @@ def observe(suite: dict[str, str]) -> dict[str, object]:
     text = newest.read_text(errors="replace")
     age = datetime.now(tz=timezone.utc).timestamp() - newest.stat().st_mtime
     status = STATUS[suite["id"]](text)
+    ran_at = evidence_commit(text, suite["prefix"])
     if status is None:
         status = "running" if age < IN_PROGRESS_SECONDS else "incomplete"
+    elif ran_at != head:
+        # A verdict proves only the commit it ran at; tests.json speaks for HEAD.
+        status = "stale"
+    elif suite["id"] == "e2e" and status == "passed" and not e2e_is_full_suite(text):
+        status = "partial"
     return {
         "id": suite["id"],
         "command": suite["command"],
         "status": status,
         "evidence": str(newest.relative_to(ROOT)),
+        "evidence_commit": ran_at,
         "observed_at": datetime.fromtimestamp(
             newest.stat().st_mtime, tz=timezone.utc
         ).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "note": "local observation of the evidence file above, not a CI result",
     }
+
+
+def invokes(script: str, test: str) -> bool:
+    """A command line that starts with `python3 <test>`, not a comment, echo or other mention."""
+    pattern = re.compile(rf"python3 {re.escape(test)}(?:\s|$)")
+    return any(pattern.match(line.strip()) for line in script.splitlines())
 
 
 def inventory_problems() -> list[str]:
@@ -218,7 +251,7 @@ def inventory_problems() -> list[str]:
                 continue
             text = caller_path.read_text()
             for test in gate["tests"]:  # type: ignore[union-attr]
-                if pathlib.Path(test).name not in text:
+                if not invokes(text, test):
                     problems.append(f"{gate['id']}: {caller} never invokes {test}")
     named = {pathlib.Path(t).name for gate in GATES for t in gate["tests"]}  # type: ignore[union-attr]
     for path in sorted((ROOT / "scripts").glob("test-*.py")):
@@ -228,13 +261,14 @@ def inventory_problems() -> list[str]:
 
 
 def build() -> dict[str, object]:
+    head = commit()
     return {
         "schema_version": 1,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "commit": commit(),
+        "commit": head,
         "toolchain": toolchain(),
         "status_source": "local evidence files; CI results are separate and not recorded here",
-        "suites": [observe(suite) for suite in SUITES],
+        "suites": [observe(suite, head) for suite in SUITES],
         "gates": [
             {
                 "id": gate["id"],

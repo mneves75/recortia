@@ -32,6 +32,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 source_commit=$(git rev-parse HEAD)
+echo "release: commit $source_commit"
 version=$(git show "${source_commit}:project.yml" | sed -n 's/^ *MARKETING_VERSION: *//p')
 build=$(git show "${source_commit}:project.yml" | sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p')
 if [[ ! "$version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' || ! "$build" =~ '^[0-9]+$' ]]; then

@@ -34,6 +34,8 @@ case "$lang" in
   *) echo "e2e: --lang must be en, pt-BR, or all" >&2; exit 2 ;;
 esac
 
+# scripts/tests-report.py reads this header: a run of one language or of --only ids is partial.
+echo "e2e: commit $(git rev-parse HEAD) lang $lang only ${only:--}"
 scripts/doctor.sh
 toolchain_mode="${RECORTIA_TOOLCHAIN_MODE:-stable}"
 xcode_version=$(xcodebuild -version)
