@@ -59,6 +59,8 @@
     final class SyntheticImportInput: ImageInputService {
         private let input: any ImageInputService
         var holdNextRead = false
+        /// Holds the read whose running count (`fileReads`) reaches this number.
+        var holdRead: Int?
         var pastedImage: Data?
         private var waiter: CheckedContinuation<Void, Never>?
         var isWaiting: Bool { waiter != nil }
@@ -69,8 +71,9 @@
 
         func readFile(at url: URL) async throws(ImportError) -> Data {
             fileReads += 1
-            if holdNextRead {
+            if holdNextRead || holdRead == fileReads {
                 holdNextRead = false
+                holdRead = nil
                 await withCheckedContinuation { waiter = $0 }
             }
             return try await input.readFile(at: url)

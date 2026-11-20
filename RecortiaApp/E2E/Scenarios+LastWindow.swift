@@ -134,6 +134,7 @@
             try await checkUnsavedEdits(harness, context, requests)
             try await checkScrollReview(harness, context, requests)
             try await checkExportWait(harness, context, requests, shown)
+            try await checkOpenWait(harness, context, requests)
 
             harness.settings.update { $0.keepsRunningInMenuBar = true }
             for kind in LastWindowProbe.Kind.allCases {
@@ -380,6 +381,55 @@
         /// Quitting waits for an automatic export that belongs to no window, reports its result,
         /// and gives up when the person turns the preference back on, opens a window or starts a
         /// capture meanwhile.
+        /// Closing the first editor of an Open With request while the next file is still being read
+        /// waits for the request: its other files still open and its refusal is reported before
+        /// termination is requested (T1 security 4A).
+        private static func checkOpenWait(
+            _ harness: E2EHarness, _ context: ScenarioContext, _ requests: () -> Int
+        ) async throws {
+            let work = harness.output.workDirectory
+            let image = work.appending(path: "last-window-open.png")
+            let notes = work.appending(path: "last-window-open-notes.png")
+            try E2EDrawing.png(harness.desktop).write(to: image, options: .atomic)
+            try Data("not an image".utf8).write(to: notes, options: .atomic)
+            let input = harness.importInput
+            var messagesAtRequest: Int?
+            harness.terminations.onRequest = { messagesAtRequest = harness.messages.values.count }
+            defer {
+                input.holdRead = nil
+                input.release()
+                harness.terminations.onRequest = nil
+            }
+            harness.settings.update { $0.keepsRunningInMenuBar = false }
+            let before = requests()
+            let editors = harness.editors.controllers.count
+            let messages = harness.messages.values.count
+            input.holdRead = input.fileReads + 2
+            harness.app.openFiles([image, notes])
+            try context.require(
+                "open request: the first file opens its editor",
+                await E2EWait.until(timeout: .seconds(10)) { harness.editors.controllers.count == editors + 1 })
+            try context.require(
+                "open request: the second file waits at its read", await E2EWait.until { input.isWaiting })
+            let first = try context.unwrap("the first opened editor has a window", harness.editors.controllers.last?.window)
+            first.ignoresMouseEvents = true
+            PresenceScenarios.show(first, AppPresence.shared)
+            first.close()
+            try? await Task.sleep(for: .milliseconds(400))
+            context.check(
+                "closing the first opened editor while the next file is read does not quit", requests() == before,
+                "\(requests() - before) requests")
+            input.release()
+            context.check(
+                "quitting is requested once the open request finished",
+                await E2EWait.until(timeout: .seconds(10)) { requests() == before + 1 }, "\(requests() - before)")
+            context.check(
+                "the request's refusal was reported before termination was requested",
+                harness.messages.values.count == messages + 1 && messagesAtRequest == messages + 1,
+                "messages: \(harness.messages.values.count - messages), at request: \(String(describing: messagesAtRequest))")
+            harness.settings.update { $0.keepsRunningInMenuBar = true }
+        }
+
         private static func checkExportWait(
             _ harness: E2EHarness, _ context: ScenarioContext, _ requests: () -> Int, _ shown: () -> NSWindow
         ) async throws {

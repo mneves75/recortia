@@ -84,6 +84,8 @@ final class AppModel: AppActions {
     @ObservationIgnored let chooseSaveFolder: @MainActor () -> URL?
     /// Automatic exports from scheduling until their results were reported.
     private var automaticExportsInFlight = 0
+    /// Open With requests from their start until their refusals were reported.
+    private var openRequestsInFlight = 0
     /// Identifies the current quit-after-last-window decision; a newer close, accepted capture
     /// or final answer makes earlier pending re-evaluations do nothing.
     @ObservationIgnored private var quitDecision = 0
@@ -214,6 +216,7 @@ final class AppModel: AppActions {
             QuitAfterLastWindow.decide(
                 keepsRunningInMenuBar: settings.preferences.keepsRunningInMenuBar,
                 isExporting: features.export.isBusy || automaticExportsInFlight > 0,
+                isOpeningFiles: openRequestsInFlight > 0,
                 hasUserWindow: AppPresence.shared.hasUserWindow,
                 isCapturing: features.capture.state.isActive || features.scroll.state.isActive
                     || isStartingScrollingCapture)
@@ -277,7 +280,11 @@ final class AppModel: AppActions {
 
     private func open(_ requests: [[URL]]) {
         let importer = features.importer
+        // Counted until reported, so closing the first opened editor while the next file decodes
+        // waits for the rest of the request instead of quitting.
+        openRequestsInFlight += 1
         Task {
+            defer { openRequestsInFlight -= 1 }
             for failures in await importer.openRequests(requests) {
                 if let message = UserMessage.openFailures(failures) { showMessage(message) }
             }
