@@ -455,14 +455,22 @@ struct VolumeTraits {
                 try stage.removeOwnEntry(Self.stageName)
                 return
             }
-            // Something replaced the destination after its access was read: put it back, by swap,
-            // or by exclusive rename if the name is gone; otherwise report where it is.
-            if unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
-                throw Self.substitutedFailure
+            // Something replaced the destination after its access was read. It goes back only into a
+            // vacant name: the published stage is taken out of the name first, and whatever took the
+            // name since stays there. What cannot go back stays in the private folder, reported.
+            let published = stage.fileIdentity
+            do throws(FileSystemFailure) {
+                try stage.discard(name, from: directory) {
+                    $0.st_mode & S_IFMT == S_IFREG && FileIdentity($0) == published
+                }
+            } catch {
+                // A second foreign entry kept in the private folder: report the folder holding both.
+                if let kept = error.leftover, kept.hasPrefix(stage.folderName + "/") {
+                    throw FileSystemFailure(code: EIO, leftover: stage.folderName)
+                }
+                throw stage.hold(Self.stageName)
             }
-            if errno == ENOENT,
-                unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0
-            {
+            if unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 {
                 throw Self.substitutedFailure
             }
             throw stage.hold(Self.stageName)

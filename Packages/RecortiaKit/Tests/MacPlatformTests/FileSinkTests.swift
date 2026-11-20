@@ -685,6 +685,48 @@ struct FileSinkTests {
             "a later save deleted the file a failed save kept for recovery")
     }
 
+    // T1 security 1C: the rollback swapped back blindly, so a third file that took the public name
+    // after the swap moved into the private folder while the save reported a plain access failure.
+    @Test("A rollback restores the displaced file only into a vacant name and names it otherwise")
+    func swapRollbackNeverHidesAThirdFile() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        let aside = folder.appendingPathComponent("aside.png")
+        let third = folder.appendingPathComponent("third.png")
+        try priorBytes.write(to: url)
+        let displaced = Data("a file that took the name before the swap".utf8)
+        let arrived = Data("a file that took the name after the swap".utf8)
+        try arrived.write(to: third)
+        var steps = 0
+        var replaced = false
+        var arrivedAtName = false
+        let fileSystem = POSIXFileSystem(
+            afterReplaceStep: { _ in
+                steps += 1
+                guard steps == 2 else { return }
+                replaced =
+                    rename(url.path(percentEncoded: false), aside.path(percentEncoded: false)) == 0
+                    && (try? displaced.write(to: url)) != nil
+            },
+            afterSwap: { _ in
+                arrivedAtName = rename(third.path(percentEncoded: false), url.path(percentEncoded: false)) == 0
+            })
+        var thrown: SinkError?
+        do { _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true) } catch {
+            thrown = error
+        }
+        try #require(replaced && arrivedAtName, "control: the name was not taken before and after the swap")
+        #expect(try Data(contentsOf: aside) == priorBytes)
+        #expect(try Data(contentsOf: url) == arrived, "the file that took the name last was moved")
+        guard case .leftover(let name) = thrown else {
+            Issue.record("expected a leftover failure, got \(String(describing: thrown))")
+            return
+        }
+        #expect(name.hasPrefix(".recortia-") && name.hasSuffix("/stage"), "unexpected leftover \(name)")
+        #expect(try Data(contentsOf: folder.appendingPathComponent(name)) == displaced, "the displaced file was lost")
+    }
+
     // R3-03 (third review of T1a): on a swap-capable mount that ignores ownership, the swap installed
     // the screenshot and cleanup then had to report the displaced original as a leftover, so a
     // correct replacement was reported as failed.
