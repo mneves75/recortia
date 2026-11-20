@@ -121,6 +121,12 @@ struct VolumeTraits {
     /// changed by its owner only. exFAT, FAT32 and some network volumes do not.
     let enforcesOwners: Bool
 
+    init(exclusiveRename: Bool, swap: Bool, enforcesOwners: Bool) {
+        self.exclusiveRename = exclusiveRename
+        self.swap = swap
+        self.enforcesOwners = enforcesOwners
+    }
+
     init(_ directory: Int32) {
         var list = attrlist()
         list.bitmapcount = u_short(ATTR_BIT_MAP_COUNT)
@@ -154,6 +160,8 @@ struct POSIXFileSystem {
     /// The stage's name inside its private folder.
     static let stageName = "stage"
 
+    /// Reads the folder's volume capabilities; a test can model another kind of volume.
+    var volumeTraits: (Int32) -> VolumeTraits = { VolumeTraits($0) }
     /// Runs once the folder's identity is read and its spelling resolved, before it is opened.
     var afterResolve: (URL) -> Void = { _ in }
     /// Runs once the stage's bytes are on disk, while it is still owner-only and without an ACL.
@@ -192,7 +200,7 @@ struct POSIXFileSystem {
         let directory = try openFolder(folder)
         defer { close(directory) }
         // The publication path is chosen before anything is written.
-        let volume = VolumeTraits(directory)
+        let volume = volumeTraits(directory)
         guard volume.exclusiveRename else {
             return try saveWithoutExclusiveRename(
                 data, in: directory, folder: folder, names: names, overwrite: overwrite, volume: volume)
@@ -360,7 +368,9 @@ struct POSIXFileSystem {
         _ stage: Stage, data: Data, with name: String, in directory: Int32, replacing replaced: FileIdentity,
         volume: VolumeTraits
     ) throws(FileSystemFailure) {
-        if volume.swap {
+        // Swap only where the private folder is private: the displaced original lands there and is
+        // removed by name. Elsewhere the integrity-only path replaces by plain rename.
+        if volume.swap, volume.enforcesOwners {
             guard renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 else {
                 throw FileSystemFailure(code: errno)
             }
@@ -387,8 +397,8 @@ struct POSIXFileSystem {
             }
             throw stage.hold(Self.stageName)
         }
-        // Volumes without swap (exFAT, FAT32, some network volumes) replace by plain rename; the
-        // destination may change between reading its access and this rename there.
+        // Volumes without swap or enforced owners (exFAT, FAT32, some network volumes) replace by
+        // plain rename; the destination may change between reading its access and this rename there.
         try stage.checkStillStaged()
         if renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
         afterPublish(directoryURL(stage).appendingPathComponent(name, isDirectory: false))

@@ -513,6 +513,24 @@ struct FileSinkTests {
             "a later save deleted the file a failed save kept for recovery")
     }
 
+    // R3-03 (third review of T1a): on a swap-capable mount that ignores ownership, the swap installed
+    // the screenshot and cleanup then had to report the displaced original as a leftover, so a
+    // correct replacement was reported as failed.
+    @Test("An overwrite on a swap-capable volume that ignores ownership succeeds and leaves nothing")
+    func overwriteWithoutEnforcedOwnersSucceeds() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(volumeTraits: { _ in
+                VolumeTraits(exclusiveRename: true, swap: true, enforcesOwners: false)
+            }))
+        _ = try sink.save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
+    }
+
     @Test("Overwriting a destination that has a second hard link replaces the name and keeps the other link")
     func hardLinkedDestinationIsReplaced() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
