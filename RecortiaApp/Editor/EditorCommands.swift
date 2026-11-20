@@ -18,21 +18,33 @@ final class EditorPanes {
 /// The editor window that is key, for the View and Arrange menus: their commands act on that
 /// editor alone and are disabled while any other window (or none) is key. Menu-bar commands
 /// re-read state only through `@ObservedObject`, so this publishes a change whenever the key
-/// editor or its columns change.
+/// editor or its columns change. The editor is held weakly, so a closed editor is never kept.
 final class EditorCommands: ObservableObject {
     static let shared = EditorCommands()
 
-    @Published private(set) var keyEditor: EditorWindowController?
-    @Published private(set) var panesRevision = 0
+    private(set) weak var keyEditor: EditorWindowController?
+    @Published private var revision = 0
 
-    func editorBecameKey(_ editor: EditorWindowController) { keyEditor = editor }
+    func editorBecameKey(_ editor: EditorWindowController) {
+        keyEditor = editor
+        revision &+= 1
+    }
 
     func editorResignedKey(_ editor: EditorWindowController) {
-        if keyEditor === editor { keyEditor = nil }
+        guard keyEditor === editor else { return }
+        keyEditor = nil
+        revision &+= 1
     }
 
     func panesChanged(_ editor: EditorWindowController) {
-        if keyEditor === editor { panesRevision &+= 1 }
+        if keyEditor === editor { revision &+= 1 }
+    }
+
+    /// The editor a menu command acts on, resolved when the command runs rather than when the
+    /// menu was built: the editor whose window is key with no sheet attached, or none.
+    static func targetEditor() -> EditorWindowController? {
+        guard let window = NSApp.keyWindow, window.attachedSheet == nil else { return nil }
+        return window.windowController as? EditorWindowController
     }
 }
 
@@ -68,9 +80,7 @@ enum EditorArrangeCommand: Hashable {
 
     /// Arrange acts on a selection, never while text input owns the keyboard.
     @MainActor
-    static func isAvailable(for model: EditorModel) -> Bool {
-        !model.selection.isEmpty && model.textEditing == nil && !model.isClosed
-    }
+    static func isAvailable(for model: EditorModel) -> Bool { model.canArrangeSelection }
 }
 
 // MARK: - Menu bar
@@ -89,7 +99,8 @@ struct EditorMenuCommands: Commands {
                     ? String(localized: "Show Sidebar", table: "Editor")
                     : String(localized: "Hide Sidebar", table: "Editor")
             ) {
-                editor?.toggle(.sidebar)
+                guard let target = EditorCommands.targetEditor() else { return NSSound.beep() }
+                target.toggle(.sidebar)
             }
             .keyboardShortcut("s", modifiers: [.control, .command])
             .disabled(editor == nil)
@@ -98,21 +109,20 @@ struct EditorMenuCommands: Commands {
                     ? String(localized: "Show Inspector", table: "Editor")
                     : String(localized: "Hide Inspector", table: "Editor")
             ) {
-                editor?.toggle(.inspector)
+                guard let target = EditorCommands.targetEditor() else { return NSSound.beep() }
+                target.toggle(.inspector)
             }
             .keyboardShortcut("i", modifiers: [.control, .command])
             .disabled(editor == nil)
         }
-        // Enabled for a key editor; each command checks the selection and text input when chosen.
+        // Enabled for a key editor. When chosen, a command refuses while text input (IME included)
+        // or automatic masking owns the editor, and never commits pending text itself.
         CommandMenu(String(localized: "Arrange", table: "Editor")) {
             EditorArrangeMenuItems(isAvailable: editor != nil) { command in
-                guard let editor else { return }
-                editor.commitPendingText()
-                guard EditorArrangeCommand.isAvailable(for: editor.model) else {
-                    NSSound.beep()
-                    return
+                guard let target = EditorCommands.targetEditor(), target.model.canArrangeSelection else {
+                    return NSSound.beep()
                 }
-                command.perform(on: editor.model)
+                command.perform(on: target.model)
             }
         }
     }

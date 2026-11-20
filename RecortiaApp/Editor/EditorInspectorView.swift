@@ -679,39 +679,23 @@ private struct BoxBackgroundRows: View {
     }
 }
 
-/// X, Y, Width and Height behind a disclosure that starts collapsed and keeps its state this
-/// session. The header is a plain button, so VoiceOver and accessibility Press reach it directly.
+/// X, Y, Width and Height in a native disclosure (VoiceOver reads its expanded state) that starts
+/// collapsed and keeps its state this session.
 private struct PositionSection: View {
     let model: EditorModel
     let item: EditorListItem
     @Bindable private var state = InspectorSessionState.shared
 
     var body: some View {
-        let expanded = state.showsPositionAndSize
         Section {
-            Button {
-                state.showsPositionAndSize.toggle()
-            } label: {
-                HStack {
-                    Text(String(localized: "Position and Size", table: "Editor"))
-                    Spacer(minLength: DesignTokens.Space.s)
-                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityValue(
-                expanded
-                    ? String(localized: "Expanded", table: "Editor") : String(localized: "Collapsed", table: "Editor")
-            )
-            .accessibilityIdentifier("inspector.positionAndSize")
-            if expanded {
+            DisclosureGroup(isExpanded: $state.showsPositionAndSize) {
                 FrameFields(frame: item.frame, identifier: "frame", preservesAspectRatio: item.kind == .image) {
                     model.setFrame($0, for: item.id)
                 }
+            } label: {
+                Text(String(localized: "Position and Size", table: "Editor"))
             }
+            .accessibilityIdentifier("inspector.positionAndSize")
         }
     }
 }
