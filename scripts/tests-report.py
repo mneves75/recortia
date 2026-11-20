@@ -102,25 +102,29 @@ GATES: list[dict[str, object]] = [
     },
 ]
 
-# `prefix` is how the suite's script names itself in its log, including the commit header.
+# `prefix` is how the suite's script names itself in its log; `start` begins each run in it.
 SUITES = (
     {
         "id": "check",
         "command": "./init.sh check --unsigned",
         "evidence": ".scratch/logs/check-*.log",
         "prefix": "check",
+        "start": "check: commit ",
     },
     {
         "id": "e2e",
         "command": "./init.sh e2e --lang all",
         "evidence": ".scratch/logs/e2e-*.log",
         "prefix": "e2e",
+        "start": "e2e: commit ",
     },
     {
         "id": "release-dry-run",
         "command": "scripts/release.sh --dry-run",
         "evidence": ".scratch/logs/release-*.log",
         "prefix": "release",
+        # release.sh names its mode before preflight and its commit only after it.
+        "start": "release: run mode ",
     },
 )
 
@@ -170,20 +174,20 @@ def release_status(text: str) -> str | None:
 STATUS = {"check": check_status, "e2e": e2e_status, "release-dry-run": release_status}
 
 
-def latest_run(text: str, prefix: str) -> str | None:
+def latest_run(text: str, start: str) -> str | None:
     """The latest run in an appended log: its own header through the end of the file."""
-    starts = list(re.finditer(rf"(?m)^{re.escape(prefix)}: commit ", text))
+    starts = list(re.finditer(rf"(?m)^{re.escape(start)}", text))
     return text[starts[-1].start():] if starts else None
 
 
 def evidence_commit(run: str, prefix: str) -> str | None:
-    found = re.match(rf"{re.escape(prefix)}: commit ([0-9a-f]{{40}})\b", run)
+    found = re.search(rf"(?m)^{re.escape(prefix)}: commit ([0-9a-f]{{40}})\b", run)
     return found.group(1) if found else None
 
 
 def ran_on_clean_tree(run: str, prefix: str) -> bool:
     """A commit's verdict needs the committed tree: clean when the run started and when it ended."""
-    start = re.match(rf"{re.escape(prefix)}: commit [0-9a-f]{{40}} tree (\S+)", run)
+    start = re.search(rf"(?m)^{re.escape(prefix)}: commit [0-9a-f]{{40}} tree (\S+)", run)
     ends = re.findall(rf"(?m)^{re.escape(prefix)}: end tree (\S+)$", run)
     return start is not None and start.group(1) == "clean" and bool(ends) and ends[-1] == "clean"
 
@@ -228,11 +232,16 @@ def observe(suite: dict[str, str], head: str) -> dict[str, object]:
     text = newest.read_text(errors="replace")
     age = datetime.now(tz=timezone.utc).timestamp() - newest.stat().st_mtime
     # One run is one record: a verdict or summary from an earlier run in the same log never counts.
-    run = latest_run(text, suite["prefix"])
+    run = latest_run(text, suite["start"])
     status = STATUS[suite["id"]](text if run is None else run)
     ran_at = None if run is None else evidence_commit(run, suite["prefix"])
     if status is None:
         status = "running" if age < IN_PROGRESS_SECONDS else "incomplete"
+    elif suite["id"] == "release-dry-run" and run is not None and not run.startswith("release: run mode dry-run\n"):
+        status = "not_dry_run"
+    elif status == "failed" and run is not None and ran_at is None:
+        # Failed in preflight, before naming a commit: a failure, never credited to another commit.
+        pass
     elif ran_at != head:
         # A verdict proves only the commit it ran at; the report speaks for HEAD.
         status = "stale"

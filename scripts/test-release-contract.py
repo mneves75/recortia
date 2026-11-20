@@ -62,6 +62,8 @@ elif args[0] == 'describe':
 elif args[:2] == ['worktree', 'add']:
     target = pathlib.Path(args[-2])
     shutil.copytree(root / 'gate', target)
+elif args[0] == '-C' and args[2:4] == ['worktree', 'remove']:
+    sys.exit(1 if (root / 'fail-cleanup').exists() else 0)
 ''')
         (root / "gate/scripts").mkdir(parents=True)
         gate = root / "gate/scripts/check.sh"
@@ -161,21 +163,45 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertNotIn("dry run complete", output)
         self.assertEqual("failed", inventory_release_status(output))
 
-    def test_the_success_marker_is_the_last_step_and_the_inventory_reads_it(self) -> None:
-        # The full success path needs codesign, hdiutil and /usr/libexec/PlistBuddy, which this
-        # fixture cannot stand in for; set -e makes the last line reachable only after every step.
+    def run_finish(self, *, exit_status: int, cleanup_fails: bool, completed: bool) -> subprocess.CompletedProcess[str]:
+        """Run release.sh's own EXIT handler: the success path needs codesign, hdiutil and
+        /usr/libexec/PlistBuddy, which no fixture stands in for, so this drives its last step."""
         script = RELEASE.read_text()
-        self.assertRegex(script, r"(?m)^set -euo pipefail$")
-        last = [line for line in script.splitlines() if line.strip()][-3:]
-        self.assertEqual([
-            'if (( dry_run )); then echo "release: dry run complete ($label, manifest $out/manifest.txt)"',
-            'else echo "release: complete ($label, manifest $out/manifest.txt)"',
-            "fi",
-        ], last)
-        self.assertEqual("passed", inventory_release_status(
-            "release: commit " + "a" * 40 + "\nrelease: dry run complete (0.1-dev, manifest m)\n"))
-        self.assertEqual("failed", inventory_release_status(
-            "release: dry run complete (0.1-dev, manifest m)\nrelease: failed (exit 1)\n"))
+        handler = re.search(r"(?ms)^tree_state\(\) \{.*?\n^finish\(\) \{\n.*?\n^\}\n", script)
+        self.assertIsNotNone(handler, "release.sh must define tree_state and finish together")
+        assert handler is not None
+        fixture = self.fixture()
+        if cleanup_fails:
+            (fixture.root / "fail-cleanup").write_text("")
+        body = (handler.group(0) + f"root={fixture.root}\nsrc={fixture.root}/src\nlabel=0.1-dev\nout=/out\n"
+                f"dry_run=1\ncompleted=0\ntrap finish EXIT\n{'completed=1' if completed else ':'}\nexit {exit_status}\n")
+        return subprocess.run(["/bin/zsh", "-c", body], cwd=fixture.root, capture_output=True, text=True,
+                              env={"PATH": f"{fixture.bin}:/usr/bin:/bin"}, timeout=15)
+
+    def test_the_verdict_follows_cleanup_and_the_inventory_reads_it(self) -> None:
+        done = self.run_finish(exit_status=0, cleanup_fails=False, completed=True)
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        self.assertEqual("release: dry run complete (0.1-dev, manifest /out/manifest.txt)",
+                         done.stdout.strip().splitlines()[-1])
+        record = "release: run mode dry-run\nrelease: commit " + "a" * 40 + " tree clean\n" + done.stdout
+        self.assertEqual("passed", inventory_release_status(record))
+        failed_cleanup = self.run_finish(exit_status=0, cleanup_fails=True, completed=True)
+        self.assertNotEqual(0, failed_cleanup.returncode)
+        self.assertIn("release: cleanup failed", failed_cleanup.stderr)
+        self.assertNotIn("complete", failed_cleanup.stdout)
+        self.assertEqual("failed", inventory_release_status(failed_cleanup.stdout + failed_cleanup.stderr))
+        early_exit = self.run_finish(exit_status=0, cleanup_fails=False, completed=False)
+        self.assertNotEqual(0, early_exit.returncode, "an exit before the last step is not a success")
+        self.assertNotIn("complete", early_exit.stdout)
+
+    def test_the_run_header_names_the_mode_before_preflight(self) -> None:
+        fixture = self.fixture()
+        for arguments, mode in ((("--dry-run",), "dry-run"), ((), "release")):
+            with self.subTest(mode=mode):
+                result = fixture.run(*arguments)
+                self.assertEqual(f"release: run mode {mode}", result.stdout.splitlines()[0])
+        script = RELEASE.read_text()
+        self.assertLess(script.index('echo "release: run mode $mode"'), script.index("scripts/doctor.sh --release"))
 
     def test_unknown_arguments_stop_before_the_toolchain_or_release_path(self) -> None:
         for arguments in (("--dryrun",), ("dry-run",), ("--dry-run", "extra"), ("",)):

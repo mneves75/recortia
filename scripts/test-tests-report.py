@@ -144,6 +144,21 @@ class TestsReportTests(unittest.TestCase):
         log.write_text(f"check: commit {self.head} tree clean\ncheck: all gates passed\n")
         self.assertEqual("dirty", self.suites()["check"]["status"], "a pass without its end state proves nothing")
 
+    def test_release_verdicts_count_only_for_a_dry_run_record(self) -> None:
+        log = self.root / ".scratch/logs/release-1.log"
+        identity = f"release: commit {self.head} tree clean\n"
+        log.write_text("release: run mode dry-run\n" + identity + "release: end tree clean\n"
+                       "release: dry run complete (0.1-dev, manifest m)\n")
+        self.assertEqual("passed", self.suites()["release-dry-run"]["status"])
+        log.write_text("release: run mode dry-run\nrelease: failed (exit 1)\n")
+        self.assertEqual("failed", self.suites()["release-dry-run"]["status"],
+                         "a preflight failure is a failed run, not a stale one")
+        log.write_text("release: run mode release\n" + identity + "release: failed (exit 1)\n")
+        self.assertEqual("not_dry_run", self.suites()["release-dry-run"]["status"])
+        log.write_text("release: run mode dry-run\n" + identity + "release: end tree clean\n"
+                       "release: dry run complete (0.1-dev, manifest m)\nrelease: run mode dry-run\n")
+        self.assertIn(self.suites()["release-dry-run"]["status"], ("running", "incomplete"))
+
     def test_only_the_latest_run_in_a_log_counts(self) -> None:
         import os
         import time
