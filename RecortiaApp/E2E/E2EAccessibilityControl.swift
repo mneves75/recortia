@@ -456,8 +456,9 @@
                 frame.origin.x.isFinite && frame.origin.y.isFinite && frame.width.isFinite && frame.height.isFinite
                     && frame.width > 0 && frame.height > 0)
             let point = window.convertPoint(fromScreen: NSPoint(x: frame.midX, y: frame.midY))
-            let types: [NSEvent.EventType] =
-                secondary ? [.rightMouseDown, .rightMouseUp] : [.leftMouseDown, .leftMouseUp]
+            // A context menu opens on the secondary mouse-down and its tracking consumes the
+            // mouse-up; a separate up after tracking would reach the control as a click.
+            let types: [NSEvent.EventType] = secondary ? [.rightMouseDown] : [.leftMouseDown, .leftMouseUp]
             for type in types {
                 let event = try context.unwrap(
                     "control mouse event",

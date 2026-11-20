@@ -103,7 +103,11 @@
             try context.require(
                 "the swatch's context menu removes a second saved color",
                 await E2EWait.until { model.savedAnnotationColors == Array(remainingColors.dropFirst()) })
-            context.check("the context menu leaves annotations unchanged", model.document == beforeRemoval)
+            context.check(
+                "the context menu leaves annotations unchanged", model.document == beforeRemoval,
+                "before \(beforeRemoval.annotations.map { "\($0.style.stroke.hex) \($0.kind)" }), "
+                    + "after \(model.document.annotations.map { "\($0.style.stroke.hex) \($0.kind)" }), "
+                    + "selection \(model.selection)")
             await E2EActions.snapshotEditor(controller, context, shot: "palette")
             if let window = controller.window {
                 window.setContentSize(NSSize(width: 980, height: 560))
