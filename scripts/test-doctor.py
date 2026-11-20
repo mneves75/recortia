@@ -304,6 +304,23 @@ else:
         self.assertEqual(2, missing.returncode, missing.stdout + missing.stderr)
         self.assertFalse((self.root / "launch-reached").exists())
 
+    def test_no_build_requires_a_regular_executable_foreground_helper(self) -> None:
+        helper = (self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app"
+                  / "Contents/MacOS/RecortiaE2EForegroundHost")
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        (self.root / "launch-reached").unlink()
+        helper.chmod(0o644)  # same bytes, no longer executable
+        refused = self.run_e2e("--no-build")
+        self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+        real = helper.with_name("real-helper")
+        helper.rename(real)
+        real.chmod(0o755)
+        helper.symlink_to(real.name)
+        self.assertEqual(2, self.run_e2e().returncode, "a linked helper is not a built executable")
+        self.assertFalse((self.root / "launch-reached").exists())
+
     def test_bundle_hash_does_not_follow_external_symlinks(self) -> None:
         bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app"
         resources = bundle / "Contents/Resources"

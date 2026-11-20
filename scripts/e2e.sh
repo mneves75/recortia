@@ -96,9 +96,13 @@ fi
 [[ -x "$app" ]] || { echo "e2e: $app not found; build first" >&2; exit 2; }
 # Bind the qualification to both entire built bundles, even when another script rebuilt one.
 if ! current_provenance=$(python3 - "$current_provenance" "$bundle" "$helper_bundle" <<'PY'
-import hashlib, json, os, pathlib, sys
+import hashlib, json, os, pathlib, stat, sys
 record = json.loads(sys.argv[1])
-def bundle_sha256(bundle):
+def bundle_sha256(bundle, executable):
+    # The fixture launches this file: it must be a regular executable, not a link or plain data.
+    program = bundle / "Contents/MacOS" / executable
+    if program.is_symlink() or not program.is_file() or not os.access(program, os.X_OK):
+        sys.exit(f"e2e: {program} is not a regular executable file")
     if bundle.is_symlink() or not bundle.is_dir():
         sys.exit(f"e2e: expected a regular app bundle directory at {bundle}")
     def walk_error(error):
@@ -117,13 +121,15 @@ def bundle_sha256(bundle):
             target = os.fsencode(os.readlink(path))
             fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
         else:
-            fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
+            # The mode counts: the same bytes without execute permission do not launch.
+            mode = stat.S_IMODE(path.stat().st_mode)
+            fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big") + mode.to_bytes(2, "big"))
             with path.open("rb") as contents:
                 while chunk := contents.read(64 * 1024):
                     fingerprint.update(chunk)
     return fingerprint.hexdigest()
-record["app_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[2]))
-record["foreground_host_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[3]))
+record["app_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[2]), "RecortiaE2E")
+record["foreground_host_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[3]), "RecortiaE2EForegroundHost")
 print(json.dumps(record, sort_keys=True))
 PY
 ); then
