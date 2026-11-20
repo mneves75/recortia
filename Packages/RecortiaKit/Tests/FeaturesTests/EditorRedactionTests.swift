@@ -162,6 +162,7 @@ struct EditorRedactionTests {
         h.drag((122, 110), (137, 110))
         #expect(m.document.masks.first?.outputRect == mask.outputRect)
         #expect(m.selection == [.callout(magnifier.id)])
+        #expect(m.frame(of: .callout(magnifier.id))?.minX == 133)
         let pixels = try await fixture.exported()
         #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
