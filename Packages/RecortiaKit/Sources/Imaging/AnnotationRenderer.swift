@@ -27,7 +27,7 @@ public enum AnnotationRenderer {
 
     public static func draw(_ annotations: [Annotation], in context: CGContext) throws(RenderError) {
         for annotation in annotations {
-            guard isDrawable(annotation) else {
+            guard hasFiniteValues(annotation) else {
                 if case .text = annotation.kind { throw .textLayoutFailed(.invalidGeometry) }
                 if case .arrow(_, _, .some) = annotation.kind { throw .invalidGeometry }
                 continue
@@ -36,9 +36,15 @@ public enum AnnotationRenderer {
         }
     }
 
-    /// Whether every coordinate and style value is finite and sensible. `draw` rejects invalid
-    /// text and curved arrows and skips other invalid annotations.
+    /// Whether every coordinate and style value is finite and sensible, and a curved arrow has a
+    /// layout. `draw` rejects invalid text and curved arrows and skips other invalid annotations.
     static func isDrawable(_ annotation: Annotation) -> Bool {
+        guard hasFiniteValues(annotation) else { return false }
+        if case .arrow(_, _, .some) = annotation.kind { return (try? ArrowLayout.make(for: annotation)) != nil }
+        return true
+    }
+
+    private static func hasFiniteValues(_ annotation: Annotation) -> Bool {
         let style = annotation.style
         guard style.lineWidth.isFinite, style.lineWidth >= 0, style.opacity.isFinite else { return false }
         let points: [Point<DocumentSpace>]
@@ -49,7 +55,6 @@ public enum AnnotationRenderer {
             }
             points = [text.origin]
         case .arrow(let start, let end, let control):
-            if (try? ArrowLayout.make(for: annotation)) == nil { return false }
             points = [start, end] + (control.map { [$0] } ?? [])
         case .line(let start, let end):
             points = [start, end]
@@ -74,6 +79,16 @@ public enum AnnotationRenderer {
             }
         } else {
             textLayout = nil
+        }
+        let arrowLayout: ArrowLayout?
+        if case .arrow(_, _, let control) = annotation.kind {
+            do { arrowLayout = try ArrowLayout.make(for: annotation) } catch {
+                // A straight arrow the layout refuses is skipped like other invalid values.
+                if control != nil { throw error }
+                return
+            }
+        } else {
+            arrowLayout = nil
         }
         let style = annotation.style
         let opacity = min(max(style.opacity, 0), 1)
@@ -104,8 +119,10 @@ public enum AnnotationRenderer {
             }
         case .arrow:
             // One filled union, so a translucent color covers the shaft/head overlap once.
-            context.addPath(try ArrowLayout.make(for: annotation).inkPath)
-            context.fillPath()
+            if let arrowLayout {
+                context.addPath(arrowLayout.inkPath)
+                context.fillPath()
+            }
         case .line(let start, let end):
             context.addLines(between: [start.cg, end.cg])
             context.strokePath()

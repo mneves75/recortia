@@ -54,6 +54,19 @@ struct AnnotationRendererTests {
         }
     }
 
+    @Test("A straight arrow whose length overflows is skipped; the render still succeeds")
+    func overflowingStraightArrowIsSkipped() async throws {
+        let harness = ImagingHarness()
+        let asset = try await harness.add(try ChartFixture.solid(width: 40, height: 30, color: .init(9, 9, 9)))
+        var document = Document(asset: asset)
+        document.annotations = [
+            Annotation(kind: .arrow(start: Point(x: -1e308, y: 10), end: Point(x: 1e308, y: 10)), style: .default)
+        ]
+        let image = try await harness.renderer.render(document, scale: 1)
+        let base = try await harness.renderer.renderBase(document, scale: 1)
+        #expect(try pixels(image) == pixels(base))
+    }
+
     @Test("A translucent straight arrow paints the shaft and head junction once")
     func straightArrowJunctionAlpha() throws {
         let p = try draw([
