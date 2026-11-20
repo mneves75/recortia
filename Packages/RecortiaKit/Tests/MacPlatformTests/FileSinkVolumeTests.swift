@@ -9,6 +9,8 @@ import Testing
 // this environment cannot attach an image at all, the suite is skipped, never passed.
 @Suite(
     "File sink on exFAT and FAT32 volumes (FR-07, EXP-02)",
+    // Images attached in parallel make hdiutil fail to attach some of them.
+    .serialized,
     .enabled(if: ScratchVolume.isAvailable, "hdiutil cannot create and attach a disk image here"))
 struct FileSinkVolumeTests {
     let snapshot = TestSupport.snapshot()
@@ -33,6 +35,32 @@ struct FileSinkVolumeTests {
             #expect(first != second && first != url && second != url)
             #expect(try Data(contentsOf: second) == snapshot.bytes)
             #expect(TestSupport.directoryEntries(folder) == [url, first, second].map(\.lastPathComponent).sorted())
+        }
+    }
+
+    // Shape note (second review of T1a): the save wrote and flushed a full stage before it found
+    // the volume had no exclusive rename, then wrote the same bytes again into the claim. There
+    // the stage's folder has no owners, so that first copy was readable by anyone for no purpose.
+    @Test(
+        "A new save writes the snapshot straight into the claimed name and never creates a stage",
+        arguments: ScratchVolume.Format.allCases, [false, true])
+    func newSaveWritesNoStage(format: ScratchVolume.Format, unique: Bool) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            var claimed = 0
+            var staged: [String] = []
+            let fileSystem = POSIXFileSystem(afterClaim: { _ in
+                claimed += 1
+                staged += TestSupport.directoryEntries(folder).filter { $0.hasPrefix(".recortia-") }
+            })
+            let sink = FileSink(fileSystem: fileSystem)
+            let url =
+                unique
+                ? try sink.saveUnique(snapshot, in: folder)
+                : try sink.save(snapshot, to: folder.appendingPathComponent("shot.png"), overwrite: false)
+            try #require(claimed == 1, "control: the save did not claim its name")
+            #expect(staged.isEmpty, "a stage existed while the claim was written: \(staged)")
+            #expect(try Data(contentsOf: url) == snapshot.bytes)
+            #expect(TestSupport.directoryEntries(folder) == [url.lastPathComponent])
         }
     }
 

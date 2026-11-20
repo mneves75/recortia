@@ -86,6 +86,35 @@ struct FileIdentity: Equatable, Sendable {
     }
 }
 
+/// What the folder's volume can do, read before anything is written. A volume that cannot report
+/// its capabilities is treated as having none, which selects the direct-write path.
+struct VolumeTraits {
+    let exclusiveRename: Bool
+    let swap: Bool
+
+    init(_ directory: Int32) {
+        var list = attrlist()
+        list.bitmapcount = u_short(ATTR_BIT_MAP_COUNT)
+        list.volattr = attrgroup_t(ATTR_VOL_INFO) | attrgroup_t(ATTR_VOL_CAPABILITIES)
+        // A 4-byte length, then the capabilities.
+        var buffer = [UInt8](repeating: 0, count: 4 + MemoryLayout<vol_capabilities_attr_t>.size)
+        var capabilities: vol_capabilities_attr_t?
+        if fgetattrlist(directory, &list, &buffer, buffer.count, 0) == 0 {
+            capabilities = buffer.withUnsafeBytes {
+                $0.loadUnaligned(fromByteOffset: 4, as: vol_capabilities_attr_t.self)
+            }
+        }
+        func has(_ bit: Int32) -> Bool {
+            guard let capabilities else { return false }
+            let mask = UInt32(bit)
+            // Index 1 is VOL_CAPABILITIES_INTERFACES.
+            return capabilities.valid.1 & mask != 0 && capabilities.capabilities.1 & mask != 0
+        }
+        exclusiveRename = has(VOL_CAP_INT_RENAME_EXCL)
+        swap = has(VOL_CAP_INT_RENAME_SWAP)
+    }
+}
+
 /// The POSIX operations behind `FileSink`, reporting error codes so failures map precisely. The
 /// closures and injected codes are test seams; the app uses the defaults.
 struct POSIXFileSystem {
@@ -119,12 +148,45 @@ struct POSIXFileSystem {
     func save(_ data: Data, in folder: URL, names: [String], overwrite: Bool) throws(FileSystemFailure) -> String {
         let directory = try openFolder(folder)
         defer { close(directory) }
+        // The publication path is chosen before anything is written.
+        let volume = VolumeTraits(directory)
+        guard volume.exclusiveRename else {
+            return try saveWithoutExclusiveRename(
+                data, in: directory, folder: folder, names: names, overwrite: overwrite, volume: volume)
+        }
         let stage = try Stage(in: directory, folder: folder, data: data, fileSystem: self)
         defer { stage.remove() }
         beforePublish(stage.url)
         for name in names {
             do {
-                try publish(stage, data: data, as: name, in: directory, folder: folder, overwrite: overwrite)
+                try publish(stage, data: data, as: name, in: directory, overwrite: overwrite, volume: volume)
+                return name
+            } catch  where error.code == EEXIST && !overwrite {
+                continue
+            }
+        }
+        throw FileSystemFailure(code: EEXIST)
+    }
+
+    /// exFAT, FAT32 and some network volumes: a new file is written straight into an exclusively
+    /// created name, with no stage at all; only replacing an existing file stages the bytes.
+    private func saveWithoutExclusiveRename(
+        _ data: Data, in directory: Int32, folder: URL, names: [String], overwrite: Bool, volume: VolumeTraits
+    ) throws(FileSystemFailure) -> String {
+        for name in names {
+            var existing = stat()
+            if fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
+                guard overwrite else { continue }
+                guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
+                let stage = try Stage(in: directory, folder: folder, data: data, fileSystem: self)
+                defer { stage.remove() }
+                beforePublish(stage.url)
+                try replace(stage, data: data, named: name, in: directory, volume: volume)
+                return name
+            }
+            guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
+            do {
+                try claimThenWrite(data, as: name, in: directory, folder: folder)
                 return name
             } catch  where error.code == EEXIST && !overwrite {
                 continue
@@ -162,33 +224,31 @@ struct POSIXFileSystem {
     // MARK: Publishing
 
     private func publish(
-        _ stage: Stage, data: Data, as name: String, in directory: Int32, folder: URL, overwrite: Bool
+        _ stage: Stage, data: Data, as name: String, in directory: Int32, overwrite: Bool, volume: VolumeTraits
     ) throws(FileSystemFailure) {
         var existing = stat()
         if fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
             guard overwrite else { throw FileSystemFailure(code: EEXIST) }
             // Never through a link, and never over a folder or a device.
             guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
-            try replace(stage, data: data, named: name, in: directory)
+            try replace(stage, data: data, named: name, in: directory, volume: volume)
             return
         }
         guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
         try stage.giveNewFileAccess(in: directory)
         try stage.checkStillStaged()
         if let failPublish { throw FileSystemFailure(code: failPublish) }
-        if renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 { return }
-        let failure = errno
-        // exFAT and FAT have no exclusive rename; they still report EEXIST for a taken name.
-        guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
-        try claimThenWrite(data, as: name, in: directory, folder: folder)
+        guard renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 else {
+            throw FileSystemFailure(code: errno)
+        }
     }
 
     /// Gives the stage the destination's ACL, group and mode, all read from one descriptor that
     /// does not follow a link, then swaps it in. The swapped-out entry is removed only while it is
     /// that same destination; otherwise the swap is undone.
-    private func replace(_ stage: Stage, data: Data, named name: String, in directory: Int32)
-        throws(FileSystemFailure)
-    {
+    private func replace(
+        _ stage: Stage, data: Data, named name: String, in directory: Int32, volume: VolumeTraits
+    ) throws(FileSystemFailure) {
         let destination = openat(directory, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard destination >= 0 else {
             throw errno == ELOOP ? Self.substitutedFailure : FileSystemFailure(code: errno)
@@ -216,7 +276,7 @@ struct POSIXFileSystem {
         do throws(FileSystemFailure) {
             try stage.checkStillStaged()
             if let failPublish { throw FileSystemFailure(code: failPublish) }
-            try swap(stage, data: data, with: name, in: directory, replacing: replaced)
+            try swap(stage, data: data, with: name, in: directory, replacing: replaced, volume: volume)
         } catch {
             // The copied ACL can deny this user deleting the stage (an entry that denies delete
             // is also why the rename failed); drop it so cleanup works. Owner-only first, so
@@ -233,9 +293,13 @@ struct POSIXFileSystem {
     }
 
     private func swap(
-        _ stage: Stage, data: Data, with name: String, in directory: Int32, replacing replaced: FileIdentity
+        _ stage: Stage, data: Data, with name: String, in directory: Int32, replacing replaced: FileIdentity,
+        volume: VolumeTraits
     ) throws(FileSystemFailure) {
-        if renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
+        if volume.swap {
+            guard renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 else {
+                throw FileSystemFailure(code: errno)
+            }
             // The stage's name now holds what was at `name`: the confirmed file, removed as the
             // overwrite the person approved.
             if Self.entry(Self.stageName, in: stage.folder, is: replaced, type: S_IFREG) {
@@ -246,10 +310,8 @@ struct POSIXFileSystem {
             _ = renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP))
             throw Self.substitutedFailure
         }
-        let failure = errno
         // Volumes without swap (exFAT, FAT32, some network volumes) replace by plain rename; the
         // destination may change between reading its access and this rename there.
-        guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
         try stage.checkStillStaged()
         if renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
         // On exFAT and FAT32 the private folder has no owners or modes, so another user could change
