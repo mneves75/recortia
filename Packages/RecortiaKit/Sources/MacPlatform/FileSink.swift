@@ -116,7 +116,9 @@ protocol FileSystemOperations {
     /// Creates `url` exclusively (fails if it exists), writes all bytes, flushes them to disk,
     /// gives the file the access `access` describes, and returns the created file's identity.
     func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure) -> FileIdentity
-    /// Atomically renames, failing with EEXIST if `destination` exists.
+    /// Moves `source` to `destination`, failing with EEXIST if `destination` exists or another
+    /// writer reaches it first: an atomic rename, or on volumes without one a write into an
+    /// exclusively created file (`claimThenWrite`).
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure)
     /// Atomically renames, replacing `destination` if it exists and keeping its permission bits and
     /// ACL. Fails with EPERM, leaving `destination` untouched, unless `source` still names the
@@ -138,16 +140,20 @@ struct POSIXFileSystem: FileSystemOperations {
     private let afterReplaceStep: (URL) -> Void
     /// Test seam: gives the open temporary file a group, returning 0 or -1 with `errno` like fchown(2).
     private let changeGroup: (Int32, gid_t) -> Int32
+    /// Test seam: runs once a volume without exclusive rename has claimed the destination name.
+    private let afterClaim: (URL) -> Void
 
     init(
         fileManager: FileManager = .default, afterSync: @escaping (URL) -> Void = { _ in },
         afterReplaceStep: @escaping (URL) -> Void = { _ in },
-        changeGroup: @escaping (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) }
+        changeGroup: @escaping (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) },
+        afterClaim: @escaping (URL) -> Void = { _ in }
     ) {
         self.fileManager = fileManager
         self.afterSync = afterSync
         self.afterReplaceStep = afterReplaceStep
         self.changeGroup = changeGroup
+        self.afterClaim = afterClaim
     }
 
     func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
@@ -248,28 +254,90 @@ struct POSIXFileSystem: FileSystemOperations {
         let failure = errno
         // exFAT and FAT have no exclusive rename; they still report EEXIST for a taken name.
         guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
-        try Self.claimThenRename(from: source, to: destination)
+        try Self.claimThenWrite(from: source, to: destination, afterClaim: afterClaim)
     }
 
-    /// The exclusive move where the volume lacks one: an exclusive create claims `destination`, so
-    /// an existing file is never replaced, then the rename replaces that empty claim. If the
-    /// rename fails, the claim is removed only while it is still the empty file created here.
-    static func claimThenRename(from source: URL, to destination: URL) throws(FileSystemFailure) {
+    /// The exclusive move where the volume lacks one (exFAT, FAT32): an exclusive create claims
+    /// `destination` and the bytes are appended to that claimed file through its descriptor, so
+    /// no rename can replace a file another writer puts at the name. Fails with EEXIST, leaving
+    /// the name alone, unless the claim is still empty when writing starts and the name still
+    /// leads to it, holding exactly the bytes written here, once they are on disk. On any other
+    /// failure the name is removed only under that same condition. On success the source is
+    /// removed, best effort.
+    static func claimThenWrite(from source: URL, to destination: URL, afterClaim: (URL) -> Void = { _ in })
+        throws(FileSystemFailure)
+    {
+        let input = open(source.path(percentEncoded: false), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard input >= 0 else { throw FileSystemFailure(code: errno) }
+        defer { close(input) }
+        var sourceStatus = stat()
+        guard fstat(input, &sourceStatus) == 0 else { throw FileSystemFailure(code: errno) }
+        guard sourceStatus.st_mode & S_IFMT == S_IFREG else { throw substitutedFailure }
         let path = destination.path(percentEncoded: false)
-        let claim = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
+        // Append-only: bytes another writer put in the claim are never overwritten.
+        let claim = open(path, O_WRONLY | O_APPEND | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
         guard claim >= 0 else { throw FileSystemFailure(code: errno) }
-        var claimed = stat()
-        let claimStatus = fstat(claim, &claimed)
-        close(claim)
-        if rename(source.path(percentEncoded: false), path) == 0 { return }
-        let failure = errno
-        var current = stat()
-        if claimStatus == 0, lstat(path, &current) == 0, current.st_dev == claimed.st_dev,
-            current.st_ino == claimed.st_ino, current.st_size == 0
-        {
-            unlink(path)
+        afterClaim(destination)
+        var written: off_t = 0
+        var failure: Int32?
+        var status = stat()
+        if fstat(claim, &status) != 0 {
+            failure = errno
+        } else if status.st_size != 0 {
+            failure = EEXIST
         }
-        throw FileSystemFailure(code: failure)
+        if failure == nil { failure = copyAll(from: input, to: claim, written: &written) }
+        // Best effort, like `replace`: these volumes keep a mount-wide mode anyway.
+        if failure == nil { _ = fchmod(claim, sourceStatus.st_mode & 0o777) }
+        if failure == nil, fsync(claim) != 0 { failure = errno }
+        let ours = isOnlyWrittenFile(at: path, descriptor: claim, size: written)
+        if failure == nil, !ours { failure = EEXIST }
+        if close(claim) != 0, failure == nil { failure = errno }
+        if let failure {
+            if ours { unlink(path) }
+            throw FileSystemFailure(code: failure)
+        }
+        _ = unlink(source.path(percentEncoded: false))
+    }
+
+    /// Copies everything `input` holds to `output`, retrying interrupted calls. Returns the first
+    /// other read(2) or write(2) error code, or nil once all bytes are written.
+    private static func copyAll(from input: Int32, to output: Int32, written: inout off_t) -> Int32? {
+        var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+        while true {
+            let count = buffer.withUnsafeMutableBytes { read(input, $0.baseAddress, $0.count) }
+            if count < 0 {
+                if errno == EINTR { continue }
+                return errno
+            }
+            if count == 0 { return nil }
+            // Invariant: every access stays within the `count` bytes read(2) reported.
+            let failure = buffer.withUnsafeBytes { bytes -> Int32? in
+                guard let base = bytes.baseAddress else { return nil }
+                var offset = 0
+                while offset < count {
+                    let result = Darwin.write(output, base + offset, count - offset)
+                    if result < 0 {
+                        if errno == EINTR { continue }
+                        return errno
+                    }
+                    offset += result
+                }
+                return nil
+            }
+            if let failure { return failure }
+            written += off_t(count)
+        }
+    }
+
+    /// Whether `path` is still the regular file open as `descriptor` and holds exactly `size`
+    /// bytes. exFAT and FAT renumber a file at its first write, so both sides are read now.
+    private static func isOnlyWrittenFile(at path: String, descriptor: Int32, size: off_t) -> Bool {
+        var opened = stat()
+        var named = stat()
+        guard fstat(descriptor, &opened) == 0, lstat(path, &named) == 0 else { return false }
+        return named.st_mode & S_IFMT == S_IFREG && named.st_dev == opened.st_dev && named.st_ino == opened.st_ino
+            && opened.st_size == size && named.st_size == size
     }
 
     func replace(from source: URL, to destination: URL, expecting identity: FileIdentity) throws(FileSystemFailure) {

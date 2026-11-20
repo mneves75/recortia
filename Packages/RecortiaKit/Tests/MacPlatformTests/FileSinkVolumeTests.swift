@@ -46,19 +46,59 @@ struct FileSinkVolumeTests {
             let source = folder.appendingPathComponent(".recortia-source.tmp")
             try snapshot.bytes.write(to: source)
             #expect(throws: FileSystemFailure(code: EEXIST)) {
-                try POSIXFileSystem.claimThenRename(from: source, to: taken)
+                try POSIXFileSystem.claimThenWrite(from: source, to: taken)
             }
             #expect(try Data(contentsOf: taken) == priorBytes)
             // The rename fails after the claim when its source is gone.
             let missing = folder.appendingPathComponent(".recortia-missing.tmp")
             let free = folder.appendingPathComponent("free.png")
             #expect(throws: FileSystemFailure(code: ENOENT)) {
-                try POSIXFileSystem.claimThenRename(from: missing, to: free)
+                try POSIXFileSystem.claimThenWrite(from: missing, to: free)
             }
             #expect(!FileManager.default.fileExists(atPath: free.path), "an empty claimed file was left behind")
-            try POSIXFileSystem.claimThenRename(from: source, to: free)
+            try POSIXFileSystem.claimThenWrite(from: source, to: free)
             #expect(try Data(contentsOf: free) == snapshot.bytes)
             #expect(TestSupport.directoryEntries(folder) == ["free.png", "taken.png"])
+        }
+    }
+
+    enum ConcurrentWrite: String, CaseIterable, Sendable {
+        /// Another writer renames its own file over the claimed name.
+        case replacesClaim
+        /// Another writer opens the claimed, still empty file and writes into it.
+        case writesIntoClaim
+    }
+
+    // R2-D04 (program 2026-11): without exclusive rename, the claimed name was renamed over, so
+    // bytes another writer put there between the claim and the commit were destroyed by a save
+    // that must never overwrite.
+    @Test(
+        "A file written to the claimed name between the claim and the commit is never destroyed",
+        arguments: ScratchVolume.Format.allCases, ConcurrentWrite.allCases)
+    func concurrentWriteAfterClaimSurvives(format: ScratchVolume.Format, write: ConcurrentWrite) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            let theirs = Data("another writer's bytes".utf8)
+            let decoy = folder.appendingPathComponent("theirs.tmp")
+            try theirs.write(to: decoy)
+            var wrote = false
+            let fileSystem = POSIXFileSystem(afterClaim: { claimed in
+                switch write {
+                case .replacesClaim:
+                    wrote = rename(decoy.path(percentEncoded: false), claimed.path(percentEncoded: false)) == 0
+                case .writesIntoClaim:
+                    guard let handle = try? FileHandle(forWritingTo: claimed) else { return }
+                    wrote = (try? handle.write(contentsOf: theirs)) != nil
+                    try? handle.close()
+                }
+            })
+            #expect(throws: SinkError.destinationExists) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+            }
+            try #require(wrote, "control: the other writer never reached the claimed name")
+            #expect(try Data(contentsOf: url) == theirs, "the other writer's bytes were destroyed")
+            let left = TestSupport.directoryEntries(folder).filter { $0.hasPrefix(".recortia-") }
+            #expect(left.isEmpty, "a temporary export was left behind: \(left)")
         }
     }
 
