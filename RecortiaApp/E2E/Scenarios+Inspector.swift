@@ -19,6 +19,13 @@
             let preferences = harness.settings.preferences
             defer { harness.settings.update { $0.annotationPalette = preferences.annotationPalette } }
             let p = E2EActions.point
+            // Pointer input needs a key window in the foreground: the owned host takes it and yields.
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
+            if !E2EForegroundFixture.runnerIsForeground {
+                try await foreground.restore()
+                try await foreground.yieldToRunner()
+            }
 
             func expect(_ situation: String, present: [String], absent: [String]) async {
                 E2ERunner.log("inspector-context: \(situation)")
@@ -66,7 +73,7 @@
                             "rectangle list item", model.listItems.first { $0.id == .annotation(rectangle.id) })))
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure(
+            try await E2EAccessibilityControl.setDisclosure(
                 "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
                 expanded: true, in: root, context)
             await E2ESnapshot.settle(root)
@@ -87,7 +94,11 @@
             }
             func rectangleFill() -> RGBA? { model.document.annotations.first { $0.id == rectangle.id }?.style.fill }
             let fillBefore = rectangleFill()
-            try E2EAccessibilityControl.pressCheckingEffect("style.fill", in: root, context)
+            // SwiftUI draws the switch itself; press it through the accessibility API, as VoiceOver does.
+            let fill = try context.unwrap(
+                "style.fill is in the AX tree", E2EAccessibilityControl.axElement("style.fill"))
+            try context.require(
+                "style.fill performs AXPress", AXUIElementPerformAction(fill, kAXPressAction as CFString) == .success)
             context.check(
                 "the Fill control changes the rectangle's fill",
                 await E2EWait.until { rectangleFill() != fillBefore },
@@ -293,7 +304,7 @@
             context.snapshot(root, shot: "text-selected-compact-dark")
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure(
+            try await E2EAccessibilityControl.setDisclosure(
                 "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
                 expanded: false, in: root, context)
             await E2ESnapshot.settle(root)

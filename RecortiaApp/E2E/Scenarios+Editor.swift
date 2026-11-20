@@ -223,11 +223,18 @@
             let layer = try context.unwrap("image layer", model.document.layers.first)
             model.select(.layer(layer.id))
             let root = try context.unwrap("editor content", controller.contentRoot)
+            // Pointer input needs a key window in the foreground: the owned host takes it and yields.
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
+            if !E2EForegroundFixture.runnerIsForeground {
+                try await foreground.restore()
+                try await foreground.yieldToRunner()
+            }
             await E2ESnapshot.settle(root)
             // Position and Size starts collapsed; open it as a person does, and close it at the end.
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure(
+            try await E2EAccessibilityControl.setDisclosure(
                 "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
                 expanded: true, in: root, context)
             await E2ESnapshot.settle(root)
@@ -262,7 +269,7 @@
             await E2EActions.snapshotEditor(controller, context)
             await E2EActions.scrollInspector(controller, to: 1)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.setDisclosure(
+            try await E2EAccessibilityControl.setDisclosure(
                 "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
                 expanded: false, in: root, context)
             await E2ESnapshot.settle(root)
