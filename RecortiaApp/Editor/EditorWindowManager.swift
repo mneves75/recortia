@@ -194,8 +194,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     func saveImage() {
         commitPendingText()
         guard let window else { return }
-        let format = model.environment.export.exportOptions(for: .saveToFolder(FileManager.default.temporaryDirectory))
-            .format
+        // Another editor holds the shared export slot: do not offer a panel that would be refused.
+        guard model.canStartExport else {
+            NSSound.beep()
+            return
+        }
+        let format = model.environment.settings.preferences.exportOptions.format
         let panel = NSSavePanel()
         panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
         panel.nameFieldStringValue = ExportFilename.make(for: Date(), format: format)

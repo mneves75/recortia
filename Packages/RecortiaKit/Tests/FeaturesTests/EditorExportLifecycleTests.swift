@@ -182,10 +182,12 @@ struct EditorExportLifecycleTests {
         await waitFor("snapshot suspended") { gate.waiterCount == 1 }
         #expect(h.model.isExporting)
         #expect(!other.isExporting, "the other editor offers no Cancel Export")
+        #expect(!other.canStartExport, "the shared slot is taken: the other editor cannot start one")
         other.cancelExport()
         h.exporter.pending = nil
         gate.resolve(.success(()))
         #expect(await task.value == .copied)
         #expect(h.clipboard.writes.count == 1)
+        #expect(other.canStartExport && h.model.canStartExport)
     }
 }

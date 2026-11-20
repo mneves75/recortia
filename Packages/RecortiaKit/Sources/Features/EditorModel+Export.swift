@@ -65,7 +65,12 @@ extension EditorModel {
         return outcome
     }
 
+    /// This editor's own export: drives its progress and Cancel Export.
     public var isExporting: Bool { environment.export.isBusy(documentID: session.document.id) }
+
+    /// Whether the shared export slot is free. Copy, Save and Drag Out need it, so they are
+    /// unavailable while any editor exports instead of opening a panel that would be refused.
+    public var canStartExport: Bool { !environment.export.isBusy }
 
     public func cancelExport() { environment.export.cancel(documentID: session.document.id) }
 
