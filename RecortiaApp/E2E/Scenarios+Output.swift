@@ -259,6 +259,7 @@
             await E2ESnapshot.settle(root)
             context.snapshot(root)
             await darkPin(pin, pins, light: root, context)
+            try await checkRepeatedPinNotice(pin, pins, context)
             await E2EPanelProbe.check(.pin, context)
 
             // A redaction changes the privacy epoch: pins of the old epoch are removed.
@@ -276,6 +277,31 @@
             let pixels = try E2EActions.pixels(of: repinned.image, "new pin", context)
             let center = pixels.pixel(x: Int(secret.midX * 2), y: Int(secret.midY * 2))
             context.check("the new pin shows the redaction", center == ChartFixture.Color(0, 0, 0), center.hex)
+        }
+
+        /// Failure mode (review R3-D16): Copy twice, a second apart, showed the same text twice, and
+        /// the first success timer cleared the second notice early.
+        private static func checkRepeatedPinNotice(_ pin: Pin, _ pins: PinsModel, _ context: ScenarioContext)
+            async throws
+        {
+            let duration = Duration.seconds(2)
+            let host = E2ESnapshot.host(
+                PinContentView(pinID: pin.id, model: pins, fitScale: 1, successNoticeDuration: duration))
+            defer { host.close() }
+            let root = try context.unwrap("pin notice content hosted", host.contentView)
+            await E2ESnapshot.settle(root)
+            func noticeShown() -> Bool { E2EAccessibilityControl.isPresent("pin.status", in: root) }
+            try E2EAccessibilityControl.pressCheckingEffect("pin.copy", in: root, context)
+            try context.require(
+                "the pin's first Copy shows its notice", await E2EWait.until(timeout: .seconds(3)) { noticeShown() })
+            let firstShown = ContinuousClock.now
+            try? await Task.sleep(for: .seconds(1))
+            try E2EAccessibilityControl.pressCheckingEffect("pin.copy", in: root, context)
+            try? await Task.sleep(until: firstShown + duration + .milliseconds(500), clock: .continuous)
+            await E2ESnapshot.settle(root)
+            context.check("the first notice's timer leaves the second Copy's notice", noticeShown())
+            context.check(
+                "the second notice clears itself", await E2EWait.until(timeout: .seconds(4)) { !noticeShown() })
         }
 
         /// The pin in dark appearance. Its image is user content: the chrome is the control strip
