@@ -50,4 +50,8 @@ xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug 
   -destination 'platform=macOS' -derivedDataPath .build/dd -onlyUsePackageVersionsFromResolvedFile \
   "${sign_args[@]}" build | tail -3
 
+echo "== E2E binary refuses missing or malformed launch requests"
+RECORTIA_E2E_BINARY="$PWD/.build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E" \
+  python3 scripts/test-e2e-isolation.py
+
 echo "check: all gates passed"

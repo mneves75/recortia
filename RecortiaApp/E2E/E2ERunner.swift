@@ -12,6 +12,59 @@
         var runsOnlyWhenNamed = false
     }
 
+    /// One admitted launch of the E2E binary: the scenario runner or one of its child probes.
+    enum E2ELaunchRequest {
+        case runner(directory: URL, only: [String]?)
+        case panelProbe(E2EPanelProbe.Kind)
+        case lastWindowProbe(LastWindowProbe.Kind)
+
+        struct Refusal: Error {
+            let reason: String
+        }
+
+        @MainActor
+        static func parse(_ arguments: [String]) -> Result<E2ELaunchRequest, Refusal> {
+            func value(after flag: String) -> String? {
+                guard let index = arguments.firstIndex(of: flag), index + 1 < arguments.count else { return nil }
+                return arguments[index + 1]
+            }
+            if arguments.contains(E2EPanelProbe.argument) {
+                guard let kind = value(after: E2EPanelProbe.argument).flatMap(E2EPanelProbe.Kind.init(rawValue:))
+                else {
+                    return .failure(
+                        Refusal(reason: "known panel probes: \(E2EPanelProbe.Kind.allCases.map(\.rawValue))"))
+                }
+                return .success(.panelProbe(kind))
+            }
+            if arguments.contains(LastWindowProbe.argument) {
+                guard let kind = value(after: LastWindowProbe.argument).flatMap(LastWindowProbe.Kind.init(rawValue:))
+                else {
+                    return .failure(
+                        Refusal(reason: "known last-window probes: \(LastWindowProbe.Kind.allCases.map(\.rawValue))"))
+                }
+                return .success(.lastWindowProbe(kind))
+            }
+            guard arguments.contains(E2ERunner.argument) else { return .failure(Refusal(reason: "no runner request")) }
+            guard let path = value(after: E2ERunner.argument), path.hasPrefix("/") else {
+                return .failure(Refusal(reason: "the output directory must be an absolute path"))
+            }
+            var only: [String]?
+            if arguments.contains(E2ERunner.onlyArgument) {
+                guard let list = value(after: E2ERunner.onlyArgument) else {
+                    return .failure(Refusal(reason: "\(E2ERunner.onlyArgument) needs scenario ids"))
+                }
+                let ids = list.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                let known = Set(E2EScenarios.all.map(\.id))
+                let unknown = ids.filter { !known.contains($0) }
+                guard !ids.isEmpty, unknown.isEmpty else {
+                    return .failure(Refusal(reason: "unknown scenario ids \(unknown); known: \(known.sorted())"))
+                }
+                only = ids
+            }
+            return .success(.runner(directory: URL(filePath: path, directoryHint: .isDirectory), only: only))
+        }
+    }
+
     /// Entry point for `-RecortiaE2E <absolute output dir> [-RecortiaE2EOnly id,id]`. DEBUG builds
     /// only; Release builds contain none of this code.
     @MainActor
@@ -19,35 +72,33 @@
         static let argument = "-RecortiaE2E"
         static let onlyArgument = "-RecortiaE2EOnly"
 
-        /// Exits unless this process was launched for the runner or one of its child probes. Opened
-        /// from Finder, the E2E binary would otherwise build the live composition root (R3-D01).
-        static func refuseUnlessRequested(arguments: [String] = ProcessInfo.processInfo.arguments) {
-            let requests = [argument, E2EPanelProbe.argument, LastWindowProbe.argument]
-            guard !arguments.contains(where: requests.contains) else { return }
-            log("RecortiaE2E runs only for scripts/e2e.sh: launch it with \(argument) <absolute output dir>")
-            exit(2)
-        }
-
-        /// Runs a requested child-process probe, else starts the runner when its launch argument
-        /// is present. Returns false when neither was requested.
-        static func startIfRequested(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
-            if E2EPanelProbe.runIfRequested(arguments: arguments) { return true }
-            if LastWindowProbe.runIfRequested(arguments: arguments) { return true }
-            guard let index = arguments.firstIndex(of: argument) else { return false }
-            guard index + 1 < arguments.count, arguments[index + 1].hasPrefix("/") else {
-                log("usage: Recortia \(argument) <absolute output dir> [\(onlyArgument) id,id]")
+        /// Parses and validates this process's whole launch request, before the app model exists
+        /// (R3-D01). A missing or malformed request (opened from Finder, a relative directory, an
+        /// unknown scenario or probe kind) prints one line and exits 2: without the runner, the E2E
+        /// binary would otherwise build the live composition root.
+        static func admit(arguments: [String] = ProcessInfo.processInfo.arguments) -> E2ELaunchRequest {
+            switch E2ELaunchRequest.parse(arguments) {
+            case .success(let request):
+                return request
+            case .failure(let refusal):
+                log(
+                    "RecortiaE2E refuses this launch (\(refusal.reason)); scripts/e2e.sh launches it with "
+                        + "\(argument) <absolute output dir> [\(onlyArgument) id,id]")
                 exit(2)
             }
-            let directory = URL(filePath: arguments[index + 1], directoryHint: .isDirectory)
-            var only: [String]?
-            if let flag = arguments.firstIndex(of: onlyArgument), flag + 1 < arguments.count {
-                only = arguments[flag + 1].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        }
+
+        /// Starts what `admit` accepted; the process exits with its result.
+        static func start(_ request: E2ELaunchRequest) {
+            switch request {
+            case .panelProbe(let kind): E2EPanelProbe.start(kind)
+            case .lastWindowProbe(let kind): LastWindowProbe.start(kind)
+            case .runner(let directory, let only):
+                Task {
+                    let code = await run(directory: directory, only: only)
+                    exit(code)
+                }
             }
-            Task {
-                let code = await run(directory: directory, only: only)
-                exit(code)
-            }
-            return true
         }
 
         static func run(directory: URL, only: [String]?) async -> Int32 {
@@ -55,14 +106,6 @@
             let language = Bundle.main.preferredLocalizations.first ?? "en"
             let output = E2EOutput(directory: directory, language: language)
             let scenarios = E2EScenarios.all
-            if let only {
-                let known = Set(scenarios.map(\.id))
-                let unknown = only.filter { !known.contains($0) }
-                guard unknown.isEmpty else {
-                    log("unknown scenario ids: \(unknown.joined(separator: ", ")); known: \(scenarios.map(\.id))")
-                    return 2
-                }
-            }
             let selected = scenarios.filter { only?.contains($0.id) ?? !$0.runsOnlyWhenNamed }
             let harness: E2EHarness
             do {

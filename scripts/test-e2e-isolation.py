@@ -7,8 +7,10 @@ that would break that contract. Its controls plant a violation in a temporary di
 the same scan function the real check uses.
 """
 
+import os
 import pathlib
 import re
+import subprocess
 import tempfile
 import unittest
 
@@ -129,50 +131,68 @@ class E2EIsolationTests(unittest.TestCase):
 
 
 APP_ENTRY = ROOT / "RecortiaApp/App/RecortiaApp.swift"
-RUNNER = E2E_DIRECTORY / "E2ERunner.swift"
+ADMIT = "E2ERunner.admit()"
+# The line every refused launch prints before exiting 2 (E2ERunner.admit).
+REFUSAL = "[e2e] RecortiaE2E refuses this launch"
+# Set by scripts/check.sh after the E2E target builds; without it the process controls are skipped.
+BINARY = os.environ.get("RECORTIA_E2E_BINARY")
 
 
-def launch_guard_problems(entry: str, runner: str) -> list[str]:
-    """Why the E2E binary could start its live composition root without a runner request (R3-D01)."""
-    problems: list[str] = []
+def launch_guard_problems(entry: str) -> list[str]:
+    """Why AppDelegate could build its live composition root before the launch request was admitted
+    (R3-D01). The process controls below prove what admission itself refuses."""
     code = "\n".join(line for line in entry.splitlines() if not line.lstrip().startswith("//"))
     init = re.search(r"override init\(\)\s*\{(.*?)\n    \}", code, re.S)
     if init is None:
         return ["AppDelegate.init not found"]
     body = init.group(1)
     branch = re.search(r"#if RECORTIA_E2E(.*?)#else", body, re.S)
-    if branch is None or "E2ERunner.refuseUnlessRequested()" not in branch.group(1):
-        problems.append("the RECORTIA_E2E branch of AppDelegate.init does not call E2ERunner.refuseUnlessRequested()")
-    elif body.index("E2ERunner.refuseUnlessRequested()") > body.find("AppModel("):
-        problems.append("E2ERunner.refuseUnlessRequested() must run before AppModel is built")
-    guard = re.search(r"static func refuseUnlessRequested\(.*?\n        \}", runner, re.S)
-    if guard is None:
-        problems.append("E2ERunner.refuseUnlessRequested is missing")
-    else:
-        for name in ("argument", "E2EPanelProbe.argument", "LastWindowProbe.argument"):
-            if not re.search(rf"(?<![\w.]){re.escape(name)}\b", guard.group(0)):
-                problems.append(f"refuseUnlessRequested does not accept {name}")
-        if "exit(" not in guard.group(0):
-            problems.append("refuseUnlessRequested does not exit")
-    return problems
+    if branch is None or ADMIT not in branch.group(1):
+        return [f"the RECORTIA_E2E branch of AppDelegate.init does not call {ADMIT}"]
+    if body.index(ADMIT) > body.find("AppModel("):
+        return [f"{ADMIT} must run before AppModel is built"]
+    return []
 
 
 class E2ELaunchGuardTests(unittest.TestCase):
-    def test_e2e_binary_refuses_to_launch_without_a_runner_request(self) -> None:
-        self.assertEqual([], launch_guard_problems(APP_ENTRY.read_text(), RUNNER.read_text()))
+    def test_launch_request_is_admitted_before_the_app_model_exists(self) -> None:
+        self.assertEqual([], launch_guard_problems(APP_ENTRY.read_text()))
 
     def test_planted_launch_guard_regressions_are_reported(self) -> None:
-        entry, runner = APP_ENTRY.read_text(), RUNNER.read_text()
-        removed = entry.replace("E2ERunner.refuseUnlessRequested()", "")
-        self.assertTrue(launch_guard_problems(removed, runner), "a removed call must fail")
-        commented = entry.replace("E2ERunner.refuseUnlessRequested()", "// E2ERunner.refuseUnlessRequested()")
-        self.assertTrue(launch_guard_problems(commented, runner), "a commented-out call must fail")
-        no_exit = runner.replace("exit(2)\n        }\n\n        /// Runs", "\n        }\n\n        /// Runs")
-        self.assertNotEqual(runner, no_exit, "the planted control no longer matches the guard")
-        self.assertTrue(launch_guard_problems(entry, no_exit), "a guard that never exits must fail")
-        probe_only = runner.replace("LastWindowProbe.argument]", "]")
-        self.assertNotEqual(runner, probe_only, "the planted control no longer matches the guard")
-        self.assertTrue(launch_guard_problems(entry, probe_only), "a guard that rejects a probe must fail")
+        entry = APP_ENTRY.read_text()
+        self.assertIn(ADMIT, entry)
+        self.assertTrue(launch_guard_problems(entry.replace(ADMIT, "")), "a removed call must fail")
+        line = re.compile(r"^(\s*)(.*" + re.escape(ADMIT) + r".*)$", re.M)
+        self.assertRegex(entry, line)
+        commented = line.sub(r"\1// \2", entry, count=1)
+        self.assertTrue(launch_guard_problems(commented), "a commented-out call must fail")
+        late = line.sub("", entry, count=1).replace("super.init()", f"_ = {ADMIT}\n        super.init()", 1)
+        self.assertTrue(launch_guard_problems(late), "admission after AppModel must fail")
+
+    @unittest.skipUnless(BINARY, "RECORTIA_E2E_BINARY is set by scripts/check.sh after the E2E build")
+    def test_built_binary_refuses_missing_or_malformed_requests(self) -> None:
+        # Negative controls only: a valid request starts the runner, which scripts/e2e.sh exercises.
+        refused = {
+            "no arguments (opened from Finder)": [],
+            "runner flag without a directory": ["-RecortiaE2E"],
+            "relative output directory": ["-RecortiaE2E", "relative/output"],
+            "only flag without ids": ["-RecortiaE2E", "/nonexistent/recortia-e2e", "-RecortiaE2EOnly"],
+            "unknown scenario id": ["-RecortiaE2E", "/nonexistent/recortia-e2e", "-RecortiaE2EOnly", "no-such-id"],
+            "unknown panel probe": ["-RecortiaE2EProbe", "no-such-probe"],
+            "panel probe without a kind": ["-RecortiaE2EProbe"],
+            "unknown last-window probe": ["-RecortiaE2ELastWindowProbe", "no-such-probe"],
+        }
+        for name, arguments in refused.items():
+            with self.subTest(name):
+                try:
+                    result = subprocess.run(
+                        [BINARY, *arguments], capture_output=True, text=True, timeout=30, check=False
+                    )
+                except subprocess.TimeoutExpired:
+                    self.fail(f"{name}: the binary kept running instead of refusing")
+                self.assertEqual(2, result.returncode, f"{name}: {result.stderr.strip()}")
+                self.assertIn(REFUSAL, result.stderr, f"{name}: refused by something other than admission")
+                self.assertFalse(pathlib.Path("/nonexistent/recortia-e2e").exists())
 
 
 if __name__ == "__main__":

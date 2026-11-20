@@ -32,13 +32,16 @@ struct RecortiaApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let integrity = KeychainPreferenceIntegrity()
     let model: AppModel
+    #if RECORTIA_E2E
+        private let e2eRequest: E2ELaunchRequest
+    #endif
 
     override init() {
         #if RECORTIA_E2E
             // The E2E binary exists only for the scenario runner and its probe processes: it never
             // reads or writes the user's preferences or keychain, whatever it was launched with,
-            // and it refuses to launch at all without a runner or probe request.
-            E2ERunner.refuseUnlessRequested()
+            // and it refuses to launch at all without a valid runner or probe request.
+            e2eRequest = E2ERunner.admit()
             let settings = SettingsStore.e2eInMemory()
         #else
             let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)
@@ -50,18 +53,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         #if RECORTIA_E2E
-            // Only in the RecortiaE2E target: `-RecortiaE2E <dir>` runs the scenario runner
-            // (RecortiaApp/E2E) instead of the normal launch; the process exits with its result.
-            if E2ERunner.startIfRequested() { return }
+            // Only in the RecortiaE2E target: the admitted request (the scenario runner in
+            // RecortiaApp/E2E, or one of its probes) replaces the normal launch.
+            E2ERunner.start(e2eRequest)
         #else
             integrity.prepare()
             ShortcutDefaults.seedIfNeeded(isNewInstall: !model.settings.preferences.hasCompletedOnboarding)
+            let kind = LaunchKind(openEvent: NSAppleEventManager.shared().currentAppleEvent)
+            // Content-free: lets a real login confirm whether macOS marks Open at login (ADR-007).
+            Logger(subsystem: "dev.mvneves.Recortia", category: "launch").notice(
+                "launch kind: \(String(describing: kind), privacy: .public)")
+            model.launch(kind: kind)
         #endif
-        let kind = LaunchKind(openEvent: NSAppleEventManager.shared().currentAppleEvent)
-        // Content-free: lets a real login confirm whether macOS marks Open at login (ADR-007).
-        Logger(subsystem: "dev.mvneves.Recortia", category: "launch").notice(
-            "launch kind: \(String(describing: kind), privacy: .public)")
-        model.launch(kind: kind)
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

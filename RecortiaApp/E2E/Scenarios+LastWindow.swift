@@ -556,13 +556,8 @@
                     : "child timed out")
         }
 
-        /// Child side: returns false when this process is not a last-window probe.
-        static func runIfRequested(arguments: [String]) -> Bool {
-            guard let index = arguments.firstIndex(of: argument) else { return false }
-            guard index + 1 < arguments.count, let kind = Kind(rawValue: arguments[index + 1]) else {
-                E2ERunner.log("unknown last-window probe; known: \(Kind.allCases.map(\.rawValue))")
-                exit(2)
-            }
+        /// Child side: runs `kind`, then exits with the result.
+        static func start(_ kind: Kind) {
             Task {
                 do {
                     try await run(kind)
@@ -573,7 +568,6 @@
                 E2ERunner.log("last-window probe \(kind.rawValue) is still running")
                 exit(stillRunning)
             }
-            return true
         }
 
         private static func run(_ kind: Kind) async throws {
