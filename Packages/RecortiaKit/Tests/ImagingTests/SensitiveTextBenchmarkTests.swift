@@ -124,6 +124,8 @@ struct SensitiveTextBenchmarkTests {
                                     let scanner = SensitiveTextScanner(fineTileSide: configuration.tileSide)
                                     let sampler = FootprintSampler()
                                     let sampling = Task { await sampler.run() }
+                                    // Stops the sampler on every exit, a thrown scan included.
+                                    defer { sampling.cancel() }
                                     let clock = ContinuousClock.now
                                     let regions = try await scanner.sensitiveRegions(
                                         in: screen.image, pixelsPerPoint: Double(scale), languages: languages,
