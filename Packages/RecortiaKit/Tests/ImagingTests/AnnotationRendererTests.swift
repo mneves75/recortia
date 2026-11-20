@@ -80,6 +80,28 @@ struct AnnotationRendererTests {
         #expect(shaft >= 3 && head > shaft * 2)
     }
 
+    @Test("A step numeral is black or white, whichever has the higher WCAG contrast with the fill")
+    func stepNumeralContrast() throws {
+        func numeralChannels(_ fill: RGBA) throws -> (darkest: UInt8, lightest: UInt8) {
+            let p = try draw([
+                Annotation(kind: .step(center: Point(x: 60, y: 40), number: 8), style: Annotation.Style(stroke: fill))
+            ])
+            var darkest: UInt8 = 255, lightest: UInt8 = 0
+            for y in 30..<50 {
+                for x in 50..<70 {
+                    darkest = min(darkest, p.pixel(x: x, y: y).r)
+                    lightest = max(lightest, p.pixel(x: x, y: y).r)
+                }
+            }
+            return (darkest, lightest)
+        }
+        // #909090: 6.6:1 against black, 3.2:1 against white.
+        let mid = try numeralChannels(RGBA(r: 0x90, g: 0x90, b: 0x90))
+        #expect(mid.darkest < 0x40 && mid.lightest <= 0x92)
+        let dark = try numeralChannels(RGBA(r: 0x30, g: 0x30, b: 0x30))
+        #expect(dark.lightest > 0xC0 && dark.darkest >= 0x2E)
+    }
+
     @Test("Highlighter is translucent and numbered steps render their number")
     func highlighterAndStep() throws {
         let highlight = try draw([
