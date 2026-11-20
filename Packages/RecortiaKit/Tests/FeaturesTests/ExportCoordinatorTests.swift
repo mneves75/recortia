@@ -355,6 +355,101 @@ struct ExportCoordinatorTests {
         #expect(outcomes == [.copied])
     }
 
+    // Failure mode (review R2-D05): an ejected volume made the save vanish from the batch with no
+    // failure, because "not reachable" was treated like "setting changed".
+    @Test("An unchanged save folder that stops resolving reports a failure, never a silent skip")
+    func automaticSaveReportsAnUnreachableFolder() async {
+        let h = ExportHarness()
+        let folder = URL(fileURLWithPath: "/tmp/recortia-tests/folder-a", isDirectory: true)
+        h.folders.folder = folder
+        h.settings.update {
+            $0.autoCopy = true
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        // Unreachable before the save step starts.
+        let beforeStep = await batchChangingDuringCopy(h) { h.folders.folder = nil }
+        #expect(beforeStep == [.copied, .failed(.accessDenied)])
+
+        // Unreachable while the save itself renders.
+        h.folders.folder = folder
+        h.settings.update { $0.autoCopy = false }
+        let render = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = render
+        let plan = h.coordinator.automaticExportPlan()
+        let run = Task { await h.coordinator.runAutomaticExports(plan, for: h.session, currentSession: { h.session }) }
+        await waitFor("automatic save rendering") { render.waiterCount == 1 }
+        h.folders.folder = nil
+        render.resolve(.success(()))
+        #expect(await run.value == [.failed(.accessDenied)])
+        #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty)
+    }
+
+    // Failure mode (cross-review of R2-D05): choosing another folder that is unreachable was
+    // reported as a failure of the original save; a new choice is a revocation, never a failure.
+    @Test("Choosing another, unreachable folder while the copy renders skips this capture's save silently")
+    func automaticSaveToANewlyChosenUnreachableFolderIsRevoked() async throws {
+        let h = ExportHarness()
+        h.folders.folder = URL(fileURLWithPath: "/tmp/recortia-tests/folder-a", isDirectory: true)
+        h.settings.update {
+            $0.autoCopy = true
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        let chosen = FileManager.default.temporaryDirectory.appending(path: "recortia-folder-b-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: chosen, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: chosen) }
+        let outcomes = await batchChangingDuringCopy(h) {
+            try? h.settings.chooseAutomaticSaveFolder { chosen }
+            h.folders.folder = nil  // the new folder does not resolve
+        }
+        #expect(outcomes == [.copied])
+        #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty)
+    }
+
+    // Failure mode (cross-review, EXP-03): a copy turned off before its step still rendered and
+    // could report a render failure for a step the person no longer wanted.
+    @Test("Automatic copy turned off before its step starts does not render")
+    func automaticCopyRechecksBeforeRendering() async {
+        let h = ExportHarness()
+        h.settings.update { $0.autoCopy = true }
+        let outcomes = await batchChangedBeforeItStarts(h) { h.settings.update { $0.autoCopy = false } }
+        #expect(outcomes.isEmpty)
+        #expect(h.exporter.snapshotCount == 0)
+    }
+
+    // Failure mode (cross-review, NET-01): revoking and re-enabling the same destination left the
+    // old batch's consent identity stale, yet its upload still reached the service (lookups).
+    @Test("An upload whose consent was renewed meanwhile never reaches the upload service")
+    func automaticUploadNeedsTheLiveConsent() async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        func renewConsent(_ h: ExportHarness) {
+            h.settings.update { $0.githubUpload?.automatic = false }
+            h.settings.update { $0.githubUpload?.automatic = true }
+        }
+        // Renewed before the upload step starts.
+        let upload = RecordingUpload()
+        let h = ExportHarness(upload: upload)
+        h.settings.update {
+            $0.autoCopy = true
+            $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true)
+        }
+        #expect(await batchChangingDuringCopy(h) { renewConsent(h) } == [.copied])
+        #expect(upload.requests == 0, "a stale batch reached the upload service before its step")
+
+        // Renewed while the upload's own snapshot renders.
+        h.settings.update { $0.autoCopy = false }
+        let render = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = render
+        let plan = h.coordinator.automaticExportPlan()
+        let run = Task { await h.coordinator.runAutomaticExports(plan, for: h.session, currentSession: { h.session }) }
+        await waitFor("upload rendering") { render.waiterCount == 1 }
+        renewConsent(h)
+        render.resolve(.success(()))
+        _ = await run.value
+        #expect(upload.requests == 0, "a stale batch reached the upload service after its render")
+    }
+
     @Test("Turning automatic save off while the copy renders still writes nothing")
     func automaticBatchStillStopsARevokedSave() async {
         let h = ExportHarness()

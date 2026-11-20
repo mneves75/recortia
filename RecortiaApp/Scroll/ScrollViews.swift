@@ -56,6 +56,7 @@ struct ScrollHUDView: View {
             Text("\(hud.acceptedFrames) frames · \(hud.outputHeight) pixels tall")
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("scroll.hud.progress")
             HStack {
                 Button("Cancel", action: onCancel)
                     .keyboardShortcut(.cancelAction)
@@ -129,7 +130,12 @@ struct ScrollReviewView: View {
     let outputSize: PixelSize
     let seams: [Int]
     let partialReason: ScrollPartialReason?
+    /// The model's notice: the stitch cannot be assembled (or drawn) within its budget.
     let assemblyFailed: Bool
+    /// The model's rules (`ScrollSessionModel`), passed through unchanged.
+    let isPreparingPreview: Bool
+    let canAccept: Bool
+    let canDiscard: Bool
     let onAccept: () -> Void
     let onDiscard: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
@@ -165,7 +171,8 @@ struct ScrollReviewView: View {
                         }
                         .accessibilityElement()
                         .accessibilityLabel(Text("Stitched preview with \(seams.count) joins"))
-                } else {
+                        .accessibilityIdentifier("scroll.review.preview")
+                } else if isPreparingPreview {
                     ProgressView()
                         .frame(width: previewWidth, height: 200)
                         .accessibilityLabel(Text("Preparing preview"))
@@ -184,6 +191,7 @@ struct ScrollReviewView: View {
             HStack {
                 Button("Discard", role: .destructive, action: onDiscard)
                     .keyboardShortcut(.cancelAction)
+                    .disabled(!canDiscard)
                     .accessibilityIdentifier("scroll.review.discard")
                 Spacer()
                 Button(
@@ -191,7 +199,7 @@ struct ScrollReviewView: View {
                     action: onAccept
                 )
                 .keyboardShortcut(.defaultAction)
-                .disabled(assemblyFailed)
+                .disabled(!canAccept)
                 .accessibilityIdentifier("scroll.review.accept")
             }
         }
@@ -269,7 +277,7 @@ struct ScrollReviewView: View {
     #Preview("Review, partial") {
         ScrollReviewView(
             preview: PreviewSupport.image(width: 400, height: 1_200), outputSize: PixelSize(width: 800, height: 2_400),
-            seams: [600, 1_200, 1_800], partialReason: .limit(.height), assemblyFailed: false, onAccept: {},
-            onDiscard: {})
+            seams: [600, 1_200, 1_800], partialReason: .limit(.height), assemblyFailed: false,
+            isPreparingPreview: false, canAccept: true, canDiscard: true, onAccept: {}, onDiscard: {})
     }
 #endif

@@ -22,13 +22,57 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld frames · %lld pixels tall"
+            "value" : "%#@frames@ · %2$lld pixels tall"
+          },
+          "substitutions" : {
+            "frames" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg frame"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg frames"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld quadros · %lld pixels de altura"
+            "value" : "%#@frames@ · %2$lld pixels de altura"
+          },
+          "substitutions" : {
+            "frames" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg quadro"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg quadros"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -109,6 +153,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Já existe um arquivo com esse nome."
+          }
+        }
+      }
+    },
+    "A scrolling capture is waiting for review. Quitting discards it." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma captura com rolagem está aguardando revisão e será descartada ao sair."
           }
         }
       }
@@ -2587,6 +2641,16 @@
         }
       }
     },
+    "Quit and discard the scrolling capture?" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sair e descartar a captura com rolagem?"
+          }
+        }
+      }
+    },
     "Quit and discard your edits?" : {
       "localizations" : {
         "en" : {
@@ -3422,15 +3486,39 @@
     "Stitched preview with %lld joins" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stitched preview with %lld joins"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stitched preview with %lld join"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stitched preview with %lld joins"
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pré-visualização unida com %lld junções"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pré-visualização unida com %lld junção"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pré-visualização unida com %lld junções"
+                }
+              }
+            }
           }
         }
       }
@@ -3989,6 +4077,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A área com rolagem não está mais disponível, então a captura parou."
+          }
+        }
+      }
+    },
+    "The scrolling capture waiting for review is discarded too." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A captura com rolagem que está aguardando revisão também será descartada."
           }
         }
       }

@@ -110,7 +110,7 @@ enum TestFixtures {
 final class ManualClock: FeatureClock {
     private struct Sleeper {
         let id: UUID
-        let deadline: Date
+        let deadline: Duration
         let continuation: CheckedContinuation<Void, any Error>
     }
 
@@ -125,8 +125,7 @@ final class ManualClock: FeatureClock {
     func sleep(for duration: Duration) async throws {
         sleepRequests.append(duration)
         let id = UUID()
-        let seconds = Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
-        let deadline = current.addingTimeInterval(seconds)
+        let deadline = elapsed + duration
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
                 if Task.isCancelled {
@@ -140,10 +139,19 @@ final class ManualClock: FeatureClock {
         }
     }
 
+    /// A wall-clock correction: the date moves, elapsed time and pending sleeps do not.
+    func jumpWallClock(bySeconds seconds: Double) {
+        current = current.addingTimeInterval(seconds)
+    }
+
+    private var elapsed: Duration = .zero
+    func uptime() -> Duration { elapsed }
+
     func advance(bySeconds seconds: Double) {
         current = current.addingTimeInterval(seconds)
-        let due = sleepers.filter { $0.deadline <= current }
-        sleepers.removeAll { $0.deadline <= current }
+        elapsed += .seconds(seconds)
+        let due = sleepers.filter { $0.deadline <= elapsed }
+        sleepers.removeAll { $0.deadline <= elapsed }
         for sleeper in due { sleeper.continuation.resume() }
     }
 
@@ -522,11 +530,25 @@ final class FakeStitcher: ScrollStitchService {
         return result
     }
 
+    var previewFails = false
+    /// When set, `preview` suspends until `previews.resolve(())`, like a slow downscale.
+    var holdPreview = false
+    let previews = Pending<Void>()
     func preview(maxHeight: Int) async -> CGImage? {
-        acceptedFrameCount > 0 ? makeImage(width: 4, height: 8) : nil
+        if holdPreview { await previews.wait() }
+        return acceptedFrameCount > 0 && !previewFails ? makeImage(width: 4, height: 8) : nil
     }
 
+    /// When set, the first `assemble` suspends until `assembles.resolve(())`, like a large stitch.
+    /// Later calls never wait, so an assembly a missing guard admits shows in `assembleCount`
+    /// instead of hanging the test.
+    var holdFirstAssemble = false
+    let assembles = Pending<Void>()
+    private(set) var assembleCount = 0
+
     func assemble() async throws -> CGImage {
+        assembleCount += 1
+        if holdFirstAssemble, assembleCount == 1 { await assembles.wait() }
         if assembleFails { throw ExportServiceError(.budgetExceeded) }
         guard let image = makeImage(width: max(1, outputSize.width), height: max(1, outputSize.height)) else {
             throw ExportServiceError(.renderFailed)

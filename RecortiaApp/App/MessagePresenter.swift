@@ -44,23 +44,38 @@ enum MessagePresenter {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
-    /// Asks before Quit discards edits in `count` open editors. True means quit.
-    static func confirmDiscardOnQuit(count: Int) -> Bool {
+    /// Asks before Quit discards what `discards` describes. True means quit.
+    static func confirmDiscardOnQuit(_ discards: QuitDiscards) -> Bool {
+        let count = discards.editedImages
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = String(localized: "Quit and discard your edits?")
-        alert.informativeText =
-            count == 1
-            ? String(
-                localized: """
-                    An open image has changes that were not copied, saved, dragged, or pinned. \
-                    Quitting discards them.
-                    """)
-            : String(
-                localized: """
-                    \(count) open images have changes that were not copied, saved, dragged, or pinned. \
-                    Quitting discards them.
-                    """)
+        alert.messageText =
+            count == 0
+            ? String(localized: "Quit and discard the scrolling capture?")
+            : String(localized: "Quit and discard your edits?")
+        var lines: [String] = []
+        if count == 1 {
+            lines.append(
+                String(
+                    localized: """
+                        An open image has changes that were not copied, saved, dragged, or pinned. \
+                        Quitting discards them.
+                        """))
+        } else if count > 1 {
+            lines.append(
+                String(
+                    localized: """
+                        \(count) open images have changes that were not copied, saved, dragged, or pinned. \
+                        Quitting discards them.
+                        """))
+        }
+        if discards.scrollingReview {
+            lines.append(
+                count == 0
+                    ? String(localized: "A scrolling capture is waiting for review. Quitting discards it.")
+                    : String(localized: "The scrolling capture waiting for review is discarded too."))
+        }
+        alert.informativeText = lines.joined(separator: " ")
         let quit = alert.addButton(withTitle: String(localized: "Quit"))
         quit.hasDestructiveAction = true
         alert.addButton(withTitle: String(localized: "Cancel"))

@@ -287,6 +287,16 @@
                 !harness.settings.preferences.keepsRunningInMenuBar && !AppPresence.shared.hasUserWindow)
 
             try await review("discard")
+            // Quit never asks the review window, so it asks about the pending capture itself.
+            harness.quit.questions = []
+            harness.quit.answers = [false]
+            context.check(
+                "declining Quit keeps a scrolling capture that waits in review",
+                !harness.app.shouldTerminate() && model.state == .reviewing
+                    && harness.quit.questions == [QuitDiscards(editedImages: 0, scrollingReview: true)],
+                "\(harness.quit.questions), state \(model.state)")
+            // The recorder is shared across scenarios: leave it as quit-confirmation expects it.
+            harness.quit.questions = []
             let before = requests()
             let controller = ScrollUIController(model: model, displays: { [] })
             var answers: [Bool] = []

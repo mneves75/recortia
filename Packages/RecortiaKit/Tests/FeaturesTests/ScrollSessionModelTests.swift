@@ -178,6 +178,7 @@ struct ScrollSessionModelTests {
         h.model.stop()
         #expect(h.model.state == .reviewing)
         #expect(h.model.partialReason == .ambiguous(.ambiguousMatch))
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.assets.registeredStitched.first?.isPartialScrollCapture == true)
         #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: .ambiguous(.ambiguousMatch)))
@@ -220,6 +221,86 @@ struct ScrollSessionModelTests {
         #expect(h.frames.startCount == 0)
     }
 
+    /// Stops after one accepted frame; the review is open, its preview not necessarily yet.
+    private func review(_ h: ScrollHarness) async {
+        await h.startCollecting()
+        h.frames.deliver()
+        await waitFor("frame 1") { h.model.acceptedFrames == 1 }
+        h.model.stop()
+    }
+
+    /// Starts an Accept that is held inside its assembly.
+    private func acceptHeldInAssembly(_ h: ScrollHarness) async -> Task<Void, Never> {
+        await waitFor("preview ready") { h.model.preview != nil }
+        h.stitcher.holdFirstAssemble = true
+        let accept = Task { await h.model.accept() }
+        await waitFor("assembling") { h.stitcher.assembles.waiterCount == 1 }
+        return accept
+    }
+
+    // Failure mode (review R3-D08): Return pressed while "Preparing preview" showed accepted a
+    // capture nobody had reviewed.
+    @Test("Accept is refused until the preview is shown")
+    func acceptWaitsForThePreview() async {
+        let h = ScrollHarness()
+        h.stitcher.holdPreview = true
+        await review(h)
+        await waitFor("preview pending") { h.stitcher.previews.waiterCount == 1 }
+        #expect(h.model.state == .reviewing && h.model.preview == nil)
+        #expect(h.model.canAccept == false)
+        await h.model.accept()
+        #expect(h.stitcher.assembleCount == 0, "accepted before the preview was shown")
+        h.stitcher.previews.resolve(())
+        await waitFor("preview ready") { h.model.preview != nil }
+        #expect(h.model.canAccept)
+    }
+
+    // Failure mode (review R2-D14): repeated presses each started a full-size assembly.
+    @Test("A second Accept while the first assembles starts no assembly")
+    func acceptIsAdmittedOnce() async {
+        let h = ScrollHarness()
+        await review(h)
+        let first = await acceptHeldInAssembly(h)
+        #expect(h.model.canAccept == false)
+        await h.model.accept()
+        #expect(h.stitcher.assembleCount == 1, "a second Accept started another assembly")
+        h.stitcher.assembles.resolve(())
+        await first.value
+        #expect(h.accepted.count == 1)
+        #expect(h.model.state == .accepted)
+    }
+
+    // Failure mode (cross-review): Discard confirmed while an Accept was assembling threw the
+    // capture away and the Accept then opened nothing, or opened an editor behind the prompt.
+    // Decision: an Accept in progress makes Discard unavailable until it settles.
+    @Test("Discard is unavailable while an Accept assembles, and the Accept completes")
+    func discardWaitsForAcceptInProgress() async {
+        let h = ScrollHarness()
+        await review(h)
+        #expect(h.model.canDiscard)
+        let accept = await acceptHeldInAssembly(h)
+        #expect(h.model.canDiscard == false)
+        h.model.discard()
+        #expect(h.model.state == .reviewing, "Discard canceled an Accept in progress")
+        h.stitcher.assembles.resolve(())
+        await accept.value
+        #expect(h.model.state == .accepted)
+        #expect(h.accepted.count == 1)
+    }
+
+    @Test("A preview that cannot be made reports the assembly failure instead of waiting forever")
+    func previewFailureReportsAssembly() async {
+        let h = ScrollHarness()
+        h.stitcher.previewFails = true
+        await h.startCollecting()
+        h.frames.deliver()
+        await waitFor("frame 1") { h.model.acceptedFrames == 1 }
+        h.model.stop()
+        await waitFor("failure reported") { h.model.notice == .assemblyFailed }
+        #expect(h.model.canAccept == false)
+        #expect(h.model.state == .reviewing)
+    }
+
     @Test("An assembly failure keeps the review open so the user can discard")
     func assemblyFailure() async {
         let h = ScrollHarness()
@@ -228,10 +309,16 @@ struct ScrollSessionModelTests {
         h.frames.deliver()
         await waitFor("frame 1") { h.model.acceptedFrames == 1 }
         h.model.stop()
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .reviewing)
         #expect(h.model.notice == .assemblyFailed)
         #expect(h.accepted.isEmpty)
+        // One rule, in the model: a failed assembly is not retried; the person discards.
+        #expect(h.model.canAccept == false)
+        await h.model.accept()
+        #expect(h.stitcher.assembleCount == 1, "a failed assembly was retried")
+        #expect(h.model.canDiscard)
         h.model.discard()
         #expect(h.model.state == .canceled)
     }

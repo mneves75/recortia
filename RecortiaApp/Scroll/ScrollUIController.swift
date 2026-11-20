@@ -97,8 +97,10 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     }
 
     /// The one destructive path out of the review: close, Escape, and Discard all ask here first.
+    /// Refused while an Accept assembles; asked again after the prompt, since the prompt's modal
+    /// loop still runs main-actor work.
     func requestDiscard() {
-        guard confirmDiscard() else { return }
+        guard model.canDiscard, confirmDiscard(), model.canDiscard else { return }
         model.discard()
         // A discard is the person closing the review, as the close button does: `close()` (not the
         // order-out that Accept's replacement uses) lets `AppPresence` see a real close.
@@ -108,10 +110,11 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard sender === review else { return true }
-        let discarded = confirmDiscard()
-        if discarded { model.discard() }
-        return discarded
+        // Nothing left to discard (accepted or ended): close without asking.
+        guard sender === review, model.state == .reviewing else { return true }
+        guard model.canDiscard, confirmDiscard(), model.canDiscard else { return false }
+        model.discard()
+        return true
     }
 
     /// Builds the review window, takes its delegate, and becomes the one place a discard can be
@@ -173,6 +176,7 @@ private struct LiveScrollReview: View {
         ScrollReviewView(
             preview: model.preview, outputSize: model.outputSize, seams: model.seams,
             partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
+            isPreparingPreview: model.isPreparingPreview, canAccept: model.canAccept, canDiscard: model.canDiscard,
             onAccept: { Task { await model.accept() } }, onDiscard: onDiscard)
     }
 }

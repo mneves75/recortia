@@ -25,6 +25,7 @@ extension SettingsStore {
         guard enabled else { return update { $0.autoSave = false } }
         if case .available = automaticSaveFolder(resolvingWith: folders) { return update { $0.autoSave = true } }
         guard let bookmark = try chosenBookmark(chooseFolder) else { return }
+        saveFolderSelection += 1
         update {
             $0.preferredSaveFolderBookmark = bookmark
             $0.autoSave = true
@@ -34,11 +35,13 @@ extension SettingsStore {
     /// Replaces the folder. A cancel or a folder whose access cannot be remembered changes nothing.
     public func chooseAutomaticSaveFolder(_ chooseFolder: () throws -> URL?) throws {
         guard let bookmark = try chosenBookmark(chooseFolder) else { return }
+        saveFolderSelection += 1
         update { $0.preferredSaveFolderBookmark = bookmark }
     }
 
     /// Forgets the folder and turns automatic saving off in the same change.
     public func clearAutomaticSaveFolder() {
+        saveFolderSelection += 1
         update {
             $0.preferredSaveFolderBookmark = nil
             $0.autoSave = false

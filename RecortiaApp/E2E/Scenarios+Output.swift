@@ -259,6 +259,7 @@
             await E2ESnapshot.settle(root)
             context.snapshot(root)
             await darkPin(pin, pins, light: root, context)
+            try await checkRepeatedPinNotice(pin, pins, context)
             await E2EPanelProbe.check(.pin, context)
 
             // A redaction changes the privacy epoch: pins of the old epoch are removed.
@@ -276,6 +277,48 @@
             let pixels = try E2EActions.pixels(of: repinned.image, "new pin", context)
             let center = pixels.pixel(x: Int(secret.midX * 2), y: Int(secret.midY * 2))
             context.check("the new pin shows the redaction", center == ChartFixture.Color(0, 0, 0), center.hex)
+        }
+
+        /// Success-notice timers the scenario ends itself, oldest first; nothing waits on the clock.
+        @MainActor
+        private final class NoticeTimers {
+            private var waiting: [CheckedContinuation<Void, Never>] = []
+            var count: Int { waiting.count }
+            func wait() async { await withCheckedContinuation { waiting.append($0) } }
+            func expireOldest() { if !waiting.isEmpty { waiting.removeFirst().resume() } }
+        }
+
+        /// Failure mode (review R3-D16): two Copies show the same text, and the first success timer
+        /// cleared the second notice early.
+        private static func checkRepeatedPinNotice(_ pin: Pin, _ pins: PinsModel, _ context: ScenarioContext)
+            async throws
+        {
+            let timers = NoticeTimers()
+            let host = E2ESnapshot.host(
+                PinContentView(
+                    pinID: pin.id, model: pins, fitScale: 1, successNoticeTimer: { await timers.wait() }))
+            defer {
+                while timers.count > 0 { timers.expireOldest() }
+                host.close()
+            }
+            let root = try context.unwrap("pin notice content hosted", host.contentView)
+            await E2ESnapshot.settle(root)
+            func noticeShown() -> Bool { E2EAccessibilityControl.isPresent("pin.status", in: root) }
+            // A notice's timer starts right after the notice is shown, so a timer count is proof.
+            try E2EAccessibilityControl.pressCheckingEffect("pin.copy", in: root, context)
+            try context.require(
+                "the pin's first Copy shows its notice",
+                await E2EWait.until(timeout: .seconds(5)) { timers.count == 1 && noticeShown() })
+            try E2EAccessibilityControl.pressCheckingEffect("pin.copy", in: root, context)
+            try context.require(
+                "the pin's second Copy shows its own notice",
+                await E2EWait.until(timeout: .seconds(5)) { timers.count == 2 && noticeShown() })
+            timers.expireOldest()
+            await E2ESnapshot.settle(root)
+            context.check("the first notice's timer leaves the second Copy's notice", noticeShown())
+            timers.expireOldest()
+            context.check(
+                "the second notice's timer clears it", await E2EWait.until(timeout: .seconds(3)) { !noticeShown() })
         }
 
         /// The pin in dark appearance. Its image is user content: the chrome is the control strip

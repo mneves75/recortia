@@ -190,7 +190,8 @@
             }
             let view = ScrollReviewView(
                 preview: preview, outputSize: PixelSize(width: width, height: height), seams: seams,
-                partialReason: nil, assemblyFailed: false, onAccept: {}, onDiscard: {})
+                partialReason: nil, assemblyFailed: false, isPreparingPreview: false, canAccept: true,
+                canDiscard: true, onAccept: {}, onDiscard: {})
             let window = E2ESnapshot.host(view, appearance: appearance)
             defer { window.close() }
             guard let root = window.contentView else { throw E2EAbort("the review host has no content") }

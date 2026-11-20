@@ -263,6 +263,7 @@
         static func quitConfirmation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let app = harness.app
             harness.quit.answers = []
+            harness.quit.questions = []  // earlier scenarios share the recorder
             context.check("with no editor, Quit proceeds", app.shouldTerminate())
             context.check("with no editor, Quit asks nothing", harness.quit.questions.isEmpty)
 
@@ -275,7 +276,9 @@
             harness.quit.answers = [false]
             context.check("declining keeps Recortia running", !app.shouldTerminate())
             context.check(
-                "Quit asks once about one edited image", harness.quit.questions == [1], "\(harness.quit.questions)")
+                "Quit asks once about one edited image",
+                harness.quit.questions == [QuitDiscards(editedImages: 1, scrollingReview: false)],
+                "\(harness.quit.questions)")
             context.check("declining keeps the edits", controller.model.isDirty && !controller.model.isClosed)
             harness.quit.answers = [true]
             context.check("confirming lets Recortia quit", app.shouldTerminate())
@@ -295,6 +298,7 @@
             context.check("update checks are off by default", !preferences.updateChecksEnabled)
             context.check("automatic scrolling is off by default", !preferences.automaticScrollingEnabled)
             context.check("export defaults to PNG at 100%", preferences.exportOptions == ExportOptions())
+            try await checkLoginItemRefresh(context)
 
             let window = SettingsWindowController.makeWindow(model: harness.app)
             window.appearance = NSAppearance(named: .aqua)
@@ -452,6 +456,37 @@
                     "the \(name) pane does not scroll", document.frame.height <= scroll.contentView.bounds.height + 1,
                     "document \(document.frame.height), visible \(scroll.contentView.bounds.height)")
             }
+        }
+
+        /// Stands in for the system's login item: a registration that needs approval throws until
+        /// the scenario approves it. Never touches the real login items.
+        @MainActor
+        private final class PendingApprovalLoginItem: LoginItemService {
+            var isEnabled = false
+            func setEnabled(_ enabled: Bool) throws { throw CocoaError(.featureUnsupported) }
+        }
+
+        /// Review R2-D18: after approval in System Settings, returning to the still-open General
+        /// pane must show the item enabled without the old warning.
+        private static func checkLoginItemRefresh(_ context: ScenarioContext) async throws {
+            let service = PendingApprovalLoginItem()
+            let loginItem = LoginItemModel(service: service)
+            let host = E2ESnapshot.host(
+                GeneralSettingsTab(
+                    settings: .e2eInMemory(), loginItem: loginItem))
+            defer { host.close() }
+            let root = try context.unwrap("General pane hosted", host.contentView)
+            loginItem.setEnabled(true)
+            await E2ESnapshot.settle(root)
+            try context.require(
+                "a registration awaiting approval shows the warning",
+                E2EAccessibilityControl.isPresent("settings.loginItem.warning", in: root))
+            service.isEnabled = true  // approved in System Settings
+            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: host)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "returning to the open pane shows the approved item without the old warning",
+                loginItem.isEnabled && !E2EAccessibilityControl.isPresent("settings.loginItem.warning", in: root))
         }
 
         /// Each pane's content as `SettingsWindowController` builds it, without the pane wrapper.

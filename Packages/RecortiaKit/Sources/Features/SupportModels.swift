@@ -8,6 +8,8 @@ public final class LoginItemModel {
     public private(set) var isEnabled: Bool
     public private(set) var lastErrorOccurred = false
     @ObservationIgnored private let service: any LoginItemService
+    /// The state the failed request asked for; a refresh that finds it clears the warning.
+    @ObservationIgnored private var failedRequest: Bool?
 
     public init(service: any LoginItemService) {
         self.service = service
@@ -17,15 +19,20 @@ public final class LoginItemModel {
     public func setEnabled(_ enabled: Bool) {
         do {
             try service.setEnabled(enabled)
-            lastErrorOccurred = false
+            failedRequest = nil
         } catch {
-            lastErrorOccurred = true
+            failedRequest = enabled
         }
+        lastErrorOccurred = failedRequest != nil
         isEnabled = service.isEnabled
     }
 
     public func refresh() {
         isEnabled = service.isEnabled
+        if failedRequest == isEnabled {
+            failedRequest = nil
+            lastErrorOccurred = false
+        }
     }
 }
 
