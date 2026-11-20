@@ -303,17 +303,15 @@ enum DecodeJPEGStructure {
     /// The offset of the first marker after entropy-coded data starting at `start`: an 0xFF not
     /// followed by a stuffed 0x00 or a restart marker. `reader.count` when the data ends first.
     private static func nextMarker(_ reader: DecodeByteReader, after start: Int) -> Int {
-        reader.data.withUnsafeBytes { raw -> Int in
-            let bytes = raw.bindMemory(to: UInt8.self)
-            var index = start
-            while index + 1 < bytes.count {
-                if bytes[index] == 0xFF {
-                    let next = bytes[index + 1]
-                    if next != 0x00, next != 0xFF, !(0xD0...0xD7).contains(next) { return index }
-                }
-                index += 1
+        let bytes = reader.data.span
+        var index = start
+        while index + 1 < bytes.count {
+            if bytes[index] == 0xFF {
+                let next = bytes[index + 1]
+                if next != 0x00, next != 0xFF, !(0xD0...0xD7).contains(next) { return index }
             }
-            return bytes.count
+            index += 1
         }
+        return bytes.count
     }
 }

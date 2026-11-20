@@ -277,7 +277,7 @@ public struct GitHubUploader: Sendable {
         var hash = Insecure.SHA1()
         hash.update(data: Data("blob \(bytes.count)\0".utf8))
         hash.update(data: bytes)
-        return hash.finalize().map { String(format: "%02x", $0) }.joined()
+        return hash.finalize().map { ($0 < 16 ? "0" : "") + String($0, radix: 16) }.joined()
     }
 
     private func request(_ address: String, token: GitHubToken) throws(GitHubUploadFailure) -> URLRequest {

@@ -120,9 +120,13 @@ public enum AnnotationRenderer {
             context.addLines(between: [start.cg, end.cg])
             context.strokePath()
         case .rectangle(let rect):
-            drawShape(CGPath(rect: rect.cg, transform: nil), style: style, in: context)
+            let path = CGMutablePath()
+            path.addRect(rect.cg)
+            drawShape(path, style: style, in: context)
         case .ellipse(let rect):
-            drawShape(CGPath(ellipseIn: rect.cg, transform: nil), style: style, in: context)
+            let path = CGMutablePath()
+            path.addEllipse(in: rect.cg)
+            drawShape(path, style: style, in: context)
         case .freehand(let points), .highlighter(let points):
             drawStroke(points.map(\.cg), lineWidth: style.lineWidth, in: context)
         case .step(let center, let number):
@@ -139,10 +143,10 @@ public enum AnnotationRenderer {
         else { return }
         context.setFillColor(fill.cgColor)
         if metrics.cornerRadius > 0 {
-            context.addPath(
-                CGPath(
-                    roundedRect: background.cg, cornerWidth: metrics.cornerRadius,
-                    cornerHeight: metrics.cornerRadius, transform: nil))
+            let path = CGMutablePath()
+            path.addRoundedRect(
+                in: background.cg, cornerWidth: metrics.cornerRadius, cornerHeight: metrics.cornerRadius)
+            context.addPath(path)
             context.fillPath()
         } else {
             context.fill(background.cg)
@@ -196,7 +200,8 @@ public enum AnnotationRenderer {
             ? makeLine(String(number), font: font, color: textColor, outline: textColor == .black ? .white : .black)
             : nil
         var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
-        let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+        // The inout pointers are valid for the call only, and Core Text writes one value through each.
+        let width = unsafe CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
         context.saveGState()
         context.translateBy(x: center.x - width / 2, y: center.y + (ascent - descent) / 2)
         context.scaleBy(x: 1, y: -1)

@@ -5,7 +5,7 @@
   "release_architectures": [
     "arm64"
   ],
-  "minimum_deployment_target": "15.0",
+  "minimum_deployment_target": "26.0",
   "required_stable_xcode_major": 27,
   "expected_bundled_swift_compiler_major_minor": "6.4",
   "swift_language_mode": "6",

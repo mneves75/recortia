@@ -141,8 +141,9 @@ public struct ScrollStitcher: Sendable {
         let scale = Double(maxHeight) / Double(outputSize.height)
         let width = max(1, Int((Double(outputSize.width) * scale).rounded()))
         let height = max(1, min(maxHeight, Int((Double(outputSize.height) * scale).rounded())))
+        // `data: nil`: Core Graphics allocates and owns the bitmap.
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-            let context = CGContext(
+            let context = unsafe CGContext(
                 data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return nil }
@@ -335,7 +336,8 @@ public struct ScrollStitcher: Sendable {
             let space = CGColorSpace(name: CGColorSpace.sRGB),
             let provider = CGDataProvider(data: Data(pixels) as CFData)
         else { return nil }
-        return CGImage(
+        // `decode: nil` passes no pointer.
+        return unsafe CGImage(
             width: width, height: rows, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4, space: space,
             bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider,
             decode: nil, shouldInterpolate: false, intent: .defaultIntent)

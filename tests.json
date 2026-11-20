@@ -110,6 +110,16 @@
       ]
     },
     {
+      "id": "deployment-target",
+      "protected_file": "scripts/check-deployment-target.py",
+      "tests": [
+        "scripts/test-deployment-target.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
       "id": "package-tests",
       "protected_file": "Packages/RecortiaKit/Package.swift",
       "tests": [],

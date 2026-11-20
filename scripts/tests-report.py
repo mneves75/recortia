@@ -94,6 +94,12 @@ GATES: list[dict[str, object]] = [
         "invoked_by": ["scripts/check.sh"],
     },
     {
+        "id": "deployment-target",
+        "file": "scripts/check-deployment-target.py",
+        "tests": ["scripts/test-deployment-target.py"],
+        "invoked_by": ["scripts/check.sh"],
+    },
+    {
         "id": "package-tests",
         "file": "Packages/RecortiaKit/Package.swift",
         "tests": [],

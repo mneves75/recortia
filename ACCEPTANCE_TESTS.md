@@ -224,7 +224,7 @@ Provide low-texture pages, identical repeated rows, insufficient overlap, revers
 
 ### SCR-03 — Real application compatibility
 
-Test manual and automatic modes in the declared Safari, Chrome, and native-scroll-view targets on macOS 15/26/27. Record app versions, display configuration, scroll settings, and successful/limited/unsupported outcomes. Include Terminal/virtualized content and a scroll modifier as negative cases. Accessibility denial keeps manual mode available. Target/focus change immediately stops synthetic scrolling.
+Test manual and automatic modes in the declared Safari, Chrome, and native-scroll-view targets on macOS 26/27. Record app versions, display configuration, scroll settings, and successful/limited/unsupported outcomes. Include Terminal/virtualized content and a scroll modifier as negative cases. Accessibility denial keeps manual mode available. Target/focus change immediately stops synthetic scrolling.
 
 ### SCR-04 — Limits and cancellation
 

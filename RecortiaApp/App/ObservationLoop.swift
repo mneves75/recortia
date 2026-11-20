@@ -1,8 +1,9 @@
 import Observation
 
 /// Re-runs `body` whenever an observable property it read changes, for as long as the loop lives.
-/// AppKit presenters use it to follow a feature model's state (macOS 15 has no `Observations`
-/// sequence).
+/// AppKit presenters use it to follow a feature model's state. `body` runs synchronously at init;
+/// the macOS 26 `Observations` sequence delivers its first value asynchronously and coalesces
+/// intermediate states, so replacing this loop is a measured change, not a floor cleanup.
 final class ObservationLoop {
     private let body: @MainActor @Sendable () -> Void
 

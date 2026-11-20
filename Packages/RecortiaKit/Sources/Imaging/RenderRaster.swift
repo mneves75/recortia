@@ -46,10 +46,10 @@ struct RenderRaster {
         let (w, h) = (width, height)
         var created = false
         var failure: RenderError?
-        bytes.withUnsafeMutableBytes { buffer in
+        unsafe bytes.withUnsafeMutableBytes { buffer in
             // Invariant: the context points into `bytes` storage and must not outlive this closure.
             guard let base = buffer.baseAddress, let space = Self.colorSpace,
-                let context = CGContext(
+                let context = unsafe CGContext(
                     data: base, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space,
                     bitmapInfo: Self.bitmapInfo)
             else { return }
@@ -76,31 +76,27 @@ struct RenderRaster {
         guard let clipped = rect.clipped(to: bounds) else { return }
         let a = Int(color.a)
         let pixel = [color.r, color.g, color.b].map { UInt8((Int($0) * a + 127) / 255) } + [color.a]
+        var row: [UInt8] = []
+        row.reserveCapacity(clipped.width * 4)
+        for _ in 0..<clipped.width { row.append(contentsOf: pixel) }
         let rowBytes = width * 4
-        bytes.withUnsafeMutableBytes { buffer in
-            // Invariant: `clipped` lies inside the raster, so every index is below width × height × 4.
-            for y in clipped.y..<clipped.maxY {
-                var i = y * rowBytes + clipped.x * 4
-                for _ in 0..<clipped.width {
-                    buffer[i] = pixel[0]
-                    buffer[i + 1] = pixel[1]
-                    buffer[i + 2] = pixel[2]
-                    buffer[i + 3] = pixel[3]
-                    i += 4
-                }
-            }
+        for y in clipped.y..<clipped.maxY {
+            let start = bytes.startIndex + y * rowBytes + clipped.x * 4
+            bytes.replaceSubrange(start..<(start + row.count), with: row)
         }
     }
 
     /// Fully transparent pixels carry RGB 0, so no color survives under alpha 0 (RED-02).
     mutating func normalizeTransparentPixels() {
-        bytes.withUnsafeMutableBytes { buffer in
+        // Stays on the raw buffer: a bounds-checked MutableSpan loop measured about 1.8× slower on
+        // an 8000 × 5000 raster. Invariant: the loop condition keeps every index below `buffer.count`.
+        unsafe bytes.withUnsafeMutableBytes { buffer in
             var i = 0
             while i + 3 < buffer.count {
-                if buffer[i + 3] == 0 {
-                    buffer[i] = 0
-                    buffer[i + 1] = 0
-                    buffer[i + 2] = 0
+                if unsafe buffer[i + 3] == 0 {
+                    unsafe buffer[i] = 0
+                    unsafe buffer[i + 1] = 0
+                    unsafe buffer[i + 2] = 0
                 }
                 i += 4
             }
@@ -111,27 +107,26 @@ struct RenderRaster {
     /// not intersect. The copy is `clipped.width × clipped.height × 4` bytes.
     func pixels(in requested: PixelRect) -> [UInt8] {
         guard let rect = requested.clipped(to: bounds) else { return [] }
-        var out = [UInt8](repeating: 0, count: rect.width * rect.height * 4)
         let rowBytes = width * 4, outRow = rect.width * 4
-        bytes.withUnsafeBytes { buffer in
-            for row in 0..<rect.height {
-                let source = (rect.y + row) * rowBytes + rect.x * 4
-                for i in 0..<outRow { out[row * outRow + i] = buffer[source + i] }
-            }
+        var out: [UInt8] = []
+        out.reserveCapacity(outRow * rect.height)
+        for row in 0..<rect.height {
+            let source = bytes.startIndex + (rect.y + row) * rowBytes + rect.x * 4
+            out.append(contentsOf: bytes[source..<(source + outRow)])
         }
         return out
     }
 
-    /// Writes `region` (row-major pixels of `regionRect`) back, only inside `target`.
+    /// Writes `region` back, only inside `target`. Precondition: `region` holds every pixel of
+    /// `regionRect`, packed row-major at `regionRect.width × 4` bytes per row; a shorter buffer traps.
     mutating func replace(_ target: PixelRect, from region: [UInt8], regionRect: PixelRect) {
         guard let clipped = target.clipped(to: bounds)?.clipped(to: regionRect) else { return }
         let rowBytes = width * 4, regionRow = regionRect.width * 4
-        bytes.withUnsafeMutableBytes { buffer in
-            for y in clipped.y..<clipped.maxY {
-                let destination = y * rowBytes + clipped.x * 4
-                let source = (y - regionRect.y) * regionRow + (clipped.x - regionRect.x) * 4
-                for i in 0..<(clipped.width * 4) { buffer[destination + i] = region[source + i] }
-            }
+        let length = clipped.width * 4
+        for y in clipped.y..<clipped.maxY {
+            let destination = bytes.startIndex + y * rowBytes + clipped.x * 4
+            let source = (y - regionRect.y) * regionRow + (clipped.x - regionRect.x) * 4
+            bytes.replaceSubrange(destination..<(destination + length), with: region[source..<(source + length)])
         }
     }
 
@@ -139,7 +134,8 @@ struct RenderRaster {
     func makeImage(opaque: Bool = false) -> CGImage? {
         guard let space = Self.colorSpace, let provider = CGDataProvider(data: bytes as CFData) else { return nil }
         let alpha = opaque ? CGImageAlphaInfo.noneSkipLast.rawValue : CGImageAlphaInfo.premultipliedLast.rawValue
-        return CGImage(
+        // `decode: nil` passes no pointer.
+        return unsafe CGImage(
             width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4, space: space,
             bitmapInfo: CGBitmapInfo(rawValue: alpha | CGBitmapInfo.byteOrder32Big.rawValue), provider: provider,
             decode: nil, shouldInterpolate: false, intent: .defaultIntent)

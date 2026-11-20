@@ -67,6 +67,14 @@ struct GitHubUploadTests {
         return reply(wrapped ? 201 : 200, wrapped ? "{\"content\":\(json)}" : json)
     }
 
+    // The fixtures above derive their sha from blobSHA itself, so only a value computed by Git can
+    // catch an encoding error; GitHub's real sha would then never match and every retry would fail.
+    @Test("The blob sha matches git hash-object, including bytes below 0x10")
+    func blobSHAMatchesGit() {
+        // printf 'hello\n' | git hash-object --stdin
+        #expect(GitHubUploader.blobSHA(Data("hello\n".utf8)) == "ce013625030ba8dba906f756967f9e9ca394464a")
+    }
+
     @Test("Only the sanitized snapshot is uploaded, with a stable intent path")
     func sanitizedPayload() async throws {
         let snapshot = TestSupport.snapshot()

@@ -134,9 +134,9 @@ struct VolumeTraits {
         // A 4-byte length, then the capabilities.
         var buffer = [UInt8](repeating: 0, count: 4 + MemoryLayout<vol_capabilities_attr_t>.size)
         var capabilities: vol_capabilities_attr_t?
-        if fgetattrlist(directory, &list, &buffer, buffer.count, 0) == 0 {
+        if unsafe fgetattrlist(directory, &list, &buffer, buffer.count, 0) == 0 {
             capabilities = buffer.withUnsafeBytes {
-                $0.loadUnaligned(fromByteOffset: 4, as: vol_capabilities_attr_t.self)
+                unsafe $0.loadUnaligned(fromByteOffset: 4, as: vol_capabilities_attr_t.self)
             }
         }
         func has(_ bit: Int32) -> Bool {
@@ -148,13 +148,19 @@ struct VolumeTraits {
         exclusiveRename = has(VOL_CAP_INT_RENAME_EXCL)
         swap = has(VOL_CAP_INT_RENAME_SWAP)
         var info = statfs()
-        enforcesOwners = fstatfs(directory, &info) == 0 && info.f_flags & UInt32(MNT_IGNORE_OWNERSHIP) == 0
+        enforcesOwners = unsafe fstatfs(directory, &info) == 0 && info.f_flags & UInt32(MNT_IGNORE_OWNERSHIP) == 0
     }
 }
 
 /// The POSIX operations behind `FileSink`, reporting error codes so failures map precisely. The
 /// closures and injected codes are test seams; the app uses the defaults.
-struct POSIXFileSystem {
+///
+/// Every `unsafe` here marks a C call or the `writeBytes` seam. Invariants: String-to-C-string,
+/// array and inout arguments are valid for the call only and no callee keeps them; reads and
+/// writes through a borrowed buffer stay below its count; `realpath`'s result and each `acl_t` are
+/// freed exactly once by the scope that obtained them. `@safe`: only `writeBytes` stores an unsafe
+/// type, and it is `@unsafe`, so each use of it is marked too.
+@safe struct POSIXFileSystem {
     /// Reported when a name no longer leads to the object Recortia holds, or leads to a link.
     static let substitutedFailure = FileSystemFailure(code: EPERM)
     /// The stage's name inside its private folder.
@@ -187,8 +193,9 @@ struct POSIXFileSystem {
     var afterClaimWrite: (URL) -> Void = { _ in }
     /// Runs once a claimed file has been read back, before its size is checked again.
     var afterReadBack: (URL) -> Void = { _ in }
-    /// Writes bytes like write(2); every write of the snapshot goes through it.
-    var writeBytes: @Sendable (Int32, UnsafeRawPointer, Int) -> Int = { Darwin.write($0, $1, $2) }
+    /// Writes bytes like write(2); every write of the snapshot goes through it. The pointer is valid
+    /// for `count` bytes during the call only.
+    @unsafe var writeBytes: @Sendable (Int32, UnsafeRawPointer, Int) -> Int = { unsafe Darwin.write($0, $1, $2) }
     /// Fails the stage's write with this code after its first bytes.
     var failWrite: Int32?
     /// Fails the publishing rename with this code.
@@ -202,8 +209,10 @@ struct POSIXFileSystem {
         let directory = try openFolder(folder)
         defer { close(directory) }
         var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
-        guard fcntl(directory, F_GETPATH, &buffer) == 0 else { throw FileSystemFailure(code: errno) }
-        let admitted = URL(fileURLWithPath: String(cString: buffer), isDirectory: true)
+        guard unsafe fcntl(directory, F_GETPATH, &buffer) == 0 else { throw FileSystemFailure(code: errno) }
+        let admitted = URL(
+            fileURLWithPath: String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self),
+            isDirectory: true)
         let name = try saveName(data, in: directory, folder: folder, names: names, overwrite: overwrite)
         return admitted.appendingPathComponent(name, isDirectory: false)
     }
@@ -256,7 +265,7 @@ struct POSIXFileSystem {
     ) throws(FileSystemFailure) -> String {
         for name in names {
             var existing = stat()
-            if fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
+            if unsafe fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
                 guard overwrite else { continue }
                 guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
                 return try withStage(data, in: directory, folder: folder, volume: volume) {
@@ -285,17 +294,17 @@ struct POSIXFileSystem {
     func openFolder(_ url: URL) throws(FileSystemFailure) -> Int32 {
         let path = url.standardizedFileURL.path(percentEncoded: false)
         var expected = stat()
-        guard stat(path, &expected) == 0 else { throw FileSystemFailure(code: errno) }
+        guard unsafe stat(path, &expected) == 0 else { throw FileSystemFailure(code: errno) }
         guard expected.st_mode & S_IFMT == S_IFDIR else { throw Self.substitutedFailure }
-        guard let resolved = realpath(path, nil) else { throw FileSystemFailure(code: errno) }
-        defer { free(resolved) }
+        guard let resolved = unsafe realpath(path, nil) else { throw FileSystemFailure(code: errno) }
+        defer { unsafe free(resolved) }
         afterResolve(url)
-        let directory = open(resolved, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        let directory = unsafe open(resolved, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
         guard directory >= 0 else {
             throw errno == ELOOP || errno == ENOTDIR ? Self.substitutedFailure : FileSystemFailure(code: errno)
         }
         var actual = stat()
-        guard fstat(directory, &actual) == 0, FileIdentity(actual) == FileIdentity(expected) else {
+        guard unsafe fstat(directory, &actual) == 0, FileIdentity(actual) == FileIdentity(expected) else {
             close(directory)
             throw Self.substitutedFailure
         }
@@ -308,7 +317,7 @@ struct POSIXFileSystem {
         _ stage: Stage, data: Data, as name: String, in directory: Int32, overwrite: Bool, volume: VolumeTraits
     ) throws(FileSystemFailure) {
         var existing = stat()
-        if fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
+        if unsafe fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
             guard overwrite else { throw FileSystemFailure(code: EEXIST) }
             // Never through a link, and never over a folder or a device.
             guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
@@ -319,7 +328,7 @@ struct POSIXFileSystem {
         try stage.giveNewFileAccess(in: directory, afterProbe: afterProbe)
         try stage.checkStillStaged()
         if let failPublish { throw FileSystemFailure(code: failPublish) }
-        guard renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 else {
+        guard unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 else {
             throw FileSystemFailure(code: errno)
         }
     }
@@ -330,14 +339,14 @@ struct POSIXFileSystem {
     private func replace(
         _ stage: Stage, data: Data, named name: String, in directory: Int32, volume: VolumeTraits
     ) throws(FileSystemFailure) {
-        let destination = openat(directory, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        let destination = unsafe openat(directory, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard destination >= 0 else {
             throw errno == ELOOP ? Self.substitutedFailure : FileSystemFailure(code: errno)
         }
         // Read-only and used for metadata only: closing it cannot lose data.
         defer { close(destination) }
         var existing = stat()
-        guard fstat(destination, &existing) == 0 else { throw FileSystemFailure(code: errno) }
+        guard unsafe fstat(destination, &existing) == 0 else { throw FileSystemFailure(code: errno) }
         guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
         let replaced = FileIdentity(existing)
         // ACL first, so a deny entry is in effect before the mode can widen access.
@@ -345,7 +354,7 @@ struct POSIXFileSystem {
         afterReplaceStep(stage.url)
         var mode = existing.st_mode & 0o777
         var written = stat()
-        guard fstat(stage.file, &written) == 0 else { throw FileSystemFailure(code: errno) }
+        guard unsafe fstat(stage.file, &written) == 0 else { throw FileSystemFailure(code: errno) }
         // Another owner, or a group that cannot be kept, leaves the file owner-only, with no ACL:
         // the replacement belongs to this user, so the old owner, or a member of the old group,
         // would otherwise fall into the "other" class, or keep a copied grant. The same owner keeps
@@ -388,7 +397,7 @@ struct POSIXFileSystem {
         // Swap only where the private folder is private: the displaced original lands there and is
         // removed by name. Elsewhere the integrity-only path replaces by plain rename.
         if volume.swap, volume.enforcesOwners {
-            guard renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 else {
+            guard unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 else {
                 throw FileSystemFailure(code: errno)
             }
             afterSwap(directoryURL(stage).appendingPathComponent(name, isDirectory: false))
@@ -396,7 +405,7 @@ struct POSIXFileSystem {
             // destination (any number of links), it is removed as the overwrite the person approved;
             // Replace authorizes the file at that name at save time.
             var swapped = stat()
-            if fstatat(stage.folder, Self.stageName, &swapped, AT_SYMLINK_NOFOLLOW) == 0,
+            if unsafe fstatat(stage.folder, Self.stageName, &swapped, AT_SYMLINK_NOFOLLOW) == 0,
                 swapped.st_mode & S_IFMT == S_IFREG, FileIdentity(swapped) == replaced
             {
                 try stage.removeOwnEntry(Self.stageName)
@@ -404,11 +413,11 @@ struct POSIXFileSystem {
             }
             // Something replaced the destination after its access was read: put it back, by swap,
             // or by exclusive rename if the name is gone; otherwise report where it is.
-            if renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
+            if unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
                 throw Self.substitutedFailure
             }
             if errno == ENOENT,
-                renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0
+                unsafe renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0
             {
                 throw Self.substitutedFailure
             }
@@ -417,7 +426,7 @@ struct POSIXFileSystem {
         // Volumes without swap or enforced owners (exFAT, FAT32, some network volumes) replace by
         // plain rename; the destination may change between reading its access and this rename there.
         try stage.checkStillStaged()
-        if renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
+        if unsafe renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
         // On exFAT and FAT32 the private folder has no owners or modes, so another user could change
         // the staged bytes before the rename. Read the published file back through the stage's own
         // descriptor (the same file), while the name leads to it before and after; on a mismatch the
@@ -441,7 +450,7 @@ struct POSIXFileSystem {
         throws(FileSystemFailure)
     {
         var status = stat()
-        guard fstat(file, &status) == 0 else { throw FileSystemFailure(code: errno) }
+        guard unsafe fstat(file, &status) == 0 else { throw FileSystemFailure(code: errno) }
         guard entry(name, in: directory, is: FileIdentity(status), type: S_IFREG) else {
             throw FileSystemFailure(code: EEXIST)
         }
@@ -458,14 +467,14 @@ struct POSIXFileSystem {
         throws(FileSystemFailure)
     {
         let mode = try Self.newFileMode()
-        let claim = openat(directory, name, O_RDWR | O_APPEND | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        let claim = unsafe openat(directory, name, O_RDWR | O_APPEND | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard claim >= 0 else { throw FileSystemFailure(code: errno) }
         let claimed = folder.appendingPathComponent(name, isDirectory: false)
         afterClaim(claimed)
         var failure: Int32?
         var foreign = false
         var status = stat()
-        if fstat(claim, &status) != 0 {
+        if unsafe fstat(claim, &status) != 0 {
             failure = errno
         } else if status.st_size != 0 {
             failure = EEXIST
@@ -473,7 +482,7 @@ struct POSIXFileSystem {
         }
         if failure == nil {
             var written = 0
-            failure = Self.writeAll(data, to: claim, written: &written, using: writeBytes)
+            failure = unsafe Self.writeAll(data, to: claim, written: &written, using: writeBytes)
         }
         if failure == nil { afterClaimWrite(claimed) }
         // Best effort: these volumes keep a mount-wide mode anyway.
@@ -483,7 +492,8 @@ struct POSIXFileSystem {
             failure = EIO
         }
         let named =
-            fstat(claim, &status) == 0 && Self.entry(name, in: directory, is: FileIdentity(status), type: S_IFREG)
+            unsafe fstat(claim, &status) == 0
+            && Self.entry(name, in: directory, is: FileIdentity(status), type: S_IFREG)
         if !named {
             failure = EEXIST
             foreign = true
@@ -499,7 +509,7 @@ struct POSIXFileSystem {
     /// of `type`, and (for a file) its only name.
     static func entry(_ name: String, in directory: Int32, is identity: FileIdentity, type: mode_t) -> Bool {
         var status = stat()
-        guard fstatat(directory, name, &status, AT_SYMLINK_NOFOLLOW) == 0 else { return false }
+        guard unsafe fstatat(directory, name, &status, AT_SYMLINK_NOFOLLOW) == 0 else { return false }
         return status.st_mode & S_IFMT == type && FileIdentity(status) == identity
             && (type != S_IFREG || status.st_nlink == 1)
     }
@@ -513,15 +523,17 @@ struct POSIXFileSystem {
     private static func readBack(_ descriptor: Int32, equals data: Data, afterRead: () -> Void = {}) -> Bool {
         guard size(of: descriptor) == off_t(data.count) else { return false }
         var buffer = [UInt8](repeating: 0, count: min(readBackChunk, max(data.count, 1)))
-        let matches = data.withUnsafeBytes { expected -> Bool in
+        let matches = unsafe data.withUnsafeBytes { expected -> Bool in
             guard let base = expected.baseAddress else { return data.isEmpty }
             var offset = 0
             while offset < data.count {
                 let wanted = min(buffer.count, data.count - offset)
                 // Invariant: each read stays within `buffer`, and each compare within both buffers.
-                let count = buffer.withUnsafeMutableBytes { pread(descriptor, $0.baseAddress, wanted, off_t(offset)) }
+                let count = buffer.withUnsafeMutableBytes {
+                    unsafe pread(descriptor, $0.baseAddress, wanted, off_t(offset))
+                }
                 if count < 0, errno == EINTR { continue }
-                guard count > 0, memcmp(buffer, base + offset, count) == 0 else { return false }
+                guard count > 0, unsafe memcmp(buffer, base + offset, count) == 0 else { return false }
                 offset += count
             }
             return true
@@ -533,7 +545,7 @@ struct POSIXFileSystem {
 
     private static func size(of descriptor: Int32) -> off_t? {
         var status = stat()
-        return fstat(descriptor, &status) == 0 ? status.st_size : nil
+        return unsafe fstat(descriptor, &status) == 0 ? status.st_size : nil
     }
 
     /// Writes all of `data` (or its first `failAfter` bytes), retrying interrupted writes and
@@ -545,11 +557,11 @@ struct POSIXFileSystem {
     ) -> Int32? {
         // Invariant: `buffer` is valid only inside the closure; every access stays within
         // `buffer.count` because `written` only advances by what write(2) reports it wrote.
-        data.withUnsafeBytes { buffer -> Int32? in
+        unsafe data.withUnsafeBytes { buffer -> Int32? in
             guard let base = buffer.baseAddress else { return nil }
             let end = min(buffer.count, failAfter ?? buffer.count)
             while written < end {
-                let result = write(descriptor, base + written, end - written)
+                let result = unsafe write(descriptor, base + written, end - written)
                 if result < 0 {
                     if errno == EINTR { continue }
                     return errno
@@ -570,11 +582,11 @@ struct POSIXFileSystem {
         let probe = FileManager.default.temporaryDirectory.appendingPathComponent(
             ".recortia-mode-\(UUID().uuidString)", isDirectory: false
         ).path(percentEncoded: false)
-        let descriptor = open(probe, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o644)
+        let descriptor = unsafe open(probe, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o644)
         guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
-        Darwin.unlink(probe)
+        unsafe Darwin.unlink(probe)
         var status = stat()
-        let result = fstat(descriptor, &status)
+        let result = unsafe fstat(descriptor, &status)
         let failure = errno
         close(descriptor)
         guard result == 0 else { throw FileSystemFailure(code: failure) }
@@ -584,21 +596,21 @@ struct POSIXFileSystem {
     /// Gives `target` the ACL of the open `source`. Returns whether an ACL was applied; a source
     /// without one leaves `target` as it is.
     static func copyACL(from source: Int32, to target: Int32) throws(FileSystemFailure) -> Bool {
-        guard let acl = acl_get_fd_np(source, ACL_TYPE_EXTENDED) else {
+        guard let acl = unsafe acl_get_fd_np(source, ACL_TYPE_EXTENDED) else {
             // ENOENT: the file has no ACL; ENOTSUP: the volume has no ACLs at all.
             if errno == ENOENT || errno == ENOTSUP { return false }
             throw FileSystemFailure(code: errno)
         }
-        defer { acl_free(UnsafeMutableRawPointer(acl)) }
-        if acl_set_fd_np(target, acl, ACL_TYPE_EXTENDED) != 0 { throw FileSystemFailure(code: errno) }
+        defer { unsafe acl_free(UnsafeMutableRawPointer(acl)) }
+        if unsafe acl_set_fd_np(target, acl, ACL_TYPE_EXTENDED) != 0 { throw FileSystemFailure(code: errno) }
         return true
     }
 
     /// Removes every ACL entry of the open file or folder; a volume without ACLs has none.
     static func clearACL(_ descriptor: Int32) throws(FileSystemFailure) {
-        guard let empty = acl_init(0) else { throw FileSystemFailure(code: errno) }
-        defer { acl_free(UnsafeMutableRawPointer(empty)) }
-        if acl_set_fd_np(descriptor, empty, ACL_TYPE_EXTENDED) != 0, errno != ENOTSUP {
+        guard let empty = unsafe acl_init(0) else { throw FileSystemFailure(code: errno) }
+        defer { unsafe acl_free(UnsafeMutableRawPointer(empty)) }
+        if unsafe acl_set_fd_np(descriptor, empty, ACL_TYPE_EXTENDED) != 0, errno != ENOTSUP {
             throw FileSystemFailure(code: errno)
         }
     }
@@ -629,12 +641,12 @@ final class Stage {
         self.directory = directory
         self.privateNamespace = privateNamespace
         folderName = ".recortia-\(UUID().uuidString)"
-        guard mkdirat(directory, folderName, 0o700) == 0 else { throw FileSystemFailure(code: errno) }
-        let folder = openat(directory, folderName, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard unsafe mkdirat(directory, folderName, 0o700) == 0 else { throw FileSystemFailure(code: errno) }
+        let folder = unsafe openat(directory, folderName, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
         // Not opened, or not the folder just made: leave whatever the name leads to.
         guard folder >= 0 else { throw FileSystemFailure(code: errno) }
         var status = stat()
-        guard fstat(folder, &status) == 0, status.st_uid == geteuid(),
+        guard unsafe fstat(folder, &status) == 0, status.st_uid == geteuid(),
             POSIXFileSystem.entry(folderName, in: directory, is: FileIdentity(status), type: S_IFDIR)
         else {
             close(folder)
@@ -651,7 +663,7 @@ final class Stage {
         if failure == nil, fchmod(folder, 0o700) != 0 { failure = errno }
         var file: Int32 = -1
         if failure == nil {
-            file = openat(
+            file = unsafe openat(
                 folder, POSIXFileSystem.stageName, O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
             if file < 0 { failure = errno }
         }
@@ -662,14 +674,14 @@ final class Stage {
         }
         var written = 0
         if failure == nil {
-            failure = POSIXFileSystem.writeAll(
+            failure = unsafe POSIXFileSystem.writeAll(
                 data, to: file, written: &written, failAfter: fileSystem.failWrite.map { _ in 3 },
-                using: fileSystem.writeBytes)
+                using: unsafe fileSystem.writeBytes)
             if failure == nil, let injected = fileSystem.failWrite { failure = injected }
         }
         if failure == nil, fsync(file) != 0 { failure = errno }
         // Identity once the bytes are on disk: exFAT and FAT number a file by its first cluster.
-        if file >= 0, fstat(file, &status) == 0 { fileIdentity = FileIdentity(status) }
+        if file >= 0, unsafe fstat(file, &status) == 0 { fileIdentity = FileIdentity(status) }
         if let failure {
             throw FileSystemFailure(code: failure, leftover: remove())
         }
@@ -679,7 +691,7 @@ final class Stage {
     /// Fails unless the stage's name still leads to the written file and nothing else does.
     func checkStillStaged() throws(FileSystemFailure) {
         var status = stat()
-        guard fstat(file, &status) == 0 else { throw FileSystemFailure(code: errno) }
+        guard unsafe fstat(file, &status) == 0 else { throw FileSystemFailure(code: errno) }
         fileIdentity = FileIdentity(status)
         guard POSIXFileSystem.entry(POSIXFileSystem.stageName, in: folder, is: fileIdentity, type: S_IFREG) else {
             throw POSIXFileSystem.substitutedFailure
@@ -691,14 +703,14 @@ final class Stage {
     /// from an empty probe file created there, then discarded through the private folder.
     func giveNewFileAccess(in directory: Int32, afterProbe: (URL) -> Void) throws(FileSystemFailure) {
         let mode = try POSIXFileSystem.newFileMode()
-        if let folderACL = acl_get_fd_np(directory, ACL_TYPE_EXTENDED) {
-            acl_free(UnsafeMutableRawPointer(folderACL))
+        if let folderACL = unsafe acl_get_fd_np(directory, ACL_TYPE_EXTENDED) {
+            unsafe acl_free(UnsafeMutableRawPointer(folderACL))
             let name = ".recortia-probe-\(UUID().uuidString)"
-            let probe = openat(directory, name, O_RDONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+            let probe = unsafe openat(directory, name, O_RDONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
             guard probe >= 0 else { throw FileSystemFailure(code: errno) }
             defer { close(probe) }
             var status = stat()
-            guard fstat(probe, &status) == 0 else { throw FileSystemFailure(code: errno, leftover: name) }
+            guard unsafe fstat(probe, &status) == 0 else { throw FileSystemFailure(code: errno, leftover: name) }
             let identity = FileIdentity(status)
             afterProbe(url.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(name))
             try discard(name, from: directory) { $0.st_mode & S_IFMT == S_IFREG && FileIdentity($0) == identity }
@@ -718,23 +730,23 @@ final class Stage {
     func discard(_ name: String, from source: Int32, ifItIs isOurs: (stat) -> Bool) throws(FileSystemFailure) {
         guard privateNamespace else { throw FileSystemFailure(code: EPERM, leftover: name) }
         let holding = "discard-\(UUID().uuidString)"
-        guard renameatx_np(source, name, folder, holding, UInt32(RENAME_EXCL)) == 0 else {
+        guard unsafe renameatx_np(source, name, folder, holding, UInt32(RENAME_EXCL)) == 0 else {
             if errno == ENOENT { return }
             throw FileSystemFailure(code: errno, leftover: name)
         }
         var status = stat()
-        if fstatat(folder, holding, &status, AT_SYMLINK_NOFOLLOW) == 0, isOurs(status) {
+        if unsafe fstatat(folder, holding, &status, AT_SYMLINK_NOFOLLOW) == 0, isOurs(status) {
             try removeOwnEntry(holding)
             return
         }
-        guard renameatx_np(folder, holding, source, name, UInt32(RENAME_EXCL)) == 0 else { throw hold(holding) }
+        guard unsafe renameatx_np(folder, holding, source, name, UInt32(RENAME_EXCL)) == 0 else { throw hold(holding) }
         throw POSIXFileSystem.substitutedFailure
     }
 
     /// Removes an entry of the private folder already checked to be Recortia's. Only this user can
     /// change that folder's entries, so the check still holds; elsewhere the entry stays and is named.
     func removeOwnEntry(_ entry: String) throws(FileSystemFailure) {
-        guard privateNamespace, unlinkat(folder, entry, 0) == 0 else { throw hold(entry) }
+        guard privateNamespace, unsafe unlinkat(folder, entry, 0) == 0 else { throw hold(entry) }
     }
 
     /// Marks `entry` as something the private folder must keep and returns the failure naming it.
@@ -750,10 +762,10 @@ final class Stage {
         var leftover: String?
         if file >= 0 {
             var status = stat()
-            if fstat(file, &status) == 0,
+            if unsafe fstat(file, &status) == 0,
                 POSIXFileSystem.entry(POSIXFileSystem.stageName, in: folder, is: FileIdentity(status), type: S_IFREG)
             {
-                if !privateNamespace || unlinkat(folder, POSIXFileSystem.stageName, 0) != 0 {
+                if unsafe !privateNamespace || unlinkat(folder, POSIXFileSystem.stageName, 0) != 0 {
                     leftover = "\(folderName)/\(POSIXFileSystem.stageName)"
                 }
             }
@@ -763,7 +775,7 @@ final class Stage {
         close(folder)
         // Only an empty folder can be removed; one that something else entered stays.
         if leftover == nil, POSIXFileSystem.entry(folderName, in: directory, is: folderIdentity, type: S_IFDIR) {
-            unlinkat(directory, folderName, AT_REMOVEDIR)
+            unsafe unlinkat(directory, folderName, AT_REMOVEDIR)
         }
         return leftover
     }

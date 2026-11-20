@@ -66,7 +66,7 @@ shown tab follows selection and tool until the person picks one. The cosmetic-ef
 actions are a SwiftUI `.toolbar` bridged into the AppKit editor window with
 `sceneBridgingOptions = [.toolbars]`; the window is still the one `EditorWindowController` builds,
 so Space policy, presence, sizing and the remembered content size (which excludes the toolbar) do
-not change. No API newer than the deployment target and no `#available`. Every toolbar item stays in
+not change. No API newer than macOS 26 and no `#available`. Every toolbar item stays in
 `visibleItems` at the minimum content width (980 pt): no overflow chevron. Editor screenshots render
 the window's frame view so they show the toolbar. Bridged items perform AXPress while
 `accessibilityPerformPress()` returns false, so scenarios check the effect. Keep `inspector-context`
@@ -185,7 +185,7 @@ xcodebuild -showsdks
 
 Only after finding a real project/package should you run its listing commands. A missing project is a fact to report, not a reason to manufacture a successful build. On a non-Mac environment, explicitly mark AppKit/ScreenCaptureKit compilation, TCC, live capture, UI, and notarization checks unavailable. Do not substitute an HTML screenshot or Linux-only test for macOS evidence.
 
-Use stable Xcode 27 / bundled Swift 6.4 / Swift 6 mode as the researched baseline, then record the exact verified local build and SDK. The deployment target is macOS 15.0 until ADR-008 raises it to macOS 26 in the 0.15 train (owner, 2026-11-19); change it only through a reviewed ADR. Never silently install a beta or raise the deployment target to make a compile error disappear.
+Use stable Xcode 27 / bundled Swift 6.4 / Swift 6 mode as the researched baseline, then record the exact verified local build and SDK. The deployment target is macOS 26.0 from 0.15 (ADR-008, owner 2026-11-19); change it only through a reviewed ADR. Never silently install a beta or raise the deployment target to make a compile error disappear.
 
 ## Work unit and completion discipline
 

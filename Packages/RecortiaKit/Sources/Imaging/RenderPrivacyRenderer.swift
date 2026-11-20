@@ -20,9 +20,9 @@ public enum RenderError: Error, Equatable, Sendable {
 ///
 /// SPEC §10 targets ≤ 512 MiB for the whole heavy 40 MP workflow. The renderer's own buffers are
 /// budgeted at 384 MiB (a sanitized copy of each distinct source, cropped copies, one output
-/// raster, a second one for presentation, and the largest effect/magnifier scratch buffer), which
-/// admits a plain 40 MP export (≈ 320 MiB) but refuses, for example, three 40 MP sources composed
-/// into one 40 MP output. Raw pixels already in `ImageStore`, ImageIO's encoder buffers, and
+/// raster, a second one for presentation, the largest effect/magnifier scratch buffer and one
+/// mask fill row), which admits a plain 40 MP export (≈ 320 MiB) but refuses, for example, three
+/// 40 MP sources composed into one 40 MP output. Raw pixels already in `ImageStore`, ImageIO's encoder buffers, and
 /// framework allocations are outside this estimate; the process-wide 512 MiB target still needs
 /// measurement on hardware (SPEC §10) and is not claimed here.
 enum RenderLimits {
