@@ -72,6 +72,8 @@ PY
 current_provenance=$(source_provenance)
 bundle="$derived/Build/Products/Debug/RecortiaE2E.app"
 app="$bundle/Contents/MacOS/RecortiaE2E"
+# E2EForegroundFixture launches this sibling helper for the native focus checks.
+helper_bundle="$derived/Build/Products/Debug/RecortiaE2EForegroundHost.app"
 mkdir -p .build
 if (( build )); then
   # A failed rebuild must not leave a previous build's qualification attached to partial output.
@@ -90,38 +92,40 @@ if (( build )); then
   fi
 fi
 [[ -x "$app" ]] || { echo "e2e: $app not found; build first" >&2; exit 2; }
-# Bind the qualification to the entire built bundle, even when another script rebuilt it.
-if ! current_provenance=$(python3 - "$current_provenance" "$bundle" <<'PY'
+# Bind the qualification to both entire built bundles, even when another script rebuilt one.
+if ! current_provenance=$(python3 - "$current_provenance" "$bundle" "$helper_bundle" <<'PY'
 import hashlib, json, os, pathlib, sys
 record = json.loads(sys.argv[1])
-bundle = pathlib.Path(sys.argv[2])
-if bundle.is_symlink() or not bundle.is_dir():
-    sys.exit("e2e: expected a regular app bundle directory")
-def walk_error(error):
-    raise error
-entries = []
-for directory, directories, files in os.walk(bundle, followlinks=False, onerror=walk_error):
-    for name in directories + files:
-        path = pathlib.Path(directory) / name
-        if path.is_symlink() or path.is_file():
-            entries.append(path)
-fingerprint = hashlib.sha256()
-for path in sorted(entries, key=lambda path: os.fsencode(path.relative_to(bundle))):
-    name = os.fsencode(path.relative_to(bundle))
-    fingerprint.update(len(name).to_bytes(8, "big") + name)
-    if path.is_symlink():
-        target = os.fsencode(os.readlink(path))
-        fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
-    else:
-        fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
-        with path.open("rb") as contents:
-            while chunk := contents.read(64 * 1024):
-                fingerprint.update(chunk)
-record["app_bundle_sha256"] = fingerprint.hexdigest()
+def bundle_sha256(bundle):
+    if bundle.is_symlink() or not bundle.is_dir():
+        sys.exit(f"e2e: expected a regular app bundle directory at {bundle}")
+    def walk_error(error):
+        raise error
+    entries = []
+    for directory, directories, files in os.walk(bundle, followlinks=False, onerror=walk_error):
+        for name in directories + files:
+            path = pathlib.Path(directory) / name
+            if path.is_symlink() or path.is_file():
+                entries.append(path)
+    fingerprint = hashlib.sha256()
+    for path in sorted(entries, key=lambda path: os.fsencode(path.relative_to(bundle))):
+        name = os.fsencode(path.relative_to(bundle))
+        fingerprint.update(len(name).to_bytes(8, "big") + name)
+        if path.is_symlink():
+            target = os.fsencode(os.readlink(path))
+            fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
+        else:
+            fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
+            with path.open("rb") as contents:
+                while chunk := contents.read(64 * 1024):
+                    fingerprint.update(chunk)
+    return fingerprint.hexdigest()
+record["app_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[2]))
+record["foreground_host_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[3]))
 print(json.dumps(record, sort_keys=True))
 PY
 ); then
-  echo "e2e: could not fingerprint app bundle for build provenance; rebuild with the selected toolchain" >&2
+  echo "e2e: could not fingerprint the app and foreground helper bundles for build provenance; rebuild with the selected toolchain" >&2
   exit 2
 fi
 if (( build )); then

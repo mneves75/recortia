@@ -88,6 +88,10 @@ else:
         app.parent.mkdir(parents=True)
         app.write_text('#!/bin/sh\ntouch launch-reached\nprintf \'[{"passed":true,"screenshots":[]}]\' > "$2/report.json"\n')
         app.chmod(0o755)
+        helper = self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app/Contents/MacOS/RecortiaE2EForegroundHost"
+        helper.parent.mkdir(parents=True)
+        helper.write_text("#!/bin/sh\n# foreground helper fixture\n")
+        helper.chmod(0o755)
 
     def tool(self, name: str, source: str) -> None:
         executable = self.bin / name
@@ -280,6 +284,25 @@ else:
                 self.assertIn("provenance", refused.stderr)
                 self.assertFalse((self.root / "build-reached").exists())
                 self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_no_build_rejects_a_changed_or_missing_foreground_helper(self) -> None:
+        # Native focus checks launch the sibling helper; reusing a build must cover it too.
+        helper_bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app"
+        helper = helper_bundle / "Contents/MacOS/RecortiaE2EForegroundHost"
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        record = json.loads((self.root / ".build/dd-e2e-provenance.json").read_text())
+        self.assertRegex(record.get("foreground_host_bundle_sha256", ""), r"^[0-9a-f]{64}$")
+        (self.root / "launch-reached").unlink()
+        helper.write_text("#!/bin/sh\n# a different helper\n")
+        refused = self.run_e2e("--no-build")
+        self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+        self.assertIn("provenance", refused.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+        shutil.rmtree(helper_bundle)
+        missing = self.run_e2e("--no-build")
+        self.assertEqual(2, missing.returncode, missing.stdout + missing.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
 
     def test_bundle_hash_does_not_follow_external_symlinks(self) -> None:
         bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app"
