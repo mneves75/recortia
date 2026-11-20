@@ -31,6 +31,8 @@ import Foundation
 // - R03: replacing a file on a volume without swap is a plain rename, which replaces whatever
 //   occupies the name at that moment. Acceptable under the contract: those volumes enforce no
 //   owners, and the name is checked to lead to the stage before and after the read-back.
+// - 1B: a destination substituted just before the swap leaves the snapshot at the name, with the
+//   inspected file's access (the access Replace approved), until the rollback takes it out.
 // - R06: a folder above the chosen one swapped before admission redirects the save; admission
 //   binds whatever folder the system resolves the path to at that moment.
 // - R01/R02: on a mount that accepts chmod without enforcing it, the private folder is not
