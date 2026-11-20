@@ -111,8 +111,19 @@ public final class ScrollSessionModel {
 
     public var isPartial: Bool { partialReason != nil }
 
-    /// Accept needs a shown preview (the person reviews the seams first) and no Accept in progress.
-    public var canAccept: Bool { state == .reviewing && preview != nil && acceptingSession == nil }
+    /// Accept needs a shown preview (the person reviews the seams first), no Accept in progress,
+    /// and no failed assembly: a stitch over its budget fails the same way again, so the person
+    /// discards instead of retrying.
+    public var canAccept: Bool {
+        state == .reviewing && preview != nil && acceptingSession == nil && notice != .assemblyFailed
+    }
+
+    /// An Accept in progress makes Discard unavailable until it settles: a confirmed Discard never
+    /// races an assembly that may already be opening an editor.
+    public var canDiscard: Bool { state == .reviewing && acceptingSession == nil }
+
+    /// The review is still drawing its preview.
+    public var isPreparingPreview: Bool { state == .reviewing && preview == nil && notice != .assemblyFailed }
 
     // MARK: Commands
 
@@ -201,7 +212,11 @@ public final class ScrollSessionModel {
         apply(.cancel)
     }
 
-    public func discard() { cancel() }
+    /// Discards the review, or an active capture; refused while an Accept assembles (`canDiscard`).
+    public func discard() {
+        guard acceptingSession == nil else { return }
+        cancel()
+    }
 
     /// Stops a session that is selecting or capturing at once, for events the app observes:
     /// screen lock, display reconfiguration, permission revocation, or target loss (FR-10, PERM-02).

@@ -205,7 +205,8 @@
             ScrollReviewView(
                 preview: model.preview, outputSize: model.outputSize, seams: model.seams,
                 partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
-                canAccept: model.canAccept, onAccept: {}, onDiscard: {})
+                isPreparingPreview: model.isPreparingPreview, canAccept: model.canAccept,
+                canDiscard: model.canDiscard, onAccept: {}, onDiscard: {})
         }
     }
 #endif

@@ -531,18 +531,24 @@ final class FakeStitcher: ScrollStitchService {
     }
 
     var previewFails = false
+    /// When set, `preview` suspends until `previews.resolve(())`, like a slow downscale.
+    var holdPreview = false
+    let previews = Pending<Void>()
     func preview(maxHeight: Int) async -> CGImage? {
-        acceptedFrameCount > 0 && !previewFails ? makeImage(width: 4, height: 8) : nil
+        if holdPreview { await previews.wait() }
+        return acceptedFrameCount > 0 && !previewFails ? makeImage(width: 4, height: 8) : nil
     }
 
-    /// When set, each `assemble` suspends until `assembles.resolve(())`, like a large stitch.
-    var holdAssemble = false
+    /// When set, the first `assemble` suspends until `assembles.resolve(())`, like a large stitch.
+    /// Later calls never wait, so an assembly a missing guard admits shows in `assembleCount`
+    /// instead of hanging the test.
+    var holdFirstAssemble = false
     let assembles = Pending<Void>()
     private(set) var assembleCount = 0
 
     func assemble() async throws -> CGImage {
         assembleCount += 1
-        if holdAssemble { await assembles.wait() }
+        if holdFirstAssemble, assembleCount == 1 { await assembles.wait() }
         if assembleFails { throw ExportServiceError(.budgetExceeded) }
         guard let image = makeImage(width: max(1, outputSize.width), height: max(1, outputSize.height)) else {
             throw ExportServiceError(.renderFailed)
