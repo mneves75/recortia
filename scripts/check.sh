@@ -52,6 +52,6 @@ xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug 
 
 echo "== E2E binary refuses missing or malformed launch requests"
 RECORTIA_E2E_BINARY="$PWD/.build/dd/Build/Products/Debug/RecortiaE2E.app/Contents/MacOS/RecortiaE2E" \
-  python3 scripts/test-e2e-isolation.py
+  python3 scripts/test-e2e-isolation.py E2ELaunchGuardTests.test_built_binary_refuses_missing_or_malformed_requests
 
 echo "check: all gates passed"
