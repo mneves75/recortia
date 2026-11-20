@@ -117,7 +117,8 @@ struct RenderRaster {
         return out
     }
 
-    /// Writes `region` (row-major pixels of `regionRect`) back, only inside `target`.
+    /// Writes `region` back, only inside `target`. Precondition: `region` holds every pixel of
+    /// `regionRect`, packed row-major at `regionRect.width × 4` bytes per row; a shorter buffer traps.
     mutating func replace(_ target: PixelRect, from region: [UInt8], regionRect: PixelRect) {
         guard let clipped = target.clipped(to: bounds)?.clipped(to: regionRect) else { return }
         let rowBytes = width * 4, regionRow = regionRect.width * 4
