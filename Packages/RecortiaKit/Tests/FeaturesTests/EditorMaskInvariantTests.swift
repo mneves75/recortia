@@ -102,4 +102,55 @@ struct EditorMaskInvariantTests {
         #expect(m.document.masks.first?.sourceRegions[assetID] == [PixelRect(x: 60, y: 10, width: 20, height: 20)])
         #expect(try await secretCovered(fixture, at: 10) == 400, "the person moved the mask off the secret")
     }
+
+    // MARK: I3 the tolerance band only selects
+
+    @Test("Beside a selected mask's handle, a drag on magnifier pixels moves the magnifier")
+    func handleBandYieldsToMagnifier() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.magnifier)
+        h.drag((300, 200), (330, 220))
+        let magnifier = try #require(m.document.callouts.first).id
+        m.setFrame(Rect(x: 118, y: 100, width: 60, height: 40), for: .callout(magnifier))
+        m.selectTool(.select)
+        m.select(.mask(mask.id))
+        // (125, 110) is 5 pt from the right handle's center: inside its hit radius, outside its square.
+        h.drag((125, 110), (115, 110))
+        #expect(m.document.masks.first == mask)
+        #expect(m.frame(of: .callout(magnifier))?.minX == 108)
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
+    }
+
+    @Test("A drag on a rectangle beside a mask moves the rectangle; the band never moves the mask")
+    func bandYieldsToAnnotation() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.setFillColor(.yellow)
+        m.selectTool(.rectangle)
+        h.drag((122, 100), (160, 130))
+        let rectangle = try #require(m.document.annotations.first).id
+        m.selectTool(.select)
+        m.clearSelection()
+        h.drag((122, 110), (137, 110))
+        #expect(m.document.masks.first == mask)
+        #expect(m.frame(of: .annotation(rectangle))?.minX ?? 0 > 130)
+
+        // Over the image alone, the band selects the mask but a drag does not move it.
+        m.clearSelection()
+        h.drag((110, 122), (110, 140))
+        #expect(m.selection == [.mask(mask.id)])
+        #expect(m.document.masks.first == mask)
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
+    }
 }

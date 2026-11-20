@@ -398,8 +398,9 @@ public final class EditorModel {
         guard p.isFinite else { return nil }
         let tolerance = viewport.documentLength(4)
         let d = session.document
-        // Masks draw over callouts, so a mask's own pixels win; its tolerance band does not beat
-        // a callout's pixels, or a drag on a visible magnifier would move the mask off its secret.
+        // Masks draw over everything, so a mask's own pixels win. Its tolerance band loses to any
+        // other object's visible pixels (and only selects, see beginSelectGesture), or a drag on a
+        // visible object would move the mask off its secret.
         for mask in d.masks.reversed() where EditorGeometry.containsInclusive(mask.outputRect, p) {
             return .mask(mask.id)
         }
@@ -410,16 +411,16 @@ public final class EditorModel {
                 return .callout(callout.id)
             }
         }
-        for mask in d.masks.reversed()
-        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
-            return .mask(mask.id)
-        }
         for annotation in d.annotations.reversed() where EditorGeometry.hits(annotation, at: p, tolerance: tolerance) {
             return .annotation(annotation.id)
         }
         for effect in d.obfuscations.reversed()
         where EditorGeometry.containsInclusive(EditorGeometry.expanded(effect.rect, by: tolerance), p) {
             return .obfuscation(effect.id)
+        }
+        for mask in d.masks.reversed()
+        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
+            return .mask(mask.id)
         }
         for layer in d.layers.reversed() {
             if let frame = frame(of: .layer(layer.id)), EditorGeometry.containsInclusive(frame, p) {
@@ -459,7 +460,16 @@ public final class EditorModel {
         }
     }
 
+    /// Side of a drawn handle square in view points (the canvas draws 8, or 10 with increased contrast).
+    static let handleSquareSide = 8.0
+
     func handle(at p: Point<DocumentSpace>) -> (handle: EditorHandle, point: Point<DocumentSpace>)? {
+        // A mask's handle grabs only on its drawn square: the wider hit radius around it could
+        // start a resize from another object's visible pixels and uncover the secret.
+        if case .mask = selection.first {
+            let half = viewport.documentLength(Self.handleSquareSide / 2)
+            return selectionHandles.first { abs($0.point.x - p.x) <= half && abs($0.point.y - p.y) <= half }
+        }
         let tolerance = viewport.documentLength(6)
         return selectionHandles.first { hypot($0.point.x - p.x, $0.point.y - p.y) <= tolerance }
     }

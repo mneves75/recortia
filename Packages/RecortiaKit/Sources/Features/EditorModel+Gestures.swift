@@ -178,6 +178,13 @@ extension EditorModel {
             return
         }
         if let hit = item(at: p) {
+            // A mask's tolerance band selects it; only its body or a handle square may move it.
+            if case .mask(let id) = hit, let mask = document.masks.first(where: { $0.id == id }),
+                !EditorGeometry.containsInclusive(mask.outputRect, p)
+            {
+                select(hit, extending: modifiers.contains(.shift))
+                return
+            }
             if modifiers.contains(.shift) {
                 select(hit, extending: true)
                 guard selection.contains(hit) else { return }
