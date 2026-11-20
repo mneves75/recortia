@@ -32,15 +32,18 @@ final class ExportHarness {
     }
 }
 
-/// Counts upload requests; succeeds only while the coordinator's live check still allows it.
+/// Counts upload requests, each made only while the coordinator's live check allows it, as the
+/// real uploader does; succeeds only while its commit check still allows it.
 @MainActor
 private final class RecordingUpload: GitHubUploadService {
     private(set) var requests = 0
 
     func upload(
         _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL {
+        guard isLive() else { throw .staleDocument }
         requests += 1
         guard isCurrent() else { throw .canceled }
         return URL(fileURLWithPath: "/tmp/recortia-tests/never-uploaded.png")
@@ -448,6 +451,37 @@ struct ExportCoordinatorTests {
         render.resolve(.success(()))
         _ = await run.value
         #expect(upload.requests == 0, "a stale batch reached the upload service after its render")
+    }
+
+    // R2-D07 (program 2026-11): the step's consent check ran synchronously, then the upload ran in
+    // a new task; a Settings change already queued on the main actor ran in between, and the
+    // upload still made its authenticated lookups.
+    @Test("Consent renewed after the upload step's check but before its task runs sends no request")
+    func consentRenewedBeforeTheUploadTaskRunsSendsNothing() async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        let upload = RecordingUpload()
+        let h = ExportHarness(upload: upload)
+        h.settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true) }
+        let plan = h.coordinator.automaticExportPlan()
+        let consentBefore = h.settings.githubUploadConsentID
+        var queued = false
+        let session = h.session
+        _ = await h.coordinator.runAutomaticExports(
+            plan, for: session,
+            currentSession: {
+                // First called by the freshness check after the render, before the step's
+                // consent guard: queue a revoke-and-re-enable as Settings would.
+                if !queued {
+                    queued = true
+                    Task { @MainActor in
+                        h.settings.update { $0.githubUpload?.automatic = false }
+                        h.settings.update { $0.githubUpload?.automatic = true }
+                    }
+                }
+                return session
+            })
+        #expect(queued && h.settings.githubUploadConsentID != consentBefore, "control: consent was never renewed")
+        #expect(upload.requests == 0, "a request was sent for consent that was no longer live")
     }
 
     @Test("Turning automatic save off while the copy renders still writes nothing")

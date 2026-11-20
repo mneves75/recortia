@@ -76,12 +76,15 @@ public struct GitHubUploader: Sendable {
     @concurrent
     public func upload(
         _ snapshot: ShareSnapshot, to destination: GitHubDestination, token: GitHubToken, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL {
         guard destination.isValid else { throw .invalidDestination }
         guard !snapshot.bytes.isEmpty, snapshot.bytes.count <= Self.maximumImageBytes else { throw .tooLarge }
         guard !Task.isCancelled else { throw .canceled }
         let base = "https://api.github.com/repos/\(destination.owner)/\(destination.repository)"
+        // No authenticated request, lookups included, once the consent behind it is gone.
+        guard await isLive() else { throw .staleDocument }
         let repoResponse = try await send(try request(base, token: token))
         try checkStatus(repoResponse, expected: [200])
         let repository: Repository = try decode(repoResponse.body)
@@ -94,6 +97,8 @@ public struct GitHubUploader: Sendable {
         let contentsURL = "\(base)/contents/\(path)"
         var lookup = try request(contentsURL, token: token)
         lookup.setValue("application/vnd.github.object+json", forHTTPHeaderField: "Accept")
+        guard !Task.isCancelled else { throw .canceled }
+        guard await isLive() else { throw .staleDocument }
         let existing = try await send(lookup)
         let sha = Self.blobSHA(snapshot.bytes)
         if existing.statusCode == 200 {

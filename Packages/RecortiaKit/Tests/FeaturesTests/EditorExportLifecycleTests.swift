@@ -16,6 +16,7 @@ private final class LifecycleUpload: GitHubUploadService {
 
     func upload(
         _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL {
         requests.append(snapshot.documentID)
