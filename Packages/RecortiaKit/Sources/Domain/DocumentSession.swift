@@ -39,8 +39,10 @@ public struct DocumentSession: Sendable {
         self.savedDocument = document
     }
 
-    public var canUndo: Bool { !undoStack.isEmpty || openGroup != nil }
-    public var canRedo: Bool { !redoStack.isEmpty }
+    /// Undo and redo commit an open group first, so only a group that changed the document counts.
+    public var canUndo: Bool { !undoStack.isEmpty || openGroupChanged }
+    public var canRedo: Bool { !redoStack.isEmpty && !openGroupChanged }
+    private var openGroupChanged: Bool { openGroup.map { $0.before != document } ?? false }
 
     /// Assets the current document or any retained undo or redo step still references; anything
     /// else can no longer come back and its pixels can be released.
