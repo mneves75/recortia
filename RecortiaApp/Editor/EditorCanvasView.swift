@@ -246,6 +246,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             model.reportCanvasRenderFailure()
             return
         }
+        if !model.showsOutputPreview { model.reportCanvasDrawSucceeded() }
 
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()

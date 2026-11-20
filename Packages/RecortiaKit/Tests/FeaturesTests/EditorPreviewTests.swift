@@ -201,6 +201,80 @@ struct EditorPreviewTests {
         #expect(h.model.notice == .previewFailed)
     }
 
+    @Test("A failed canvas draw blocks exports and revokes the drag until the canvas draws (NEW-01)")
+    func canvasDrawFailureBlocksUntilNextDraw() async {
+        let h = EditorHarness()
+        await h.settle()
+        h.drag.pending = Pending<DragDeliveryOutcome>()
+        let drag = Task { await h.model.export(.drag) }
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        h.model.reportCanvasRenderFailure()
+        #expect(!h.model.isPreviewReady, "the canvas cleared its pixels")
+        #expect(h.drag.leases.first?.isRevoked == true)
+        h.drag.pending?.resolve(.delivered)
+        _ = await drag.value
+        #expect(await h.model.export(.copy) == .failed(.renderFailed))
+        #expect(h.clipboard.writes.isEmpty)
+        h.model.reportCanvasDrawSucceeded()
+        #expect(h.model.isPreviewReady)
+        #expect(await h.model.export(.copy) == .copied)
+    }
+
+    @Test("A hidden base failure leaves a drag from a healthy Output Preview alone (NEW-02)")
+    func hiddenBaseFailureKeepsVisibleDrag() async throws {
+        let gate = Pending<Result<CGImage, TestError>>()
+        let h = EditorHarness { $0.renderer.basePending = gate }
+        await waitFor("base render suspended") { gate.waiterCount == 1 }
+        h.model.setShowsOutputPreview(true)
+        await waitFor("output preview rendered") { h.model.isOutputPreviewCurrent }
+        h.drag.pending = Pending<DragDeliveryOutcome>()
+        let drag = Task { await h.model.export(.drag) }
+        await waitFor("drag offered") { h.drag.leases.count == 1 }
+        h.renderer.basePending = nil
+        gate.resolve(.failure(TestError()))
+        await waitFor("base failed") { h.model.failedBaseKey != nil }
+        #expect(h.model.isPreviewReady, "the visible output preview rendered")
+        #expect(h.drag.leases.first?.isRevoked == false)
+        h.drag.pending?.resolve(.delivered)
+        #expect(await drag.value == .dragged)
+    }
+
+    @Test("Switching back to the editing view retries a failed base once (NEW-03)")
+    func switchingBackRetriesFailedBaseOnce() async {
+        let h = EditorHarness { $0.renderer.fails = true }
+        await h.settle()
+        #expect(!h.model.isPreviewReady)
+        let renders = h.renderer.baseRenders.count
+        h.renderer.fails = false
+        h.model.setShowsOutputPreview(true)
+        await h.settle()
+        h.model.setShowsOutputPreview(false)
+        await h.settle()
+        #expect(h.renderer.baseRenders.count == renders + 1)
+        #expect(h.model.isPreviewReady && h.model.isBaseCurrent)
+        #expect(await h.model.export(.copy) == .copied)
+    }
+
+    @Test("A failed base is ready under a rendered Output Preview and not after switching back (R2-D12d)")
+    func failedBaseIsReadyOnlyUnderRenderedOutputPreview() async {
+        let h = EditorHarness { $0.renderer.fails = true }
+        await h.settle()
+        #expect(!h.model.isPreviewReady)
+        h.renderer.fails = false
+        h.model.setShowsOutputPreview(true)
+        await h.settle()
+        #expect(h.model.isPreviewReady, "Output Preview shows a successful render of what it displays")
+        #expect(await h.model.export(.copy) == .copied)
+        h.renderer.fails = true
+        h.model.setShowsOutputPreview(false)
+        await h.settle()
+        let renders = h.renderer.baseRenders.count
+        #expect(!h.model.isPreviewReady, "the editing view's base failed again")
+        #expect(await h.model.export(.copy) == .failed(.renderFailed))
+        await h.settle()
+        #expect(h.renderer.baseRenders.count == renders, "the retry runs once, not in a loop")
+    }
+
     @Test("OCR recognized before a redaction is discarded and cannot reach the clipboard")
     func staleOCRDiscarded() async throws {
         let h = EditorHarness()

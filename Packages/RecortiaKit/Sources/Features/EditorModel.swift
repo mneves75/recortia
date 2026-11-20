@@ -74,6 +74,8 @@ public final class EditorModel {
     @ObservationIgnored var outputTask: Task<Void, Never>?
     @ObservationIgnored var installedOutputKey: OutputKey?
     var failedOutputKey: OutputKey?
+    /// The document state the native canvas last failed to draw; nil once it draws (NEW-01).
+    var failedCanvasDraw: OutputKey?
     @ObservationIgnored var recognitionRequest: UUID?
     @ObservationIgnored var recognizedResult: OCRResult?
     @ObservationIgnored var qrRequest: UUID?
