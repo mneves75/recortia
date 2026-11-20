@@ -469,6 +469,8 @@ struct EditorMaskInvariantTests {
         #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
 
+    /// Guards band-only selection off the image. It is not a reproducer: band selection off the
+    /// image already worked at ecdda1f; `bandYieldsToImage` reproduces R4-07.
     @Test("Off the image, a mask's tolerance band selects the mask without moving it")
     func bandOffImageOnlySelects() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 360, y: 260, width: 40, height: 40))
@@ -549,13 +551,15 @@ struct EditorMaskInvariantTests {
         m.setPadding(10)
         m.setBackground(.solid(.yellow))
         m.setShadow(Presentation.Shadow())
-        #expect(m.document.presentation.padding == 10)
+        m.setCornerRadius(8)
+        #expect(m.document.presentation.padding == 10 && m.document.presentation.cornerRadius == 8)
         #expect(m.document.presentation.shadow != nil && m.document.presentation.background == .solid(.yellow))
         #expect(m.document.masks == before.masks && m.document.layers == before.layers)
         let pixels = try await fixture.exported()
         #expect(pixels.width > 400 && pixels.height > 300, "the export shows the padding")
-        let corner = pixels.pixel(x: 0, y: 0)
-        #expect(corner.a == 255 && corner.r > 150 && corner.b < 60, "and the yellow background")
+        // Mid top edge: inside the rounded corners, in the padding.
+        let edge = pixels.pixel(x: pixels.width / 2, y: 1)
+        #expect(edge.a == 255 && edge.r > 150 && edge.b < 60, "and the yellow background")
         #expect(fixture.secretPixels(in: pixels) == 0)
     }
 
