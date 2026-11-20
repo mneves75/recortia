@@ -105,6 +105,30 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.partialReason == nil)
     }
 
+    // Failure mode (review R2-D06): Stop during an append that the matcher then rejected froze the
+    // review as complete, although the rejected viewport is missing from it.
+    @Test(
+        "Stop while the last frame is rejected keeps the rejection as the partial reason",
+        .timeLimit(.minutes(1)),
+        arguments: [
+            (ScrollAppendResult.ambiguous(.lowConfidence), ScrollPartialReason.ambiguous(.lowConfidence)),
+            (.limitReached(.side), .limit(.side)),
+        ])
+    func stopDuringRejectedAppendIsPartial(result: ScrollAppendResult, expected: ScrollPartialReason) async {
+        let h = ScrollHarness()
+        h.stitcher.script = [.accepted(offset: 0), result]
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        h.stitcher.holdAppends = true
+        h.frames.deliver()
+        await waitFor("append in progress") { h.stitcher.appends.waiterCount == 1 }
+        h.model.stop()
+        h.stitcher.appends.resolve(())
+        await waitFor("review settled") { h.model.state == .reviewing }
+        #expect(h.model.partialReason == expected)
+        #expect(h.model.acceptedFrames == 1)
+    }
+
     @Test("Cancel while a stopped session is settling its last frame leaves no review", .timeLimit(.minutes(1)))
     func cancelWhileSettlingStop() async {
         let h = ScrollHarness()

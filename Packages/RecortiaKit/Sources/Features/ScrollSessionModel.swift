@@ -302,9 +302,18 @@ public final class ScrollSessionModel {
                 outputSize = stitcher.outputSize
             }
             if let finish = pendingFinish {
-                // Stop landed during the append: its result is recorded above, so freeze now.
+                // Stop landed during the append: its result is recorded above, so freeze now. A
+                // rejected viewport is missing from the review, so its reason labels it partial.
                 pendingFinish = nil
-                completeFinish(partial: finish.partial, event: finish.event)
+                var partial = finish.partial
+                if partial == nil {
+                    switch result {
+                    case .ambiguous(let reason): partial = .ambiguous(reason)
+                    case .limitReached(let limit): partial = .limit(limit)
+                    case .accepted, .stationary: break
+                    }
+                }
+                completeFinish(partial: partial, event: finish.event)
                 return
             }
 
