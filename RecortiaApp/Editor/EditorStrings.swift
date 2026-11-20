@@ -272,6 +272,8 @@ enum EditorStrings {
         case .accessDenied:
             String(localized: "Nothing was saved: Recortia cannot write to that folder.", table: "Editor")
         case .destinationExists: String(localized: "Nothing was saved: a file with that name exists.", table: "Editor")
+        case .nameTooLong:
+            String(localized: "Nothing was saved: the file name is too long for that folder.", table: "Editor")
         case .diskFull: String(localized: "Nothing was saved: the disk is full.", table: "Editor")
         case .volumeUnavailable: String(localized: "Nothing was saved: the volume is not available.", table: "Editor")
         case .staleDocument:

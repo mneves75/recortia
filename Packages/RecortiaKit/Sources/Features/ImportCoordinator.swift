@@ -23,6 +23,8 @@ public enum ImportFailure: Error, Hashable, Sendable {
     case multipleFrames
     case corrupt
     case unreadable
+    /// Beyond `ImportCoordinator.maximumOpenedFiles` in one request from the system; never read.
+    case tooManyFiles
 
     init(_ error: ImportError) {
         switch error {
@@ -44,7 +46,7 @@ public final class ImportCoordinator {
     public var isImporting: Bool { imageImporter.isImporting }
     public let imageImporter: ImageImporter
     private(set) var lastFailure: ImportFailure?
-    @ObservationIgnored public var onImported: ((DocumentSession) -> Void)?
+    @ObservationIgnored public var onImported: ((DocumentSession, _ fileName: String?) -> Void)?
 
     public init(input: any ImageInputService, assets: any ImageAssetService) {
         imageImporter = ImageImporter(input: input, assets: assets)
@@ -52,21 +54,43 @@ public final class ImportCoordinator {
 
     @discardableResult
     public func importImage(from source: ImportSource) async -> Result<DocumentSession, ImportFailure> {
-        let result: Result<DocumentSession, ImportFailure>
         do throws(ImportFailure) {
-            let info = try await imageImporter.importImage(from: source)
-            result = .success(DocumentSession(document: Document(asset: info)))
-        } catch {
-            result = .failure(error)
-        }
-        switch result {
-        case .success(let session):
+            let admission = try imageImporter.admit { source }
+            let info = try await imageImporter.importImage(admission)
+            let session = DocumentSession(document: Document(asset: info))
             lastFailure = nil
-            onImported?(session)
-        case .failure(let failure):
-            lastFailure = failure
+            onImported?(session, admission.fileName)
+            return .success(session)
+        } catch {
+            lastFailure = error
+            return .failure(error)
         }
-        return result
+    }
+
+    /// The most files one Open With, Dock-icon drop or `open -a` request opens: each is a decoded
+    /// image in its own editor.
+    public static let maximumOpenedFiles = 10
+
+    /// Opens files handed over by the system, one editor each, through the same admission as
+    /// File › Open. Files are imported one after another so the shared slot admits each in turn;
+    /// a refused file does not stop the rest. Returns the refusals, in order, for one report.
+    public func openFiles(_ urls: [URL]) async -> [ImportFailure] {
+        var failures: [ImportFailure] = []
+        for url in urls.prefix(Self.maximumOpenedFiles) {
+            if case .failure(let failure) = await importImage(from: .file(url)) {
+                failures.append(failure)
+            }
+        }
+        failures += repeatElement(.tooManyFiles, count: max(0, urls.count - Self.maximumOpenedFiles))
+        return failures
+    }
+
+    /// Opens requests that queued up (before launch wired the editors) one after another, each
+    /// with its own limit, and returns each request's refusals for its own report.
+    public func openRequests(_ requests: [[URL]]) async -> [[ImportFailure]] {
+        var failures: [[ImportFailure]] = []
+        for urls in requests { failures.append(await openFiles(urls)) }
+        return failures
     }
 }
 
@@ -74,6 +98,7 @@ public final class ImportCoordinator {
 /// imported or released.
 public struct ImportAdmission: Sendable {
     public let source: ImportSource
+    let fileName: String?
 }
 
 /// One read/decode admission slot, shared by the app's new-document and editor-layer paths.
@@ -98,7 +123,13 @@ public final class ImageImporter {
         guard !isImporting else { throw .busy }
         isImporting = true
         do throws(ImportFailure) {
-            return ImportAdmission(source: try readSource())
+            let source = try readSource()
+            let fileName: String? =
+                switch source {
+                case .file(let url), .droppedFile(let url): url.lastPathComponent
+                case .pasteboard, .droppedData: nil
+                }
+            return ImportAdmission(source: source, fileName: fileName)
         } catch {
             isImporting = false
             throw error

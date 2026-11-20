@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ Saved files keep the default name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Saved files keep the default name."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Os arquivos salvos mantêm o nome padrão."
+          }
+        }
+      }
+    },
     "%@/%@" : {
       "localizations" : {
         "en" : {
@@ -137,6 +153,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld × %lld px"
+          }
+        }
+      }
+    },
+    "A file name cannot start or end with a period, or have two periods in a row." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A file name cannot start or end with a period, or have two periods in a row."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome do arquivo não pode começar nem terminar com ponto, nem ter dois pontos seguidos."
           }
         }
       }
@@ -1567,6 +1599,22 @@
         }
       }
     },
+    "Enter a file name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a file name."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite um nome de arquivo."
+          }
+        }
+      }
+    },
     "Enter a valid GitHub owner and repository name." : {
       "localizations" : {
         "en" : {
@@ -1611,6 +1659,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exatamente como reconhecido"
+          }
+        }
+      }
+    },
+    "Example: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example: %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exemplo: %@"
           }
         }
       }
@@ -2049,6 +2113,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Várias imagens em uma tela"
+          }
+        }
+      }
+    },
+    "Name of saved files" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name of saved files"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nome dos arquivos salvos"
           }
         }
       }
@@ -2527,6 +2607,38 @@
         }
       }
     },
+    "Placeholders: {date}, {time}, {counter}" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Placeholders: {date}, {time}, {counter}"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcadores: {date}, {time}, {counter}"
+          }
+        }
+      }
+    },
+    "Play a sound after capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play a sound after capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocar um som após a captura"
+          }
+        }
+      }
+    },
     "Preparing preview" : {
       "localizations" : {
         "en" : {
@@ -2777,6 +2889,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Recortia não mantém um histórico local de capturas. O envio opcional ao GitHub envia capturas estáticas somente após configuração e consentimento separados."
+          }
+        }
+      }
+    },
+    "Recortia opens at most %lld images at a time." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia opens at most %lld images at a time."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia abre no máximo %lld imagens por vez."
           }
         }
       }
@@ -3395,6 +3523,22 @@
         }
       }
     },
+    "Some images could not be opened" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some images could not be opened"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir algumas imagens"
+          }
+        }
+      }
+    },
     "Start" : {
       "localizations" : {
         "en" : {
@@ -3780,6 +3924,22 @@
         }
       }
     },
+    "The file name is too long for that folder. Choose a shorter name in Settings › Export." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file name is too long for that folder. Choose a shorter name in Settings › Export."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome do arquivo é longo demais para essa pasta. Escolha um nome mais curto em Ajustes › Exportação."
+          }
+        }
+      }
+    },
     "The folder could not be saved" : {
       "localizations" : {
         "en" : {
@@ -3936,6 +4096,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O limite de memória da captura com rolagem foi atingido."
+          }
+        }
+      }
+    },
+    "The name is too long." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The name is too long."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome é longo demais."
           }
         }
       }
@@ -4244,6 +4420,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use um repositório privado dedicado e um token limitado a ele, com permissão Contents: leitura e escrita. O token fica nas Chaves. Cada envio cria um commit em screenshots/."
+          }
+        }
+      }
+    },
+    "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use apenas letras, números, espaços, hífens, sublinhados, pontos e parênteses."
+          }
+        }
+      }
+    },
+    "Use only the placeholders {date}, {time} and {counter}." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use only the placeholders {date}, {time} and {counter}."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use apenas os marcadores {date}, {time} e {counter}."
           }
         }
       }

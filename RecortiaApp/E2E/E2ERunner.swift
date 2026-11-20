@@ -82,6 +82,8 @@
     @MainActor
     enum E2ERunner {
         static let argument = "-RecortiaE2E"
+        /// Where `AppDelegate` hands files the system asked to open: the runner's own model.
+        static var openFiles: (@MainActor ([URL]) -> Void)?
         static let onlyArgument = "-RecortiaE2EOnly"
 
         /// Parses and validates this process's whole launch request, before the app model exists
@@ -123,6 +125,7 @@
             do {
                 try FileManager.default.createDirectory(at: output.workDirectory, withIntermediateDirectories: true)
                 harness = try E2EHarness(output: output)
+                openFiles = { [weak app = harness.app] in app?.openFiles($0) }
             } catch {
                 log("setup failed: \(error)")
                 return 1

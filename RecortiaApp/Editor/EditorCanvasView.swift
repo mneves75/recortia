@@ -22,6 +22,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     private var isSpaceDown = false
     private var panAnchor: NSPoint?
     private var trackingArea: NSTrackingArea?
+    /// This canvas's own "editor to first draw" interval (A-13), set when its window first shows.
+    var firstDrawInterval: LatencyInterval?
     private var elements: [EditorItemID: EditorAccessibilityElement] = [:]
     private var lastListItems: [EditorListItem] = []
     /// Shown, over a neutral placeholder, while automatic masking runs (FR-06).
@@ -262,6 +264,10 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             return
         }
         if !model.showsOutputPreview { model.reportCanvasDrawSucceeded() }
+        if model.baseImage != nil, let firstDrawInterval {
+            firstDrawInterval.end()
+            self.firstDrawInterval = nil
+        }
 
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()

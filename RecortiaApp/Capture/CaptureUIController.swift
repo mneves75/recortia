@@ -45,6 +45,7 @@ final class CaptureUIController {
             overlay.present(
                 displays: displays, notice: noticeText(notice),
                 allowsWindowSwitch: coordinator.mode == .region && coordinator.purpose == .edit)
+            if overlay.isPresented { coordinator.selectionDidAppear() }
         case (.selecting, .loadingWindows?):
             overlay.dismiss()
             showChooser(.loadingWindows)
@@ -100,6 +101,7 @@ final class CaptureUIController {
                     onChoose: { [weak coordinator] in coordinator?.commitSelection(.display($0)) }, onCancel: cancel))
         }
         panel.present(activate: true)
+        coordinator.selectionDidAppear()
     }
 
     private func closeChooser() {

@@ -474,6 +474,7 @@ public final class ExportCoordinator {
         switch error {
         case .clipboardWriteFailed: .clipboardFailed
         case .destinationExists: .destinationExists
+        case .nameTooLong: .nameTooLong
         case .accessDenied: .accessDenied
         case .diskFull: .diskFull
         case .volumeUnavailable: .volumeUnavailable

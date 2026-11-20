@@ -116,7 +116,7 @@
             let importer = harness.features.importer
             let opener = importer.onImported
             var imported: DocumentSession?
-            importer.onImported = { imported = $0 }
+            importer.onImported = { session, _ in imported = session }
             defer { importer.onImported = opener }
             if case .failure(let failure) = await importer.importImage(from: .file(url)) {
                 throw E2EAbort("import of \(name) failed: \(failure)")

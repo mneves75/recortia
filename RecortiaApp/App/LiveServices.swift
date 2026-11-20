@@ -1,8 +1,10 @@
 import AppKit
+import AudioToolbox
 import Domain
 import Features
 import Imaging
 import MacPlatform
+import os
 
 // Live adapters from the Features service protocols to the Imaging and MacPlatform
 // implementations. Heavy work (decode, render, encode, file I/O, capture) runs off the main
@@ -223,3 +225,39 @@ final class LiveLoginItem: LoginItemService {
 }
 
 extension KeychainPreferenceIntegrity: @retroactive PreferenceIntegrityService {}
+
+/// The system's Tink sound through System Sound Services, registered as an interface sound so it
+/// follows the alert volume and stays silent while "Play user interface sound effects" is off.
+/// No bundled audio, no microphone.
+final class LiveCaptureSound: CaptureSoundService {
+    private var soundID: SystemSoundID?
+
+    func playCaptureSound() {
+        guard let id = soundID ?? register() else { return }
+        AudioServicesPlaySystemSound(id)
+    }
+
+    private func register() -> SystemSoundID? {
+        var id: SystemSoundID = 0
+        let url = URL(fileURLWithPath: "/System/Library/Sounds/Tink.aiff") as CFURL
+        let created = AudioServicesCreateSystemSoundID(url, &id)
+        guard created == noErr else {
+            Logger(subsystem: "dev.mvneves.Recortia", category: "sound").error(
+                "capture sound unavailable: \(created, privacy: .public)")
+            return nil
+        }
+        var isInterfaceSound: UInt32 = 1
+        let marked = AudioServicesSetProperty(
+            kAudioServicesPropertyIsUISound, UInt32(MemoryLayout<SystemSoundID>.size), &id,
+            UInt32(MemoryLayout<UInt32>.size), &isInterfaceSound)
+        guard marked == noErr else {
+            // Unmarked, it would play even with interface sound effects off.
+            Logger(subsystem: "dev.mvneves.Recortia", category: "sound").error(
+                "capture sound not marked as an interface sound: \(marked, privacy: .public)")
+            AudioServicesDisposeSystemSoundID(id)
+            return nil
+        }
+        soundID = id
+        return id
+    }
+}

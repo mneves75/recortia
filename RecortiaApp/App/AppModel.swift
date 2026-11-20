@@ -19,7 +19,7 @@ struct FeatureModels {
         self.services = services
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
-            clock: services.clock, settings: settings)
+            clock: services.clock, settings: settings, sound: services.captureSound)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
             folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
@@ -49,7 +49,7 @@ final class AppModel: AppActions {
     let features: FeatureModels
     private var isStartingScrollingCapture = false
 
-    var openDocument: ((DocumentSession, EditorInitialAction) -> EditorModel?)?
+    var openDocument: ((DocumentSession, EditorInitialAction, _ importedFileName: String?) -> EditorModel?)?
     var recognizeText: ((DocumentSession) -> Void)?
     @ObservationIgnored private lazy var settingsWindow = SettingsWindowController(model: self)
 
@@ -58,6 +58,10 @@ final class AppModel: AppActions {
     @ObservationIgnored private var pinsUI: PinsUIController?
     @ObservationIgnored private var captureWindowVisibility: CaptureWindowVisibility?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
+    /// Open requests the system made before launch wired the editors, each kept apart: a cold
+    /// launch by Open With, a drop on the Dock icon or `open -a` delivers them before
+    /// `applicationDidFinishLaunching`.
+    @ObservationIgnored private var requestsBeforeLaunch: [[URL]] = []
     @ObservationIgnored private let editors = EditorWindowManager()
     @ObservationIgnored private var systemEvents: SystemEventMonitor?
     @ObservationIgnored private var didLaunch = false
@@ -118,11 +122,14 @@ final class AppModel: AppActions {
         didLaunch = true
         wire(features)
         registerShortcutHandlers()
-        switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind) {
+        switch LaunchWindow.choose(
+            onboardingPending: onboarding.shouldPresent, kind: kind, opensFiles: !requestsBeforeLaunch.isEmpty)
+        {
         case .onboarding: showOnboarding()
         case .settings: showSettings()
         case .none: break
         }
+        openFilesRequestedBeforeLaunch()
     }
 
     func showOnboarding() {
@@ -251,17 +258,43 @@ final class AppModel: AppActions {
         }
     }
 
+    /// Open With, a drop on the Dock icon and `open -a` (FR-03): one editor per file through the
+    /// same admission as Open Image, and one report for every file that was refused.
+    func openFiles(_ urls: [URL]) {
+        guard openDocument != nil else {
+            requestsBeforeLaunch.append(urls)
+            return
+        }
+        open([urls])
+    }
+
+    /// Replays, in order, the requests that arrived before the editors were wired.
+    func openFilesRequestedBeforeLaunch() {
+        let requests = requestsBeforeLaunch
+        requestsBeforeLaunch = []
+        if !requests.isEmpty { open(requests) }
+    }
+
+    private func open(_ requests: [[URL]]) {
+        let importer = features.importer
+        Task {
+            for failures in await importer.openRequests(requests) {
+                if let message = UserMessage.openFailures(failures) { showMessage(message) }
+            }
+        }
+    }
+
     // MARK: Wiring
 
     private func wire(_ features: FeatureModels) {
         features.capture.onCaptured = { [weak self] completion in
             self?.handleCapture(completion)
         }
-        features.importer.onImported = { [weak self] session in
-            _ = self?.openDocument?(session, .none)
+        features.importer.onImported = { [weak self] session, fileName in
+            _ = self?.openDocument?(session, .none, fileName)
         }
         features.scroll.onAccepted = { [weak self] session in
-            _ = self?.openDocument?(session, .none)
+            _ = self?.openDocument?(session, .none, nil)
         }
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
@@ -274,8 +307,8 @@ final class AppModel: AppActions {
             sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
             pins: features.pins, textClipboard: PasteboardTextClipboard(), links: WorkspaceLinkOpener(),
             settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
-        openDocument = { [editors] session, action in
-            editors.open(session, environment: environment, initialAction: action)
+        openDocument = { [editors] session, action, fileName in
+            editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)
         }
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
         let monitor = SystemEventMonitor { event in
@@ -302,7 +335,10 @@ final class AppModel: AppActions {
             // setting changed by a job queued after this belongs to the next capture (R-3).
             let plan = features.export.automaticExportPlan()
             let masks = settings.preferences.autoRedactsSensitiveText
-            let editor = openDocument?(completion.session, masks ? .maskSensitiveText : .none)
+            // Opening orders the editor window front before it returns.
+            let toEditor = LatencySignposts.begin(.captureToEditor)
+            let editor = openDocument?(completion.session, masks ? .maskSensitiveText : .none, nil)
+            toEditor.end()
             runAutomaticExports(plan, for: completion.session, editor: editor, masks: masks)
         case .recognizeText:
             recognizeText?(completion.session)
