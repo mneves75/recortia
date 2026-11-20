@@ -341,15 +341,32 @@ struct POSIXFileSystem: FileSystemOperations {
     /// Returns whether an ACL was applied to the temporary file.
     private func copyACL(from destination: URL, to descriptor: Int32) throws(FileSystemFailure) -> Bool {
         guard let acl = acl_get_file(destination.path(percentEncoded: false), ACL_TYPE_EXTENDED) else {
-            // ENOENT: the file has no ACL; ENOTSUP: the volume has no ACLs at all.
-            if errno == ENOENT || errno == ENOTSUP { return false }
-            throw FileSystemFailure(code: errno)
+            // ENOTSUP: the volume has no ACLs at all.
+            if errno == ENOTSUP { return false }
+            guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
+            // The file has no ACL, so the replacement must have none either. It can carry its
+            // folder's inherited entries when it was staged as a new file because the destination
+            // was missing then and came back before this commit.
+            try Self.dropStagedACL(descriptor)
+            return false
         }
         defer { acl_free(UnsafeMutableRawPointer(acl)) }
         if acl_set_fd_np(descriptor, acl, ACL_TYPE_EXTENDED) != 0 {
             throw FileSystemFailure(code: errno)
         }
         return true
+    }
+
+    /// Removes the staged file's ACL, if it has one, after making it owner-only, so removing an
+    /// inherited deny entry never widens access. Fails rather than clear entries at a broader mode.
+    private static func dropStagedACL(_ descriptor: Int32) throws(FileSystemFailure) {
+        guard let staged = acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED) else {
+            if errno == ENOENT || errno == ENOTSUP { return }
+            throw FileSystemFailure(code: errno)
+        }
+        acl_free(UnsafeMutableRawPointer(staged))
+        guard fchmod(descriptor, 0o600) == 0 else { throw FileSystemFailure(code: errno) }
+        try clearACL(descriptor)
     }
 
     /// Removes every ACL entry of the open file; a volume without ACLs has none to remove.

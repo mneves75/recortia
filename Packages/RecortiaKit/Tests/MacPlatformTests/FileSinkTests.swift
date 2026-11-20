@@ -372,6 +372,37 @@ struct FileSinkTests {
         #expect(Self.mode(url) == 0o600)
     }
 
+    // R2-D03 (program 2026-11): an overwrite whose destination was missing staged a new file with
+    // the folder's inherited entries; a private destination restored before the commit (a sync
+    // client, another app) was then replaced by a file that kept those entries.
+    @Test("A private file that reappears during an overwrite is replaced without the folder's inherited entry")
+    func reappearingPrivateDestinationGetsNoInheritedEntry() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        try Self.addACL("everyone allow read,file_inherit", to: folder)
+        let url = folder.appendingPathComponent("shot.png")
+        let observed = Observation()
+        let fileSystem = InterposingFileSystem { temporary in
+            observed.temporaryACL = Self.extendedACL(temporary)
+            // The private file comes back: owner-only, with no ACL of its own.
+            try? priorBytes.write(to: url)
+            if let empty = acl_init(0) {
+                observed.destinationACLCleared =
+                    acl_set_file(url.path(percentEncoded: false), ACL_TYPE_EXTENDED, empty) == 0
+                acl_free(UnsafeMutableRawPointer(empty))
+            }
+            _ = chmod(url.path(percentEncoded: false), 0o600)
+        }
+        _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+        try #require(
+            observed.temporaryACL?.contains("everyone") == true,
+            "control: the staged file did not carry the folder's inherited entry")
+        try #require(observed.destinationACLCleared, "control: the restored destination kept an ACL")
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.extendedACL(url) == nil, "the replaced private file gained the folder's entry")
+        #expect(Self.mode(url) == 0o600)
+    }
+
     enum NewSave: String, CaseIterable, Sendable {
         case save, overwriteMissing, saveUnique
     }
@@ -542,6 +573,7 @@ struct FileSinkTests {
         var temporaryACL: String?
         var replaceSteps: [Access] = []
         var requestedGroups: [gid_t] = []
+        var destinationACLCleared = false
 
         struct Access: CustomStringConvertible {
             let mode: mode_t?
