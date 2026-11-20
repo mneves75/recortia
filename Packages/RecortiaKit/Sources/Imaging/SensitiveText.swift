@@ -40,7 +40,9 @@ public enum SensitiveTextKind: String, Sendable, CaseIterable, Hashable {
 
 public struct SensitiveTextMatch: Sendable, Equatable {
     public let kind: SensitiveTextKind
-    public let range: Range<String.Index>
+    /// UTF-16 range in the matched text (`NSString` units), widened to whole composed characters and
+    /// to the whole token the match sits in (see `SensitiveTextMatcher.wholeTokens`).
+    public let range: NSRange
 }
 
 public enum SensitiveTextError: Error, Equatable, Sendable {
@@ -59,6 +61,9 @@ public enum SensitiveTextError: Error, Equatable, Sendable {
     case tooManyTiles
     /// A tile or the whole sweep found more candidates than it may keep; the sweep fails closed.
     case tooManyMatches
+    /// A matched range could not be mapped onto the recognized text it came from. The sweep fails
+    /// rather than drop the match.
+    case rangeUnmappable
 }
 
 // MARK: - Pattern matcher (variant A)
@@ -147,9 +152,93 @@ public struct SensitiveTextMatcher: Sendable {
             }
         }
         if kinds.contains(.email) { found += overlongRunMatches(in: source, bridged) }
-        return Self.mergeOverlapping(found).compactMap { item in
-            Range(item.range, in: text).map { SensitiveTextMatch(kind: item.kind, range: $0) }
+        let widened = Self.wholeTokens(found, in: source).map {
+            (kind: $0.kind, range: source.rangeOfComposedCharacterSequences(for: $0.range))
         }
+        return Self.mergeOverlapping(widened).map { SensitiveTextMatch(kind: $0.kind, range: $0.range) }
+    }
+
+    /// Once a pattern matches, the mask covers the whole token the match sits in, so no visible
+    /// prefix or suffix is left (`ops!night@…`, a glued run, a domain longer than the pattern's
+    /// bounds): for an address, the maximal run of non-whitespace around it; for a number, every
+    /// adjacent digit group joined by one separator. Over-coverage is accepted. Matches are visited
+    /// in order and a scan never re-reads what the previous expansion of its kind covered, so the
+    /// work stays linear in the line.
+    static func wholeTokens(
+        _ items: [(kind: SensitiveTextKind, range: NSRange)], in source: NSString
+    ) -> [(kind: SensitiveTextKind, range: NSRange)] {
+        var covered: [SensitiveTextKind: Int] = [:]
+        var result: [(kind: SensitiveTextKind, range: NSRange)] = []
+        for item in items.sorted(by: { $0.range.location < $1.range.location }) {
+            let floor = covered[item.kind] ?? 0
+            guard NSMaxRange(item.range) > floor else { continue }  // inside the previous token
+            var start = max(item.range.location, floor)
+            var end = NSMaxRange(item.range)
+            switch item.kind {
+            case .email:
+                while start > floor, !isWhitespace(source.character(at: start - 1)) { start -= 1 }
+                while end < source.length, !isWhitespace(source.character(at: end)) { end += 1 }
+            case .phone:
+                start = digitGroupsStart(before: start, floor: floor, in: source)
+                end = digitGroupsEnd(after: end, in: source)
+            }
+            covered[item.kind] = end
+            result.append((item.kind, NSRange(location: start, length: end - start)))
+        }
+        return result
+    }
+
+    private static func isWhitespace(_ unit: unichar) -> Bool {
+        Unicode.Scalar(unit).map(CharacterSet.whitespacesAndNewlines.contains) ?? false
+    }
+
+    private static func isDigit(_ unit: unichar) -> Bool { (0x30...0x39).contains(unit) }
+
+    /// One separator between digit groups, as in the patterns' `sep`.
+    private static func isGroupSeparator(_ unit: unichar) -> Bool {
+        isWhitespace(unit) || [0x2E, 0x2D, 0x2010, 0x2011, 0x2012, 0x2013, 0x2014].contains(unit)
+    }
+
+    /// Extends `end` over ")" and over each following "<separator>[(]digits[)]" group.
+    private static func digitGroupsEnd(after end: Int, in source: NSString) -> Int {
+        var end = end
+        func skipDigits(_ index: inout Int) {
+            while index < source.length, isDigit(source.character(at: index)) { index += 1 }
+        }
+        skipDigits(&end)
+        if end < source.length, source.character(at: end) == 0x29 { end += 1 }
+        while end + 1 < source.length, isGroupSeparator(source.character(at: end)) {
+            var next = end + 1
+            if source.character(at: next) == 0x28 { next += 1 }
+            guard next < source.length, isDigit(source.character(at: next)) else { break }
+            skipDigits(&next)
+            if next < source.length, source.character(at: next) == 0x29 { next += 1 }
+            end = next
+        }
+        return end
+    }
+
+    /// Extends `start` back over "(" or "+" and over each preceding "[(]digits[)]<separator>" group,
+    /// never below `floor`.
+    private static func digitGroupsStart(before start: Int, floor: Int, in source: NSString) -> Int {
+        var start = start
+        func skipDigits(_ index: inout Int) {
+            while index > floor, isDigit(source.character(at: index - 1)) { index -= 1 }
+        }
+        func skipOpening(_ index: inout Int) {
+            if index > floor, [0x28, 0x2B].contains(source.character(at: index - 1)) { index -= 1 }
+        }
+        skipDigits(&start)
+        skipOpening(&start)
+        while start - 1 > floor, isGroupSeparator(source.character(at: start - 1)) {
+            var previous = start - 1
+            if source.character(at: previous - 1) == 0x29 { previous -= 1 }
+            guard previous > floor, isDigit(source.character(at: previous - 1)) else { break }
+            skipDigits(&previous)
+            skipOpening(&previous)
+            start = previous
+        }
+        return start
     }
 
     /// The e-mail patterns start only where a run of local characters starts (`localStart`), so an
@@ -446,8 +535,8 @@ struct DataDetectorMatcher: Sendable {
             case .link where result.url?.scheme?.lowercased() == "mailto": kind = .email
             default: return nil
             }
-            guard kinds.contains(kind), let range = Range(result.range, in: text) else { return nil }
-            return SensitiveTextMatch(kind: kind, range: range)
+            guard kinds.contains(kind) else { return nil }
+            return SensitiveTextMatch(kind: kind, range: result.range)
         }
     }
 }
@@ -480,7 +569,8 @@ public struct SensitiveTextScanner: Sendable {
     /// Side of a fine-sweep tile in resampled pixels (Fosco's 2048 by default).
     let fineTileSide: CGFloat
 
-    public init() { fineTileSide = 2048 }
+    /// 1024-px fine tiles (decisions.md, 2026-11-20): 99.2% recall against 96.6% at 2048.
+    public init() { fineTileSide = 1024 }
 
     /// For the tile-size experiment in the benchmark.
     init(fineTileSide: CGFloat) { self.fineTileSide = fineTileSide }
@@ -534,6 +624,7 @@ public struct SensitiveTextScanner: Sendable {
     /// Budgets that keep one sweep's work and memory bounded. Exceeding one fails the sweep with a
     /// typed error; nothing is dropped. An admitted capture (40 MP) needs about 400 tiles.
     static let maximumTiles = 1024
+    static let maximumObservationsPerTile = 2048
     static let maximumMatchesPerTile = 512
     static let maximumMatches = 4096
 
@@ -541,23 +632,27 @@ public struct SensitiveTextScanner: Sendable {
         for size: CGSize, pixelsPerPoint: Double, fineTileSide: CGFloat
     ) throws(SensitiveTextError) -> [(rect: CGRect, layout: TileLayout)] {
         let bounds = CGRect(origin: .zero, size: size)
-        let jobs = TileLayout.standard(pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide).flatMap { layout in
+        let layouts = TileLayout.standard(pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide)
+        // Counted before any job exists, so an oversized capture costs nothing to refuse.
+        let count = layouts.reduce(0) { total, layout in total + tileCount(for: size, layout: layout) }
+        guard count <= maximumTiles else { throw .tooManyTiles }
+        return layouts.flatMap { layout in
             tileRects(for: size, layout: layout).map { (rect: $0.intersection(bounds), layout: layout) }
         }.filter { !$0.rect.isEmpty }
-        guard jobs.count <= maximumTiles else { throw .tooManyTiles }
-        return jobs
     }
 
     /// Merges and outsets the collected matches. Any match that cannot be mapped onto the image fails
     /// the sweep, and so does a cancellation that arrives while this runs.
-    static func finalRegions(_ found: [BoxedMatch], within bounds: CGRect) throws -> [SensitiveRegion] {
+    static func finalRegions(
+        _ found: [BoxedMatch], within bounds: CGRect, afterEntryCheck: () -> Void = {}
+    ) throws -> [SensitiveRegion] {
         try Task.checkCancellation()
+        afterEntryCheck()
         guard found.count <= maximumMatches else { throw SensitiveTextError.tooManyMatches }
-        guard
-            found.allSatisfy({
-                $0.rect.minX.isFinite && $0.rect.minY.isFinite && $0.rect.width.isFinite && $0.rect.height.isFinite
-            })
-        else { throw SensitiveTextError.regionOutsideImage }
+        // Validated before padding: padding must never turn an unmappable box into a mask.
+        guard found.allSatisfy({ isMappable($0.rect, within: bounds) }) else {
+            throw SensitiveTextError.regionOutsideImage
+        }
         let regions = try mergeRegions(found).map { match throws(SensitiveTextError) in
             try outset(match, within: bounds)
         }
@@ -589,19 +684,25 @@ public struct SensitiveTextScanner: Sendable {
         try Task.checkCancellation()
         let tile = try renderTile(of: image, sourceRect: sourceRect, scale: layout.scale)
         let tileSize = CGSize(width: tile.width, height: tile.height)
-        let normalized: [(kind: SensitiveTextKind, box: CGRect)]
+        var matches = TileMatches()
         if case .documents = matcher {
             guard #available(macOS 26, *) else { throw SensitiveTextError.methodUnavailable }
-            normalized = try await documentMatches(in: tile, languages: languages, kinds: kinds)
+            for match in try await documentMatches(in: tile, languages: languages, kinds: kinds) {
+                try matches.append(match.kind, match.box)
+            }
         } else {
             let observations = try await recognizer.recognizedObservations(tile, languages: languages).observations
-            normalized =
-                matchesAcrossFragments(of: observations, tileSize: tileSize, kinds: kinds, matcher: matcher)
-                + matchesInAlternateReadings(of: observations, kinds: kinds, matcher: matcher)
+            guard observations.count <= maximumObservationsPerTile else { throw SensitiveTextError.tooManyMatches }
+            try Task.checkCancellation()
+            try matchesAcrossFragments(
+                of: observations, tileSize: tileSize, kinds: kinds, matcher: matcher, into: &matches)
+            try matchesInAlternateReadings(of: observations, kinds: kinds, matcher: matcher, into: &matches)
         }
-        guard normalized.count <= maximumMatchesPerTile else { throw SensitiveTextError.tooManyMatches }
-        return normalized.compactMap { kind, box in
-            guard box.height * tileSize.height >= layout.minimumTextHeight else { return nil }
+        let unit = CGRect(x: 0, y: 0, width: 1, height: 1)
+        return try matches.items.map { kind, box throws(SensitiveTextError) in
+            // A box Vision cannot place on the tile fails the sweep (R05); no height filter drops
+            // a match after it was found (R03).
+            guard isMappable(box, within: unit) else { throw .regionOutsideImage }
             // Vision's unit square has a bottom-left origin; the source rect is top-left.
             let rect = CGRect(
                 x: sourceRect.minX + box.minX * sourceRect.width,
@@ -611,13 +712,23 @@ public struct SensitiveTextScanner: Sendable {
         }
     }
 
+    /// A tile's matches in its unit square, refused past `maximumMatchesPerTile` as they arrive.
+    struct TileMatches {
+        private(set) var items: [(kind: SensitiveTextKind, box: CGRect)] = []
+
+        mutating func append(_ kind: SensitiveTextKind, _ box: CGRect) throws(SensitiveTextError) {
+            guard items.count < SensitiveTextScanner.maximumMatchesPerTile else { throw .tooManyMatches }
+            items.append((kind, box))
+        }
+    }
+
     /// Vision often breaks one line into several observations, sometimes inside an address
     /// ("ana@acme" + ".com.br") or a number ("(47)" + "9" + "8888-7777"). Each run of neighbouring
     /// fragments is read as the single line it is.
     private static func matchesAcrossFragments(
         of observations: [RecognizedTextObservation], tileSize: CGSize, kinds: Set<SensitiveTextKind>,
-        matcher: LineMatcher
-    ) -> [(kind: SensitiveTextKind, box: CGRect)] {
+        matcher: LineMatcher, into matches: inout TileMatches
+    ) throws(SensitiveTextError) {
         let fragments = observations.compactMap { observation in
             observation.topCandidates(1).first.map { Fragment(text: $0, box: observation.boundingBox.cgRect) }
         }
@@ -626,38 +737,48 @@ public struct SensitiveTextScanner: Sendable {
                 x: $0.box.minX * tileSize.width, y: $0.box.minY * tileSize.height, width: $0.box.width * tileSize.width,
                 height: $0.box.height * tileSize.height)
         }
-        var found: [(kind: SensitiveTextKind, box: CGRect)] = []
         for run in fragmentRuns(pixelBoxes) {
             for line in fragmentReadings(run.map { (fragments[$0.index].text.string, $0.isGlued) }) {
                 for match in matcher.matches(in: line.text, kinds: kinds) {
-                    let characters =
-                        line.text.distance(
-                            from: line.text.startIndex, to: match.range.lowerBound)..<line.text.distance(
-                            from: line.text.startIndex, to: match.range.upperBound)
-                    let box = zip(run, line.offsets).reduce(CGRect.null) { union, member in
-                        union.union(fragments[member.0.index].box(of: characters, whenStartingAt: member.1))
+                    var box = CGRect.null
+                    for (member, start) in zip(run, line.offsets) {
+                        let fragment = fragments[member.index]
+                        let length = (fragment.text.string as NSString).length
+                        let lower = max(match.range.location, start)
+                        let upper = min(NSMaxRange(match.range), start + length)
+                        guard upper > lower else { continue }
+                        box = box.union(try fragment.box(of: NSRange(location: lower - start, length: upper - lower)))
                     }
-                    if !box.isNull { found.append((match.kind, box)) }
+                    // Every match lies on some fragment of its line; one that maps to none fails.
+                    guard !box.isNull else { throw .rangeUnmappable }
+                    try matches.append(match.kind, box)
                 }
             }
         }
-        return found
     }
 
     /// A lower-ranked reading sometimes gets right the character the best one got wrong.
     private static func matchesInAlternateReadings(
-        of observations: [RecognizedTextObservation], kinds: Set<SensitiveTextKind>, matcher: LineMatcher
-    ) -> [(kind: SensitiveTextKind, box: CGRect)] {
-        observations.flatMap { observation in
-            observation.topCandidates(3).dropFirst().flatMap { reading in
-                matcher.matches(in: reading.string, kinds: kinds).map { match in
-                    (
+        of observations: [RecognizedTextObservation], kinds: Set<SensitiveTextKind>, matcher: LineMatcher,
+        into matches: inout TileMatches
+    ) throws(SensitiveTextError) {
+        for observation in observations {
+            for reading in observation.topCandidates(3).dropFirst() {
+                for match in matcher.matches(in: reading.string, kinds: kinds) {
+                    let range = try stringRange(match.range, in: reading.string)
+                    try matches.append(
                         match.kind,
-                        reading.boundingBox(for: match.range)?.boundingBox.cgRect ?? observation.boundingBox.cgRect
-                    )
+                        reading.boundingBox(for: range)?.boundingBox.cgRect ?? observation.boundingBox.cgRect)
                 }
             }
         }
+    }
+
+    /// The one conversion from a UTF-16 range to a `String` range, at whole composed characters.
+    static func stringRange(_ range: NSRange, in string: String) throws(SensitiveTextError) -> Range<String.Index> {
+        let widened = (string as NSString).rangeOfComposedCharacterSequences(for: range)
+        guard let converted = Range(widened, in: string) else { throw .rangeUnmappable }
+        return converted
     }
 
     private struct Fragment {
@@ -665,16 +786,9 @@ public struct SensitiveTextScanner: Sendable {
         /// Unit square, bottom-left origin.
         let box: CGRect
 
-        /// Box of the part of this fragment inside `characters`, a range of the joined line in
-        /// which this fragment starts at `start`. Null when the range lies elsewhere on the line.
-        func box(of characters: Range<Int>, whenStartingAt start: Int) -> CGRect {
-            let string = text.string
-            let local = characters.clamped(to: start..<(start + string.count))
-            guard !local.isEmpty else { return .null }
-            let range =
-                string.index(
-                    string.startIndex, offsetBy: local.lowerBound - start)..<string.index(
-                    string.startIndex, offsetBy: local.upperBound - start)
+        /// Box of `local`, a non-empty UTF-16 range of this fragment's text.
+        func box(of local: NSRange) throws(SensitiveTextError) -> CGRect {
+            let range = try SensitiveTextScanner.stringRange(local, in: text.string)
             // Without a box for the match itself, cover the whole fragment rather than nothing.
             guard let matchBox = text.boundingBox(for: range)?.boundingBox.cgRect else { return box }
             // The match's own box can be shorter than the glyphs; the line's box spans their height.
@@ -787,6 +901,15 @@ public struct SensitiveTextScanner: Sendable {
 
     /// Grows a box by `outsetFraction` of its height, rounds outward to whole pixels and clamps it
     /// to the image. Throws when nothing of it lies inside the image: a match must never vanish.
+    /// A finite box with positive area that shares a positive area with `bounds`.
+    static func isMappable(_ rect: CGRect, within bounds: CGRect) -> Bool {
+        guard !rect.isNull, rect.minX.isFinite, rect.minY.isFinite, rect.width.isFinite, rect.height.isFinite,
+            rect.width > 0, rect.height > 0
+        else { return false }
+        let inside = rect.intersection(bounds)
+        return !inside.isNull && inside.width > 0 && inside.height > 0
+    }
+
     static func outset(_ match: BoxedMatch, within bounds: CGRect) throws(SensitiveTextError) -> SensitiveRegion {
         let pad = max(1, (match.rect.height * outsetFraction).rounded(.up))
         let grown = match.rect.insetBy(dx: -pad, dy: -pad)
@@ -813,8 +936,6 @@ struct TileLayout: Equatable, Sendable {
     var horizontalOverlap: CGFloat
     /// Only has to cover one line of text.
     var verticalOverlap: CGFloat
-    /// Matches on shorter text are ignored; lets a sweep leave small print to a finer one.
-    var minimumTextHeight: CGFloat = 0
 
     /// Text whose width is at most a sweep's horizontal overlap, and whose line is at most its
     /// vertical overlap, lies whole inside one of that sweep's tiles; wider text is cut by every
@@ -825,19 +946,17 @@ struct TileLayout: Equatable, Sendable {
     ///   line height;
     /// - middle: one pixel per point in 2048-px tiles overlapping by half, so body text up to
     ///   1024 pt wide is whole in one tile. At most a few tiles per capture;
-    /// - coarse: a quarter of the fine scale, for headline-sized text wider than that, ignoring
-    ///   anything smaller.
+    /// - coarse: a quarter of the fine scale, for headline-sized text wider than that. Its matches
+    ///   on smaller text are kept too: a match is never dropped after it was found.
     ///
     /// A match found by several sweeps or tiles is merged into one region (`mergeRegions`).
-    static func standard(pixelsPerPoint: Double, fineTileSide: CGFloat = 2048) -> [TileLayout] {
+    static func standard(pixelsPerPoint: Double, fineTileSide: CGFloat = 1024) -> [TileLayout] {
         let density = max(CGFloat(pixelsPerPoint), 1)
         return [
             TileLayout(
                 scale: 2 / density, tileSide: fineTileSide, horizontalOverlap: fineTileSide / 2, verticalOverlap: 192),
             TileLayout(scale: 1 / density, tileSide: 2048, horizontalOverlap: 1024, verticalOverlap: 192),
-            TileLayout(
-                scale: 0.5 / density, tileSide: 2880, horizontalOverlap: 1440, verticalOverlap: 384,
-                minimumTextHeight: 22),
+            TileLayout(scale: 0.5 / density, tileSide: 2880, horizontalOverlap: 1440, verticalOverlap: 384),
         ]
     }
 }
@@ -854,11 +973,23 @@ func tileRects(for size: CGSize, layout: TileLayout) -> [CGRect] {
     }
 }
 
+/// How many tiles `tileRects` returns, computed without building them.
+func tileCount(for size: CGSize, layout: TileLayout) -> Int {
+    let tile = layout.tileSide / layout.scale
+    return spanCount(length: size.width, tile: tile, overlap: layout.horizontalOverlap / layout.scale)
+        * spanCount(length: size.height, tile: tile, overlap: layout.verticalOverlap / layout.scale)
+}
+
+func spanCount(length: CGFloat, tile: CGFloat, overlap: CGFloat) -> Int {
+    guard length > tile, tile > overlap else { return 1 }
+    return Int(((length - overlap) / (tile - overlap)).rounded(.up))
+}
+
 /// Evenly spread spans of equal length that cover `length` and overlap their neighbour by at least
 /// `overlap`.
 func tileSpans(length: CGFloat, tile: CGFloat, overlap: CGFloat) -> [(start: CGFloat, length: CGFloat)] {
     guard length > tile, tile > overlap else { return [(0, length)] }
-    let count = ((length - overlap) / (tile - overlap)).rounded(.up)
+    let count = CGFloat(spanCount(length: length, tile: tile, overlap: overlap))
     let span = ((length + (count - 1) * overlap) / count).rounded(.up)
     let step = (length - span) / (count - 1)
     return (0..<Int(count)).map { index in ((CGFloat(index) * step).rounded(.down), span) }
@@ -892,8 +1023,6 @@ func fragmentRuns(_ boxes: [CGRect]) -> [[(index: Int, isGlued: Bool)]] {
     return runs
 }
 
-/// Concatenates the fragments of a run, with a space unless a fragment is glued to the previous
-/// one. `offsets` is where each fragment starts in the result, in characters.
 /// The joined line, then, when a word-sized gap fell next to "@", a dot or a hyphen, the same line
 /// with those gaps closed. Vision can split "ana@acme" from ".com.br" with a gap as wide as a word
 /// space; reading both forms costs a second match pass and can only add masks.
@@ -912,12 +1041,15 @@ func fragmentReadings(_ parts: [(text: String, isGlued: Bool)]) -> [(text: Strin
     return [spaced, joinFragments(closed)]
 }
 
+/// Concatenates the fragments of a run, with a space unless a fragment is glued to the previous
+/// one. `offsets` is where each fragment starts in the result, in UTF-16 units: grapheme counts do
+/// not add up across fragments (a fragment can start with a combining mark).
 func joinFragments(_ parts: [(text: String, isGlued: Bool)]) -> (text: String, offsets: [Int]) {
     var text = ""
     var offsets: [Int] = []
     for (position, part) in parts.enumerated() {
         if position > 0, !part.isGlued { text += " " }
-        offsets.append(text.count)
+        offsets.append(text.utf16.count)
         text += part.text
     }
     return (text, offsets)

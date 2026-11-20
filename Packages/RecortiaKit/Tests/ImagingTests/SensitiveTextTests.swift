@@ -13,7 +13,9 @@ import Testing
 
 /// Text of every match, in order, as "kind:text".
 private func detect(_ text: String) throws -> [String] {
-    try SensitiveTextMatcher.shared.get().matches(in: text).map { "\($0.kind.rawValue):\(text[$0.range])" }
+    try SensitiveTextMatcher.shared.get().matches(in: text).map {
+        "\($0.kind.rawValue):\((text as NSString).substring(with: $0.range))"
+    }
 }
 
 @Suite("SensitiveText: patterns compile")
@@ -35,9 +37,10 @@ struct SensitiveTextEmailTests {
     @Test(arguments: [
         ("Contato: maria.silva@exemplo.com.br", "maria.silva@exemplo.com.br"),
         ("fulano_exemplo+teste@gmail.com", "fulano_exemplo+teste@gmail.com"),
-        ("<ANA@EXEMPLO.COM>,", "ANA@EXEMPLO.COM"),
-        ("mailto:felipe@exemplo.adv.br.", "felipe@exemplo.adv.br"),
-        ("\"email\": \"ana.clara@exemplo.io\",", "ana.clara@exemplo.io"),
+        // The whole whitespace-free token is covered (W1), punctuation included.
+        ("<ANA@EXEMPLO.COM>,", "<ANA@EXEMPLO.COM>,"),
+        ("mailto:felipe@exemplo.adv.br.", "mailto:felipe@exemplo.adv.br."),
+        ("\"email\": \"ana.clara@exemplo.io\",", "\"ana.clara@exemplo.io\","),
         ("jp.alves@exemplo.tech", "jp.alves@exemplo.tech"),
     ])
     func findsPlainAddresses(text: String, expected: String) throws {
@@ -47,7 +50,7 @@ struct SensitiveTextEmailTests {
     @Test func findsSeveralAddressesOnOneLine() throws {
         #expect(
             try detect("ana.beatriz.souza@exemplo.io, carlos@exemplo.dev") == [
-                "email:ana.beatriz.souza@exemplo.io", "email:carlos@exemplo.dev",
+                "email:ana.beatriz.souza@exemplo.io,", "email:carlos@exemplo.dev",
             ])
     }
 
@@ -58,7 +61,7 @@ struct SensitiveTextEmailTests {
         ("Bruno Limabruno.lima@exemplo.com.br", "Limabruno.lima@exemplo.com.br"),
         ("anadgmail.com", "anadgmail.com"),
         ("sofiaQhotmail.com.br", "sofiaQhotmail.com.br"),
-        ("\"email\": \"ana.clara@exemplo-io\",", "ana.clara@exemplo-io"),
+        ("\"email\": \"ana.clara@exemplo-io\",", "\"ana.clara@exemplo-io\","),
         ("ana.clara@exemplo.1o", "ana.clara@exemplo.1o"),
         ("exemplo@gmail,corn", "exemplo@gmail,corn"),
         ("rafa@exemplo.c0m", "rafa@exemplo.c0m"),
@@ -78,8 +81,8 @@ struct SensitiveTextEmailTests {
     }
 
     @Test func stopsAtTheEndOfTheSentence() throws {
-        #expect(try detect("Escreva para ana@exemplo.com. Me liga depois.") == ["email:ana@exemplo.com"])
-        #expect(try detect("Escreva para ana@exemplo.com. Depois falamos.") == ["email:ana@exemplo.com"])
+        #expect(try detect("Escreva para ana@exemplo.com. Me liga depois.") == ["email:ana@exemplo.com."])
+        #expect(try detect("Escreva para ana@exemplo.com. Depois falamos.") == ["email:ana@exemplo.com."])
     }
 
     @Test(arguments: [
@@ -122,10 +125,14 @@ struct SensitiveTextPhoneTests {
         #expect(try detect(number) == ["phone:\(number)"])
     }
 
-    @Test func doesNotSwallowTheNextColumn() throws {
-        #expect(try detect("+44 20 7946 0958 2026-1126 27/11/2026 16:54") == ["phone:+44 20 7946 0958"])
-        #expect(try detect("+55 21 90701-3344 2026-1014 07/11/2026 10:26") == ["phone:+55 21 90701-3344"])
-        #expect(try detect("(47) 4004-5566 2026-1035 16/11/2026 13:05 R$ 2.251,65") == ["phone:(47) 4004-5566"])
+    /// Fosco stopped at the number; whole-token coverage (W1) takes adjacent digit groups joined by
+    /// one separator, so the next numeric column is masked too, up to the "/" of the date.
+    @Test func coversTheAdjacentDigitGroups() throws {
+        #expect(try detect("+44 20 7946 0958 2026-1126 27/11/2026 16:54") == ["phone:+44 20 7946 0958 2026-1126 27"])
+        #expect(try detect("+55 21 90701-3344 2026-1014 07/11/2026 10:26") == ["phone:+55 21 90701-3344 2026-1014 07"])
+        #expect(
+            try detect("(47) 4004-5566 2026-1035 16/11/2026 13:05 R$ 2.251,65") == ["phone:(47) 4004-5566 2026-1035 16"]
+        )
     }
 
     @Test func findsSeveralNumbersOnOneLine() throws {
@@ -285,13 +292,14 @@ struct SensitiveTextReviewTests {
         arguments: ["+44 20 7946 09 58", "+49 30 1234 5678 90", "+86 10 5555 0123 456"])
     func internationalNumberIsComplete(number: String) throws {
         #expect(try detect(number) == ["phone:\(number)"])
-        #expect(try detect("Tel. \(number) 2026-1126") == ["phone:\(number)"])
+        #expect(try detect("Tel. \(number) 2026-1126") == ["phone:\(number) 2026-1126"])
+        #expect(try detect("Tel. \(number), 2026-1126") == ["phone:\(number)"])
     }
 
     @Test("R06: only SSH remote syntax suppresses a git@ address")
     func gitMailboxIsAnAddress() throws {
         #expect(try detect("git@example.com") == ["email:git@example.com"])
-        #expect(try detect("Write to git@example.org: we reply") == ["email:git@example.org"])
+        #expect(try detect("Write to git@example.org: we reply") == ["email:git@example.org:"])
         #expect(try detect("git clone git@example.com:owner/repo.git").isEmpty)
     }
 
@@ -366,7 +374,10 @@ struct SensitiveTextSweepReviewTests {
         let matcher = try SensitiveTextMatcher.shared.get()
         let whole = parts.map(\.0).joined()
         let readings = fragmentReadings(parts.map { (text: $0.0, isGlued: $0.1) })
-        #expect(readings.contains { line in matcher.matches(in: line.text).contains { line.text[$0.range] == whole } })
+        #expect(
+            readings.contains { line in
+                matcher.matches(in: line.text).contains { (line.text as NSString).substring(with: $0.range) == whole }
+            })
         #expect(readings.first?.text == joinFragments(parts.map { (text: $0.0, isGlued: $0.1) }).text)
     }
 
@@ -390,9 +401,10 @@ struct SensitiveTextSweepReviewTests {
     func cancellationDuringMergeThrows() async {
         let found: [SensitiveTextScanner.BoxedMatch] = [(.email, CGRect(x: 10, y: 10, width: 20, height: 10))]
         let bounds = self.bounds
+        // Cancelled after finalization's entry check, as if during the merge.
         let task = Task {
-            withUnsafeCurrentTask { $0?.cancel() }
-            return try SensitiveTextScanner.finalRegions(found, within: bounds)
+            try SensitiveTextScanner.finalRegions(
+                found, within: bounds, afterEntryCheck: { withUnsafeCurrentTask { $0?.cancel() } })
         }
         await #expect(throws: CancellationError.self) { _ = try await task.value }
     }
@@ -448,12 +460,12 @@ struct SensitiveTextSecurityReviewTests {
     func gluedRunBeforeAnAddress(prefix: String) throws {
         let text = "Contato: " + prefix + "ana@example.com fim"
         let matches = try SensitiveTextMatcher.shared.get().matches(in: text)
-        try #require(matches.count == 1, "\(matches.map { text[$0.range] })")
-        let masked = String(text[matches[0].range])
+        let source = text as NSString
+        try #require(matches.count == 1, "\(matches.map { source.substring(with: $0.range) })")
+        let masked = source.substring(with: matches[0].range)
         #expect(matches[0].kind == .email)
-        #expect(masked.hasSuffix("ana@example.com"))
-        // The last 64 characters before the "@" are masked (RFC 5321's local-part limit).
-        #expect(masked.unicodeScalars.split(separator: "@")[0].count == 64)
+        // The whole glued token is covered (W1), not only the last 64 characters of the local part.
+        #expect(masked == prefix + "ana@example.com")
     }
 
     @Test("The window overlap exceeds every pattern's longest match, and the bound is not loose")
@@ -558,5 +570,124 @@ struct SensitiveScreenGroundTruthTests {
         #expect(!ink.isNull)
         #expect(planted.contains(ink), "planted \(planted), painted \(ink)")
         #expect(planted.insetBy(dx: 1, dy: 1).width <= ink.width && planted.insetBy(dx: 1, dy: 1).height <= ink.height)
+    }
+}
+
+@Suite("SensitiveText: whole-token coverage (second review, 2026-11-20)")
+struct SensitiveTextCoverageTests {
+    static let gluedApostrophe =
+        String(repeating: "x", count: 65) + "o'" + String(repeating: "b", count: 33) + "@example.com"
+
+    @Test(
+        "W1: a matched address is covered with its whole whitespace-free token",
+        arguments: ["ops!night@example.com", gluedApostrophe, "a@a.b.c.d.e.f.g.h.aa.example.technology"])
+    func addressTokenIsWhole(token: String) throws {
+        #expect(try detect("Contato: \(token) fim") == ["email:\(token)"])
+    }
+
+    @Test("W1: a matched number is covered with every adjacent digit group (R02)")
+    func numberGroupsAreWhole() throws {
+        #expect(try detect("Tel +44 2 0 7 9 4 6 0 9 5 8 fim") == ["phone:+44 2 0 7 9 4 6 0 9 5 8"])
+    }
+
+    @Test("N01: a match ending inside a grapheme is kept, widened to the whole grapheme")
+    func matchInsideAGraphemeIsKept() throws {
+        #expect(try detect("Contato: ana@exa.com\u{301} fim") == ["email:ana@exa.com\u{301}"])
+    }
+
+    @Test("N02: fragment offsets are UTF-16 offsets in the joined line")
+    func fragmentOffsetsAreUTF16() {
+        #expect(joinFragments([("😀", false), ("ana@x.com", true)]).offsets == [0, 2])
+        #expect(joinFragments([("e", false), ("\u{301}ana@example.com", true)]).offsets == [0, 1])
+    }
+
+    @Test("W3: a box with no pixels in the image fails the sweep even when padding would reach it")
+    func unmappableBoxesFailBeforePadding() {
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 50)
+        for rect in [
+            CGRect(x: 100.1, y: 10, width: 5, height: 5), CGRect(x: 10, y: 10, width: 0, height: 5),
+            CGRect(x: 10, y: 50.5, width: 5, height: 5), CGRect.null,
+        ] {
+            #expect(throws: SensitiveTextError.regionOutsideImage, "\(rect)") {
+                _ = try SensitiveTextScanner.finalRegions([(.email, rect)], within: bounds)
+            }
+        }
+    }
+
+    @Test("W5: the tile budget is checked before any job is allocated")
+    func tileBudgetIsCheckedFirst() {
+        let clock = ContinuousClock()
+        let elapsed = clock.measure {
+            #expect(throws: SensitiveTextError.tooManyTiles) {
+                _ = try SensitiveTextScanner.tileJobs(
+                    for: CGSize(width: 1_000_000, height: 1_000_000), pixelsPerPoint: 1, fineTileSide: 1024)
+            }
+        }
+        #expect(elapsed < .milliseconds(500), "took \(elapsed)")
+    }
+}
+
+@Suite("SensitiveText: whole-token pixels and budgets (second review, 2026-11-20)")
+struct SensitiveTextCoveragePixelTests {
+    @Test(
+        "W1: the review's examples are covered pixel for pixel, whole token included", VisionRuntime.required,
+        arguments: [
+            "+44 2 0 7 9 4 6 0 9 5 8", "ops!night@example.com", SensitiveTextCoverageTests.gluedApostrophe,
+            "a@a.b.c.d.e.f.g.h.aa.example.technology",
+        ])
+    func reviewExamplesAreCoveredWhole(token: String) async throws {
+        let kind: SensitiveScreen.Kind = token.hasPrefix("+") ? .phone : .email
+        let screen = try SensitiveScreen.renderItem(
+            token, kind: kind, widthPoints: 1200, heightPoints: 120, scale: 2, pointSize: 14, x: 40, top: 80)
+        let item = try #require(screen.planted.first)
+        try #require(item.rect.maxX < CGFloat(screen.image.width) - 40, "token wider than the image")
+        let regions = try await SensitiveTextScanner().sensitiveRegions(
+            in: screen.image, pixelsPerPoint: 2, languages: [OCRRecognitionTests.english])
+        let rects = regions.map {
+            CGRect(x: $0.rect.minX, y: $0.rect.minY, width: $0.rect.width, height: $0.rect.height)
+        }
+        let (covered, total) = SensitiveTextBenchmarkTests.coverage(of: item.rect, by: rects)
+        #expect(covered == total, "\(token): \(covered) of \(total) ink-box pixels; ink \(item.rect), masks \(rects)")
+    }
+
+    @Test(
+        "W4: a 2200 px address across both middle crops of a 5120 px capture is covered (review §2)",
+        VisionRuntime.required)
+    func addressAcrossTheMiddleCrops() async throws {
+        let (widthPoints, heightPoints, scale) = (2560, 300, 2)
+        let address = "firstname.middlename.lastname.department.team.region@example.com"
+        func render(_ pointSize: Double, at x: CGFloat) throws -> SensitiveScreen.Screen {
+            try SensitiveScreen.renderItem(
+                address, kind: .email, widthPoints: widthPoints, heightPoints: heightPoints, scale: scale,
+                pointSize: pointSize, x: x, top: 200)
+        }
+        let probe = try #require(try render(30, at: 0).planted.first).rect
+        let pointSize = (30 * 2200 / probe.width).rounded()
+        let ink = try #require(try render(pointSize, at: 0).planted.first).rect
+        let size = CGSize(width: widthPoints * scale, height: heightPoints * scale)
+        let middle = TileLayout.standard(pixelsPerPoint: Double(scale))[1]
+        let columns = tileRects(for: size, layout: middle).map { ($0.minX, $0.maxX) }
+        try #require(columns.count == 2, "\(columns)")
+        // Start 76 px before the second middle crop, as in the review (x 1460 to 3660).
+        let x = (columns[1].0 - 76 - ink.minX).rounded()
+        let screen = try render(pointSize, at: x)
+        let item = try #require(screen.planted.first)
+        try #require(item.rect.minX < columns[1].0 && item.rect.maxX > columns[0].1, "\(item.rect) vs \(columns)")
+        let regions = try await SensitiveTextScanner().sensitiveRegions(
+            in: screen.image, pixelsPerPoint: Double(scale), languages: [OCRRecognitionTests.english])
+        let rects = regions.map {
+            CGRect(x: $0.rect.minX, y: $0.rect.minY, width: $0.rect.width, height: $0.rect.height)
+        }
+        let (covered, total) = SensitiveTextBenchmarkTests.coverage(of: item.rect, by: rects)
+        #expect(covered == total, "\(pointSize) pt: \(covered) of \(total); ink \(item.rect), masks \(rects)")
+    }
+
+    @Test("W5: a tile refuses matches past its budget as they arrive")
+    func tileMatchBudgetIsEnforcedOnAppend() throws {
+        var matches = SensitiveTextScanner.TileMatches()
+        let box = CGRect(x: 0.1, y: 0.1, width: 0.1, height: 0.1)
+        for _ in 0..<SensitiveTextScanner.maximumMatchesPerTile { try matches.append(.phone, box) }
+        #expect(throws: SensitiveTextError.tooManyMatches) { try matches.append(.phone, box) }
+        #expect(matches.items.count == SensitiveTextScanner.maximumMatchesPerTile)
     }
 }
