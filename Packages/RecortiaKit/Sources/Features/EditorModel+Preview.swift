@@ -78,8 +78,10 @@ extension EditorModel {
                 baseImage = image
                 installedBaseKey = key
                 failedBaseKey = nil
+                baseRenderFailed = false
             case .failure:
                 failedBaseKey = key
+                baseRenderFailed = true
                 post(.previewFailed)
             }
         } else {
@@ -98,6 +100,7 @@ extension EditorModel {
             outputPreview = nil
             installedOutputKey = nil
             failedOutputKey = nil
+            outputRenderFailed = false
         }
     }
 
@@ -131,8 +134,10 @@ extension EditorModel {
                 outputPreview = image
                 installedOutputKey = key
                 failedOutputKey = nil
+                outputRenderFailed = false
             case .failure:
                 failedOutputKey = key
+                outputRenderFailed = true
                 post(.previewFailed)
             }
         } else {

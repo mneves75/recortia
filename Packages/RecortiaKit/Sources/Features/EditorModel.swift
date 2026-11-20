@@ -38,6 +38,11 @@ public final class EditorModel {
     public internal(set) var baseImage: CGImage?
     public internal(set) var showsOutputPreview = false
     public internal(set) var outputPreview: CGImage?
+    /// The latest base or output render failed and no render has succeeded since, so what the
+    /// canvas shows may not be what an export would produce. Exports and pins are refused (R2-D12).
+    public var isPreviewFailed: Bool { baseRenderFailed || outputRenderFailed }
+    var baseRenderFailed = false
+    var outputRenderFailed = false
     /// Asynchronous results discarded because the document changed meanwhile (diagnostics, tests).
     internal(set) var droppedResultCount = 0
 

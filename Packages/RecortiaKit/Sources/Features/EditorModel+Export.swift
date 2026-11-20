@@ -25,6 +25,10 @@ extension EditorModel {
     @discardableResult
     public func export(_ request: EditorExportRequest) async -> ExportOutcome {
         guard !isClosed else { return .failed(.staleDocument) }
+        guard !isPreviewFailed else {
+            post(.previewFailed)
+            return .failed(.renderFailed)
+        }
         let action: ExportAction
         switch request {
         case .copy:
@@ -63,6 +67,10 @@ extension EditorModel {
     /// Pins a sanitized render of the current document.
     public func pin() async {
         guard !isClosed else { return }
+        guard !isPreviewFailed else {
+            post(.previewFailed)
+            return
+        }
         do {
             try await environment.pins.pin(
                 session,

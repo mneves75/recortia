@@ -82,6 +82,35 @@ struct EditorPreviewTests {
         #expect(h.renderer.baseRenders.count == 1)
     }
 
+    @Test("A failed re-render blocks every export until a render succeeds (R2-D12)")
+    func failedRerenderBlocksExports() async throws {
+        let h = EditorHarness()
+        await h.settle()
+        #expect(h.model.isBaseCurrent)
+        h.renderer.fails = true
+        h.model.select(.layer(try #require(h.model.document.layers.first?.id)))
+        h.model.nudgeSelection(dx: 0, dy: 3)
+        await h.settle()
+        #expect(h.model.notice == .previewFailed)
+        #expect(h.model.isPreviewFailed && h.model.baseImage != nil, "the stale base stays, marked as failed")
+        for request in [
+            EditorExportRequest.copy, .drag,
+            .save(
+                URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png"), format: .png, overwriteConfirmed: false),
+        ] {
+            #expect(await h.model.export(request) == .failed(.renderFailed), "\(request)")
+        }
+        await h.model.pin()
+        #expect(h.clipboard.writes.isEmpty && h.files.saves.isEmpty && h.drag.leases.isEmpty)
+        #expect(h.pins.pins.isEmpty, "the canvas shows pixels a pin would not")
+
+        h.renderer.fails = false
+        h.model.nudgeSelection(dx: 0, dy: 3)
+        await h.settle()
+        #expect(!h.model.isPreviewFailed)
+        #expect(await h.model.export(.copy) == .copied)
+    }
+
     @Test("OCR recognized before a redaction is discarded and cannot reach the clipboard")
     func staleOCRDiscarded() async throws {
         let h = EditorHarness()
