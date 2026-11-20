@@ -71,6 +71,7 @@ public struct SensitiveTextMatcher: Sendable {
         case rejectGitRemote
         case acceptDamagedDomain
         case trimInternationalNumber
+        case dropPhoneLabel
     }
 
     struct Pattern: Sendable {
@@ -224,6 +225,7 @@ public struct SensitiveTextMatcher: Sendable {
         case .rejectGitRemote: return Self.rejectGitRemote(source, range)
         case .acceptDamagedDomain: return Self.acceptDamagedDomain(source, range)
         case .trimInternationalNumber: return trimInternationalNumber(source, range)
+        case .dropPhoneLabel: return Self.dropPhoneLabel(source, range)
         }
     }
 
@@ -270,9 +272,11 @@ public struct SensitiveTextMatcher: Sendable {
     private static let leftEdge = #"(?<![\d#.,+\-])"#
     /// Do not stop inside a longer number or a decimal.
     private static let rightEdge = #"(?!\d)(?![.,\-]\d)"#
-    /// A word that announces a phone number, then up to two spaces.
+    /// A word that announces a phone number, then up to two spaces. Matched as part of the pattern,
+    /// not as a look-behind, so most positions fail on their first character; `dropPhoneLabel`
+    /// then trims it from the match.
     private static let phoneLabel =
-        #"(?<=\b(?:phone|tel|telephone|mobile|cell|call|fax|whatsapp|whats|telefone|fone|celular|cel|ligue)[.:]?\s{1,2})"#
+        #"\b(?:phone|tel|telephone|mobile|cell|call|fax|whatsapp|whats|telefone|fone|celular|cel|ligue)[.:]?\s{1,2}"#
     /// Brazilian area codes (DDD) in use.
     private static let areaCode = "(?:1[1-9]|2[12478]|3[1-578]|4[1-9]|5[1345]|6[1-9]|7[134579]|8[1-9]|9[1-9])"
 
@@ -316,7 +320,7 @@ public struct SensitiveTextMatcher: Sendable {
             name: "phone-labelled", kind: .phone,
             source:
                 #"\#(phoneLabel)(?:[2-9]\d{9}|9\#(sep)?\d{4}\#(sep)?\d{4}|[2-5]\d{3}\#(sep)?\d{4})\#(rightEdge)"#,
-            refinement: .none, maximumUTF16Length: 2 * 11),
+            refinement: .dropPhoneLabel, maximumUTF16Length: 2 * 11 + 12),
         // Any other number written with a country code: +351 912 345 678.
         Pattern(
             name: "phone-international", kind: .phone, source: #"(?<![\d#])\+\d{1,3}(?:\#(sep)?\(?\d{1,12}\)?){1,8}"#,
@@ -344,6 +348,13 @@ public struct SensitiveTextMatcher: Sendable {
             !CharacterSet.whitespacesAndNewlines.contains(next)
         else { return range }
         return nil
+    }
+
+    /// Keeps the number of a "phone-labelled" match: from its first digit.
+    private static func dropPhoneLabel(_ source: NSString, _ range: NSRange) -> NSRange? {
+        let digit = source.rangeOfCharacter(from: .decimalDigits, options: [], range: range)
+        guard digit.location != NSNotFound else { return nil }
+        return NSRange(location: digit.location, length: NSMaxRange(range) - digit.location)
     }
 
     /// Accepts "name@domain<sep><suffix>" when the suffix is a known one once the usual OCR
