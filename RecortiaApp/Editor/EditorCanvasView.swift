@@ -104,6 +104,14 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override var acceptsFirstResponder: Bool { true }
     override var isOpaque: Bool { true }
 
+    /// The system focus ring shows while the canvas owns the keyboard. It is drawn just inside
+    /// the canvas, so the column edges and the split dividers never clip it.
+    override var focusRingMaskBounds: NSRect { bounds }
+
+    override func drawFocusRingMask() {
+        bounds.insetBy(dx: 4, dy: 4).fill()
+    }
+
     // MARK: - Model observation
 
     private func modelChanged() {
@@ -137,6 +145,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override func layout() {
         super.layout()
         reportViewport()
+        noteFocusRingMaskChanged()
     }
 
     override func viewDidChangeBackingProperties() {
@@ -550,26 +559,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override func menu(for event: NSEvent) -> NSMenu? {
         let point = documentPoint(event)
         if let item = model.item(at: point), !model.selection.contains(item) { model.select(item) }
-        guard !model.selection.isEmpty else { return nil }
-        let menu = NSMenu()
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Duplicate", table: "Editor")) { [weak self] in
-                self?.model.duplicateSelection()
-            })
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Delete", table: "Editor")) { [weak self] in
-                self?.model.deleteSelection()
-            })
-        menu.addItem(.separator())
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Bring to Front", table: "Editor")) { [weak self] in
-                self?.model.reorderSelection(.front)
-            })
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Send to Back", table: "Editor")) { [weak self] in
-                self?.model.reorderSelection(.back)
-            })
-        return menu
+        guard !model.selection.isEmpty, model.textEditing == nil else { return nil }
+        return EditorArrangeCommand.contextMenu(for: model)
+    }
+
+    /// Edit › Delete removes the selection, like the Delete key.
+    @objc func delete(_ sender: Any?) {
+        model.deleteSelection()
     }
 
     // MARK: - Cursor
@@ -933,6 +929,12 @@ final class EditorTextView: NSTextView {
 
 /// Builds a menu item that runs a closure. The item keeps its target alive through
 /// `representedObject` (the `target` reference itself is weak).
+extension EditorCanvasView: NSMenuItemValidation {
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        item.action == #selector(delete(_:)) ? !model.selection.isEmpty && model.textEditing == nil : true
+    }
+}
+
 enum ClosureMenuItem {
     private final class Target: NSObject {
         let handler: () -> Void

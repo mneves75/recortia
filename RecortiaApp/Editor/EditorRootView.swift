@@ -3,42 +3,77 @@ import Domain
 import Features
 import SwiftUI
 
-/// The editor window's content: object list, canvas, inspector, and status bar. Its tools and
-/// actions are bridged into the window's own toolbar (`EditorToolbarContent`).
+/// The editor's canvas column: an optional partial-capture notice, the canvas and the status bar.
+/// The object list and the inspector are the window's split items around it (`EditorWindowController`);
+/// its tools and actions are bridged into the window's own toolbar (`EditorToolbarContent`).
 struct EditorRootView: View {
     let model: EditorModel
     let canvas: EditorCanvasView
     let actions: any EditorWindowActions
+    let panes: EditorPanes
     var noticePresentation = EditorNoticePresentation()
 
     var body: some View {
         VStack(spacing: 0) {
             if let reason = model.partialScrollCaptureReason {
-                Label("Partial result. \(ScrollReviewView.describe(reason))", systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .accessibilityElement(children: .combine)
-                Divider()
+                EditorNoticeLabel(
+                    text: String(localized: "Partial result. \(ScrollReviewView.describe(reason))"),
+                    systemImage: "exclamationmark.triangle"
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, DesignTokens.Space.m)
+                .padding(.vertical, DesignTokens.Space.s)
             }
-            HStack(spacing: 0) {
-                EditorSidebarView(model: model)
-                    .frame(width: 220)
-                Divider()
-                CanvasHost(canvas: canvas)
-                    .frame(minWidth: 320, minHeight: 240)
-                    .accessibilityElement(children: .contain)
-                Divider()
-                EditorInspectorView(model: model, actions: actions)
-                    .frame(width: 290)
-            }
+            CanvasHost(canvas: canvas)
+                .frame(minWidth: 320, minHeight: 240)
+                .accessibilityElement(children: .contain)
             Divider()
-            EditorStatusBar(model: model, presentation: noticePresentation)
-                .background(Color(nsColor: .windowBackgroundColor))
+            EditorStatusBar(model: model, panes: panes, presentation: noticePresentation)
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .toolbar { EditorToolbarContent(model: model, actions: actions) }
+    }
+}
+
+/// The editor's one notice style (`noticeStyle`): a symbol and text. Required text is never
+/// capped; it wraps instead.
+struct EditorNoticeLabel: View {
+    let text: String
+    let systemImage: String
+
+    var body: some View {
+        Label {
+            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: systemImage).accessibilityHidden(true)
+        }
+        .font(.callout)
+        .noticeStyle()
+    }
+}
+
+/// The cosmetic-effect warning (FR-06): pinned above the inspector's tabs, and in the status bar
+/// while the inspector is collapsed.
+struct CosmeticWarning: View {
+    var identifier = "redaction.cosmeticWarning"
+
+    var body: some View {
+        EditorNoticeLabel(
+            text: String(
+                localized: "Cosmetic, not secure: text can remain recoverable. Use Redact for private information.",
+                table: "Editor"),
+            systemImage: "exclamationmark.triangle"
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
+    }
+}
+
+extension EditorModel {
+    /// Blur or Pixelate is the active tool or among the selection.
+    var showsCosmeticWarning: Bool {
+        tool.isCosmeticObfuscation || selection.contains { if case .obfuscation = $0 { true } else { false } }
     }
 }
 
@@ -65,6 +100,17 @@ struct EditorNoticePresentation {
         }
     }
 
+    /// Failures and refusals show a warning symbol; everything else shows the information symbol.
+    static func isProblem(_ notice: EditorNotice) -> Bool {
+        switch notice {
+        case .copyFailed, .recognitionFailed, .linkNotAllowed, .previewFailed, .redactionRefused, .importFailed,
+            .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed:
+            true
+        case .exported(.failed), .exported(.alreadyCompleted(.failed)): true
+        default: false
+        }
+    }
+
     private static func persists(_ outcome: ExportOutcome) -> Bool {
         switch outcome {
         case .failed, .uploaded: true
@@ -85,29 +131,32 @@ private struct CanvasHost: NSViewRepresentable {
 
 // MARK: - Tool bar
 
-/// The window toolbar: tools on the leading edge, history and output on the trailing edge.
-/// Separate groups give the visual grouping; nothing here needs more than macOS 15.
+/// The window toolbar: Select·Hand | Crop | drawing tools | Redact·Effects | Measure | Undo·Redo,
+/// then Copy·Save | Pin·Drag at the trailing edge. Every item stays visible at the minimum
+/// content width (980 pt).
 struct EditorToolbarContent: ToolbarContent {
     let model: EditorModel
     let actions: any EditorWindowActions
 
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) {
-            tools([.select, .hand, .crop])
-        }
+        ToolbarItemGroup(placement: .navigation) { tools([.select, .hand]) }
+        ToolbarSpacer(.fixed, placement: .navigation)
+        ToolbarItemGroup(placement: .navigation) { tools([.crop]) }
+        ToolbarSpacer(.fixed, placement: .navigation)
         ToolbarItemGroup(placement: .navigation) {
             tools([.text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step])
         }
-        ToolbarItem(placement: .navigation) {
-            ToolButton(tool: .redact, model: model, actions: actions)
-        }
-        ToolbarItem(placement: .navigation) {
+        ToolbarSpacer(.fixed, placement: .navigation)
+        ToolbarItemGroup(placement: .navigation) {
+            tools([.redact])
             ToolMenu(group: .effects, model: model, actions: actions)
         }
-        ToolbarItem(placement: .navigation) {
+        ToolbarSpacer(.fixed, placement: .navigation)
+        ToolbarItemGroup(placement: .navigation) {
             ToolMenu(group: .measure, model: model, actions: actions)
         }
-        ToolbarItemGroup(placement: .primaryAction) {
+        ToolbarSpacer(.fixed, placement: .navigation)
+        ToolbarItemGroup(placement: .navigation) {
             Button {
                 model.undo()
             } label: {
@@ -125,12 +174,13 @@ struct EditorToolbarContent: ToolbarContent {
             .disabled(!model.canRedo)
             .accessibilityIdentifier("toolbar.redo")
         }
-        // Keeps Copy out of the history group's capsule.
-        ToolbarItem(placement: .primaryAction) {
-            Spacer(minLength: 8).accessibilityHidden(true)
-        }
+        ToolbarSpacer(.flexible)
         ToolbarItemGroup(placement: .primaryAction) {
-            ExportButtons(model: model, actions: actions)
+            CopySaveButtons(model: model, actions: actions)
+        }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+        ToolbarItemGroup(placement: .primaryAction) {
+            PinDragButtons(model: model, actions: actions)
         }
     }
 
@@ -258,7 +308,7 @@ private struct ToolMenu: View {
     }
 }
 
-private struct ExportButtons: View {
+private struct CopySaveButtons: View {
     let model: EditorModel
     let actions: any EditorWindowActions
 
@@ -284,6 +334,14 @@ private struct ExportButtons: View {
         .help(String(localized: "Save the image (⌘S)", table: "Editor"))
         .disabled(!model.canStartExport)
         .accessibilityIdentifier("toolbar.save")
+    }
+}
+
+private struct PinDragButtons: View {
+    let model: EditorModel
+    let actions: any EditorWindowActions
+
+    var body: some View {
         Button {
             actions.pin()
         } label: {
@@ -307,11 +365,12 @@ private struct ExportButtons: View {
 
 struct EditorStatusBar: View {
     let model: EditorModel
+    let panes: EditorPanes
     var presentation = EditorNoticePresentation()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DesignTokens.Space.s) {
             Text(EditorFormat.size(model.document.canvasSize))
                 .monospacedDigit()
                 .help(String(localized: "Canvas size in document pixels", table: "Editor"))
@@ -321,14 +380,15 @@ struct EditorStatusBar: View {
                 Text(String(localized: "Rendering preview…", table: "Editor"))
                     .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 8)
+            if panes.inspectorCollapsed && model.showsCosmeticWarning {
+                CosmeticWarning(identifier: "status.cosmeticWarning")
+            }
+            Spacer(minLength: DesignTokens.Space.s)
             if let notice = model.notice {
-                Label {
-                    Text(EditorStrings.message(notice))
-                        .lineLimit(2)
-                } icon: {
-                    Image(systemName: "info.circle").accessibilityHidden(true)
-                }
+                EditorNoticeLabel(
+                    text: EditorStrings.message(notice),
+                    systemImage: EditorNoticePresentation.isProblem(notice) ? "exclamationmark.triangle" : "info.circle"
+                )
                 .transition(reduceMotion ? .identity : .opacity)
                 if EditorNoticePresentation.persists(notice) {
                     Button(String(localized: "Dismiss", table: "Editor")) { model.dismissNotice() }
@@ -346,8 +406,10 @@ struct EditorStatusBar: View {
             }
         }
         .font(.callout)
-        .padding(.horizontal, 10)
-        .frame(height: 30)
+        .padding(.horizontal, DesignTokens.Space.m)
+        .padding(.vertical, DesignTokens.Space.xs)
+        // Tall enough for a two-line notice, so a short notice never resizes the canvas.
+        .frame(minHeight: 44)
         .animation(reduceMotion ? nil : .default, value: model.noticeSerial)
         .task(id: model.noticeSerial) {
             guard let notice = model.notice else { return }

@@ -59,10 +59,11 @@ final class EditorWindowManager {
 
 }
 
-/// One editor window: hosts the SwiftUI chrome around the AppKit canvas, asks before discarding
+/// One editor window: hosts the SwiftUI chrome around the AppKit canvas in a system split view, asks before discarding
 /// unexported edits, and closes the model when the window closes.
 final class EditorWindowController: NSWindowController, NSWindowDelegate, EditorWindowActions {
     let model: EditorModel
+    let panes = EditorPanes()
     var onClosed: (() -> Void)?
     private let canvas: EditorCanvasView
     private var discardConfirmed = false
@@ -84,12 +85,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         super.init(window: window)
         window.delegate = self
         canvas.actions = self
-        let root = EditorRootView(
-            model: model, canvas: canvas, actions: self, noticePresentation: noticePresentation)
-        let host = NSHostingController(rootView: root)
-        // The SwiftUI `.toolbar` becomes this window's NSToolbar; title and tools share one bar.
-        host.sceneBridgingOptions = [.toolbars]
-        window.contentViewController = host
+        window.contentViewController = Self.splitController(
+            model: model, canvas: canvas, actions: self, panes: panes, noticePresentation: noticePresentation)
         window.toolbarStyle = .unified
         window.titleVisibility = .hidden
         window.initialFirstResponder = canvas
@@ -102,6 +99,70 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
+
+    /// Object list, canvas column and inspector as split items. The columns are opaque
+    /// (`.default` behaviour over the window background) rather than the glass sidebar material,
+    /// which `cacheDisplay` screenshots cannot render (decisions 2026-11-20). The canvas column
+    /// carries the SwiftUI `.toolbar`, which becomes this window's NSToolbar.
+    private static func splitController(
+        model: EditorModel, canvas: EditorCanvasView, actions: any EditorWindowActions, panes: EditorPanes,
+        noticePresentation: EditorNoticePresentation
+    ) -> EditorSplitViewController {
+        let sidebar = NSHostingController(rootView: EditorSidebarView(model: model))
+        let content = NSHostingController(
+            rootView: EditorRootView(
+                model: model, canvas: canvas, actions: actions, panes: panes, noticePresentation: noticePresentation))
+        content.sceneBridgingOptions = [.toolbars]
+        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions))
+        // The split items own the column widths; the hosted views fill whatever they are given.
+        sidebar.sizingOptions = []
+        content.sizingOptions = []
+        inspector.sizingOptions = []
+        sidebar.view.frame.size.width = 210
+        inspector.view.frame.size.width = 290
+
+        let sidebarItem = NSSplitViewItem(viewController: sidebar)
+        sidebarItem.canCollapse = true
+        sidebarItem.minimumThickness = 180
+        sidebarItem.maximumThickness = 320
+        sidebarItem.holdingPriority = .defaultLow + 10
+        let contentItem = NSSplitViewItem(viewController: content)
+        contentItem.minimumThickness = 360
+        let inspectorItem = NSSplitViewItem(viewController: inspector)
+        inspectorItem.canCollapse = true
+        inspectorItem.minimumThickness = 260
+        inspectorItem.maximumThickness = 380
+        inspectorItem.holdingPriority = .defaultLow + 10
+        let split = EditorSplitViewController(panes: panes)
+        split.splitView.dividerStyle = .thin
+        for item in [sidebarItem, contentItem, inspectorItem] { split.addSplitViewItem(item) }
+        return split
+    }
+
+    /// The split item that holds `pane`.
+    func splitItem(_ pane: EditorPane) -> NSSplitViewItem? {
+        let items = (window?.contentViewController as? NSSplitViewController)?.splitViewItems ?? []
+        guard items.count == 3 else { return nil }
+        return pane == .sidebar ? items[0] : items[2]
+    }
+
+    /// Collapses or restores a column (View menu). Keyboard focus inside a column that collapses
+    /// returns to the canvas.
+    func toggle(_ pane: EditorPane) {
+        guard let window, let item = splitItem(pane) else { return }
+        let collapse = !item.isCollapsed
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            item.isCollapsed = collapse
+        } else {
+            item.animator().isCollapsed = collapse
+        }
+        (window.contentViewController as? EditorSplitViewController)?.syncPanes()
+        if collapse, let responder = window.firstResponder as? NSView,
+            responder.isDescendant(of: item.viewController.view)
+        {
+            window.makeFirstResponder(canvas)
+        }
+    }
 
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
     func present() {
@@ -177,7 +238,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         model.environment.settings.update { $0.editorContentSize = EditorWindowSizing.rememberable(size) }
     }
 
+    func windowDidBecomeKey(_ notification: Notification) {
+        EditorCommands.shared.editorBecameKey(self)
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        EditorCommands.shared.editorResignedKey(self)
+    }
+
     func windowWillClose(_ notification: Notification) {
+        EditorCommands.shared.editorResignedKey(self)
         model.close()
         window?.contentViewController = nil
         onClosed?()
@@ -286,5 +356,31 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         commitPendingText()
         guard exportSlotIsFree() else { return }
         Task { await model.export(.drag) }
+    }
+}
+
+/// Keeps `EditorPanes` in step with the columns when the person drags a divider closed or open.
+final class EditorSplitViewController: NSSplitViewController {
+    private let panes: EditorPanes
+
+    init(panes: EditorPanes) {
+        self.panes = panes
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func splitViewDidResizeSubviews(_ notification: Notification) {
+        super.splitViewDidResizeSubviews(notification)
+        syncPanes()
+    }
+
+    func syncPanes() {
+        guard splitViewItems.count == 3 else { return }
+        let sidebar = splitViewItems[0].isCollapsed
+        let inspector = splitViewItems[2].isCollapsed
+        if panes.sidebarCollapsed != sidebar { panes.sidebarCollapsed = sidebar }
+        if panes.inspectorCollapsed != inspector { panes.inspectorCollapsed = inspector }
     }
 }
