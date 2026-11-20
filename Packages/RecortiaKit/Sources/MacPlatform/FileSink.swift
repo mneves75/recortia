@@ -131,6 +131,8 @@ struct POSIXFileSystem {
     var beforePublish: (URL) -> Void = { _ in }
     /// Runs after each change an overwrite makes to the stage's mode or ACL.
     var afterReplaceStep: (URL) -> Void = { _ in }
+    /// The account saving, compared with an overwritten file's owner.
+    var saver: uid_t = geteuid()
     /// Gives the open stage a group, returning 0 or -1 with `errno` like fchown(2).
     var changeGroup: (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) }
     /// Runs right after an overwrite without swap renamed the stage onto the destination name.
@@ -271,10 +273,13 @@ struct POSIXFileSystem {
         var mode = existing.st_mode & 0o777
         var written = stat()
         guard fstat(stage.file, &written) == 0 else { throw FileSystemFailure(code: errno) }
-        // A group that cannot be kept leaves the file owner-only: dropping only the group bits
-        // could move a member of the old group into the "other" class.
-        if written.st_gid != existing.st_gid, changeGroup(stage.file, existing.st_gid) != 0 {
-            mode &= 0o700
+        // Another owner, or a group that cannot be kept, leaves the file owner-only (0600): the
+        // replacement belongs to this user, so the old owner, or a member of the old group, would
+        // otherwise fall into the "other" class and gain its access.
+        if existing.st_uid != saver
+            || (written.st_gid != existing.st_gid && changeGroup(stage.file, existing.st_gid) != 0)
+        {
+            mode = 0o600
         }
         // Best effort: a volume that refuses chmod keeps the owner-only staging mode.
         _ = fchmod(stage.file, mode)

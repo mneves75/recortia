@@ -281,6 +281,27 @@ struct FileSinkTests {
         #expect(mode == 0o640)
     }
 
+    // N02 (second review of T1a): the overwrite copied the mode but never compared owners. A shared
+    // 0644 file of another owner, replaced by this user, would leave that owner in "other" with
+    // read access to the screenshot. The owner check uses the `saver` seam, because a test cannot
+    // create a file owned by another account.
+    @Test("Overwriting a file of another owner makes the replacement owner-only")
+    func overwriteOfAnotherOwnersFileIsOwnerOnly() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        let sink = FileSink(fileSystem: POSIXFileSystem(saver: geteuid() &+ 1))
+        _ = try sink.save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.mode(url) == 0o600)
+        // Control: with the same owner the mode is kept.
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+        _ = try FileSink().save(snapshot, to: url, overwrite: true)
+        #expect(Self.mode(url) == 0o644)
+    }
+
     // R2-D02 (program 2026-11): a new file takes its folder's group, so an overwrite kept the mode
     // of a 0640 file of group A and handed group read access to the folder's group B.
     @Test("Overwriting keeps the replaced file's group, so its group permission reaches no other group")
