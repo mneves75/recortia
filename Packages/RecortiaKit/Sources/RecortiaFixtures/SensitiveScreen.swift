@@ -63,8 +63,10 @@ public enum SensitiveScreen {
         let id =
             "\(widthPoints)x\(heightPoints)@\(scale)x-\(Int(pointSize))pt-\(theme.rawValue)-"
             + "\(language.rawValue)-\(layout.rawValue)"
-        // FNV-1a of the id: different content per screen, identical across runs.
-        let seed = id.utf8.reduce(UInt64(0xcbf2_9ce4_8422_2325)) { ($0 ^ UInt64($1)) &* 0x100_0000_01b3 }
+        // FNV-1a of the size, language and layout: the same items in the same order at every scale,
+        // font size and theme, so those conditions compare like with like; identical across runs.
+        let contentKey = "\(widthPoints)x\(heightPoints)-\(language.rawValue)-\(layout.rawValue)"
+        let seed = contentKey.utf8.reduce(UInt64(0xcbf2_9ce4_8422_2325)) { ($0 ^ UInt64($1)) &* 0x100_0000_01b3 }
         var generator = Generator(language: language, seed: seed)
         switch layout {
         case .singleColumn:
@@ -182,6 +184,71 @@ public enum SensitiveScreen {
             CGFloat(CTLineGetTypographicBounds(line(text), nil, nil, nil))
         }
 
+        /// Pixels touched by the glyphs drawn for UTF-16 range `characters` of a composed line whose
+        /// origin is at `x`, `baseline` (image pixels, top-left origin). The glyphs are redrawn in white
+        /// on black at the same subpixel position into a small coverage mask around their image bounds,
+        /// so antialiasing and contextual shaping in the line are what the result reflects. Nil when
+        /// the range draws no ink.
+        func paintedBounds(of line: CTLine, characters: Range<Int>, x: CGFloat, baseline: CGFloat) -> CGRect? {
+            let runs = (CTLineGetGlyphRuns(line) as? [CTRun]) ?? []
+            let glyphs = runs.flatMap { run -> [(run: CTRun, glyph: Int)] in
+                let count = CTRunGetGlyphCount(run)
+                var indices = [CFIndex](repeating: 0, count: count)
+                CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &indices)
+                return (0..<count).filter { characters.contains(indices[$0]) }.map { (run, $0) }
+            }
+            context.textPosition = .zero  // image bounds are offset by the text position
+            let estimate = glyphs.reduce(CGRect.null) { union, item in
+                union.union(CTRunGetImageBounds(item.run, context, CFRange(location: item.glyph, length: 1)))
+            }
+            guard !estimate.isNull, !estimate.isEmpty else { return nil }
+            // The estimate in top-left image pixels, with room for antialiasing on every side.
+            let box = CGRect(
+                x: x + estimate.minX, y: baseline - estimate.maxY, width: estimate.width, height: estimate.height
+            ).insetBy(dx: -4, dy: -4).integral
+            let width = Int(box.width), height = Int(box.height)
+            guard
+                let mask = CGContext(
+                    data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                    space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)
+            else { return nil }
+            mask.setShouldSmoothFonts(false)
+            mask.setFillColor(CGColor(gray: 0, alpha: 1))
+            mask.fill(CGRect(x: 0, y: 0, width: width, height: height))
+            mask.setFillColor(CGColor(gray: 1, alpha: 1))
+            // The line's origin in the mask (bottom-left origin). White glyphs on black: coverage alone
+            // decides each value, whatever the theme's colours.
+            let origin = CGPoint(x: x - box.minX, y: box.maxY - baseline)
+            for item in glyphs {
+                CTFontDrawGlyphs(
+                    font, [glyph(of: item.run, at: item.glyph)],
+                    [position(of: item.run, at: item.glyph, origin: origin)],
+                    1, mask)
+            }
+            guard let data = mask.data else { return nil }
+            let bytes = data.bindMemory(to: UInt8.self, capacity: width * height)
+            var painted = CGRect.null
+            for row in 0..<height {
+                for column in 0..<width where bytes[row * width + column] > 0 {
+                    painted = painted.union(
+                        CGRect(x: box.minX + CGFloat(column), y: box.minY + CGFloat(row), width: 1, height: 1))
+                }
+            }
+            return painted.isNull ? nil : painted
+        }
+
+        private func glyph(of run: CTRun, at index: Int) -> CGGlyph {
+            var glyph = CGGlyph()
+            CTRunGetGlyphs(run, CFRange(location: index, length: 1), &glyph)
+            return glyph
+        }
+
+        private func position(of run: CTRun, at index: Int, origin: CGPoint) -> CGPoint {
+            var position = CGPoint.zero
+            CTRunGetPositions(run, CFRange(location: index, length: 1), &position)
+            return CGPoint(x: origin.x + position.x, y: origin.y + position.y)
+        }
+
         /// Draws as many leading segments as fit in `maxWidth` (at least the first) and records the
         /// rectangles of planted items and decoys among them.
         mutating func drawRow(_ segments: [Segment], x: CGFloat, top: CGFloat, maxWidth: CGFloat) {
@@ -199,16 +266,12 @@ public enum SensitiveScreen {
             for segment in kept {
                 let length = (segment.text as NSString).length
                 defer { offset += length }
-                // Ground truth is the ink: the segment's glyph image bounds, rounded outward to the
-                // pixels it touches, at the segment's position in the line.
-                let start = CTLineGetOffsetForStringIndex(ctLine, offset, nil)
-                context.textPosition = .zero  // image bounds are offset by the text position
-                let ink = CTLineGetImageBounds(line(segment.text), context)
-                let baseline = top + ascent
-                let rect = CGRect(
-                    x: (x + start + ink.minX).rounded(.down), y: (baseline - ink.maxY).rounded(.down),
-                    width: 0, height: 0
-                ).union(CGPoint(x: (x + start + ink.maxX).rounded(.up), y: (baseline - ink.minY).rounded(.up)))
+                if case .text = segment.role { continue }
+                // Ground truth is every pixel the segment's glyphs touch in the composed line.
+                guard
+                    let rect = paintedBounds(
+                        of: ctLine, characters: offset..<(offset + length), x: x, baseline: top + ascent)
+                else { continue }
                 switch segment.role {
                 case .text: break
                 case .planted(let kind, let format):

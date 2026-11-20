@@ -527,3 +527,36 @@ struct SensitiveTextSeamTests {
         #expect(covering.contains { $0.contains(item.rect) }, "x \(x): \(item.rect) not covered by \(covering)")
     }
 }
+
+@Suite("SensitiveText: fixture ground truth (R11)")
+struct SensitiveScreenGroundTruthTests {
+    @Test("A planted rectangle is the bounding box of the pixels painted for it", arguments: [1, 2])
+    func plantedRectMatchesPaintedInk(scale: Int) throws {
+        let screen = try SensitiveScreen.renderItem(
+            "ana.o'brien+news@example.org", kind: .email, widthPoints: 400, heightPoints: 60, scale: scale,
+            pointSize: 13, x: 37, top: 21)
+        let planted = try #require(screen.planted.first).rect
+        let (width, height) = (screen.image.width, screen.image.height)
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard
+                let context = CGContext(
+                    data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                    space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.draw(screen.image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        try #require(drawn)
+        var ink = CGRect.null
+        for y in 0..<height {
+            for x in 0..<width where pixels[(y * width + x) * 4] < 255 {
+                ink = ink.union(CGRect(x: x, y: y, width: 1, height: 1))  // rows run top to bottom
+            }
+        }
+        #expect(!ink.isNull)
+        #expect(planted.contains(ink), "planted \(planted), painted \(ink)")
+        #expect(planted.insetBy(dx: 1, dy: 1).width <= ink.width && planted.insetBy(dx: 1, dy: 1).height <= ink.height)
+    }
+}
