@@ -203,7 +203,7 @@ extension EditorModel {
         }
         document.annotations = try document.annotations.map {
             let translated = $0.translated(dx: dx, dy: dy)
-            try validateArrowCurve(translated)
+            try validateArrow(translated)
             return translated
         }
         for index in document.masks.indices {

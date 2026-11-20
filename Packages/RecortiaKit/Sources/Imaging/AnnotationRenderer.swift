@@ -29,18 +29,18 @@ public enum AnnotationRenderer {
         for annotation in annotations {
             guard hasFiniteValues(annotation) else {
                 if case .text = annotation.kind { throw .textLayoutFailed(.invalidGeometry) }
-                if case .arrow(_, _, .some) = annotation.kind { throw .invalidGeometry }
+                if case .arrow = annotation.kind { throw .invalidGeometry }
                 continue
             }
             try draw(annotation, in: context)
         }
     }
 
-    /// Whether every coordinate and style value is finite and sensible, and a curved arrow has a
-    /// layout. `draw` rejects invalid text and curved arrows and skips other invalid annotations.
+    /// Whether every coordinate and style value is finite and sensible, and an arrow has a layout.
+    /// `draw` rejects invalid text and arrows and skips other invalid annotations.
     static func isDrawable(_ annotation: Annotation) -> Bool {
         guard hasFiniteValues(annotation) else { return false }
-        if case .arrow(_, _, .some) = annotation.kind { return (try? ArrowLayout.make(for: annotation)) != nil }
+        if case .arrow = annotation.kind { return (try? ArrowLayout.make(for: annotation)) != nil }
         return true
     }
 
@@ -80,16 +80,9 @@ public enum AnnotationRenderer {
         } else {
             textLayout = nil
         }
-        let arrowLayout: ArrowLayout?
-        if case .arrow(_, _, let control) = annotation.kind {
-            do { arrowLayout = try ArrowLayout.make(for: annotation) } catch {
-                // A straight arrow the layout refuses is skipped like other invalid values.
-                if control != nil { throw error }
-                return
-            }
-        } else {
-            arrowLayout = nil
-        }
+        // An arrow that cannot be laid out fails the render: an export never drops it silently.
+        let arrowLayout: ArrowLayout? =
+            if case .arrow = annotation.kind { try ArrowLayout.make(for: annotation) } else { nil }
         let style = annotation.style
         let opacity = min(max(style.opacity, 0), 1)
         guard opacity > 0 else { return }

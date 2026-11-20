@@ -54,17 +54,17 @@ struct AnnotationRendererTests {
         }
     }
 
-    @Test("A straight arrow whose length overflows is skipped; the render still succeeds")
-    func overflowingStraightArrowIsSkipped() async throws {
+    @Test("A straight arrow whose layout overflows fails the render instead of vanishing from it")
+    func overflowingStraightArrowFailsRender() async throws {
         let harness = ImagingHarness()
         let asset = try await harness.add(try ChartFixture.solid(width: 40, height: 30, color: .init(9, 9, 9)))
         var document = Document(asset: asset)
         document.annotations = [
-            Annotation(kind: .arrow(start: Point(x: -1e308, y: 10), end: Point(x: 1e308, y: 10)), style: .default)
+            Annotation(kind: .arrow(start: Point(x: 0, y: 0), end: Point(x: 1.4e308, y: 1.4e308)), style: .default)
         ]
-        let image = try await harness.renderer.render(document, scale: 1)
-        let base = try await harness.renderer.renderBase(document, scale: 1)
-        #expect(try pixels(image) == pixels(base))
+        await #expect(throws: RenderError.invalidGeometry) { try await harness.renderer.render(document, scale: 1) }
+        let context = try #require(ChartFixture.context(width: 40, height: 30))
+        #expect(throws: RenderError.invalidGeometry) { try AnnotationRenderer.draw(document.annotations, in: context) }
     }
 
     @Test("A translucent straight arrow paints the shaft and head junction once")

@@ -235,7 +235,7 @@ extension EditorModel {
                         ? .arrow(start: p, end: end, control: movedControl)
                         : .arrow(start: start, end: p, control: movedControl)
                 }
-                try Self.validateArrowCurve(changed)
+                try Self.validateArrow(changed)
                 document.annotations[index] = changed
                 return
             case .line(let start, let end):
@@ -329,7 +329,7 @@ extension EditorModel {
             let segment = Annotation(
                 kind: tool == .arrow ? arrowKind(from: start, to: tip) : .line(start: start, end: tip),
                 style: style.annotationStyle)
-            do { try Self.validateArrowCurve(segment) } catch {
+            do { try Self.validateArrow(segment) } catch {
                 post(.arrowGeometryRefused)
                 return
             }

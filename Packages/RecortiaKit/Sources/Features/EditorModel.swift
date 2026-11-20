@@ -142,7 +142,7 @@ public final class EditorModel {
             for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
                 var proposed = annotation
                 proposed.style.lineWidth = value
-                try Self.validateArrowCurve(proposed)
+                try Self.validateArrow(proposed)
             }
         } catch {
             post(.arrowGeometryRefused)
@@ -540,7 +540,7 @@ public final class EditorModel {
             }
             for annotation in document.annotations where items.contains(.annotation(annotation.id)) {
                 var copy = annotation.translated(dx: offset, dy: offset)
-                try Self.validateArrowCurve(copy)
+                try Self.validateArrow(copy)
                 copy.id = AnnotationID()
                 document.annotations.append(copy)
                 created.insert(.annotation(copy.id))
@@ -642,7 +642,7 @@ public final class EditorModel {
         }
         for index in document.annotations.indices where set.contains(.annotation(document.annotations[index].id)) {
             let moved = document.annotations[index].translated(dx: dx, dy: dy)
-            try validateArrowCurve(moved)
+            try validateArrow(moved)
             document.annotations[index] = moved
         }
         for index in document.callouts.indices where set.contains(.callout(document.callouts[index].id)) {
@@ -744,6 +744,7 @@ public final class EditorModel {
             guard let original = EditorGeometry.frame(of: annotation) else { throw DocumentError.invalidGeometry }
             let resized = annotation.resized(from: original, to: rect)
             guard EditorGeometry.frame(of: resized) != nil else { throw DocumentError.invalidGeometry }
+            try validateArrow(resized)
             if case .line(let start, let end) = resized.kind {
                 guard start.isFinite, end.isFinite, EditorGeometry.isFinite(resized.bounds) else {
                     throw DocumentError.invalidGeometry
