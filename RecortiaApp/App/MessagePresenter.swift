@@ -7,8 +7,6 @@ struct UserMessage: Equatable {
     var title: String
     var detail: String
     var offersScreenRecordingSettings = false
-    /// A page the alert's first button opens; the text never shows it.
-    var link: URL? = nil
 }
 
 /// Shows messages as standard alerts. Content-free: never includes image data, OCR text,
@@ -21,7 +19,6 @@ enum MessagePresenter {
         {
             NSWorkspace.shared.open(url)
         }
-        if let link = message.link, response == .alertFirstButtonReturn { NSWorkspace.shared.open(link) }
     }
 
     /// Asks before a scrolling capture is thrown away. Close, Escape, and Discard all route here,
@@ -101,9 +98,6 @@ enum MessagePresenter {
         if message.offersScreenRecordingSettings {
             alert.addButton(withTitle: String(localized: "Open System Settings"))
             alert.addButton(withTitle: String(localized: "Not Now"))
-        } else if message.link != nil {
-            alert.addButton(withTitle: String(localized: "View on GitHub"))
-            alert.addButton(withTitle: String(localized: "OK"))
         } else {
             alert.addButton(withTitle: String(localized: "OK"))
         }
@@ -219,14 +213,6 @@ extension UserMessage {
             failure == .upload(.completionUnknown)
             ? String(localized: "Check the GitHub upload") : String(localized: "An automatic export step failed")
         return UserMessage(title: title, detail: detail)
-    }
-
-    /// An automatic upload that finished while the editor's notice slot held the masking count
-    /// (T1 security 3C), so its link is offered here instead.
-    static func uploaded(_ url: URL) -> UserMessage {
-        UserMessage(
-            title: String(localized: "Image uploaded to GitHub"),
-            detail: String(localized: "The capture was uploaded automatically."), link: url)
     }
 
     static func scroll(_ failure: ScrollFailure) -> UserMessage {

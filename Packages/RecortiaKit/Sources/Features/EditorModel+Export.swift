@@ -14,13 +14,17 @@ public enum EditorExportRequest: Hashable, Sendable {
 // (sanitized ShareSnapshot) or `PinsModel` (sanitized render); nothing here encodes or writes.
 extension EditorModel {
     /// Shows an automatic export's outcome in the notice slot and returns true, or returns false
-    /// when it was not shown: the editor is closed, or the slot still holds the masking count and
-    /// its review reminder, which an export report never replaces (T1 security 3C). The caller
-    /// raises an outcome that was not shown as an alert.
+    /// when the editor is closed or a failure meets the masking count and its review reminder,
+    /// which an export report never replaces (T1 security 3C); the caller raises that failure as
+    /// an alert. A success waits instead and takes the slot once the count is dismissed.
     @discardableResult
     public func reportAutomaticExport(_ outcome: ExportOutcome) -> Bool {
         guard !isClosed else { return false }
-        if case .sensitiveTextMasked = notice { return false }
+        if case .sensitiveTextMasked = notice {
+            if case .failed = outcome { return false }
+            waitingNotice = .exported(outcome)
+            return true
+        }
         if case .failed(let failure) = outcome {
             post(.automaticExportFailed(failure))
         } else {
@@ -164,6 +168,7 @@ extension EditorModel {
         isClosed = true
         cancelAutoRedaction()
         resumeExportSlotWaiters()
+        waitingNotice = nil
         environment.export.cancel(documentID: session.document.id)
         invalidateColorPick()
         baseTask?.cancel()

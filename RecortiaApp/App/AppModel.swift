@@ -370,14 +370,10 @@ final class AppModel: AppActions {
             }
             let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
             for failure in route.alerts { showMessage(.export(failure)) }
-            // The masking count keeps the editor's notice slot (T1 security 3C): an outcome the
+            // The masking count keeps the editor's notice slot (T1 security 3C): a failure the
             // editor refuses is raised as an alert, so it is never lost either.
             for outcome in route.editorNotices where editor?.reportAutomaticExport(outcome) != true {
-                if case .failed(let failure) = outcome {
-                    showMessage(.export(failure))
-                } else if let url = outcome.uploadedURL {
-                    showMessage(.uploaded(url))
-                }
+                if case .failed(let failure) = outcome { showMessage(.export(failure)) }
             }
         }
     }

@@ -4711,38 +4711,6 @@
           }
         }
       }
-    },
-    "Image uploaded to GitHub" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Image uploaded to GitHub"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imagem enviada ao GitHub"
-          }
-        }
-      }
-    },
-    "The capture was uploaded automatically." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The capture was uploaded automatically."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A captura foi enviada automaticamente."
-          }
-        }
-      }
     }
   },
   "version" : "1.0"

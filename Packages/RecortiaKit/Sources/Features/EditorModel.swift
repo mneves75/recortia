@@ -90,6 +90,8 @@ public final class EditorModel {
     /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
     @ObservationIgnored var automaticExportBaseline: DocumentSession?
     @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
+    /// An automatic upload's notice that waits until the masking count is dismissed (3C).
+    @ObservationIgnored var waitingNotice: EditorNotice?
     /// The deferred automatic batch waiting for the shared export slot (`waitForExportSlot`).
     @ObservationIgnored var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
 
@@ -143,7 +145,14 @@ public final class EditorModel {
         noticeSerial += 1
     }
 
-    public func dismissNotice() { notice = nil }
+    /// Dismissal, the person's or the timeout's, frees the slot for a notice waiting behind it.
+    public func dismissNotice() {
+        notice = nil
+        if let waiting = waitingNotice {
+            waitingNotice = nil
+            post(waiting)
+        }
+    }
 
     // MARK: - Tools and style
 

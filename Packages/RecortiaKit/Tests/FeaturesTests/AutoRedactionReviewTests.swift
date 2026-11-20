@@ -81,24 +81,53 @@ struct AutoRedactionReviewTests {
         #expect(model.notice == .sensitiveTextMasked(0))
     }
 
-    /// T1 security 3C: an automatic export's report never silently replaces the masking count and
+    /// T1 security 3C: an automatic export failure never silently replaces the masking count and
     /// its review reminder; the editor refuses it so the app raises it as an alert instead.
-    @Test(
-        "An automatic export's report leaves the masking notice in place",
-        arguments: [ExportOutcome.failed(.diskFull), .uploaded(URL(string: "https://example.com/image.png")!)])
-    func exportReportKeepsMaskingNotice(outcome: ExportOutcome) async throws {
-        let (h, model) = try await Self.capture(regions: [Self.region])
+    @Test("An automatic export failure leaves the masking notice in place")
+    func exportFailureKeepsMaskingNotice() async throws {
+        let model = try await Self.masked()
         defer { model.close() }
+        #expect(!model.reportAutomaticExport(.failed(.diskFull)), "refused, so the app raises it as an alert")
+        #expect(model.notice == .sensitiveTextMasked(1))
+        // Once the person dismissed it, the slot is free again.
+        model.dismissNotice()
+        #expect(model.reportAutomaticExport(.failed(.diskFull)))
+        #expect(model.notice == .automaticExportFailed(.diskFull))
+    }
+
+    private static let uploaded = ExportOutcome.uploaded(URL(fileURLWithPath: "/review-masking/image.png"))
+
+    /// T1 security 3C: an automatic upload's notice and its link wait behind the masking count and
+    /// take the slot once that is dismissed (or times out, which dismisses it).
+    @Test("An automatic upload's notice waits for the masking notice, then takes the slot")
+    func uploadNoticeWaitsForMaskingNotice() async throws {
+        let model = try await Self.masked()
+        defer { model.close() }
+        #expect(model.reportAutomaticExport(Self.uploaded), "the editor keeps it, so no alert")
+        #expect(model.notice == .sensitiveTextMasked(1))
+        model.dismissNotice()
+        #expect(model.notice == .exported(Self.uploaded))
+        model.dismissNotice()
+        #expect(model.notice == nil, "it was shown once")
+    }
+
+    @Test("A waiting upload notice is dropped when the editor closes")
+    func waitingUploadNoticeDroppedOnClose() async throws {
+        let model = try await Self.masked()
+        #expect(model.reportAutomaticExport(Self.uploaded))
+        model.close()
+        model.dismissNotice()
+        #expect(model.notice != .exported(Self.uploaded))
+    }
+
+    /// A capture whose masking landed one mask and shows its count.
+    private static func masked() async throws -> EditorModel {
+        let (h, model) = try await capture(regions: [region])
         await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
         h.sensitiveText.pending?.resolve(())
         await waitFor("masking settled") { model.autoRedaction != .pending }
         #expect(model.notice == .sensitiveTextMasked(1))
-        #expect(!model.reportAutomaticExport(outcome), "refused, so the app raises it as an alert")
-        #expect(model.notice == .sensitiveTextMasked(1))
-        // Once the person dismissed it, the slot is free again.
-        model.dismissNotice()
-        #expect(model.reportAutomaticExport(outcome))
-        #expect(model.notice != nil && model.notice != .sensitiveTextMasked(1))
+        return model
     }
 
     /// Finding R-2 (P3): masking defers the batch by up to the deadline, so another editor's
