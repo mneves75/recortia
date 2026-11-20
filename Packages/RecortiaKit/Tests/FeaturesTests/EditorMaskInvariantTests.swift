@@ -270,13 +270,54 @@ struct EditorMaskInvariantTests {
         #expect(m.document.masks.first == mask)
         #expect(m.frame(of: .annotation(rectangle))?.minX ?? 0 > 130)
 
-        // Over the image alone, the band selects the mask but a drag does not move it.
+        // Over the image, the image's own pixels win over the band (R4-07): the drag moves the
+        // image, the box stays, and the moved secret stays filled.
         m.clearSelection()
         h.drag((110, 122), (110, 140))
+        #expect(m.selection == [.layer(try #require(m.document.layers.first).id)])
+        #expect(m.document.masks.first?.outputRect == mask.outputRect)
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 40)) == 0)
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
+    }
+
+    @Test("A drag on visible image pixels beside a mask moves the image, and a nudge then moves the image too")
+    func bandYieldsToImage() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        let layer = try #require(m.document.layers.first).id
+        m.selectTool(.select)
+        m.clearSelection()
+        h.drag((122, 110), (137, 110))
+        #expect(m.selection == [.layer(layer)])
+        m.nudgeSelection(dx: 1, dy: 0)
+        #expect(m.document.layers.first?.placement.translation == Point(x: 16, y: 0))
+        #expect(m.document.masks.first?.outputRect == mask.outputRect)
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels) == 0)
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
+    }
+
+    @Test("Off the image, a mask's tolerance band selects the mask without moving it")
+    func bandOffImageOnlySelects() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 360, y: 260, width: 40, height: 40))
+        let h = fixture.harness
+        let m = h.model
+        let layer = try #require(m.document.layers.first).id
+        m.setFrame(Rect(x: 0, y: 0, width: 200, height: 150), for: .layer(layer))
+        m.selectTool(.redact)
+        h.drag((180, 130), (200, 150))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.clearSelection()
+        // (190, 152) is in the band below the box and off the scaled image.
+        h.drag((190, 152), (190, 180))
         #expect(m.selection == [.mask(mask.id)])
         #expect(m.document.masks.first == mask)
-        let pixels = try await fixture.exported()
-        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
 
     @Test("While Show Output Preview hides handles, a drag on a hidden handle changes nothing")

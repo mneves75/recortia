@@ -402,9 +402,9 @@ public final class EditorModel {
         guard p.isFinite else { return nil }
         let tolerance = viewport.documentLength(4)
         let d = session.document
-        // Masks draw over everything, so a mask's own pixels win. Its tolerance band loses to any
-        // other object's visible pixels (and only selects, see beginSelectGesture), or a drag on a
-        // visible object would move the mask off its secret.
+        // Masks draw over everything, so a mask's own pixels win. Its tolerance band loses to every
+        // other object's visible pixels, images included (and only selects, see
+        // beginSelectGesture), or a drag on a visible object would move the mask off its secret.
         for mask in d.masks.reversed() where EditorGeometry.containsInclusive(mask.outputRect, p) {
             return .mask(mask.id)
         }
@@ -422,14 +422,15 @@ public final class EditorModel {
         where EditorGeometry.containsInclusive(EditorGeometry.expanded(effect.rect, by: tolerance), p) {
             return .obfuscation(effect.id)
         }
-        for mask in d.masks.reversed()
-        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
-            return .mask(mask.id)
-        }
         for layer in d.layers.reversed() {
             if let frame = frame(of: .layer(layer.id)), EditorGeometry.containsInclusive(frame, p) {
                 return .layer(layer.id)
             }
+        }
+        // The band applies only where nothing else is hit, image layers included (R4-07).
+        for mask in d.masks.reversed()
+        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
+            return .mask(mask.id)
         }
         return nil
     }
