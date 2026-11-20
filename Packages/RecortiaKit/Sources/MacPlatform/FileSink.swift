@@ -35,6 +35,8 @@ import Foundation
 // - R01/R02: on a mount that accepts chmod without enforcing it, the private folder is not
 //   private; such mounts are covered by the no-confidentiality class above.
 // - Replace binds to the name at save time, not to the inode the person saw in the save panel.
+// - R3-07: admission compares an unpinned device/inode pair, which a FAT volume can reuse for a
+//   folder deleted and recreated in between; FAT is in the integrity-only class above.
 // - The empty private folder is removed with rmdir by name after an identity check, and the umask
 //   probe in this user's temporary folder by name; rmdir removes only an empty folder.
 
