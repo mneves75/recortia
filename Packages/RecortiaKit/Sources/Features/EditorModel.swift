@@ -755,13 +755,15 @@ public final class EditorModel {
         guard snapped != old.outputRect else { return }
         var regions = try document.sourceRegions(for: snapped)
         for (asset, bound) in old.sourceRegions {
-            // What the old box covers now in each layer that shows the asset. A binding hides the
-            // asset in all of them, so it is released only when the old box still covers it whole
-            // in every one; any displacement, even partial, keeps it.
-            let covered = try document.layers.filter { $0.assetID == asset }.map {
-                try document.coveredSourceRect(of: $0, by: old.outputRect)
+            // A binding hides the asset in every layer that shows it, so it is released only when
+            // the old box wholly contains its exact document footprint in every one of them; any
+            // displacement, even by a fraction of a source pixel, keeps it.
+            let footprints = document.layers.compactMap { layer -> AffineMap<SourcePixelSpace, DocumentSpace>? in
+                guard layer.assetID == asset, let size = document.assets[asset]?.pixelSize else { return nil }
+                return layer.sourceToDocument(assetSize: size)
             }
-            for region in bound where !covered.allSatisfy({ $0.map { Self.contains($0, region) } ?? false }) {
+            for region in bound
+            where !footprints.allSatisfy({ Self.contains(old.outputRect, $0.apply(region.asRect)) }) {
                 if !(regions[asset]?.contains(region) ?? false) { regions[asset, default: []].append(region) }
             }
         }
@@ -769,9 +771,10 @@ public final class EditorModel {
         document.masks[index].sourceRegions = regions
     }
 
-    private static func contains(_ outer: PixelRect, _ inner: PixelRect) -> Bool {
-        outer.x <= inner.x && outer.y <= inner.y && outer.x + outer.width >= inner.x + inner.width
-            && outer.y + outer.height >= inner.y + inner.height
+    private static func contains(_ outer: Rect<DocumentSpace>, _ inner: Rect<DocumentSpace>) -> Bool {
+        let e = 1e-9
+        return outer.minX <= inner.minX + e && outer.minY <= inner.minY + e && outer.maxX >= inner.maxX - e
+            && outer.maxY >= inner.maxY - e
     }
 
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).

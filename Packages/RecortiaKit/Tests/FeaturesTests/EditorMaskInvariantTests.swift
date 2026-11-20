@@ -285,6 +285,30 @@ struct EditorMaskInvariantTests {
         #expect(exports[0] == exports[1])
     }
 
+    @Test(
+        "Moving a box off a scaled image keeps a sub-source-pixel shift of its secret covered (R5-02)",
+        arguments: ["scale 2, nudge", "scale 16, duplicate"])
+    func explicitMoveExactFootprint(kind: String) async throws {
+        let scale = kind.hasPrefix("scale 2") ? 2.0 : 16.0
+        let secret =
+            scale == 2 ? FixtureRect(x: 5, y: 5, width: 10, height: 10) : FixtureRect(x: 2, y: 2, width: 4, height: 4)
+        let fixture = try await SecretExport(width: 200, height: 150, secrets: [secret])
+        let h = fixture.harness
+        let m = h.model
+        let layer = try #require(m.document.layers.first).id
+        m.setLayerScale(scale, for: layer)
+        let box = Double(secret.x) * scale, side = Double(secret.width) * scale
+        m.selectTool(.redact)
+        h.drag((box, box), (box + side, box + side))
+        let mask = try #require(m.document.masks.first).id
+        m.selectTool(.select)
+        m.setSelection([.layer(layer)])
+        if scale == 2 { m.nudgeSelection(dx: 1, dy: 0) } else { m.duplicateSelection() }
+        m.setFrame(Rect(x: 170, y: 120, width: 20, height: 20), for: .mask(mask))
+        #expect(m.document.masks.first?.outputRect == Rect(x: 170, y: 120, width: 20, height: 20))
+        #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
+    }
+
     // MARK: I2 only an effective move or resize re-binds
 
     @Test("A stationary handle click at 12.5 % zoom leaves the mask, history and export untouched")
