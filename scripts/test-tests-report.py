@@ -306,5 +306,74 @@ class TestsReportTests(unittest.TestCase):
         self.assertIn("different gate inventory", result.stderr)
 
 
+class CheckGateRunsTheListTests(unittest.TestCase):
+    """Review 2 F03: check.sh itself fails unless its own --run-tests step reported the whole list.
+    Builds, lint and the inventory are stubbed; only check.sh's control flow is under test."""
+
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = pathlib.Path(temporary.name)
+        scripts = self.root / "scripts"
+        scripts.mkdir()
+        self.check = scripts / "check.sh"
+        shutil.copy(ROOT / "scripts/check.sh", self.check)
+        for helper in ROOT.glob("scripts/lib/*.sh"):
+            (scripts / "lib").mkdir(exist_ok=True)
+            shutil.copy(helper, scripts / "lib" / helper.name)
+        stubs = {
+            "doctor.sh": "#!/bin/sh\nexit 0\n",
+            "check-project-fresh.sh": "#!/bin/sh\nexit 0\n",
+            "check-localization.py": "#!/bin/sh\nexit 0\n",
+            # The dispatcher: --run-tests prints the completion line for STUB_RAN tests.
+            "tests-report.py": (
+                "import os, sys\n"
+                "if sys.argv[1:] == ['--run-tests']:\n"
+                "    print(f\"tests-report: ran {os.environ.get('STUB_RAN', '10')} gate tests\")\n"
+                "elif sys.argv[1:] == ['--count']:\n"
+                "    print(10)\n"
+            ),
+        }
+        for name, source in stubs.items():
+            (scripts / name).write_text(source)
+            (scripts / name).chmod(0o755)
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        for tool in ("xcrun", "xcodebuild"):
+            (self.bin / tool).write_text("#!/bin/sh\nexit 0\n")
+            (self.bin / tool).chmod(0o755)
+        (self.bin / "python3").symlink_to(sys.executable)
+
+    def run_check(self, **environment: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["/bin/zsh", str(self.check), "--unsigned"], cwd=self.root, capture_output=True, text=True,
+            env={"PATH": f"{self.bin}:/usr/bin:/bin", "DEVELOPER_DIR": "/fixture", **environment},
+            timeout=30,
+        )
+
+    def test_control_the_stubbed_gate_passes(self) -> None:
+        result = self.run_check()
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("check: all gates passed", result.stdout.strip().splitlines()[-1])
+
+    def test_a_disabled_dispatcher_fails_the_gate(self) -> None:
+        # Review 2 §2: the dispatcher inside `if false`.
+        original = self.check.read_text()
+        step = "python3 scripts/tests-report.py --run-tests"
+        self.assertEqual(1, original.count(step))
+        line_start = original.rindex("\n", 0, original.index(step)) + 1
+        line_end = original.index("\n", original.index(step)) + 1
+        line = original[line_start:line_end]
+        self.check.write_text(original[:line_start] + "if false; then\n" + line + "fi\n" + original[line_end:])
+        result = self.run_check()
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertNotIn("check: all gates passed", result.stdout)
+
+    def test_a_short_run_of_the_list_fails_the_gate(self) -> None:
+        result = self.run_check(STUB_RAN="9")
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertNotIn("check: all gates passed", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

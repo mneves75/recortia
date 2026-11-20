@@ -279,8 +279,10 @@ def observe(suite: dict[str, str], head: str) -> dict[str, object]:
 
 
 def runs_gate_tests(script: str) -> bool:
-    """A command line `python3 scripts/tests-report.py --run-tests`, not a comment or an echo."""
-    return any(line.strip() == RUN_TESTS for line in script.splitlines())
+    """A command line starting `python3 scripts/tests-report.py --run-tests`, not a comment or an
+    echo. check.sh itself refuses to pass unless that step printed the completion line."""
+    return any(line.strip() == RUN_TESTS or line.strip().startswith(RUN_TESTS + " ")
+               for line in script.splitlines())
 
 
 def run_tests() -> int:
@@ -383,6 +385,7 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="fail when the inventory is not true")
     parser.add_argument("--print", dest="print_only", action="store_true", help="print, do not write")
     parser.add_argument("--run-tests", action="store_true", help="run every gate test in the list")
+    parser.add_argument("--count", action="store_true", help="print how many gate tests the list has")
     arguments = parser.parse_args()
 
     problems = inventory_problems()
@@ -390,6 +393,9 @@ def main() -> int:
         for problem in problems:
             print(f"tests-report: {problem}", file=sys.stderr)
         return 1
+    if arguments.count:
+        print(len(gate_tests()))
+        return 0
     if arguments.run_tests:
         return run_tests()
     if arguments.check:

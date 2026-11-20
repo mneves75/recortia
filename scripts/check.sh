@@ -19,7 +19,12 @@ echo "check: commit $(git rev-parse HEAD) tree $(tree_state)"
 scripts/doctor.sh
 
 echo "== script regressions (the list is GATES in scripts/tests-report.py)"
-python3 scripts/tests-report.py --run-tests
+# Keeps the dispatcher's completion line; the end of this script refuses to pass without it.
+tests_ran=""
+python3 scripts/tests-report.py --run-tests | while IFS= read -r line; do
+  print -r -- "$line"
+  if [[ $line == "tests-report: ran "* ]]; then tests_ran=$line; fi
+done
 
 echo "== gate inventory"
 python3 scripts/tests-report.py --check
@@ -46,5 +51,10 @@ xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug 
   -destination 'platform=macOS' -derivedDataPath .build/dd -onlyUsePackageVersionsFromResolvedFile \
   "${sign_args[@]}" build | tail -3
 
+expected_ran="tests-report: ran $(python3 scripts/tests-report.py --count) gate tests"
+if [[ "$tests_ran" != "$expected_ran" ]]; then
+  echo "check: the gate test list did not run in this gate (expected '$expected_ran')" >&2
+  exit 1
+fi
 echo "check: end tree $(tree_state)"
 echo "check: all gates passed"
