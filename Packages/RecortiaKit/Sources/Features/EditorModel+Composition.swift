@@ -166,6 +166,8 @@ extension EditorModel {
                     union = union.union(frame)
                 }
             }
+            for mask in document.masks { union = union.union(mask.outputRect) }
+            for effect in document.obfuscations { union = union.union(effect.rect) }
             let dx = max(0, -union.minX).rounded(.up), dy = max(0, -union.minY).rounded(.up)
             try Self.shiftContent(&document, dx: dx, dy: dy)
             document.canvasSize = Size(
@@ -197,7 +199,7 @@ extension EditorModel {
         }
         document.annotations = try document.annotations.map {
             let translated = $0.translated(dx: dx, dy: dy)
-            try validateArrowCurve(translated)
+            try validateArrow(translated)
             return translated
         }
         for index in document.masks.indices {
@@ -220,20 +222,19 @@ extension EditorModel {
         let reference =
             frames.count == 1 ? document.canvasRect : frames.dropFirst().reduce(first.1) { $0.union($1.1) }
         endContinuousChange()
-        edit("Align") { document in
-            for (item, frame) in frames {
-                let dx: Double, dy: Double
-                switch alignment {
-                case .left: (dx, dy) = (reference.minX - frame.minX, 0)
-                case .horizontalCenter: (dx, dy) = (reference.midX - frame.midX, 0)
-                case .right: (dx, dy) = (reference.maxX - frame.maxX, 0)
-                case .top: (dx, dy) = (0, reference.minY - frame.minY)
-                case .verticalCenter: (dx, dy) = (0, reference.midY - frame.midY)
-                case .bottom: (dx, dy) = (0, reference.maxY - frame.maxY)
-                }
-                try Self.translate(&document, items: [item], dx: dx, dy: dy)
+        var deltas: [EditorItemID: (dx: Double, dy: Double)] = [:]
+        for (item, frame) in frames {
+            switch alignment {
+            case .left: deltas[item] = (reference.minX - frame.minX, 0)
+            case .horizontalCenter: deltas[item] = (reference.midX - frame.midX, 0)
+            case .right: deltas[item] = (reference.maxX - frame.maxX, 0)
+            case .top: deltas[item] = (0, reference.minY - frame.minY)
+            case .verticalCenter: deltas[item] = (0, reference.midY - frame.midY)
+            case .bottom: deltas[item] = (0, reference.maxY - frame.maxY)
             }
         }
+        // Every delta comes from the same starting frames and lands in one pass (R4-01).
+        edit("Align") { document in try Self.move(&document, by: deltas) }
     }
 
     // MARK: Presentation
@@ -241,19 +242,19 @@ extension EditorModel {
     static let presentationRange: ClosedRange<Double> = 0...512
 
     public func setBackground(_ background: Presentation.Background) {
-        edit("Background") { $0.presentation.background = background }
+        edit("Background", inPreview: true) { $0.presentation.background = background }
     }
 
     public func setPadding(_ padding: Double) {
         guard padding.isFinite else { return }
         let value = min(max(padding, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
-        edit("Padding") { $0.presentation.padding = value }
+        edit("Padding", inPreview: true) { $0.presentation.padding = value }
     }
 
     public func setCornerRadius(_ radius: Double) {
         guard radius.isFinite else { return }
         let value = min(max(radius, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
-        edit("Corner Radius") { $0.presentation.cornerRadius = value }
+        edit("Corner Radius", inPreview: true) { $0.presentation.cornerRadius = value }
     }
 
     public func setShadow(_ shadow: Presentation.Shadow?) {
@@ -262,7 +263,7 @@ extension EditorModel {
                 return
             }
         }
-        edit("Shadow") { $0.presentation.shadow = shadow }
+        edit("Shadow", inPreview: true) { $0.presentation.shadow = shadow }
     }
 
     public func setSpotlightDim(_ dim: Double, for id: CalloutID) {

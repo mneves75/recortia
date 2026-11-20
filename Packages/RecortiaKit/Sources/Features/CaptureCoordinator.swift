@@ -31,14 +31,16 @@ public enum RegionSelection {
         return (clipped, clipped != rect)
     }
 
-    /// Size of `rect` in the display's actual pixels (never an assumed 2x).
+    /// Size of `rect` in the display's actual pixels (never an assumed 2x), from the same
+    /// outward-snapped rectangle the capture takes.
     public static func pixelSize(of rect: Rect<DesktopSpace>, on display: DisplayInfo) -> PixelSize {
-        let scale = display.pointPixelScale.isFinite && display.pointPixelScale > 0 ? display.pointPixelScale : 1
-        let width = (rect.width * scale).rounded(), height = (rect.height * scale).rounded()
-        guard width.isFinite, height.isFinite, width < Double(Int32.max), height < Double(Int32.max) else {
+        guard let local = DesktopGeometry.pixelAlignedLocalRect(rect, on: display) else {
             return PixelSize(width: 0, height: 0)
         }
-        return PixelSize(width: max(0, Int(width)), height: max(0, Int(height)))
+        let scale = display.pointPixelScale
+        let width = (local.width * scale).rounded(), height = (local.height * scale).rounded()
+        guard width < Double(Int32.max), height < Double(Int32.max) else { return PixelSize(width: 0, height: 0) }
+        return PixelSize(width: Int(width), height: Int(height))
     }
 }
 

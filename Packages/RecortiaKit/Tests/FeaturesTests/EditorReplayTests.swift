@@ -231,7 +231,7 @@ struct EditorReplayTests {
     }
 
     @Test("Delete and duplicate cover every object kind in one undo step each")
-    func deleteAndDuplicate() {
+    func deleteAndDuplicate() throws {
         let h = EditorHarness()
         let m = h.model
         m.selectTool(.arrow)
@@ -243,7 +243,8 @@ struct EditorReplayTests {
         m.selectTool(.spotlight)
         h.drag((200, 100), (260, 160))
         m.selectAll()
-        let before = m.document
+        var before = m.document
+        let original = try #require(before.masks.first)
         m.duplicateSelection()
         #expect(m.document.annotations.count == 2)
         #expect(m.document.masks.count == 2)
@@ -252,6 +253,14 @@ struct EditorReplayTests {
         #expect(m.document.layers.count == 2)
         #expect(m.selection.count == 5)
         m.deleteSelection()
+        // Before the delete, the original mask also bound the copy's pixels that lay under its
+        // box (R2), so deleting the copy cannot uncover them; everything else is as before.
+        let after = try #require(m.document.masks.first)
+        #expect(after.id == original.id)
+        for (asset, regions) in original.sourceRegions {
+            #expect(Set(regions).isSubset(of: after.sourceRegions[asset] ?? []))
+        }
+        before.masks[0].sourceRegions = after.sourceRegions
         #expect(m.document == before)
         #expect(m.session.undoCount == 6)
     }

@@ -12,6 +12,9 @@ struct GeometryTests {
             Rect(x: 0, y: .infinity, width: 10, height: 10),
             Rect(x: 0, y: 0, width: -1, height: 10),
             Rect(x: 0, y: 0, width: 10, height: .nan),
+            // Finite fields whose far edge overflows to infinity.
+            Rect(x: 1e308, y: 0, width: 1e308, height: 10),
+            Rect(x: 0, y: 1e308, width: 10, height: 1e308),
         ]
         for rect in bad {
             #expect(throws: GeometryError.self) { try rect.validated() }

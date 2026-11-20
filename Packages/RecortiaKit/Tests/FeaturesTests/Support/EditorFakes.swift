@@ -53,11 +53,15 @@ final class EditorFakeTextRecognition: TextRecognitionService {
     ]
     var lines: [OCRResult.Line] = []
     var pending: Pending<Void>?
+    var languagesPending: Pending<Void>?
     var fails = false
     private(set) var recognizedSizes: [PixelSize] = []
     private(set) var requestedLanguages: [[Locale.Language]] = []
 
-    func supportedLanguages() async -> [Locale.Language] { languages }
+    func supportedLanguages() async -> [Locale.Language] {
+        if let languagesPending { await languagesPending.wait() }
+        return languages
+    }
 
     func recognize(_ image: CGImage, languages: [Locale.Language]) async throws -> OCRResult {
         recognizedSizes.append(PixelSize(width: image.width, height: image.height))

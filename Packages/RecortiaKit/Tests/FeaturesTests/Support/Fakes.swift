@@ -248,11 +248,14 @@ final class FakeAssetService: ImageAssetService {
     private(set) var registeredCaptures: [ImageAssetInfo] = []
     private(set) var registeredStitched: [ImageAssetInfo] = []
     private(set) var released: [AssetID] = []
+    /// When set, imports decode for real into this store, so exports can render them.
+    var store: ImageStore?
 
     func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo {
         if let pendingImport { await pendingImport.wait() }
         if let importError { throw importError }
         imported.append((data.count, origin))
+        if let store { return await store.insert(try ImageDecoder.decode(data), origin: origin) }
         return ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 16, height: 9), origin: origin)
     }
 

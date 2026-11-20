@@ -21,10 +21,12 @@ extension EditorModel {
         let document = session.document
         let area = region ?? (document.crop != nil ? document.contentRect : nil)
         let outcome: Result<(OCRResult, AffineMap<SourcePixelSpace, DocumentSpace>), any Error>
+        var unavailable: [String]?
         do {
             let base = try await environment.renderer.renderBase(document, scale: 1)
             let (image, toDocument) = try Self.crop(base, to: area, canvas: document.canvasSize)
-            let languages = await preferredLanguages()
+            let (languages, missing) = await preferredLanguages()
+            unavailable = missing
             let result = try await environment.textRecognition.recognize(image, languages: languages)
             outcome = .success((result, toDocument))
         } catch {
@@ -37,6 +39,10 @@ extension EditorModel {
             recognition = .idle
             post(.recognitionDiscarded)
             return
+        }
+        if let unavailable {
+            unavailableRecognitionLanguages = unavailable
+            if !unavailable.isEmpty { post(.recognitionLanguagesUnavailable) }
         }
         switch outcome {
         case .success((let result, let toDocument)):
@@ -78,16 +84,16 @@ extension EditorModel {
         recognizedResult = nil
     }
 
-    /// English and Portuguese when the system offers them, else whatever it supports (FR-08).
-    func preferredLanguages() async -> [Locale.Language] {
+    /// English and Portuguese when the system offers them, else whatever it supports (FR-08),
+    /// plus the preferred codes the system lacks. The caller publishes those only for a current request.
+    func preferredLanguages() async -> (languages: [Locale.Language], unavailable: [String]) {
         let supported = await environment.textRecognition.supportedLanguages()
         let codes = Set(supported.compactMap { $0.languageCode?.identifier })
-        unavailableRecognitionLanguages = Self.preferredRecognitionLanguages.filter { !codes.contains($0) }
-        if !unavailableRecognitionLanguages.isEmpty { post(.recognitionLanguagesUnavailable) }
+        let unavailable = Self.preferredRecognitionLanguages.filter { !codes.contains($0) }
         let preferred = supported.filter {
             Self.preferredRecognitionLanguages.contains($0.languageCode?.identifier ?? "")
         }
-        return preferred.isEmpty ? supported : preferred
+        return (preferred.isEmpty ? supported : preferred, unavailable)
     }
 
     static let preferredRecognitionLanguages = ["en", "pt"]

@@ -109,6 +109,33 @@ struct RenderBudgetTests {
         #expect(RenderLimits.maxWorkingBytes <= 512 * 1024 * 1024)
     }
 
+    @Test("A base render does not count magnifier scratch it never draws")
+    func baseBudgetIgnoresCallouts() async throws {
+        let harness = ImagingHarness()
+        let asset = try await harness.add(try ChartFixture.solid(width: 10, height: 10, color: color(1, 2, 3)))
+        var document = Document(asset: asset)
+        // 36 M pixels: the base fits the 384 MiB budget, base plus a canvas-sized magnifier does not.
+        document.canvasSize = Size(width: 6_000, height: 6_000)
+        document.callouts = [
+            Callout(
+                kind: .magnifier(
+                    source: Rect(x: 0, y: 0, width: 10, height: 10),
+                    destination: Rect(x: 0, y: 0, width: 6_000, height: 6_000)))
+        ]
+        let base = try await harness.renderer.renderBase(document, scale: 1)
+        #expect(base.width == 6_000 && base.height == 6_000)
+        do {
+            _ = try await harness.renderer.render(document, scale: 1)
+            Issue.record("the full render draws the magnifier and must refuse its scratch")
+        } catch {
+            guard case .budgetExceeded(let estimated, let limit) = error else {
+                Issue.record("expected budgetExceeded, got \(error)")
+                return
+            }
+            #expect(estimated > limit)
+        }
+    }
+
     @Test("Assets missing from the store are an error, not a blank render")
     func missingAsset() async throws {
         let harness = ImagingHarness()

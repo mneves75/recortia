@@ -1,5 +1,6 @@
 import Domain
 import Foundation
+import RecortiaFixtures
 import Testing
 
 @testable import Features
@@ -72,6 +73,98 @@ struct EditorRedactionTests {
         mask = try #require(m.document.masks.first)
         #expect(mask.outputRect == Rect(x: 5, y: 5, width: 11, height: 10))
         #expect(mask.sourceRegions[assetID] == [PixelRect(x: 5, y: 5, width: 11, height: 10)])
+    }
+
+    @Test("A stationary click on a mask handle keeps the mask; a drag moves the edge by the pointer's delta")
+    func handleClickKeepsMask() throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let assetID = try #require(m.document.layers.first?.assetID)
+        m.selectTool(.select)
+        let historyBefore = m.session.undoCount
+        h.click(26, 20)
+        var mask = try #require(m.document.masks.first)
+        #expect(mask.outputRect == Rect(x: 10, y: 10, width: 20, height: 20))
+        #expect(m.session.undoCount == historyBefore)
+        h.drag((26, 20), (36, 20))
+        mask = try #require(m.document.masks.first)
+        #expect(mask.outputRect == Rect(x: 10, y: 10, width: 30, height: 20))
+        #expect(mask.sourceRegions[assetID] == [PixelRect(x: 10, y: 10, width: 30, height: 20)])
+    }
+
+    @Test("A click on a mask covering a magnifier selects the mask, which draws on top")
+    func maskOverMagnifierWinsHitTest() throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.magnifier)
+        h.drag((100, 100), (130, 120))
+        guard case .magnifier(_, let destination) = try #require(m.document.callouts.first).kind else {
+            Issue.record("expected a magnifier")
+            return
+        }
+        m.selectTool(.redact)
+        h.drag((destination.minX - 2, destination.minY - 2), (destination.maxX + 2, destination.maxY + 2))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.clearSelection()
+        h.click(destination.midX, destination.midY)
+        #expect(m.selection == [.mask(mask.id)])
+    }
+
+    @Test("A zero resize on a mask whose layer moved keeps its source binding and the secret covered")
+    func zeroResizeAfterLayerMoveKeepsBinding() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 10, y: 10, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let maskID = try #require(m.document.masks.first).id
+        let layerID = try #require(m.document.layers.first).id
+        m.selectTool(.select)
+        m.setFrame(Rect(x: 100, y: 0, width: 400, height: 300), for: .layer(layerID))
+        let moved = try #require(m.document.masks.first)
+        let covered = try await fixture.exported()
+        #expect(fixture.secretPixels(in: covered, FixtureRect(x: 110, y: 10, width: 20, height: 20)) == 0)
+        let history = m.session.undoCount
+
+        m.select(.mask(maskID))
+        h.click(26, 20)
+        m.pointerDown(at: Point(x: 26, y: 20))
+        m.pointerDragged(to: Point(x: 40, y: 20))
+        m.pointerDragged(to: Point(x: 26, y: 20))
+        m.pointerUp(at: Point(x: 26, y: 20))
+
+        #expect(m.document.masks.first == moved)
+        #expect(m.session.undoCount == history)
+        let after = try await fixture.exported()
+        #expect(fixture.secretPixels(in: after, FixtureRect(x: 110, y: 10, width: 20, height: 20)) == 0)
+        #expect(after == covered)
+    }
+
+    @Test("A drag on magnifier pixels beside a mask moves the magnifier and the secret stays covered")
+    func magnifierBesideMaskKeepsSecretCovered() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.magnifier)
+        h.drag((300, 200), (330, 220))
+        let magnifier = try #require(m.document.callouts.first)
+        m.setFrame(Rect(x: 118, y: 100, width: 60, height: 40), for: .callout(magnifier.id))
+        #expect(m.frame(of: .callout(magnifier.id))?.minX == 118)
+        m.selectTool(.select)
+        m.clearSelection()
+        // x = 122 is outside the mask but inside its hit tolerance, and on the magnifier's pixels.
+        h.drag((122, 110), (137, 110))
+        #expect(m.document.masks.first?.outputRect == mask.outputRect)
+        #expect(m.selection == [.callout(magnifier.id)])
+        #expect(m.frame(of: .callout(magnifier.id))?.minX == 133)
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
 
     @Test("A redaction over a layer whose transform cannot be inverted is refused")

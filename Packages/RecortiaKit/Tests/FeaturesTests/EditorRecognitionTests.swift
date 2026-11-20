@@ -45,6 +45,28 @@ struct EditorRecognitionTests {
         #expect(h.model.notice == .recognitionLanguagesUnavailable)
     }
 
+    @Test("A superseded or stale request publishes no language notice", arguments: [false, true])
+    func staleRequestPublishesNoLanguages(editsDocument: Bool) async {
+        let h = EditorHarness()
+        h.recognizer.languages = [Locale.Language(identifier: "ja-JP")]
+        let lookup = Pending<Void>()
+        h.recognizer.languagesPending = lookup
+        let request = Task { await h.model.recognizeText() }
+        await waitFor("language lookup started") { lookup.waiterCount == 1 }
+        if editsDocument {
+            h.model.setCrop(Rect(x: 20, y: 30, width: 100, height: 50))
+        } else {
+            h.model.clearRecognition()
+        }
+        let notices = h.model.noticeSerial
+        lookup.resolve(())
+        await request.value
+        #expect(h.model.unavailableRecognitionLanguages.isEmpty)
+        // Superseded: silent. Stale: only the discard notice.
+        #expect(h.model.noticeSerial == notices + (editsDocument ? 1 : 0))
+        #expect(h.model.notice == (editsDocument ? .recognitionDiscarded : nil))
+    }
+
     @Test("Region OCR crops the sanitized base and maps boxes back to document space")
     func regionBoxes() async throws {
         let h = EditorHarness()
