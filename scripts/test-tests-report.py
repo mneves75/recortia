@@ -62,12 +62,16 @@ class TestsReportTests(unittest.TestCase):
                     continue
                 if path.suffix or "scripts/" in relative:
                     path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_text("// fixture\n")
+                    # A gate test stub records that it ran; other protected files are never run.
+                    path.write_text(f"open('ran.txt', 'a').write('{relative}\\n')\n"
+                                    if relative in gate["tests"] else "// fixture\n")
+        self.tests = [t for gate in self.gates for t in gate["tests"]]
+        self.ran = f"tests-report: ran {len(self.tests)} gate tests\n"
         for caller in {c for gate in self.gates for c in gate["invoked_by"]}:
-            names = [pathlib.Path(t).name for gate in self.gates if caller in gate["invoked_by"] for t in gate["tests"]]
+            runs = any(caller in gate["invoked_by"] and gate["tests"] for gate in self.gates)
             path = self.root / caller
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("#!/bin/sh\n" + "".join(f"python3 scripts/{n}\n" for n in names))
+            path.write_text("#!/bin/sh\n" + ("python3 scripts/tests-report.py --run-tests\n" if runs else ""))
         # The fixture is its own repository, so evidence binds to a commit this test controls.
         for arguments in (("init", "-q"), ("add", "-A"), ("-c", "user.name=fixture", "-c",
                           "user.email=fixture@example.invalid", "commit", "-qm", "fixture")):
@@ -106,28 +110,44 @@ class TestsReportTests(unittest.TestCase):
         self.assertEqual(1, result.returncode)
         self.assertIn("test-orphan.py is not named by any gate", result.stderr)
 
-    def test_caller_that_never_names_the_test_is_reported(self) -> None:
+    def test_caller_that_stops_running_the_gate_tests_is_reported(self) -> None:
         check = self.root / "scripts/check.sh"
-        check.write_text(check.read_text().replace("python3 scripts/test-doctor.py\n", ""))
-        result = self.run_report("--check")
-        self.assertEqual(1, result.returncode)
-        self.assertIn("scripts/check.sh never invokes scripts/test-doctor.py", result.stderr)
-
-    def test_commented_or_echoed_mention_is_not_an_invocation(self) -> None:
-        check = self.root / "scripts/check.sh"
-        for mention in ("# python3 scripts/test-doctor.py\n", 'echo "skipped test-doctor.py"\n',
-                        ": python3 scripts/test-doctor.py\n"):
-            with self.subTest(mention=mention):
-                original = check.read_text()
-                check.write_text(original.replace("python3 scripts/test-doctor.py\n", mention))
+        original = check.read_text()
+        for replacement in ("", "# python3 scripts/tests-report.py --run-tests\n",
+                            'echo "python3 scripts/tests-report.py --run-tests"\n'):
+            with self.subTest(replacement=replacement):
+                check.write_text(original.replace("python3 scripts/tests-report.py --run-tests\n", replacement))
                 result = self.run_report("--check")
                 check.write_text(original)
                 self.assertEqual(1, result.returncode, result.stderr)
-                self.assertIn("scripts/check.sh never invokes scripts/test-doctor.py", result.stderr)
+                self.assertIn("scripts/check.sh never runs `python3 scripts/tests-report.py --run-tests`",
+                              result.stderr)
+
+    def test_run_tests_runs_exactly_the_listed_tests(self) -> None:
+        result = self.run_report("--run-tests")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(self.tests, (self.root / "ran.txt").read_text().splitlines())
+        self.assertEqual(self.ran, result.stdout.splitlines(keepends=True)[-1])
+
+    def test_run_tests_stops_at_a_failing_test(self) -> None:
+        (self.root / "scripts/test-doctor.py").write_text("raise SystemExit(3)\n")
+        result = self.run_report("--run-tests")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("scripts/test-doctor.py failed (exit 3)", result.stderr)
+        self.assertNotIn("gate tests", result.stdout)
+
+    def test_a_check_pass_needs_this_runs_completion_line(self) -> None:
+        # A dead branch still reads as a command line; only the run's own output proves the tests ran.
+        log = self.root / ".scratch/logs/check-1.log"
+        for ran in ("", f"tests-report: ran {len(self.tests) - 1} gate tests\n"):
+            with self.subTest(ran=ran):
+                log.write_text(f"check: commit {self.head} tree clean\n{ran}check: end tree clean\n"
+                               "check: all gates passed\n")
+                self.assertEqual("failed", self.suites()["check"]["status"])
 
     def test_a_pass_from_another_commit_is_stale_not_passed(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {'b' * 40} tree clean\ncheck: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {'b' * 40} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
         suite = self.suites()["check"]
         self.assertEqual("stale", suite["status"])
         self.assertEqual("b" * 40, suite["evidence_commit"])
@@ -138,10 +158,10 @@ class TestsReportTests(unittest.TestCase):
         log = self.root / ".scratch/logs/check-1.log"
         for start, end in (("dirty", "clean"), ("clean", "dirty"), ("dirty", "dirty")):
             with self.subTest(start=start, end=end):
-                log.write_text(f"check: commit {self.head} tree {start}\ncheck: end tree {end}\n"
+                log.write_text(f"check: commit {self.head} tree {start}\n{self.ran}check: end tree {end}\n"
                                "check: all gates passed\n")
                 self.assertEqual("dirty", self.suites()["check"]["status"])
-        log.write_text(f"check: commit {self.head} tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: all gates passed\n")
         self.assertEqual("dirty", self.suites()["check"]["status"], "a pass without its end state proves nothing")
 
     def test_release_verdicts_count_only_for_a_dry_run_record(self) -> None:
@@ -211,7 +231,7 @@ class TestsReportTests(unittest.TestCase):
 
     def test_status_comes_from_the_evidence_marker(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\n== package tests\ncheck: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head} tree clean\n== package tests\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
@@ -241,7 +261,7 @@ class TestsReportTests(unittest.TestCase):
     def test_committed_inventory_carries_no_run_status(self) -> None:
         # A status committed at commit X can never be true for X, so only the report holds runs.
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\ncheck: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         inventory = json.loads((self.root / "tests.json").read_text())
         self.assertEqual({"schema_version", "suites", "gates"}, set(inventory))
@@ -251,7 +271,7 @@ class TestsReportTests(unittest.TestCase):
 
     def test_check_validates_the_inventory_not_the_runs(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\ncheck: end tree clean\ncheck: all gates passed\n")
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         log.write_text(f"check: commit {self.head} tree clean\nFAILED (failures=1)\n")
         result = self.run_report("--check")
@@ -269,7 +289,7 @@ class TestsReportTests(unittest.TestCase):
 
     def test_a_later_failure_is_not_hidden_by_an_earlier_pass(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
-        log.write_text(f"check: commit {self.head} tree clean\ncheck: end tree clean\ncheck: all gates passed\nFAILED (failures=1)\n")
+        log.write_text(f"check: commit {self.head} tree clean\n{self.ran}check: end tree clean\ncheck: all gates passed\nFAILED (failures=1)\n")
         self.assertEqual(0, self.run_report().returncode)
         document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}

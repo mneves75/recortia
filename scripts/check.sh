@@ -18,17 +18,8 @@ tree_state() { local s; s=$(git status --porcelain --untracked-files=all) || { e
 echo "check: commit $(git rev-parse HEAD) tree $(tree_state)"
 scripts/doctor.sh
 
-echo "== toolchain and E2E isolation regressions"
-python3 scripts/test-doctor.py
-python3 scripts/test-e2e-isolation.py
-python3 scripts/test-localization.py
-python3 scripts/test-release-entitlements.py
-python3 scripts/test-release-binary.py
-python3 scripts/test-release-contract.py   # static release.sh checks; the bundle checks need --app
-python3 scripts/test-project-freshness.py
-python3 scripts/test-xcodegen-wrapper.py
-python3 scripts/test-space-probe.py
-python3 scripts/test-tests-report.py
+echo "== script regressions (the list is GATES in scripts/tests-report.py)"
+python3 scripts/tests-report.py --run-tests
 
 echo "== gate inventory"
 python3 scripts/tests-report.py --check

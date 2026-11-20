@@ -4,10 +4,13 @@
 A status file edited by hand is a claim without an instrument, and a status committed at commit X
 can never be true for X. So:
 
+* GATES below is the one list of gate tests: `--run-tests` (called by check.sh) runs exactly those
+  tests and ends with `tests-report: ran <N> gate tests`, and a check log without that line for the
+  current N is not a pass, so a heredoc or a dead branch cannot stand in for running them;
 * tests.json holds only the inventory: each suite, each gate's test scripts and the scripts that
-  invoke them. `--check` proves each gate still exists, still has its test, and is still invoked by
-  a command line of its caller (a comment or an echo that names the test runs nothing), and that
-  tests.json still records this inventory. A test file that nothing runs is a dead gate;
+  run them. `--check` proves each gate still exists and still has its test, that every
+  scripts/test-*.py is in the list, that each caller still has the `--run-tests` command line, and
+  that tests.json still records this inventory. A test file that nothing runs is a dead gate;
 * run statuses go to .scratch/tests-report.json, never committed. Each comes from a log that
   records the commit it ran at (`<suite>: commit <sha>`). A verdict from another commit, or from a
   log that records none, is `stale`; an E2E run of one language or of selected scenarios is
@@ -17,6 +20,7 @@ Usage:
   scripts/tests-report.py            write tests.json and .scratch/tests-report.json
   scripts/tests-report.py --print    print the run report without writing
   scripts/tests-report.py --check    exit 1 when the inventory no longer holds
+  scripts/tests-report.py --run-tests  run every gate test in the list, stopping at a failure
 """
 
 from __future__ import annotations
@@ -143,11 +147,22 @@ def last_marker(text: str, markers: tuple[str, ...]) -> tuple[int, str] | None:
     return max(found) if found else None
 
 
+RUN_TESTS = "python3 scripts/tests-report.py --run-tests"
+
+
+def gate_tests() -> list[str]:
+    return [test for gate in GATES for test in gate["tests"]]  # type: ignore[union-attr]
+
+
 def check_status(text: str) -> str | None:
     markers = last_marker(text, ("check: all gates passed", "FAILED (", "\nerror: "))
     if markers is None:
         return None
-    return "passed" if markers[1] == "check: all gates passed" else "failed"
+    if markers[1] != "check: all gates passed":
+        return "failed"
+    # The completion line only --run-tests prints proves every listed test ran in this run.
+    ran = f"tests-report: ran {len(gate_tests())} gate tests"
+    return "passed" if re.search(rf"(?m)^{re.escape(ran)}$", text) else "failed"
 
 
 def e2e_status(text: str) -> str | None:
@@ -263,10 +278,22 @@ def observe(suite: dict[str, str], head: str) -> dict[str, object]:
     }
 
 
-def invokes(script: str, test: str) -> bool:
-    """A command line that starts with `python3 <test>`, not a comment, echo or other mention."""
-    pattern = re.compile(rf"python3 {re.escape(test)}(?:\s|$)")
-    return any(pattern.match(line.strip()) for line in script.splitlines())
+def runs_gate_tests(script: str) -> bool:
+    """A command line `python3 scripts/tests-report.py --run-tests`, not a comment or an echo."""
+    return any(line.strip() == RUN_TESTS for line in script.splitlines())
+
+
+def run_tests() -> int:
+    """Run every gate test from the one list, in order; the first failure stops the run."""
+    tests = gate_tests()
+    for test in tests:
+        print(f"== {test}", flush=True)
+        result = subprocess.run([sys.executable, test], cwd=ROOT, check=False)
+        if result.returncode != 0:
+            print(f"tests-report: {test} failed (exit {result.returncode})", file=sys.stderr)
+            return 1
+    print(f"tests-report: ran {len(tests)} gate tests")
+    return 0
 
 
 def inventory_problems() -> list[str]:
@@ -284,10 +311,8 @@ def inventory_problems() -> list[str]:
             if not caller_path.exists():
                 problems.append(f"{gate['id']}: caller {caller} is missing")
                 continue
-            text = caller_path.read_text()
-            for test in gate["tests"]:  # type: ignore[union-attr]
-                if not invokes(text, test):
-                    problems.append(f"{gate['id']}: {caller} never invokes {test}")
+            if gate["tests"] and not runs_gate_tests(caller_path.read_text()):
+                problems.append(f"{gate['id']}: {caller} never runs `{RUN_TESTS}`")
     named = {pathlib.Path(t).name for gate in GATES for t in gate["tests"]}  # type: ignore[union-attr]
     for path in sorted((ROOT / "scripts").glob("test-*.py")):
         if path.name not in named:
@@ -357,6 +382,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="fail when the inventory is not true")
     parser.add_argument("--print", dest="print_only", action="store_true", help="print, do not write")
+    parser.add_argument("--run-tests", action="store_true", help="run every gate test in the list")
     arguments = parser.parse_args()
 
     problems = inventory_problems()
@@ -364,6 +390,8 @@ def main() -> int:
         for problem in problems:
             print(f"tests-report: {problem}", file=sys.stderr)
         return 1
+    if arguments.run_tests:
+        return run_tests()
     if arguments.check:
         problems = drift_problems(inventory())
         if problems:
@@ -372,7 +400,7 @@ def main() -> int:
             return 1
         print(
             f"tests-report: {len(GATES)} gates, {len(SUITES)} suites, "
-            f"{sum(len(g['tests']) for g in GATES)} tests, every test invoked"  # type: ignore[arg-type]
+            f"{sum(len(g['tests']) for g in GATES)} tests, every test run by --run-tests"  # type: ignore[arg-type]
         )
         return 0
     observed = json.dumps(report(), indent=2) + "\n"
