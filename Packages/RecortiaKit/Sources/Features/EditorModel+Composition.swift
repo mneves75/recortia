@@ -224,6 +224,7 @@ extension EditorModel {
 
     /// Aligns the selection to the canvas (one item) or to the selection's bounds (several).
     public func align(_ alignment: EditorAlignment) {
+        guard textEditing == nil else { return }
         let items = orderedSelection
         let frames = items.compactMap { item in frame(of: item).map { (item, $0) } }
         guard let first = frames.first else { return }

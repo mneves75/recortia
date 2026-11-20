@@ -573,9 +573,15 @@ public final class EditorModel {
 
     static let duplicateOffset = 10.0
 
+    /// Arrange commands (z-order, align, duplicate) act on a selection only while no text input
+    /// owns the keyboard, automatic masking is settled and the document is editable.
+    public var canArrangeSelection: Bool {
+        !selection.isEmpty && textEditing == nil && !isMaskingPending && !isClosed && !showsOutputPreview
+    }
+
     public func duplicateSelection() {
         let items = selection
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty, textEditing == nil else { return }
         // IDs are allocated here, not in the edit closure, which must build the same document on
         // each of its passes.
         var fresh: [EditorItemID: EditorItemID] = [:]
@@ -640,7 +646,7 @@ public final class EditorModel {
 
     public func reorderSelection(_ order: EditorZOrder) {
         let items = selection
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty, textEditing == nil else { return }
         endContinuousChange()
         edit("Arrange") { document in
             Self.reorder(&document.layers, order) { items.contains(.layer($0.id)) }
