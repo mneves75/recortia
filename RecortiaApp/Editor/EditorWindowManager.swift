@@ -143,8 +143,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         // capture must still show its result; normal-level ordering does not force activation.
         if !NSApp.isActive { window.orderFrontRegardless() }
         if !wasVisible {
-            LatencySignposts.end(.captureToEditor)
-            LatencySignposts.begin(.editorToFirstDraw)
+            canvas.firstDrawInterval = LatencySignposts.begin(.editorToFirstDraw)
         }
     }
 

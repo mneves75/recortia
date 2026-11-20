@@ -57,7 +57,6 @@ final class RegionOverlayController {
             window.orderFrontRegardless()
         }
         focusWindowUnderPointer()
-        if !windows.isEmpty { LatencySignposts.end(.shortcutToOverlay) }
     }
 
     func dismiss() {

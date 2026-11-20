@@ -273,10 +273,12 @@ sound effects are off. The sound is an original asset or a system sound, never a
   copy-to-pasteboard, read by the existing `window-latency` scenario on an idle, unlocked console,
   ten samples each, medians and worst case recorded per release. No change until numbers exist.
 - **How to measure (step 1 signposts, T1e):** `LatencySignposts` (Features) emits four intervals
-  under subsystem `dev.mvneves.Recortia`, category `latency`: "Shortcut to overlay" (capture
-  shortcut key-up to the overlay or chooser on screen), "Selection to capture" (the capture call to
-  its returned image, after any countdown), "Capture to editor window" and "Editor to first canvas
-  draw" (the newly shown editor to its first successful draw of the image). On an idle, unlocked
+  under subsystem `dev.mvneves.Recortia`, category `latency`, each owned by its own request or
+  canvas: "Capture start to overlay" (a capture's start, which a shortcut runs at once, to the
+  overlay or chooser on screen; marked "abandoned" when none is shown), "Selection to capture" (the
+  capture call to its returned image, after any countdown), "Capture to editor window" and "Editor
+  to first canvas draw" (the newly shown editor to its first successful draw of the image). Leave
+  abandoned intervals out of the medians. On an idle, unlocked
   console, record the installed build with `xcrun xctrace record --template os_signpost --attach
   Recortia --output <trace>`, take ten captures of each kind, and read the intervals with Instruments
   or `xcrun xctrace export --input <trace> --toc`; record medians and worst case per release here.

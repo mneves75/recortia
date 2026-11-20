@@ -28,10 +28,6 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
         .captureRegion, .captureDisplay, .captureWindow, .captureWithDelay, .repeatLastRegion, .scrollingCapture,
         .captureText,
     ]
-    /// The capture modes that show a region overlay or a chooser first (A-13 latency signposts).
-    static let overlayCaptures: Set<AppCommand> = [
-        .captureRegion, .captureDisplay, .captureWindow, .captureWithDelay, .captureText,
-    ]
 
     var title: String {
         switch self {
