@@ -157,7 +157,8 @@ class ReleaseContractTests(unittest.TestCase):
         fixture = self.fixture()
         # The pinned XcodeGen cannot be fetched, and a global copy must not stand in for it.
         fixture.write_tool("curl", "#!/bin/sh\nexit 22\n")
-        fixture.write_tool("xcodegen", "#!/bin/sh\nexit 0\n")
+        global_called = fixture.root / "global-xcodegen-called"
+        fixture.write_tool("xcodegen", f"#!/bin/sh\ntouch '{global_called}'\nexit 0\n")
         gate = fixture.root / "gate"
         shutil.copy(ROOT / "scripts/check.sh", gate / "scripts/check.sh")
         for name in ("doctor.sh", "check-project-fresh.sh", "xcodegen.sh"):
@@ -166,8 +167,8 @@ class ReleaseContractTests(unittest.TestCase):
         # Earlier gate steps are independently exercised by their own suites.
         for name in re.findall(r"python3 scripts/([\w-]+\.py)", (ROOT / "scripts/check.sh").read_text()):
             (gate / "scripts" / name).write_text("")
-        fixture.write_tool("swift", "#!/bin/sh\nexit 0\n")
         result = fixture.run()
+        self.assertFalse(global_called.exists(), "a global xcodegen must never stand in for the pin")
         self.assertNotEqual(0, result.returncode)
         self.assertIn("the gate failed", result.stderr)
         gate_log = next((fixture.root / ".build/release").rglob("gate.log")).read_text()
