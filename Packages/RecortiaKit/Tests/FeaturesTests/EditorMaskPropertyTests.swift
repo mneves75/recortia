@@ -291,13 +291,27 @@ private enum Step {
         case .alignMixed(let picks, let alignment):
             let masks = m.document.masks.map { EditorItemID.mask($0.id) }
             let candidates = layers + masks + annotations
-            m.setSelection(Set(candidates.enumerated().filter { picks & (1 << ($0.offset % 6)) != 0 }.map(\.element)))
-            let before = m.document
-            m.align(alignment)
-            if m.document.layers == before.layers, m.document.masks.map(\.outputRect) != before.masks.map(\.outputRect)
-            {
-                m.undo()
+            let picked = candidates.enumerated().filter { picks & (1 << ($0.offset % 6)) != 0 }.map(\.element)
+            let frames = picked.compactMap { item in m.frame(of: item).map { (item, $0) } }
+            guard let first = frames.first else { return }
+            let reference =
+                frames.count == 1 ? m.document.canvasRect : frames.dropFirst().reduce(first.1) { $0.union($1.1) }
+            // A mixed edit only: an align that moves no layer is an explicit mask move, so skip it
+            // rather than run and undo it (which would leave it on the redo stack, R6-03).
+            let movesLayer = frames.contains { item, frame in
+                guard case .layer = item else { return false }
+                switch alignment {
+                case .left: return frame.minX != reference.minX
+                case .horizontalCenter: return frame.midX != reference.midX
+                case .right: return frame.maxX != reference.maxX
+                case .top: return frame.minY != reference.minY
+                case .verticalCenter: return frame.midY != reference.midY
+                case .bottom: return frame.maxY != reference.maxY
+                }
             }
+            guard movesLayer else { return }
+            m.setSelection(Set(picked))
+            m.align(alignment)
         case .nudgeMixed(let pick, let dx):
             guard let layer = one(layers, pick), let mask = m.document.masks.first?.id else { return }
             m.setSelection([layer, .mask(mask)])
