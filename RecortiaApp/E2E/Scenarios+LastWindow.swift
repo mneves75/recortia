@@ -411,7 +411,8 @@
                 await E2EWait.until(timeout: .seconds(10)) { harness.editors.controllers.count == editors + 1 })
             try context.require(
                 "open request: the second file waits at its read", await E2EWait.until { input.isWaiting })
-            let first = try context.unwrap("the first opened editor has a window", harness.editors.controllers.last?.window)
+            let first = try context.unwrap(
+                "the first opened editor has a window", harness.editors.controllers.last?.window)
             first.ignoresMouseEvents = true
             PresenceScenarios.show(first, AppPresence.shared)
             first.close()
@@ -426,7 +427,8 @@
             context.check(
                 "the request's refusal was reported before termination was requested",
                 harness.messages.values.count == messages + 1 && messagesAtRequest == messages + 1,
-                "messages: \(harness.messages.values.count - messages), at request: \(String(describing: messagesAtRequest))")
+                "messages: \(harness.messages.values.count - messages), at request: \(String(describing: messagesAtRequest))"
+            )
             harness.settings.update { $0.keepsRunningInMenuBar = true }
         }
 
