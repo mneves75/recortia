@@ -95,8 +95,8 @@ struct PinContentView: View {
     let pinID: PinID
     let model: PinsModel
     let fitScale: Double
-    /// How long a success notice stays; scenarios shorten it.
-    var successNoticeDuration: Duration = .seconds(4)
+    /// How long a success notice stays: returns when it should go. Scenarios release it themselves.
+    var successNoticeTimer: @MainActor () async -> Void = { try? await Task.sleep(for: .seconds(4)) }
     /// The latest copy or drag-out outcome, in the editor's words (PIN-02).
     @State private var status: PinNotice?
 
@@ -121,7 +121,7 @@ struct PinContentView: View {
         // Failures stay until the next action; a success note clears itself. Repeated exports
         // show the same text, so the timer dismisses only the notice that started it.
         guard outcome.didWrite else { return }
-        try? await Task.sleep(for: successNoticeDuration)
+        await successNoticeTimer()
         if status?.id == notice.id { status = nil }
     }
 }
