@@ -448,8 +448,17 @@
         /// Open With, a drop on the Dock icon and `open -a` (FR-03, A-2): a real Open Documents
         /// Apple event sent to this process reaches the app delegate, which opens one editor per
         /// image through the shared admission and reports the refused files once.
-        /// A real Open Documents Apple event sent to this process, as Finder or `open -a` sends one.
-        private static func sendOpenDocuments(_ urls: [URL]) throws {
+        /// Counts the open requests the app delegate hands to the runner (`AppDelegate` →
+        /// `E2ERunner.openFiles`), so a delegate that is never called fails as itself.
+        private final class DelegateOpens {
+            var count = 0
+        }
+
+        /// A real Open Documents Apple event, as Finder or `open -a` sends one, handed to the
+        /// handler AppKit registered for it, which calls the app delegate's `application(_:open:)`.
+        /// Sending it to this process with AESend instead would wait on the main thread that has
+        /// to handle it, and time out (errAETimeout).
+        private static func sendOpenDocuments(_ urls: [URL], _ context: ScenarioContext) throws {
             let event = NSAppleEventDescriptor(
                 eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEOpenDocuments),
                 targetDescriptor: .currentProcess(), returnID: AEReturnID(kAutoGenerateReturnID),
@@ -457,9 +466,29 @@
             let list = NSAppleEventDescriptor.list()
             for (index, url) in urls.enumerated() { list.insert(NSAppleEventDescriptor(fileURL: url), at: index + 1) }
             event.setParam(list, forKeyword: keyDirectObject)
-            do { _ = try event.sendEvent(options: [.noReply, .neverInteract], timeout: 10) } catch {
-                throw E2EAbort("open-documents event: \(error)")
+            let descriptor = try context.unwrap("open-documents event descriptor", event.aeDesc)
+            var reply = AEDesc(descriptorType: typeNull, dataHandle: nil)
+            defer { AEDisposeDesc(&reply) }
+            // The reference constant is unused by AppKit's handler; it only has to be a valid pointer.
+            var unusedReference = 0
+            let status = withUnsafeMutablePointer(to: &unusedReference) {
+                NSAppleEventManager.shared().dispatchRawAppleEvent(
+                    descriptor, withRawReply: &reply, handlerRefCon: UnsafeMutableRawPointer($0))
             }
+            try context.require("AppKit handles the open-documents event", status == noErr, "OSErr \(status)")
+        }
+
+        /// Runs `body` while counting the open requests that reach the app delegate.
+        private static func countingDelegateOpens(_ body: () async throws -> Void) async rethrows -> Int {
+            let opens = DelegateOpens()
+            let forward = E2ERunner.openFiles
+            E2ERunner.openFiles = { urls in
+                opens.count += 1
+                forward?(urls)
+            }
+            defer { E2ERunner.openFiles = forward }
+            try await body()
+            return opens.count
         }
 
         /// A cold launch (A-2): two open requests of six images arrive before the editors are wired.
@@ -483,7 +512,11 @@
             let before = harness.editors.controllers.count
             let messages = harness.messages.values.count
             let reads = harness.importInput.fileReads
-            for urls in requests { try sendOpenDocuments(urls) }
+            let delegateOpens = try await countingDelegateOpens {
+                for urls in requests { try sendOpenDocuments(urls, context) }
+            }
+            context.check(
+                "the app delegate receives each open request before launch", delegateOpens == 2, "\(delegateOpens)")
             await E2ESnapshot.settle(nil, for: .milliseconds(300))
             context.check(
                 "before launch, opened files wait unread",
@@ -517,7 +550,10 @@
             let before = harness.editors.controllers.count
             let messages = harness.messages.values.count
             let reads = harness.importInput.fileReads
-            try sendOpenDocuments(urls)
+            let delegateOpens = try await countingDelegateOpens { try sendOpenDocuments(urls, context) }
+            context.check(
+                "the open-documents event reaches the app delegate's application(_:open:)", delegateOpens == 1,
+                "\(delegateOpens)")
             let reported = await E2EWait.until(timeout: .seconds(10)) {
                 harness.messages.values.count == messages + 1
             }
