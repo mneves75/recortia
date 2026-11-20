@@ -194,6 +194,97 @@ struct EditorMaskInvariantTests {
         #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 0, y: 100, width: 120, height: 20)) == 0)
     }
 
+    // MARK: R5 mixed mask and layer edits keep every mask's coverage
+
+    /// Runs `scenario` on two documents whose only difference is the color of a secret that lies,
+    /// unbound, under a mask at (100, 100)–(120, 120) on a layer above the bottom image (protected
+    /// only by the box at render time), and returns both exports. A leak shows as a difference,
+    /// even where resampling blends the secret's color. `rectangle` is drawn before the layer is
+    /// placed, so the layer's placement is the last edit before the scenario.
+    private func pairedLateCovered(
+        layer size: (Int, Int), secret: FixtureRect, frame: Rect<DocumentSpace>?,
+        rectangle: Rect<DocumentSpace>?,
+        _ scenario: (EditorHarness, LayerID, MaskID, AnnotationID?) async throws -> Void
+    ) async throws -> [DecodedPixels] {
+        var exports: [DecodedPixels] = []
+        for green: UInt8 in [0, 200] {
+            let fixture = try await SecretExport(secrets: [])
+            let h = fixture.harness
+            let m = h.model
+            m.setStrokeColor(.yellow)
+            m.setFillColor(.yellow)
+            m.selectTool(.redact)
+            h.drag((100, 100), (120, 120))
+            let mask = try #require(m.document.masks.first).id
+            var annotation: AnnotationID?
+            if let rectangle {
+                m.selectTool(.rectangle)
+                h.drag((rectangle.minX, rectangle.minY), (rectangle.maxX, rectangle.maxY))
+                annotation = m.document.annotations.first?.id
+            }
+            let layer = try await fixture.addLayer(width: size.0, height: size.1, secrets: [secret], green: green)
+            m.selectTool(.select)
+            if let frame { m.setFrame(frame, for: .layer(layer)) }
+            try await scenario(h, layer, mask, annotation)
+            let pixels = try await fixture.exported()
+            #expect(fixture.secretPixels(in: pixels) == 0)
+            exports.append(pixels)
+        }
+        return exports
+    }
+
+    @Test("Align of a layer, an unmoved mask and a rectangle keeps the layer's covered secret hidden (R5-01 a)")
+    func alignWithUnmovedMask() async throws {
+        let exports = try await pairedLateCovered(
+            layer: (120, 50), secret: FixtureRect(x: 100, y: 0, width: 20, height: 20),
+            frame: Rect(x: 0, y: 100, width: 120, height: 50), rectangle: Rect(x: 200, y: 100, width: 20, height: 20)
+        ) { h, layer, mask, rectangle in
+            let m = h.model
+            m.setSelection([.layer(layer), .mask(mask), .annotation(try #require(rectangle))])
+            m.align(.horizontalCenter)
+            #expect(m.document.masks.first?.outputRect == Rect(x: 100, y: 100, width: 20, height: 20))
+            #expect(m.document.layers.last?.placement.translation.x == 50)
+        }
+        #expect(exports[0] == exports[1])
+    }
+
+    @Test(
+        "Sub-pixel moves of a layer with its mask keep the layer's covered secret hidden (R5-01 b)",
+        arguments: ["nudge", "zoomed drag"])
+    func subPixelMixedMove(kind: String) async throws {
+        let exports = try await pairedLateCovered(
+            layer: (400, 300), secret: FixtureRect(x: 100, y: 100, width: 20, height: 20), frame: nil, rectangle: nil
+        ) { h, layer, mask, _ in
+            let m = h.model
+            m.setSelection([.layer(layer), .mask(mask)])
+            m.setZoom(8)
+            for _ in 0..<3 {
+                if kind == "nudge" {
+                    m.nudgeSelection(dx: 0.45, dy: 0)
+                } else {
+                    let a = m.viewport.viewPoint(Point(x: 50, y: 50))
+                    h.dragInView(a, Point(x: a.x + 3.6, y: a.y), steps: 1)
+                }
+            }
+            #expect((m.document.layers.last?.placement.translation.x ?? 0) > 1.3)
+        }
+        #expect(exports[0] == exports[1])
+    }
+
+    @Test("Align moving a layer and its mask by different amounts keeps the covered secret hidden (R5-01 c)")
+    func divergentAlign() async throws {
+        let exports = try await pairedLateCovered(
+            layer: (200, 100), secret: FixtureRect(x: 100, y: 0, width: 20, height: 20),
+            frame: Rect(x: 0, y: 100, width: 200, height: 100), rectangle: Rect(x: 300, y: 100, width: 20, height: 20)
+        ) { h, layer, mask, rectangle in
+            let m = h.model
+            m.setSelection([.layer(layer), .mask(mask), .annotation(try #require(rectangle))])
+            m.align(.right)
+            #expect(m.document.layers.last?.placement.translation.x == 120)
+        }
+        #expect(exports[0] == exports[1])
+    }
+
     // MARK: I2 only an effective move or resize re-binds
 
     @Test("A stationary handle click at 12.5 % zoom leaves the mask, history and export untouched")

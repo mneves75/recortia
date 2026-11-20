@@ -231,20 +231,16 @@ public final class EditorModel {
     ///
     /// Every edit first makes each mask's coverage durable (`preserveCoverage`), so no edit can
     /// uncover what a box hides by moving, scaling, cropping, adding or removing a layer (R2).
-    /// `explicitMasks` are the masks this edit moves or resizes itself: they re-bind instead.
     /// `inPreview` marks a whole-image presentation setting, which selects nothing.
     @discardableResult
-    func edit(
-        _ label: String, explicitMasks: Set<MaskID> = [], inPreview: Bool = false,
-        _ change: (inout Document) throws -> Void
-    ) -> Bool {
+    func edit(_ label: String, inPreview: Bool = false, _ change: (inout Document) throws -> Void) -> Bool {
         // Output Preview is read-only for selection and objects (F-04); whole-image presentation
         // settings stay available there, where their effect is seen.
         guard !isClosed, !showsOutputPreview || inPreview else { return false }
         let before = session.document
         let epoch = session.privacyEpoch
         do {
-            let (preserved, updated) = try Self.applying(change, to: before, explicitMasks: explicitMasks)
+            let (preserved, updated) = try Self.applying(change, to: before)
             guard updated != preserved else { return true }
             settleTransformGesture()
             try session.perform(label) { $0 = updated }
@@ -588,7 +584,7 @@ public final class EditorModel {
         let items = orderedSelection
         guard !items.isEmpty, dx.isFinite, dy.isFinite, dx != 0 || dy != 0 else { return }
         endContinuousChange()
-        edit("Nudge", explicitMasks: Self.maskIDs(items)) { document in
+        edit("Nudge") { document in
             try Self.translate(&document, items: items, dx: dx, dy: dy)
         }
     }
@@ -690,20 +686,47 @@ public final class EditorModel {
 
     /// The one path every edit and drag takes: coverage first becomes durable, then `change`
     /// runs. Returns the document after each stage, so a caller can tell a no-op from a change.
-    /// A mask whose box cannot be mapped refuses only an edit that changes layers; other edits
-    /// cannot uncover anything, so they still apply.
-    static func applying(
-        _ change: (inout Document) throws -> Void, to document: Document, explicitMasks: Set<MaskID>
-    ) throws -> (preserved: Document, updated: Document) {
+    ///
+    /// An edit is an explicit mask edit only when it changes no image layer and moves or resizes
+    /// masks: those masks re-bind (`setMaskRect`) and every other mask's coverage is preserved.
+    /// Any edit that changes a layer (a move, resize, reorder, align or nudge, even with masks
+    /// selected) preserves every mask's coverage at its pre-edit rectangle and releases nothing.
+    /// `change` runs once on a copy to tell which case applies, so it must have no side effects
+    /// beyond the document. A mask whose box cannot be mapped refuses only an edit that changes
+    /// layers; other edits cannot uncover anything, so they still apply.
+    static func applying(_ change: (inout Document) throws -> Void, to document: Document) throws
+        -> (preserved: Document, updated: Document)
+    {
+        var trial = document
+        try change(&trial)
+        let changesLayers = trial.layers != document.layers
+        var explicit: Set<MaskID> = []
+        if !changesLayers {
+            let old = Dictionary(uniqueKeysWithValues: document.masks.map { ($0.id, $0.outputRect) })
+            explicit = Set(
+                trial.masks.compactMap { mask in
+                    old[mask.id].flatMap { $0 != mask.outputRect ? mask.id : nil }
+                })
+        }
         var preserved = document
         var refusal: (any Error)?
-        do { try preserveCoverage(&preserved, except: explicitMasks) } catch {
+        do { try preserveCoverage(&preserved, except: explicit) } catch {
             preserved = document
             refusal = error
         }
         var updated = preserved
         try change(&updated)
-        if let refusal, updated.layers != document.layers { throw refusal }
+        if changesLayers {
+            if let refusal { throw refusal }
+            let kept = Dictionary(uniqueKeysWithValues: preserved.masks.map { ($0.id, $0.sourceRegions) })
+            for index in updated.masks.indices {
+                for (asset, regions) in kept[updated.masks[index].id] ?? [:] {
+                    let bound = updated.masks[index].sourceRegions[asset] ?? []
+                    let missing = regions.filter { !bound.contains($0) }
+                    if !missing.isEmpty { updated.masks[index].sourceRegions[asset] = bound + missing }
+                }
+            }
+        }
         return (preserved, updated)
     }
 
@@ -744,10 +767,6 @@ public final class EditorModel {
         }
         document.masks[index].outputRect = snapped
         document.masks[index].sourceRegions = regions
-    }
-
-    static func maskIDs(_ items: some Sequence<EditorItemID>) -> Set<MaskID> {
-        Set(items.compactMap { if case .mask(let id) = $0 { id } else { nil } })
     }
 
     private static func contains(_ outer: PixelRect, _ inner: PixelRect) -> Bool {
@@ -823,7 +842,7 @@ public final class EditorModel {
         } else {
             isCurve = false
         }
-        edit("Set Frame", explicitMasks: Self.maskIDs([item])) { document in
+        edit("Set Frame") { document in
             do { try Self.setFrame(&document, item: item, to: rect) } catch {
                 if isCurve { throw ArrowGeometryFailure.invalid }
                 throw error

@@ -82,10 +82,9 @@ extension EditorModel {
             }
             let moved: Document
             do {
-                // The same path as every edit (R2); masks in the drag re-bind instead.
+                // The same path as every edit (R2).
                 moved = try Self.applying(
-                    { try Self.translate(&$0, items: items, dx: dx, dy: dy) },
-                    to: original, explicitMasks: Self.maskIDs(items)
+                    { try Self.translate(&$0, items: items, dx: dx, dy: dy) }, to: original
                 ).updated
             } catch {
                 if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
@@ -101,7 +100,7 @@ extension EditorModel {
             do {
                 resized = try Self.applying(
                     { try resize(&$0, item: item, handle: handle, frame: frame, to: target, modifiers: modifiers) },
-                    to: original, explicitMasks: Self.maskIDs([item])
+                    to: original
                 ).updated
             } catch {
                 if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }

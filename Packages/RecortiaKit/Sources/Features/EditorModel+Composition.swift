@@ -234,7 +234,7 @@ extension EditorModel {
             }
         }
         // Every delta comes from the same starting frames and lands in one pass (R4-01).
-        edit("Align", explicitMasks: Self.maskIDs(deltas.keys)) { document in try Self.move(&document, by: deltas) }
+        edit("Align") { document in try Self.move(&document, by: deltas) }
     }
 
     // MARK: Presentation
