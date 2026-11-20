@@ -395,7 +395,8 @@ enum RenderEngine {
         var output = try RenderRaster(width: content.width, height: content.height)
         let full = CGRect(x: 0, y: 0, width: output.width, height: output.height)
         let radius = min(presentation.cornerRadius * scale, min(contentRect.width, contentRect.height) / 2)
-        let card = CGPath(roundedRect: contentRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+        let card = CGMutablePath()
+        card.addRoundedRect(in: contentRect, cornerWidth: radius, cornerHeight: radius)
         try output.withTopLeftContext { context in
             drawBackground(presentation.background, in: full, context)
             if let shadow = presentation.shadow, shadow.opacity > 0 {
@@ -437,8 +438,9 @@ enum RenderEngine {
             context.setFillColor(color.cgColor)
             context.fill(rect)
         case .linearGradient(let from, let to, let angleDegrees):
+            // The locations array is valid for the call and has one entry per color.
             guard let space = RenderRaster.colorSpace,
-                let gradient = CGGradient(
+                let gradient = unsafe CGGradient(
                     colorsSpace: space,
                     colors: [from.cgColor, to.cgColor] as CFArray,
                     locations: [0, 1])

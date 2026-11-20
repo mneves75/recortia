@@ -127,6 +127,10 @@ protocol FileSystemOperations {
     func itemExists(at url: URL) -> Bool
 }
 
+/// Every `unsafe` below marks a C call. Invariants: the String-to-C-string and inout-to-pointer
+/// arguments are valid for the call only and no callee keeps them; `writeAll` reads only inside
+/// `buffer`; each `acl_t` is freed exactly once, by the scope that obtained it or by the caller it
+/// is returned to.
 struct POSIXFileSystem: FileSystemOperations {
     /// Reported when the temporary file's name no longer leads to the written file alone.
     static let substitutedFailure = FileSystemFailure(code: EPERM)
@@ -150,27 +154,27 @@ struct POSIXFileSystem: FileSystemOperations {
         -> FileIdentity
     {
         let newFileMode = access == .newFile ? try newFileMode() : nil
-        let descriptor = open(url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
+        let descriptor = unsafe open(url.path(percentEncoded: false), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
         guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
         var failure: Int32?
         var inherited: acl_t?
         if failure == nil {
             do throws(FileSystemFailure) {
-                inherited = try Self.takeInheritedACL(descriptor)
+                unsafe inherited = try Self.takeInheritedACL(descriptor)
             } catch {
                 failure = error.code
             }
         }
-        defer { if let inherited { acl_free(UnsafeMutableRawPointer(inherited)) } }
+        defer { if let inherited = unsafe inherited { unsafe acl_free(UnsafeMutableRawPointer(inherited)) } }
         if failure == nil { failure = Self.writeAll(data, to: descriptor) }
         if failure == nil, fsync(descriptor) != 0 { failure = errno }
         // Identity once the bytes are on disk: exFAT and FAT number a file by its first cluster,
         // so an empty new file carries a placeholder number that changes with its first write.
         var status = stat()
-        if failure == nil, fstat(descriptor, &status) != 0 { failure = errno }
+        if failure == nil, unsafe fstat(descriptor, &status) != 0 { failure = errno }
         if failure == nil { afterSync(url) }
-        if failure == nil, access == .newFile, let inherited,
-            acl_set_fd_np(descriptor, inherited, ACL_TYPE_EXTENDED) != 0
+        if failure == nil, access == .newFile, let inherited = unsafe inherited,
+            unsafe acl_set_fd_np(descriptor, inherited, ACL_TYPE_EXTENDED) != 0
         {
             failure = errno
         }
@@ -190,11 +194,11 @@ struct POSIXFileSystem: FileSystemOperations {
         let probe = fileManager.temporaryDirectory.appendingPathComponent(
             ".recortia-mode-\(UUID().uuidString)", isDirectory: false
         ).path(percentEncoded: false)
-        let descriptor = open(probe, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o644)
+        let descriptor = unsafe open(probe, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o644)
         guard descriptor >= 0 else { throw FileSystemFailure(code: errno) }
-        unlink(probe)
+        unsafe unlink(probe)
         var status = stat()
-        let result = fstat(descriptor, &status)
+        let result = unsafe fstat(descriptor, &status)
         let failure = errno
         close(descriptor)
         guard result == 0 else { throw FileSystemFailure(code: failure) }
@@ -206,11 +210,11 @@ struct POSIXFileSystem: FileSystemOperations {
     private static func writeAll(_ data: Data, to descriptor: Int32) -> Int32? {
         // Invariant: `buffer` is valid only inside the closure; every access stays within
         // `buffer.count` because `offset` only advances by what write(2) reports it wrote.
-        data.withUnsafeBytes { buffer -> Int32? in
+        unsafe data.withUnsafeBytes { buffer -> Int32? in
             guard let base = buffer.baseAddress else { return nil }
             var offset = 0
             while offset < buffer.count {
-                let written = Darwin.write(descriptor, base + offset, buffer.count - offset)
+                let written = unsafe Darwin.write(descriptor, base + offset, buffer.count - offset)
                 if written < 0 {
                     if errno == EINTR { continue }
                     return errno
@@ -224,21 +228,21 @@ struct POSIXFileSystem: FileSystemOperations {
     /// Removes, through the descriptor, the ACL a new file inherited from its folder and returns it
     /// for the caller to free; nil when there was none or the volume has no ACLs.
     private static func takeInheritedACL(_ descriptor: Int32) throws(FileSystemFailure) -> acl_t? {
-        guard let inherited = acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED) else {
+        guard let inherited = unsafe acl_get_fd_np(descriptor, ACL_TYPE_EXTENDED) else {
             if errno == ENOENT || errno == ENOTSUP { return nil }
             throw FileSystemFailure(code: errno)
         }
         do throws(FileSystemFailure) {
             try clearACL(descriptor)
         } catch {
-            acl_free(UnsafeMutableRawPointer(inherited))
+            unsafe acl_free(UnsafeMutableRawPointer(inherited))
             throw error
         }
-        return inherited
+        return unsafe inherited
     }
 
     func moveExclusively(from source: URL, to destination: URL) throws(FileSystemFailure) {
-        let result = renamex_np(
+        let result = unsafe renamex_np(
             source.path(percentEncoded: false), destination.path(percentEncoded: false), UInt32(RENAME_EXCL))
         if result == 0 { return }
         let failure = errno
@@ -252,18 +256,18 @@ struct POSIXFileSystem: FileSystemOperations {
     /// rename fails, the claim is removed only while it is still the empty file created here.
     static func claimThenRename(from source: URL, to destination: URL) throws(FileSystemFailure) {
         let path = destination.path(percentEncoded: false)
-        let claim = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
+        let claim = unsafe open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
         guard claim >= 0 else { throw FileSystemFailure(code: errno) }
         var claimed = stat()
-        let claimStatus = fstat(claim, &claimed)
+        let claimStatus = unsafe fstat(claim, &claimed)
         close(claim)
-        if rename(source.path(percentEncoded: false), path) == 0 { return }
+        if unsafe rename(source.path(percentEncoded: false), path) == 0 { return }
         let failure = errno
         var current = stat()
-        if claimStatus == 0, lstat(path, &current) == 0, current.st_dev == claimed.st_dev,
+        if claimStatus == 0, unsafe lstat(path, &current) == 0, current.st_dev == claimed.st_dev,
             current.st_ino == claimed.st_ino, current.st_size == 0
         {
-            unlink(path)
+            unsafe unlink(path)
         }
         throw FileSystemFailure(code: failure)
     }
@@ -274,7 +278,7 @@ struct POSIXFileSystem: FileSystemOperations {
         defer { close(descriptor) }
         var existing = stat()
         var copiedACL = false
-        if stat(destination.path(percentEncoded: false), &existing) == 0 {
+        if unsafe stat(destination.path(percentEncoded: false), &existing) == 0 {
             // ACL first, so a deny entry is in effect before the mode can widen access.
             copiedACL = try copyACL(from: destination, to: descriptor)
             afterReplaceStep(source)
@@ -284,7 +288,7 @@ struct POSIXFileSystem: FileSystemOperations {
         } else if errno != ENOENT {
             throw FileSystemFailure(code: errno)
         }
-        if rename(source.path(percentEncoded: false), destination.path(percentEncoded: false)) != 0 {
+        if unsafe rename(source.path(percentEncoded: false), destination.path(percentEncoded: false)) != 0 {
             let failure = errno
             // The copied ACL can deny this user deleting the temporary file as well (an entry that
             // denies delete is also why the rename failed); drop it so the caller's cleanup works.
@@ -304,12 +308,12 @@ struct POSIXFileSystem: FileSystemOperations {
     /// a link (O_NOFOLLOW) or a FIFO (O_NONBLOCK, then the regular-file check), the same device and
     /// inode, and a single name, so a link planted by another account cannot redirect them.
     private static func openWritten(_ url: URL, expecting identity: FileIdentity) throws(FileSystemFailure) -> Int32 {
-        let descriptor = open(url.path(percentEncoded: false), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        let descriptor = unsafe open(url.path(percentEncoded: false), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard descriptor >= 0 else {
             throw errno == ELOOP ? substitutedFailure : FileSystemFailure(code: errno)
         }
         var status = stat()
-        guard fstat(descriptor, &status) == 0 else {
+        guard unsafe fstat(descriptor, &status) == 0 else {
             let failure = errno
             close(descriptor)
             throw FileSystemFailure(code: failure)
@@ -327,13 +331,13 @@ struct POSIXFileSystem: FileSystemOperations {
     /// them. If they cannot be copied, the replace fails and the destination stays as it was.
     /// Returns whether an ACL was applied to the temporary file.
     private func copyACL(from destination: URL, to descriptor: Int32) throws(FileSystemFailure) -> Bool {
-        guard let acl = acl_get_file(destination.path(percentEncoded: false), ACL_TYPE_EXTENDED) else {
+        guard let acl = unsafe acl_get_file(destination.path(percentEncoded: false), ACL_TYPE_EXTENDED) else {
             // ENOENT: the file has no ACL; ENOTSUP: the volume has no ACLs at all.
             if errno == ENOENT || errno == ENOTSUP { return false }
             throw FileSystemFailure(code: errno)
         }
-        defer { acl_free(UnsafeMutableRawPointer(acl)) }
-        if acl_set_fd_np(descriptor, acl, ACL_TYPE_EXTENDED) != 0 {
+        defer { unsafe acl_free(UnsafeMutableRawPointer(acl)) }
+        if unsafe acl_set_fd_np(descriptor, acl, ACL_TYPE_EXTENDED) != 0 {
             throw FileSystemFailure(code: errno)
         }
         return true
@@ -341,9 +345,9 @@ struct POSIXFileSystem: FileSystemOperations {
 
     /// Removes every ACL entry of the open file; a volume without ACLs has none to remove.
     private static func clearACL(_ descriptor: Int32) throws(FileSystemFailure) {
-        guard let empty = acl_init(0) else { throw FileSystemFailure(code: errno) }
-        defer { acl_free(UnsafeMutableRawPointer(empty)) }
-        if acl_set_fd_np(descriptor, empty, ACL_TYPE_EXTENDED) != 0, errno != ENOTSUP {
+        guard let empty = unsafe acl_init(0) else { throw FileSystemFailure(code: errno) }
+        defer { unsafe acl_free(UnsafeMutableRawPointer(empty)) }
+        if unsafe acl_set_fd_np(descriptor, empty, ACL_TYPE_EXTENDED) != 0, errno != ENOTSUP {
             throw FileSystemFailure(code: errno)
         }
     }
@@ -351,7 +355,7 @@ struct POSIXFileSystem: FileSystemOperations {
     func removeItem(at url: URL) {
         // Best-effort cleanup after a failure that is already being reported: an unlink failure
         // must not replace the original save error.
-        _ = unlink(url.path(percentEncoded: false))
+        _ = unsafe unlink(url.path(percentEncoded: false))
     }
 
     func itemExists(at url: URL) -> Bool {

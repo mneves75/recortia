@@ -127,13 +127,15 @@ public enum TextLayout {
         guard width.isFinite, height.isFinite, width > 0, height > 0 else { throw .unmeasurableText }
         let content = Rect<DocumentSpace>(origin: text.origin, size: Size(width: width, height: height))
         guard content.maxX.isFinite, content.maxY.isFinite else { throw .unmeasurableText }
-        let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: height), transform: nil)
+        let path = CGMutablePath()
+        path.addRect(CGRect(x: 0, y: 0, width: width, height: height))
         let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
         let visible = CTFrameGetVisibleStringRange(frame)
         guard visible.length == text.string.utf16.count else { throw .unmeasurableText }
         guard let lines = CTFrameGetLines(frame) as? [CTLine] else { throw .unmeasurableText }
         var origins = Array(repeating: CGPoint.zero, count: lines.count)
-        CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+        // Length 0 asks for every line, and `origins` has exactly one slot per line.
+        unsafe CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
         var bounds = content
         for (line, origin) in zip(lines, origins) {
             let ink = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])

@@ -13,8 +13,9 @@ public enum ImageInput {
     /// symbolic link, so a FIFO or device is refused at once instead of blocking the caller.
     public static func readFile(at url: URL) throws(ImportError) -> Data {
         guard url.isFileURL else { throw .unreadable }
-        let descriptor = url.withUnsafeFileSystemRepresentation { path in
-            path.map { open($0, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC) } ?? -1
+        // The path pointer and `&info` are valid for their calls only; open(2) and fstat(2) keep neither.
+        let descriptor = unsafe url.withUnsafeFileSystemRepresentation { path in
+            unsafe path.map { unsafe open($0, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC) } ?? -1
         }
         guard descriptor >= 0 else { throw .unreadable }
         let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
@@ -24,7 +25,7 @@ public enum ImageInput {
         }
 
         var info = stat()
-        guard fstat(descriptor, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw .unreadable }
+        guard unsafe fstat(descriptor, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw .unreadable }
         // A regular file never blocks; clear O_NONBLOCK so reads behave normally.
         let flags = fcntl(descriptor, F_GETFL)
         guard flags >= 0, fcntl(descriptor, F_SETFL, flags & ~O_NONBLOCK) == 0 else { throw .unreadable }

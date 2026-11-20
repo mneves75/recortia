@@ -124,8 +124,9 @@ package struct ScrollFrame: Sendable {
 
     /// Draws into a context of the canonical format, which copies sRGB RGBA8 sources exactly.
     private static func rgba(_ image: CGImage) -> [UInt8]? {
+        // `data: nil`: Core Graphics allocates and owns the bitmap.
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-            let context = CGContext(
+            let context = unsafe CGContext(
                 data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
                 space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return nil }

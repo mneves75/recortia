@@ -46,10 +46,10 @@ struct RenderRaster {
         let (w, h) = (width, height)
         var created = false
         var failure: RenderError?
-        bytes.withUnsafeMutableBytes { buffer in
+        unsafe bytes.withUnsafeMutableBytes { buffer in
             // Invariant: the context points into `bytes` storage and must not outlive this closure.
             guard let base = buffer.baseAddress, let space = Self.colorSpace,
-                let context = CGContext(
+                let context = unsafe CGContext(
                     data: base, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space,
                     bitmapInfo: Self.bitmapInfo)
             else { return }
@@ -133,7 +133,8 @@ struct RenderRaster {
     func makeImage(opaque: Bool = false) -> CGImage? {
         guard let space = Self.colorSpace, let provider = CGDataProvider(data: bytes as CFData) else { return nil }
         let alpha = opaque ? CGImageAlphaInfo.noneSkipLast.rawValue : CGImageAlphaInfo.premultipliedLast.rawValue
-        return CGImage(
+        // `decode: nil` passes no pointer.
+        return unsafe CGImage(
             width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4, space: space,
             bitmapInfo: CGBitmapInfo(rawValue: alpha | CGBitmapInfo.byteOrder32Big.rawValue), provider: provider,
             decode: nil, shouldInterpolate: false, intent: .defaultIntent)

@@ -57,7 +57,8 @@ public final class GitHubTokenStore {
         request[kSecReturnData] = true
         request[kSecMatchLimit] = kSecMatchLimitOne
         var result: CFTypeRef?
-        let resultCode = SecItemCopyMatching(request as CFDictionary, &result)
+        // `&result` is valid for the call, which stores one retained reference into it.
+        let resultCode = unsafe SecItemCopyMatching(request as CFDictionary, &result)
         if resultCode == errSecItemNotFound { throw .missingCredential }
         guard resultCode == errSecSuccess, let data = result as? Data, let token = String(data: data, encoding: .utf8)
         else { throw .credentialsUnavailable }
