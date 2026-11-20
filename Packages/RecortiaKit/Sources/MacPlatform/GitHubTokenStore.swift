@@ -45,10 +45,11 @@ public final class GitHubTokenStore {
     /// character or space can reach a request header, or a legacy classic token.
     public nonisolated static func validatedToken(_ pasted: String) throws(GitHubUploadFailure) -> GitHubToken {
         let token = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { throw .missingCredential }
         let prefixed =
             token.utf8.count <= 4096 && token.utf8.allSatisfy({ (33...126).contains($0) })
             && personalTokenPrefixes.contains(where: { token.hasPrefix($0) && token.count > $0.count })
-        guard prefixed || isLegacyClassic(token) else { throw .missingCredential }
+        guard prefixed || isLegacyClassic(token) else { throw .invalidCredential }
         return GitHubToken(value: token)
     }
 
@@ -81,7 +82,7 @@ public final class GitHubTokenStore {
     }
 
     /// A stored item is admitted like a pasted token: one saved by an older build, or altered,
-    /// is a missing credential rather than something to send.
+    /// is an invalid credential rather than something to send.
     public func load(for destination: GitHubDestination) throws(GitHubUploadFailure) -> GitHubToken {
         guard destination.isValid else { throw .invalidDestination }
         var request = query(destination)

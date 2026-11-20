@@ -178,7 +178,11 @@
             let callsBeforeRefusal = credentials.calls.count
             context.check(
                 "a token without a personal-token prefix is refused",
-                save("synthetic-token", first) == .failed(.missingCredential))
+                save("synthetic-token", first) == .failed(.invalidCredential))
+            context.check(
+                "a refused token has its own message, not the missing-token one",
+                GitHubUploadStrings.message(.invalidCredential)
+                    != GitHubUploadStrings.message(.missingCredential))
             context.check(
                 "a refused token reaches no Keychain call and changes no destination",
                 credentials.calls.count == callsBeforeRefusal

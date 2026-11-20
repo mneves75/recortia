@@ -4033,6 +4033,22 @@
         }
       }
     },
+    "The saved GitHub token isn't valid. Replace it in Settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The saved GitHub token isn't valid. Replace it in Settings."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O token do GitHub salvo não é válido. Substitua-o nos Ajustes."
+          }
+        }
+      }
+    },
     "The screen locked during the capture." : {
       "localizations" : {
         "en" : {

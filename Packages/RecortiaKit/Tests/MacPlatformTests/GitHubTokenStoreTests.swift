@@ -5,6 +5,7 @@ import Testing
 @testable import MacPlatform
 
 // Token entry rules that run before any Keychain call. No test reads or writes Keychain.
+// Nothing to admit is a missing credential; text that fails admission is an invalid one.
 @Suite("GitHub token entry: pasted whitespace and Keychain account")
 struct GitHubTokenStoreTests {
     @Test(
@@ -23,7 +24,7 @@ struct GitHubTokenStoreTests {
         "whitespace inside the token, non-ASCII, and oversize tokens stay rejected",
         arguments: ["ghp abc", "ghp\nabc", "ghp_äbc", "ghp_" + String(repeating: "a", count: 4093)])
     func rejectsMalformed(pasted: String) {
-        #expect(throws: GitHubUploadFailure.missingCredential) { try GitHubTokenStore.validatedToken(pasted) }
+        #expect(throws: GitHubUploadFailure.invalidCredential) { try GitHubTokenStore.validatedToken(pasted) }
     }
 
     // Synthetic strings only. GitHub starts every token with a prefix naming its type; Settings
@@ -34,14 +35,14 @@ struct GitHubTokenStoreTests {
             "synthetic-token", "gho_abc123", "ghs_abc123", "GHP_abc123", "ghp", "ghp_", "github_pat_", "xghp_abc",
         ])
     func rejectsWrongPrefix(pasted: String) {
-        #expect(throws: GitHubUploadFailure.missingCredential) { try GitHubTokenStore.validatedToken(pasted) }
+        #expect(throws: GitHubUploadFailure.invalidCredential) { try GitHubTokenStore.validatedToken(pasted) }
     }
 
     @Test(
         "control characters anywhere in the token are rejected, so none can reach a request header",
         arguments: ["ghp_abc\r\nX-Injected: 1", "ghp_abc\u{0}", "ghp_\u{7F}abc", "github_pat_a\u{1B}b", "ghp_a\u{85}b"])
     func rejectsControlCharacters(pasted: String) {
-        #expect(throws: GitHubUploadFailure.missingCredential) { try GitHubTokenStore.validatedToken(pasted) }
+        #expect(throws: GitHubUploadFailure.invalidCredential) { try GitHubTokenStore.validatedToken(pasted) }
     }
 
     @Test("classic and fine-grained personal tokens are accepted up to the length bound")
@@ -50,7 +51,7 @@ struct GitHubTokenStoreTests {
         for token in ["ghp_abc123", "github_pat_abc_123", longest] {
             #expect(try GitHubTokenStore.validatedToken(token).value == token)
         }
-        #expect(throws: GitHubUploadFailure.missingCredential) { try GitHubTokenStore.validatedToken(longest + "a") }
+        #expect(throws: GitHubUploadFailure.invalidCredential) { try GitHubTokenStore.validatedToken(longest + "a") }
     }
 
     // Classic tokens issued before GitHub added prefixes are 40 lowercase hex characters; people
@@ -72,7 +73,7 @@ struct GitHubTokenStoreTests {
             legacyHex + "8",  // 41 hex characters
         ])
     func rejectsNearLegacyShapes(pasted: String) {
-        #expect(throws: GitHubUploadFailure.missingCredential) { try GitHubTokenStore.validatedToken(pasted) }
+        #expect(throws: GitHubUploadFailure.invalidCredential) { try GitHubTokenStore.validatedToken(pasted) }
     }
 
     @Test("a token's description never contains the token")
