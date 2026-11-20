@@ -415,15 +415,18 @@ extension EditorModel {
     func addRedaction(covering rect: Rect<DocumentSpace>) -> EditorItemID? {
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard !isClosed, let area = snapped.intersection(document.canvasRect) else { return nil }
-        let before = document, epoch = session.privacyEpoch
-        do {
-            let id = try session.addSecureMask(covering: area, fill: redactionFill)
-            didChange(from: before, epoch: epoch)
-            return .mask(id)
-        } catch {
-            post(.redactionRefused)
-            return nil
+        let fill = redactionFill
+        var id: MaskID?
+        // Through the one edit path, so the preview guard and coverage rule apply (R5-03).
+        let ok = edit("Redact") { document in
+            guard fill.isOpaque else { throw DocumentError.translucentSecureMask }
+            do { try area.validated() } catch { throw DocumentError.invalidGeometry }
+            guard !area.isEmpty else { throw DocumentError.emptyMask }
+            let mask = SecureMask(outputRect: area, sourceRegions: try document.sourceRegions(for: area), fill: fill)
+            document.masks.append(mask)
+            id = mask.id
         }
+        return ok ? id.map(EditorItemID.mask) : nil
     }
 
     /// A magnified copy of `source` next to it, kept inside the canvas where possible.

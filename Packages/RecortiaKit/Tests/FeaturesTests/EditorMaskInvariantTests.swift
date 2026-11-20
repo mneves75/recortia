@@ -309,6 +309,16 @@ struct EditorMaskInvariantTests {
         #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
     }
 
+    @Test("A redaction added while Output Preview is on does nothing (R5-03)")
+    func redactionRefusedInPreview() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let m = fixture.harness.model
+        m.setShowsOutputPreview(true)
+        let before = m.document
+        #expect(m.addRedaction(covering: Rect(x: 100, y: 100, width: 20, height: 20)) == nil)
+        #expect(m.document == before)
+    }
+
     // MARK: I2 only an effective move or resize re-binds
 
     @Test("A stationary handle click at 12.5 % zoom leaves the mask, history and export untouched")
