@@ -2,6 +2,7 @@
 """REL-01: the test-only-marker gate must scan every Mach-O in the app bundle, with planted controls."""
 
 import pathlib
+import re
 import subprocess
 import tempfile
 import unittest
@@ -97,33 +98,55 @@ class ReleaseBinaryGateTests(unittest.TestCase):
         self.assertIn('scripts/check-release-binary.sh "$app"\n', script)
 
 
-class ReleaseBuildGateTests(unittest.TestCase):
-    """R3-D09/D10: hosted CI scans a real Release build and refuses a Release foreground helper."""
+RUNNER_MARKERS = ("-RecortiaE2EOnly", "-RecortiaE2EProbe", "-RecortiaE2ELastWindowProbe", "E2ERunner")
+BUILD_ARGUMENTS = (
+    "-project Recortia.xcodeproj -scheme {scheme} -configuration Release -destination generic/platform=macOS "
+    "-derivedDataPath .build/dd-release -onlyUsePackageVersionsFromResolvedFile "
+    "CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=- build"
+)
 
-    def run_build_gate(self, *, helper_executable: bool, marker: str | None = None) -> subprocess.CompletedProcess[str]:
+
+class ReleaseBuildGateTests(unittest.TestCase):
+    """R3-D09/D10, review F05/F10/F12: hosted CI qualifies the toolchain, builds both schemes in
+    Release, scans the shipping app, and refuses a Release runner hook or foreground helper."""
+
+    def run_build_gate(self, *, helper_executable: bool = False, marker: str | None = None,
+                       runner_marker: str | None = None, doctor_exit: int = 0) -> subprocess.CompletedProcess[str]:
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        root = pathlib.Path(directory.name)
+        self.root = root = pathlib.Path(directory.name)
         (root / "scripts").mkdir()
         for name in ("check-release-build.sh", "check-release-binary.sh"):
             (root / "scripts" / name).write_bytes((ROOT / "scripts" / name).read_bytes())
             (root / "scripts" / name).chmod(0o755)
+        self.calls = root / "calls"
+        doctor = root / "scripts/doctor.sh"
+        doctor.write_text(f"#!/bin/sh\necho \"doctor $*\" >> '{self.calls}'\nexit {doctor_exit}\n")
+        doctor.chmod(0o755)
         products = root / ".build/dd-release/Build/Products/Release"
         bin_directory = root / "bin"
         bin_directory.mkdir()
-        # Stand-in xcodebuild: writes the products a Release build of each scheme leaves behind.
-        xcodebuild = bin_directory / "xcodebuild"
-        helper = "mkdir -p \"$products/RecortiaE2EForegroundHost.app/Contents\"\n"
-        if helper_executable:
-            helper += "mkdir -p \"$products/RecortiaE2EForegroundHost.app/Contents/MacOS\"\n"
-        xcodebuild.write_text(
+        production = (MACH_O_MAGIC + b"production").hex()
+        # Stand-in xcodebuild: records its arguments and writes what a Release build of each scheme leaves.
+        script = (
             "#!/bin/sh\n"
+            f"echo \"xcodebuild $*\" >> '{self.calls}'\n"
             f"products='{products}'\n"
-            "mkdir -p \"$products/Recortia.app/Contents/MacOS\"\n"
-            f"printf '%s' '{(MACH_O_MAGIC + b'production').hex()}' | xxd -r -p > \"$products/Recortia.app/Contents/MacOS/Recortia\"\n"
-            + (f"printf '{marker}' >> \"$products/Recortia.app/Contents/MacOS/Recortia\"\n" if marker else "")
-            + helper
+            "mkdir -p \"$products/Recortia.app/Contents/MacOS\" \"$products/RecortiaE2E.app/Contents/MacOS\"\n"
+            f"printf '%s' '{production}' | xxd -r -p > \"$products/Recortia.app/Contents/MacOS/Recortia\"\n"
+            f"printf '%s' '{production}' | xxd -r -p > \"$products/RecortiaE2E.app/Contents/MacOS/RecortiaE2E\"\n"
+            # The E2E product links the fixture generators on purpose; that is not the runner.
+            "printf 'RecortiaFixtures ChartFixture' >> \"$products/RecortiaE2E.app/Contents/MacOS/RecortiaE2E\"\n"
+            "mkdir -p \"$products/RecortiaE2EForegroundHost.app/Contents\"\n"
         )
+        if marker:
+            script += f"printf '{marker}' >> \"$products/Recortia.app/Contents/MacOS/Recortia\"\n"
+        if runner_marker:
+            script += f"printf -- '{runner_marker}' >> \"$products/RecortiaE2E.app/Contents/MacOS/RecortiaE2E\"\n"
+        if helper_executable:
+            script += "mkdir -p \"$products/RecortiaE2EForegroundHost.app/Contents/MacOS\"\n"
+        xcodebuild = bin_directory / "xcodebuild"
+        xcodebuild.write_text(script)
         xcodebuild.chmod(0o755)
         products.mkdir(parents=True)
         return subprocess.run(
@@ -131,10 +154,20 @@ class ReleaseBuildGateTests(unittest.TestCase):
             env={"PATH": f"{bin_directory}:/usr/bin:/bin", "DEVELOPER_DIR": "/fixture"},
         )
 
-    def test_clean_release_products_pass(self) -> None:
-        result = self.run_build_gate(helper_executable=False)
+    def test_clean_release_products_pass_after_doctor_and_both_builds(self) -> None:
+        result = self.run_build_gate()
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("Release build gate passed", result.stdout)
+        self.assertEqual([
+            "doctor --release",
+            "xcodebuild " + BUILD_ARGUMENTS.format(scheme="Recortia"),
+            "xcodebuild " + BUILD_ARGUMENTS.format(scheme="RecortiaE2E"),
+        ], self.calls.read_text().splitlines())
+
+    def test_an_unqualified_toolchain_builds_nothing(self) -> None:
+        result = self.run_build_gate(doctor_exit=1)
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(["doctor --release"], self.calls.read_text().splitlines())
 
     def test_release_foreground_helper_with_an_executable_fails(self) -> None:
         result = self.run_build_gate(helper_executable=True)
@@ -142,16 +175,25 @@ class ReleaseBuildGateTests(unittest.TestCase):
         self.assertIn("foreground helper has an executable in Release", result.stderr)
 
     def test_test_only_code_in_the_release_app_fails(self) -> None:
-        result = self.run_build_gate(helper_executable=False, marker="RecortiaFixtures")
+        result = self.run_build_gate(marker="RecortiaFixtures")
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("RecortiaFixtures", result.stderr)
 
-    def test_hosted_ci_runs_the_release_build_gate(self) -> None:
+    def test_the_runner_in_the_release_e2e_product_fails(self) -> None:
+        for runner_marker in RUNNER_MARKERS:
+            with self.subTest(marker=runner_marker):
+                result = self.run_build_gate(runner_marker=runner_marker)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"E2E runner code ({runner_marker}) is in the Release", result.stderr)
+
+    def test_hosted_ci_runs_the_release_build_gate_unconditionally(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertRegex(workflow, r"(?m)^\s+run: scripts/check-release-build\.sh$")
-        gate = (ROOT / "scripts/check-release-build.sh").read_text()
-        self.assertIn("for scheme in Recortia RecortiaE2E; do", gate)
-        self.assertIn("-configuration Release", gate)
+        steps = re.split(r"(?m)^      - ", workflow.split("\n    steps:\n", 1)[1])
+        step = next(step for step in steps if "run: scripts/check-release-build.sh" in step)
+        self.assertRegex(step, r"(?m)^        run: scripts/check-release-build\.sh$")
+        self.assertNotRegex(step, r"(?m)^\s*(if|continue-on-error):")
+        job = workflow.split("\n    steps:\n", 1)[0].split("\n  check:\n", 1)[1]
+        self.assertNotRegex(job, r"(?m)^\s*(if|continue-on-error):")
 
 
 if __name__ == "__main__":
