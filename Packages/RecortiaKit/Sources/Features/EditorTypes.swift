@@ -330,7 +330,7 @@ public enum EditorNotice: Hashable, Sendable {
     case noPreferredFolder
     /// The oldest undo steps were discarded to stay within the undo budget (FR-04).
     case undoHistoryTrimmed
-    /// Automatic masking covered this many e-mail addresses or phone numbers (FR-06).
+    /// Automatic masking covered this many e-mail addresses or phone numbers, possibly none (FR-06).
     case sensitiveTextMasked(Int)
     /// Automatic masking did not finish; nothing was masked.
     case maskingFailed

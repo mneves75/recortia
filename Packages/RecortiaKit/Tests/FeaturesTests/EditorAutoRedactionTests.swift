@@ -462,14 +462,14 @@ struct EditorAutoRedactionTests {
         #expect(model.document.masks.count == 3)
     }
 
-    @Test("Nothing found: masking finishes with no undo step and no notice")
+    @Test("Nothing found: masking finishes with no undo step and says it found nothing (3C)")
     func nothingFound() async throws {
         let capture = try await MaskingCapture { $0.sensitiveText.regions = [] }
         defer { capture.model.close() }
         await capture.waitForDetection()
         await capture.finishDetection()
         #expect(capture.model.autoRedaction == .done)
-        #expect(!capture.model.canUndo && capture.model.notice == nil)
+        #expect(!capture.model.canUndo && capture.model.notice == .sensitiveTextMasked(0))
         #expect(capture.harness.sensitiveText.requests.map(\.id) == capture.model.document.layers.map(\.assetID))
     }
 }

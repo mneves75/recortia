@@ -13,13 +13,20 @@ public enum EditorExportRequest: Hashable, Sendable {
 // Export (FR-07) and pinning (FR-09). Every external write goes through `ExportCoordinator`
 // (sanitized ShareSnapshot) or `PinsModel` (sanitized render); nothing here encodes or writes.
 extension EditorModel {
-    public func reportAutomaticExport(_ outcome: ExportOutcome) {
-        guard !isClosed else { return }
+    /// Shows an automatic export's outcome in the notice slot and returns true, or returns false
+    /// when it was not shown: the editor is closed, or the slot still holds the masking count and
+    /// its review reminder, which an export report never replaces (T1 security 3C). The caller
+    /// raises an outcome that was not shown as an alert.
+    @discardableResult
+    public func reportAutomaticExport(_ outcome: ExportOutcome) -> Bool {
+        guard !isClosed else { return false }
+        if case .sensitiveTextMasked = notice { return false }
         if case .failed(let failure) = outcome {
             post(.automaticExportFailed(failure))
         } else {
             post(.exported(outcome))
         }
+        return true
     }
 
     /// Runs the automatic batch planned when this editor's capture completed (R-3) on the capture

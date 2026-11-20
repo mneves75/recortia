@@ -69,6 +69,38 @@ struct AutoRedactionReviewTests {
         }
     }
 
+    /// T1 security 3C: with masking on, the person always learns its outcome, none found included.
+    @Test("Masking that finds nothing says so")
+    func zeroMatchesSayNoneFound() async throws {
+        let (h, model) = try await Self.capture(regions: [])
+        defer { model.close() }
+        await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
+        h.sensitiveText.pending?.resolve(())
+        await waitFor("masking settled") { model.autoRedaction != .pending }
+        #expect(model.autoRedaction == .done && model.document.masks.isEmpty)
+        #expect(model.notice == .sensitiveTextMasked(0))
+    }
+
+    /// T1 security 3C: an automatic export's report never silently replaces the masking count and
+    /// its review reminder; the editor refuses it so the app raises it as an alert instead.
+    @Test(
+        "An automatic export's report leaves the masking notice in place",
+        arguments: [ExportOutcome.failed(.diskFull), .uploaded(URL(string: "https://example.com/image.png")!)])
+    func exportReportKeepsMaskingNotice(outcome: ExportOutcome) async throws {
+        let (h, model) = try await Self.capture(regions: [Self.region])
+        defer { model.close() }
+        await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
+        h.sensitiveText.pending?.resolve(())
+        await waitFor("masking settled") { model.autoRedaction != .pending }
+        #expect(model.notice == .sensitiveTextMasked(1))
+        #expect(!model.reportAutomaticExport(outcome), "refused, so the app raises it as an alert")
+        #expect(model.notice == .sensitiveTextMasked(1))
+        // Once the person dismissed it, the slot is free again.
+        model.dismissNotice()
+        #expect(model.reportAutomaticExport(outcome))
+        #expect(model.notice != nil && model.notice != .sensitiveTextMasked(1))
+    }
+
     /// Finding R-3 (P3): masking defers the batch by up to the deadline, and the batch still
     /// refuses to queue behind another editor's export, so the capture's automatic copy and save
     /// are dropped with a busy failure instead of running once the slot is free.

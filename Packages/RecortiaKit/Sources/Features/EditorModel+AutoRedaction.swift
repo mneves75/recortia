@@ -63,7 +63,8 @@ extension EditorModel {
         let isCurrent = !Task.isCancelled && request.map { session.accepts($0) } == true
         if isCurrent, case .success(let regions) = result, landAutoMasks(regions) {
             settleAutoRedaction(.done)
-            if !regions.isEmpty { post(.sensitiveTextMasked(regions.count)) }
+            // Zero included: with masking on, the person always learns what it found.
+            post(.sensitiveTextMasked(regions.count))
         } else {
             settleAutoRedaction(.failed)
             post(.maskingFailed)

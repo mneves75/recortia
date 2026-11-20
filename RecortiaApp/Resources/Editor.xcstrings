@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "No e-mail addresses or phone numbers were found to mask. Check the image before you share it.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No e-mail addresses or phone numbers were found to mask. Check the image before you share it." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Nenhum e-mail ou número de telefone foi encontrado para mascarar. Confira a imagem antes de compartilhar." } }
+      }
+    },
     "Nothing was saved: the file name is too long for that folder.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Nothing was saved: the file name is too long for that folder." } },
