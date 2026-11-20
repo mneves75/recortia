@@ -94,12 +94,13 @@
             _ = control.perform(press)
         }
 
-        /// Presses a menu button through accessibility, as a person or VoiceOver opens it, and while
-        /// the real menu tracks: records its items, chooses the item titled `title` (or nothing), and
-        /// ends tracking. A common-mode timer ends tracking after two seconds so a menu that never
+        /// Presses a menu button through accessibility, as a person or VoiceOver opens it (or, with
+        /// `byRightClick`, opens a context menu with a secondary click), and while the real menu
+        /// tracks: records its items, chooses the item titled `title` (or nothing), and ends tracking. A common-mode timer ends tracking after two seconds so a menu that never
         /// matches cannot block the run.
         static func chooseFromMenu(
-            _ title: String?, opening identifier: String, in root: NSView, _ context: ScenarioContext
+            _ title: String?, opening identifier: String, in root: NSView, _ context: ScenarioContext,
+            byRightClick: Bool = false
         ) async throws -> [E2EMenuEntry] {
             let session = E2EMenuSession(choosing: title)
             NotificationCenter.default.addObserver(
@@ -113,7 +114,12 @@
             defer { safety.invalidate() }
             let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
             let active = NSApp.isActive
-            try pressCheckingEffect(identifier, in: root, context)
+            if byRightClick {
+                // A context menu opens from the pointer: a secondary click on the control's frame.
+                try pressFrame(try control(identifier, in: root, context), in: root, context, secondary: true)
+            } else {
+                try pressCheckingEffect(identifier, in: root, context)
+            }
             try context.require(
                 "\(identifier) opens its menu", await E2EWait.until(timeout: .seconds(3)) { session.tracked })
             _ = await E2EWait.until(timeout: .seconds(3)) { session.menu == nil || !session.isOpen }
@@ -205,7 +211,8 @@
             _ appearance: TextAppearance, in root: NSView, _ context: ScenarioContext
         ) async throws {
             let (font, style) = textChoices(appearance)
-            _ = try await chooseFromMenu(fontTitles[font], opening: "text.font", in: root, context)
+            let entries = try await chooseFromMenu(fontTitles[font], opening: "text.font", in: root, context)
+            checkFontMenu(entries, context)
             await E2ESnapshot.settle(root)
             let segmented = try context.unwrap(
                 "the inspector has the text Style control", textStyleControl(in: root))
@@ -218,10 +225,20 @@
         /// item and the selected Style segment.
         static func shownTextAppearance(in root: NSView, _ context: ScenarioContext) async throws -> TextAppearance? {
             let entries = try await chooseFromMenu(nil, opening: "text.font", in: root, context)
+            checkFontMenu(entries, context)
             guard let style = textStyleControl(in: root)?.selectedSegment,
                 let checked = entries.first(where: \.checked), let font = fontTitles.firstIndex(of: checked.title)
             else { return nil }
             return TextAppearance.allCases.first { textChoices($0) == (font, style) }
+        }
+
+        /// The Font menu lists exactly System, Rounded and Monospaced, in that order, with one checked.
+        private static func checkFontMenu(_ entries: [E2EMenuEntry], _ context: ScenarioContext) {
+            context.check(
+                "the Font menu lists System, Rounded and Monospaced in order", entries.map(\.title) == fontTitles,
+                "\(entries.map(\.title))")
+            context.check(
+                "the Font menu checks exactly one font", entries.filter(\.checked).count == 1, "\(entries)")
         }
 
         private static var fontTitles: [String] {
@@ -252,6 +269,63 @@
                 control.segmentCount == styles.count
                     && (0..<control.segmentCount).map { control.label(forSegment: $0) ?? "" } == styles
             }
+        }
+
+        /// Opens or closes a native disclosure as VoiceOver does: Press on its disclosure triangle
+        /// (the identified element or its nearest descendant with that role), only when its expanded
+        /// state differs from `expanded`.
+        static func setDisclosure(
+            _ identifier: String, expanded: Bool, in root: NSView, _ context: ScenarioContext
+        ) throws {
+            let triangle = try disclosureTriangle(identifier, in: root, context)
+            guard isExpanded(triangle) != expanded else { return }
+            if triangle.accessibilityActionNames().contains(.press) {
+                triangle.accessibilityPerformAction(.press)
+            } else {
+                let press = NSSelectorFromString("accessibilityPerformPress")
+                try context.require("\(identifier) disclosure offers Press", triangle.responds(to: press))
+                _ = triangle.perform(press)
+            }
+        }
+
+        /// The expanded state the disclosure's triangle reports to assistive apps.
+        static func disclosureIsExpanded(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws
+            -> Bool
+        {
+            isExpanded(try disclosureTriangle(identifier, in: root, context))
+        }
+
+        private static func isExpanded(_ triangle: NSObject) -> Bool {
+            (triangle.value(forKey: "accessibilityValue") as? NSNumber)?.boolValue ?? false
+        }
+
+        private static func disclosureTriangle(_ identifier: String, in root: NSView, _ context: ScenarioContext)
+            throws -> NSObject
+        {
+            let element = try control(identifier, in: root, context)
+            var queue: [Any] = [element]
+            var visited: Set<ObjectIdentifier> = []
+            var budget = 512
+            while !queue.isEmpty, budget > 0 {
+                budget -= 1
+                guard let object = queue.removeFirst() as? NSObject,
+                    visited.insert(ObjectIdentifier(object)).inserted
+                else { continue }
+                if object.responds(to: NSSelectorFromString("accessibilityRole")),
+                    object.value(forKey: "accessibilityRole") as? String
+                        == NSAccessibility.Role.disclosureTriangle.rawValue
+                {
+                    return object
+                }
+                if object.responds(to: NSSelectorFromString("accessibilityChildren")),
+                    let children = object.value(forKey: "accessibilityChildren") as? [Any]
+                {
+                    queue += children
+                }
+            }
+            return try context.unwrap(
+                "\(identifier) has a disclosure triangle", nil as NSObject?,
+                "role \(String(describing: element.value(forKey: "accessibilityRole")))")
         }
 
         /// Performs a control's named accessibility action, as VoiceOver's actions rotor does.
@@ -351,7 +425,9 @@
                 find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0))
         }
 
-        private static func pressFrame(_ control: NSObject, in root: NSView, _ context: ScenarioContext) throws {
+        private static func pressFrame(
+            _ control: NSObject, in root: NSView, _ context: ScenarioContext, secondary: Bool = false
+        ) throws {
             let window = try context.unwrap("control has a window", root.window)
             try context.require(
                 "control exposes its frame", control.responds(to: NSSelectorFromString("accessibilityFrame")))
@@ -363,7 +439,9 @@
                 frame.origin.x.isFinite && frame.origin.y.isFinite && frame.width.isFinite && frame.height.isFinite
                     && frame.width > 0 && frame.height > 0)
             let point = window.convertPoint(fromScreen: NSPoint(x: frame.midX, y: frame.midY))
-            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let types: [NSEvent.EventType] =
+                secondary ? [.rightMouseDown, .rightMouseUp] : [.leftMouseDown, .leftMouseUp]
+            for type in types {
                 let event = try context.unwrap(
                     "control mouse event",
                     NSEvent.mouseEvent(
