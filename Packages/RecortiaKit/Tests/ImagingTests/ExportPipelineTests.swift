@@ -124,7 +124,16 @@ struct RenderBudgetTests {
         ]
         let base = try await harness.renderer.renderBase(document, scale: 1)
         #expect(base.width == 6_000 && base.height == 6_000)
-        await #expect(throws: RenderError.self) { try await harness.renderer.render(document, scale: 1) }
+        do {
+            _ = try await harness.renderer.render(document, scale: 1)
+            Issue.record("the full render draws the magnifier and must refuse its scratch")
+        } catch {
+            guard case .budgetExceeded(let estimated, let limit) = error else {
+                Issue.record("expected budgetExceeded, got \(error)")
+                return
+            }
+            #expect(estimated > limit)
+        }
     }
 
     @Test("Assets missing from the store are an error, not a blank render")
