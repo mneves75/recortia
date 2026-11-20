@@ -117,6 +117,31 @@ struct FileSinkVolumeTests {
         }
     }
 
+    // Automated review of 1a395cb: after the overwrite's plain rename, the read-back went through
+    // the stage's descriptor only, so a file another writer renamed over the published name was
+    // never noticed and the save reported success for a name holding someone else's bytes.
+    @Test(
+        "An overwrite whose published name is replaced right after the rename fails and keeps the other file",
+        arguments: ScratchVolume.Format.allCases)
+    func overwriteReplacedAfterRenameFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            try priorBytes.write(to: url)
+            let theirs = Data("another writer's bytes".utf8)
+            let decoy = folder.appendingPathComponent("theirs.tmp")
+            try theirs.write(to: decoy)
+            var replaced = false
+            let fileSystem = POSIXFileSystem(afterPublish: { published in
+                replaced = rename(decoy.path(percentEncoded: false), published.path(percentEncoded: false)) == 0
+            })
+            #expect(throws: SinkError.destinationExists) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+            }
+            try #require(replaced, "control: the published name was never replaced")
+            #expect(try Data(contentsOf: url) == theirs, "the other writer's file was removed or changed")
+        }
+    }
+
     enum ConcurrentWrite: String, CaseIterable, Sendable {
         /// Another writer renames its own file over the claimed name.
         case replacesClaim

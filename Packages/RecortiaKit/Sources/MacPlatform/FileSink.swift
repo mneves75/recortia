@@ -133,6 +133,8 @@ struct POSIXFileSystem {
     var afterReplaceStep: (URL) -> Void = { _ in }
     /// Gives the open stage a group, returning 0 or -1 with `errno` like fchown(2).
     var changeGroup: (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) }
+    /// Runs right after an overwrite without swap renamed the stage onto the destination name.
+    var afterPublish: (URL) -> Void = { _ in }
     /// Runs once a volume without exclusive rename has claimed the destination name.
     var afterClaim: (URL) -> Void = { _ in }
     /// Runs once the snapshot is written into such a claimed file, before it is flushed.
@@ -314,11 +316,30 @@ struct POSIXFileSystem {
         // destination may change between reading its access and this rename there.
         try stage.checkStillStaged()
         if renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
+        afterPublish(directoryURL(stage).appendingPathComponent(name, isDirectory: false))
         // On exFAT and FAT32 the private folder has no owners or modes, so another user could change
         // the staged bytes before the rename. Read the published file back through the stage's own
-        // descriptor (the same file); on a mismatch the save failed, and the file stays, as it may
-        // now hold someone else's bytes.
+        // descriptor (the same file), while the name leads to it before and after; on a mismatch the
+        // save failed, and whatever is at the name stays, as it may now hold someone else's bytes.
+        try Self.requirePublished(stage.file, as: name, in: directory)
         guard Self.readBack(stage.file, equals: data) else { throw FileSystemFailure(code: EIO) }
+        try Self.requirePublished(stage.file, as: name, in: directory)
+    }
+
+    private func directoryURL(_ stage: Stage) -> URL {
+        stage.url.deletingLastPathComponent().deletingLastPathComponent()
+    }
+
+    /// Fails with EEXIST unless `name` still leads, without following a link, to the open file as
+    /// its only name.
+    private static func requirePublished(_ file: Int32, as name: String, in directory: Int32)
+        throws(FileSystemFailure)
+    {
+        var status = stat()
+        guard fstat(file, &status) == 0 else { throw FileSystemFailure(code: errno) }
+        guard entry(name, in: directory, is: FileIdentity(status), type: S_IFREG) else {
+            throw FileSystemFailure(code: EEXIST)
+        }
     }
 
     /// A new file where the volume has no exclusive rename: an exclusive create claims `name` and
