@@ -59,12 +59,8 @@
                 "the native Save button is disabled for a full palette",
                 try !E2EAccessibilityControl.isEnabled("palette.save", in: root, context))
             context.check(
-                "the native Remove button is disabled for an unsaved color",
-                try !E2EAccessibilityControl.isEnabled("palette.remove", in: root, context))
-            context.check(
-                "the Remove button's tooltip is its label, as for every inspector action",
-                try E2EAccessibilityControl.text(.help, for: "palette.remove", in: root, context)
-                    == String(localized: "Remove Current Color", table: "Editor"))
+                "removing is a swatch's context-menu item, not a separate button",
+                !E2EAccessibilityControl.isPresent("palette.remove", in: root))
             model.setStrokeColor(.white)
             context.check("saving leaves the document and undo unchanged", model.document == document && !model.canUndo)
             context.check(
@@ -92,9 +88,11 @@
             let beforeRemoval = model.document
             let remainingColors = model.savedAnnotationColors.filter { $0 != .red }
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.press("palette.remove", in: root, context)
+            _ = try await E2EAccessibilityControl.chooseFromMenu(
+                String(localized: "Remove Saved Color", table: "Editor"), opening: "palette.apply.E53935", in: root,
+                context, contextMenu: true)
             try context.require(
-                "the native Remove Current Color button removes the saved color",
+                "the swatch's Remove Saved Color removes the saved color",
                 await E2EWait.until { model.savedAnnotationColors == remainingColors })
             context.check("removing a saved color leaves annotations unchanged", model.document == beforeRemoval)
             await E2EActions.snapshotEditor(controller, context, shot: "palette")

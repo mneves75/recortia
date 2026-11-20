@@ -29,7 +29,6 @@
 		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
 		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
 		2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */; };
-		29CFD3BFC2C64F0707110226 /* EditorMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0BC6A029162B1169C9B9BC /* EditorMetrics.swift */; };
 		2D8C368CE36FD821F3E7C2DC /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		2DD16A3919445D7FAA908F82 /* E2ERunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */; };
 		302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
@@ -64,7 +63,9 @@
 		5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
 		55BAD47DF14454678FB1B355 /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
 		56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
+		5C28BD37596715D88F7CEDD6 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C105D1B70AD241C287604A0 /* DesignTokens.swift */; };
 		6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
+		61AAC7F70EA6E61FC071A9C0 /* EditorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48537C0299ADF945358D808 /* EditorCommands.swift */; };
 		6470C535C3CBC2B70DF471A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
 		652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */; };
 		65345782C7EBA8CF8EE27F85 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
@@ -73,7 +74,6 @@
 		694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
 		6A18E15D4470F4A6A216A0D5 /* EditorTextDecorationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E15812A71A550789FBC15D /* EditorTextDecorationView.swift */; };
 		6A80F91BFD6A48E08DA8DBB8 /* E2ESnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293033569B29300AB2B89925 /* E2ESnapshot.swift */; };
-		6B1693FB457CC1EDA14B8794 /* EditorMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0BC6A029162B1169C9B9BC /* EditorMetrics.swift */; };
 		6B1BD24BE65C437E070D1839 /* EditorWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */; };
 		6EBBCD64B42B976D604BCA47 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F902EF52885BED5F7982DA2C /* OnboardingView.swift */; };
 		701F0314C45185A00CC56645 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97C30D7091C2051638564FB /* GlobalShortcuts.swift */; };
@@ -85,6 +85,7 @@
 		735069F09C1DEBDBB2449990 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 2B3B384261E6DD8F0B8F0303 /* Features */; };
 		739432D25946A1A2AF701CEB /* GitHubUploadSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E42652874A3A93FCB17228 /* GitHubUploadSettings.swift */; };
 		747BEF5FD53C4B739E049209 /* Scenarios+EditorWindowSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39817EE5D149AB669AEE652 /* Scenarios+EditorWindowSize.swift */; };
+		75DAB48C82B17F161440D16D /* EditorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48537C0299ADF945358D808 /* EditorCommands.swift */; };
 		778801BF8774508093BCD36C /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
 		78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
 		7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
@@ -116,6 +117,7 @@
 		B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
 		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		BE76CF85696B2F1702597E5C /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = CB78FDBEC0994FB58607CBEA /* Imaging */; };
+		BEC9B49F4546674FC58290C6 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C105D1B70AD241C287604A0 /* DesignTokens.swift */; };
 		BFDFF7362CE5EC24BCDFBF6C /* Scenarios+EditorToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EBB8A0BC002235126E837B /* Scenarios+EditorToolbar.swift */; };
 		C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */; };
 		C18E4C204D233AC24C4CB33B /* E2EAccessibilityControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */; };
@@ -193,6 +195,7 @@
 		293033569B29300AB2B89925 /* E2ESnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ESnapshot.swift; sourceTree = "<group>"; };
 		2991DDE3A9E798D014496FC6 /* LaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchTests.swift; sourceTree = "<group>"; };
 		2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Recognition.swift"; sourceTree = "<group>"; };
+		2C105D1B70AD241C287604A0 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostingPanel.swift; sourceTree = "<group>"; };
 		30259CC2530DFC8E1D539757 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		32B60026CF0E1A7A617061C9 /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
@@ -200,7 +203,6 @@
 		38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagePresenter.swift; sourceTree = "<group>"; };
 		3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2E.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3DCF5452C8392723EB823CFA /* E2EForegroundFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EForegroundFixture.swift; sourceTree = "<group>"; };
-		3F0BC6A029162B1169C9B9BC /* EditorMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorMetrics.swift; sourceTree = "<group>"; };
 		3F28E2BD01C5C58B01ED7275 /* Recortia-Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Recortia-Release.entitlements"; sourceTree = "<group>"; };
 		414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shell.swift"; sourceTree = "<group>"; };
 		451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorSidebarView.swift; sourceTree = "<group>"; };
@@ -269,6 +271,7 @@
 		EA2F7298595658EBCA75FF77 /* AppActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActions.swift; sourceTree = "<group>"; };
 		EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		F0DF83ABF11B31DAAABA963C /* E2EReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EReport.swift; sourceTree = "<group>"; };
+		F48537C0299ADF945358D808 /* EditorCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCommands.swift; sourceTree = "<group>"; };
 		F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRecognition.swift; sourceTree = "<group>"; };
 		F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ERunner.swift; sourceTree = "<group>"; };
 		F6F75F17F28F9F2CBD1E4D14 /* RecortiaE2EForegroundHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2EForegroundHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -336,6 +339,7 @@
 				AE004CDB83EE7107E4A5B806 /* AppPresence.swift */,
 				8122F2A3706BEFC20DE3331B /* AppServices.swift */,
 				4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */,
+				2C105D1B70AD241C287604A0 /* DesignTokens.swift */,
 				977B7B2D3F02E7F78030DFEE /* DragChip.swift */,
 				D97C30D7091C2051638564FB /* GlobalShortcuts.swift */,
 				78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */,
@@ -515,9 +519,9 @@
 			isa = PBXGroup;
 			children = (
 				15116A7454558F3FA0807632 /* EditorCanvasView.swift */,
+				F48537C0299ADF945358D808 /* EditorCommands.swift */,
 				962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */,
 				64983A912E3CFA1502563B16 /* EditorInspectorView.swift */,
-				3F0BC6A029162B1169C9B9BC /* EditorMetrics.swift */,
 				1FCF94E91512C394BD839071 /* EditorPreview.swift */,
 				61D5324EB9E2AA47D945093A /* EditorRootView.swift */,
 				451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */,
@@ -726,6 +730,7 @@
 				F54C69AE574623D0E81BCF97 /* CaptureUIController.swift in Sources */,
 				DC503AD5774349C919DCEB51 /* CaptureWindowVisibility.swift in Sources */,
 				78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */,
+				5C28BD37596715D88F7CEDD6 /* DesignTokens.swift in Sources */,
 				1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */,
 				C18E4C204D233AC24C4CB33B /* E2EAccessibilityControl.swift in Sources */,
 				0F90D2EFEC42BB978F9DF91A /* E2EActions.swift in Sources */,
@@ -738,9 +743,9 @@
 				31466BF58D7D74EC4FE5A57F /* E2EScenarios.swift in Sources */,
 				6A80F91BFD6A48E08DA8DBB8 /* E2ESnapshot.swift in Sources */,
 				09F8AA7FCD99E9FB0EB48D00 /* EditorCanvasView.swift in Sources */,
+				75DAB48C82B17F161440D16D /* EditorCommands.swift in Sources */,
 				AC4AFBDA384BF5B9EAE8BAC8 /* EditorFormat.swift in Sources */,
 				6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */,
-				29CFD3BFC2C64F0707110226 /* EditorMetrics.swift in Sources */,
 				8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */,
 				0F8A047AFF5175B2658E32DA /* EditorRootView.swift in Sources */,
 				1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */,
@@ -821,11 +826,12 @@
 				EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */,
 				431E9CB9AF92D4539FFE3FBF /* CaptureWindowVisibility.swift in Sources */,
 				D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */,
+				BEC9B49F4546674FC58290C6 /* DesignTokens.swift in Sources */,
 				A30DD234D2E1308C1916965D /* DragChip.swift in Sources */,
 				31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */,
+				61AAC7F70EA6E61FC071A9C0 /* EditorCommands.swift in Sources */,
 				3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */,
 				694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */,
-				6B1693FB457CC1EDA14B8794 /* EditorMetrics.swift in Sources */,
 				356E67D7EF867A549346181D /* EditorPreview.swift in Sources */,
 				F42EBFAC336DDBFD742F2784 /* EditorRootView.swift in Sources */,
 				C5AC5B580637289E9DC07F54 /* EditorSidebarView.swift in Sources */,

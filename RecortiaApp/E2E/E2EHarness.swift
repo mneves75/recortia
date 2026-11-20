@@ -253,11 +253,6 @@
         /// (canvas and status bar) and the inspector; the tools are in its toolbar.
         var contentRoot: NSView? { window?.contentView }
 
-        /// The window's split item with `behavior` (`.sidebar` or `.inspector`).
-        func splitItem(_ behavior: NSSplitViewItem.Behavior) -> NSSplitViewItem? {
-            (window?.contentViewController as? NSSplitViewController)?.splitViewItems.first { $0.behavior == behavior }
-        }
-
         var canvasView: EditorCanvasView? { contentRoot.flatMap { Self.first(EditorCanvasView.self, in: $0) } }
 
         static func first<T: NSView>(_ type: T.Type, in view: NSView) -> T? {

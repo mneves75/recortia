@@ -51,7 +51,7 @@
         static func rootView(for model: EditorModel, actions: any EditorWindowActions) -> some View {
             let canvas = EditorCanvasView(model: model)
             canvas.actions = actions
-            return EditorRootView(model: model, canvas: canvas, actions: actions)
+            return EditorRootView(model: model, canvas: canvas, actions: actions, panes: EditorPanes())
         }
     }
 
