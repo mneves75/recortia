@@ -39,11 +39,14 @@ public final class GitHubTokenStore {
     /// Prefixes GitHub gives classic and fine-grained personal access tokens, the kinds a person
     /// can paste into Settings (docs.github.com, "About authentication to GitHub").
     nonisolated static let personalTokenPrefixes = ["ghp_", "github_pat_"]
+    /// Bound on a raw paste or stored item, checked before any trimming or decoding.
+    nonisolated static let maximumRawBytes = 8192
 
     /// Admits a pasted or stored token: surrounding whitespace is trimmed; what remains must be a
     /// personal-token prefix and more, at most 4096 bytes of printable ASCII, so no control
     /// character or space can reach a request header, or a legacy classic token.
     public nonisolated static func validatedToken(_ pasted: String) throws(GitHubUploadFailure) -> GitHubToken {
+        guard pasted.utf8.count <= maximumRawBytes else { throw .invalidCredential }
         let token = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else { throw .missingCredential }
         let prefixed =
@@ -91,8 +94,11 @@ public final class GitHubTokenStore {
         var result: CFTypeRef?
         let resultCode = SecItemCopyMatching(request as CFDictionary, &result)
         if resultCode == errSecItemNotFound { throw .missingCredential }
-        guard resultCode == errSecSuccess, let data = result as? Data, let token = String(data: data, encoding: .utf8)
-        else { throw .credentialsUnavailable }
+        guard resultCode == errSecSuccess, let data = result as? Data else { throw .credentialsUnavailable }
+        // Retrieved, but too long or not text: not a token to send.
+        guard data.count <= Self.maximumRawBytes, let token = String(data: data, encoding: .utf8) else {
+            throw .invalidCredential
+        }
         return try Self.validatedToken(token)
     }
 

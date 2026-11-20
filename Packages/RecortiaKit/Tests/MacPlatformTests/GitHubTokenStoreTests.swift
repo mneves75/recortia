@@ -76,6 +76,16 @@ struct GitHubTokenStoreTests {
         #expect(throws: GitHubUploadFailure.invalidCredential) { try GitHubTokenStore.validatedToken(pasted) }
     }
 
+    // R13 (adversarial review of T1a): the length bound applied only after trimming, so a huge
+    // whitespace paste was processed in full on the main actor.
+    @Test("a paste longer than 8 KB is refused before it is trimmed, even if a token is inside")
+    func rejectsOversizeRawPaste() {
+        let padded = "ghp_abc123" + String(repeating: " ", count: 9000)
+        #expect(throws: GitHubUploadFailure.invalidCredential) { try GitHubTokenStore.validatedToken(padded) }
+        let atBound = "ghp_abc123" + String(repeating: " ", count: GitHubTokenStore.maximumRawBytes - 10)
+        #expect(throws: Never.self) { try GitHubTokenStore.validatedToken(atBound) }
+    }
+
     @Test("a token's description never contains the token")
     func descriptionIsRedacted() throws {
         let token = try GitHubTokenStore.validatedToken("ghp_syntheticsecret")
