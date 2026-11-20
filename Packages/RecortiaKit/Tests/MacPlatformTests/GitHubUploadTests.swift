@@ -1,6 +1,7 @@
 import CryptoKit
 import Domain
 import Foundation
+import Synchronization
 import Testing
 
 @testable import MacPlatform
@@ -288,6 +289,49 @@ struct GitHubUploadTests {
         #expect(await transport.requests.isEmpty)
     }
 
+    // R07 (second review of T1a): the transport awaited the consent check, then handed the request
+    // to URLSession in a later turn, so a revocation processed on the main actor in between could
+    // not stop a request that had been approved under the old consent.
+    @Test("The consent check and the start of the request happen in one main-actor step")
+    @MainActor
+    func consentCheckAndStartAreOneStep() async throws {
+        let session = RecordingGitHubSession()
+        let transport = GitHubURLTransport(makeSession: { session })
+        let request = URLRequest(url: try #require(URL(string: "https://api.github.com/repos/fixture/captures")))
+        var revoked = false
+        let mayStart: @MainActor @Sendable () -> Bool = {
+            session.log("check")
+            guard !revoked else { return false }
+            // A revocation queued on the main actor during the check runs after this step.
+            Task { @MainActor in
+                revoked = true
+                session.log("revoke")
+            }
+            return true
+        }
+        let response = try await transport.send(request, mayStart: mayStart)
+        #expect(response.statusCode == 200)
+        await Task.yield()
+        #expect(revoked, "control: the revocation never ran")
+        #expect(session.events == ["check", "create", "resume", "revoke"])
+        await #expect(throws: GitHubUploadFailure.staleDocument) {
+            _ = try await transport.send(request, mayStart: mayStart)
+        }
+        #expect(
+            session.events == ["check", "create", "resume", "revoke", "check"], "a request started after revocation")
+    }
+
+    @Test("A response larger than the bound is refused and its task canceled")
+    func oversizedResponseIsRefused() async throws {
+        let session = RecordingGitHubSession(body: Data(count: GitHubUploader.maximumResponseBytes + 1))
+        let transport = GitHubURLTransport(makeSession: { session })
+        let request = URLRequest(url: try #require(URL(string: "https://api.github.com/repos/fixture/captures")))
+        await #expect(throws: GitHubUploadFailure.invalidResponse) {
+            _ = try await transport.send(request, mayStart: { true })
+        }
+        #expect(session.events.contains("cancel"))
+    }
+
     @Test("Redirect delegate declines the redirected request")
     func redirectsDeclined() throws {
         let url = try #require(URL(string: "https://api.github.com/repos/fixture/captures"))
@@ -304,5 +348,40 @@ struct GitHubUploadTests {
         ) { request in
             #expect(request == nil)
         }
+    }
+}
+
+/// A session that records when tasks are created, started and canceled, and answers each started
+/// task at once with a 200 and `body`.
+final class RecordingGitHubSession: GitHubSession, Sendable {
+    private let state = Mutex<[String]>([])
+    private let body: Data
+
+    init(body: Data = Data("{}".utf8)) { self.body = body }
+
+    var events: [String] { state.withLock { $0 } }
+    func log(_ event: String) { state.withLock { $0.append(event) } }
+
+    func task(for request: URLRequest, collector: GitHubResponseCollector) -> any GitHubSessionTask {
+        log("create")
+        return Task(session: self, request: request, collector: collector)
+    }
+
+    func finish() {}
+
+    struct Task: GitHubSessionTask {
+        let session: RecordingGitHubSession
+        let request: URLRequest
+        let collector: GitHubResponseCollector
+
+        func resume() {
+            session.log("resume")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            collector.receive(response: response)
+            collector.receive(data: session.body, cancel: cancel)
+            collector.complete(error: nil)
+        }
+
+        func cancel() { session.log("cancel") }
     }
 }

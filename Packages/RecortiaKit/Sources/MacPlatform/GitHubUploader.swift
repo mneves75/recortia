@@ -1,6 +1,7 @@
 import CryptoKit
 import Domain
 import Foundation
+import Synchronization
 
 struct GitHubResponse: Sendable {
     let statusCode: Int
@@ -20,10 +21,55 @@ protocol GitHubTransport: Sendable {
         -> GitHubResponse
 }
 
+/// A session that creates request tasks; the app uses an ephemeral URLSession, tests a recorder.
+protocol GitHubSession: Sendable {
+    /// Creates, without starting, a task for `request` that reports to `collector`.
+    func task(for request: URLRequest, collector: GitHubResponseCollector) -> any GitHubSessionTask
+    /// Ends the session and cancels anything still running.
+    func finish()
+}
+
+protocol GitHubSessionTask: Sendable {
+    func resume()
+    func cancel()
+}
+
+extension URLSession: GitHubSession {
+    func task(for request: URLRequest, collector: GitHubResponseCollector) -> any GitHubSessionTask {
+        let task = dataTask(with: request)
+        // A per-task delegate, set before the task starts, receives its response and data.
+        task.delegate = collector
+        return task
+    }
+
+    func finish() { invalidateAndCancel() }
+}
+
+extension URLSessionDataTask: GitHubSessionTask {}
+
 /// GitHub.com only. Never follows redirects, stores cookies, caches credentials, or writes
 /// request/response content to disk. Bounds response bodies before retaining them.
 struct GitHubURLTransport: GitHubTransport {
-    public init() {}
+    private let makeSession: @Sendable () -> any GitHubSession
+
+    public init() {
+        self.init(makeSession: { Self.ephemeralSession() })
+    }
+
+    init(makeSession: @escaping @Sendable () -> any GitHubSession) {
+        self.makeSession = makeSession
+    }
+
+    private static func ephemeralSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 60
+        return URLSession(configuration: configuration, delegate: NoGitHubRedirects(), delegateQueue: nil)
+    }
 
     @concurrent
     public func send(_ request: URLRequest, mayStart: @escaping @MainActor @Sendable () -> Bool) async throws
@@ -32,29 +78,118 @@ struct GitHubURLTransport: GitHubTransport {
         guard request.url?.scheme == "https", request.url?.host == "api.github.com",
             request.url?.user == nil, request.url?.password == nil, request.url?.port == nil
         else { throw GitHubUploadFailure.invalidDestination }
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.urlCache = nil
-        configuration.httpCookieStorage = nil
-        configuration.httpShouldSetCookies = false
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        configuration.timeoutIntervalForRequest = 30
-        configuration.timeoutIntervalForResource = 60
-        let session = URLSession(configuration: configuration, delegate: NoGitHubRedirects(), delegateQueue: nil)
-        defer { session.invalidateAndCancel() }
-        // NET-01's boundary is the request handed to URLSession. The consent check runs on the main
-        // actor as the last step before it; `bytes(for:)` cannot start the task in that same turn,
-        // so a revocation processed in the hop back can still see one request already on its way
-        // (ADR-006 leaves repository visibility changes after the lookup to the owner as well).
-        guard await mayStart() else { throw GitHubUploadFailure.staleDocument }
-        let (stream, response) = try await session.bytes(for: request)
-        guard let http = response as? HTTPURLResponse else { throw GitHubUploadFailure.invalidResponse }
-        var body = Data()
-        for try await byte in stream {
-            try Task.checkCancellation()
-            guard body.count < GitHubUploader.maximumResponseBytes else { throw GitHubUploadFailure.invalidResponse }
-            body.append(byte)
+        try Task.checkCancellation()
+        let session = makeSession()
+        defer { session.finish() }
+        let collector = GitHubResponseCollector(limit: GitHubUploader.maximumResponseBytes)
+        // NET-01's boundary is the request handed to URLSession. The consent check (which also
+        // marks a PUT committed) and the creation and start of the task are one main-actor step:
+        // a revocation processed before it stops the request, and one processed after it finds the
+        // request already started.
+        let task: (any GitHubSessionTask)? = await MainActor.run {
+            guard mayStart() else { return nil }
+            let task = session.task(for: request, collector: collector)
+            task.resume()
+            return task
         }
-        return GitHubResponse(statusCode: http.statusCode, body: body)
+        guard let task else { throw GitHubUploadFailure.staleDocument }
+        return try await withTaskCancellationHandler {
+            try await collector.response()
+        } onCancel: {
+            task.cancel()
+        }
+    }
+}
+
+/// Collects one task's response, refusing a body over `limit` bytes by canceling the task.
+final class GitHubResponseCollector: NSObject, URLSessionDataDelegate, Sendable {
+    private struct State {
+        var statusCode: Int?
+        var body = Data()
+        var failure: (any Error)?
+        var result: Result<GitHubResponse, any Error>?
+        var waiter: CheckedContinuation<GitHubResponse, any Error>?
+    }
+
+    private let state = Mutex(State())
+    private let limit: Int
+
+    init(limit: Int) {
+        self.limit = limit
+    }
+
+    func receive(response: URLResponse) {
+        state.withLock { $0.statusCode = (response as? HTTPURLResponse)?.statusCode }
+    }
+
+    func receive(data: Data, cancel: () -> Void) {
+        let exceeded = state.withLock { state -> Bool in
+            guard state.failure == nil else { return false }
+            guard state.body.count + data.count <= limit else {
+                state.failure = GitHubUploadFailure.invalidResponse
+                state.body = Data()
+                return true
+            }
+            state.body.append(data)
+            return false
+        }
+        if exceeded { cancel() }
+    }
+
+    func complete(error: (any Error)?) {
+        let resolved = state.withLock {
+            state -> (CheckedContinuation<GitHubResponse, any Error>, Result<GitHubResponse, any Error>)? in
+            guard state.result == nil else { return nil }
+            let result: Result<GitHubResponse, any Error> =
+                if let failure = state.failure {
+                    .failure(failure)
+                } else if let error {
+                    .failure(error)
+                } else if let statusCode = state.statusCode {
+                    .success(GitHubResponse(statusCode: statusCode, body: state.body))
+                } else {
+                    .failure(GitHubUploadFailure.invalidResponse)
+                }
+            state.result = result
+            defer { state.waiter = nil }
+            return state.waiter.map { ($0, result) }
+        }
+        if let (waiter, result) = resolved { waiter.resume(with: result) }
+    }
+
+    /// The task's response once it completes.
+    func response() async throws -> GitHubResponse {
+        try await withCheckedThrowingContinuation { continuation in
+            let ready = state.withLock { state -> Result<GitHubResponse, any Error>? in
+                if let result = state.result { return result }
+                state.waiter = continuation
+                return nil
+            }
+            if let ready { continuation.resume(with: ready) }
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
+        receive(response: response)
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        receive(data: data, cancel: { dataTask.cancel() })
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        complete(error: error)
+    }
+
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
     }
 }
 
