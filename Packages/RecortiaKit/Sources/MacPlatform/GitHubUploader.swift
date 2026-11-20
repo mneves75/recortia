@@ -86,13 +86,15 @@ struct GitHubURLTransport: GitHubTransport {
         // marks a PUT committed) and the creation and start of the task are one main-actor step:
         // a revocation processed before it stops the request, and one processed after it finds the
         // request already started.
-        let task: (any GitHubSessionTask)? = await MainActor.run {
-            guard mayStart() else { return nil }
+        // A cancellation that arrived while waiting for the main actor is honored in that step too.
+        let started: Result<any GitHubSessionTask, any Error> = await MainActor.run {
+            guard !Task.isCancelled else { return .failure(CancellationError()) }
+            guard mayStart() else { return .failure(GitHubUploadFailure.staleDocument) }
             let task = session.task(for: request, collector: collector)
             task.resume()
-            return task
+            return .success(task)
         }
-        guard let task else { throw GitHubUploadFailure.staleDocument }
+        let task = try started.get()
         return try await withTaskCancellationHandler {
             try await collector.response()
         } onCancel: {
@@ -301,6 +303,10 @@ public struct GitHubUploader: Sendable {
         } catch {
             // Refused before sending: nothing reached GitHub, even for the image.
             if error as? GitHubUploadFailure == .staleDocument { throw .staleDocument }
+            // The transport reports cancellation before the handoff as CancellationError: no task
+            // existed, so even a PUT is canceled, not of unknown completion. Cancellation after the
+            // handoff surfaces as the task's own error.
+            if error is CancellationError { throw .canceled }
             if committing { throw .completionUnknown }
             if Task.isCancelled || error is CancellationError { throw .canceled }
             throw (error as? GitHubUploadFailure) ?? .network

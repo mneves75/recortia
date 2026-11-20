@@ -26,6 +26,21 @@ actor UploadTransportFixture: GitHubTransport {
     }
 }
 
+/// Answers the GETs, then fails the PUT as a transport does when its task is canceled before the
+/// request is handed off: with CancellationError, and nothing sent.
+actor CancelingPutTransport: GitHubTransport {
+    var replies: [GitHubResponse]
+
+    init(replies: [GitHubResponse]) { self.replies = replies }
+
+    func send(_ request: URLRequest, mayStart: @escaping @MainActor @Sendable () -> Bool) async throws
+        -> GitHubResponse
+    {
+        guard request.httpMethod != "PUT", !replies.isEmpty else { throw CancellationError() }
+        return replies.removeFirst()
+    }
+}
+
 @Suite("GitHub upload: private, sanitized, bounded, idempotent (NET-01)")
 struct GitHubUploadTests {
     let destination = GitHubDestination(owner: "fixture-owner", repository: "private-captures")
@@ -110,6 +125,38 @@ struct GitHubUploadTests {
             Issue.record("invalid destination was accepted")
         } catch { #expect(error == .invalidDestination) }
         #expect(await transport.requests.isEmpty)
+    }
+
+    // R3-08 (third review of T1a): a cancellation before any task was created reached the PUT's
+    // error mapping as completionUnknown, although nothing had been sent.
+    @Test("A PUT canceled before its request is handed off is canceled, never of unknown completion")
+    func putCanceledBeforeHandoffIsCanceled() async throws {
+        let transport = CancelingPutTransport(replies: [privateRepo, reply(404, "{}")])
+        await #expect(throws: GitHubUploadFailure.canceled) {
+            _ = try await GitHubUploader(transport: transport).upload(
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isLive: { true },
+                isCurrent: { true })
+        }
+    }
+
+    @Test("A transport send from a canceled task checks no consent and creates no task")
+    func canceledSendCreatesNoTask() async throws {
+        let session = RecordingGitHubSession()
+        let transport = GitHubURLTransport(makeSession: { session })
+        let request = URLRequest(url: try #require(URL(string: "https://api.github.com/repos/fixture/captures")))
+        let checked = Mutex(false)
+        let result = await Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await transport.send(
+                request,
+                mayStart: {
+                    checked.withLock { $0 = true }
+                    return true
+                })
+        }.result
+        #expect(throws: CancellationError.self) { try result.get() }
+        #expect(!checked.withLock { $0 })
+        #expect(session.events.isEmpty, "a task was created for a canceled send")
     }
 
     @Test("No retry follows an indeterminate PUT; the user is warned it may have completed")
