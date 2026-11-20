@@ -17,6 +17,10 @@ struct EditorArrangeRefusalTests {
         h.click(20, 30)
         model.commitTextEditing("Água")
         let id = try #require(model.document.annotations.first).id
+        // A shape above the text, so Bring to Front and Align would each change the document.
+        model.selectTool(.rectangle)
+        h.drag((120, 120), (220, 200))
+        try #require(model.document.annotations.count == 2)
         model.selectTool(.select)
         model.select(.annotation(id))
         #expect(model.canArrangeSelection)
@@ -26,10 +30,13 @@ struct EditorArrangeRefusalTests {
         #expect(!model.canArrangeSelection)
 
         model.duplicateSelection()
+        #expect(model.document == before, "Duplicate changed the document")
         model.reorderSelection(.front)
-        model.align(.left)
-
-        #expect(model.document == before)
+        #expect(model.document == before, "Bring to Front changed the document")
+        model.reorderSelection(.forward)
+        #expect(model.document == before, "Bring Forward changed the document")
+        model.align(.right)
+        #expect(model.document == before, "Align changed the document")
         #expect(model.textEditing == input)
     }
 }

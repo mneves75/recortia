@@ -28,6 +28,21 @@ final class EditorCommands: ObservableObject {
     func editorBecameKey(_ editor: EditorWindowController) {
         keyEditor = editor
         revision &+= 1
+        observeArrangeAvailability(of: editor)
+    }
+
+    /// Republishes whenever the key editor's selection, text input or masking changes whether
+    /// Arrange can act, so the menu shows each command disabled exactly when it would refuse.
+    private func observeArrangeAvailability(of editor: EditorWindowController) {
+        withObservationTracking {
+            _ = editor.model.canArrangeSelection
+        } onChange: { [weak self, weak editor] in
+            Task { @MainActor in
+                guard let self, let editor, self.keyEditor === editor else { return }
+                self.revision &+= 1
+                self.observeArrangeAvailability(of: editor)
+            }
+        }
     }
 
     func editorResignedKey(_ editor: EditorWindowController) {
@@ -115,10 +130,11 @@ struct EditorMenuCommands: Commands {
             .keyboardShortcut("i", modifiers: [.control, .command])
             .disabled(editor == nil)
         }
-        // Enabled for a key editor. When chosen, a command refuses while text input (IME included)
-        // or automatic masking owns the editor, and never commits pending text itself.
+        // Enabled exactly when the key editor can arrange its selection: never during text input
+        // (IME included) or automatic masking. A command rechecks its live target when chosen and
+        // never commits pending text itself.
         CommandMenu(String(localized: "Arrange", table: "Editor")) {
-            EditorArrangeMenuItems(isAvailable: editor != nil) { command in
+            EditorArrangeMenuItems(isAvailable: editor?.model.canArrangeSelection ?? false) { command in
                 guard let target = EditorCommands.targetEditor(), target.model.canArrangeSelection else {
                     return NSSound.beep()
                 }

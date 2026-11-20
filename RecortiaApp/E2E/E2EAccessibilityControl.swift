@@ -271,14 +271,15 @@
             }
         }
 
-        /// Opens or closes a native disclosure as VoiceOver does: Press on its disclosure triangle
-        /// (the identified element or its nearest descendant with that role), only when its expanded
+        /// Opens or closes a native disclosure as VoiceOver does: Press on the disclosure triangle of
+        /// the header titled `title` inside the identified element, only when its explicit expanded
         /// state differs from `expanded`.
         static func setDisclosure(
-            _ identifier: String, expanded: Bool, in root: NSView, _ context: ScenarioContext
+            _ identifier: String, titled title: String, expanded: Bool, in root: NSView,
+            _ context: ScenarioContext
         ) throws {
-            let triangle = try disclosureTriangle(identifier, in: root, context)
-            guard isExpanded(triangle) != expanded else { return }
+            let triangle = try disclosureTriangle(identifier, titled: title, in: root, context)
+            guard try expandedState(triangle, identifier, context) != expanded else { return }
             if triangle.accessibilityActionNames().contains(.press) {
                 triangle.accessibilityPerformAction(.press)
             } else {
@@ -288,24 +289,36 @@
             }
         }
 
-        /// The expanded state the disclosure's triangle reports to assistive apps.
-        static func disclosureIsExpanded(_ identifier: String, in root: NSView, _ context: ScenarioContext) throws
-            -> Bool
-        {
-            isExpanded(try disclosureTriangle(identifier, in: root, context))
+        /// The expanded state the header's triangle reports to assistive apps (0 or 1, nothing else).
+        static func disclosureIsExpanded(
+            _ identifier: String, titled title: String, in root: NSView, _ context: ScenarioContext
+        ) throws -> Bool {
+            try expandedState(try disclosureTriangle(identifier, titled: title, in: root, context), identifier, context)
         }
 
-        private static func isExpanded(_ triangle: NSObject) -> Bool {
-            (triangle.value(forKey: "accessibilityValue") as? NSNumber)?.boolValue ?? false
+        private static func expandedState(_ triangle: NSObject, _ identifier: String, _ context: ScenarioContext)
+            throws -> Bool
+        {
+            let value = triangle.value(forKey: "accessibilityValue")
+            let number = try context.unwrap(
+                "\(identifier) disclosure reports an expanded value", value as? NSNumber,
+                "value \(String(describing: value))")
+            try context.require(
+                "\(identifier) disclosure value is 0 or 1", number.intValue == 0 || number.intValue == 1,
+                "value \(number)")
+            return number.intValue == 1
         }
 
-        private static func disclosureTriangle(_ identifier: String, in root: NSView, _ context: ScenarioContext)
-            throws -> NSObject
-        {
+        /// The disclosure triangle titled `title` within the identified element. Its own label or
+        /// title must name the header, so a triangle from any other disclosure never qualifies.
+        private static func disclosureTriangle(
+            _ identifier: String, titled title: String, in root: NSView, _ context: ScenarioContext
+        ) throws -> NSObject {
             let element = try control(identifier, in: root, context)
             var queue: [Any] = [element]
             var visited: Set<ObjectIdentifier> = []
             var budget = 512
+            var triangles: [String] = []
             while !queue.isEmpty, budget > 0 {
                 budget -= 1
                 guard let object = queue.removeFirst() as? NSObject,
@@ -315,7 +328,11 @@
                     object.value(forKey: "accessibilityRole") as? String
                         == NSAccessibility.Role.disclosureTriangle.rawValue
                 {
-                    return object
+                    let names = ["accessibilityLabel", "accessibilityTitle"].compactMap { key in
+                        object.responds(to: NSSelectorFromString(key)) ? object.value(forKey: key) as? String : nil
+                    }
+                    if names.contains(title) { return object }
+                    triangles.append(names.joined(separator: "/"))
                 }
                 if object.responds(to: NSSelectorFromString("accessibilityChildren")),
                     let children = object.value(forKey: "accessibilityChildren") as? [Any]
@@ -324,8 +341,8 @@
                 }
             }
             return try context.unwrap(
-                "\(identifier) has a disclosure triangle", nil as NSObject?,
-                "role \(String(describing: element.value(forKey: "accessibilityRole")))")
+                "\(identifier) has a disclosure triangle titled \(title)", nil as NSObject?,
+                "triangles \(triangles), role \(String(describing: element.value(forKey: "accessibilityRole")))")
         }
 
         /// Performs a control's named accessibility action, as VoiceOver's actions rotor does.
@@ -527,7 +544,10 @@
             menu.update()
             entries = menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }
                 .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on) }
-            let index = title.flatMap { title in menu.items.firstIndex { $0.title == title } }
+            // Only an item a person could choose: visible and enabled, never a hidden alternate.
+            let index = title.flatMap { title in
+                menu.items.firstIndex { $0.title == title && !$0.isHidden && $0.isEnabled }
+            }
             chosen = index != nil
             // Choose on the next turn of the tracking loop, after the menu finished opening, as a
             // person's click would; a menu chosen inside the notification did not open again.
