@@ -162,3 +162,9 @@ pasteboard is read synchronously on the main actor to produce an error (`ImageIn
   SwiftUI text exposes no accessible value in the test window (cause not investigated).
 - **Toolchain.** No macOS 26.0 host verifies launch on the new floor.
 - **Scripts review.** F07 and F10 were declined with reasons in the slice's commits.
+- **T1b leftovers.** `Entry.label` removal (mechanical, after T1 lands); per-method point guards at
+  public entry points stay until admitted point types exist; the presentation-order change needs the
+  space probe's `dynamic` mode and the installed-app fullscreen check, both owner-run.
+- **AnnotationRendererTests flake.** One parallel package run failed "drawing twice is
+  byte-identical" on the Arabic and emoji sample and passed on rerun and in two full gates; record it
+  under the open text-font incident (AGENTS.md F-1) and watch for a recurrence.
