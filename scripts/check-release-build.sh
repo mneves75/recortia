@@ -24,19 +24,8 @@ done
 echo "== test-only code in the Release app"
 scripts/check-release-binary.sh "$products/Recortia.app"
 
-# The Release E2E product links the fixture generators on purpose, so it is scanned only for the
-# runner's own launch arguments and type, which exist only under RECORTIA_E2E.
-e2e=$products/RecortiaE2E.app
-if [[ ! -f "$e2e/Contents/MacOS/RecortiaE2E" ]]; then
-  echo "release: $e2e has no executable; refusing to pass without scanning it" >&2
-  exit 1
-fi
-for marker in -RecortiaE2EOnly -RecortiaE2EProbe -RecortiaE2ELastWindowProbe E2ERunner; do
-  if grep -raqF -- "$marker" "$e2e/Contents/MacOS"; then
-    echo "release: E2E runner code ($marker) is in the Release E2E product $e2e" >&2
-    exit 1
-  fi
-done
+echo "== E2E runner in the Release E2E product"
+scripts/check-release-binary.sh --runner "$products/RecortiaE2E.app"
 
 helper=$products/RecortiaE2EForegroundHost.app
 if [[ -e "$helper/Contents/MacOS" ]]; then

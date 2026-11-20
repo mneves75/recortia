@@ -31,8 +31,8 @@ def make_app(root: pathlib.Path, *, main: bytes, extras: dict[str, bytes]) -> pa
     return app
 
 
-def run_gate(target: pathlib.Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["/bin/zsh", str(GATE), str(target)], capture_output=True, text=True)
+def run_gate(target: pathlib.Path, *options: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["/bin/zsh", str(GATE), *options, str(target)], capture_output=True, text=True)
 
 
 class ReleaseBinaryGateTests(unittest.TestCase):
@@ -98,12 +98,54 @@ class ReleaseBinaryGateTests(unittest.TestCase):
         self.assertIn('scripts/check-release-binary.sh "$app"\n', script)
 
 
-RUNNER_MARKERS = ("-RecortiaE2EOnly", "-RecortiaE2EProbe", "-RecortiaE2ELastWindowProbe", "E2ERunner")
+RUNNER_MARKERS = ("-RecortiaE2E", "-RecortiaE2EOnly", "E2ERunner")
 BUILD_ARGUMENTS = (
     "-project Recortia.xcodeproj -scheme {scheme} -configuration Release -destination generic/platform=macOS "
     "-derivedDataPath .build/dd-release -onlyUsePackageVersionsFromResolvedFile "
     "CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=- build"
 )
+
+
+class BundleScanFailsClosedTests(unittest.TestCase):
+    """Review 2 N01/F05: one scan for both bundles; any read error or a missing executable fails."""
+
+    def test_an_unreadable_file_fails_instead_of_reading_as_clean(self) -> None:
+        for relative in ("Contents/MacOS/Recortia", "Contents/Frameworks/Helper.framework/Helper"):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
+                app = make_app(pathlib.Path(directory), main=mach_o(),
+                               extras={"Contents/Frameworks/Helper.framework/Helper": mach_o()})
+                (app / relative).chmod(0)
+                result = run_gate(app)
+                (app / relative).chmod(0o644)
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("could not read", result.stderr)
+
+    def test_the_expected_executable_must_be_a_mach_o(self) -> None:
+        for main in (None, b"#!/bin/sh\n"):
+            with self.subTest(main=main), tempfile.TemporaryDirectory() as directory:
+                app = make_app(pathlib.Path(directory), main=main or mach_o(),
+                               extras={"Contents/MacOS/Recortia.debug.dylib": mach_o()})
+                if main is None:
+                    (app / "Contents/MacOS/Recortia").unlink()
+                result = run_gate(app)
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("Contents/MacOS/Recortia", result.stderr)
+
+    def test_runner_scan_covers_the_whole_bundle_and_allows_the_fixtures(self) -> None:
+        for relative in ("Contents/MacOS/Recortia", "Contents/Frameworks/Runner.framework/Runner",
+                         "Contents/PlugIns/Runner.bundle/Contents/MacOS/Runner", "Contents/Resources/runner.dylib"):
+            for marker in ("-RecortiaE2E", "E2ERunner"):
+                with self.subTest(relative=relative, marker=marker), tempfile.TemporaryDirectory() as directory:
+                    extras = {} if relative == "Contents/MacOS/Recortia" else {relative: mach_o(marker)}
+                    main = mach_o(marker) if relative == "Contents/MacOS/Recortia" else mach_o()
+                    result = run_gate(make_app(pathlib.Path(directory), main=main, extras=extras), "--runner")
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(f"({marker})", result.stderr)
+        with tempfile.TemporaryDirectory() as directory:
+            # The E2E product links the fixture generators on purpose.
+            app = make_app(pathlib.Path(directory), main=mach_o("RecortiaFixtures ChartFixture TextCorpus"), extras={})
+            result = run_gate(app, "--runner")
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
 
 class ReleaseBuildGateTests(unittest.TestCase):
@@ -184,7 +226,8 @@ class ReleaseBuildGateTests(unittest.TestCase):
             with self.subTest(marker=runner_marker):
                 result = self.run_build_gate(runner_marker=runner_marker)
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-                self.assertIn(f"E2E runner code ({runner_marker}) is in the Release", result.stderr)
+                self.assertIn("RecortiaE2E.app", result.stderr)
+                self.assertIn("test-only code (", result.stderr)
 
     def test_hosted_ci_runs_the_release_build_gate_unconditionally(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
