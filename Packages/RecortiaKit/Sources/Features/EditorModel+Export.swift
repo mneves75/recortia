@@ -22,15 +22,16 @@ extension EditorModel {
         }
     }
 
-    /// Runs the automatic batch planned when this editor's capture completed (R-3). With automatic
-    /// masking it waits for the masks and runs on the masked document, which is then its freshness
-    /// baseline; masking that failed skips the batch, and closing the editor cancels it.
+    /// Runs the automatic batch planned when this editor's capture completed (R-3) on the capture
+    /// as it opened or, with automatic masking, as the masks left it. That state is frozen when
+    /// masking settles; any later change, the person's Undo included, makes the batch stale rather
+    /// than exporting it. Masking that failed skips the batch, and closing the editor cancels it.
     public func runAutomaticExports(_ plan: AutomaticExportPlan) async -> [ExportOutcome] {
-        let masking = await autoRedactionSettled()
+        let baseline = await autoRedactionSettled()
         guard !isClosed else { return [.canceled] }
-        guard masking != .failed else { return [.failed(.maskingUnfinished)] }
+        guard let baseline else { return [.failed(.maskingUnfinished)] }
         return await environment.export.runAutomaticExports(
-            plan, for: session,
+            plan, for: baseline,
             currentSession: { [weak self] in
                 guard let self, !self.isClosed else { return nil }
                 return self.session

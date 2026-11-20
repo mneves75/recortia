@@ -166,7 +166,7 @@ extension EditorModel {
 
     /// Hover (no button): drives the loupe.
     public func pointerMoved(to p: Point<DocumentSpace>) {
-        guard !isClosed, p.isFinite, tool == .loupe, case .idle = gesture else { return }
+        guard !isClosed, !isMaskingPending, p.isFinite, tool == .loupe, case .idle = gesture else { return }
         inspect(at: p)
     }
 

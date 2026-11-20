@@ -14,6 +14,7 @@ extension EditorModel {
         guard let asset = document.layers.first.flatMap({ document.assets[$0.assetID] }) else {
             return finishAutoRedaction(.failure(SensitiveTextUnavailable()))
         }
+        autoRedactionRequest = session.requestIdentity()
         let service = environment.sensitiveText
         let clock = environment.clock
         let detection = Task { [weak self] in
@@ -27,14 +28,17 @@ extension EditorModel {
         }
         let deadline = Task { [weak self] in
             do { try await clock.sleep(for: Self.autoRedactionDeadline) } catch { return }
+            // Stops the sweep even when no editor is left to settle.
+            detection.cancel()
             self?.finishAutoRedaction(.failure(CancellationError()))
         }
         autoRedactionTasks = [detection, deadline]
     }
 
-    /// The masking outcome, once it is no longer pending (immediately when it is not).
-    func autoRedactionSettled() async -> AutoRedaction {
-        guard isMaskingPending else { return autoRedaction }
+    /// What the capture's automatic batch may export once masking is no longer pending (at once when
+    /// it is not): the frozen baseline, or nil when masking failed.
+    func autoRedactionSettled() async -> DocumentSession? {
+        guard isMaskingPending else { return automaticExportBaseline }
         return await withCheckedContinuation { autoRedactionWaiters.append($0) }
     }
 
@@ -47,7 +51,11 @@ extension EditorModel {
     private func finishAutoRedaction(_ result: Result<[PixelRect], any Error>) {
         // The first of detection and deadline decides; a late result is ignored.
         guard isMaskingPending, !isClosed else { return }
-        if case .success(let regions) = result, landAutoMasks(regions) {
+        // A result counts only for the document state it was computed from, from a task that was
+        // not cancelled; anything else fails closed, an empty result included.
+        let isCurrent =
+            !Task.isCancelled && autoRedactionRequest.map { session.accepts($0) } == true
+        if isCurrent, case .success(let regions) = result, landAutoMasks(regions) {
             settleAutoRedaction(.done)
             if !regions.isEmpty { post(.sensitiveTextMasked(regions.count)) }
         } else {
@@ -56,13 +64,17 @@ extension EditorModel {
         }
     }
 
+    /// Freezes the batch's baseline before any waiter resumes, so nothing queued on the main actor
+    /// between this and the batch (an Undo, an edit) can change what it exports.
     private func settleAutoRedaction(_ outcome: AutoRedaction) {
         for task in autoRedactionTasks { task.cancel() }
         autoRedactionTasks = []
+        autoRedactionRequest = nil
         autoRedaction = outcome
+        automaticExportBaseline = outcome == .done ? session : nil
         let waiters = autoRedactionWaiters
         autoRedactionWaiters = []
-        for waiter in waiters { waiter.resume(returning: outcome) }
+        for waiter in waiters { waiter.resume(returning: automaticExportBaseline) }
         scheduleBaseRender()
     }
 
@@ -74,6 +86,8 @@ extension EditorModel {
         let fill = redactionFill
         // Allocated before the edit, whose closure runs twice and must build one document (R6-04).
         let ids = regions.map { _ in MaskID() }
+        // The masks are their own undo step, never part of a group that was open (none can be).
+        endContinuousChange()
         let landed = performEdit("Redact Sensitive Text") { document in
             guard fill.isOpaque else { throw DocumentError.translucentSecureMask }
             guard document.layers.count == 1, let asset = document.layers.first?.assetID else {

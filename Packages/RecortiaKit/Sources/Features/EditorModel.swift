@@ -84,7 +84,12 @@ public final class EditorModel {
     @ObservationIgnored var colorPickTask: Task<Void, Never>?
     @ObservationIgnored var colorPickRequest: UUID?
     @ObservationIgnored var autoRedactionTasks: [Task<Void, Never>] = []
-    @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<AutoRedaction, Never>] = []
+    /// The document state detection started from; a result for any other state is stale.
+    @ObservationIgnored var autoRedactionRequest: RequestIdentity?
+    /// What the capture's automatic batch exports, frozen when masking settles: the capture itself
+    /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
+    @ObservationIgnored var automaticExportBaseline: DocumentSession?
+    @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
 
     enum Gesture {
         case idle
@@ -110,11 +115,17 @@ public final class EditorModel {
         self.session = session
         self.environment = environment
         knownAssets = Set(session.document.assets.keys)
+        automaticExportBaseline = session
         if autoRedacts {
             autoRedaction = .pending
             startAutoRedaction()
         }
         scheduleBaseRender()
+    }
+
+    // An editor released without `close()` still stops its detection and deadline.
+    isolated deinit {
+        for task in autoRedactionTasks { task.cancel() }
     }
 
     public var document: Document { session.document }
@@ -207,6 +218,9 @@ public final class EditorModel {
     /// Groups a run of changes (a slider drag, a color well session) into one undo step.
     @discardableResult
     public func beginContinuousChange() -> UUID {
+        // Refused while masking runs, so no group can hold the masks' undo step (the returned ID
+        // then ends nothing).
+        guard !isMaskingPending else { return UUID() }
         if let continuousChangeID { return continuousChangeID }
         let id = UUID()
         continuousChangeID = id
