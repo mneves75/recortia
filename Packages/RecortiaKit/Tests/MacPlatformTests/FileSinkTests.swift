@@ -332,6 +332,51 @@ struct FileSinkTests {
         #expect(Self.mode(url) == 0o644)
     }
 
+    enum OwnerOnly: String, CaseIterable, Sendable {
+        /// Same owner, group that cannot be kept: the owner's own bits stay as they were.
+        case sameOwnerReadOnly
+        /// Another owner: owner-only for this user.
+        case anotherOwner
+    }
+
+    // R3-06 (third review of T1a): the owner-only fallback set 0600 even for a same-owner 0400
+    // file, adding write access, and kept ACL grants copied from the destination.
+    @Test(
+        "The owner-only replacement keeps the owner's bits for the same owner and carries no ACL",
+        arguments: OwnerOnly.allCases)
+    func ownerOnlyReplacementHasNoACL(kind: OwnerOnly) throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        try Self.addACL("everyone allow read", to: url)
+        let fileSystem: POSIXFileSystem
+        let expected: mode_t
+        switch kind {
+        case .sameOwnerReadOnly:
+            _ = try #require(
+                Self.otherGroup(for: url), "control: this user has no second group to give the destination")
+            try FileManager.default.setAttributes([.posixPermissions: 0o440], ofItemAtPath: url.path)
+            fileSystem = POSIXFileSystem(changeGroup: { _, _ in
+                errno = EPERM
+                return -1
+            })
+            expected = 0o400
+        case .anotherOwner:
+            try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+            fileSystem = POSIXFileSystem(saver: geteuid() &+ 1)
+            expected = 0o600
+        }
+        try #require(Self.extendedACL(url) != nil, "control: the destination has no ACL")
+        _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.mode(url) == expected)
+        #expect(Self.extendedACL(url) == nil, "the owner-only replacement kept the destination's ACL")
+    }
+
     // R2-D02 (program 2026-11): a new file takes its folder's group, so an overwrite kept the mode
     // of a 0640 file of group A and handed group read access to the folder's group B.
     @Test("Overwriting keeps the replaced file's group, so its group permission reaches no other group")

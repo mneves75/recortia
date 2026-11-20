@@ -339,21 +339,26 @@ struct POSIXFileSystem {
         guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
         let replaced = FileIdentity(existing)
         // ACL first, so a deny entry is in effect before the mode can widen access.
-        let copiedACL = try Self.copyACL(from: destination, to: stage.file)
+        var copiedACL = try Self.copyACL(from: destination, to: stage.file)
         afterReplaceStep(stage.url)
         var mode = existing.st_mode & 0o777
         var written = stat()
         guard fstat(stage.file, &written) == 0 else { throw FileSystemFailure(code: errno) }
-        // Another owner, or a group that cannot be kept, leaves the file owner-only (0600): the
-        // replacement belongs to this user, so the old owner, or a member of the old group, would
-        // otherwise fall into the "other" class and gain its access.
-        if existing.st_uid != saver
+        // Another owner, or a group that cannot be kept, leaves the file owner-only, with no ACL:
+        // the replacement belongs to this user, so the old owner, or a member of the old group,
+        // would otherwise fall into the "other" class, or keep a copied grant. The same owner keeps
+        // its own bits (a 0400 file stays 0400); another owner's file becomes 0600.
+        let ownerOnly =
+            existing.st_uid != saver
             || (written.st_gid != existing.st_gid && changeGroup(stage.file, existing.st_gid) != 0)
-        {
-            mode = 0o600
-        }
+        if ownerOnly { mode = existing.st_uid == saver ? existing.st_mode & 0o700 : 0o600 }
         // Best effort: a volume that refuses chmod keeps the owner-only staging mode.
         _ = fchmod(stage.file, mode)
+        // Entries are cleared only once the mode is owner-only, so clearing a deny never widens.
+        if ownerOnly, copiedACL {
+            try Self.clearACL(stage.file)
+            copiedACL = false
+        }
         afterReplaceStep(stage.url)
         do throws(FileSystemFailure) {
             try stage.checkStillStaged()
