@@ -61,10 +61,9 @@ public struct FileSink {
             throw .writeFailed(code: Int(EINVAL))
         }
         do {
-            _ = try fileSystem.save(
+            return try fileSystem.save(
                 snapshot.bytes, in: url.deletingLastPathComponent(), names: [name], overwrite: overwrite)
         } catch { throw Self.map(error) }
-        return url
     }
 
     /// Saves under the snapshot's sanitized suggested name in an authorized `folder`, adding
@@ -74,8 +73,7 @@ public struct FileSink {
         let name = SafeFilename.sanitize(snapshot.suggestedFilename, fallbackExtension: snapshot.format.fileExtension)
         let names = (1...Self.maxUniqueAttempts).map { ExportFilename.deduplicated(name, attempt: $0) }
         do {
-            let saved = try fileSystem.save(snapshot.bytes, in: folder, names: names, overwrite: false)
-            return folder.appendingPathComponent(saved, isDirectory: false)
+            return try fileSystem.save(snapshot.bytes, in: folder, names: names, overwrite: false)
         } catch { throw Self.map(error) }
     }
 
@@ -195,11 +193,22 @@ struct POSIXFileSystem {
     var failPublish: Int32?
 
     /// Writes `data` under the first of `names` that it can take in `folder`, or replaces
-    /// `names[0]` when `overwrite` allows, and returns the name used. Without `overwrite`, a taken
-    /// name moves on to the next; when none is left the save fails with EEXIST.
-    func save(_ data: Data, in folder: URL, names: [String], overwrite: Bool) throws(FileSystemFailure) -> String {
+    /// `names[0]` when `overwrite` allows, and returns the saved file's URL in the admitted folder,
+    /// which a link retargeted after admission cannot redirect. Without `overwrite`, a taken name
+    /// moves on to the next; when none is left the save fails with EEXIST.
+    func save(_ data: Data, in folder: URL, names: [String], overwrite: Bool) throws(FileSystemFailure) -> URL {
         let directory = try openFolder(folder)
         defer { close(directory) }
+        var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+        guard fcntl(directory, F_GETPATH, &buffer) == 0 else { throw FileSystemFailure(code: errno) }
+        let admitted = URL(fileURLWithPath: String(cString: buffer), isDirectory: true)
+        let name = try saveName(data, in: directory, folder: folder, names: names, overwrite: overwrite)
+        return admitted.appendingPathComponent(name, isDirectory: false)
+    }
+
+    private func saveName(
+        _ data: Data, in directory: Int32, folder: URL, names: [String], overwrite: Bool
+    ) throws(FileSystemFailure) -> String {
         // The publication path is chosen before anything is written.
         let volume = volumeTraits(directory)
         guard volume.exclusiveRename else {

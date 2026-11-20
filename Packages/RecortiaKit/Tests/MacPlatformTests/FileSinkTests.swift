@@ -24,7 +24,7 @@ struct FileSinkTests {
         defer { TestSupport.removeDirectory(folder) }
         let url = folder.appendingPathComponent("shot.png")
         let saved = try FileSink().save(snapshot, to: url, overwrite: false)
-        #expect(saved == url)
+        #expect(saved.resolvingSymlinksInPath().path == url.resolvingSymlinksInPath().path)
         #expect(try Data(contentsOf: url) == snapshot.bytes)
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
     }
@@ -204,6 +204,36 @@ struct FileSinkTests {
             "control: this volume is case-sensitive")
         _ = try FileSink().save(snapshot, to: variant.appendingPathComponent("shot.png"), overwrite: false)
         #expect(try Data(contentsOf: folder.appendingPathComponent("shot.png")) == snapshot.bytes)
+    }
+
+    // R3-05 (third review of T1a): the save wrote through the admitted folder but returned the URL
+    // it was given, so an alias retargeted after admission made the result name another folder.
+    @Test("The saved URL names the admitted folder even when the alias is retargeted after resolution")
+    func savedURLNamesAdmittedFolder() throws {
+        let root = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(root) }
+        let admitted = root.appendingPathComponent("admitted", isDirectory: true)
+        let other = root.appendingPathComponent("other", isDirectory: true)
+        let alias = root.appendingPathComponent("alias", isDirectory: false)
+        try FileManager.default.createDirectory(at: admitted, withIntermediateDirectories: false)
+        try FileManager.default.createDirectory(at: other, withIntermediateDirectories: false)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: admitted)
+        var retargeted = false
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterResolve: { _ in
+                retargeted =
+                    unlink(alias.path(percentEncoded: false)) == 0
+                    && symlink(other.path(percentEncoded: false), alias.path(percentEncoded: false)) == 0
+            }))
+        let saved = try sink.save(snapshot, to: alias.appendingPathComponent("shot.png"), overwrite: false)
+        let unique = try FileSink().saveUnique(snapshot, in: alias)
+        try #require(retargeted, "control: the alias was never retargeted")
+        #expect(try Data(contentsOf: saved) == snapshot.bytes, "the returned URL does not lead to the saved file")
+        #expect(
+            saved.resolvingSymlinksInPath().path
+                == admitted.appendingPathComponent("shot.png").resolvingSymlinksInPath().path)
+        #expect(TestSupport.directoryEntries(other) == [unique.lastPathComponent])
+        #expect(!unique.path(percentEncoded: false).contains("/alias/"), "the unique save returned the alias")
     }
 
     @Test("A folder replaced by another folder while it is admitted is refused and nothing is written")

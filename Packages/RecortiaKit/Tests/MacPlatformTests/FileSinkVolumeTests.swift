@@ -24,12 +24,16 @@ struct FileSinkVolumeTests {
         try ScratchVolume.withMounted(format) { folder in
             let sink = FileSink()
             let url = folder.appendingPathComponent("shot.png")
-            #expect(try sink.save(snapshot, to: url, overwrite: false) == url)
+            #expect(
+                try sink.save(snapshot, to: url, overwrite: false).resolvingSymlinksInPath().path
+                    == url.resolvingSymlinksInPath().path)
             #expect(try Data(contentsOf: url) == snapshot.bytes)
             #expect(throws: SinkError.destinationExists) { try sink.save(snapshot, to: url, overwrite: false) }
             #expect(try Data(contentsOf: url) == snapshot.bytes)
             try priorBytes.write(to: url)
-            #expect(try sink.save(snapshot, to: url, overwrite: true) == url)
+            #expect(
+                try sink.save(snapshot, to: url, overwrite: true).resolvingSymlinksInPath().path
+                    == url.resolvingSymlinksInPath().path)
             #expect(try Data(contentsOf: url) == snapshot.bytes)
             let first = try sink.saveUnique(snapshot, in: folder)
             let second = try sink.saveUnique(snapshot, in: folder)
