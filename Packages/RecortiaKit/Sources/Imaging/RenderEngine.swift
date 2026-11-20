@@ -31,7 +31,8 @@ enum RenderEngine {
         let map = CGAffineTransform(
             a: s, b: 0, c: 0, d: s, tx: (padding - content.minX) * s, ty: (padding - content.minY) * s)
         let presented = !document.presentation.isPlain
-        try checkBudget(document, sources: sources, outputSize: size, map: map, presented: presented)
+        try checkBudget(
+            document, sources: sources, outputSize: size, map: map, presented: presented, drawsCallouts: true)
 
         let images = try sanitizedLayerImages(document, sources: sources)
         var raster = try RenderRaster(width: size.width, height: size.height)
@@ -71,7 +72,8 @@ enum RenderEngine {
         }
         let size = PixelSize(width: max(1, Int(w)), height: max(1, Int(h)))
         let map = CGAffineTransform(scaleX: scale, y: scale)
-        try checkBudget(document, sources: sources, outputSize: size, map: map, presented: false)
+        try checkBudget(
+            document, sources: sources, outputSize: size, map: map, presented: false, drawsCallouts: false)
 
         let images = try sanitizedLayerImages(document, sources: sources)
         var raster = try RenderRaster(width: size.width, height: size.height)
@@ -159,7 +161,7 @@ enum RenderEngine {
     /// Estimates the renderer's own buffers and refuses before allocating any of them.
     static func checkBudget(
         _ document: Document, sources: [AssetID: CGImage], outputSize: PixelSize, map: CGAffineTransform,
-        presented: Bool
+        presented: Bool, drawsCallouts: Bool
     ) throws(RenderError) {
         let limit = RenderLimits.maxWorkingBytes
         var pixels = 0
@@ -190,7 +192,7 @@ enum RenderEngine {
         let outputBounds = PixelRect(x: 0, y: 0, width: outputSize.width, height: outputSize.height)
         let factor = abs(map.a * map.d - map.b * map.c).squareRoot()
         var scratch = 0
-        for callout in document.callouts {
+        for callout in document.callouts where drawsCallouts {
             if case .magnifier(_, let destination) = callout.kind,
                 let area = PixelRect.outward(destination.cg.applying(map), within: outputBounds)
             {
