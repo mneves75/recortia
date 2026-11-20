@@ -134,6 +134,24 @@ class TestsReportTests(unittest.TestCase):
         log.write_text("check: all gates passed\n")
         self.assertEqual("stale", self.suites()["check"]["status"], "an unbound log proves no commit")
 
+    def test_only_the_latest_run_in_a_log_counts(self) -> None:
+        import os
+        import time
+
+        # Review §2: a pass at commit A, then only the header of a run at HEAD.
+        log = self.root / ".scratch/logs/check-1.log"
+        log.write_text(f"check: commit {'a' * 40}\ncheck: all gates passed\ncheck: commit {self.head}\n")
+        os.utime(log, (time.time() - 3600, time.time() - 3600))
+        self.assertEqual("incomplete", self.suites()["check"]["status"])
+        # Older E2E summaries cannot supply the language the latest run lacks.
+        english = "e2e[en]: 1/1 scenarios passed, 2 screenshots (exit 0)\n"
+        portuguese = "e2e[pt-BR]: 1/1 scenarios passed, 2 screenshots (exit 0)\n"
+        header = f"e2e: commit {self.head} lang all only -\n"
+        (self.root / ".scratch/logs/e2e-1.log").write_text(
+            header + english + portuguese + "e2e: output in /tmp/a\n" + header + english + "e2e: output in /tmp/b\n"
+        )
+        self.assertEqual("partial", self.suites()["e2e"]["status"])
+
     def test_a_partial_e2e_run_is_not_the_bilingual_suite(self) -> None:
         log = self.root / ".scratch/logs/e2e-1.log"
         english = "e2e[en]: 1/1 scenarios passed, 2 screenshots (exit 0)\n"

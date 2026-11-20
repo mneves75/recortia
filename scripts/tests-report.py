@@ -170,10 +170,15 @@ def release_status(text: str) -> str | None:
 STATUS = {"check": check_status, "e2e": e2e_status, "release-dry-run": release_status}
 
 
-def evidence_commit(text: str, prefix: str) -> str | None:
-    """The commit the log says it ran at; the last header wins in an appended log."""
-    found = re.findall(rf"(?m)^{re.escape(prefix)}: commit ([0-9a-f]{{40}})\b", text)
-    return found[-1] if found else None
+def latest_run(text: str, prefix: str) -> str | None:
+    """The latest run in an appended log: its own header through the end of the file."""
+    starts = list(re.finditer(rf"(?m)^{re.escape(prefix)}: commit ", text))
+    return text[starts[-1].start():] if starts else None
+
+
+def evidence_commit(run: str, prefix: str) -> str | None:
+    found = re.match(rf"{re.escape(prefix)}: commit ([0-9a-f]{{40}})\b", run)
+    return found.group(1) if found else None
 
 
 def e2e_is_full_suite(text: str) -> bool:
@@ -215,14 +220,16 @@ def observe(suite: dict[str, str], head: str) -> dict[str, object]:
     newest = paths[-1]
     text = newest.read_text(errors="replace")
     age = datetime.now(tz=timezone.utc).timestamp() - newest.stat().st_mtime
-    status = STATUS[suite["id"]](text)
-    ran_at = evidence_commit(text, suite["prefix"])
+    # One run is one record: a verdict or summary from an earlier run in the same log never counts.
+    run = latest_run(text, suite["prefix"])
+    status = STATUS[suite["id"]](text if run is None else run)
+    ran_at = None if run is None else evidence_commit(run, suite["prefix"])
     if status is None:
         status = "running" if age < IN_PROGRESS_SECONDS else "incomplete"
     elif ran_at != head:
-        # A verdict proves only the commit it ran at; tests.json speaks for HEAD.
+        # A verdict proves only the commit it ran at; the report speaks for HEAD.
         status = "stale"
-    elif suite["id"] == "e2e" and status == "passed" and not e2e_is_full_suite(text):
+    elif suite["id"] == "e2e" and status == "passed" and not e2e_is_full_suite(run or ""):
         status = "partial"
     return {
         "id": suite["id"],
