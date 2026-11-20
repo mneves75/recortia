@@ -212,8 +212,18 @@ public protocol LoginItemService: AnyObject {
 @MainActor
 public protocol FeatureClock: AnyObject {
     func now() -> Date
+    /// Monotonic time since an arbitrary origin, for measuring durations: unlike `now()`, a
+    /// wall-clock correction does not move it.
+    func uptime() -> Duration
     /// Suspends for `duration`; throws `CancellationError` when the calling task is canceled.
     func sleep(for duration: Duration) async throws
+}
+
+private let uptimeOrigin = ContinuousClock.now
+
+extension FeatureClock {
+    /// The continuous clock `Task.sleep(for:)` uses, so measured time and sleeps agree.
+    public func uptime() -> Duration { ContinuousClock.now - uptimeOrigin }
 }
 
 /// Key–value storage for the single preferences blob. `UserDefaults` conforms in production.

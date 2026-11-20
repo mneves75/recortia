@@ -71,7 +71,8 @@ public final class ScrollSessionModel {
     @ObservationIgnored private var streamStarted = false
     /// The session that last started the frame source; a stale session stops only its own stream.
     @ObservationIgnored private var streamOwner: UUID?
-    @ObservationIgnored private var startedAt: Date?
+    /// `clock.uptime()` at Start; durations never use the wall clock.
+    @ObservationIgnored private var startedAt: Duration?
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var deadlineTask: Task<Void, Never>?
     @ObservationIgnored private var settleTask: Task<Void, Never>?
@@ -155,7 +156,7 @@ public final class ScrollSessionModel {
         guard state == .armed, let target, let id = sessionID else { return }
         autoScroller?.stop()  // every session scrolls with a scroller made for its own target
         apply(.start)
-        startedAt = clock.now()
+        startedAt = clock.uptime()
         task = Task { [weak self] in await self?.collect(target, id: id) }
         deadlineTask = Task { [weak self, clock] in
             do { try await clock.sleep(for: Self.maxDuration) } catch { return }
@@ -526,8 +527,7 @@ public final class ScrollSessionModel {
 
     private func elapsedSinceStart() -> Duration {
         guard let startedAt else { return .zero }
-        let seconds = max(0, clock.now().timeIntervalSince(startedAt))
-        return .milliseconds(Int64((seconds * 1000).rounded()))
+        return max(.zero, clock.uptime() - startedAt)
     }
 
     private func isCurrent(_ id: UUID) -> Bool {

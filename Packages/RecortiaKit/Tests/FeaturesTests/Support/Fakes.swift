@@ -110,7 +110,7 @@ enum TestFixtures {
 final class ManualClock: FeatureClock {
     private struct Sleeper {
         let id: UUID
-        let deadline: Date
+        let deadline: Duration
         let continuation: CheckedContinuation<Void, any Error>
     }
 
@@ -125,8 +125,7 @@ final class ManualClock: FeatureClock {
     func sleep(for duration: Duration) async throws {
         sleepRequests.append(duration)
         let id = UUID()
-        let seconds = Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
-        let deadline = current.addingTimeInterval(seconds)
+        let deadline = elapsed + duration
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
                 if Task.isCancelled {
@@ -140,10 +139,19 @@ final class ManualClock: FeatureClock {
         }
     }
 
+    /// A wall-clock correction: the date moves, elapsed time and pending sleeps do not.
+    func jumpWallClock(bySeconds seconds: Double) {
+        current = current.addingTimeInterval(seconds)
+    }
+
+    private var elapsed: Duration = .zero
+    func uptime() -> Duration { elapsed }
+
     func advance(bySeconds seconds: Double) {
         current = current.addingTimeInterval(seconds)
-        let due = sleepers.filter { $0.deadline <= current }
-        sleepers.removeAll { $0.deadline <= current }
+        elapsed += .seconds(seconds)
+        let due = sleepers.filter { $0.deadline <= elapsed }
+        sleepers.removeAll { $0.deadline <= elapsed }
         for sleeper in due { sleeper.continuation.resume() }
     }
 
