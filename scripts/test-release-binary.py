@@ -97,5 +97,62 @@ class ReleaseBinaryGateTests(unittest.TestCase):
         self.assertIn('scripts/check-release-binary.sh "$app"\n', script)
 
 
+class ReleaseBuildGateTests(unittest.TestCase):
+    """R3-D09/D10: hosted CI scans a real Release build and refuses a Release foreground helper."""
+
+    def run_build_gate(self, *, helper_executable: bool, marker: str | None = None) -> subprocess.CompletedProcess[str]:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = pathlib.Path(directory.name)
+        (root / "scripts").mkdir()
+        for name in ("check-release-build.sh", "check-release-binary.sh"):
+            (root / "scripts" / name).write_bytes((ROOT / "scripts" / name).read_bytes())
+            (root / "scripts" / name).chmod(0o755)
+        products = root / ".build/dd-release/Build/Products/Release"
+        bin_directory = root / "bin"
+        bin_directory.mkdir()
+        # Stand-in xcodebuild: writes the products a Release build of each scheme leaves behind.
+        xcodebuild = bin_directory / "xcodebuild"
+        helper = "mkdir -p \"$products/RecortiaE2EForegroundHost.app/Contents\"\n"
+        if helper_executable:
+            helper += "mkdir -p \"$products/RecortiaE2EForegroundHost.app/Contents/MacOS\"\n"
+        xcodebuild.write_text(
+            "#!/bin/sh\n"
+            f"products='{products}'\n"
+            "mkdir -p \"$products/Recortia.app/Contents/MacOS\"\n"
+            f"printf '%s' '{(MACH_O_MAGIC + b'production').hex()}' | xxd -r -p > \"$products/Recortia.app/Contents/MacOS/Recortia\"\n"
+            + (f"printf '{marker}' >> \"$products/Recortia.app/Contents/MacOS/Recortia\"\n" if marker else "")
+            + helper
+        )
+        xcodebuild.chmod(0o755)
+        products.mkdir(parents=True)
+        return subprocess.run(
+            ["/bin/zsh", str(root / "scripts/check-release-build.sh")], capture_output=True, text=True,
+            env={"PATH": f"{bin_directory}:/usr/bin:/bin", "DEVELOPER_DIR": "/fixture"},
+        )
+
+    def test_clean_release_products_pass(self) -> None:
+        result = self.run_build_gate(helper_executable=False)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("Release build gate passed", result.stdout)
+
+    def test_release_foreground_helper_with_an_executable_fails(self) -> None:
+        result = self.run_build_gate(helper_executable=True)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("foreground helper has an executable in Release", result.stderr)
+
+    def test_test_only_code_in_the_release_app_fails(self) -> None:
+        result = self.run_build_gate(helper_executable=False, marker="RecortiaFixtures")
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("RecortiaFixtures", result.stderr)
+
+    def test_hosted_ci_runs_the_release_build_gate(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertRegex(workflow, r"(?m)^\s+run: scripts/check-release-build\.sh$")
+        gate = (ROOT / "scripts/check-release-build.sh").read_text()
+        self.assertIn("for scheme in Recortia RecortiaE2E; do", gate)
+        self.assertIn("-configuration Release", gate)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -131,11 +131,16 @@ targets:
       - path: RecortiaApp/App/SpacePolicy.swift
       - path: RecortiaApp/App/AppPresence.swift
     settings:
+      configs:
+        # Debug-only test helper, like the runner: a Release build compiles and links nothing.
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_FOREGROUND_HOST
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: "*"
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia.E2E.ForegroundHost
         PRODUCT_NAME: RecortiaE2EForegroundHost
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_FOREGROUND_HOST
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: NO
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
