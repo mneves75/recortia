@@ -24,6 +24,10 @@ python3 scripts/test-release-contract.py   # static release.sh checks; the bundl
 python3 scripts/test-project-freshness.py
 python3 scripts/test-xcodegen-wrapper.py
 python3 scripts/test-tests-report.py
+python3 scripts/test-deployment-target.py
+
+echo "== deployment target agrees everywhere (ADR-008)"
+scripts/check-deployment-target.py
 
 echo "== gate inventory"
 python3 scripts/tests-report.py --check

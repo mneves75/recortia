@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-20T01:38:24Z",
-  "commit": "15f094df9e378ba63aa02b236319597e59f33aff",
+  "generated_at": "2026-11-20T03:37:50Z",
+  "commit": "bacd0bdae6c9f98f1363211d8a85ccb9dc93747a",
   "toolchain": {
     "xcode": "27.2 (27B52)",
     "channel": "stable",
@@ -105,6 +105,16 @@
       "protected_file": "scripts/tests-report.py",
       "tests": [
         "scripts/test-tests-report.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "deployment-target",
+      "protected_file": "scripts/check-deployment-target.py",
+      "tests": [
+        "scripts/test-deployment-target.py"
       ],
       "invoked_by": [
         "scripts/check.sh"
