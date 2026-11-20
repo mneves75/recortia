@@ -143,3 +143,28 @@ pasteboard is read synchronously on the main actor to produce an error (`ImageIn
 - **T1c** macOS 26 floor (ADR-008), editor refresh from the approved spike, section 6 adoptions.
 - **T1d** Automatic redaction (design in `plan.md`; detector chosen from the spike numbers).
 - **T1e** A-1 (in progress, timed), A-2, A-9, A-12, A-13 step 1.
+
+## 9. Accepted residuals from the T1a reviews (2026-11-20; owner may overrule)
+
+- **Secure masks.** Moving or growing text or a shape you drew out from under a box reveals what it
+  covered (stated in FR-06). Every edit makes the coverage under each box durable, so deleting a
+  duplicate under a box, or moving a box over a downscaled image, can leave filled patches outside
+  any box. Protection displaced by a layer move has no visible box of its own.
+- **Output Preview** is read-only except background, padding, corner radius and shadow.
+- **File save, integrity-only volumes** (FAT, exFAT, shares without enforced owners): no
+  confidentiality promise; inode reuse on FAT can defeat the folder identity check (R3-07); a crash
+  can leave a private staging folder, never swept; a failed save names the file it left. The empty
+  private folder and the umask probe are still removed by name after an identity check. The
+  two-account exFAT privacy check has not been run.
+- **Auto-redaction detector.** Matches on git remotes and UUIDs are accepted as a precision cost;
+  the deadline is still to be measured cold and warm on an idle Mac (T1d).
+- **E2E.** The `scrolling` scenario checks the HUD wording through its catalog key: the hosted
+  SwiftUI text exposes no accessible value in the test window (cause not investigated).
+- **Toolchain.** No macOS 26.0 host verifies launch on the new floor.
+- **Scripts review.** F07 and F10 were declined with reasons in the slice's commits.
+- **T1b leftovers.** `Entry.label` removal (mechanical, after T1 lands); per-method point guards at
+  public entry points stay until admitted point types exist; the presentation-order change needs the
+  space probe's `dynamic` mode and the installed-app fullscreen check, both owner-run.
+- **AnnotationRendererTests flake.** One parallel package run failed "drawing twice is
+  byte-identical" on the Arabic and emoji sample and passed on rerun and in two full gates; record it
+  under the open text-font incident (AGENTS.md F-1) and watch for a recurrence.
