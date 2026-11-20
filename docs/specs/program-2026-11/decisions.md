@@ -1,0 +1,20 @@
+# Program 2026-11 — decisions log
+
+On 2026-11-20 the owner said "execute goal until all completed". From then on the coordinator takes
+its recommended option wherever the plan scheduled an owner stop, records it here, and keeps going.
+Merges, tags, releases, TCC grants, notarization and anything outside the repository stay with the
+owner. Each entry: the decision, the strongest alternative, and why.
+
+| Date | Topic | Decision | Strongest alternative | Why |
+|---|---|---|---|---|
+| 2026-11-20 | Auto-redaction timing (FR-06 amendment) | The editor window opens at once. The canvas shows a "Masking…" state, not the capture, and accepts no edits. Exports, pins and the automatic batch stay locked until the masks land as one step. | A visible wait (menu-bar progress), then the editor opens already masked. | Measured p95 is 0.7–2.5 s, well above the 300 ms capture-to-editor target. An early window keeps the app responsive without showing or exporting unmasked pixels, so the amendment's "before the editor receives it" holds for content. |
+| 2026-11-20 | Auto-redaction detector | Method A (fixed patterns ported from Fosco, MIT) on Vision text recognition. NSDataDetector and Vision detected-data stay in the benchmark harness only. Tile size is chosen after the benchmark fixes (R10, R11, R14–R16 and the seam experiment). | Vision 26 detected-data (no pattern maintenance). | A: 93.7% recall with 63 false positives; B and C: 92.1% and 91.5% with over 3,200 false positives each. |
+| 2026-11-20 | Step numeral colour (RCI-07) | Black or white by the higher WCAG contrast, so the default red step shows a black numeral. | Keep white on the default red. | One deterministic rule; black measures 4.97:1 and white 4.23:1 on #E53935. |
+| 2026-11-20 | Review-list §4.2 (E2E app opened from Finder) | The E2E target refuses to launch without the runner argument. | Leave it (DEBUG only, never shipped). | Live services in a test build is a privacy surprise for anyone who opens it. |
+| 2026-11-20 | Review-list §4.3 (discard warning after a pin) | The warning names what is lost (edits not copied or saved), on close and on quit. | Hide the warning after a pin. | A pin is not an export; the edits are still lost. |
+| 2026-11-20 | Review-list §4.4 (Release build in CI) | Hosted CI builds the shipping target in Release, unsigned, runs `check-release-binary.sh`, and the E2E foreground helper is Debug-only. | Keep Release checks in `release.sh` only. | The DEBUG-only E2E hook must never reach a binary; CI is where a regression shows first. |
+| 2026-11-20 | Review-list §4.5 (render failure) | A failed render shows the failure over the stale preview and blocks every export until a render succeeds. | Keep the previous preview silently. | The canvas must never show pixels the export would not produce. |
+| 2026-11-20 | Review-list §4.1 (reference-app licence) | Superseded: the owner chose "Decompile anyway" on 2026-11-19. Output stays off the repository; capability descriptions only, in Recortia's own words. | — | Owner decision. |
+| 2026-11-20 | REA class-B additions (hand-drawn style, Esc copies or saves, system-notification confirmations, editor always on top, hide the menu-bar icon) | Included, under "implement everything", each behind a setting whose default keeps today's behaviour. Hide the menu-bar icon goes to T2; the rest to T4. | Wait for a separate owner yes. | The owner approved every class-B item and then asked for completion. Defaults keep current behaviour, so nothing changes for anyone who does not opt in. |
+| 2026-11-20 | R2-D13 (scroll frame memory vs FR-10's two-buffer limit) | Not decided by the coordinator; stays in the review list. Nothing depends on it. | — | It changes a requirement's meaning; a spec change is the owner's. |
+| 2026-11-20 | F-1 font-nil recurrence (3 times under load average ~39) | Recorded as new evidence in `docs/specs/full-source-review/plan.md` terms; an investigation slice joins T1b. No lock, cache or fallback without a reproduction. | Add a fallback font. | AGENTS.md forbids it without new evidence and a reproduction; load correlation is a lead, not a cause. |
