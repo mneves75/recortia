@@ -3,8 +3,9 @@ import Domain
 import Features
 import SwiftUI
 
-/// The editor window's content: object list, canvas, inspector, and status bar. Its tools and
-/// actions are bridged into the window's own toolbar (`EditorToolbarContent`).
+/// The editor's canvas column: an optional partial-capture notice, the canvas and the status bar.
+/// The object list and the inspector are the window's split items around it (`EditorWindowController`);
+/// its tools and actions are bridged into the window's own toolbar (`EditorToolbarContent`).
 struct EditorRootView: View {
     let model: EditorModel
     let canvas: EditorCanvasView
@@ -14,31 +15,40 @@ struct EditorRootView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let reason = model.partialScrollCaptureReason {
-                Label("Partial result. \(ScrollReviewView.describe(reason))", systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .accessibilityElement(children: .combine)
+                EditorNoticeLabel(
+                    text: String(localized: "Partial result. \(ScrollReviewView.describe(reason))"),
+                    systemImage: "exclamationmark.triangle"
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
                 Divider()
             }
-            HStack(spacing: 0) {
-                EditorSidebarView(model: model)
-                    .frame(width: 220)
-                Divider()
-                CanvasHost(canvas: canvas)
-                    .frame(minWidth: 320, minHeight: 240)
-                    .accessibilityElement(children: .contain)
-                Divider()
-                EditorInspectorView(model: model, actions: actions)
-                    .frame(width: 290)
-            }
+            CanvasHost(canvas: canvas)
+                .frame(minWidth: 320, minHeight: 240)
+                .accessibilityElement(children: .contain)
             Divider()
             EditorStatusBar(model: model, presentation: noticePresentation)
-                .background(Color(nsColor: .windowBackgroundColor))
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .toolbar { EditorToolbarContent(model: model, actions: actions) }
+    }
+}
+
+/// The editor's one notice style: a symbol and text that wraps to at most two lines.
+struct EditorNoticeLabel: View {
+    let text: String
+    let systemImage: String
+
+    var body: some View {
+        Label {
+            Text(text)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: systemImage).accessibilityHidden(true)
+        }
+        .font(.callout)
     }
 }
 
@@ -65,6 +75,17 @@ struct EditorNoticePresentation {
         }
     }
 
+    /// Failures and refusals show a warning symbol; everything else shows the information symbol.
+    static func isProblem(_ notice: EditorNotice) -> Bool {
+        switch notice {
+        case .copyFailed, .recognitionFailed, .linkNotAllowed, .previewFailed, .redactionRefused, .importFailed,
+            .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed:
+            true
+        case .exported(.failed), .exported(.alreadyCompleted(.failed)): true
+        default: false
+        }
+    }
+
     private static func persists(_ outcome: ExportOutcome) -> Bool {
         switch outcome {
         case .failed, .uploaded: true
@@ -85,29 +106,23 @@ private struct CanvasHost: NSViewRepresentable {
 
 // MARK: - Tool bar
 
-/// The window toolbar: tools on the leading edge, history and output on the trailing edge.
-/// Separate groups give the visual grouping; nothing here needs more than macOS 15.
+/// The window toolbar in three groups: tools, history, and output at the trailing edge.
+/// Every item stays visible at the minimum content width (980 pt).
 struct EditorToolbarContent: ToolbarContent {
     let model: EditorModel
     let actions: any EditorWindowActions
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
-            tools([.select, .hand, .crop])
-        }
-        ToolbarItemGroup(placement: .navigation) {
-            tools([.text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step])
-        }
-        ToolbarItem(placement: .navigation) {
-            ToolButton(tool: .redact, model: model, actions: actions)
-        }
-        ToolbarItem(placement: .navigation) {
+            tools([
+                .select, .hand, .crop, .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step,
+                .redact,
+            ])
             ToolMenu(group: .effects, model: model, actions: actions)
-        }
-        ToolbarItem(placement: .navigation) {
             ToolMenu(group: .measure, model: model, actions: actions)
         }
-        ToolbarItemGroup(placement: .primaryAction) {
+        ToolbarSpacer(.fixed, placement: .navigation)
+        ToolbarItemGroup(placement: .navigation) {
             Button {
                 model.undo()
             } label: {
@@ -125,10 +140,7 @@ struct EditorToolbarContent: ToolbarContent {
             .disabled(!model.canRedo)
             .accessibilityIdentifier("toolbar.redo")
         }
-        // Keeps Copy out of the history group's capsule.
-        ToolbarItem(placement: .primaryAction) {
-            Spacer(minLength: 8).accessibilityHidden(true)
-        }
+        ToolbarSpacer(.flexible)
         ToolbarItemGroup(placement: .primaryAction) {
             ExportButtons(model: model, actions: actions)
         }
@@ -311,7 +323,7 @@ struct EditorStatusBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Text(EditorFormat.size(model.document.canvasSize))
                 .monospacedDigit()
                 .help(String(localized: "Canvas size in document pixels", table: "Editor"))
@@ -323,12 +335,10 @@ struct EditorStatusBar: View {
             }
             Spacer(minLength: 8)
             if let notice = model.notice {
-                Label {
-                    Text(EditorStrings.message(notice))
-                        .lineLimit(2)
-                } icon: {
-                    Image(systemName: "info.circle").accessibilityHidden(true)
-                }
+                EditorNoticeLabel(
+                    text: EditorStrings.message(notice),
+                    systemImage: EditorNoticePresentation.isProblem(notice) ? "exclamationmark.triangle" : "info.circle"
+                )
                 .transition(reduceMotion ? .identity : .opacity)
                 if EditorNoticePresentation.persists(notice) {
                     Button(String(localized: "Dismiss", table: "Editor")) { model.dismissNotice() }
@@ -346,8 +356,10 @@ struct EditorStatusBar: View {
             }
         }
         .font(.callout)
-        .padding(.horizontal, 10)
-        .frame(height: 30)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        // Tall enough for a two-line notice, so a notice never resizes the canvas.
+        .frame(minHeight: 40)
         .animation(reduceMotion ? nil : .default, value: model.noticeSerial)
         .task(id: model.noticeSerial) {
             guard let notice = model.notice else { return }
