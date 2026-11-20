@@ -13,7 +13,11 @@ struct GitHubResponse: Sendable {
 }
 
 protocol GitHubTransport: Sendable {
-    func send(_ request: URLRequest) async throws -> GitHubResponse
+    /// Sends `request` only if `mayStart`, checked as the last step before the request is handed
+    /// to the network, still allows it; otherwise throws `GitHubUploadFailure.staleDocument`
+    /// having sent nothing.
+    func send(_ request: URLRequest, mayStart: @escaping @MainActor @Sendable () -> Bool) async throws
+        -> GitHubResponse
 }
 
 /// GitHub.com only. Never follows redirects, stores cookies, caches credentials, or writes
@@ -22,7 +26,9 @@ struct GitHubURLTransport: GitHubTransport {
     public init() {}
 
     @concurrent
-    public func send(_ request: URLRequest) async throws -> GitHubResponse {
+    public func send(_ request: URLRequest, mayStart: @escaping @MainActor @Sendable () -> Bool) async throws
+        -> GitHubResponse
+    {
         guard request.url?.scheme == "https", request.url?.host == "api.github.com",
             request.url?.user == nil, request.url?.password == nil, request.url?.port == nil
         else { throw GitHubUploadFailure.invalidDestination }
@@ -35,6 +41,11 @@ struct GitHubURLTransport: GitHubTransport {
         configuration.timeoutIntervalForResource = 60
         let session = URLSession(configuration: configuration, delegate: NoGitHubRedirects(), delegateQueue: nil)
         defer { session.invalidateAndCancel() }
+        // NET-01's boundary is the request handed to URLSession. The consent check runs on the main
+        // actor as the last step before it; `bytes(for:)` cannot start the task in that same turn,
+        // so a revocation processed in the hop back can still see one request already on its way
+        // (ADR-006 leaves repository visibility changes after the lookup to the owner as well).
+        guard await mayStart() else { throw GitHubUploadFailure.staleDocument }
         let (stream, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse else { throw GitHubUploadFailure.invalidResponse }
         var body = Data()
@@ -83,9 +94,9 @@ public struct GitHubUploader: Sendable {
         guard !snapshot.bytes.isEmpty, snapshot.bytes.count <= Self.maximumImageBytes else { throw .tooLarge }
         guard !Task.isCancelled else { throw .canceled }
         let base = "https://api.github.com/repos/\(destination.owner)/\(destination.repository)"
-        // No authenticated request, lookups included, once the consent behind it is gone.
-        guard await isLive() else { throw .staleDocument }
-        let repoResponse = try await send(try request(base, token: token))
+        // No authenticated request, lookups included, once the consent behind it is gone: the
+        // transport checks `isLive` (and `isCurrent` for the image) just before sending.
+        let repoResponse = try await send(try request(base, token: token), mayStart: isLive)
         try checkStatus(repoResponse, expected: [200])
         let repository: Repository = try decode(repoResponse.body)
         guard repository.full_name.lowercased() == "\(destination.owner)/\(destination.repository)".lowercased(),
@@ -98,8 +109,7 @@ public struct GitHubUploader: Sendable {
         var lookup = try request(contentsURL, token: token)
         lookup.setValue("application/vnd.github.object+json", forHTTPHeaderField: "Accept")
         guard !Task.isCancelled else { throw .canceled }
-        guard await isLive() else { throw .staleDocument }
-        let existing = try await send(lookup)
+        let existing = try await send(lookup, mayStart: isLive)
         let sha = Self.blobSHA(snapshot.bytes)
         if existing.statusCode == 200 {
             let file: File = try decode(existing.body)
@@ -118,8 +128,7 @@ public struct GitHubUploader: Sendable {
         } catch { throw .invalidResponse }
         // All encoding and preparatory awaits precede the final consent/freshness check.
         guard !Task.isCancelled else { throw .canceled }
-        guard await isCurrent() else { throw .staleDocument }
-        let response = try await send(put, committing: true)
+        let response = try await send(put, committing: true, mayStart: isCurrent)
         try checkStatus(response, expected: [201], committing: true)
         let result: Created = try decode(response.body, committing: true)
         guard result.content.sha == sha else { throw .completionUnknown }
@@ -145,16 +154,18 @@ public struct GitHubUploader: Sendable {
         return request
     }
 
-    private func send(_ request: URLRequest, committing: Bool = false) async throws(GitHubUploadFailure)
-        -> GitHubResponse
-    {
+    private func send(
+        _ request: URLRequest, committing: Bool = false, mayStart: @escaping @MainActor @Sendable () -> Bool
+    ) async throws(GitHubUploadFailure) -> GitHubResponse {
         do {
-            let response = try await transport.send(request)
+            let response = try await transport.send(request, mayStart: mayStart)
             guard response.body.count <= Self.maximumResponseBytes else {
                 throw GitHubUploadFailure.invalidResponse
             }
             return response
         } catch {
+            // Refused before sending: nothing reached GitHub, even for the image.
+            if error as? GitHubUploadFailure == .staleDocument { throw .staleDocument }
             if committing { throw .completionUnknown }
             if Task.isCancelled || error is CancellationError { throw .canceled }
             throw (error as? GitHubUploadFailure) ?? .network

@@ -14,7 +14,11 @@ actor UploadTransportFixture: GitHubTransport {
 
     init(_ replies: [GitHubResponse]) { self.replies = replies }
 
-    func send(_ request: URLRequest) async throws -> GitHubResponse {
+    func send(_ request: URLRequest, mayStart: @escaping @MainActor @Sendable () -> Bool) async throws
+        -> GitHubResponse
+    {
+        // The boundary the real transport keeps: nothing is recorded as sent unless allowed.
+        guard await mayStart() else { throw GitHubUploadFailure.staleDocument }
         requests.append(request)
         guard !replies.isEmpty else { throw URLError(.notConnectedToInternet) }
         return replies.removeFirst()
