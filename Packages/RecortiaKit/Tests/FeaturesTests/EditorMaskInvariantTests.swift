@@ -360,6 +360,10 @@ struct EditorMaskInvariantTests {
         h.drag((190, 152), (190, 180))
         #expect(m.selection == [.mask(mask.id)])
         #expect(m.document.masks.first == mask)
+        // The scaled secret lies exactly under the box at (180, 130).
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels) == 0)
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 180, y: 130, width: 20, height: 20)) == 0)
     }
 
     @Test("While Show Output Preview hides handles, a drag on a hidden handle changes nothing")
@@ -387,6 +391,9 @@ struct EditorMaskInvariantTests {
         m.setShowsOutputPreview(true)
         m.pointerUp(at: Point(x: 150, y: 110))
         #expect(m.document == before)
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels) == 0)
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
 
     @Test("Output Preview is read-only: entering it clears the selection, and Delete or a nudge does nothing (F-04)")
