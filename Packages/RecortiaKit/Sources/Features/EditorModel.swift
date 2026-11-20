@@ -296,8 +296,10 @@ public final class EditorModel {
     }
 
     public func undo() {
-        guard !isClosed, textEditing == nil, canUndo else { return }
-        cancelGesture()
+        guard !isClosed, textEditing == nil else { return }
+        // During a drag, Undo cancels only that drag and never reaches the history past it.
+        if case .idle = gesture {} else { return cancelGesture() }
+        guard canUndo else { return }
         endContinuousChange()
         let before = session.document, epoch = session.privacyEpoch
         session.undo()
@@ -305,8 +307,10 @@ public final class EditorModel {
     }
 
     public func redo() {
-        guard !isClosed, textEditing == nil, canRedo else { return }
-        cancelGesture()
+        guard !isClosed, textEditing == nil else { return }
+        // During a drag, Redo cancels only that drag and never reaches the history past it.
+        if case .idle = gesture {} else { return cancelGesture() }
+        guard canRedo else { return }
         endContinuousChange()
         let before = session.document, epoch = session.privacyEpoch
         session.redo()

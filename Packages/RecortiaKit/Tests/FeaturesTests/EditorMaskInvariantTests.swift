@@ -153,4 +153,34 @@ struct EditorMaskInvariantTests {
         let pixels = try await fixture.exported()
         #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
+
+    // MARK: I4 Undo during a gesture cancels only the gesture
+
+    @Test("Undo during a mask drag cancels the drag and keeps the mask")
+    func undoDuringDragKeepsMask() async throws {
+        let fixture = try await SecretExport(secret: Self.secret)
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        let history = m.session.undoCount
+        m.pointerDown(at: Point(x: 20, y: 20))
+        m.pointerDragged(to: Point(x: 60, y: 20))
+        m.undo()
+        #expect(m.document.masks == [mask])
+        #expect(m.session.undoCount == history)
+        m.pointerUp(at: Point(x: 60, y: 20))
+        #expect(m.document.masks == [mask])
+        #expect(try await secretCovered(fixture, at: 10) == 0)
+
+        m.undo()
+        #expect(m.document.masks.isEmpty)
+        m.pointerDown(at: Point(x: 200, y: 200))
+        m.pointerDragged(to: Point(x: 220, y: 220))
+        m.redo()
+        #expect(m.document.masks.isEmpty, "Redo during a gesture cancels the gesture only")
+        m.pointerUp(at: Point(x: 220, y: 220))
+    }
 }
