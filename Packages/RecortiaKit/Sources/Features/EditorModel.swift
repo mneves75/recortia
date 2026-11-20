@@ -694,8 +694,8 @@ public final class EditorModel {
     }
 
     /// An explicit move or resize of a mask. Its box now hides what is under the new rectangle,
-    /// and it keeps the bound pixels a layer edit already carried away from its old box: those
-    /// are still hidden where they are, and only deleting the mask releases them.
+    /// and it keeps the bound pixels a layer edit already carried away from its old box in any
+    /// layer: those are still hidden where they are, and only deleting the mask releases them.
     static func setMaskRect(_ document: inout Document, index: Int, _ rect: Rect<DocumentSpace>) throws {
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard EditorGeometry.isFinite(snapped), !snapped.isEmpty else { throw DocumentError.invalidGeometry }
@@ -708,8 +708,10 @@ public final class EditorModel {
                 guard layer.assetID == asset, let size = document.assets[asset]?.pixelSize else { return nil }
                 return layer.sourceToDocument(assetSize: size)
             }
+            // A binding hides the asset in every layer that shows it, so it is released only when
+            // every such layer still has that region under the old box.
             for region in bound
-            where !footprints.contains(where: { $0.apply(region.asRect).intersects(old.outputRect) }) {
+            where !footprints.allSatisfy({ $0.apply(region.asRect).intersects(old.outputRect) }) {
                 if !(regions[asset]?.contains(region) ?? false) { regions[asset, default: []].append(region) }
             }
         }

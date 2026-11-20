@@ -108,6 +108,27 @@ struct EditorMaskInvariantTests {
         #expect(try await secretCovered(fixture, at: 110) == 0)
     }
 
+    @Test("Moving a box off an image keeps a moved copy of that image's secret covered (R3, per layer)")
+    func explicitMoveKeepsCopyCovered() async throws {
+        let fixture = try await SecretExport(secret: Self.secret)
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let mask = try #require(m.document.masks.first).id
+        let original = try #require(m.document.layers.first).id
+        m.selectTool(.select)
+        m.setSelection([.layer(original)])
+        m.duplicateSelection()
+        let copy = try #require(m.document.layers.last).id
+        m.setFrame(Rect(x: 200, y: 0, width: 400, height: 300), for: .layer(copy))
+        m.select(.mask(mask))
+        h.drag((20, 20), (100, 20))
+        #expect(m.document.masks.first?.outputRect == Rect(x: 90, y: 10, width: 20, height: 20))
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 210, y: 10, width: 20, height: 20)) == 0)
+    }
+
     @Test("Align moves a selected layer and its selected mask once, from the same starting document (R4-01)")
     func alignResolvesFromOneSnapshot() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 0, y: 100, width: 20, height: 20))
