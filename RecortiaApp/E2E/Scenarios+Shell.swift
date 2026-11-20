@@ -263,6 +263,7 @@
         static func quitConfirmation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let app = harness.app
             harness.quit.answers = []
+            harness.quit.questions = []  // earlier scenarios share the recorder
             context.check("with no editor, Quit proceeds", app.shouldTerminate())
             context.check("with no editor, Quit asks nothing", harness.quit.questions.isEmpty)
 

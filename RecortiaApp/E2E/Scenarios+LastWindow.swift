@@ -295,6 +295,8 @@
                 !harness.app.shouldTerminate() && model.state == .reviewing
                     && harness.quit.questions == [QuitDiscards(editedImages: 0, scrollingReview: true)],
                 "\(harness.quit.questions), state \(model.state)")
+            // The recorder is shared across scenarios: leave it as quit-confirmation expects it.
+            harness.quit.questions = []
             let before = requests()
             let controller = ScrollUIController(model: model, displays: { [] })
             var answers: [Bool] = []
