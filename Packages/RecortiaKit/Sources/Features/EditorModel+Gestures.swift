@@ -164,9 +164,7 @@ extension EditorModel {
     // MARK: Select tool
 
     private func beginSelectGesture(at p: Point<DocumentSpace>, modifiers: EditorModifiers) {
-        if let handle = handle(at: p), let item = selection.first, let frame = frame(of: item),
-            let point = selectionHandles.first(where: { $0.handle == handle })?.point
-        {
+        if let (handle, point) = handle(at: p), let item = selection.first, let frame = frame(of: item) {
             gesture = .resize(
                 item: item, handle: handle, frame: frame, original: document,
                 grab: (dx: point.x - p.x, dy: point.y - p.y))

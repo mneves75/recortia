@@ -459,9 +459,9 @@ public final class EditorModel {
         }
     }
 
-    func handle(at p: Point<DocumentSpace>) -> EditorHandle? {
+    func handle(at p: Point<DocumentSpace>) -> (handle: EditorHandle, point: Point<DocumentSpace>)? {
         let tolerance = viewport.documentLength(6)
-        return selectionHandles.first { hypot($0.point.x - p.x, $0.point.y - p.y) <= tolerance }?.handle
+        return selectionHandles.first { hypot($0.point.x - p.x, $0.point.y - p.y) <= tolerance }
     }
 
     // MARK: - Selection
