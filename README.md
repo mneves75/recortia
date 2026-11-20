@@ -129,7 +129,7 @@ touches the real screen, general pasteboard, user defaults or Keychain. Releases
 maintainer with `scripts/release.sh` from a `v<version>[-betaN]` tag.
 
 `project.yml` owns the version and build number. After adding or moving source files, or
-editing `project.yml`, run `xcodegen generate` and commit the regenerated project.
+editing `project.yml`, run `scripts/xcodegen.sh generate` and commit the regenerated project.
 
 The code is split into `RecortiaApp/` (AppKit and SwiftUI app) and `Packages/RecortiaKit`:
 `Domain` (document model, geometry, state machines), `Imaging` (decode, privacy renderer,

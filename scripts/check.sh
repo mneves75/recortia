@@ -22,6 +22,7 @@ python3 scripts/test-release-entitlements.py
 python3 scripts/test-release-binary.py
 python3 scripts/test-release-contract.py   # static release.sh checks; the bundle checks need --app
 python3 scripts/test-project-freshness.py
+python3 scripts/test-xcodegen-wrapper.py
 python3 scripts/test-tests-report.py
 
 echo "== gate inventory"
@@ -34,7 +35,7 @@ echo "== generated project is current (compared with git)"
 scripts/check-project-fresh.sh
 
 echo "== package tests"
-swift test --package-path Packages/RecortiaKit --parallel
+xcrun swift test --package-path Packages/RecortiaKit --parallel
 
 echo "== app build"
 xcodebuild -project Recortia.xcodeproj -scheme Recortia -configuration Debug \

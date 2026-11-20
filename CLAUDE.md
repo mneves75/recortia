@@ -36,7 +36,7 @@ candidate is recorded.
   `scripts/check-release-binary.sh` fails if the DEBUG-only E2E hook reached a binary.
 - Local signed installation and version updates: follow `AGENTS.md`'s artifact checks and
   version-ownership rules. Current candidate and installation evidence live in BACKLOG; README shows only published versions.
-- After adding or moving source files, or editing `project.yml`: `xcodegen generate` and commit
+- After adding or moving source files, or editing `project.yml`: `scripts/xcodegen.sh generate` and commit
   the regenerated `Recortia.xcodeproj` (never hand-edit the pbxproj).
 - Format: `xcrun swift format --in-place --recursive <paths>` (config in `.swift-format`).
 
