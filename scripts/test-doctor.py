@@ -15,6 +15,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
 STABLE_VERSION = RECORD["stable_xcode_baseline"]["version"]
 STABLE_BUILD = RECORD["stable_xcode_baseline"]["build"]
+SWIFT_MAJOR_MINOR = RECORD["expected_bundled_swift_compiler_major_minor"]
+# A compiler banner in the shape `xcrun swift --version` prints, carrying the reviewed major.minor.
+SWIFT_BANNER = f"swift-driver version: 1.0 Apple Swift version {SWIFT_MAJOR_MINOR}.9 (fixture)"
 # The record names a release candidate only while one is installed. Otherwise the development
 # controls use a candidate derived from the stable pin, so it can never equal that pin.
 if RECORD["actual_xcode_release_channel"] == "release_candidate":
@@ -43,7 +46,6 @@ class E2EToolchainTests(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         (self.bin / "python3").symlink_to(sys.executable)
-        self.tool("xcodegen", "#!/bin/sh\nexit 0\n")
         self.tool("xcrun", f"#!{sys.executable}\n" + '''import pathlib, sys
 args = sys.argv[1:]
 if args == ['--sdk', 'macosx', '--show-sdk-version']:
@@ -51,10 +53,11 @@ if args == ['--sdk', 'macosx', '--show-sdk-version']:
 elif args == ['--sdk', 'macosx', '--show-sdk-build-version']:
     print(pathlib.Path('.fixture-sdk-build').read_text().strip())
 elif args == ['swift', '--version']:
-    print('Swift fixture compiler')
+    print(pathlib.Path('.fixture-swift').read_text().strip())
 else:
     sys.exit(f'unexpected xcrun arguments: {args}')
 ''')
+        (self.root / ".fixture-swift").write_text(SWIFT_BANNER + "\n")
         (self.root / ".fixture-sdk-version").write_text("27.0\n")
         (self.root / ".fixture-sdk-build").write_text("27A123\n")
         (self.root / ".fixture-untracked.json").write_text("[]")
@@ -301,6 +304,7 @@ class DoctorTests(unittest.TestCase):
         mode: str | None = None, arguments: tuple[str, ...] = (),
         observed_channel: str = "release_candidate", stable_channel: str = "stable",
         required_major: int = 27, allow_beta_release: bool = False,
+        swift_banner: str = SWIFT_BANNER,
     ) -> subprocess.CompletedProcess[str]:
         scratch = ROOT / ".scratch"
         scratch.mkdir(exist_ok=True)
@@ -310,6 +314,7 @@ class DoctorTests(unittest.TestCase):
             (root / "scripts/doctor.sh").write_bytes((ROOT / "scripts/doctor.sh").read_bytes())
             (root / "TOOLCHAIN.json").write_text(json.dumps({
                 "required_stable_xcode_major": required_major,
+                "expected_bundled_swift_compiler_major_minor": SWIFT_MAJOR_MINOR,
                 "allow_beta_toolchains_for_release": allow_beta_release,
                 "stable_xcode_baseline": {
                     "version": STABLE_VERSION, "build": STABLE_BUILD, "release_channel": stable_channel,
@@ -322,12 +327,11 @@ class DoctorTests(unittest.TestCase):
             binaries.mkdir()
             scripts = {
                 "xcodebuild": f"#!/bin/sh\nprintf 'Xcode {version}\\nBuild version {build}\\n'\n",
-                "xcodegen": "#!/bin/sh\nexit 0\n",
                 "python3": "",
                 "xcrun": (
                     f"#!{sys.executable}\nimport signal, sys\n"
                     "signal.signal(signal.SIGPIPE, signal.SIG_DFL)\n"
-                    "sys.stdout.write('Swift test compiler\\n' + 'secondary line\\n' * 100000)\n"
+                    f"sys.stdout.write({swift_banner + chr(10)!r} + 'secondary line\\n' * 100000)\n"
                     f"sys.stdout.flush()\nsys.exit({swift_exit})\n"
                 ),
             }
@@ -388,6 +392,20 @@ class DoctorTests(unittest.TestCase):
 
     def test_swift_failure_still_fails_doctor(self) -> None:
         self.assertNotEqual(0, self.run_doctor(42).returncode)
+
+    def test_swift_compiler_must_match_the_reviewed_major_minor(self) -> None:
+        self.assertEqual(0, self.run_doctor().returncode, "control: the reviewed compiler passes")
+        major, minor = SWIFT_MAJOR_MINOR.split(".")
+        for banner in (
+            f"Apple Swift version {major}.{int(minor) + 1}.0 (fixture)",
+            f"Apple Swift version {int(major) + 1}.{minor} (fixture)",
+            f"Apple Swift version {major}.{minor}0.1 (fixture)",
+            "Swift compiler without a version",
+        ):
+            with self.subTest(banner=banner):
+                result = self.run_doctor(swift_banner=banner)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"!= expected {SWIFT_MAJOR_MINOR}", result.stderr)
 
 
 if __name__ == "__main__":
