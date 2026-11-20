@@ -612,14 +612,17 @@ public final class EditorModel {
         }
     }
 
-    /// Translates `items` in `document`. Layers move first so moved masks map onto their new
-    /// positions; masks move by whole pixels and re-derive their source regions (FR-06).
+    /// Translates `items` in `document`. Masks bound to moved layers move with them and keep their
+    /// bindings; a mask the person moves without its layers moves by whole pixels and re-derives
+    /// its source regions (FR-06).
     static func translate(_ document: inout Document, items: [EditorItemID], dx: Double, dy: Double) throws {
         let set = Set(items)
+        let before = document
         for index in document.layers.indices where set.contains(.layer(document.layers[index].id)) {
             document.layers[index].placement.translation =
                 document.layers[index].placement.translation.offset(dx: dx, dy: dy)
         }
+        let carried = try carryMasks(&document, from: before)
         for index in document.obfuscations.indices where set.contains(.obfuscation(document.obfuscations[index].id)) {
             document.obfuscations[index].rect = document.obfuscations[index].rect.offsetBy(dx: dx, dy: dy)
         }
@@ -634,9 +637,64 @@ public final class EditorModel {
         }
         let mdx = dx.rounded(), mdy = dy.rounded()
         if mdx != 0 || mdy != 0 {
-            for index in document.masks.indices where set.contains(.mask(document.masks[index].id)) {
+            for index in document.masks.indices
+            where set.contains(.mask(document.masks[index].id)) && !carried.contains(document.masks[index].id) {
                 try setMaskRect(&document, index: index, document.masks[index].outputRect.offsetBy(dx: mdx, dy: mdy))
             }
+        }
+    }
+
+    /// Masks follow their layers ("masks move with layers"). After layer placements changed from
+    /// `before`, a mask whose bound layers all changed by one unrotated map moves with them and
+    /// keeps its source bindings, so its rectangle still shows where the hidden pixels appear. A
+    /// mask whose layers moved differently, or rotated, stays and keeps its bindings, which still
+    /// hide the source pixels. Returns the masks moved.
+    @discardableResult
+    static func carryMasks(_ document: inout Document, from before: Document) throws -> Set<MaskID> {
+        var carried: Set<MaskID> = []
+        for index in document.masks.indices {
+            let mask = document.masks[index]
+            let assets = Set(mask.sourceRegions.compactMap { $0.value.isEmpty ? nil : $0.key })
+            var map: AffineMap<DocumentSpace, DocumentSpace>?
+            var moved = false, consistent = true
+            for old in before.layers where assets.contains(old.assetID) {
+                guard let new = document.layers.first(where: { $0.id == old.id }),
+                    let size = before.assets[old.assetID]?.pixelSize,
+                    let inverse = try? old.sourceToDocument(assetSize: size).inverted()
+                else {
+                    consistent = false
+                    break
+                }
+                let change = inverse.then(new.sourceToDocument(assetSize: size))
+                moved = moved || new.placement != old.placement
+                if let map, !Self.nearlyEqual(map, change) {
+                    consistent = false
+                    break
+                }
+                map = change
+            }
+            guard moved, consistent, let map, map.b == 0, map.c == 0, map.a > 0, map.d > 0 else { continue }
+            let mapped = map.apply(mask.outputRect)
+            // Snap floating-point noise before rounding outward, so a whole-pixel move stays exact.
+            func clean(_ v: Double) -> Double { abs(v - v.rounded()) < 1e-6 ? v.rounded() : v }
+            let rect = EditorGeometry.outwardIntegral(
+                Rect(
+                    spanning: Point(x: clean(mapped.minX), y: clean(mapped.minY)),
+                    Point(x: clean(mapped.maxX), y: clean(mapped.maxY))))
+            guard EditorGeometry.isFinite(rect), !rect.isEmpty else { throw DocumentError.invalidGeometry }
+            document.masks[index].outputRect = rect
+            carried.insert(mask.id)
+        }
+        return carried
+    }
+
+    private static func nearlyEqual(
+        _ x: AffineMap<DocumentSpace, DocumentSpace>, _ y: AffineMap<DocumentSpace, DocumentSpace>
+    )
+        -> Bool
+    {
+        zip([x.a, x.b, x.c, x.d, x.tx, x.ty], [y.a, y.b, y.c, y.d, y.tx, y.ty]).allSatisfy {
+            abs($0 - $1) <= 1e-9 * max(1, abs($0), abs($1))
         }
     }
 
@@ -686,10 +744,12 @@ public final class EditorModel {
             guard bounds.width > 0 else { throw DocumentError.invalidGeometry }
             let scale = document.layers[index].placement.scale * rect.width / bounds.width
             guard scale.isFinite, scale > 0 else { throw DocumentError.invalidScale }
+            let before = document
             document.layers[index].placement.scale = scale
             let resized = document.layers[index].documentBounds(assetSize: asset.pixelSize)
             document.layers[index].placement.translation = document.layers[index].placement.translation.offset(
                 dx: rect.minX - resized.minX, dy: rect.minY - resized.minY)
+            try carryMasks(&document, from: before)
         case .mask(let id):
             guard let index = document.masks.firstIndex(where: { $0.id == id }) else { return }
             try setMaskRect(&document, index: index, rect)
