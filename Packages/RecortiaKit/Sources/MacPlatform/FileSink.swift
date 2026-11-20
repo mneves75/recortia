@@ -5,16 +5,37 @@ import Foundation
 // Threat model (program 2026-11, T1a security review). In scope: another user, or a process
 // without the person's access, that can write to the chosen destination folder (a shared or
 // group-writable folder, a FAT volume). Out of scope: a process running as the same user, which
-// can already read everything the user can. Within scope a save never publishes bytes other than
-// the sanitized snapshot, never publishes with permissions wider than the destination's, never
-// follows a symbolic link, and never deletes a file it did not create.
+// can already read everything the user can.
 //
-// The folder is bound once as a descriptor; every create, metadata read, publish and cleanup is
-// relative to it, never by pathname. The bytes are staged in a private folder (0700, no ACL)
-// created inside it, which no other user can enter, so nobody else can read or substitute the
-// stage; the stage gets its final access just before one rename publishes it, after its identity
-// is checked. exFAT and FAT32 have neither exclusive rename nor private folders: a new file there
-// is written straight into an exclusively created file and read back before success is reported.
+// Contract by volume class (decisions.md, "File-save guarantees by volume class"):
+// - Volumes that enforce owners and modes (APFS, HFS+) get the full guarantee: a save never
+//   publishes bytes other than the sanitized snapshot, never publishes with permissions wider than
+//   the destination's, never follows a symbolic link, and never deletes a file it did not create.
+// - Volumes without enforced owners (exFAT, FAT32, some shares) get integrity only: no links,
+//   nothing deleted that Recortia did not create, a new file written directly into an exclusively
+//   created name, and a read-back before success. There is no confidentiality promise there.
+// - Replace authorizes the file at that name at save time.
+//
+// The folder is admitted by identity and bound once as a descriptor; every create, metadata read,
+// publish and removal is relative to it. The volume's capabilities choose the path before anything
+// is written. With exclusive rename, the bytes are staged in a private folder (0700, no ACL, locked)
+// created inside it; the stage gets its final access just before one rename publishes it, after
+// its identity is checked. Without it, a new file is written straight into an exclusive claim. An
+// entry is removed only from the private folder: it is moved there by exclusive rename, checked,
+// and removed if it is Recortia's, or moved back; whatever cannot be moved back, and anything a
+// failed save leaves where there is no exclusive rename, is reported by name, never deleted.
+//
+// Known limits, declined in review:
+// - R03: replacing a file on a volume without swap is a plain rename, which replaces whatever
+//   occupies the name at that moment. Acceptable under the contract: those volumes enforce no
+//   owners, and the name is checked to lead to the stage before and after the read-back.
+// - R06: a folder above the chosen one swapped before admission redirects the save; admission
+//   binds whatever folder the system resolves the path to at that moment.
+// - R01/R02: on a mount that accepts chmod without enforcing it, the private folder is not
+//   private; such mounts are covered by the no-confidentiality class above.
+// - Replace binds to the name at save time, not to the inode the person saw in the save panel.
+// - The empty private folder is removed with rmdir by name after an identity check, and the umask
+//   probe in this user's temporary folder by name; rmdir removes only an empty folder.
 
 public struct FileSink {
     private let fileSystem: POSIXFileSystem
