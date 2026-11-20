@@ -306,6 +306,25 @@ struct EditorMaskInvariantTests {
         #expect(m.document == before)
     }
 
+    @Test("A stationary press while the canvas would pan is a click: the mask stays")
+    func panDuringPressIsInert() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.clearSelection()
+        let press = Point<DocumentSpace>(x: 110, y: 110)
+        let screen = m.viewport.viewPoint(press)
+        m.pointerDown(at: press)
+        m.pan(dx: 20, dy: 0)
+        m.pointerUp(at: m.viewport.documentPoint(screen))
+        #expect(m.document.masks.first == mask)
+        #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
+    }
+
     // MARK: I4 Undo during a gesture cancels only the gesture
 
     @Test("Undo during a mask drag cancels the drag and keeps the mask")

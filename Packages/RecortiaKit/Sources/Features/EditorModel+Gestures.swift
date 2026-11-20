@@ -143,9 +143,17 @@ extension EditorModel {
         }
     }
 
-    /// Whether `p` is still within a click's slop of the press point `start`, in view points.
+    /// Whether `p` is still within a click's slop of the press point `start`, measured in view
+    /// points: the viewport cannot change during a gesture, so this is pointer travel on screen.
     private func isWithinClick(_ p: Point<DocumentSpace>, of start: Point<DocumentSpace>) -> Bool {
-        hypot(p.x - start.x, p.y - start.y) < viewport.documentLength(Self.clickSlop)
+        let a = viewport.viewPoint(p), b = viewport.viewPoint(start)
+        return hypot(a.x - b.x, a.y - b.y) < Self.clickSlop
+    }
+
+    /// A pointer gesture is in progress; the viewport stays put so a stationary press stays a click.
+    var isPointerGestureActive: Bool {
+        if case .idle = gesture { return false }
+        return true
     }
 
     /// Commits the progress so far and retires this drag before an independent edit can land.
@@ -499,18 +507,21 @@ extension EditorModel {
         }
     }
 
-    public func setViewport(_ viewport: EditorViewport) { self.viewport = viewport }
+    public func setViewport(_ viewport: EditorViewport) {
+        guard !isPointerGestureActive else { return }
+        self.viewport = viewport
+    }
 
     /// Zoom where 100 % shows one document pixel per device pixel.
     public var zoomPercent: Double { viewport.zoom * backingScale * 100 }
 
     public func zoomToFit() {
-        guard viewportSize.width > 0 else { return }
+        guard viewportSize.width > 0, !isPointerGestureActive else { return }
         viewport = .fitting(document.canvasRect, in: viewportSize, maxZoom: 1 / backingScale)
     }
 
     public func zoomToActualPixels() {
-        guard viewportSize.width > 0 else { return }
+        guard viewportSize.width > 0, !isPointerGestureActive else { return }
         viewport = .centered(on: document.contentRect, in: viewportSize, zoom: 1 / backingScale)
     }
 
@@ -519,18 +530,22 @@ extension EditorModel {
     public func zoomOut(anchor: Point<ViewSpace>? = nil) { setZoom(viewport.nextZoomOut(), anchor: anchor) }
 
     public func setZoom(_ zoom: Double, anchor: Point<ViewSpace>? = nil) {
+        guard !isPointerGestureActive else { return }
         let center = anchor ?? Point(x: viewportSize.width / 2, y: viewportSize.height / 2)
         viewport.setZoom(zoom, anchor: center)
     }
 
     public func zoomToSelection() {
         let frames = selection.compactMap(frame(of:))
-        guard viewportSize.width > 0, let first = frames.first else { return }
+        guard viewportSize.width > 0, !isPointerGestureActive, let first = frames.first else { return }
         let union = frames.dropFirst().reduce(first) { $0.union($1) }
         viewport = .fitting(union, in: viewportSize, margin: 48)
     }
 
-    public func pan(dx: Double, dy: Double) { viewport.pan(dx: dx, dy: dy) }
+    public func pan(dx: Double, dy: Double) {
+        guard !isPointerGestureActive else { return }
+        viewport.pan(dx: dx, dy: dy)
+    }
 
     static func snapped(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
         Point(x: p.x.rounded(), y: p.y.rounded())
