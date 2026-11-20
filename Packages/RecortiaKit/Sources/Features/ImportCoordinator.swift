@@ -68,8 +68,6 @@ public final class ImportCoordinator {
         }
         return result
     }
-
-    func clearFailure() { lastFailure = nil }
 }
 
 /// An import admitted into the shared slot, with the source it read. It holds the slot until it is

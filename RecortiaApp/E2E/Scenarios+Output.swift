@@ -144,30 +144,39 @@
             let original = Data("existing owner file".utf8)
             try original.write(to: collision)
             var confirmations = 0
-            let declined = await controller.saveImage(to: collision) {
+            let declined = await controller.saveImage(to: collision, format: .png) {
                 confirmations += 1
                 return false
             }
             context.check("replacement decline cancels the save", declined == .canceled)
             context.check("a collision asks before overwriting", confirmations == 1)
             context.check("declining preserves the existing bytes", try Data(contentsOf: collision) == original)
-            let replaced = await controller.saveImage(to: collision) {
+            // R3-D05: the format changes while the replacement question is open. The retry still
+            // writes the format the save panel named, so a .png name receives PNG bytes.
+            let formatBefore = harness.settings.preferences.defaultExportFormat
+            let replaced = await controller.saveImage(to: collision, format: .png) {
                 confirmations += 1
+                harness.settings.update { $0.defaultExportFormat = .jpeg }
                 return true
             }
+            harness.settings.update { $0.defaultExportFormat = formatBefore }
             context.check("explicit replacement saves", replaced == .saved(collision) && confirmations == 2)
+            let pngSignature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+            context.check(
+                "a format change during confirmation still writes PNG bytes to the .png name",
+                (try? Data(contentsOf: collision))?.prefix(8) == pngSignature)
             context.check(
                 "replacement uses sanitized export pixels",
                 try E2EActions.decode(Data(contentsOf: collision), "replacement", context) == savedPixels)
             let fresh = folder.appending(path: "no-collision.png")
-            let created = await controller.saveImage(to: fresh) {
+            let created = await controller.saveImage(to: fresh, format: .png) {
                 confirmations += 1
                 return false
             }
             context.check(
                 "exclusive new save needs no replacement consent", created == .saved(fresh) && confirmations == 2)
             let beforeNative = try Data(contentsOf: collision)
-            let nativeSave = Task { await controller.saveImage(to: collision) }
+            let nativeSave = Task { await controller.saveImage(to: collision, format: .png) }
             let sheetAppeared = await E2EWait.until { controller.window?.attachedSheet != nil }
             try context.require("collision presents the native replacement sheet", sheetAppeared)
             let sheet = try context.unwrap("replacement sheet", controller.window?.attachedSheet)

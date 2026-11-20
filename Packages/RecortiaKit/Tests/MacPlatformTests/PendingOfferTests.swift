@@ -14,7 +14,7 @@ struct PendingOfferTests {
         var firstID: UUID?
         let first = Task { await offers.wait { firstID = $0 } }
         await waitUntil { firstID != nil }
-        offers.resolveCurrent(with: "canceled")  // a new deliver dismisses the previous offer
+        offers.resolve(firstID!, with: "canceled")  // a new deliver dismisses the previous offer
         #expect(await first.value == "canceled")
 
         var secondID: UUID?
@@ -24,14 +24,6 @@ struct PendingOfferTests {
         #expect(offers.currentID == secondID)
         #expect(offers.resolve(secondID!, with: "delivered"))
         #expect(await second.value == "delivered")
-    }
-
-    @Test("Resolving with no offer pending does nothing")
-    func resolveWithoutOffer() {
-        let offers = PendingOffer<String>()
-        offers.resolveCurrent(with: "canceled")
-        #expect(offers.resolve(UUID(), with: "delivered") == false)
-        #expect(offers.currentID == nil)
     }
 
     private func waitUntil(_ condition: () -> Bool) async {

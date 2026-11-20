@@ -24,11 +24,6 @@ final class SystemEventMonitor {
             NSWorkspace.shared.notificationCenter, NSWorkspace.sessionDidResignActiveNotification, .screenLocked)
     }
 
-    func stop() {
-        for (center, token) in tokens { center.removeObserver(token) }
-        tokens.removeAll()
-    }
-
     private func observe(_ center: NotificationCenter, _ name: Notification.Name, _ event: Event) {
         let token = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.handler(event) }

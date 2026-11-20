@@ -70,7 +70,7 @@ final class AppModel: AppActions {
     /// activates, so activation cannot switch Spaces (FR-01).
     @ObservationIgnored private let spacePolicy = SpacePolicyMonitor()
     @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
-    /// Open editors whose edits were never copied, saved, dragged, or pinned.
+    /// Open editors whose edits were never copied or saved (a drag out saves; a pin does not).
     @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
     /// Asks whether to quit and discard what `QuitDiscards` describes.
     @ObservationIgnored private let confirmQuit: @MainActor (QuitDiscards) -> Bool

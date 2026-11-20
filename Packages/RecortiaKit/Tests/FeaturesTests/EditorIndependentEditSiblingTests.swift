@@ -183,10 +183,10 @@ struct EditorIndependentEditSiblingTests {
         defer { h.model.close() }
         let m = h.model
         m.setPadding(1)
+        let padded = m.document
         m.undo()
         let before = m.document
         let identity = m.session.requestIdentity()
-        let redo = m.session.redoLabel
         m.select(.mask(mask.id))
         m.nudgeSelection(dx: 1, dy: 0)
         #expect(m.notice == .redactionRefused)
@@ -198,7 +198,8 @@ struct EditorIndependentEditSiblingTests {
         #expect(m.session.revision == identity.revision)
         #expect(m.session.privacyEpoch == identity.privacyEpoch)
         #expect(m.session.undoCount == 0)
-        #expect(m.session.redoLabel == redo && m.session.canRedo)
+        m.redo()
+        #expect(m.document == padded, "the refused edit keeps the redo path")
     }
 
     // MARK: B-3 siblings

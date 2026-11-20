@@ -101,6 +101,7 @@ public final class SettingsStore {
         let defaults = Preferences()
         var output = input
         output.schemaVersion = Preferences.currentSchemaVersion
+        output.launchAtLogin = false
         output.captureDelaySeconds = CaptureRequest.clampedDelay(input.captureDelaySeconds)
         output.jpegQuality = input.jpegQuality.isFinite ? min(max(input.jpegQuality, 0), 1) : defaults.jpegQuality
         output.defaultExportScale =

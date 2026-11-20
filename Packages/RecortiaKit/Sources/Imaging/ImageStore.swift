@@ -21,8 +21,6 @@ public actor ImageStore {
 
     public var count: Int { images.count }
 
-    package func image(for id: AssetID) -> CGImage? { images[id] }
-
     package func images(for ids: Set<AssetID>) -> [AssetID: CGImage] {
         images.filter { ids.contains($0.key) }
     }

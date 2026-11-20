@@ -137,7 +137,7 @@ struct EditorExportLifecycleTests {
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
         let gate = Pending<Void>()
         h.files.pending = gate
-        let task = Task { await h.model.export(.save(url, overwriteConfirmed: false)) }
+        let task = Task { await h.model.export(.save(url, format: .png, overwriteConfirmed: false)) }
         await waitFor("file commit in progress") { gate.waiterCount == 1 }
         #expect(h.export.state == .committing)
         h.model.close()
@@ -169,5 +169,44 @@ struct EditorExportLifecycleTests {
         #expect(h.clipboard.writes.isEmpty)
         #expect(h.files.saves.isEmpty && h.files.uniqueSaves.isEmpty)
         #expect(!h.export.isBusy)
+    }
+
+    @Test("Cancel Export in another editor neither shows nor stops this editor's export")
+    func cancelExportIsScopedToItsEditor() async {
+        let h = EditorHarness()
+        let other = EditorModel(session: EditorFixtures.session(), environment: h.model.environment)
+        defer { h.model.close(); other.close() }
+        let gate = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = gate
+        let task = Task { await h.model.export(.copy) }
+        await waitFor("snapshot suspended") { gate.waiterCount == 1 }
+        #expect(h.model.isExporting)
+        #expect(!other.isExporting, "the other editor offers no Cancel Export")
+        #expect(!other.canStartExport, "the shared slot is taken: the other editor cannot start one")
+        other.cancelExport()
+        h.exporter.pending = nil
+        gate.resolve(.success(()))
+        #expect(await task.value == .copied)
+        #expect(h.clipboard.writes.count == 1)
+        #expect(other.canStartExport && h.model.canStartExport)
+    }
+
+    @Test("A Save confirmed while another editor exports shows the busy message and writes nothing")
+    func saveConfirmedWhileBusyIsRejected() async {
+        let h = EditorHarness()
+        let other = EditorModel(session: EditorFixtures.session(), environment: h.model.environment)
+        defer { h.model.close(); other.close() }
+        let gate = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = gate
+        let task = Task { await h.model.export(.copy) }
+        await waitFor("snapshot suspended") { gate.waiterCount == 1 }
+        let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
+        #expect(await other.export(.save(url, format: .png, overwriteConfirmed: false)) == .rejectedBusy)
+        #expect(other.notice == .exported(.rejectedBusy))
+        #expect(h.files.saves.isEmpty)
+        #expect(h.exporter.snapshotCount == 1, "the rejected save reserved nothing and rendered nothing")
+        h.exporter.pending = nil
+        gate.resolve(.success(()))
+        #expect(await task.value == .copied)
     }
 }

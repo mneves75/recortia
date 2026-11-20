@@ -48,13 +48,8 @@
                     : "child timed out")
         }
 
-        /// Child side: returns false when this process is not a probe.
-        static func runIfRequested(arguments: [String]) -> Bool {
-            guard let index = arguments.firstIndex(of: argument) else { return false }
-            guard index + 1 < arguments.count, let kind = Kind(rawValue: arguments[index + 1]) else {
-                E2ERunner.log("unknown probe; known: \(Kind.allCases.map(\.rawValue))")
-                exit(2)
-            }
+        /// Child side: hosts `kind`, then exits with the result.
+        static func start(_ kind: Kind) {
             Task {
                 do {
                     let size = try await host(kind)
@@ -65,7 +60,6 @@
                     exit(3)
                 }
             }
-            return true
         }
 
         private static func host(_ kind: Kind) async throws -> NSSize {

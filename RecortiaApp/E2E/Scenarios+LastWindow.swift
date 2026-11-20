@@ -235,6 +235,18 @@
                     "closing an edited editor asks first",
                     await E2EWait.until(timeout: .seconds(5)) { window.attachedSheet != nil }
                         ? window.attachedSheet : nil)
+                if !discard {
+                    // R3-D17: a pin keeps no edits, so the warning names only copy and save.
+                    let expected =
+                        context.output.language.hasPrefix("pt")
+                        ? "Esta imagem tem alterações que não foram copiadas nem salvas. Fechar descarta essas alterações."
+                        : "This image has changes that were not copied or saved. Closing discards them."
+                    let texts = sheet.contentView.map { EditorWindowController.all(NSTextField.self, in: $0) } ?? []
+                    context.check(
+                        "the close warning says the edits were not copied or saved",
+                        texts.contains { $0.stringValue == expected }, texts.map(\.stringValue).joined(separator: " | ")
+                    )
+                }
                 window.endSheet(sheet, returnCode: discard ? .alertFirstButtonReturn : .alertSecondButtonReturn)
                 if discard {
                     context.check(
@@ -544,13 +556,8 @@
                     : "child timed out")
         }
 
-        /// Child side: returns false when this process is not a last-window probe.
-        static func runIfRequested(arguments: [String]) -> Bool {
-            guard let index = arguments.firstIndex(of: argument) else { return false }
-            guard index + 1 < arguments.count, let kind = Kind(rawValue: arguments[index + 1]) else {
-                E2ERunner.log("unknown last-window probe; known: \(Kind.allCases.map(\.rawValue))")
-                exit(2)
-            }
+        /// Child side: runs `kind`, then exits with the result.
+        static func start(_ kind: Kind) {
             Task {
                 do {
                     try await run(kind)
@@ -561,7 +568,6 @@
                 E2ERunner.log("last-window probe \(kind.rawValue) is still running")
                 exit(stillRunning)
             }
-            return true
         }
 
         private static func run(_ kind: Kind) async throws {

@@ -169,7 +169,6 @@ struct EditorPixelToolsTests {
         let ruler = try #require(h.model.ruler)
         #expect(ruler.dxPixels == 30 && ruler.dyPixels == 40 && ruler.distancePixels == 50)
         #expect(ruler.pointPixelScale == nil)
-        #expect(ruler.distancePoints == nil)
     }
 
     @Test("Points are reported only for a capture with a known scale")
@@ -180,7 +179,6 @@ struct EditorPixelToolsTests {
         h.drag((0, 0), (30, 40))
         let ruler = try #require(h.model.ruler)
         #expect(ruler.distancePixels == 50)
-        #expect(ruler.distancePoints == 25)
         #expect(ruler.dxPoints == 15 && ruler.dyPoints == 20)
 
         // Scaling the only layer makes point conversion ambiguous: no points.

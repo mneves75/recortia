@@ -20,11 +20,6 @@ enum TextRecognitionError: Error, Equatable, Sendable {
     case recognitionFailed
 }
 
-struct LanguageAvailability: Sendable, Equatable {
-    public let available: [Locale.Language]
-    public let unavailable: [Locale.Language]
-}
-
 /// On-device text recognition with Vision (FR-08). Accurate level, no language correction, no
 /// automatic language detection: the text is reported as seen, never repaired.
 public struct TextRecognizer: Sendable {
@@ -33,15 +28,6 @@ public struct TextRecognizer: Sendable {
     @concurrent
     public func supportedLanguages() async -> [Locale.Language] {
         Self.makeRequest().supportedRecognitionLanguages
-    }
-
-    @concurrent
-    func availability(of languages: [Locale.Language]) async -> LanguageAvailability {
-        let supported = Self.makeRequest().supportedRecognitionLanguages
-        let resolved = languages.map { Self.match($0, in: supported) }
-        return LanguageAvailability(
-            available: resolved.compactMap { $0 },
-            unavailable: zip(languages, resolved).filter { $0.1 == nil }.map(\.0))
     }
 
     /// Recognizes text lines in `image`, in Vision's reading order, with boxes in the image's

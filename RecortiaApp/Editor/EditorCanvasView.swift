@@ -118,6 +118,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         _ = model.recognition
         _ = model.outputPreview
         _ = model.showsOutputPreview
+        _ = model.isPreviewReady
         _ = model.redactionFill
         let tool = model.tool
         syncTextEditing(model.textEditing)
@@ -245,9 +246,15 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             model.reportCanvasRenderFailure()
             return
         }
+        if !model.showsOutputPreview { model.reportCanvasDrawSucceeded() }
 
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()
+
+        if !model.isPreviewReady {
+            drawPreviewFailure(over: canvas)
+            return
+        }
 
         if !model.showsOutputPreview {
             drawCropShade(document, viewport, context)
@@ -257,6 +264,22 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             drawRuler(viewport)
             drawLoupe(viewport)
         }
+    }
+
+    /// The last render failed, so the pixels below may be stale (R2-D12): veil them and say so.
+    private func drawPreviewFailure(over canvas: CGRect) {
+        let visible = canvas.intersection(bounds)
+        guard !visible.isNull else { return }
+        NSColor.windowBackgroundColor.withAlphaComponent(0.85).setFill()
+        visible.fill()
+        let text = NSAttributedString(
+            string: EditorStrings.message(.previewFailed),
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
+                .foregroundColor: NSColor.labelColor,
+            ])
+        let size = text.size()
+        text.draw(at: CGPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
     }
 
     private func drawCheckerboard(in rect: CGRect, _ context: CGContext) {

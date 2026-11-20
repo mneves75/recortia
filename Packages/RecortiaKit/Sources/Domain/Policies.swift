@@ -201,7 +201,10 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var captureIncludesWindowShadow = true
     public var autoCopy = false
     public var autoSave = false
-    public var launchAtLogin = false
+    /// Never read: the login item is the truth. Optional so a blob without the key still decodes;
+    /// `SettingsStore.sanitized` sets it back to false, so it is always encoded, because 0.14.0
+    /// and earlier require the key and rolling back must keep the person's preferences (PREF-01).
+    package var launchAtLogin: Bool? = false
     public var updateChecksEnabled = false
     public var automaticScrollingEnabled = false
     public var defaultExportFormat = ExportFormatKind.png

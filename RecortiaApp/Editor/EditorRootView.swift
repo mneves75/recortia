@@ -269,7 +269,7 @@ private struct ExportButtons: View {
             Label(String(localized: "Copy", table: "Editor"), systemImage: "doc.on.doc")
         }
         .help(String(localized: "Copy the image as PNG (⌘C)", table: "Editor"))
-        .disabled(model.isExporting)
+        .disabled(!model.canStartExport)
         .accessibilityIdentifier("toolbar.copy")
         Menu {
             Button(String(localized: "Save…", table: "Editor")) { actions.saveImage() }
@@ -282,7 +282,7 @@ private struct ExportButtons: View {
             actions.saveImage()
         }
         .help(String(localized: "Save the image (⌘S)", table: "Editor"))
-        .disabled(model.isExporting)
+        .disabled(!model.canStartExport)
         .accessibilityIdentifier("toolbar.save")
         Button {
             actions.pin()
@@ -298,7 +298,7 @@ private struct ExportButtons: View {
             Label(String(localized: "Drag Out", table: "Editor"), systemImage: "hand.draw")
         }
         .help(String(localized: "Prepare the image for dragging into another app", table: "Editor"))
-        .disabled(model.isExporting)
+        .disabled(!model.canStartExport)
         .accessibilityIdentifier("toolbar.dragOut")
     }
 }

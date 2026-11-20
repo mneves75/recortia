@@ -75,7 +75,7 @@ struct ExportCoordinatorTests {
     func fileSinkErrors(error: SinkError, expected: ExportFailure) async {
         let h = ExportHarness()
         h.files.error = error
-        #expect(await h.export(.save(to: destination, overwriteConfirmed: false)) == .failed(expected))
+        #expect(await h.export(.save(to: destination, format: .png, overwriteConfirmed: false)) == .failed(expected))
         #expect(h.coordinator.state == .failed(expected))
     }
 
@@ -209,15 +209,15 @@ struct ExportCoordinatorTests {
         #expect(h.files.uniqueSaves.map(\.folder) == [folder])
     }
 
-    @Test("Saves use the preferred format; Copy always publishes PNG only")
+    @Test("Folder saves use the preferred format; Copy always publishes PNG only")
     func exportOptionsFromPreferences() async {
         let h = ExportHarness()
         h.settings.update {
             $0.defaultExportFormat = .jpeg
             $0.jpegQuality = 0.5
         }
-        _ = await h.export(.save(to: destination, overwriteConfirmed: false))
-        #expect(h.files.saves.first?.snapshot.format == .jpeg(quality: 0.5))
+        _ = await h.export(.saveToFolder(destination.deletingLastPathComponent()))
+        #expect(h.files.uniqueSaves.first?.snapshot.format == .jpeg(quality: 0.5))
         _ = await h.export(.copy)
         #expect(h.clipboard.writes.first?.format == .png)
     }

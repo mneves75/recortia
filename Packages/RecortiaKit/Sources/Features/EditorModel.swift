@@ -69,10 +69,13 @@ public final class EditorModel {
 
     @ObservationIgnored var baseTask: Task<Void, Never>?
     @ObservationIgnored var installedBaseKey: BaseKey?
-    @ObservationIgnored var failedBaseKey: BaseKey?
+    /// Observed: the canvas veil and export readiness follow it (`isPreviewReady`).
+    var failedBaseKey: BaseKey?
     @ObservationIgnored var outputTask: Task<Void, Never>?
     @ObservationIgnored var installedOutputKey: OutputKey?
-    @ObservationIgnored var failedOutputKey: OutputKey?
+    var failedOutputKey: OutputKey?
+    /// The document state the native canvas last failed to draw; nil once it draws (NEW-01).
+    var failedCanvasDraw: OutputKey?
     @ObservationIgnored var recognitionRequest: UUID?
     @ObservationIgnored var recognizedResult: OCRResult?
     @ObservationIgnored var qrRequest: UUID?

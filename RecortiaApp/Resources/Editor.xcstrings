@@ -3313,18 +3313,18 @@
         }
       }
     },
-    "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them.": {
+    "This image has changes that were not copied or saved. Closing discards them.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them."
+            "value": "This image has changes that were not copied or saved. Closing discards them."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta imagem tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Fechar descarta essas alterações."
+            "value": "Esta imagem tem alterações que não foram copiadas nem salvas. Fechar descarta essas alterações."
           }
         }
       }

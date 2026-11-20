@@ -45,8 +45,6 @@ public final class PinsModel {
     static let zoomRange: ClosedRange<Double> = 0.25...4
 
     public private(set) var pins: [Pin] = []
-    /// Number of pins removed by the latest privacy invalidation, for a user-visible note.
-    private(set) var lastInvalidatedCount = 0
     /// Increments on Bring Pins Forward; pin windows observe it and order themselves front.
     public private(set) var bringForwardRequest = 0
 
@@ -122,9 +120,7 @@ public final class PinsModel {
 
     /// Drops every pin of `documentID` rendered before privacy epoch `epoch` (RED-03).
     public func invalidate(documentID: DocumentID, epoch: UInt64) {
-        let before = pins.count
         remove { $0.sourceDocumentID == documentID && $0.privacyEpoch < epoch }
-        lastInvalidatedCount = before - pins.count
     }
 
     public func close(_ id: PinID) {

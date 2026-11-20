@@ -22,12 +22,6 @@ extension EditorModel {
         EditorMeasurement(start: start, end: end, pointPixelScale: measurementPointScale)
     }
 
-    /// Places ruler anchors directly (keyboard alternative to dragging), snapped to pixel edges.
-    func setRuler(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) {
-        guard start.isFinite, end.isFinite else { return }
-        ruler = measurement(from: Self.snapped(start), to: Self.snapped(end))
-    }
-
     public func clearRuler() { ruler = nil }
 
     /// The document pixel containing `p`, when it lies on the canvas.
