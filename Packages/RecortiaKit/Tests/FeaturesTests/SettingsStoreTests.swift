@@ -93,6 +93,25 @@ struct SettingsStoreTests {
         #expect(loaded.preferences.editorContentSize == nil)
     }
 
+    // Failure mode (PREF-01): a blob written while the legacy launchAtLogin key was dropped loaded as
+    // defaults, and a blob without the key cannot be read by 0.14.0 after a rollback.
+    @Test("A blob without launchAtLogin loads, and the next write restores the key for 0.14")
+    func keylessLaunchAtLoginBlob() throws {
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old.removeValue(forKey: "launchAtLogin")
+        old["captureDelaySeconds"] = 4
+        let storage = MemoryPreferenceStorage()
+        storage.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let store = SettingsStore(storage: storage)
+        #expect(store.loadIssue == nil)
+        #expect(store.preferences.captureDelaySeconds == 4)
+        store.update { $0.autoCopy = true }
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        #expect(object["launchAtLogin"] as? Bool == false, "0.14.0 requires the key")
+    }
+
     // Failure mode: a required Bool added to the synthesized Codable makes every older blob fail
     // to decode, which resets all settings and drops the sealed export consent.
     @Test("Keeping Recortia in the menu bar defaults on, persists off, and older blobs still load")
