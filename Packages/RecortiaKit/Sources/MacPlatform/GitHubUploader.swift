@@ -75,13 +75,10 @@ public struct GitHubUploader: Sendable {
 
     @concurrent
     public func upload(
-        _ snapshot: ShareSnapshot, to destination: GitHubDestination, token: String, intent: UUID,
+        _ snapshot: ShareSnapshot, to destination: GitHubDestination, token: GitHubToken, intent: UUID,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL {
         guard destination.isValid else { throw .invalidDestination }
-        guard !token.isEmpty, token.utf8.count <= 4096,
-            token.utf8.allSatisfy({ (33...126).contains($0) })
-        else { throw .missingCredential }
         guard !snapshot.bytes.isEmpty, snapshot.bytes.count <= Self.maximumImageBytes else { throw .tooLarge }
         guard !Task.isCancelled else { throw .canceled }
         let base = "https://api.github.com/repos/\(destination.owner)/\(destination.repository)"
@@ -134,11 +131,11 @@ public struct GitHubUploader: Sendable {
         return hash.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
-    private func request(_ address: String, token: String) throws(GitHubUploadFailure) -> URLRequest {
+    private func request(_ address: String, token: GitHubToken) throws(GitHubUploadFailure) -> URLRequest {
         guard let url = URL(string: address) else { throw .invalidDestination }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(token.value)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2026-03-10", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("Recortia", forHTTPHeaderField: "User-Agent")

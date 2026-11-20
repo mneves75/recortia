@@ -74,7 +74,7 @@ public protocol GitHubUploadService: AnyObject {
 
 @MainActor
 public protocol GitHubCredentialService: AnyObject {
-    func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure)
+    func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure)
     func remove(for destination: GitHubDestination) throws(GitHubUploadFailure)
 }
 

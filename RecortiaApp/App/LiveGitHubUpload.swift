@@ -7,7 +7,7 @@ final class LiveGitHubUpload: GitHubUploadService, GitHubCredentialService {
     private let tokens = GitHubTokenStore()
     private let uploader = GitHubUploader()
 
-    func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+    func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
         try tokens.store(token, for: destination)
     }
 

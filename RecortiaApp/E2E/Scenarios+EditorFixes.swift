@@ -101,12 +101,12 @@
         /// Records every Keychain call a Settings save makes, in order, without a real Keychain.
         @MainActor
         final class RecordingCredentials: GitHubCredentialService {
-            private(set) var tokens: [String: String] = [:]
+            private(set) var tokens: [String: GitHubToken] = [:]
             private(set) var calls: [String] = []
             var failNextStore = false
             var failNextRemove = false
 
-            func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+            func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
                 let account = GitHubTokenStore.account(for: destination)
                 calls.append("store \(account)")
                 if failNextStore {
@@ -132,6 +132,7 @@
             let credentials = RecordingCredentials()
             let first = GitHubDestination(owner: "fixture", repository: "private-one")
             let second = GitHubDestination(owner: "fixture", repository: "private-two")
+            func admitted(_ token: String) -> GitHubToken? { try? GitHubTokenStore.validatedToken(token) }
             func save(_ token: String, _ destination: GitHubDestination) -> GitHubDestinationSaver.Result {
                 GitHubDestinationSaver.save(
                     token: token, destination: destination, settings: settings, credentials: credentials)
@@ -141,7 +142,7 @@
                 "the first save succeeds, trimming a pasted token", save("  ghp_one\n", first) == .saved)
             context.check(
                 "the stored token has no surrounding whitespace",
-                credentials.tokens[GitHubTokenStore.account(for: first)] == "ghp_one",
+                credentials.tokens[GitHubTokenStore.account(for: first)] == admitted("ghp_one"),
                 "stored: \(credentials.tokens)")
             context.check(
                 "the first destination is saved", settings.preferences.githubUpload?.destination == first)
@@ -157,7 +158,8 @@
                 "calls: \(credentials.calls)")
             context.check(
                 "only the new destination keeps a token",
-                credentials.tokens == [GitHubTokenStore.account(for: second): "ghp_two"],
+                credentials.tokens.count == 1
+                    && credentials.tokens[GitHubTokenStore.account(for: second)] == admitted("ghp_two"),
                 "stored: \(credentials.tokens)")
 
             // The same Keychain item under another spelling is not a change: removing it would
@@ -171,7 +173,17 @@
                 "calls: \(credentials.calls)")
             context.check(
                 "the token for the respelled destination survives",
-                credentials.tokens[GitHubTokenStore.account(for: second)] == "ghp_three")
+                credentials.tokens[GitHubTokenStore.account(for: second)] == admitted("ghp_three"))
+
+            let callsBeforeRefusal = credentials.calls.count
+            context.check(
+                "a token without a personal-token prefix is refused",
+                save("synthetic-token", first) == .failed(.missingCredential))
+            context.check(
+                "a refused token reaches no Keychain call and changes no destination",
+                credentials.calls.count == callsBeforeRefusal
+                    && settings.preferences.githubUpload?.destination == respelled,
+                "calls: \(credentials.calls)")
 
             credentials.failNextStore = true
             let before = credentials.calls.count

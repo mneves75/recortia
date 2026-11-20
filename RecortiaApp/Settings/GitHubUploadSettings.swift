@@ -46,7 +46,7 @@ enum GitHubDestinationSaver {
     ) -> Result {
         let previous = settings.preferences.githubUpload?.destination
         do {
-            // The store call and the Keychain share one rule for what a token may contain.
+            // The token store admits the pasted text; everything after it trusts the token.
             try credentials.store(GitHubTokenStore.validatedToken(token), for: destination)
         } catch { return .failed(error) }
         settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination) }

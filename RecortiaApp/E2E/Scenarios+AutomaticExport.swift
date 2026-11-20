@@ -53,8 +53,10 @@
 
         func release() { waiter?.resume(); waiter = nil }
 
-        func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
-            guard token == "synthetic-token", destination.isValid else { throw .missingCredential }
+        func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+            guard token == (try GitHubTokenStore.validatedToken("ghp_synthetic")), destination.isValid else {
+                throw .missingCredential
+            }
             hasCredential = true
         }
 
@@ -125,7 +127,7 @@
             harness.settings.update { $0.autoCopy = false }
 
             let destination = GitHubDestination(owner: "fixture", repository: "private-captures")
-            try harness.github.store("synthetic-token", for: destination)
+            try harness.github.store(GitHubTokenStore.validatedToken("ghp_synthetic"), for: destination)
             harness.settings.update {
                 $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true)
             }

@@ -26,6 +26,11 @@ struct GitHubUploadTests {
     let destination = GitHubDestination(owner: "fixture-owner", repository: "private-captures")
     let intent = UUID(uuidString: "11111111-1111-1111-1111-111111111111") ?? UUID()
 
+    /// A synthetic token admitted the only way the app can make one.
+    static func token() throws(GitHubUploadFailure) -> GitHubToken {
+        try GitHubTokenStore.validatedToken("ghp_synthetic")
+    }
+
     func reply(_ code: Int, _ json: String) -> GitHubResponse {
         GitHubResponse(statusCode: code, body: Data(json.utf8))
     }
@@ -47,7 +52,7 @@ struct GitHubUploadTests {
         let snapshot = TestSupport.snapshot()
         let transport = UploadTransportFixture([privateRepo, reply(404, "{}"), file(snapshot, wrapped: true)])
         let url = try await GitHubUploader(transport: transport).upload(
-            snapshot, to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+            snapshot, to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
         let requests = await transport.requests
         #expect(requests.map(\.httpMethod) == ["GET", "GET", "PUT"])
         let put = try #require(requests.last)
@@ -67,7 +72,7 @@ struct GitHubUploadTests {
         ])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("public repository was accepted")
         } catch { #expect(error == .publicRepository) }
         #expect(await transport.requests.count == 1)
@@ -78,7 +83,7 @@ struct GitHubUploadTests {
         let transport = UploadTransportFixture([privateRepo, reply(404, "{}")])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { false })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { false })
             Issue.record("stale upload was accepted")
         } catch { #expect(error == .staleDocument) }
         #expect(await transport.requests.allSatisfy { $0.httpMethod != "PUT" })
@@ -94,7 +99,7 @@ struct GitHubUploadTests {
         do {
             _ = try await GitHubUploader(transport: transport).upload(
                 TestSupport.snapshot(), to: GitHubDestination(owner: owner, repository: "captures"),
-                token: "synthetic-token", intent: intent, isCurrent: { true })
+                token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("invalid destination was accepted")
         } catch { #expect(error == .invalidDestination) }
         #expect(await transport.requests.isEmpty)
@@ -105,7 +110,7 @@ struct GitHubUploadTests {
         let transport = UploadTransportFixture([privateRepo, reply(404, "{}")])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("failed PUT was reported successful")
         } catch { #expect(error == .completionUnknown) }
         #expect(await transport.requests.map(\.httpMethod) == ["GET", "GET", "PUT"])
@@ -118,7 +123,7 @@ struct GitHubUploadTests {
             "{\"type\":\"file\",\"sha\":\"\(GitHubUploader.blobSHA(snapshot.bytes))\",\"html_url\":\"https://github.com/fixture-owner/private-captures/blob/main/screenshots/\(intent.uuidString.lowercased()).png\",\"content\":\"\(snapshot.bytes.base64EncodedString())\"}"
         let transport = UploadTransportFixture([privateRepo, reply(200, metadata)])
         _ = try await GitHubUploader(transport: transport).upload(
-            snapshot, to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+            snapshot, to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
         #expect(
             await transport.requests.last?.value(forHTTPHeaderField: "Accept") == "application/vnd.github.object+json")
     }
@@ -129,7 +134,7 @@ struct GitHubUploadTests {
         let transport = UploadTransportFixture([privateRepo, reply(404, "{}"), file(snapshot, wrapped: true)])
         let configured = GitHubDestination(owner: "Fixture-Owner", repository: "Private-Captures")
         let result = try await GitHubUploader(transport: transport).upload(
-            snapshot, to: configured, token: "synthetic-token", intent: intent, isCurrent: { true })
+            snapshot, to: configured, token: try Self.token(), intent: intent, isCurrent: { true })
         #expect(result.host == "github.com")
     }
 
@@ -143,7 +148,7 @@ struct GitHubUploadTests {
         let transport = UploadTransportFixture([reply(code, "{}")])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("HTTP failure was accepted")
         } catch { #expect(error == expected) }
         #expect(await transport.requests.count == 1)
@@ -159,7 +164,7 @@ struct GitHubUploadTests {
         let transport = UploadTransportFixture([reply(200, metadata)])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("invalid metadata was accepted")
         } catch { #expect(error == .invalidResponse) }
         #expect(await transport.requests.count == 1)
@@ -176,26 +181,23 @@ struct GitHubUploadTests {
         ])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("conflicting blob was accepted")
         } catch { #expect(error == .conflict) }
         #expect(await transport.requests.allSatisfy { $0.httpMethod == "GET" })
     }
 
-    @Test("Image size and invalid token are rejected before a request")
+    // A malformed token cannot reach the uploader at all: `GitHubToken` comes only from
+    // `GitHubTokenStore.validatedToken`, whose control-character cases are in its own suite.
+    @Test("An oversized image is rejected before a request")
     func requestLimits() async {
         let transport = UploadTransportFixture([])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
                 TestSupport.snapshot(bytes: Data(count: GitHubUploader.maximumImageBytes + 1)),
-                to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("oversized image was accepted")
         } catch { #expect(error == .tooLarge) }
-        do {
-            _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "bad\r\nheader", intent: intent, isCurrent: { true })
-            Issue.record("header injection token was accepted")
-        } catch { #expect(error == .missingCredential) }
         #expect(await transport.requests.isEmpty)
     }
 
@@ -204,7 +206,7 @@ struct GitHubUploadTests {
         let transport = UploadTransportFixture([privateRepo, reply(404, "{}"), reply(code, "{}")])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
             Issue.record("malformed PUT was accepted")
         } catch { #expect(error == .completionUnknown) }
     }
@@ -215,7 +217,7 @@ struct GitHubUploadTests {
         let transport = UploadTransportFixture([])
         let task = Task {
             try await GitHubUploader(transport: transport).upload(
-                TestSupport.snapshot(), to: destination, token: "synthetic-token", intent: intent, isCurrent: { true })
+                TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isCurrent: { true })
         }
         task.cancel()
         do { _ = try await task.value; Issue.record("canceled task was accepted") } catch {

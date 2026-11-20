@@ -3,6 +3,22 @@ import Foundation
 import LocalAuthentication
 import Security
 
+/// A GitHub token that passed `GitHubTokenStore.validatedToken`, the one place that admits a
+/// token; code that receives one trusts its shape. Its description never contains the token.
+public struct GitHubToken: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
+    let value: String
+
+    fileprivate init(value: String) {
+        self.value = value
+    }
+
+    public var description: String { "GitHubToken(redacted)" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: []) }
+}
+
 /// App-scoped, non-synchronizing data-protection Keychain entries. No token in preferences,
 /// logs, arguments, URLs, or exported files. No automatic unlock/access prompts.
 @MainActor
@@ -20,12 +36,19 @@ public final class GitHubTokenStore {
         "\(destination.owner)/\(destination.repository)".lowercased()
     }
 
-    public nonisolated static func validatedToken(_ pasted: String) throws(GitHubUploadFailure) -> String {
+    /// Prefixes GitHub gives classic and fine-grained personal access tokens, the kinds a person
+    /// can paste into Settings (docs.github.com, "About authentication to GitHub").
+    nonisolated static let personalTokenPrefixes = ["ghp_", "github_pat_"]
+
+    /// Admits a pasted or stored token: surrounding whitespace is trimmed; what remains must be a
+    /// personal-token prefix and more, at most 4096 bytes of printable ASCII, so no control
+    /// character or space can reach a request header.
+    public nonisolated static func validatedToken(_ pasted: String) throws(GitHubUploadFailure) -> GitHubToken {
         let token = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !token.isEmpty, token.utf8.count <= 4096, token.utf8.allSatisfy({ (33...126).contains($0) }) else {
-            throw .missingCredential
-        }
-        return token
+        guard token.utf8.count <= 4096, token.utf8.allSatisfy({ (33...126).contains($0) }),
+            personalTokenPrefixes.contains(where: { token.hasPrefix($0) && token.count > $0.count })
+        else { throw .missingCredential }
+        return GitHubToken(value: token)
     }
 
     private func query(_ destination: GitHubDestination) -> [CFString: Any] {
@@ -39,9 +62,9 @@ public final class GitHubTokenStore {
         ]
     }
 
-    public func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+    public func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
         guard destination.isValid else { throw .invalidDestination }
-        let data = Data(try Self.validatedToken(token).utf8)
+        let data = Data(token.value.utf8)
         let update = SecItemUpdate(query(destination) as CFDictionary, [kSecValueData: data] as CFDictionary)
         if update == errSecSuccess { return }
         guard update == errSecItemNotFound else { throw .credentialsUnavailable }
@@ -51,7 +74,9 @@ public final class GitHubTokenStore {
         guard SecItemAdd(add as CFDictionary, nil) == errSecSuccess else { throw .credentialsUnavailable }
     }
 
-    public func load(for destination: GitHubDestination) throws(GitHubUploadFailure) -> String {
+    /// A stored item is admitted like a pasted token: one saved by an older build, or altered,
+    /// is a missing credential rather than something to send.
+    public func load(for destination: GitHubDestination) throws(GitHubUploadFailure) -> GitHubToken {
         guard destination.isValid else { throw .invalidDestination }
         var request = query(destination)
         request[kSecReturnData] = true
@@ -61,7 +86,7 @@ public final class GitHubTokenStore {
         if resultCode == errSecItemNotFound { throw .missingCredential }
         guard resultCode == errSecSuccess, let data = result as? Data, let token = String(data: data, encoding: .utf8)
         else { throw .credentialsUnavailable }
-        return token
+        return try Self.validatedToken(token)
     }
 
     public func remove(for destination: GitHubDestination) throws(GitHubUploadFailure) {
