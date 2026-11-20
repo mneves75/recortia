@@ -108,6 +108,29 @@ struct EditorMaskInvariantTests {
         #expect(try await secretCovered(fixture, at: 110) == 0)
     }
 
+    @Test("Align moves a selected layer and its selected mask once, from the same starting document (R4-01)")
+    func alignResolvesFromOneSnapshot() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 0, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        let layer = try #require(m.document.layers.first).id
+        m.setFrame(Rect(x: 100, y: 0, width: 400, height: 300), for: .layer(layer))
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first).id
+        m.setFillColor(.yellow)
+        m.selectTool(.rectangle)
+        h.drag((0, 200), (40, 240))
+        let rectangle = try #require(m.document.annotations.first).id
+        m.selectTool(.select)
+        m.setSelection([.layer(layer), .mask(mask), .annotation(rectangle)])
+        m.align(.left)
+        #expect(m.document.layers.first?.placement.translation == .zero)
+        #expect(m.document.masks.first?.outputRect == Rect(x: 0, y: 100, width: 20, height: 20))
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 0, y: 100, width: 120, height: 20)) == 0)
+    }
+
     // MARK: I2 only an effective move or resize re-binds
 
     @Test("A stationary handle click at 12.5 % zoom leaves the mask, history and export untouched")
