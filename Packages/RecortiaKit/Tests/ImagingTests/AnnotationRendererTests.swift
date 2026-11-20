@@ -54,6 +54,22 @@ struct AnnotationRendererTests {
         }
     }
 
+    @Test("A translucent straight arrow paints the shaft and head junction once")
+    func straightArrowJunctionAlpha() throws {
+        let p = try draw([
+            Annotation(
+                kind: .arrow(start: Point(x: 10, y: 40), end: Point(x: 110, y: 40)),
+                style: Annotation.Style(stroke: RGBA(r: 255, g: 0, b: 0, a: 128), lineWidth: 4))
+        ])
+        let body = p.pixel(x: 40, y: 40).a
+        #expect(body >= 126)
+        // The shaft ends inside the head: 110 - 18 * 0.8 = 95.6, head base at 92.
+        #expect(p.pixel(x: 94, y: 40).a == body)
+        for y in 0..<p.height {
+            for x in 0..<p.width { #expect(p.pixel(x: x, y: y).a <= 129) }
+        }
+    }
+
     @Test("Arrows have a head: the end is thicker than the shaft")
     func arrowHasHead() throws {
         let p = try draw([

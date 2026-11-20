@@ -49,7 +49,7 @@ public enum AnnotationRenderer {
             }
             points = [text.origin]
         case .arrow(let start, let end, let control):
-            if control != nil, (try? ArrowLayout.make(for: annotation)) == nil { return false }
+            if (try? ArrowLayout.make(for: annotation)) == nil { return false }
             points = [start, end] + (control.map { [$0] } ?? [])
         case .line(let start, let end):
             points = [start, end]
@@ -102,14 +102,10 @@ public enum AnnotationRenderer {
                 drawTextBackground(text, style: style, metrics: textLayout.metrics, in: context)
                 textLayout.draw(in: context)
             }
-        case .arrow(let start, let end, let control):
-            if control != nil {
-                let layout = try ArrowLayout.make(for: annotation)
-                context.addPath(layout.inkPath)
-                context.fillPath()
-            } else {
-                drawArrow(from: start.cg, to: end.cg, lineWidth: style.lineWidth, in: context)
-            }
+        case .arrow:
+            // One filled union, so a translucent color covers the shaft/head overlap once.
+            context.addPath(try ArrowLayout.make(for: annotation).inkPath)
+            context.fillPath()
         case .line(let start, let end):
             context.addLines(between: [start.cg, end.cg])
             context.strokePath()
@@ -163,29 +159,6 @@ public enum AnnotationRenderer {
         }
         context.addLines(between: points)
         context.strokePath()
-    }
-
-    private static func drawArrow(from start: CGPoint, to end: CGPoint, lineWidth: Double, in context: CGContext) {
-        let dx = end.x - start.x, dy = end.y - start.y
-        let length = (dx * dx + dy * dy).squareRoot()
-        guard length > 0 else { return }
-        let w = max(lineWidth, 1)
-        let headLength = min(length, max(w * 4.5, 14))
-        let headHalfWidth = max(w * 3, 9)
-        let ux = dx / length, uy = dy / length
-        let base = CGPoint(x: end.x - ux * headLength, y: end.y - uy * headLength)
-        // The shaft ends inside the filled head, which hides its butt cap.
-        let shaftEnd = CGPoint(x: end.x - ux * headLength * 0.8, y: end.y - uy * headLength * 0.8)
-        context.setLineCap(.butt)
-        context.addLines(between: [start, shaftEnd])
-        context.strokePath()
-        context.addLines(between: [
-            end,
-            CGPoint(x: base.x - uy * headHalfWidth, y: base.y + ux * headHalfWidth),
-            CGPoint(x: base.x + uy * headHalfWidth, y: base.y - ux * headHalfWidth),
-        ])
-        context.closePath()
-        context.fillPath()
     }
 
     private static func drawStep(
