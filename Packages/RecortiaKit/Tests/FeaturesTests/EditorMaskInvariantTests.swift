@@ -329,6 +329,32 @@ struct EditorMaskInvariantTests {
         #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
     }
 
+    /// T1 security 3A: containment had a 1e-9 tolerance toward release, so a layer edit that carried
+    /// a bound edge out of the box by less than that let the next explicit move drop the binding.
+    @Test(
+        "A layer displaced out of a box by a sub-nanopixel keeps its secret covered after the box moves (3A)",
+        arguments: [-5e-10, 5e-10])
+    func subPixelDisplacementKeepsBinding(offset: Double) async throws {
+        let fixture = try await SecretExport(secret: Self.secret)
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let maskID = try #require(m.document.masks.first).id
+        let layerID = try #require(m.document.layers.first).id
+        let assetID = try #require(m.document.layers.first).assetID
+        m.selectTool(.select)
+        m.setFrame(Rect(x: offset, y: 0, width: 400, height: 300), for: .layer(layerID))
+        let translation = try #require(m.document.layers.first).placement.translation.x
+        #expect(translation != 0 && abs(translation) < 1e-9, "the layer moved by less than 1e-9")
+        m.setFrame(Rect(x: 200, y: 200, width: 20, height: 20), for: .mask(maskID))
+        let mask = try #require(m.document.masks.first)
+        #expect(mask.outputRect == Rect(x: 200, y: 200, width: 20, height: 20))
+        #expect(mask.sourceRegions[assetID]?.contains(PixelRect(x: 10, y: 10, width: 20, height: 20)) == true)
+        let exposed = try await secretCovered(fixture, at: 10)
+        #expect(exposed == 0)
+    }
+
     @Test("A redaction added while Output Preview is on does nothing (R5-03)")
     func redactionRefusedInPreview() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
