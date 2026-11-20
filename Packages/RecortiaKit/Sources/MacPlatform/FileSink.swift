@@ -136,14 +136,18 @@ struct POSIXFileSystem: FileSystemOperations {
     private let afterSync: (URL) -> Void
     /// Test seam: runs after each change `replace` makes to the temporary file's mode or ACL.
     private let afterReplaceStep: (URL) -> Void
+    /// Test seam: gives the open temporary file a group, returning 0 or -1 with `errno` like fchown(2).
+    private let changeGroup: (Int32, gid_t) -> Int32
 
     init(
         fileManager: FileManager = .default, afterSync: @escaping (URL) -> Void = { _ in },
-        afterReplaceStep: @escaping (URL) -> Void = { _ in }
+        afterReplaceStep: @escaping (URL) -> Void = { _ in },
+        changeGroup: @escaping (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) }
     ) {
         self.fileManager = fileManager
         self.afterSync = afterSync
         self.afterReplaceStep = afterReplaceStep
+        self.changeGroup = changeGroup
     }
 
     func writeNewFile(_ data: Data, at url: URL, access: TemporaryFileAccess) throws(FileSystemFailure)
@@ -278,8 +282,17 @@ struct POSIXFileSystem: FileSystemOperations {
             // ACL first, so a deny entry is in effect before the mode can widen access.
             copiedACL = try copyACL(from: destination, to: descriptor)
             afterReplaceStep(source)
+            // The temporary file took its folder's group; the destination's group permission must
+            // not pass to that group. While still owner-only, give it the destination's group, or,
+            // when that is refused, grant no group access at all.
+            var mode = existing.st_mode & 0o777
+            var written = stat()
+            guard fstat(descriptor, &written) == 0 else { throw FileSystemFailure(code: errno) }
+            if written.st_gid != existing.st_gid, changeGroup(descriptor, existing.st_gid) != 0 {
+                mode &= ~mode_t(0o070)
+            }
             // Best effort: a volume that refuses chmod keeps the owner-only temporary mode.
-            _ = fchmod(descriptor, existing.st_mode & 0o777)
+            _ = fchmod(descriptor, mode)
             afterReplaceStep(source)
         } else if errno != ENOENT {
             throw FileSystemFailure(code: errno)

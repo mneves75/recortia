@@ -178,6 +178,46 @@ struct FileSinkTests {
         #expect(mode == 0o640)
     }
 
+    // R2-D02 (program 2026-11): a new file takes its folder's group, so an overwrite kept the mode
+    // of a 0640 file of group A and handed group read access to the folder's group B.
+    @Test("Overwriting keeps the replaced file's group, so its group permission reaches no other group")
+    func overwriteKeepsGroup() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        let other = try #require(
+            Self.otherGroup(for: url), "control: this user has no second group to give the destination")
+        try FileManager.default.setAttributes([.posixPermissions: 0o640], ofItemAtPath: url.path)
+        _ = try FileSink().save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.group(url) == other, "the replacement took the folder's group")
+        #expect(Self.mode(url) == 0o640)
+    }
+
+    @Test("When the replaced file's group cannot be applied, the replacement grants its group nothing")
+    func overwriteWithoutGroupDropsGroupAccess() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+        let other = try #require(
+            Self.otherGroup(for: url), "control: this user has no second group to give the destination")
+        try FileManager.default.setAttributes([.posixPermissions: 0o664], ofItemAtPath: url.path)
+        let observed = Observation()
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(changeGroup: { _, group in
+                observed.requestedGroups.append(group)
+                errno = EPERM
+                return -1
+            }))
+        _ = try sink.save(snapshot, to: url, overwrite: true)
+        #expect(observed.requestedGroups == [other], "control: the seam never refused the destination's group")
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(Self.group(url) != other)
+        #expect(Self.mode(url) == 0o604, "a group the replaced file never granted can read the replacement")
+    }
+
     @Test("Overwriting keeps an explicit ACL entry on the replaced file")
     func overwriteKeepsACL() throws {
         let folder = try TestSupport.makeTemporaryDirectory()
@@ -501,6 +541,7 @@ struct FileSinkTests {
         var swapResolvesToVictim = false
         var temporaryACL: String?
         var replaceSteps: [Access] = []
+        var requestedGroups: [gid_t] = []
 
         struct Access: CustomStringConvertible {
             let mode: mode_t?
@@ -521,6 +562,25 @@ struct FileSinkTests {
         var status = stat()
         guard lstat(url.path(percentEncoded: false), &status) == 0 else { return nil }
         return status.st_mode & 0o7777
+    }
+
+    private static func group(_ url: URL) -> gid_t? {
+        var status = stat()
+        guard lstat(url.path(percentEncoded: false), &status) == 0 else { return nil }
+        return status.st_gid
+    }
+
+    /// Gives `url` one of this user's groups other than the one it was created with (its folder's)
+    /// and returns it; nil when the user has no such group.
+    private static func otherGroup(for url: URL) -> gid_t? {
+        guard let current = group(url) else { return nil }
+        var groups = [gid_t](repeating: 0, count: Int(NGROUPS_MAX))
+        let count = getgroups(Int32(groups.count), &groups)
+        guard count > 0 else { return nil }
+        for candidate in groups.prefix(Int(count)) where candidate != current {
+            if chown(url.path(percentEncoded: false), uid_t.max, candidate) == 0 { return candidate }
+        }
+        return nil
     }
 
     private static func isSymbolicLink(_ url: URL) -> Bool {
