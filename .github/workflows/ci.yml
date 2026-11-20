@@ -37,3 +37,6 @@ jobs:
         run: scripts/xcodegen.sh --version
       - name: Gate
         run: scripts/check.sh --unsigned
+      - name: Release build and test-only code scan
+        # The Debug gate above never compiles Release; release.sh was the first Release check.
+        run: scripts/check-release-build.sh

@@ -4,6 +4,7 @@
 import argparse
 import pathlib
 import plistlib
+import re
 
 # The exact entitlement set reviewed for a Developer ID distribution build. A new entitlement
 # changes what the signed app may do, so it has to be added here deliberately.
@@ -40,8 +41,16 @@ def main() -> None:
     groups = entitlements.get("keychain-access-groups")
     if not isinstance(groups, list) or not all(isinstance(group, str) for group in groups):
         parser.error("keychain-access-groups must be a string array")
-    if arguments.access_group not in groups:
-        parser.error("required keychain access group is missing")
+    # Exactly the reviewed group: an extra group widens what the signed app can read.
+    if groups != [arguments.access_group]:
+        parser.error("keychain-access-groups must be exactly [" + arguments.access_group + "]")
+    team = entitlements["com.apple.developer.team-identifier"]
+    if not re.fullmatch(r"[A-Z0-9]{10}", team):
+        parser.error("com.apple.developer.team-identifier must be a 10-character uppercase alphanumeric team ID")
+    if not arguments.access_group.startswith(team + "."):
+        parser.error("com.apple.developer.team-identifier does not match the access group's team")
+    if entitlements["com.apple.application-identifier"] != arguments.access_group:
+        parser.error("com.apple.application-identifier must be " + arguments.access_group)
     print("release: distribution entitlement checks passed")
 
 

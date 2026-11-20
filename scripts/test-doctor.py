@@ -43,6 +43,7 @@ class E2EToolchainTests(unittest.TestCase):
         (self.root / "scripts").mkdir()
         for name in ("e2e.sh", "doctor.sh"):
             shutil.copy(ROOT / "scripts" / name, self.root / "scripts" / name)
+        shutil.copytree(ROOT / "scripts/lib", self.root / "scripts/lib")
         (self.root / "TOOLCHAIN.json").write_text(json.dumps(FIXTURE_RECORD))
         self.bin = self.root / "bin"
         self.bin.mkdir()
@@ -88,6 +89,10 @@ else:
         app.parent.mkdir(parents=True)
         app.write_text('#!/bin/sh\ntouch launch-reached\nprintf \'[{"passed":true,"screenshots":[]}]\' > "$2/report.json"\n')
         app.chmod(0o755)
+        helper = self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app/Contents/MacOS/RecortiaE2EForegroundHost"
+        helper.parent.mkdir(parents=True)
+        helper.write_text("#!/bin/sh\n# foreground helper fixture\n")
+        helper.chmod(0o755)
 
     def tool(self, name: str, source: str) -> None:
         executable = self.bin / name
@@ -280,6 +285,61 @@ else:
                 self.assertIn("provenance", refused.stderr)
                 self.assertFalse((self.root / "build-reached").exists())
                 self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_no_build_rejects_a_changed_or_missing_foreground_helper(self) -> None:
+        # Native focus checks launch the sibling helper; reusing a build must cover it too.
+        helper_bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app"
+        helper = helper_bundle / "Contents/MacOS/RecortiaE2EForegroundHost"
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        record = json.loads((self.root / ".build/dd-e2e-provenance.json").read_text())
+        self.assertRegex(record.get("foreground_host_bundle_sha256", ""), r"^[0-9a-f]{64}$")
+        (self.root / "launch-reached").unlink()
+        helper.write_text("#!/bin/sh\n# a different helper\n")
+        refused = self.run_e2e("--no-build")
+        self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+        self.assertIn("provenance", refused.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+        shutil.rmtree(helper_bundle)
+        missing = self.run_e2e("--no-build")
+        self.assertEqual(2, missing.returncode, missing.stdout + missing.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_no_build_requires_a_regular_executable_foreground_helper(self) -> None:
+        helper = (self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app"
+                  / "Contents/MacOS/RecortiaE2EForegroundHost")
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        (self.root / "launch-reached").unlink()
+        helper.chmod(0o644)  # same bytes, no longer executable
+        refused = self.run_e2e("--no-build")
+        self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+        real = helper.with_name("real-helper")
+        helper.rename(real)
+        real.chmod(0o755)
+        helper.symlink_to(real.name)
+        self.assertEqual(2, self.run_e2e().returncode, "a linked helper is not a built executable")
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_a_linked_directory_on_either_executable_path_is_refused(self) -> None:
+        # Review 2 N03: a regular executable under a linked Contents/MacOS sits outside the hash.
+        products = self.root / ".build/dd/Build/Products/Debug"
+        for bundle, executable in (("RecortiaE2EForegroundHost.app", "RecortiaE2EForegroundHost"),
+                                   ("RecortiaE2E.app", "RecortiaE2E")):
+            with self.subTest(bundle=bundle):
+                macos = products / bundle / "Contents/MacOS"
+                elsewhere = self.root / f"elsewhere-{executable}"
+                macos.rename(elsewhere)
+                macos.symlink_to(elsewhere, target_is_directory=True)
+                for marker in ("build-reached", "launch-reached"):
+                    (self.root / marker).unlink(missing_ok=True)
+                for arguments in ((), ("--no-build",)):
+                    result = self.run_e2e(*arguments)
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertFalse((self.root / "launch-reached").exists())
+                macos.unlink()
+                elsewhere.rename(macos)
 
     def test_bundle_hash_does_not_follow_external_symlinks(self) -> None:
         bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app"

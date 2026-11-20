@@ -12,17 +12,19 @@ GROUP = "Q96FUTC5G8.dev.mvneves.Recortia"
 
 
 class ReleaseEntitlementTests(unittest.TestCase):
-    def run_gate(self, values: object) -> int:
+    def run_checker(self, values: object) -> subprocess.CompletedProcess[str]:
         script = (ROOT / "scripts/release.sh").read_text()
         self.assertIn('python3 "$src/scripts/check-release-entitlements.py" "$entitlements"', script)
         with tempfile.TemporaryDirectory(dir=ROOT / ".scratch") as directory:
             fixture = pathlib.Path(directory) / "entitlements.plist"
             fixture.write_bytes(plistlib.dumps(values))
-            result = subprocess.run(
+            return subprocess.run(
                 ["python3", str(ROOT / "scripts/check-release-entitlements.py"), str(fixture),
                  "--access-group", GROUP], capture_output=True, text=True,
             )
-            return result.returncode
+
+    def run_gate(self, values: object) -> int:
+        return self.run_checker(values).returncode
 
     def test_application_identifier_is_not_an_access_group(self) -> None:
         self.assertNotEqual(0, self.run_gate({"com.apple.application-identifier": GROUP}))
@@ -34,8 +36,25 @@ class ReleaseEntitlementTests(unittest.TestCase):
                     "com.apple.application-identifier": GROUP, "keychain-access-groups": groups,
                 }))
 
-    def test_debug_entitlement_is_rejected(self) -> None:
-        self.assertNotEqual(0, self.run_gate({"keychain-access-groups": [GROUP], "get-task-allow": False}))
+    def test_debug_entitlements_and_temporary_exceptions_are_rejected_for_that_reason(self) -> None:
+        # Otherwise valid, so the only thing wrong is the added key.
+        reviewed = {
+            "com.apple.application-identifier": GROUP,
+            "com.apple.developer.team-identifier": "Q96FUTC5G8",
+            "keychain-access-groups": [GROUP],
+        }
+        for key, value, reason in (
+            ("get-task-allow", True, "debug entitlement is present"),
+            ("get-task-allow", False, "debug entitlement is present"),
+            ("com.apple.security.get-task-allow", True, "debug entitlement is present"),
+            ("com.apple.security.temporary-exception.files.absolute-path.read-write", ["/"],
+             "unreviewed entitlement in the distribution build: "
+             "com.apple.security.temporary-exception.files.absolute-path.read-write"),
+        ):
+            with self.subTest(key=key, value=value):
+                result = self.run_checker(dict(reviewed, **{key: value}))
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(reason, result.stderr)
 
     def test_unknown_runtime_entitlement_is_rejected(self) -> None:
         self.assertNotEqual(0, self.run_gate({
@@ -47,6 +66,25 @@ class ReleaseEntitlementTests(unittest.TestCase):
 
     def test_reviewed_entitlement_set_is_required(self) -> None:
         self.assertNotEqual(0, self.run_gate({"keychain-access-groups": [GROUP]}))
+
+    def test_values_other_than_the_reviewed_ones_are_rejected(self) -> None:
+        reviewed = {
+            "com.apple.application-identifier": GROUP,
+            "com.apple.developer.team-identifier": "Q96FUTC5G8",
+            "keychain-access-groups": [GROUP],
+        }
+        for key, value in (
+            ("keychain-access-groups", [GROUP, "Q96FUTC5G8.dev.mvneves.Other"]),
+            ("keychain-access-groups", [GROUP, GROUP]),
+            ("keychain-access-groups", []),
+            ("com.apple.developer.team-identifier", "any string"),
+            ("com.apple.developer.team-identifier", "q96futc5g8"),
+            ("com.apple.developer.team-identifier", "Q96FUTC5G"),
+            ("com.apple.developer.team-identifier", "ABCDEFGHIJ"),  # well formed, not the group's team
+            ("com.apple.application-identifier", "Q96FUTC5G8.dev.mvneves.Other"),
+        ):
+            with self.subTest(key=key, value=value):
+                self.assertNotEqual(0, self.run_gate(dict(reviewed, **{key: value})))
 
     def test_reviewed_entitlement_set_passes(self) -> None:
         self.assertEqual(0, self.run_gate({
