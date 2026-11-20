@@ -457,6 +457,97 @@ struct FileSinkTests {
         #expect(lstat(link.path(percentEncoded: false), &status) == 0, "cleanup deleted an entry it did not create")
     }
 
+    // N01 (second review of T1a): a swap that brought back something other than the inspected
+    // destination was undone with its result ignored, so a failed undo hid the other file in the
+    // private folder while the save reported a plain failure.
+    @Test(
+        "A destination replaced before the swap is swapped back; a swap back that fails names what it left",
+        arguments: [false, true])
+    func swapRollback(failing: Bool) throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        defer { chmod(folder.path(percentEncoded: false), 0o755) }
+        let url = folder.appendingPathComponent("shot.png")
+        let aside = folder.appendingPathComponent("aside.png")
+        try priorBytes.write(to: url)
+        let theirs = Data("a file that took the name".utf8)
+        var steps = 0
+        var replaced = false
+        var blocked = false
+        let fileSystem = POSIXFileSystem(
+            afterReplaceStep: { _ in
+                steps += 1
+                guard steps == 2 else { return }
+                replaced =
+                    rename(url.path(percentEncoded: false), aside.path(percentEncoded: false)) == 0
+                    && (try? theirs.write(to: url)) != nil
+            },
+            afterSwap: { _ in
+                guard failing else { return }
+                blocked = chmod(folder.path(percentEncoded: false), 0o555) == 0
+            })
+        var thrown: SinkError?
+        do { _ = try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true) } catch {
+            thrown = error
+        }
+        try #require(replaced, "control: the destination was never replaced")
+        #expect(try Data(contentsOf: aside) == priorBytes)
+        guard failing else {
+            #expect(thrown == .accessDenied)
+            #expect(try Data(contentsOf: url) == theirs)
+            #expect(TestSupport.directoryEntries(folder) == ["aside.png", "shot.png"])
+            return
+        }
+        try #require(blocked, "control: the folder was never made read-only")
+        chmod(folder.path(percentEncoded: false), 0o755)
+        guard case .leftover(let name) = thrown else {
+            Issue.record("expected a leftover failure, got \(String(describing: thrown))")
+            return
+        }
+        #expect(name.hasPrefix(".recortia-") && name.hasSuffix("/stage"), "unexpected leftover \(name)")
+        #expect(try Data(contentsOf: folder.appendingPathComponent(name)) == theirs, "the other file was lost")
+    }
+
+    @Test("Overwriting a destination that has a second hard link replaces the name and keeps the other link")
+    func hardLinkedDestinationIsReplaced() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        let other = folder.appendingPathComponent("other.png")
+        try priorBytes.write(to: url)
+        try #require(link(url.path(percentEncoded: false), other.path(percentEncoded: false)) == 0)
+        _ = try FileSink().save(snapshot, to: url, overwrite: true)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(try Data(contentsOf: other) == priorBytes)
+        #expect(TestSupport.directoryEntries(folder) == ["other.png", "shot.png"])
+    }
+
+    // R05 (second review of T1a): the empty probe that reads a folder's inherited entries was
+    // removed by name after an identity check, so a file that took its name in between was deleted.
+    @Test("A file that takes the probe's name is never deleted and the save is refused")
+    func substitutedProbeIsKept() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer {
+            Self.clearACLs(in: folder)
+            TestSupport.removeDirectory(folder)
+        }
+        try Self.addACL("everyone allow read,file_inherit", to: folder)
+        let theirs = Data("a file that took the probe's name".utf8)
+        let decoy = folder.appendingPathComponent("theirs.tmp")
+        try theirs.write(to: decoy)
+        var probe: URL?
+        let fileSystem = POSIXFileSystem(afterProbe: { probed in
+            if rename(decoy.path(percentEncoded: false), probed.path(percentEncoded: false)) == 0 { probe = probed }
+        })
+        let url = folder.appendingPathComponent("shot.png")
+        #expect(throws: SinkError.accessDenied) {
+            try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+        }
+        let probed = try #require(probe, "control: the probe's name was never taken")
+        #expect(try Data(contentsOf: probed) == theirs, "a file Recortia did not create was deleted")
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+
     @Test("A temporary file that gained a second name before the commit is refused")
     func temporaryFileWithSecondNameIsRefused() throws {
         let folder = try TestSupport.makeTemporaryDirectory()

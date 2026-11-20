@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 
 @testable import MacPlatform
@@ -80,7 +81,7 @@ struct FileSinkVolumeTests {
                 try? handle.synchronize()
                 try? handle.close()
             })
-            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
                 try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
             }
             try #require(changed, "control: the claimed file was never changed")
@@ -103,7 +104,7 @@ struct FileSinkVolumeTests {
                 grew = (try? handle.seekToEnd()) != nil && (try? handle.write(contentsOf: Data([0x41]))) != nil
                 try? handle.close()
             })
-            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
                 try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
             }
             try #require(grew, "control: the claimed file never grew")
@@ -131,7 +132,7 @@ struct FileSinkVolumeTests {
                 try? handle.synchronize()
                 try? handle.close()
             })
-            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
                 try FileSink(fileSystem: fileSystem).save(large, to: url, overwrite: false)
             }
             try #require(changed, "control: the claimed file was never changed")
@@ -142,10 +143,39 @@ struct FileSinkVolumeTests {
     func zeroProgressClaimWriteFails(format: ScratchVolume.Format) throws {
         try ScratchVolume.withMounted(format) { folder in
             let fileSystem = POSIXFileSystem(writeBytes: { _, _, _ in 0 })
-            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
                 try FileSink(fileSystem: fileSystem).save(
                     snapshot, to: folder.appendingPathComponent("shot.png"), overwrite: false)
             }
+        }
+    }
+
+    // R05/R11 (second review of T1a): a claim that failed after its first bytes was removed by name
+    // after an identity check, so a file that took the name in between could be deleted. These
+    // volumes have no exclusive rename to move it aside first, so it stays and is named.
+    @Test(
+        "A claim whose write fails part way is kept and named, never removed",
+        arguments: ScratchVolume.Format.allCases)
+    func failedClaimIsNamed(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let calls = Mutex(0)
+            let fileSystem = POSIXFileSystem(writeBytes: { descriptor, bytes, count in
+                let call = calls.withLock { value in
+                    value += 1
+                    return value
+                }
+                guard call == 1 else {
+                    errno = ENOSPC
+                    return -1
+                }
+                return Darwin.write(descriptor, bytes, min(count, 10))
+            })
+            let url = folder.appendingPathComponent("shot.png")
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+            }
+            let kept = try Data(contentsOf: url)
+            #expect(kept == Data(snapshot.bytes.prefix(10)))
         }
     }
 
@@ -167,7 +197,7 @@ struct FileSinkVolumeTests {
                 try? handle.synchronize()
                 try? handle.close()
             }
-            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
                 try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
             }
             try #require(changed, "control: the staged bytes were never changed")

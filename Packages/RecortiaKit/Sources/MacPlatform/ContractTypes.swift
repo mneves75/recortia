@@ -65,4 +65,7 @@ public enum SinkError: Error, Equatable, Sendable {
     case diskFull
     case volumeUnavailable
     case writeFailed(code: Int)
+    /// The save failed and left this entry, relative to the folder, rather than remove something
+    /// Recortia might not have created.
+    case leftover(name: String)
 }

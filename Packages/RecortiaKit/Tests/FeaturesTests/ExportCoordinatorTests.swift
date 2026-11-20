@@ -90,6 +90,7 @@ struct ExportCoordinatorTests {
             (.diskFull, .diskFull),
             (.volumeUnavailable, .volumeUnavailable),
             (.writeFailed(code: 5), .system(code: 5)),
+            (.leftover(name: ".recortia-x/stage"), .leftover(name: ".recortia-x/stage")),
         ])
     func fileSinkErrors(error: SinkError, expected: ExportFailure) async {
         let h = ExportHarness()

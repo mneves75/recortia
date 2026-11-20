@@ -58,7 +58,8 @@ public struct FileSink {
     }
 
     static func map(_ failure: FileSystemFailure) -> SinkError {
-        switch failure.code {
+        if let leftover = failure.leftover { return .leftover(name: leftover) }
+        return switch failure.code {
         case ENOSPC, EDQUOT: .diskFull
         case EACCES, EPERM, EROFS: .accessDenied
         case ENOENT, ENXIO, ENODEV: .volumeUnavailable
@@ -72,6 +73,9 @@ public struct FileSink {
 
 struct FileSystemFailure: Error, Equatable, Sendable {
     let code: Int32
+    /// What a failed save left in the folder, relative to it, because removing it could have
+    /// removed something Recortia did not create.
+    var leftover: String?
 }
 
 /// A file or folder by device and inode, so a check reaches the object and not whatever its name
@@ -91,6 +95,9 @@ struct FileIdentity: Equatable, Sendable {
 struct VolumeTraits {
     let exclusiveRename: Bool
     let swap: Bool
+    /// Whether the volume enforces file owners and modes, so a private folder's entries can be
+    /// changed by its owner only. exFAT, FAT32 and some network volumes do not.
+    let enforcesOwners: Bool
 
     init(_ directory: Int32) {
         var list = attrlist()
@@ -112,6 +119,8 @@ struct VolumeTraits {
         }
         exclusiveRename = has(VOL_CAP_INT_RENAME_EXCL)
         swap = has(VOL_CAP_INT_RENAME_SWAP)
+        var info = statfs()
+        enforcesOwners = fstatfs(directory, &info) == 0 && info.f_flags & UInt32(MNT_IGNORE_OWNERSHIP) == 0
     }
 }
 
@@ -135,6 +144,10 @@ struct POSIXFileSystem {
     var saver: uid_t = geteuid()
     /// Gives the open stage a group, returning 0 or -1 with `errno` like fchown(2).
     var changeGroup: (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) }
+    /// Runs right after an overwrite swapped the stage with the destination.
+    var afterSwap: (URL) -> Void = { _ in }
+    /// Runs once the probe that reads a folder's inherited entries exists, before it is discarded.
+    var afterProbe: (URL) -> Void = { _ in }
     /// Runs right after an overwrite without swap renamed the stage onto the destination name.
     var afterPublish: (URL) -> Void = { _ in }
     /// Runs once a volume without exclusive rename has claimed the destination name.
@@ -162,18 +175,36 @@ struct POSIXFileSystem {
             return try saveWithoutExclusiveRename(
                 data, in: directory, folder: folder, names: names, overwrite: overwrite, volume: volume)
         }
-        let stage = try Stage(in: directory, folder: folder, data: data, fileSystem: self)
-        defer { stage.remove() }
-        beforePublish(stage.url)
-        for name in names {
-            do {
-                try publish(stage, data: data, as: name, in: directory, overwrite: overwrite, volume: volume)
-                return name
-            } catch  where error.code == EEXIST && !overwrite {
-                continue
+        return try withStage(data, in: directory, folder: folder, volume: volume) { stage throws(FileSystemFailure) in
+            for name in names {
+                do throws(FileSystemFailure) {
+                    try publish(stage, data: data, as: name, in: directory, overwrite: overwrite, volume: volume)
+                    return name
+                } catch  where error.code == EEXIST && error.leftover == nil && !overwrite {
+                    continue
+                }
             }
+            throw FileSystemFailure(code: EEXIST)
         }
-        throw FileSystemFailure(code: EEXIST)
+    }
+
+    /// Runs `body` with a new stage of `data`, then removes the stage; anything the removal had to
+    /// leave is reported in place of the result.
+    private func withStage(
+        _ data: Data, in directory: Int32, folder: URL, volume: VolumeTraits,
+        _ body: (Stage) throws(FileSystemFailure) -> String
+    ) throws(FileSystemFailure) -> String {
+        let stage = try Stage(
+            in: directory, folder: folder, data: data, privateNamespace: volume.enforcesOwners, fileSystem: self)
+        beforePublish(stage.url)
+        let result: Result<String, FileSystemFailure>
+        do { result = .success(try body(stage)) } catch { result = .failure(error) }
+        let leftover = stage.remove()
+        if case .failure(let failure) = result, failure.leftover != nil { throw failure }
+        if let leftover {
+            throw FileSystemFailure(code: EIO, leftover: leftover)
+        }
+        return try result.get()
     }
 
     /// exFAT, FAT32 and some network volumes: a new file is written straight into an exclusively
@@ -186,17 +217,17 @@ struct POSIXFileSystem {
             if fstatat(directory, name, &existing, AT_SYMLINK_NOFOLLOW) == 0 {
                 guard overwrite else { continue }
                 guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
-                let stage = try Stage(in: directory, folder: folder, data: data, fileSystem: self)
-                defer { stage.remove() }
-                beforePublish(stage.url)
-                try replace(stage, data: data, named: name, in: directory, volume: volume)
-                return name
+                return try withStage(data, in: directory, folder: folder, volume: volume) {
+                    stage throws(FileSystemFailure) in
+                    try replace(stage, data: data, named: name, in: directory, volume: volume)
+                    return name
+                }
             }
             guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
             do {
                 try claimThenWrite(data, as: name, in: directory, folder: folder)
                 return name
-            } catch  where error.code == EEXIST && !overwrite {
+            } catch  where error.code == EEXIST && error.leftover == nil && !overwrite {
                 continue
             }
         }
@@ -243,7 +274,7 @@ struct POSIXFileSystem {
             return
         }
         guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
-        try stage.giveNewFileAccess(in: directory)
+        try stage.giveNewFileAccess(in: directory, afterProbe: afterProbe)
         try stage.checkStillStaged()
         if let failPublish { throw FileSystemFailure(code: failPublish) }
         guard renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0 else {
@@ -311,15 +342,28 @@ struct POSIXFileSystem {
             guard renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 else {
                 throw FileSystemFailure(code: errno)
             }
-            // The stage's name now holds what was at `name`: the confirmed file, removed as the
-            // overwrite the person approved.
-            if Self.entry(Self.stageName, in: stage.folder, is: replaced, type: S_IFREG) {
-                _ = unlinkat(stage.folder, Self.stageName, 0)
+            afterSwap(directoryURL(stage).appendingPathComponent(name, isDirectory: false))
+            // The private folder now holds what was at `name`. When that is the inspected
+            // destination (any number of links), it is removed as the overwrite the person approved;
+            // Replace authorizes the file at that name at save time.
+            var swapped = stat()
+            if fstatat(stage.folder, Self.stageName, &swapped, AT_SYMLINK_NOFOLLOW) == 0,
+                swapped.st_mode & S_IFMT == S_IFREG, FileIdentity(swapped) == replaced
+            {
+                try stage.removeOwnEntry(Self.stageName)
                 return
             }
-            // Something replaced the destination after its access was read: put it back.
-            _ = renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP))
-            throw Self.substitutedFailure
+            // Something replaced the destination after its access was read: put it back, by swap,
+            // or by exclusive rename if the name is gone; otherwise report where it is.
+            if renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
+                throw Self.substitutedFailure
+            }
+            if errno == ENOENT,
+                renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_EXCL)) == 0
+            {
+                throw Self.substitutedFailure
+            }
+            throw stage.hold(Self.stageName)
         }
         // Volumes without swap (exFAT, FAT32, some network volumes) replace by plain rename; the
         // destination may change between reading its access and this rename there.
@@ -331,7 +375,7 @@ struct POSIXFileSystem {
         // descriptor (the same file), while the name leads to it before and after; on a mismatch the
         // save failed, and whatever is at the name stays, as it may now hold someone else's bytes.
         try Self.requirePublished(stage.file, as: name, in: directory)
-        guard Self.readBack(stage.file, equals: data) else { throw FileSystemFailure(code: EIO) }
+        guard Self.readBack(stage.file, equals: data) else { throw FileSystemFailure(code: EIO, leftover: name) }
         try Self.requirePublished(stage.file, as: name, in: directory)
     }
 
@@ -355,56 +399,46 @@ struct POSIXFileSystem {
     /// the snapshot buffer is appended to that claimed file through its descriptor, so no rename
     /// can replace a file another writer puts there. Success only if, once on disk, the file read
     /// back through the descriptor is exactly `data` and the name still leads to it. A claim that
-    /// was not empty when writing began, or that the name no longer leads to, is EEXIST. The name
-    /// is removed only after an I/O failure, once bytes were written, while it still leads to the
-    /// claimed file; a read-back mismatch leaves it.
+    /// was not empty when writing began, or that the name no longer leads to, is EEXIST and left
+    /// alone. Any other failure leaves the claim and names it: without exclusive rename it cannot
+    /// be moved aside to be checked, so removing it by name could remove another writer's file.
     private func claimThenWrite(_ data: Data, as name: String, in directory: Int32, folder: URL)
         throws(FileSystemFailure)
     {
         let mode = try Self.newFileMode()
         let claim = openat(directory, name, O_RDWR | O_APPEND | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard claim >= 0 else { throw FileSystemFailure(code: errno) }
-        afterClaim(folder.appendingPathComponent(name, isDirectory: false))
-        var written = 0
+        let claimed = folder.appendingPathComponent(name, isDirectory: false)
+        afterClaim(claimed)
         var failure: Int32?
-        var removable = false
+        var foreign = false
         var status = stat()
         if fstat(claim, &status) != 0 {
             failure = errno
         } else if status.st_size != 0 {
             failure = EEXIST
+            foreign = true
         }
         if failure == nil {
+            var written = 0
             failure = Self.writeAll(data, to: claim, written: &written, using: writeBytes)
-            removable = failure != nil
         }
-        if failure == nil { afterClaimWrite(folder.appendingPathComponent(name, isDirectory: false)) }
+        if failure == nil { afterClaimWrite(claimed) }
         // Best effort: these volumes keep a mount-wide mode anyway.
         if failure == nil { _ = fchmod(claim, mode) }
-        if failure == nil, fsync(claim) != 0 {
-            failure = errno
-            removable = true
-        }
-        if failure == nil,
-            !Self.readBack(
-                claim, equals: data,
-                afterRead: { afterReadBack(folder.appendingPathComponent(name, isDirectory: false)) })
-        {
+        if failure == nil, fsync(claim) != 0 { failure = errno }
+        if failure == nil, !Self.readBack(claim, equals: data, afterRead: { afterReadBack(claimed) }) {
             failure = EIO
         }
-        var identity: FileIdentity?
-        if fstat(claim, &status) == 0 { identity = FileIdentity(status) }
-        let named = identity.map { Self.entry(name, in: directory, is: $0, type: S_IFREG) } ?? false
-        if failure == nil, !named { failure = EEXIST }
-        if close(claim) != 0, failure == nil {
-            failure = errno
-            removable = true
+        let named =
+            fstat(claim, &status) == 0 && Self.entry(name, in: directory, is: FileIdentity(status), type: S_IFREG)
+        if !named {
+            failure = EEXIST
+            foreign = true
         }
+        if close(claim) != 0, failure == nil { failure = errno }
         guard let failure else { return }
-        if removable, written > 0, let identity, Self.entry(name, in: directory, is: identity, type: S_IFREG) {
-            unlinkat(directory, name, 0)
-        }
-        throw FileSystemFailure(code: failure)
+        throw foreign ? FileSystemFailure(code: EEXIST) : FileSystemFailure(code: failure, leftover: name)
     }
 
     // MARK: Helpers
@@ -519,7 +553,9 @@ struct POSIXFileSystem {
 }
 
 /// The staged bytes: a file in a private folder created inside the destination folder. Only its
-/// creator can enter that folder, so no other user can read, replace or link the stage.
+/// creator can enter that folder, so no other user can read, replace or link the stage. Where the
+/// volume enforces owners (`privateNamespace`), only this user can change the folder's entries, so
+/// an entry checked there is the entry removed; elsewhere nothing in it is ever removed by name.
 final class Stage {
     /// The destination folder, the private folder inside it and the staged file, all open.
     let directory: Int32
@@ -527,14 +563,19 @@ final class Stage {
     let file: Int32
     let folderName: String
     let folderIdentity: FileIdentity
+    let privateNamespace: Bool
     private(set) var fileIdentity: FileIdentity
+    /// Whether the folder holds an entry that is not Recortia's, so it must stay.
+    private var holdsForeignEntry = false
     /// The stage's path, for test seams only.
     let url: URL
 
-    init(in directory: Int32, folder destination: URL, data: Data, fileSystem: POSIXFileSystem)
-        throws(FileSystemFailure)
-    {
+    init(
+        in directory: Int32, folder destination: URL, data: Data, privateNamespace: Bool,
+        fileSystem: POSIXFileSystem
+    ) throws(FileSystemFailure) {
         self.directory = directory
+        self.privateNamespace = privateNamespace
         folderName = ".recortia-\(UUID().uuidString)"
         guard mkdirat(directory, folderName, 0o700) == 0 else { throw FileSystemFailure(code: errno) }
         let folder = openat(directory, folderName, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
@@ -578,8 +619,7 @@ final class Stage {
         // Identity once the bytes are on disk: exFAT and FAT number a file by its first cluster.
         if file >= 0, fstat(file, &status) == 0 { fileIdentity = FileIdentity(status) }
         if let failure {
-            remove()
-            throw FileSystemFailure(code: failure)
+            throw FileSystemFailure(code: failure, leftover: remove())
         }
         fileSystem.afterSync(url)
     }
@@ -596,8 +636,8 @@ final class Stage {
 
     /// The access a file created in the destination folder gets: the entries the folder gives a
     /// new file, then the mode a file created with 0644 gets under the umask. The entries are read
-    /// from an empty probe file created there, removed only while it is still that file.
-    func giveNewFileAccess(in directory: Int32) throws(FileSystemFailure) {
+    /// from an empty probe file created there, then discarded through the private folder.
+    func giveNewFileAccess(in directory: Int32, afterProbe: (URL) -> Void) throws(FileSystemFailure) {
         let mode = try POSIXFileSystem.newFileMode()
         if let folderACL = acl_get_fd_np(directory, ACL_TYPE_EXTENDED) {
             acl_free(UnsafeMutableRawPointer(folderACL))
@@ -606,11 +646,10 @@ final class Stage {
             guard probe >= 0 else { throw FileSystemFailure(code: errno) }
             defer { close(probe) }
             var status = stat()
-            if fstat(probe, &status) == 0,
-                POSIXFileSystem.entry(name, in: directory, is: FileIdentity(status), type: S_IFREG)
-            {
-                unlinkat(directory, name, 0)
-            }
+            guard fstat(probe, &status) == 0 else { throw FileSystemFailure(code: errno, leftover: name) }
+            let identity = FileIdentity(status)
+            afterProbe(url.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(name))
+            try discard(name, from: directory) { $0.st_mode & S_IFMT == S_IFREG && FileIdentity($0) == identity }
             _ = try POSIXFileSystem.copyACL(from: probe, to: file)
         } else if errno != ENOENT, errno != ENOTSUP {
             throw FileSystemFailure(code: errno)
@@ -620,22 +659,61 @@ final class Stage {
         _ = fchmod(file, mode)
     }
 
-    /// Removes the stage and its private folder, each only while its name still leads to it. A
-    /// published stage is gone from the folder already; a folder something else entered stays.
-    func remove() {
+    /// Removes `name` from `source` without ever removing something else that took the name: the
+    /// entry is moved into the private folder by exclusive rename, checked there, and removed only
+    /// if `isOurs`; otherwise it is moved back by exclusive rename, and the save fails, naming the
+    /// entry if it could not be moved back. An entry already gone is not Recortia's to remove.
+    func discard(_ name: String, from source: Int32, ifItIs isOurs: (stat) -> Bool) throws(FileSystemFailure) {
+        guard privateNamespace else { throw FileSystemFailure(code: EPERM, leftover: name) }
+        let holding = "discard-\(UUID().uuidString)"
+        guard renameatx_np(source, name, folder, holding, UInt32(RENAME_EXCL)) == 0 else {
+            if errno == ENOENT { return }
+            throw FileSystemFailure(code: errno, leftover: name)
+        }
+        var status = stat()
+        if fstatat(folder, holding, &status, AT_SYMLINK_NOFOLLOW) == 0, isOurs(status) {
+            try removeOwnEntry(holding)
+            return
+        }
+        guard renameatx_np(folder, holding, source, name, UInt32(RENAME_EXCL)) == 0 else { throw hold(holding) }
+        throw POSIXFileSystem.substitutedFailure
+    }
+
+    /// Removes an entry of the private folder already checked to be Recortia's. Only this user can
+    /// change that folder's entries, so the check still holds; elsewhere the entry stays and is named.
+    func removeOwnEntry(_ entry: String) throws(FileSystemFailure) {
+        guard privateNamespace, unlinkat(folder, entry, 0) == 0 else { throw hold(entry) }
+    }
+
+    /// Marks `entry` as something the private folder must keep and returns the failure naming it.
+    func hold(_ entry: String) -> FileSystemFailure {
+        holdsForeignEntry = true
+        return FileSystemFailure(code: EIO, leftover: "\(folderName)/\(entry)")
+    }
+
+    /// Removes the unpublished stage and the private folder, and returns what had to stay: an
+    /// unpublished stage where the volume does not enforce owners, or the folder when it holds an
+    /// entry that is not Recortia's. A published stage is gone from the folder already.
+    func remove() -> String? {
+        var leftover: String?
         if file >= 0 {
             var status = stat()
             if fstat(file, &status) == 0,
                 POSIXFileSystem.entry(POSIXFileSystem.stageName, in: folder, is: FileIdentity(status), type: S_IFREG)
             {
-                unlinkat(folder, POSIXFileSystem.stageName, 0)
+                if !privateNamespace || unlinkat(folder, POSIXFileSystem.stageName, 0) != 0 {
+                    leftover = "\(folderName)/\(POSIXFileSystem.stageName)"
+                }
             }
             close(file)
         }
+        if holdsForeignEntry { leftover = leftover ?? folderName }
         close(folder)
-        if POSIXFileSystem.entry(folderName, in: directory, is: folderIdentity, type: S_IFDIR) {
+        // Only an empty folder can be removed; one that something else entered stays.
+        if leftover == nil, POSIXFileSystem.entry(folderName, in: directory, is: folderIdentity, type: S_IFDIR) {
             unlinkat(directory, folderName, AT_REMOVEDIR)
         }
+        return leftover
     }
 }
 

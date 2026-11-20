@@ -172,6 +172,11 @@ extension UserMessage {
             case .volumeUnavailable: String(localized: "The destination volume is not available.")
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")
             case .system(let code): String(localized: "The system reported an error (\(code)).")
+            case .leftover(let name):
+                String(
+                    localized:
+                        "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it."
+                )
             }
         // One step of an automatic batch failed; another may already have copied or saved, so the
         // title never says that nothing was exported.

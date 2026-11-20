@@ -479,6 +479,7 @@ public final class ExportCoordinator {
         case .diskFull: .diskFull
         case .volumeUnavailable: .volumeUnavailable
         case .writeFailed(let code): .system(code: code)
+        case .leftover(let name): .leftover(name: name)
         }
     }
 }
