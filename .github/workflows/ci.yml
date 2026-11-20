@@ -15,11 +15,9 @@ concurrency:
 
 jobs:
   check:
-    # The stable gate checks the runner's selected Xcode against TOOLCHAIN.json.
     runs-on: xcode-27
     timeout-minutes: 30
     env:
-      DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
       RECORTIA_TOOLCHAIN_MODE: stable
       # The hosted VM cannot run Vision text recognition; OCR recognition tests run in the local
       # gate, and a control test here fails if Vision starts working (OCRRecognitionTests.swift).
@@ -28,17 +26,37 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install XcodeGen (pinned)
-        # The version that generated the committed project, verified by checksum, so the
-        # project-freshness evidence is reproducible.
-        env:
-          XCODEGEN_VERSION: 2.46.0
-          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+      - name: Select the stable Xcode named in TOOLCHAIN.json
+        # The runner image's Xcode paths change; select by version and build, never by path.
+        shell: bash
         run: |
-          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
-            "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
-          echo "$XCODEGEN_SHA256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
-          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+          sw_vers
+          baseline=$(python3 -c 'import json; b = json.load(open("TOOLCHAIN.json"))["stable_xcode_baseline"]; print(b["version"], b["build"])')
+          read -r want_version want_build <<< "$baseline"
+          selected=""
+          available=""
+          for app in /Applications/Xcode*.app; do
+            [ -d "$app" ] || continue
+            if ! output=$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version 2>&1); then
+              printf '%s: xcodebuild -version failed: %s\n' "$app" "$output"
+              continue
+            fi
+            printf '%s:\n%s\n' "$app" "$output"
+            version=$(awk '/^Xcode/ {print $2}' <<< "$output")
+            build=$(awk '/Build version/ {print $3}' <<< "$output")
+            available="$available ${version} (${build})"
+            if [ -z "$selected" ] && [ "$version" = "$want_version" ] && [ "$build" = "$want_build" ]; then
+              selected="$app"
+            fi
+          done
+          if [ -z "$selected" ]; then
+            echo "::error::no Xcode matches the stable baseline $want_version ($want_build) in TOOLCHAIN.json; available:${available:- none}"
+            exit 1
+          fi
+          echo "selected $selected for $want_version ($want_build)"
+          echo "DEVELOPER_DIR=$selected/Contents/Developer" >> "$GITHUB_ENV"
+      - name: Fetch the pinned XcodeGen
+        # scripts/xcodegen.sh downloads the version in TOOLCHAIN.json and verifies its sha256.
+        run: scripts/xcodegen.sh --version
       - name: Gate
         run: scripts/check.sh --unsigned
