@@ -220,16 +220,14 @@ struct SensitiveTextGeometryTests {
         }
     }
 
-    @Test("Boxes grow, round outward to whole pixels and clamp to the image")
+    @Test("Boxes grow, round outward to whole pixels and clamp to the image (outside: R05)")
     func outsetRoundsOutwardAndClamps() throws {
         let bounds = CGRect(x: 0, y: 0, width: 100, height: 50)
-        let inside = try #require(
-            SensitiveTextScanner.outset((.email, CGRect(x: 10.4, y: 20.6, width: 30.2, height: 10)), within: bounds))
+        let inside = try SensitiveTextScanner.outset(
+            (.email, CGRect(x: 10.4, y: 20.6, width: 30.2, height: 10)), within: bounds)
         #expect(inside.rect == Rect(x: 8, y: 18, width: 35, height: 15))
-        let edge = try #require(
-            SensitiveTextScanner.outset((.phone, CGRect(x: -3, y: 45, width: 20, height: 8)), within: bounds))
+        let edge = try SensitiveTextScanner.outset((.phone, CGRect(x: -3, y: 45, width: 20, height: 8)), within: bounds)
         #expect(edge.rect == Rect(x: 0, y: 43, width: 19, height: 7))
-        #expect(SensitiveTextScanner.outset((.phone, CGRect(x: 200, y: 0, width: 5, height: 5)), within: bounds) == nil)
     }
 
     @Test("Duplicates from overlapping tiles merge into one region")
@@ -351,5 +349,83 @@ struct SensitiveTextReviewTests {
     func addressDeepInALongLineIsFound() throws {
         let filler = String(repeating: "lorem ipsum ", count: 1_000)
         #expect(try detect(filler + "ana@example.com " + filler) == ["email:ana@example.com"])
+    }
+}
+
+@Suite("SensitiveText: sweep review findings (2026-11-19)")
+struct SensitiveTextSweepReviewTests {
+    private let bounds = CGRect(x: 0, y: 0, width: 100, height: 50)
+
+    @Test(
+        "R04: a split next to @, a dot or a hyphen is also read without the inserted space",
+        arguments: [
+            [("ana@acme", false), (".com.br", false)], [("ana", false), ("@example.com", false)],
+            [("ana@", false), ("example.org", false)], [("90765", false), ("-4321", false)],
+        ])
+    func fragmentReadingsRejoinSplitItems(parts: [(String, Bool)]) throws {
+        let matcher = try SensitiveTextMatcher.shared.get()
+        let whole = parts.map(\.0).joined()
+        let readings = fragmentReadings(parts.map { (text: $0.0, isGlued: $0.1) })
+        #expect(readings.contains { line in matcher.matches(in: line.text).contains { line.text[$0.range] == whole } })
+        #expect(readings.first?.text == joinFragments(parts.map { (text: $0.0, isGlued: $0.1) }).text)
+    }
+
+    @Test("R05: a match that cannot be mapped onto the image fails the sweep")
+    func unmappableMatchFailsClosed() {
+        #expect(throws: SensitiveTextError.regionOutsideImage) {
+            _ = try SensitiveTextScanner.finalRegions(
+                [(.phone, CGRect(x: 200, y: 0, width: 5, height: 5))], within: bounds)
+        }
+        #expect(throws: SensitiveTextError.regionOutsideImage) {
+            _ = try SensitiveTextScanner.finalRegions(
+                [
+                    (.email, CGRect(x: 10, y: 10, width: 20, height: 10)),
+                    (.email, CGRect(x: CGFloat.nan, y: 0, width: 5, height: 5)),
+                ],
+                within: bounds)
+        }
+    }
+
+    @Test("R09: cancellation that arrives during the final merge is reported")
+    func cancellationDuringMergeThrows() async {
+        let found: [SensitiveTextScanner.BoxedMatch] = [(.email, CGRect(x: 10, y: 10, width: 20, height: 10))]
+        let bounds = self.bounds
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try SensitiveTextScanner.finalRegions(found, within: bounds)
+        }
+        await #expect(throws: CancellationError.self) { _ = try await task.value }
+    }
+
+    @Test("R12: tile and match budgets fail the sweep with a typed error")
+    func budgetsFailClosed() throws {
+        #expect(throws: SensitiveTextError.tooManyTiles) {
+            _ = try SensitiveTextScanner.tileJobs(
+                for: CGSize(width: 20_000, height: 20_000), pixelsPerPoint: 1, fineTileSide: 1024)
+        }
+        let admitted = try SensitiveTextScanner.tileJobs(
+            for: CGSize(width: 8_000, height: 5_000), pixelsPerPoint: 1, fineTileSide: 1024)
+        #expect(admitted.count <= SensitiveTextScanner.maximumTiles)
+        let many = (0...SensitiveTextScanner.maximumMatches).map { index in
+            (
+                kind: SensitiveTextKind.phone,
+                rect: CGRect(x: Double(index % 90), y: Double(index / 90), width: 1, height: 1)
+            )
+        }
+        #expect(throws: SensitiveTextError.tooManyMatches) {
+            _ = try SensitiveTextScanner.finalRegions(many, within: CGRect(x: 0, y: 0, width: 100, height: 100))
+        }
+    }
+
+    @Test("R17: the merged mask list does not depend on the order tiles finish")
+    func mergeIsOrderIndependent() {
+        let a: SensitiveTextScanner.BoxedMatch = (.email, CGRect(x: 0, y: 0, width: 20, height: 10))
+        let b: SensitiveTextScanner.BoxedMatch = (.phone, CGRect(x: 18, y: 0, width: 4, height: 10))
+        let c: SensitiveTextScanner.BoxedMatch = (.phone, CGRect(x: 20, y: 0, width: 8, height: 10))
+        let orders = [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]]
+        let results = orders.map { order in
+            SensitiveTextScanner.mergeRegions(order).map { "\($0.kind.rawValue) \($0.rect)" }
+        }
+        #expect(Set(results.map { $0.joined(separator: "; ") }).count == 1, "\(results)")
     }
 }

@@ -53,6 +53,12 @@ public enum SensitiveTextError: Error, Equatable, Sendable {
     case documentRecognitionFailed
     /// The requested method needs a newer macOS than the running one.
     case methodUnavailable
+    /// A match's box could not be mapped onto the image. The sweep fails rather than drop the match.
+    case regionOutsideImage
+    /// The capture needs more tiles than one sweep may read (`SensitiveTextScanner.maximumTiles`).
+    case tooManyTiles
+    /// A tile or the whole sweep found more candidates than it may keep; the sweep fails closed.
+    case tooManyMatches
 }
 
 // MARK: - Pattern matcher (variant A)
@@ -381,9 +387,7 @@ public struct SensitiveTextScanner: Sendable {
             matcher = .documents
         }
         let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
-        let jobs = TileLayout.standard(pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide).flatMap { layout in
-            tileRects(for: bounds.size, layout: layout).map { (rect: $0.intersection(bounds), layout: layout) }
-        }.filter { !$0.rect.isEmpty }
+        let jobs = try Self.tileJobs(for: bounds.size, pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide)
         let recognizer = self.recognizer
         let found = try await withThrowingTaskGroup(of: [BoxedMatch].self) { group in
             var next = 0
@@ -401,12 +405,47 @@ public struct SensitiveTextScanner: Sendable {
             for _ in 0..<Self.concurrentTiles { enqueue() }
             while let tile = try await group.next() {
                 collected.append(contentsOf: tile)
+                // Throwing here cancels the tiles still in flight.
+                guard collected.count <= Self.maximumMatches else { throw SensitiveTextError.tooManyMatches }
                 enqueue()
             }
             return collected
         }
+        return try Self.finalRegions(found, within: bounds)
+    }
+
+    /// Budgets that keep one sweep's work and memory bounded. Exceeding one fails the sweep with a
+    /// typed error; nothing is dropped. An admitted capture (40 MP) needs about 400 tiles.
+    static let maximumTiles = 1024
+    static let maximumMatchesPerTile = 512
+    static let maximumMatches = 4096
+
+    static func tileJobs(
+        for size: CGSize, pixelsPerPoint: Double, fineTileSide: CGFloat
+    ) throws(SensitiveTextError) -> [(rect: CGRect, layout: TileLayout)] {
+        let bounds = CGRect(origin: .zero, size: size)
+        let jobs = TileLayout.standard(pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide).flatMap { layout in
+            tileRects(for: size, layout: layout).map { (rect: $0.intersection(bounds), layout: layout) }
+        }.filter { !$0.rect.isEmpty }
+        guard jobs.count <= maximumTiles else { throw .tooManyTiles }
+        return jobs
+    }
+
+    /// Merges and outsets the collected matches. Any match that cannot be mapped onto the image fails
+    /// the sweep, and so does a cancellation that arrives while this runs.
+    static func finalRegions(_ found: [BoxedMatch], within bounds: CGRect) throws -> [SensitiveRegion] {
         try Task.checkCancellation()
-        return Self.mergeRegions(found).compactMap { Self.outset($0, within: bounds) }
+        guard found.count <= maximumMatches else { throw SensitiveTextError.tooManyMatches }
+        guard
+            found.allSatisfy({
+                $0.rect.minX.isFinite && $0.rect.minY.isFinite && $0.rect.width.isFinite && $0.rect.height.isFinite
+            })
+        else { throw SensitiveTextError.regionOutsideImage }
+        let regions = try mergeRegions(found).map { match throws(SensitiveTextError) in
+            try outset(match, within: bounds)
+        }
+        try Task.checkCancellation()
+        return regions
     }
 
     enum LineMatcher: Sendable {
@@ -443,6 +482,7 @@ public struct SensitiveTextScanner: Sendable {
                 matchesAcrossFragments(of: observations, tileSize: tileSize, kinds: kinds, matcher: matcher)
                 + matchesInAlternateReadings(of: observations, kinds: kinds, matcher: matcher)
         }
+        guard normalized.count <= maximumMatchesPerTile else { throw SensitiveTextError.tooManyMatches }
         return normalized.compactMap { kind, box in
             guard box.height * tileSize.height >= layout.minimumTextHeight else { return nil }
             // Vision's unit square has a bottom-left origin; the source rect is top-left.
@@ -471,16 +511,17 @@ public struct SensitiveTextScanner: Sendable {
         }
         var found: [(kind: SensitiveTextKind, box: CGRect)] = []
         for run in fragmentRuns(pixelBoxes) {
-            let line = joinFragments(run.map { (fragments[$0.index].text.string, $0.isGlued) })
-            for match in matcher.matches(in: line.text, kinds: kinds) {
-                let characters =
-                    line.text.distance(
-                        from: line.text.startIndex, to: match.range.lowerBound)..<line.text.distance(
-                        from: line.text.startIndex, to: match.range.upperBound)
-                let box = zip(run, line.offsets).reduce(CGRect.null) { union, member in
-                    union.union(fragments[member.0.index].box(of: characters, whenStartingAt: member.1))
+            for line in fragmentReadings(run.map { (fragments[$0.index].text.string, $0.isGlued) }) {
+                for match in matcher.matches(in: line.text, kinds: kinds) {
+                    let characters =
+                        line.text.distance(
+                            from: line.text.startIndex, to: match.range.lowerBound)..<line.text.distance(
+                            from: line.text.startIndex, to: match.range.upperBound)
+                    let box = zip(run, line.offsets).reduce(CGRect.null) { union, member in
+                        union.union(fragments[member.0.index].box(of: characters, whenStartingAt: member.1))
+                    }
+                    if !box.isNull { found.append((match.kind, box)) }
                 }
-                if !box.isNull { found.append((match.kind, box)) }
             }
         }
         return found
@@ -599,9 +640,15 @@ public struct SensitiveTextScanner: Sendable {
     }
 
     /// The same text is found by several tiles, sweeps and readings; collapse those into one.
+    /// Inputs are sorted by a total order first, so the result does not depend on the order in
+    /// which tiles finish. Callers reject non-finite boxes before merging (`finalRegions`).
     static func mergeRegions(_ regions: [BoxedMatch]) -> [BoxedMatch] {
         var merged: [BoxedMatch] = []
-        for region in regions where region.rect.width.isFinite && region.rect.height.isFinite {
+        let ordered = regions.sorted {
+            ($0.rect.minY, $0.rect.minX, $0.rect.maxY, $0.rect.maxX, $0.kind.rawValue)
+                < ($1.rect.minY, $1.rect.minX, $1.rect.maxY, $1.rect.maxX, $1.kind.rawValue)
+        }
+        for region in ordered {
             var current = region
             // A union can newly overlap a region accepted earlier, so keep absorbing until stable.
             while let index = merged.firstIndex(where: { overlapsSubstantially($0.rect, current.rect) }) {
@@ -622,13 +669,13 @@ public struct SensitiveTextScanner: Sendable {
     }
 
     /// Grows a box by `outsetFraction` of its height, rounds outward to whole pixels and clamps it
-    /// to the image. Nil when nothing of it lies inside the image.
-    static func outset(_ match: BoxedMatch, within bounds: CGRect) -> SensitiveRegion? {
+    /// to the image. Throws when nothing of it lies inside the image: a match must never vanish.
+    static func outset(_ match: BoxedMatch, within bounds: CGRect) throws(SensitiveTextError) -> SensitiveRegion {
         let pad = max(1, (match.rect.height * outsetFraction).rounded(.up))
         let grown = match.rect.insetBy(dx: -pad, dy: -pad)
         let minX = max(bounds.minX, grown.minX.rounded(.down)), minY = max(bounds.minY, grown.minY.rounded(.down))
         let maxX = min(bounds.maxX, grown.maxX.rounded(.up)), maxY = min(bounds.maxY, grown.maxY.rounded(.up))
-        guard maxX > minX, maxY > minY else { return nil }
+        guard maxX > minX, maxY > minY else { throw .regionOutsideImage }
         return SensitiveRegion(
             kind: match.kind, rect: Rect(x: minX, y: minY, width: maxX - minX, height: maxY - minY))
     }
@@ -720,6 +767,24 @@ func fragmentRuns(_ boxes: [CGRect]) -> [[(index: Int, isGlued: Bool)]] {
 
 /// Concatenates the fragments of a run, with a space unless a fragment is glued to the previous
 /// one. `offsets` is where each fragment starts in the result, in characters.
+/// The joined line, then, when a word-sized gap fell next to "@", a dot or a hyphen, the same line
+/// with those gaps closed. Vision can split "ana@acme" from ".com.br" with a gap as wide as a word
+/// space; reading both forms costs a second match pass and can only add masks.
+func fragmentReadings(_ parts: [(text: String, isGlued: Bool)]) -> [(text: String, offsets: [Int])] {
+    let dashes: Set<Character> = ["-", "‐", "‑", "‒", "–", "—"]
+    var closed = parts
+    for index in parts.indices.dropFirst() where !parts[index].isGlued {
+        let left = parts[index - 1].text.last, right = parts[index].text.first
+        let continues =
+            left == "@" || left.map(dashes.contains) == true || right == "@" || right == "."
+            || right.map(dashes.contains) == true
+        if continues { closed[index].isGlued = true }
+    }
+    let spaced = joinFragments(parts)
+    guard closed.map(\.isGlued) != parts.map(\.isGlued) else { return [spaced] }
+    return [spaced, joinFragments(closed)]
+}
+
 func joinFragments(_ parts: [(text: String, isGlued: Bool)]) -> (text: String, offsets: [Int]) {
     var text = ""
     var offsets: [Int] = []
