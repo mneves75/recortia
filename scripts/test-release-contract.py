@@ -35,7 +35,6 @@ class ReleaseFixture:
         shutil.copy(ROOT / "TOOLCHAIN.json", root / "TOOLCHAIN.json")
         self.bin = root / "bin"
         self.bin.mkdir()
-        self.write_tool("xcodegen", "#!/bin/sh\nexit 0\n")
         self.write_tool("xcrun", SWIFT_XCRUN)
         (self.bin / "python3").symlink_to(sys.executable)
         self.write_tool("xcodebuild", "#!/bin/sh\n"
@@ -154,21 +153,25 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertFalse((fixture.root / ".build").exists())
                 self.assertFalse((fixture.root / "gate-reached").exists())
 
-    def test_missing_xcodegen_fails_release_gate_before_archive(self) -> None:
+    def test_unavailable_xcodegen_fails_release_gate_before_archive(self) -> None:
         fixture = self.fixture()
-        (fixture.bin / "xcodegen").unlink()
+        # The pinned XcodeGen cannot be fetched, and a global copy must not stand in for it.
+        fixture.write_tool("curl", "#!/bin/sh\nexit 22\n")
+        fixture.write_tool("xcodegen", "#!/bin/sh\nexit 0\n")
         gate = fixture.root / "gate"
         shutil.copy(ROOT / "scripts/check.sh", gate / "scripts/check.sh")
-        for name in ("doctor.sh", "check-project-fresh.sh"):
+        for name in ("doctor.sh", "check-project-fresh.sh", "xcodegen.sh"):
             shutil.copy(ROOT / "scripts" / name, gate / "scripts" / name)
         shutil.copy(ROOT / "TOOLCHAIN.json", gate / "TOOLCHAIN.json")
-        # Earlier gate tests are independently exercised by their own suites.
-        for name in re.findall(r"python3 scripts/(test-[\w-]+\.py)", (ROOT / "scripts/check.sh").read_text()):
+        # Earlier gate steps are independently exercised by their own suites.
+        for name in re.findall(r"python3 scripts/([\w-]+\.py)", (ROOT / "scripts/check.sh").read_text()):
             (gate / "scripts" / name).write_text("")
         fixture.write_tool("swift", "#!/bin/sh\nexit 0\n")
         result = fixture.run()
         self.assertNotEqual(0, result.returncode)
         self.assertIn("the gate failed", result.stderr)
+        gate_log = next((fixture.root / ".build/release").rglob("gate.log")).read_text()
+        self.assertIn("xcodegen: download of", gate_log, "the gate must fail at the pinned XcodeGen")
         self.assertFalse((fixture.root / "archive-reached").exists(), "no archive after a failed freshness gate")
         self.assertFalse(list((fixture.root / ".build/release").rglob("archive-reached")))
 
@@ -187,7 +190,6 @@ class ReleaseContractTests(unittest.TestCase):
             binaries.mkdir()
             for name, source in {
                 "git": '#!/bin/sh\necho "git boundary reached (mode=$RECORTIA_TOOLCHAIN_MODE)" >&2\nexit 87\n',
-                "xcodegen": "#!/bin/sh\nexit 0\n",
                 "xcrun": SWIFT_XCRUN,
             }.items():
                 executable = binaries / name
