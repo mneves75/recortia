@@ -178,7 +178,8 @@ struct POSIXFileSystem {
     var afterSwap: (URL) -> Void = { _ in }
     /// Runs once the probe that reads a folder's inherited entries exists, before it is discarded.
     var afterProbe: (URL) -> Void = { _ in }
-    /// Runs right after an overwrite without swap renamed the stage onto the destination name.
+    /// Runs once an overwrite without swap renamed the stage onto the destination name and found
+    /// the name leading to it, before the read-back.
     var afterPublish: (URL) -> Void = { _ in }
     /// Runs once a volume without exclusive rename has claimed the destination name.
     var afterClaim: (URL) -> Void = { _ in }
@@ -401,14 +402,17 @@ struct POSIXFileSystem {
         // plain rename; the destination may change between reading its access and this rename there.
         try stage.checkStillStaged()
         if renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
-        afterPublish(directoryURL(stage).appendingPathComponent(name, isDirectory: false))
         // On exFAT and FAT32 the private folder has no owners or modes, so another user could change
         // the staged bytes before the rename. Read the published file back through the stage's own
         // descriptor (the same file), while the name leads to it before and after; on a mismatch the
         // save failed, and whatever is at the name stays, as it may now hold someone else's bytes.
         try Self.requirePublished(stage.file, as: name, in: directory)
-        guard Self.readBack(stage.file, equals: data) else { throw FileSystemFailure(code: EIO, leftover: name) }
+        afterPublish(directoryURL(stage).appendingPathComponent(name, isDirectory: false))
+        let matches = Self.readBack(stage.file, equals: data)
+        // Whatever the read-back found, the name is checked again: it is named as a leftover only
+        // while it still leads to the stage.
         try Self.requirePublished(stage.file, as: name, in: directory)
+        guard matches else { throw FileSystemFailure(code: EIO, leftover: name) }
     }
 
     private func directoryURL(_ stage: Stage) -> URL {

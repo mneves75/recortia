@@ -232,6 +232,33 @@ struct FileSinkVolumeTests {
         }
     }
 
+    // R3-04 (third review of T1a): a failed read-back named the destination as a leftover without
+    // checking the name again, so a file truncated and moved away was reported at a name that held
+    // nothing of Recortia's.
+    @Test(
+        "A published file truncated and moved away during the read-back is not named as a leftover",
+        arguments: ScratchVolume.Format.allCases)
+    func movedAwayDuringReadBackIsNotNamed(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            let moved = folder.appendingPathComponent("moved.png")
+            try priorBytes.write(to: url)
+            var changed = false
+            let fileSystem = POSIXFileSystem(afterPublish: { published in
+                guard let handle = try? FileHandle(forUpdating: published) else { return }
+                changed =
+                    (try? handle.truncate(atOffset: 0)) != nil
+                    && rename(published.path(percentEncoded: false), moved.path(percentEncoded: false)) == 0
+                try? handle.close()
+            })
+            #expect(throws: SinkError.destinationExists) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+            }
+            try #require(changed, "control: the published file was never truncated and moved")
+            #expect(FileManager.default.fileExists(atPath: moved.path), "a file Recortia did not keep was removed")
+        }
+    }
+
     enum ConcurrentWrite: String, CaseIterable, Sendable {
         /// Another writer renames its own file over the claimed name.
         case replacesClaim
