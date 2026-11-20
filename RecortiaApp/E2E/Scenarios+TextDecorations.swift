@@ -28,7 +28,7 @@
             let annotation = try context.unwrap("text for outline", model.document.annotations.last)
             await E2EActions.scrollInspector(controller, to: 0.5)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.chooseTextAppearance(.outlined, in: root, context)
+            try await E2EAccessibilityControl.chooseTextAppearance(.outlined, in: root, context)
             try context.require(
                 "the native Outlined choice applies",
                 await E2EWait.until {
@@ -112,7 +112,7 @@
             model.setViewport(.fitting(model.document.canvasRect, in: model.viewportSize, maxZoom: 1))
             await E2EActions.scrollInspector(controller, to: 0.5)
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.chooseTextAppearance(.boxed, in: root, context)
+            try await E2EAccessibilityControl.chooseTextAppearance(.boxed, in: root, context)
             try context.require("boxed background can be customized", model.setTextBackgroundColor(.yellow))
             model.beginEditingText(annotation.id)
             try context.require(
@@ -151,14 +151,15 @@
             for appearance in [TextAppearance.outlined, .boxed, .roundedBoxed, .monospacedBoxed] {
                 await E2EActions.scrollInspector(controller, to: 0.5)
                 await E2ESnapshot.settle(root)
-                try E2EAccessibilityControl.chooseTextAppearance(appearance, in: root, context)
+                try await E2EAccessibilityControl.chooseTextAppearance(appearance, in: root, context)
                 try context.require(
                     "native \(appearance.rawValue) choice applies",
                     await E2EWait.until { model.style.textAppearance == appearance })
                 await E2ESnapshot.settle(root)
+                let shown = try await E2EAccessibilityControl.shownTextAppearance(in: root, context)
                 context.check(
-                    "native \(appearance.rawValue) shows the chosen font and style",
-                    E2EAccessibilityControl.shownTextAppearance(in: root) == appearance)
+                    "native \(appearance.rawValue) shows the chosen font and style", shown == appearance,
+                    "\(String(describing: shown))")
                 model.beginEditingText(annotation.id)
                 try context.require(
                     "\(appearance.rawValue) reopens native input",

@@ -99,8 +99,7 @@
         /// ends tracking. A common-mode timer ends tracking after two seconds so a menu that never
         /// matches cannot block the run.
         static func chooseFromMenu(
-            _ title: String?, opening identifier: String, in root: NSView, _ context: ScenarioContext,
-            contextMenu: Bool = false
+            _ title: String?, opening identifier: String, in root: NSView, _ context: ScenarioContext
         ) async throws -> [E2EMenuEntry] {
             let session = E2EMenuSession(choosing: title)
             NotificationCenter.default.addObserver(
@@ -114,16 +113,7 @@
             defer { safety.invalidate() }
             let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
             let active = NSApp.isActive
-            if contextMenu {
-                // AXShowMenu opens a control's context menu, as VoiceOver's VO-Shift-M does.
-                let control = try control(identifier, in: root, context)
-                try context.require(
-                    "\(identifier) offers Show Menu", control.accessibilityActionNames().contains(.showMenu),
-                    "actions \(control.accessibilityActionNames().map(\.rawValue))")
-                control.accessibilityPerformAction(.showMenu)
-            } else {
-                try pressCheckingEffect(identifier, in: root, context)
-            }
+            try pressCheckingEffect(identifier, in: root, context)
             try context.require(
                 "\(identifier) opens its menu", await E2EWait.until(timeout: .seconds(3)) { session.tracked })
             _ = await E2EWait.until(timeout: .seconds(3)) { session.menu == nil || !session.isOpen }
@@ -208,37 +198,37 @@
         }
 
         /// Whether an element with `identifier` is in the hosted hierarchy now (records no check).
-        /// Chooses the inspector's text Font and Style the way a click ends: each AppKit control's
-        /// own selection and action, inside this runner's window. The controls are found by their
-        /// localized choices, so the check fails if either control loses one.
+        /// Chooses the inspector's text Font and Style as a person does: the Font pop-up through
+        /// accessibility Press and its real menu, then the Style segment through the segmented
+        /// control's own selection and action (as `InspectorScenarios.chooseTab` does).
         static func chooseTextAppearance(
             _ appearance: TextAppearance, in root: NSView, _ context: ScenarioContext
-        ) throws {
+        ) async throws {
             let (font, style) = textChoices(appearance)
-            let styles = [
-                String(localized: "Plain", table: "Editor"), String(localized: "Outline", table: "Editor"),
-                String(localized: "Box", table: "Editor"),
-            ]
-            let popUp = try context.unwrap("the inspector has the text Font pop-up", textFontPopUp(in: root))
-            popUp.selectItem(at: font)
-            try context.require("the Font pop-up sends its action", popUp.sendAction(popUp.action, to: popUp.target))
+            _ = try await chooseFromMenu(fontTitles[font], opening: "text.font", in: root, context)
+            await E2ESnapshot.settle(root)
             let segmented = try context.unwrap(
-                "the inspector has the text Style control", textStyleControl(in: root, styles: styles))
+                "the inspector has the text Style control", textStyleControl(in: root))
             segmented.setSelected(true, forSegment: style)
             try context.require(
                 "the Style control sends its action", segmented.sendAction(segmented.action, to: segmented.target))
         }
 
-        /// The text Font and Style the inspector shows, as one appearance.
-        static func shownTextAppearance(in root: NSView) -> TextAppearance? {
-            let styles = [
-                String(localized: "Plain", table: "Editor"), String(localized: "Outline", table: "Editor"),
-                String(localized: "Box", table: "Editor"),
-            ]
-            guard let style = textStyleControl(in: root, styles: styles)?.selectedSegment,
-                let font = textFontPopUp(in: root)?.indexOfSelectedItem
+        /// The text Font and Style the inspector shows, as one appearance: the Font menu's checked
+        /// item and the selected Style segment.
+        static func shownTextAppearance(in root: NSView, _ context: ScenarioContext) async throws -> TextAppearance? {
+            let entries = try await chooseFromMenu(nil, opening: "text.font", in: root, context)
+            guard let style = textStyleControl(in: root)?.selectedSegment,
+                let checked = entries.first(where: \.checked), let font = fontTitles.firstIndex(of: checked.title)
             else { return nil }
             return TextAppearance.allCases.first { textChoices($0) == (font, style) }
+        }
+
+        private static var fontTitles: [String] {
+            [
+                String(localized: "System", table: "Editor"), String(localized: "Rounded", table: "Editor"),
+                String(localized: "Monospaced", table: "Editor"),
+            ]
         }
 
         private static func textChoices(_ appearance: TextAppearance) -> (font: Int, style: Int) {
@@ -253,19 +243,35 @@
             }
         }
 
-        private static func textStyleControl(in root: NSView, styles: [String]) -> NSSegmentedControl? {
-            EditorWindowController.all(NSSegmentedControl.self, in: root).first { control in
+        private static func textStyleControl(in root: NSView) -> NSSegmentedControl? {
+            let styles = [
+                String(localized: "Plain", table: "Editor"), String(localized: "Outline", table: "Editor"),
+                String(localized: "Box", table: "Editor"),
+            ]
+            return EditorWindowController.all(NSSegmentedControl.self, in: root).first { control in
                 control.segmentCount == styles.count
                     && (0..<control.segmentCount).map { control.label(forSegment: $0) ?? "" } == styles
             }
         }
 
-        private static func textFontPopUp(in root: NSView) -> NSPopUpButton? {
-            let fonts = [
-                String(localized: "System", table: "Editor"), String(localized: "Rounded", table: "Editor"),
-                String(localized: "Monospaced", table: "Editor"),
-            ]
-            return EditorWindowController.all(NSPopUpButton.self, in: root).first { $0.itemTitles == fonts }
+        /// Performs a control's named accessibility action, as VoiceOver's actions rotor does.
+        static func performCustomAction(
+            _ name: String, on identifier: String, in root: NSView, _ context: ScenarioContext
+        ) throws {
+            let control = try control(identifier, in: root, context)
+            let actions =
+                control.responds(to: NSSelectorFromString("accessibilityCustomActions"))
+                ? (control.value(forKey: "accessibilityCustomActions") as? [NSAccessibilityCustomAction] ?? []) : []
+            let action = try context.unwrap(
+                "\(identifier) offers the \(name) action", actions.first { $0.name == name },
+                "custom actions \(actions.map(\.name)), actions \(control.accessibilityActionNames().map(\.rawValue))")
+            if let handler = action.handler {
+                try context.require("\(name) is handled", handler())
+            } else {
+                let target = try context.unwrap("\(name) has a target", action.target as? NSObject)
+                let selector = try context.unwrap("\(name) has a selector", action.selector)
+                _ = target.perform(selector, with: action)
+            }
         }
 
         static func isPresent(_ identifier: String, in root: NSView) -> Bool {

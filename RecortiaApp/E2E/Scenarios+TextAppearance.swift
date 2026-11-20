@@ -62,7 +62,7 @@
             await E2EActions.scrollInspector(controller, to: 0.35)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "text-style-before-action")
-            try E2EAccessibilityControl.chooseTextAppearance(.rounded, in: root, context)
+            try await E2EAccessibilityControl.chooseTextAppearance(.rounded, in: root, context)
             try context.require(
                 "native Rounded control applies the selected text font",
                 await E2EWait.until {
@@ -158,14 +158,15 @@
             for appearance in [TextAppearance.standard, .rounded, .monospaced] {
                 await E2EActions.scrollInspector(wrappedController, to: 0.35)
                 await E2ESnapshot.settle(wrappedRoot)
-                try E2EAccessibilityControl.chooseTextAppearance(appearance, in: wrappedRoot, context)
+                try await E2EAccessibilityControl.chooseTextAppearance(appearance, in: wrappedRoot, context)
                 try context.require(
                     "native \(appearance.rawValue) control changes text appearance",
                     await E2EWait.until { wrappedController.model.style.textAppearance == appearance })
                 await E2ESnapshot.settle(wrappedRoot)
+                let shown = try await E2EAccessibilityControl.shownTextAppearance(in: wrappedRoot, context)
                 context.check(
-                    "native \(appearance.rawValue) controls show the chosen font and style",
-                    E2EAccessibilityControl.shownTextAppearance(in: wrappedRoot) == appearance)
+                    "native \(appearance.rawValue) controls show the chosen font and style", shown == appearance,
+                    "\(String(describing: shown))")
             }
             wrappedController.model.clearSelection()
             E2EActions.click(wrappedController.model, .text, at: E2EActions.point(220, 60))
@@ -230,9 +231,10 @@
                 model.document == before && model.session.undoCount == undoCount)
             await E2EActions.scrollInspector(controller, to: 0.35)
             await E2ESnapshot.settle(root)
+            let shown = try await E2EAccessibilityControl.shownTextAppearance(in: root, context)
             context.check(
-                "Select All exposes the actual selected style in native controls",
-                E2EAccessibilityControl.shownTextAppearance(in: root) == .rounded)
+                "Select All exposes the actual selected style in native controls", shown == .rounded,
+                "\(String(describing: shown))")
         }
     }
 #endif
