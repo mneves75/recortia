@@ -83,11 +83,11 @@ public final class EditorModel {
         case idle
         case create(tool: EditorTool, start: Point<DocumentSpace>, points: [Point<DocumentSpace>])
         case move(items: [EditorItemID], start: Point<DocumentSpace>, original: Document)
-        /// `grab` is the handle's position minus the pointer-down point, so the handle follows the
-        /// pointer's delta and a stationary click changes nothing.
+        /// `start` is the pointer-down point and `anchor` the grabbed handle's position: the handle
+        /// follows the pointer's delta from `start`.
         case resize(
             item: EditorItemID, handle: EditorHandle, frame: Rect<DocumentSpace>, original: Document,
-            grab: (dx: Double, dy: Double))
+            start: Point<DocumentSpace>, anchor: Point<DocumentSpace>)
         case marquee(start: Point<DocumentSpace>, initial: Set<EditorItemID>)
         case ruler(start: Point<DocumentSpace>)
         case sample

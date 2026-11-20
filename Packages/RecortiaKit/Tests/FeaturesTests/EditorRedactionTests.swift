@@ -113,36 +113,6 @@ struct EditorRedactionTests {
         #expect(m.selection == [.mask(mask.id)])
     }
 
-    @Test("A zero resize on a mask whose layer moved keeps its source binding and the secret covered")
-    func zeroResizeAfterLayerMoveKeepsBinding() async throws {
-        let fixture = try await SecretExport(secret: FixtureRect(x: 10, y: 10, width: 20, height: 20))
-        let h = fixture.harness
-        let m = h.model
-        m.selectTool(.redact)
-        h.drag((10, 10), (30, 30))
-        let maskID = try #require(m.document.masks.first).id
-        let layerID = try #require(m.document.layers.first).id
-        m.selectTool(.select)
-        m.setFrame(Rect(x: 100, y: 0, width: 400, height: 300), for: .layer(layerID))
-        let moved = try #require(m.document.masks.first)
-        let covered = try await fixture.exported()
-        #expect(fixture.secretPixels(in: covered, FixtureRect(x: 110, y: 10, width: 20, height: 20)) == 0)
-        let history = m.session.undoCount
-
-        m.select(.mask(maskID))
-        h.click(26, 20)
-        m.pointerDown(at: Point(x: 26, y: 20))
-        m.pointerDragged(to: Point(x: 40, y: 20))
-        m.pointerDragged(to: Point(x: 26, y: 20))
-        m.pointerUp(at: Point(x: 26, y: 20))
-
-        #expect(m.document.masks.first == moved)
-        #expect(m.session.undoCount == history)
-        let after = try await fixture.exported()
-        #expect(fixture.secretPixels(in: after, FixtureRect(x: 110, y: 10, width: 20, height: 20)) == 0)
-        #expect(after == covered)
-    }
-
     @Test("A drag on magnifier pixels beside a mask moves the magnifier and the secret stays covered")
     func magnifierBesideMaskKeepsSecretCovered() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))

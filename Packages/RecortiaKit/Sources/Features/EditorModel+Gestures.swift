@@ -72,6 +72,7 @@ extension EditorModel {
             }
             updateDraft(tool: tool, start: start, points: points, current: p, modifiers: modifiers)
         case .move(let items, let start, let original):
+            guard !isWithinClick(p, of: start) else { return replaceDocumentInGesture("Move", with: original) }
             var dx = p.x - start.x, dy = p.y - start.y
             if modifiers.contains(.shift) {
                 if abs(dx) > abs(dy) { dy = 0 } else { dx = 0 }
@@ -84,9 +85,12 @@ extension EditorModel {
                 return
             }
             replaceDocumentInGesture("Move", with: moved)
-        case .resize(let item, let handle, let frame, let original, let grab):
+        case .resize(let item, let handle, let frame, let original, let start, let anchor):
+            // Back at the press point the resize minimum or snapping could still alter the object,
+            // so the original snapshot is restored exactly (no re-bind, no history).
+            guard !isWithinClick(p, of: start) else { return replaceDocumentInGesture("Resize", with: original) }
             var resized = original
-            let target = Point<DocumentSpace>(x: p.x + grab.dx, y: p.y + grab.dy)
+            let target = Point<DocumentSpace>(x: anchor.x + p.x - start.x, y: anchor.y + p.y - start.y)
             do {
                 try resize(&resized, item: item, handle: handle, frame: frame, to: target, modifiers: modifiers)
             } catch {
@@ -120,6 +124,11 @@ extension EditorModel {
         case .move, .resize, .idle, .marquee, .ruler, .sample:
             break
         }
+    }
+
+    /// Whether `p` is still within a click's slop of the press point `start`, in view points.
+    private func isWithinClick(_ p: Point<DocumentSpace>, of start: Point<DocumentSpace>) -> Bool {
+        hypot(p.x - start.x, p.y - start.y) < viewport.documentLength(Self.clickSlop)
     }
 
     /// Commits the progress so far and retires this drag before an independent edit can land.
@@ -165,9 +174,7 @@ extension EditorModel {
 
     private func beginSelectGesture(at p: Point<DocumentSpace>, modifiers: EditorModifiers) {
         if let (handle, point) = handle(at: p), let item = selection.first, let frame = frame(of: item) {
-            gesture = .resize(
-                item: item, handle: handle, frame: frame, original: document,
-                grab: (dx: point.x - p.x, dy: point.y - p.y))
+            gesture = .resize(item: item, handle: handle, frame: frame, original: document, start: p, anchor: point)
             return
         }
         if let hit = item(at: p) {
