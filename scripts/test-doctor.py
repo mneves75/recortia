@@ -322,6 +322,25 @@ else:
         self.assertEqual(2, self.run_e2e().returncode, "a linked helper is not a built executable")
         self.assertFalse((self.root / "launch-reached").exists())
 
+    def test_a_linked_directory_on_either_executable_path_is_refused(self) -> None:
+        # Review 2 N03: a regular executable under a linked Contents/MacOS sits outside the hash.
+        products = self.root / ".build/dd/Build/Products/Debug"
+        for bundle, executable in (("RecortiaE2EForegroundHost.app", "RecortiaE2EForegroundHost"),
+                                   ("RecortiaE2E.app", "RecortiaE2E")):
+            with self.subTest(bundle=bundle):
+                macos = products / bundle / "Contents/MacOS"
+                elsewhere = self.root / f"elsewhere-{executable}"
+                macos.rename(elsewhere)
+                macos.symlink_to(elsewhere, target_is_directory=True)
+                for marker in ("build-reached", "launch-reached"):
+                    (self.root / marker).unlink(missing_ok=True)
+                for arguments in ((), ("--no-build",)):
+                    result = self.run_e2e(*arguments)
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertFalse((self.root / "launch-reached").exists())
+                macos.unlink()
+                elsewhere.rename(macos)
+
     def test_bundle_hash_does_not_follow_external_symlinks(self) -> None:
         bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app"
         resources = bundle / "Contents/Resources"

@@ -100,7 +100,11 @@ record = json.loads(sys.argv[1])
 def bundle_sha256(bundle, executable):
     # The fixture launches this file: it must be a regular executable, not a link or plain data.
     program = bundle / "Contents/MacOS" / executable
-    if program.is_symlink() or not program.is_file() or not os.access(program, os.X_OK):
+    # A link anywhere on the path would put the launched bytes outside the bundle walk below.
+    linked = [part for part in (program, *program.parents) if part != pathlib.Path(".") and part.is_symlink()]
+    if linked:
+        sys.exit(f"e2e: {linked[-1]} is a symbolic link on the path to {program}")
+    if not program.is_file() or not os.access(program, os.X_OK):
         sys.exit(f"e2e: {program} is not a regular executable file")
     if bundle.is_symlink() or not bundle.is_dir():
         sys.exit(f"e2e: expected a regular app bundle directory at {bundle}")
