@@ -279,3 +279,77 @@ struct SensitiveTextSweepTests {
         await #expect(throws: CancellationError.self) { _ = try await task.value }
     }
 }
+
+@Suite("SensitiveText: review findings (2026-11-19)")
+struct SensitiveTextReviewTests {
+    @Test(
+        "R02: an international number keeps every digit up to E.164's fifteen",
+        arguments: ["+44 20 7946 09 58", "+49 30 1234 5678 90", "+86 10 5555 0123 456"])
+    func internationalNumberIsComplete(number: String) throws {
+        #expect(try detect(number) == ["phone:\(number)"])
+        #expect(try detect("Tel. \(number) 2026-1126") == ["phone:\(number)"])
+    }
+
+    @Test("R06: only SSH remote syntax suppresses a git@ address")
+    func gitMailboxIsAnAddress() throws {
+        #expect(try detect("git@example.com") == ["email:git@example.com"])
+        #expect(try detect("Write to git@example.org: we reply") == ["email:git@example.org"])
+        #expect(try detect("git clone git@example.com:owner/repo.git").isEmpty)
+    }
+
+    @Test(
+        "R07: apostrophes and accented letters belong to the local part",
+        arguments: ["o'brien@example.com", "d’avila@example.org", "joão.ninguém@exemplo.com.br"])
+    func localPartPunctuation(address: String) throws {
+        #expect(try detect("Contato: \(address)") == ["email:\(address)"])
+    }
+
+    @Test(
+        "R08: compact and area-code-less numbers after a phone label",
+        arguments: [
+            ("Phone: 5551234567", "5551234567"), ("Call 2025550100", "2025550100"),
+            ("Celular: 987654321", "987654321"), ("Tel 4004-5566", "4004-5566"),
+            ("Fone: 9 8765-4321", "9 8765-4321"), ("WhatsApp 98765-4321", "98765-4321"),
+        ])
+    func labelledCompactNumbers(text: String, number: String) throws {
+        #expect(try detect(text) == ["phone:\(number)"])
+    }
+
+    @Test(
+        "R08: area-code-less mobile numbers are found when formatted, without a label",
+        arguments: ["9 8765-4321", "98765-4321"])
+    func formattedLocalMobile(number: String) throws {
+        #expect(try detect("ok \(number) ok") == ["phone:\(number)"])
+    }
+
+    @Test(
+        "R08: bare digit runs stay unmasked without a phone label",
+        arguments: [
+            "2025550100", "id 4815162342", "Pedido 1034567890", "ref 987654321", "2026-1126", "Hotel 2025550100",
+            "4111111111111111", "Phone: 1034567890",
+        ])
+    func bareDigitRunsAreNotPhones(text: String) throws {
+        #expect(try detect(text).isEmpty)
+    }
+
+    @Test(
+        "R13: pathological 64 KB lines finish within a second",
+        arguments: [
+            String(repeating: "a", count: 65_536), String(repeating: "a.", count: 32_768),
+            "a@" + String(repeating: "a.", count: 32_767), String(repeating: "a@a", count: 21_845),
+            "+" + String(repeating: "1 ", count: 32_767), String(repeating: "9-", count: 32_768),
+            String(repeating: "a. ", count: 21_845), String(repeating: "x@a-", count: 16_384),
+        ])
+    func pathologicalLinesAreBounded(text: String) throws {
+        let matcher = try SensitiveTextMatcher.shared.get()
+        let clock = ContinuousClock()
+        let elapsed = clock.measure { _ = matcher.matches(in: text) }
+        #expect(elapsed < .seconds(1), "took \(elapsed) on \(text.prefix(12))…")
+    }
+
+    @Test("R13: an address past the length bound is still found whole")
+    func addressDeepInALongLineIsFound() throws {
+        let filler = String(repeating: "lorem ipsum ", count: 1_000)
+        #expect(try detect(filler + "ana@example.com " + filler) == ["email:ana@example.com"])
+    }
+}

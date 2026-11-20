@@ -101,16 +101,32 @@ public struct SensitiveTextMatcher: Sendable {
         }
     }
 
+    /// Longest text, in UTF-16 units, that one regex call reads. Longer lines are read in windows
+    /// that overlap by `windowOverlap`, which exceeds the longest match any pattern can make (every
+    /// repetition is bounded), so each match is whole in at least one window and the work grows
+    /// linearly with the line.
+    static let windowLength = 4096
+    static let windowOverlap = 1024
+
     public func matches(
         in text: String, kinds: Set<SensitiveTextKind> = Set(SensitiveTextKind.allCases)
     ) -> [SensitiveTextMatch] {
         let source = text as NSString
-        let whole = NSRange(location: 0, length: source.length)
+        let bridged = source as String
         var found: [(kind: SensitiveTextKind, range: NSRange)] = []
-        for detector in compiled where kinds.contains(detector.pattern.kind) {
-            for result in detector.regex.matches(in: text, range: whole) {
-                guard let range = refine(detector.pattern.refinement, source, result.range) else { continue }
-                found.append((detector.pattern.kind, range))
+        for start in stride(
+            from: 0, to: max(source.length - Self.windowOverlap, 1), by: Self.windowLength - Self.windowOverlap)
+        {
+            let window = NSRange(location: start, length: min(Self.windowLength, source.length - start))
+            for detector in compiled where kinds.contains(detector.pattern.kind) {
+                // Transparent bounds let the edge look-arounds see past the window, so a window never
+                // starts a match inside a longer number or ends one inside a longer domain.
+                for result in detector.regex.matches(
+                    in: bridged, options: [.withTransparentBounds, .withoutAnchoringBounds], range: window)
+                {
+                    guard let range = refine(detector.pattern.refinement, source, result.range) else { continue }
+                    found.append((detector.pattern.kind, range))
+                }
             }
         }
         return Self.mergeOverlapping(found).compactMap { item in
@@ -129,14 +145,23 @@ public struct SensitiveTextMatcher: Sendable {
 
     // MARK: Patterns
 
-    private static let localChars = #"[a-z0-9._%+\-…]"#
+    /// Letters of any script are allowed, so "joão@…" is not cut to "o@…" (RFC 6531).
+    private static let localChars = #"[\p{L}\p{M}0-9._%+\-…]"#
+    /// At most 64 characters plus two apostrophe-joined parts ("o'brien", RFC 5322 atext); an
+    /// apostrophe never starts or ends it, so quoting with ' leaves the quote unmasked.
+    ///
+    /// Every pattern that starts with it starts only where a run of local characters starts
+    /// (`localStart`), so a line is not retried at every character of a long run. A run longer than
+    /// RFC 5321's 64 characters before the "@" is therefore not taken for an address.
+    private static let localPart = #"\#(localChars){1,64}(?:['’]\#(localChars){1,32}){0,2}"#
+    private static let localStart = #"(?<!\#(localChars))"#
     /// Suffixes accepted after an OCR-inserted space ("gmail. com"). Lowercase only, and no suffix
     /// that doubles as a word ("me", "us"), so "x@exemplo.com. Me liga" keeps its next sentence.
     private static let spacedSuffix = #"(?-i:com|net|org|br|io|dev|app|edu|gov)(?![a-z0-9\-])"#
     private static let fullDomain =
-        #"(?:[a-z0-9\-]+(?:\.\s(?=\#(spacedSuffix))|\.))+[a-z]{2,24}(?![a-z0-9\-])"#
+        #"(?:[a-z0-9\-]{1,63}(?:\.\s(?=\#(spacedSuffix))|\.)){1,8}[a-z]{2,24}(?![a-z0-9\-])"#
     /// Domain cut off by the UI: "maria@gm…".
-    private static let truncatedDomain = #"[a-z0-9.\-]*(?:…|\.{3})"#
+    private static let truncatedDomain = #"[a-z0-9.\-]{0,253}(?:…|\.{3})"#
     private static let mailProviders = "gmail|hotmail|outlook|yahoo|icloud|live|uol|bol|terra|proton(?:mail)?"
     /// One separator between digit groups (space, dot, any hyphen or dash).
     private static let sep = #"[\s.\-‐-—]"#
@@ -144,6 +169,9 @@ public struct SensitiveTextMatcher: Sendable {
     private static let leftEdge = #"(?<![\d#.,+\-])"#
     /// Do not stop inside a longer number or a decimal.
     private static let rightEdge = #"(?!\d)(?![.,\-]\d)"#
+    /// A word that announces a phone number, then up to two spaces.
+    private static let phoneLabel =
+        #"(?<=\b(?:phone|tel|telephone|mobile|cell|call|fax|whatsapp|whats|telefone|fone|celular|cel|ligue)[.:]?\s{1,2})"#
     /// Brazilian area codes (DDD) in use.
     private static let areaCode = "(?:1[1-9]|2[12478]|3[1-578]|4[1-9]|5[1345]|6[1-9]|7[134579]|8[1-9]|9[1-9])"
 
@@ -151,17 +179,18 @@ public struct SensitiveTextMatcher: Sendable {
         // name@domain.tld, with an optional OCR space after a dot in the local part.
         Pattern(
             name: "email", kind: .email,
-            source: #"(?:\#(localChars)+\.\s)?\#(localChars)+@(?:\#(fullDomain)|\#(truncatedDomain))"#,
+            source: #"\#(localStart)(?:\#(localPart)\.\s)?\#(localPart)@(?:\#(fullDomain)|\#(truncatedDomain))"#,
             refinement: .rejectGitRemote),
         // Top-level domain damaged by OCR: "x@startup-io", "x@startup.1o", "x@gmail,corn".
         Pattern(
             name: "email-damaged-domain", kind: .email,
-            source: #"\#(localChars)+@[a-z][a-z0-9.\-]*[.,\-][a-z0-9]{2,5}(?![a-z0-9\-])"#,
+            source: #"\#(localStart)\#(localPart)@[a-z][a-z0-9.\-]{0,253}[.,\-][a-z0-9]{2,5}(?![a-z0-9\-])"#,
             refinement: .acceptDamagedDomain),
         // "@" misread as a letter in front of a well-known mail provider ("anadgmail.com").
         Pattern(
             name: "email-lost-at", kind: .email,
-            source: #"[a-z0-9._%+\-]{2,}(?<![.@])(?:\#(mailProviders))\.(?:com|me)(?:\.br)?(?![a-z0-9\-])"#,
+            source:
+                #"(?<![a-z0-9._%+\-])[a-z0-9._%+\-]{2,64}(?<![.@])(?:\#(mailProviders))\.(?:com|me)(?:\.br)?(?![a-z0-9\-])"#,
             refinement: .none),
         // Brazil: optional +55, area code, then mobile (9 + 8 digits) or landline (8 digits).
         Pattern(
@@ -179,15 +208,30 @@ public struct SensitiveTextMatcher: Sendable {
             source:
                 #"\#(leftEdge)(?:\+?1\#(sep)?)?(?:\([2-9]\d{2}\)\s?|[2-9]\d{2}\#(sep))\d{3}\#(sep)\d{4}\#(rightEdge)"#,
             refinement: .none),
+        // A digit run with no separators, or a Brazilian number without its area code, only right after
+        // a word that announces a phone ("Phone: 2025550100", "Celular: 987654321", "Tel 4004-5566").
+        // Elsewhere such runs are IDs, timestamps and amounts.
+        Pattern(
+            name: "phone-labelled", kind: .phone,
+            source:
+                #"\#(phoneLabel)(?:[2-9]\d{9}|9\#(sep)?\d{4}\#(sep)?\d{4}|[2-5]\d{3}\#(sep)?\d{4})\#(rightEdge)"#,
+            refinement: .none),
         // Any other number written with a country code: +351 912 345 678.
         Pattern(
             name: "phone-international", kind: .phone, source: #"(?<![\d#])\+\d{1,3}(?:\#(sep)?\(?\d{1,12}\)?){1,8}"#,
             refinement: .trimInternationalNumber),
     ]
 
-    /// "git@github.com:org/repo.git" is an SSH remote, not an address.
+    /// "git@github.com:org/repo.git" is an SSH remote, not an address: "git@" followed by the host,
+    /// a colon and a path. "git@example.com" alone, or before ": text", is a mailbox.
     private static func rejectGitRemote(_ source: NSString, _ range: NSRange) -> NSRange? {
-        source.substring(with: range).lowercased().hasPrefix("git@") ? nil : range
+        let colon = NSMaxRange(range)
+        guard source.substring(with: range).lowercased().hasPrefix("git@"), colon + 1 < source.length,
+            source.character(at: colon) == UInt16(UInt8(ascii: ":")),
+            let next = Unicode.Scalar(source.character(at: colon + 1)),
+            !CharacterSet.whitespacesAndNewlines.contains(next)
+        else { return range }
+        return nil
     }
 
     /// Accepts "name@domain<sep><suffix>" when the suffix is a known one once the usual OCR
@@ -213,16 +257,20 @@ public struct SensitiveTextMatcher: Sendable {
     ])
 
     /// A "+" candidate can run into the next numeric column ("+44 20 7946 0958 2026-1126"). Keep
-    /// digit groups only until the number is plausibly complete; reject what cannot be a phone.
+    /// whole digit groups while the number stays within its plan's length: 11 digits after "+1 "
+    /// (NANP), 13 after "+55 " (Brazil), E.164's 15 otherwise. Reject what cannot be a phone.
     private func trimInternationalNumber(_ source: NSString, _ range: NSRange) -> NSRange? {
         let candidate = source.substring(with: range) as NSString
+        let whole = NSRange(location: 0, length: candidate.length)
+        let groups = digitRuns.regex.matches(in: candidate as String, range: whole).map(\.range)
+        let countryCode = groups.first.map { candidate.substring(with: $0) }
+        let limit = countryCode == "1" ? 11 : countryCode == "55" ? 13 : 15
         var digitCount = 0
         var end = 0
-        let whole = NSRange(location: 0, length: candidate.length)
-        for group in digitRuns.regex.matches(in: candidate as String, range: whole) {
-            digitCount += group.range.length
-            end = NSMaxRange(group.range)
-            if digitCount >= 10 { break }
+        for group in groups {
+            guard digitCount + group.length <= limit else { break }
+            digitCount += group.length
+            end = NSMaxRange(group)
         }
         guard (8...15).contains(digitCount) else { return nil }
         if end < candidate.length, candidate.character(at: end) == UInt16(UInt8(ascii: ")")) { end += 1 }
@@ -234,7 +282,13 @@ public struct SensitiveTextMatcher: Sendable {
         _ items: [(kind: SensitiveTextKind, range: NSRange)]
     ) -> [(kind: SensitiveTextKind, range: NSRange)] {
         var merged: [(kind: SensitiveTextKind, range: NSRange, longest: Int)] = []
-        for item in items.sorted(by: { $0.range.location < $1.range.location }) {
+        // A total order, so the result never depends on pattern or window order.
+        let ordered = items.sorted {
+            ($0.range.location, -$0.range.length, $0.kind.rawValue) < (
+                $1.range.location, -$1.range.length, $1.kind.rawValue
+            )
+        }
+        for item in ordered {
             guard let last = merged.last, item.range.location < NSMaxRange(last.range) else {
                 merged.append((item.kind, item.range, item.range.length))
                 continue
