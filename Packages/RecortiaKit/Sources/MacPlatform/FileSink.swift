@@ -169,7 +169,7 @@ struct POSIXFileSystem {
             guard overwrite else { throw FileSystemFailure(code: EEXIST) }
             // Never through a link, and never over a folder or a device.
             guard existing.st_mode & S_IFMT == S_IFREG else { throw Self.substitutedFailure }
-            try replace(stage, named: name, in: directory)
+            try replace(stage, data: data, named: name, in: directory)
             return
         }
         guard errno == ENOENT else { throw FileSystemFailure(code: errno) }
@@ -186,7 +186,9 @@ struct POSIXFileSystem {
     /// Gives the stage the destination's ACL, group and mode, all read from one descriptor that
     /// does not follow a link, then swaps it in. The swapped-out entry is removed only while it is
     /// that same destination; otherwise the swap is undone.
-    private func replace(_ stage: Stage, named name: String, in directory: Int32) throws(FileSystemFailure) {
+    private func replace(_ stage: Stage, data: Data, named name: String, in directory: Int32)
+        throws(FileSystemFailure)
+    {
         let destination = openat(directory, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard destination >= 0 else {
             throw errno == ELOOP ? Self.substitutedFailure : FileSystemFailure(code: errno)
@@ -214,12 +216,13 @@ struct POSIXFileSystem {
         do throws(FileSystemFailure) {
             try stage.checkStillStaged()
             if let failPublish { throw FileSystemFailure(code: failPublish) }
-            try swap(stage, with: name, in: directory, replacing: replaced)
+            try swap(stage, data: data, with: name, in: directory, replacing: replaced)
         } catch {
             // The copied ACL can deny this user deleting the stage (an entry that denies delete
             // is also why the rename failed); drop it so cleanup works. Owner-only first, so
-            // dropping a deny entry never widens access.
-            if copiedACL {
+            // dropping a deny entry never widens access. A stage already published (the read-back
+            // after a plain rename failed) is left as published.
+            if copiedACL, (try? stage.checkStillStaged()) != nil {
                 _ = fchmod(stage.file, 0o600)
                 afterReplaceStep(stage.url)
                 try? Self.clearACL(stage.file)
@@ -229,9 +232,9 @@ struct POSIXFileSystem {
         }
     }
 
-    private func swap(_ stage: Stage, with name: String, in directory: Int32, replacing replaced: FileIdentity)
-        throws(FileSystemFailure)
-    {
+    private func swap(
+        _ stage: Stage, data: Data, with name: String, in directory: Int32, replacing replaced: FileIdentity
+    ) throws(FileSystemFailure) {
         if renameatx_np(stage.folder, Self.stageName, directory, name, UInt32(RENAME_SWAP)) == 0 {
             // The stage's name now holds what was at `name`: the confirmed file, removed as the
             // overwrite the person approved.
@@ -249,6 +252,11 @@ struct POSIXFileSystem {
         guard failure == ENOTSUP else { throw FileSystemFailure(code: failure) }
         try stage.checkStillStaged()
         if renameat(stage.folder, Self.stageName, directory, name) != 0 { throw FileSystemFailure(code: errno) }
+        // On exFAT and FAT32 the private folder has no owners or modes, so another user could change
+        // the staged bytes before the rename. Read the published file back through the stage's own
+        // descriptor (the same file); on a mismatch the save failed, and the file stays, as it may
+        // now hold someone else's bytes.
+        guard Self.readBack(stage.file, equals: data) else { throw FileSystemFailure(code: EIO) }
     }
 
     /// A new file where the volume has no exclusive rename: an exclusive create claims `name` and

@@ -61,6 +61,34 @@ struct FileSinkVolumeTests {
         }
     }
 
+    // Security review of 855447f: an overwrite there falls back to a plain rename, and the
+    // stage's private folder has no owners or modes on these volumes, so another user could
+    // change the staged bytes before the rename and the save reported success.
+    @Test(
+        "An overwrite whose staged bytes changed before the rename is reported as failed",
+        arguments: ScratchVolume.Format.allCases)
+    func overwriteWithChangedStageFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            try priorBytes.write(to: url)
+            let tampered = Data(repeating: 0x41, count: snapshot.bytes.count)
+            var changed = false
+            let fileSystem = POSIXFileSystem.interposing { stage in
+                guard let handle = try? FileHandle(forUpdating: stage) else { return }
+                changed = (try? handle.seek(toOffset: 0)) != nil && (try? handle.write(contentsOf: tampered)) != nil
+                try? handle.synchronize()
+                try? handle.close()
+            }
+            #expect(throws: SinkError.writeFailed(code: Int(EIO))) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+            }
+            try #require(changed, "control: the staged bytes were never changed")
+            // The published file may be someone else's bytes now: it is reported, not deleted.
+            #expect(FileManager.default.fileExists(atPath: url.path))
+            #expect(try Data(contentsOf: url) != snapshot.bytes)
+        }
+    }
+
     enum ConcurrentWrite: String, CaseIterable, Sendable {
         /// Another writer renames its own file over the claimed name.
         case replacesClaim
