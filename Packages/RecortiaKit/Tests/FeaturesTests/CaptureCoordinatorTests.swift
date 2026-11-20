@@ -256,6 +256,15 @@ struct CaptureCoordinatorTests {
         #expect(h.coordinator.lastSelectionWasClamped)
     }
 
+    @Test("The size label counts the device pixels the capture takes, edges snapped outward")
+    func sizeLabelMatchesSnappedCapture() {
+        let display = DisplayInfo(
+            id: 9, frame: Rect(x: 0, y: 0, width: 1000, height: 800), pointPixelScale: 2, fingerprint: "2x")
+        // At 2x, x 10.25 ... 20.25 covers device pixels 20 ... 41: 21 px, not 10 pt * 2.
+        let rect = Rect<DesktopSpace>(x: 10.25, y: 5, width: 10, height: 10)
+        #expect(RegionSelection.pixelSize(of: rect, on: display) == PixelSize(width: 21, height: 20))
+    }
+
     @Test("An empty selection keeps selecting instead of capturing")
     func emptySelectionIgnored() async {
         let h = CaptureHarness()
