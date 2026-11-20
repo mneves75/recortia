@@ -79,11 +79,15 @@ class TestsReportTests(unittest.TestCase):
         self.head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root, check=True,
                                    capture_output=True, text=True).stdout.strip()
 
-    def e2e_output(self, *, provenance_sha: str | None = "", languages: tuple[str, ...] = ("en", "pt-BR")) -> pathlib.Path:
-        """An E2E output directory as e2e.sh leaves it; provenance names HEAD unless told otherwise."""
+    def e2e_output(self, *, provenance_sha: str | None = "", languages: tuple[str, ...] = ("en", "pt-BR"),
+                   report: list[dict[str, object]] | None = None) -> pathlib.Path:
+        """An E2E output directory as e2e.sh leaves it: provenance names HEAD unless told otherwise,
+        and each report.json holds one passing scenario unless `report` replaces it."""
         run = pathlib.Path(tempfile.mkdtemp(dir=self.root / ".scratch"))
+        scenarios = [{"id": "editor", "passed": True, "screenshots": [], "assertions": []}] if report is None else report
         for language in languages:
             (run / language).mkdir()
+            (run / language / "report.json").write_text(json.dumps(scenarios))
             if provenance_sha is not None:
                 (run / language / "provenance.json").write_text(json.dumps({"git_sha": provenance_sha or self.head}))
         return run
@@ -228,6 +232,32 @@ class TestsReportTests(unittest.TestCase):
         log.write_text(f"e2e: commit {self.head} tree clean lang all only -\n" + english + portuguese
                        + f"e2e: end commit {self.head} tree clean\ne2e: output in {self.e2e_output()}\n")
         self.assertEqual("passed", self.suites()["e2e"]["status"])
+
+    def test_an_e2e_language_counts_only_with_a_matching_report(self) -> None:
+        log = self.root / ".scratch/logs/e2e-1.log"
+
+        def write(total: str, output: pathlib.Path) -> None:
+            summaries = "".join(f"e2e[{language}]: {total} scenarios passed, 0 screenshots (exit 0)\n"
+                                for language in ("en", "pt-BR"))
+            log.write_text(f"e2e: commit {self.head} tree clean lang all only -\n" + summaries
+                           + f"e2e: end commit {self.head} tree clean\ne2e: output in {output}\n")
+
+        missing = self.e2e_output()
+        for language in ("en", "pt-BR"):
+            (missing / language / "report.json").unlink()
+        two = {"id": "a", "passed": True}
+        for name, total, output in (
+            ("missing reports", "1/1", missing),
+            ("empty reports", "1/1", self.e2e_output(report=[])),
+            ("count mismatch", "1/1", self.e2e_output(report=[two, dict(two, id="b")])),
+            ("pass mismatch", "1/1", self.e2e_output(report=[dict(two, passed=False)])),
+        ):
+            with self.subTest(name):
+                write(total, output)
+                self.assertEqual("partial", self.suites()["e2e"]["status"])
+        with self.subTest("0/0"):
+            write("0/0", self.e2e_output(report=[]))
+            self.assertEqual("failed", self.suites()["e2e"]["status"])
 
     def test_e2e_provenance_must_name_the_runs_commit(self) -> None:
         log = self.root / ".scratch/logs/e2e-1.log"

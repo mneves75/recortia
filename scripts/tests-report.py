@@ -176,6 +176,8 @@ def e2e_status(text: str) -> str | None:
         match = re.search(r"(\d+)/(\d+) scenarios passed", line)
         if match is None or match.group(1) != match.group(2) or "(exit 0)" not in line:
             return "failed"
+        if match.group(2) == "0":
+            return "failed"  # a run of no scenarios proves nothing
     return "passed"
 
 
@@ -238,8 +240,25 @@ def e2e_is_full_suite(text: str) -> bool:
     headers = re.findall(r"(?m)^e2e: commit [0-9a-f]{40} tree \S+ lang (\S+) only (\S+)$", text)
     if not headers or headers[-1] != ("all", "-"):
         return False
-    languages = set(re.findall(r"(?m)^e2e\[([^\]]+)\]: \d+/\d+ scenarios passed", text))
-    return languages == {"en", "pt-BR"}
+    return e2e_reported_languages(text) == {"en", "pt-BR"}
+
+
+def e2e_reported_languages(run: str) -> set[str]:
+    """Languages whose summary line is backed by a nonempty report.json with the same counts."""
+    output = e2e_output_directory(run)
+    counted: set[str] = set()
+    for language, passed, total in re.findall(r"(?m)^e2e\[([^\]]+)\]: (\d+)/(\d+) scenarios passed", run):
+        if output is None:
+            break
+        try:
+            results = json.loads((output / language / "report.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(results, list) or not results or not all(isinstance(r, dict) for r in results):
+            continue
+        if len(results) == int(total) and sum(r.get("passed") is True for r in results) == int(passed):
+            counted.add(language)
+    return counted
 
 
 def commit() -> str:
