@@ -56,6 +56,7 @@ struct ScrollHUDView: View {
             Text("\(hud.acceptedFrames) frames · \(hud.outputHeight) pixels tall")
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("scroll.hud.progress")
             HStack {
                 Button("Cancel", action: onCancel)
                     .keyboardShortcut(.cancelAction)
