@@ -464,14 +464,18 @@ public final class EditorModel {
         }
     }
 
-    /// Side of a drawn handle square in view points (the canvas draws 8, or 10 with increased contrast).
-    static let handleSquareSide = 8.0
+    /// Side of the handle square the canvas draws, in view points; hit testing uses the same size.
+    public static func handleSquareSide(increasedContrast: Bool) -> Double { increasedContrast ? 10 : 8 }
+
+    /// The contrast mode the canvas last drew handles in, so a handle's hit area is the drawn square.
+    @ObservationIgnored public var handlesDrawnWithIncreasedContrast = false
 
     func handle(at p: Point<DocumentSpace>) -> (handle: EditorHandle, point: Point<DocumentSpace>)? {
         // A mask's handle grabs only on its drawn square: the wider hit radius around it could
         // start a resize from another object's visible pixels and uncover the secret.
         if case .mask = selection.first {
-            let half = viewport.documentLength(Self.handleSquareSide / 2)
+            let half = viewport.documentLength(
+                Self.handleSquareSide(increasedContrast: handlesDrawnWithIncreasedContrast) / 2)
             return selectionHandles.first { abs($0.point.x - p.x) <= half && abs($0.point.y - p.y) <= half }
         }
         let tolerance = viewport.documentLength(6)

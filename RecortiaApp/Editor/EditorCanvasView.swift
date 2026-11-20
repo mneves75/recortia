@@ -318,9 +318,10 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             NSColor.controlAccentColor.setStroke()
             path.stroke()
         }
+        model.handlesDrawnWithIncreasedContrast = increaseContrast
+        let size = CGFloat(EditorModel.handleSquareSide(increasedContrast: increaseContrast))
         for handle in model.selectionHandles {
             let center = viewport.viewPoint(handle.point)
-            let size: CGFloat = increaseContrast ? 10 : 8
             let rect = CGRect(x: center.x - size / 2, y: center.y - size / 2, width: size, height: size)
             let path =
                 handle.handle == .start || handle.handle == .end ? NSBezierPath(ovalIn: rect) : NSBezierPath(rect: rect)

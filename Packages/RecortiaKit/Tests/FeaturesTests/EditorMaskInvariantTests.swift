@@ -127,6 +127,26 @@ struct EditorMaskInvariantTests {
         #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
 
+    @Test(
+        "A mask handle grabs exactly on the square the canvas draws, in both contrast modes", arguments: [false, true])
+    func handleHitMatchesDrawnSquare(increasedContrast: Bool) throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.select(.mask(mask.id))
+        m.handlesDrawnWithIncreasedContrast = increasedContrast
+        let side = EditorModel.handleSquareSide(increasedContrast: increasedContrast)
+        #expect(side == (increasedContrast ? 10 : 8))
+        // 4.5 pt right of the right handle's center: inside the 10 pt square, outside the 8 pt one.
+        // Outside the square the press lands on the image, which carries the mask unresized.
+        h.drag((124.5, 110), (134.5, 110))
+        let width = try #require(m.document.masks.first).outputRect.width
+        #expect(width == (increasedContrast ? 30 : 20))
+    }
+
     @Test("A drag on a rectangle beside a mask moves the rectangle; the band never moves the mask")
     func bandYieldsToAnnotation() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
