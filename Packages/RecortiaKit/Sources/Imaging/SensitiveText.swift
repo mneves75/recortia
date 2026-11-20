@@ -300,7 +300,13 @@ public struct SensitiveTextScanner: Sendable {
     /// Vision's boxes hug the ink and anti-aliasing and descenders sit just outside them.
     static let outsetFraction = 0.15
 
-    public init() {}
+    /// Side of a fine-sweep tile in resampled pixels (Fosco's 2048 by default).
+    let fineTileSide: CGFloat
+
+    public init() { fineTileSide = 2048 }
+
+    /// For the tile-size experiment in the benchmark.
+    init(fineTileSide: CGFloat) { self.fineTileSide = fineTileSide }
 
     /// Regions of `image` that show e-mail addresses or phone numbers. `pixelsPerPoint` is the
     /// capture's backing scale. Throws `CancellationError` when cancelled and a recognition error
@@ -321,7 +327,7 @@ public struct SensitiveTextScanner: Sendable {
             matcher = .documents
         }
         let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
-        let jobs = TileLayout.standard(pixelsPerPoint: pixelsPerPoint).flatMap { layout in
+        let jobs = TileLayout.standard(pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide).flatMap { layout in
             tileRects(for: bounds.size, layout: layout).map { (rect: $0.intersection(bounds), layout: layout) }
         }.filter { !$0.rect.isEmpty }
         let recognizer = self.recognizer
@@ -596,10 +602,11 @@ struct TileLayout: Equatable, Sendable {
     /// with tiles overlapping by half so most text is read twice from different crops. The coarse
     /// one looks at the capture shrunk four times as much, for headline-sized text wider than a
     /// fine tile's overlap, and ignores anything smaller.
-    static func standard(pixelsPerPoint: Double) -> [TileLayout] {
+    static func standard(pixelsPerPoint: Double, fineTileSide: CGFloat = 2048) -> [TileLayout] {
         let density = max(CGFloat(pixelsPerPoint), 1)
         return [
-            TileLayout(scale: 2 / density, tileSide: 2048, horizontalOverlap: 1024, verticalOverlap: 192),
+            TileLayout(
+                scale: 2 / density, tileSide: fineTileSide, horizontalOverlap: fineTileSide / 2, verticalOverlap: 192),
             TileLayout(
                 scale: 0.5 / density, tileSide: 2880, horizontalOverlap: 1440, verticalOverlap: 384,
                 minimumTextHeight: 22),
