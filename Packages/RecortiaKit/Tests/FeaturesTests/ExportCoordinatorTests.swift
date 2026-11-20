@@ -456,7 +456,7 @@ struct ExportCoordinatorTests {
     // R2-D07 (program 2026-11): the step's consent check ran synchronously, then the upload ran in
     // a new task; a Settings change already queued on the main actor ran in between, and the
     // upload still made its authenticated lookups.
-    @Test("Consent renewed after the upload step's check but before its task runs sends no request")
+    @Test("Consent renewed after the upload step's check but before its task runs sends no request, silently")
     func consentRenewedBeforeTheUploadTaskRunsSendsNothing() async {
         let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
         let upload = RecordingUpload()
@@ -466,7 +466,7 @@ struct ExportCoordinatorTests {
         let consentBefore = h.settings.githubUploadConsentID
         var queued = false
         let session = h.session
-        _ = await h.coordinator.runAutomaticExports(
+        let outcomes = await h.coordinator.runAutomaticExports(
             plan, for: session,
             currentSession: {
                 // First called by the freshness check after the render, before the step's
@@ -482,6 +482,30 @@ struct ExportCoordinatorTests {
             })
         #expect(queued && h.settings.githubUploadConsentID != consentBefore, "control: consent was never renewed")
         #expect(upload.requests == 0, "a request was sent for consent that was no longer live")
+        // Revoking consent is the person's own action, not a failure to report.
+        #expect(outcomes == [.canceled])
+    }
+
+    @Test("A document that changes before the upload's first request still fails the upload visibly")
+    func documentChangedBeforeTheUploadTaskRunsFails() async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        let upload = RecordingUpload()
+        let h = ExportHarness(upload: upload)
+        h.settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true) }
+        let plan = h.coordinator.automaticExportPlan()
+        let session = h.session
+        let edited = TestFixtures.session()
+        var calls = 0
+        let outcomes = await h.coordinator.runAutomaticExports(
+            plan, for: session,
+            currentSession: {
+                // Current for the post-render freshness check, then another document.
+                calls += 1
+                return calls == 1 ? session : edited
+            })
+        #expect(calls > 1, "control: the upload never rechecked the document")
+        #expect(upload.requests == 0)
+        #expect(outcomes == [.failed(.upload(.staleDocument))])
     }
 
     @Test("Turning automatic save off while the copy renders still writes nothing")

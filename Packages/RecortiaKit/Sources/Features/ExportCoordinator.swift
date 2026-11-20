@@ -249,13 +249,15 @@ public final class ExportCoordinator {
                 }
                 // Rechecked by the uploader before each request: main-actor work queued before
                 // this task (a Settings change) runs before it starts.
+                let settings = self.settings
+                let consentHolds = { @MainActor @Sendable () -> Bool in
+                    settings.githubUploadConsentID == consentID
+                        && settings.preferences.githubUpload?.automatic == true
+                        && settings.preferences.githubUpload?.destination == destination
+                }
                 let isLive = { @MainActor @Sendable [weak self] () -> Bool in
                     guard let self else { return false }
-                    return self.operation?.cancelRequested == false
-                        && self.settings.githubUploadConsentID == consentID
-                        && self.settings.preferences.githubUpload?.automatic == true
-                        && self.settings.preferences.githubUpload?.destination == destination
-                        && isCurrent(snapshot)
+                    return self.operation?.cancelRequested == false && consentHolds() && isCurrent(snapshot)
                 }
                 let task = Task<URL, any Error> { [weak self] in
                     try await upload.upload(
@@ -271,7 +273,9 @@ public final class ExportCoordinator {
                 case .success(let url): completed = .uploaded(url)
                 case .failure(let error):
                     let failure = (error as? GitHubUploadFailure) ?? .completionUnknown
-                    if failure == .canceled {
+                    // Consent revoked before the image was sent is the person's own action: it
+                    // ends the upload silently, as a revocation before the step does.
+                    if failure == .canceled || (failure == .staleDocument && !consentHolds()) {
                         if state != .canceled { apply(.cancel) }
                         return finish(.canceled)
                     }
