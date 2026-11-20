@@ -157,10 +157,10 @@
     @MainActor
     final class RecordingQuitConfirmation {
         var answers: [Bool] = []
-        var questions: [Int] = []
+        var questions: [QuitDiscards] = []
 
-        func answer(_ count: Int) -> Bool {
-            questions.append(count)
+        func answer(_ discards: QuitDiscards) -> Bool {
+            questions.append(discards)
             return answers.isEmpty ? false : answers.removeFirst()
         }
     }

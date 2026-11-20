@@ -275,7 +275,9 @@
             harness.quit.answers = [false]
             context.check("declining keeps Recortia running", !app.shouldTerminate())
             context.check(
-                "Quit asks once about one edited image", harness.quit.questions == [1], "\(harness.quit.questions)")
+                "Quit asks once about one edited image",
+                harness.quit.questions == [QuitDiscards(editedImages: 1, scrollingReview: false)],
+                "\(harness.quit.questions)")
             context.check("declining keeps the edits", controller.model.isDirty && !controller.model.isClosed)
             harness.quit.answers = [true]
             context.check("confirming lets Recortia quit", app.shouldTerminate())

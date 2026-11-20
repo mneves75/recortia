@@ -113,6 +113,16 @@
         }
       }
     },
+    "A scrolling capture is waiting for review. Quitting discards it." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma captura com rolagem aguarda revisão. Sair a descarta."
+          }
+        }
+      }
+    },
     "A selection stays on the display where it started." : {
       "localizations" : {
         "en" : {
@@ -2587,6 +2597,16 @@
         }
       }
     },
+    "Quit and discard the scrolling capture?" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sair e descartar a captura com rolagem?"
+          }
+        }
+      }
+    },
     "Quit and discard your edits?" : {
       "localizations" : {
         "en" : {
@@ -3989,6 +4009,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A área com rolagem não está mais disponível, então a captura parou."
+          }
+        }
+      }
+    },
+    "The scrolling capture waiting for review is discarded too." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A captura com rolagem que aguarda revisão também é descartada."
           }
         }
       }

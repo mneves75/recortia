@@ -72,8 +72,8 @@ final class AppModel: AppActions {
     @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
     /// Open editors whose edits were never copied, saved, dragged, or pinned.
     @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
-    /// Asks whether to quit and discard those edits; the argument is how many editors have them.
-    @ObservationIgnored private let confirmQuit: @MainActor (Int) -> Bool
+    /// Asks whether to quit and discard what `QuitDiscards` describes.
+    @ObservationIgnored private let confirmQuit: @MainActor (QuitDiscards) -> Bool
     /// Normal termination (`applicationShouldTerminate` still confirms unexported edits).
     @ObservationIgnored private let requestTermination: @MainActor () -> Void
     /// Asks the person for the automatic-save folder; nil when they cancel.
@@ -87,7 +87,7 @@ final class AppModel: AppActions {
     init(
         settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry,
         showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
-        confirmQuit: @escaping @MainActor (Int) -> Bool = { MessagePresenter.confirmDiscardOnQuit(count: $0) },
+        confirmQuit: @escaping @MainActor (QuitDiscards) -> Bool = { MessagePresenter.confirmDiscardOnQuit($0) },
         requestTermination: @escaping @MainActor () -> Void = { NSApp.terminate(nil) },
         chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() }
     ) {
@@ -193,10 +193,12 @@ final class AppModel: AppActions {
     }
 
     /// Whether the app may terminate now (`applicationShouldTerminate`). Termination never asks
-    /// each editor's `windowShouldClose`, so unexported edits are confirmed here (FR-04).
+    /// each editor's `windowShouldClose` or the scrolling review's, so unexported edits and a
+    /// stitched capture still in review are confirmed here (FR-04, FR-10).
     func shouldTerminate() -> Bool {
-        let count = unexportedEditCount()
-        return count == 0 || confirmQuit(count)
+        let discards = QuitDiscards(
+            editedImages: unexportedEditCount(), scrollingReview: features?.scroll.state == .reviewing)
+        return discards.isEmpty || confirmQuit(discards)
     }
 
     /// The person closed Recortia's last window (FR-01). With "keep running in the menu bar" off
@@ -463,4 +465,13 @@ final class AppModel: AppActions {
             }
         }
     }
+}
+
+/// What quitting now would discard: editors whose edits were never exported, and a scrolling
+/// capture waiting in its review.
+struct QuitDiscards: Hashable {
+    var editedImages: Int
+    var scrollingReview: Bool
+
+    var isEmpty: Bool { editedImages == 0 && !scrollingReview }
 }
