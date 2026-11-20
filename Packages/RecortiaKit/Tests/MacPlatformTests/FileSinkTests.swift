@@ -703,6 +703,32 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
     }
 
+    // T1 security 1E: a new save on a mount with exclusive rename that ignores ownership staged
+    // the bytes in a folder anyone could change and published them unread, so bytes changed in
+    // place before the rename were reported as saved.
+    @Test("A new save on a volume that ignores ownership fails when its bytes change before they are verified")
+    func newSaveWithoutEnforcedOwnersIsReadBack() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        let tampered = Data(repeating: 0x41, count: snapshot.bytes.count)
+        var changed = false
+        let tamper: (URL) -> Void = { written in
+            guard let handle = try? FileHandle(forUpdating: written) else { return }
+            changed = (try? handle.seek(toOffset: 0)) != nil && (try? handle.write(contentsOf: tampered)) != nil
+            try? handle.close()
+        }
+        let fileSystem = POSIXFileSystem(
+            volumeTraits: { _ in VolumeTraits(exclusiveRename: true, swap: true, enforcesOwners: false) },
+            afterSync: tamper, afterClaimWrite: tamper)
+        #expect(throws: SinkError.leftover(name: "shot.png")) {
+            try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+        }
+        try #require(changed, "control: the bytes were never changed")
+        #expect(try Data(contentsOf: url) == tampered, "a file Recortia did not finish was removed")
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a stage was left behind")
+    }
+
     @Test("Overwriting a destination that has a second hard link replaces the name and keeps the other link")
     func hardLinkedDestinationIsReplaced() throws {
         let folder = try TestSupport.makeTemporaryDirectory()

@@ -18,9 +18,10 @@ import Foundation
 //
 // The folder is admitted by identity and bound once as a descriptor; every create, metadata read,
 // publish and removal is relative to it. The volume's capabilities choose the path before anything
-// is written. With exclusive rename, the bytes are staged in a private folder (0700, no ACL)
-// created inside it; the stage gets its final access just before one rename publishes it, after
-// its identity is checked. Without it, a new file is written straight into an exclusive claim. An
+// is written. With exclusive rename on a volume that enforces owners, the bytes are staged in a
+// private folder (0700, no ACL) created inside it; the stage gets its final access just before one
+// rename publishes it, after its identity is checked. Elsewhere a new file is written straight
+// into an exclusive claim and read back, since a stage there is not private. An
 // entry is removed only from the private folder: it is moved there by exclusive rename, checked,
 // and removed if it is Recortia's, or moved back; whatever cannot be moved back, and anything a
 // failed save leaves where there is no exclusive rename, is reported by name, never deleted.
@@ -261,10 +262,11 @@ struct VolumeTraits {
     private func saveName(
         _ data: Data, in directory: Int32, folder: URL, names: [String], overwrite: Bool
     ) throws(FileSystemFailure) -> String {
-        // The publication path is chosen before anything is written.
+        // The publication path is chosen before anything is written. A stage is private only where
+        // the volume enforces owners; elsewhere its bytes could change unseen before the rename.
         let volume = volumeTraits(directory)
-        guard volume.exclusiveRename else {
-            return try saveWithoutExclusiveRename(
+        guard volume.exclusiveRename, volume.enforcesOwners else {
+            return try saveDirectly(
                 data, in: directory, folder: folder, names: names, overwrite: overwrite, volume: volume)
         }
         return try withStage(data, in: directory, folder: folder, volume: volume) { stage throws(FileSystemFailure) in
@@ -299,9 +301,10 @@ struct VolumeTraits {
         return try result.get()
     }
 
-    /// exFAT, FAT32 and some network volumes: a new file is written straight into an exclusively
-    /// created name, with no stage at all; only replacing an existing file stages the bytes.
-    private func saveWithoutExclusiveRename(
+    /// Volumes without exclusive rename or enforced owners (exFAT, FAT32, some network volumes): a
+    /// new file is written straight into an exclusively created name and read back, with no stage
+    /// at all; only replacing an existing file stages the bytes.
+    private func saveDirectly(
         _ data: Data, in directory: Int32, folder: URL, names: [String], overwrite: Bool, volume: VolumeTraits
     ) throws(FileSystemFailure) -> String {
         for name in names {
