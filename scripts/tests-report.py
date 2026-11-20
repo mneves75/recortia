@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-"""Write tests.json from the real gate inventory, or check that the inventory still holds.
+"""Write the gate inventory to tests.json and the observed runs to an uncommitted report.
 
-A status file edited by hand is a claim without an instrument. So:
+A status file edited by hand is a claim without an instrument, and a status committed at commit X
+can never be true for X. So:
 
-* the inventory below is the single source, and `--check` proves each gate still exists, still has
-  its test, and is still invoked by a command line of its caller (a comment or an echo that names
-  the test runs nothing). A test file that nothing runs is a dead gate;
-* every observed status comes from a log that records the commit it ran at (`<suite>: commit <sha>`).
-  A verdict from another commit, or from a log that records none, is `stale`; an E2E run of one
-  language or of selected scenarios is `partial`, never the bilingual suite.
+* tests.json holds only the inventory: each suite, each gate's test scripts and the scripts that
+  invoke them. `--check` proves each gate still exists, still has its test, and is still invoked by
+  a command line of its caller (a comment or an echo that names the test runs nothing), and that
+  tests.json still records this inventory. A test file that nothing runs is a dead gate;
+* run statuses go to .scratch/tests-report.json, never committed. Each comes from a log that
+  records the commit it ran at (`<suite>: commit <sha>`). A verdict from another commit, or from a
+  log that records none, is `stale`; an E2E run of one language or of selected scenarios is
+  `partial`, never the bilingual suite.
 
 Usage:
-  scripts/tests-report.py            write tests.json for the current tree
-  scripts/tests-report.py --print    print tests.json without writing
-  scripts/tests-report.py --check    exit 1 when the inventory names a gate that no longer holds
+  scripts/tests-report.py            write tests.json and .scratch/tests-report.json
+  scripts/tests-report.py --print    print the run report without writing
+  scripts/tests-report.py --check    exit 1 when the inventory no longer holds
 """
 
 from __future__ import annotations
@@ -266,15 +269,17 @@ def inventory_problems() -> list[str]:
     return problems
 
 
-def build() -> dict[str, object]:
-    head = commit()
+REPORT = ROOT / ".scratch/tests-report.json"
+
+
+def inventory() -> dict[str, object]:
+    """What tests.json commits: true for every commit that has this tree's scripts."""
     return {
-        "schema_version": 1,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "commit": head,
-        "toolchain": toolchain(),
-        "status_source": "local evidence files; CI results are separate and not recorded here",
-        "suites": [observe(suite, head) for suite in SUITES],
+        "schema_version": 2,
+        "suites": [
+            {"id": suite["id"], "command": suite["command"], "evidence": suite["evidence"]}
+            for suite in SUITES
+        ],
         "gates": [
             {
                 "id": gate["id"],
@@ -287,8 +292,22 @@ def build() -> dict[str, object]:
     }
 
 
-def staleness_problems(fresh: dict[str, object]) -> list[str]:
-    """Fail when the committed tests.json no longer describes this tree or these results."""
+def report() -> dict[str, object]:
+    """The observed runs for HEAD; written under .scratch, never committed."""
+    head = commit()
+    return {
+        "schema_version": 2,
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "commit": head,
+        "toolchain": toolchain(),
+        "status_source": "local evidence files; CI results are separate and not recorded here",
+        "suites": [observe(suite, head) for suite in SUITES],
+        "gates": inventory()["gates"],
+    }
+
+
+def drift_problems(fresh: dict[str, object]) -> list[str]:
+    """Fail when the committed tests.json no longer describes this tree's inventory."""
     path = ROOT / "tests.json"
     if not path.exists():
         return ["tests.json is missing; run scripts/tests-report.py"]
@@ -296,23 +315,15 @@ def staleness_problems(fresh: dict[str, object]) -> list[str]:
         recorded = json.loads(path.read_text())
     except json.JSONDecodeError as error:
         return [f"tests.json is not valid JSON: {error}"]
+    if not isinstance(recorded, dict):
+        return ["tests.json is not an object; regenerate it"]
     problems: list[str] = []
-    fresh_gates = fresh["gates"]
-    if recorded.get("gates") != fresh_gates:
+    if recorded.get("gates") != fresh["gates"]:
         problems.append("tests.json records a different gate inventory; regenerate it")
-    recorded_suites = {s.get("id"): s for s in recorded.get("suites", []) if isinstance(s, dict)}
-    for suite in fresh["suites"]:  # type: ignore[union-attr]
-        known = recorded_suites.get(suite["id"])
-        if known is None:
-            problems.append(f"tests.json is missing suite {suite['id']}")
-            continue
-        if known.get("command") != suite["command"]:
-            problems.append(f"tests.json records another command for {suite['id']}")
-        if suite["status"] in ("passed", "failed") and known.get("status") != suite["status"]:
-            problems.append(
-                f"tests.json says {suite['id']} is {known.get('status')}, "
-                f"the evidence says {suite['status']}"
-            )
+    if recorded.get("suites") != fresh["suites"]:
+        problems.append("tests.json records a different suite inventory; regenerate it")
+    if recorded != fresh and not problems:
+        problems.append("tests.json records more than the inventory; regenerate it")
     return problems
 
 
@@ -327,25 +338,25 @@ def main() -> int:
         for problem in problems:
             print(f"tests-report: {problem}", file=sys.stderr)
         return 1
-    document = build()
     if arguments.check:
-        problems.extend(staleness_problems(document))
+        problems = drift_problems(inventory())
         if problems:
             for problem in problems:
                 print(f"tests-report: {problem}", file=sys.stderr)
             return 1
-    rendered = json.dumps(document, indent=2, sort_keys=False) + "\n"
-    if arguments.print_only:
-        sys.stdout.write(rendered)
-        return 0
-    if arguments.check:
         print(
             f"tests-report: {len(GATES)} gates, {len(SUITES)} suites, "
             f"{sum(len(g['tests']) for g in GATES)} tests, every test invoked"  # type: ignore[arg-type]
         )
         return 0
-    (ROOT / "tests.json").write_text(rendered)
-    print(f"tests-report: wrote tests.json at {document['commit']}")
+    observed = json.dumps(report(), indent=2) + "\n"
+    if arguments.print_only:
+        sys.stdout.write(observed)
+        return 0
+    (ROOT / "tests.json").write_text(json.dumps(inventory(), indent=2) + "\n")
+    REPORT.parent.mkdir(exist_ok=True)
+    REPORT.write_text(observed)
+    print(f"tests-report: wrote tests.json and {REPORT.relative_to(ROOT)}")
     return 0
 
 

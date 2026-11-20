@@ -1,31 +1,20 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-11-20T02:16:28Z",
-  "commit": "a01be8df06d18d89cdd1f2aee469f2584aa55e98",
-  "toolchain": {
-    "xcode": "27.2 (27B52)",
-    "channel": "stable",
-    "stable_baseline": "27.2 (27B52)"
-  },
-  "status_source": "local evidence files; CI results are separate and not recorded here",
+  "schema_version": 2,
   "suites": [
     {
       "id": "check",
       "command": "./init.sh check --unsigned",
-      "status": "not_run",
-      "evidence": null
+      "evidence": ".scratch/logs/check-*.log"
     },
     {
       "id": "e2e",
       "command": "./init.sh e2e --lang all",
-      "status": "not_run",
-      "evidence": null
+      "evidence": ".scratch/logs/e2e-*.log"
     },
     {
       "id": "release-dry-run",
       "command": "scripts/release.sh --dry-run",
-      "status": "not_run",
-      "evidence": null
+      "evidence": ".scratch/logs/release-*.log"
     }
   ],
   "gates": [

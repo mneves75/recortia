@@ -5,7 +5,7 @@ Each test builds a throwaway tree that satisfies the inventory, then removes exa
 inventory claims — a test file, a caller's reference to that test, or the test's presence in the
 inventory — and requires a non-zero exit naming the break. A pass here means tests.json cannot go
 quietly wrong in the three ways that matter: a gate without its test, a test nothing runs, and a
-status written from an evidence file that shows a failure.
+committed inventory that no longer matches. Run statuses are checked in the uncommitted report.
 """
 
 import json
@@ -77,7 +77,7 @@ class TestsReportTests(unittest.TestCase):
 
     def suites(self) -> dict[str, dict[str, object]]:
         self.assertEqual(0, self.run_report().returncode)
-        document = json.loads((self.root / "tests.json").read_text())
+        document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         return {suite["id"]: suite for suite in document["suites"]}
 
     def run_report(self, *arguments: str) -> subprocess.CompletedProcess[str]:
@@ -164,14 +164,14 @@ class TestsReportTests(unittest.TestCase):
         log = self.root / ".scratch/logs/check-1.log"
         log.write_text(f"check: commit {self.head}\n== package tests\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
-        document = json.loads((self.root / "tests.json").read_text())
+        document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
         self.assertEqual("passed", by_id["check"]["status"])
         self.assertEqual(".scratch/logs/check-1.log", by_id["check"]["evidence"])
         self.assertEqual("not_run", by_id["e2e"]["status"])
         log.write_text(f"check: commit {self.head}\nFAILED (failures=1)\n")
         self.assertEqual(0, self.run_report().returncode)
-        document = json.loads((self.root / "tests.json").read_text())
+        document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
         self.assertEqual("failed", by_id["check"]["status"], "a failed log must not read as passed")
 
@@ -183,26 +183,46 @@ class TestsReportTests(unittest.TestCase):
         log.write_text("== package tests\n")
         os.utime(log, (time.time() - 3600, time.time() - 3600))
         self.assertEqual(0, self.run_report().returncode)
-        document = json.loads((self.root / "tests.json").read_text())
+        document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
         self.assertEqual("incomplete", by_id["check"]["status"],
                          "a log with no verdict must not be reported as a result")
 
 
-    def test_stale_recorded_status_is_reported(self) -> None:
+    def test_committed_inventory_carries_no_run_status(self) -> None:
+        # A status committed at commit X can never be true for X, so only the report holds runs.
+        log = self.root / ".scratch/logs/check-1.log"
+        log.write_text(f"check: commit {self.head}\ncheck: all gates passed\n")
+        self.assertEqual(0, self.run_report().returncode)
+        inventory = json.loads((self.root / "tests.json").read_text())
+        self.assertEqual({"schema_version", "suites", "gates"}, set(inventory))
+        for suite in inventory["suites"]:
+            self.assertEqual({"id", "command", "evidence"}, set(suite))
+        self.assertEqual("passed", self.suites()["check"]["status"])
+
+    def test_check_validates_the_inventory_not_the_runs(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
         log.write_text(f"check: commit {self.head}\ncheck: all gates passed\n")
         self.assertEqual(0, self.run_report().returncode)
         log.write_text(f"check: commit {self.head}\nFAILED (failures=1)\n")
         result = self.run_report("--check")
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_a_recorded_suite_inventory_that_drifted_is_reported(self) -> None:
+        self.assertEqual(0, self.run_report().returncode)
+        path = self.root / "tests.json"
+        document = json.loads(path.read_text())
+        document["suites"][0]["command"] = "./init.sh check"
+        path.write_text(json.dumps(document))
+        result = self.run_report("--check")
         self.assertEqual(1, result.returncode)
-        self.assertIn("tests.json says check is passed", result.stderr)
+        self.assertIn("different suite inventory", result.stderr)
 
     def test_a_later_failure_is_not_hidden_by_an_earlier_pass(self) -> None:
         log = self.root / ".scratch/logs/check-1.log"
         log.write_text(f"check: commit {self.head}\ncheck: all gates passed\nFAILED (failures=1)\n")
         self.assertEqual(0, self.run_report().returncode)
-        document = json.loads((self.root / "tests.json").read_text())
+        document = json.loads((self.root / ".scratch/tests-report.json").read_text())
         by_id = {suite["id"]: suite for suite in document["suites"]}
         self.assertEqual("failed", by_id["check"]["status"])
 
