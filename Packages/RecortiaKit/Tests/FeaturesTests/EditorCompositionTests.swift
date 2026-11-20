@@ -248,4 +248,17 @@ struct EditorCompositionTests {
         m.undo()
         #expect(m.document.crop != nil && m.document.resizeScale == 1)
     }
+
+    @Test("A crop with a negative span is refused without an undo step, even when it snaps to whole pixels")
+    func negativeCropIsRefused() {
+        let h = EditorHarness(session: EditorFixtures.session(width: 100, height: 100))
+        let m = h.model
+        let before = m.document
+        // Outward snapping would turn this into a 1 × 10 crop; SPEC.md §7 rejects negative spans.
+        m.setCrop(Rect(x: 10.75, y: 20, width: -0.5, height: 10))
+        m.setCrop(Rect(x: 10, y: 20.75, width: 10, height: -0.5))
+        #expect(m.document == before)
+        #expect(m.session.undoCount == 0)
+        #expect(!m.canUndo)
+    }
 }
