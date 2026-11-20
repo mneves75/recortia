@@ -75,15 +75,14 @@ struct RenderRaster {
     mutating func fill(_ rect: PixelRect, with color: RGBA) {
         guard let clipped = rect.clipped(to: bounds) else { return }
         let a = Int(color.a)
-        let rgb = [color.r, color.g, color.b].map { UInt32((Int($0) * a + 127) / 255) }
-        // Read as little-endian, the bytes r, g, b, a put r lowest.
-        let pixel = (rgb[0] | rgb[1] << 8 | rgb[2] << 16 | UInt32(color.a) << 24).littleEndian
+        let pixel = [color.r, color.g, color.b].map { UInt8((Int($0) * a + 127) / 255) } + [color.a]
+        var row: [UInt8] = []
+        row.reserveCapacity(clipped.width * 4)
+        for _ in 0..<clipped.width { row.append(contentsOf: pixel) }
         let rowBytes = width * 4
-        var buffer = bytes.mutableBytes
         for y in clipped.y..<clipped.maxY {
-            let start = y * rowBytes + clipped.x * 4
-            var row = buffer.extracting(start..<(start + clipped.width * 4))
-            row.storeBytes(repeating: pixel, count: clipped.width, as: UInt32.self)
+            let start = bytes.startIndex + y * rowBytes + clipped.x * 4
+            bytes.replaceSubrange(start..<(start + row.count), with: row)
         }
     }
 
