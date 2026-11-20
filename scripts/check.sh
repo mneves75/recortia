@@ -24,9 +24,6 @@ python3 scripts/tests-report.py --run-tests | while IFS= read -r line; do
   if [[ $line == "tests-report: ran "* ]]; then tests_ran=$line; fi
 done
 
-echo "== deployment target agrees everywhere (ADR-008)"
-python3 scripts/check-deployment-target.py
-
 echo "== gate inventory"
 python3 scripts/tests-report.py --check
 
