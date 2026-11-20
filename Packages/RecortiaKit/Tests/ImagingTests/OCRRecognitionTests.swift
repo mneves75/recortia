@@ -150,13 +150,8 @@ struct OCRRecognitionTests {
         let supported = await recognizer.supportedLanguages()
         print("OCR-01 supported recognition languages: \(supported.map(\.maximalIdentifier))")
         #expect(!supported.isEmpty)
-        let availability = await recognizer.availability(of: [Self.english, Self.portuguese])
-        print(
-            "OCR-01 availability available=\(availability.available.map(\.maximalIdentifier)) unavailable=\(availability.unavailable.map(\.maximalIdentifier))"
-        )
-        #expect(availability.available.count + availability.unavailable.count == 2)
-        #expect(
-            availability.unavailable.isEmpty, "this host lacks \(availability.unavailable.map(\.maximalIdentifier))")
+        let unavailable = [Self.english, Self.portuguese].filter { TextRecognizer.match($0, in: supported) == nil }
+        #expect(unavailable.isEmpty, "this host lacks \(unavailable.map(\.maximalIdentifier))")
 
         let bogus = Locale.Language(identifier: "tlh-Latn-001")
         let image = try TextCorpus.blankImage()

@@ -77,18 +77,18 @@
         }
       }
     },
-    "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them." : {
+    "%lld open images have changes that were not copied or saved. Quitting discards them." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+            "value" : "%lld open images have changes that were not copied or saved. Quitting discards them."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld imagens abertas têm alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+            "value" : "%lld imagens abertas têm alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
           }
         }
       }
@@ -359,18 +359,18 @@
         }
       }
     },
-    "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them." : {
+    "An open image has changes that were not copied or saved. Quitting discards them." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+            "value" : "An open image has changes that were not copied or saved. Quitting discards them."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma imagem aberta tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+            "value" : "Uma imagem aberta tem alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
           }
         }
       }
@@ -1599,23 +1599,6 @@
         }
       }
     },
-    "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tudo acontece neste Mac. Capturas e textos reconhecidos ficam na memória e nunca são enviados."
-          }
-        }
-      }
-    },
     "Exactly as recognized" : {
       "localizations" : {
         "en" : {
@@ -2162,23 +2145,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indisponível nesta versão."
-          }
-        }
-      }
-    },
-    "Nothing is saved or copied until you choose Copy, Save, or drag an image out." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing is saved or copied until you choose Copy, Save, or drag an image out."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nada é salvo ou copiado até você escolher Copiar, Salvar ou arrastar uma imagem para fora."
           }
         }
       }
@@ -3211,23 +3177,6 @@
         }
       }
     },
-    "Screenshots, edits, and recognized text exist only in memory while you work. Recortia keeps no screenshot history and uploads nothing." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Screenshots, edits, and recognized text exist only in memory while you work. Recortia keeps no screenshot history and uploads nothing."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Capturas, edições e textos reconhecidos existem apenas na memória enquanto você trabalha. O Recortia não guarda histórico de capturas e não envia nada."
-          }
-        }
-      }
-    },
     "Scroll automatically" : {
       "localizations" : {
         "en" : {
@@ -4023,12 +3972,44 @@
         }
       }
     },
+    "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O salvamento não terminou e deixou “%@” na pasta. Verifique-o e apague-o se não precisar dele."
+          }
+        }
+      }
+    },
     "The save folder is unavailable, so automatic saves fail. Choose another folder." : {
       "localizations" : {
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "A pasta de salvamento está indisponível, então os salvamentos automáticos falham. Escolha outra pasta."
+          }
+        }
+      }
+    },
+    "The saved GitHub token isn't valid. Replace it in Settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The saved GitHub token isn't valid. Replace it in Settings."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O token do GitHub salvo não é válido. Substitua-o nos Ajustes."
           }
         }
       }

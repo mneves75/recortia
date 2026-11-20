@@ -35,6 +35,9 @@
             context.check("the failed canvas remains opaque", pixel.a == 255)
             context.check(
                 "layout failure exposes the existing preview error", controller.model.notice == .previewFailed)
+            context.check(
+                "a canvas that could not draw refuses exports until it draws (NEW-01)",
+                !controller.model.isPreviewReady)
             if let root = controller.contentRoot { context.snapshot(root, shot: "layout-failure") }
         }
 

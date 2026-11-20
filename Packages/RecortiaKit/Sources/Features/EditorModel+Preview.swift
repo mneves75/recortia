@@ -49,6 +49,20 @@ extension EditorModel {
         return baseImage
     }
 
+    /// False while the render of what the canvas displays failed for the current state: the canvas
+    /// then shows older or no pixels instead of what an export would produce, so exports and pins
+    /// are refused (R2-D12). The editing view also needs its native draw of the current state not
+    /// to have failed (NEW-01). A render still on its way counts as ready, as it always has. Undo
+    /// back to the installed render is ready again, and so is switching Output Preview off over a
+    /// base that rendered: each shows a successful render of what it displays.
+    ///
+    /// Readiness is a consistency rule, not a leak barrier: export bytes always come from the
+    /// sanitized document, so a save that passed the recheck before a failure writes correct bytes.
+    public var isPreviewReady: Bool {
+        if showsOutputPreview { return failedOutputKey != currentOutputKey }
+        return failedBaseKey != currentBaseKey && failedCanvasDraw != currentOutputKey
+    }
+
     public var isOutputPreviewCurrent: Bool { outputPreview != nil && installedOutputKey == currentOutputKey }
 
     func scheduleBaseRender() {
@@ -79,6 +93,8 @@ extension EditorModel {
                 installedBaseKey = key
                 failedBaseKey = nil
             case .failure:
+                // Only a failure of the visible render touches an offered drag (NEW-02).
+                if !showsOutputPreview { invalidateOfferedDrag() }
                 failedBaseKey = key
                 post(.previewFailed)
             }
@@ -98,6 +114,11 @@ extension EditorModel {
             outputPreview = nil
             installedOutputKey = nil
             failedOutputKey = nil
+            // The editing view is back: retry its failed base once, without a document edit (NEW-03).
+            if failedBaseKey == currentBaseKey {
+                failedBaseKey = nil
+                scheduleBaseRender()
+            }
         }
     }
 
@@ -132,6 +153,7 @@ extension EditorModel {
                 installedOutputKey = key
                 failedOutputKey = nil
             case .failure:
+                invalidateOfferedDrag()
                 failedOutputKey = key
                 post(.previewFailed)
             }
@@ -139,6 +161,13 @@ extension EditorModel {
             droppedResultCount += 1
         }
         scheduleOutputRender()
+    }
+
+    /// The visible render of the current state failed: an offered drag of it must not write either
+    /// (R2-D12a). Revoked before the failure is published; a receiver that already claimed the
+    /// lease may finish, as with any revocation.
+    private func invalidateOfferedDrag() {
+        environment.export.invalidatePendingDrag(documentID: session.document.id)
     }
 
     /// Called whenever the privacy epoch changed: every derivative of the old epoch is stale.

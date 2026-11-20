@@ -17,6 +17,7 @@ candidate is recorded.
 
 - Full gate: `./init.sh check --unsigned` (doctor, E2E-isolation and parsed Release-entitlement regression controls, deployment-target agreement (ADR-008), gate inventory, strict `swift format lint`, generated-project freshness,
   all package tests, Debug build, pt-BR coverage of every extracted string, E2E target build); drop `--unsigned` when the signing identity is available.
+- Release check (hosted CI): `scripts/check-release-build.sh` (doctor `--release`, unsigned Release builds of Recortia and RecortiaE2E, scans for test-only code and the E2E runner).
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
 - End-to-end: `./init.sh e2e --lang all` runs the doctor, then the DEBUG scenario runner
   (`-RecortiaE2E <dir>`) through the real app, and writes screenshots, `report.json` and

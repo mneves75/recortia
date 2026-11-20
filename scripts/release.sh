@@ -15,12 +15,40 @@ export DEVELOPER_DIR
 # Anything but no argument or exactly --dry-run is refused: a misspelt dry run must never select
 # the real release path.
 dry_run=0
+mode=release
 if (( $# == 1 )) && [[ "$1" == "--dry-run" ]]; then
   dry_run=1
+  mode=dry-run
 elif (( $# != 0 )); then
   echo "release: usage: scripts/release.sh [--dry-run]" >&2
   exit 2
 fi
+# The run header: scripts/tests-report.py reads one run from here; the commit follows preflight.
+echo "release: run mode $mode"
+
+# Every exit after this point ends with one verdict scripts/tests-report.py reads, printed after
+# cleanup: success only when the last step set `completed` and the checkout was removed.
+src=""
+completed=0
+source scripts/lib/run-identity.sh
+finish() {
+  local exit_status=$?
+  if [[ -n "$src" ]] && ! git -C "$root" worktree remove --force "$src"; then
+    echo "release: cleanup failed: could not remove the checkout $src" >&2
+    (( exit_status != 0 )) || exit_status=1
+  fi
+  (( exit_status != 0 || completed )) || exit_status=1
+  if (( exit_status != 0 )); then
+    echo "release: failed (exit $exit_status)" >&2
+  else
+    echo "release: end $(run_identity)"
+    if (( dry_run )); then echo "release: dry run complete ($label, manifest $out/manifest.txt)"
+    else echo "release: complete ($label, manifest $out/manifest.txt)"
+    fi
+  fi
+  exit $exit_status
+}
+trap finish EXIT
 
 # Development mode cannot qualify an archive, including a release-pipeline dry run.
 scripts/doctor.sh --release
@@ -32,6 +60,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 source_commit=$(git rev-parse HEAD)
+echo "release: $(run_identity)"
 version=$(git show "${source_commit}:project.yml" | sed -n 's/^ *MARKETING_VERSION: *//p')
 build=$(git show "${source_commit}:project.yml" | sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p')
 if [[ ! "$version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' || ! "$build" =~ '^[0-9]+$' ]]; then
@@ -62,7 +91,6 @@ git worktree prune
 # ignored or cached in the working tree can reach the signed binary.
 src=$out/src
 git worktree add --quiet --detach "$src" "$source_commit"
-trap 'git -C "$root" worktree remove --force "$src" 2>/dev/null || true' EXIT
 
 gate="skipped (dry run)"
 if (( ! dry_run )); then
@@ -189,3 +217,4 @@ PY
   echo "sha256: $sha"
 } > "$out/manifest.txt"
 cat "$out/manifest.txt"
+completed=1

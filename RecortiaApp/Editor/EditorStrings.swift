@@ -268,6 +268,11 @@ enum EditorStrings {
             String(localized: "Nothing was exported: the image changed meanwhile. Try again.", table: "Editor")
         case .system(let code):
             String(localized: "Nothing was exported: the system reported error \(code).", table: "Editor")
+        case .leftover(let name):
+            String(
+                localized:
+                    "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it.",
+                table: "Editor")
         }
     }
 }

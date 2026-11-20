@@ -7,8 +7,10 @@ import Observation
 public enum ExportAction: Hashable, Sendable {
     /// Copy Image: always a sanitized PNG only (FR-07).
     case copy
-    /// Save to a user-chosen URL; `overwriteConfirmed` only after the user confirmed replacing a file.
-    case save(to: URL, overwriteConfirmed: Bool)
+    /// Save to a user-chosen URL in the format its save panel named, so the bytes match the
+    /// extension even if the preference changed meanwhile; `overwriteConfirmed` only after the user
+    /// confirmed replacing a file.
+    case save(to: URL, format: ExportFormat, overwriteConfirmed: Bool)
     /// Save with a collision-free name into a previously authorized folder.
     case saveToFolder(URL)
     case drag
@@ -86,7 +88,6 @@ enum AutomaticStepCheck: Hashable, Sendable {
 @Observable
 public final class ExportCoordinator {
     public private(set) var state: ExportState?
-    private(set) var lastOutcome: ExportOutcome?
     private var operation: Operation?
     private var automaticBatch: Operation?
 
@@ -132,6 +133,9 @@ public final class ExportCoordinator {
     }
 
     public var isBusy: Bool { operation != nil }
+
+    /// Whether the running export belongs to `documentID`; each editor shows and cancels only its own.
+    public func isBusy(documentID: DocumentID) -> Bool { operation?.documentID == documentID }
 
     /// Exports `session` through one sink. `currentSession` returns the live session (nil once
     /// its editor closed) and is consulted after the snapshot, before anything is committed.
@@ -206,7 +210,7 @@ public final class ExportCoordinator {
         let task = Task<ShareSnapshot, any Error> { try await makeSnapshot(options, date) }
         snapshotTask = task
         let result = await task.result
-        if operation?.cancelRequested == true { return finish(.canceled) }
+        if operation?.cancelRequested == true { return .canceled }
 
         let snapshot: ShareSnapshot
         switch result {
@@ -223,7 +227,7 @@ public final class ExportCoordinator {
         case .allowed: break
         case .revoked:
             apply(.cancel)
-            return finish(.canceled)
+            return .canceled
         case .failed(let failure): return fail(failure)
         }
 
@@ -234,7 +238,7 @@ public final class ExportCoordinator {
                 apply(.commit)
                 try clipboard.write(snapshot)
                 completed = .copied
-            case .save(let url, let overwrite):
+            case .save(let url, _, let overwrite):
                 apply(.commit)
                 completed = .saved(try await files.save(snapshot, to: url, overwrite: overwrite))
             case .saveToFolder(let folder):
@@ -245,18 +249,25 @@ public final class ExportCoordinator {
                 // No request of any kind (lookups included) for consent that is no longer live.
                 guard settings.githubUploadConsentID == consentID else {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
+                }
+                // Rechecked by the uploader before each request: main-actor work queued before
+                // this task (a Settings change) runs before it starts.
+                let settings = self.settings
+                let consentHolds = { @MainActor @Sendable () -> Bool in
+                    settings.githubUploadConsentID == consentID
+                        && settings.preferences.githubUpload?.automatic == true
+                        && settings.preferences.githubUpload?.destination == destination
+                }
+                let isLive = { @MainActor @Sendable [weak self] () -> Bool in
+                    guard let self else { return false }
+                    return self.operation?.cancelRequested == false && consentHolds() && isCurrent(snapshot)
                 }
                 let task = Task<URL, any Error> { [weak self] in
                     try await upload.upload(
-                        snapshot, to: destination, intent: intent,
+                        snapshot, to: destination, intent: intent, isLive: isLive,
                         isCurrent: { [weak self] in
-                            guard let self, self.operation?.cancelRequested == false,
-                                self.settings.githubUploadConsentID == consentID,
-                                self.settings.preferences.githubUpload?.automatic == true,
-                                self.settings.preferences.githubUpload?.destination == destination,
-                                isCurrent(snapshot)
-                            else { return false }
+                            guard let self, isLive() else { return false }
                             self.apply(.commit)
                             return true
                         })
@@ -266,9 +277,13 @@ public final class ExportCoordinator {
                 case .success(let url): completed = .uploaded(url)
                 case .failure(let error):
                     let failure = (error as? GitHubUploadFailure) ?? .completionUnknown
-                    if failure == .canceled {
+                    // Consent revoked before the image request started is the person's own
+                    // action: any failure then (a lookup's 403 or timeout included) ends the upload
+                    // silently, as a revocation before the step does. Once the image request has
+                    // started (`.committing`), its failed or unknown result is reported.
+                    if failure == .canceled || (!consentHolds() && state != .committing) {
                         if state != .canceled { apply(.cancel) }
-                        return finish(.canceled)
+                        return .canceled
                     }
                     return fail(.upload(failure))
                 }
@@ -295,21 +310,21 @@ public final class ExportCoordinator {
                     completed = .dragged
                 } else if operation?.cancelRequested == true {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
                 } else if lease.isRevoked || delivery == .delivered {
                     // Revoked before the write, or a sink that reported delivery without it.
                     return fail(.staleDocument)
                 } else {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
                 }
             }
             if operation?.cancelRequested == true {
                 apply(.cancel)
-                return finish(.alreadyCompleted(completed))
+                return .alreadyCompleted(completed)
             }
             apply(.committed)
-            return finish(completed)
+            return completed
         } catch {
             return fail(Self.failure(for: error))
         }
@@ -434,21 +449,20 @@ public final class ExportCoordinator {
 
     public func exportOptions(for action: ExportAction) -> ExportOptions {
         var options = settings.preferences.exportOptions
-        if action == .copy { options.format = .png }
+        switch action {
+        case .copy: options.format = .png
+        case .save(_, let format, _): options.format = format
+        case .saveToFolder, .drag, .upload: break
+        }
         return options
     }
 
     // MARK: Helpers
 
     private func fail(_ failure: ExportFailure) -> ExportOutcome {
-        if state == .canceled { return finish(.canceled) }
+        if state == .canceled { return .canceled }
         apply(.fail(failure))
-        return finish(.failed(failure))
-    }
-
-    private func finish(_ outcome: ExportOutcome) -> ExportOutcome {
-        lastOutcome = outcome
-        return outcome
+        return .failed(failure)
     }
 
     private func apply(_ event: ExportEvent) {
@@ -468,6 +482,7 @@ public final class ExportCoordinator {
         case .diskFull: .diskFull
         case .volumeUnavailable: .volumeUnavailable
         case .writeFailed(let code): .system(code: code)
+        case .leftover(let name): .leftover(name: name)
         }
     }
 }

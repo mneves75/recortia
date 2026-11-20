@@ -164,17 +164,18 @@ struct SecureMaskTests {
 
         var session = DocumentSession(document: doc)
         try session.perform("Seed") { $0.annotations.append(arrow(1)) }
+        let seeded = session.document
         session.undo()
         let before = session.document
         let identity = session.requestIdentity()
-        let redo = session.redoLabel
         #expect(throws: DocumentError.unmappableTransform) { try session.addSecureMask(covering: rect) }
         #expect(session.document == before)
         #expect(session.revision == identity.revision)
         #expect(session.privacyEpoch == identity.privacyEpoch)
         #expect(session.document.id == identity.documentID)
         #expect(session.undoCount == 0)
-        #expect(session.redoLabel == redo && session.canRedo)
+        session.redo()
+        #expect(session.document == seeded, "the refused mask keeps the redo path")
 
         // A finite inverse alone does not require refusal when this layer misses the mask.
         #expect(try doc.sourceRegions(for: Rect(x: 1e303, y: 0, width: 1e304, height: 20)).isEmpty)

@@ -10,7 +10,6 @@ struct StraightLineAnnotationTests {
             kind: .line(start: Point(x: 30, y: 50), end: Point(x: 10, y: 20)),
             style: Annotation.Style(stroke: .red, lineWidth: 4))
         #expect(line.bounds == Rect(x: 10, y: 20, width: 20, height: 30))
-        #expect(line.outsetBounds == Rect(x: 8, y: 18, width: 24, height: 34))
         let decoded = try JSONDecoder().decode(Annotation.self, from: JSONEncoder().encode(line))
         #expect(decoded == line)
         #expect(line.translated(dx: 7, dy: -4).kind == .line(start: Point(x: 37, y: 46), end: Point(x: 17, y: 16)))

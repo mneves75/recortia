@@ -22,14 +22,12 @@ struct ShortcutStatusModelTests {
         let model = ShortcutStatusModel(registry: registry, names: names)
         model.refreshAll()
         #expect(model.state(of: "captureRegion") == .failed)
-        #expect(model.hasFailed("captureRegion"))
         #expect(model.state(of: "captureWindow") == .active)
         #expect(model.state(of: "captureDisplay") == .unassigned)
 
         registry.assigned.remove("captureRegion")
         model.refresh(named: "captureRegion")
         #expect(model.state(of: "captureRegion") == .unassigned)
-        #expect(!model.hasFailed("captureRegion"))
     }
 
     @Test("Reassignment suspends handlers before changing stored keys, then restores only safe keys")

@@ -282,6 +282,26 @@
             context.check("declining keeps the edits", controller.model.isDirty && !controller.model.isClosed)
             harness.quit.answers = [true]
             context.check("confirming lets Recortia quit", app.shouldTerminate())
+            // R3-D17: quitting closes pins too, so the warning names only copy and save.
+            let portuguese = context.output.language.hasPrefix("pt")
+            for (count, expected) in [
+                (
+                    1,
+                    portuguese
+                        ? "Uma imagem aberta tem alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
+                        : "An open image has changes that were not copied or saved. Quitting discards them."
+                ),
+                (
+                    2,
+                    portuguese
+                        ? "2 imagens abertas têm alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
+                        : "2 open images have changes that were not copied or saved. Quitting discards them."
+                ),
+            ] {
+                let detail = MessagePresenter.discardOnQuitDetail(
+                    QuitDiscards(editedImages: count, scrollingReview: false))
+                context.check("the quit warning for \(count) says what is lost", detail == expected, detail)
+            }
 
             harness.quit.questions = []
             let copied = await E2EActions.export(controller, .copy)

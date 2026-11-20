@@ -17,6 +17,8 @@ final class EditorFakeRenderer: RenderService {
     /// Base image to return; nil makes renders a solid canvas-sized image.
     var baseImage: CGImage?
     var pending: Pending<Result<CGImage, TestError>>?
+    /// When set, only base renders wait here, so a test can order base and output results.
+    var basePending: Pending<Result<CGImage, TestError>>?
     var fails = false
     private(set) var baseRenders: [Document] = []
     private(set) var fullRenders: [Document] = []
@@ -28,6 +30,7 @@ final class EditorFakeRenderer: RenderService {
 
     func renderBase(_ document: Document, scale: Double) async throws -> CGImage {
         baseRenders.append(document)
+        if let basePending { return try await basePending.wait().get() }
         return try await produce(document)
     }
 

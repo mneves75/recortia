@@ -66,15 +66,19 @@ public protocol ImageInputService: AnyObject {
 
 @MainActor
 public protocol GitHubUploadService: AnyObject {
+    /// `isLive` is true while the consent and document that authorized this upload still hold;
+    /// it is checked before every authenticated request, lookups included. `isCurrent` repeats
+    /// that check immediately before the image is sent and marks the export committed.
     func upload(
         _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL
 }
 
 @MainActor
 public protocol GitHubCredentialService: AnyObject {
-    func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure)
+    func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure)
     func remove(for destination: GitHubDestination) throws(GitHubUploadFailure)
 }
 

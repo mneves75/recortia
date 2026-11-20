@@ -44,6 +44,28 @@ enum MessagePresenter {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
+    /// What Quit discards. Only a copy or save keeps edits: a pin is closed by quitting too.
+    static func discardOnQuitDetail(_ discards: QuitDiscards) -> String {
+        let count = discards.editedImages
+        var lines: [String] = []
+        if count == 1 {
+            lines.append(
+                String(localized: "An open image has changes that were not copied or saved. Quitting discards them."))
+        } else if count > 1 {
+            lines.append(
+                String(
+                    localized:
+                        "\(count) open images have changes that were not copied or saved. Quitting discards them."))
+        }
+        if discards.scrollingReview {
+            lines.append(
+                count == 0
+                    ? String(localized: "A scrolling capture is waiting for review. Quitting discards it.")
+                    : String(localized: "The scrolling capture waiting for review is discarded too."))
+        }
+        return lines.joined(separator: " ")
+    }
+
     /// Asks before Quit discards what `discards` describes. True means quit.
     static func confirmDiscardOnQuit(_ discards: QuitDiscards) -> Bool {
         let count = discards.editedImages
@@ -53,29 +75,7 @@ enum MessagePresenter {
             count == 0
             ? String(localized: "Quit and discard the scrolling capture?")
             : String(localized: "Quit and discard your edits?")
-        var lines: [String] = []
-        if count == 1 {
-            lines.append(
-                String(
-                    localized: """
-                        An open image has changes that were not copied, saved, dragged, or pinned. \
-                        Quitting discards them.
-                        """))
-        } else if count > 1 {
-            lines.append(
-                String(
-                    localized: """
-                        \(count) open images have changes that were not copied, saved, dragged, or pinned. \
-                        Quitting discards them.
-                        """))
-        }
-        if discards.scrollingReview {
-            lines.append(
-                count == 0
-                    ? String(localized: "A scrolling capture is waiting for review. Quitting discards it.")
-                    : String(localized: "The scrolling capture waiting for review is discarded too."))
-        }
-        alert.informativeText = lines.joined(separator: " ")
+        alert.informativeText = discardOnQuitDetail(discards)
         let quit = alert.addButton(withTitle: String(localized: "Quit"))
         quit.hasDestructiveAction = true
         alert.addButton(withTitle: String(localized: "Cancel"))
@@ -172,6 +172,11 @@ extension UserMessage {
             case .volumeUnavailable: String(localized: "The destination volume is not available.")
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")
             case .system(let code): String(localized: "The system reported an error (\(code)).")
+            case .leftover(let name):
+                String(
+                    localized:
+                        "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it."
+                )
             }
         // One step of an automatic batch failed; another may already have copied or saved, so the
         // title never says that nothing was exported.

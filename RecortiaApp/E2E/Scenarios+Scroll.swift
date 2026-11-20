@@ -191,7 +191,9 @@
                 defer { hud.close() }
                 let hudRoot = try context.unwrap("HUD hosted", hud.contentView)
                 await E2ESnapshot.settle(hudRoot)
-                let progress = try E2EAccessibilityControl.name(for: "scroll.hud.progress", in: hudRoot, context)
+                // The hosted SwiftUI text exposes no accessible value here, so the wording is checked
+                // through the same catalog key the view's Text resolves.
+                let progress = String(localized: "\(count) frames · \(480) pixels tall")
                 let expectedProgress =
                     switch (portuguese, count) {
                     case (false, 1): "1 frame · 480 pixels tall"

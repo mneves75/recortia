@@ -53,8 +53,10 @@
 
         func release() { waiter?.resume(); waiter = nil }
 
-        func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
-            guard token == "synthetic-token", destination.isValid else { throw .missingCredential }
+        func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+            guard token == (try GitHubTokenStore.validatedToken("ghp_synthetic")), destination.isValid else {
+                throw .missingCredential
+            }
             hasCredential = true
         }
 
@@ -62,6 +64,7 @@
 
         func upload(
             _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+            isLive: @escaping @MainActor @Sendable () -> Bool,
             isCurrent: @escaping @MainActor @Sendable () -> Bool
         ) async throws(GitHubUploadFailure) -> URL {
             guard hasCredential else { throw .missingCredential }
@@ -120,12 +123,22 @@
             context.check(
                 "an automatic-export failure with an editor open raises no modal alert",
                 harness.messages.values.count == messagesBefore, "\(harness.messages.values)")
+            // R3-D04a: Copy (⌘C) in another editor while the shared slot is taken submits nothing,
+            // so no busy rejection replaces the editor's notice and the clipboard stays untouched.
+            let clipboardBefore = harness.clipboard.writeCount
+            busyEditor.copyImage()
+            try? await Task.sleep(for: .milliseconds(300))
+            context.check(
+                "Copy while another editor exports submits nothing",
+                busyEditor.model.notice == .automaticExportFailed(.busy)
+                    && harness.clipboard.writeCount == clipboardBefore,
+                "\(String(describing: busyEditor.model.notice))")
             harness.exportGate.release()
             _ = await running.value
             harness.settings.update { $0.autoCopy = false }
 
             let destination = GitHubDestination(owner: "fixture", repository: "private-captures")
-            try harness.github.store("synthetic-token", for: destination)
+            try harness.github.store(GitHubTokenStore.validatedToken("ghp_synthetic"), for: destination)
             harness.settings.update {
                 $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true)
             }

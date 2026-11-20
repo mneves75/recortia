@@ -34,6 +34,9 @@ case "$lang" in
   *) echo "e2e: --lang must be en, pt-BR, or all" >&2; exit 2 ;;
 esac
 
+# scripts/tests-report.py reads this header: a run of one language or of --only ids is partial.
+source scripts/lib/run-identity.sh
+echo "e2e: $(run_identity) lang $lang only ${only:--}"
 scripts/doctor.sh
 toolchain_mode="${RECORTIA_TOOLCHAIN_MODE:-stable}"
 xcode_version=$(xcodebuild -version)
@@ -70,6 +73,8 @@ PY
 current_provenance=$(source_provenance)
 bundle="$derived/Build/Products/Debug/RecortiaE2E.app"
 app="$bundle/Contents/MacOS/RecortiaE2E"
+# E2EForegroundFixture launches this sibling helper for the native focus checks.
+helper_bundle="$derived/Build/Products/Debug/RecortiaE2EForegroundHost.app"
 mkdir -p .build
 if (( build )); then
   # A failed rebuild must not leave a previous build's qualification attached to partial output.
@@ -88,38 +93,50 @@ if (( build )); then
   fi
 fi
 [[ -x "$app" ]] || { echo "e2e: $app not found; build first" >&2; exit 2; }
-# Bind the qualification to the entire built bundle, even when another script rebuilt it.
-if ! current_provenance=$(python3 - "$current_provenance" "$bundle" <<'PY'
-import hashlib, json, os, pathlib, sys
+# Bind the qualification to both entire built bundles, even when another script rebuilt one.
+if ! current_provenance=$(python3 - "$current_provenance" "$bundle" "$helper_bundle" <<'PY'
+import hashlib, json, os, pathlib, stat, sys
 record = json.loads(sys.argv[1])
-bundle = pathlib.Path(sys.argv[2])
-if bundle.is_symlink() or not bundle.is_dir():
-    sys.exit("e2e: expected a regular app bundle directory")
-def walk_error(error):
-    raise error
-entries = []
-for directory, directories, files in os.walk(bundle, followlinks=False, onerror=walk_error):
-    for name in directories + files:
-        path = pathlib.Path(directory) / name
-        if path.is_symlink() or path.is_file():
-            entries.append(path)
-fingerprint = hashlib.sha256()
-for path in sorted(entries, key=lambda path: os.fsencode(path.relative_to(bundle))):
-    name = os.fsencode(path.relative_to(bundle))
-    fingerprint.update(len(name).to_bytes(8, "big") + name)
-    if path.is_symlink():
-        target = os.fsencode(os.readlink(path))
-        fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
-    else:
-        fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big"))
-        with path.open("rb") as contents:
-            while chunk := contents.read(64 * 1024):
-                fingerprint.update(chunk)
-record["app_bundle_sha256"] = fingerprint.hexdigest()
+def bundle_sha256(bundle, executable):
+    # The fixture launches this file: it must be a regular executable, not a link or plain data.
+    program = bundle / "Contents/MacOS" / executable
+    # A link anywhere on the path would put the launched bytes outside the bundle walk below.
+    linked = [part for part in (program, *program.parents) if part != pathlib.Path(".") and part.is_symlink()]
+    if linked:
+        sys.exit(f"e2e: {linked[-1]} is a symbolic link on the path to {program}")
+    if not program.is_file() or not os.access(program, os.X_OK):
+        sys.exit(f"e2e: {program} is not a regular executable file")
+    if bundle.is_symlink() or not bundle.is_dir():
+        sys.exit(f"e2e: expected a regular app bundle directory at {bundle}")
+    def walk_error(error):
+        raise error
+    entries = []
+    for directory, directories, files in os.walk(bundle, followlinks=False, onerror=walk_error):
+        for name in directories + files:
+            path = pathlib.Path(directory) / name
+            if path.is_symlink() or path.is_file():
+                entries.append(path)
+    fingerprint = hashlib.sha256()
+    for path in sorted(entries, key=lambda path: os.fsencode(path.relative_to(bundle))):
+        name = os.fsencode(path.relative_to(bundle))
+        fingerprint.update(len(name).to_bytes(8, "big") + name)
+        if path.is_symlink():
+            target = os.fsencode(os.readlink(path))
+            fingerprint.update(b"symlink\0" + len(target).to_bytes(8, "big") + target)
+        else:
+            # The mode counts: the same bytes without execute permission do not launch.
+            mode = stat.S_IMODE(path.stat().st_mode)
+            fingerprint.update(b"file\0" + path.stat().st_size.to_bytes(8, "big") + mode.to_bytes(2, "big"))
+            with path.open("rb") as contents:
+                while chunk := contents.read(64 * 1024):
+                    fingerprint.update(chunk)
+    return fingerprint.hexdigest()
+record["app_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[2]), "RecortiaE2E")
+record["foreground_host_bundle_sha256"] = bundle_sha256(pathlib.Path(sys.argv[3]), "RecortiaE2EForegroundHost")
 print(json.dumps(record, sort_keys=True))
 PY
 ); then
-  echo "e2e: could not fingerprint app bundle for build provenance; rebuild with the selected toolchain" >&2
+  echo "e2e: could not fingerprint the app and foreground helper bundles for build provenance; rebuild with the selected toolchain" >&2
   exit 2
 fi
 if (( build )); then
@@ -214,5 +231,6 @@ PY
   echo "e2e[$language]: $summary (exit $exit_code)"
   (( exit_code == 0 )) || rc=1
 done
+echo "e2e: end $(run_identity)"
 echo "e2e: output in $run_root"
 exit $rc

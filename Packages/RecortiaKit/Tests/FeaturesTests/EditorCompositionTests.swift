@@ -126,7 +126,9 @@ struct EditorCompositionTests {
         m.duplicateSelection()
         #expect(m.document.layers.count == 2)
         #expect(Set(m.document.layers.map(\.assetID)).count == 1)
-        #expect(m.document.maskedRegions(for: layer.assetID) == [PixelRect(x: 10, y: 10, width: 20, height: 20)])
+        #expect(
+            m.document.masks.flatMap { $0.sourceRegions[layer.assetID] ?? [] }
+                == [PixelRect(x: 10, y: 10, width: 20, height: 20)])
     }
 
     @Test("Transparency comparison toggles the top image between 50 % and opaque")

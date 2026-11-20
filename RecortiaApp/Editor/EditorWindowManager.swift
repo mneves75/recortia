@@ -54,12 +54,9 @@ final class EditorWindowManager {
         return model
     }
 
-    var openDocumentIDs: [DocumentID] { Array(controllers.keys) }
-
-    /// Editors whose edits were never copied, saved, dragged, or pinned.
+    /// Editors whose edits were never copied or saved (a drag out saves; a pin does not).
     var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
 
-    func model(for id: DocumentID) -> EditorModel? { controllers[id]?.model }
 }
 
 /// One editor window: hosts the SwiftUI chrome around the AppKit canvas, asks before discarding
@@ -148,15 +145,19 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     // MARK: NSWindowDelegate
 
+    /// What closing an edited editor discards. Only a copy or save keeps edits; a pin does not.
+    static var discardOnCloseDetail: String {
+        String(
+            localized: "This image has changes that were not copied or saved. Closing discards them.", table: "Editor")
+    }
+
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         canvas.finishTextEditing(commit: true)
         guard model.isDirty, !discardConfirmed else { return true }
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(localized: "Discard your edits?", table: "Editor")
-        alert.informativeText = String(
-            localized: "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them.",
-            table: "Editor")
+        alert.informativeText = Self.discardOnCloseDetail
         let discard = alert.addButton(withTitle: String(localized: "Discard", table: "Editor"))
         discard.hasDestructiveAction = true
         alert.addButton(withTitle: String(localized: "Cancel", table: "Editor"))
@@ -187,14 +188,25 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     func copyImage() {
         commitPendingText()
+        guard exportSlotIsFree() else { return }
         Task { await model.export(.copy) }
+    }
+
+    /// Another editor holds the shared export slot: beep and submit nothing, like a disabled
+    /// toolbar button (R3-D04a). A Save sheet confirmed after the slot was taken is not reserved;
+    /// its request gets the existing busy message and writes nothing.
+    private func exportSlotIsFree() -> Bool {
+        guard model.canStartExport else {
+            NSSound.beep()
+            return false
+        }
+        return true
     }
 
     func saveImage() {
         commitPendingText()
-        guard let window else { return }
-        let format = model.environment.export.exportOptions(for: .saveToFolder(FileManager.default.temporaryDirectory))
-            .format
+        guard let window, exportSlotIsFree() else { return }
+        let format = model.environment.settings.preferences.exportOptions.format
         let panel = NSSavePanel()
         panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
         panel.nameFieldStringValue = ExportFilename.make(for: Date(), format: format)
@@ -202,14 +214,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         panel.isExtensionHidden = false
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = panel.url, let self else { return }
-            Task { await self.saveImage(to: url) }
+            Task { await self.saveImage(to: url, format: format) }
         }
     }
 
     /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent.
     @discardableResult
-    func saveImage(to url: URL, confirmReplacement: (() async -> Bool)? = nil) async -> ExportOutcome {
-        let outcome = await model.export(.save(url, overwriteConfirmed: false))
+    func saveImage(
+        to url: URL, format: ExportFormat, confirmReplacement: (() async -> Bool)? = nil
+    ) async -> ExportOutcome {
+        let outcome = await model.export(.save(url, format: format, overwriteConfirmed: false))
         guard outcome == .failed(.destinationExists) else { return outcome }
         model.dismissNotice()
         let confirmed: Bool
@@ -219,7 +233,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             confirmed = await self.confirmReplacement()
         }
         guard confirmed else { return .canceled }
-        return await model.export(.save(url, overwriteConfirmed: true))
+        return await model.export(.save(url, format: format, overwriteConfirmed: true))
     }
 
     private func confirmReplacement() async -> Bool {
@@ -237,6 +251,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     func saveToPreferredFolder() {
         commitPendingText()
+        guard exportSlotIsFree() else { return }
         Task { await model.export(.saveToPreferredFolder) }
     }
 
@@ -269,6 +284,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     func dragOut() {
         commitPendingText()
+        guard exportSlotIsFree() else { return }
         Task { await model.export(.drag) }
     }
 }

@@ -3313,18 +3313,34 @@
         }
       }
     },
-    "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them.": {
+    "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them."
+            "value": "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta imagem tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Fechar descarta essas alterações."
+            "value": "O salvamento não terminou e deixou “%@” na pasta. Verifique-o e apague-o se não precisar dele."
+          }
+        }
+      }
+    },
+    "This image has changes that were not copied or saved. Closing discards them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This image has changes that were not copied or saved. Closing discards them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta imagem tem alterações que não foram copiadas nem salvas. Fechar descarta essas alterações."
           }
         }
       }
