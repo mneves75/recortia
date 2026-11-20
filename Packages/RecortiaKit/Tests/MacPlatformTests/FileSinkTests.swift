@@ -147,10 +147,15 @@ struct FileSinkTests {
         case ancestor
     }
 
-    // R06 (adversarial review of T1a): the folder was opened by path for each step, so a writer
-    // who could rename the chosen folder or a folder above it redirected the save elsewhere.
-    @Test("A save to a folder reached through a link writes nothing anywhere", arguments: Redirect.allCases)
-    func redirectedFolderIsRefused(redirect: Redirect) throws {
+    // N03 (second review of T1a): admission compared the opened folder's path with the spelling it
+    // was given, so a folder reached through a link the system resolves was refused. Contract
+    // (decisions.md, "File-save guarantees by volume class"): the folder is admitted by identity;
+    // a link resolved before admission leads to the same folder, so the save lands there. A link
+    // planted before admission is R06, a declined known limit stated in FileSink's header.
+    @Test(
+        "A save to a folder spelled through a link lands in the folder the link resolves to",
+        arguments: Redirect.allCases)
+    func linkedFolderSpellingIsAdmitted(redirect: Redirect) throws {
         let root = try TestSupport.makeTemporaryDirectory()
         defer { TestSupport.removeDirectory(root) }
         let elsewhere = root.appendingPathComponent("elsewhere", isDirectory: true)
@@ -167,11 +172,48 @@ struct FileSinkTests {
             try FileManager.default.createSymbolicLink(at: parent, withDestinationURL: elsewhere)
             chosen = parent.appendingPathComponent("shots", isDirectory: true)
         }
+        let resolved = elsewhere.appendingPathComponent("shots", isDirectory: true)
+        _ = try FileSink().save(snapshot, to: chosen.appendingPathComponent("shot.png"), overwrite: false)
+        let unique = try FileSink().saveUnique(snapshot, in: chosen)
+        #expect(try Data(contentsOf: resolved.appendingPathComponent("shot.png")) == snapshot.bytes)
+        #expect(TestSupport.directoryEntries(resolved) == ["shot.png", unique.lastPathComponent].sorted())
+    }
+
+    @Test("A folder spelled with different letter case on a case-insensitive volume is admitted")
+    func caseVariantFolderIsAdmitted() throws {
+        let root = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(root) }
+        let folder = root.appendingPathComponent("Exports", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        let variant = root.appendingPathComponent("exports", isDirectory: true)
+        try #require(
+            FileManager.default.fileExists(atPath: variant.path(percentEncoded: false)),
+            "control: this volume is case-sensitive")
+        _ = try FileSink().save(snapshot, to: variant.appendingPathComponent("shot.png"), overwrite: false)
+        #expect(try Data(contentsOf: folder.appendingPathComponent("shot.png")) == snapshot.bytes)
+    }
+
+    @Test("A folder replaced by another folder while it is admitted is refused and nothing is written")
+    func folderReplacedDuringAdmissionIsRefused() throws {
+        let root = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(root) }
+        let chosen = root.appendingPathComponent("shots", isDirectory: true)
+        let aside = root.appendingPathComponent("aside", isDirectory: true)
+        try FileManager.default.createDirectory(at: chosen, withIntermediateDirectories: false)
+        var replaced = false
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterResolve: { _ in
+                guard !replaced else { return }
+                replaced =
+                    rename(chosen.path(percentEncoded: false), aside.path(percentEncoded: false)) == 0
+                    && mkdir(chosen.path(percentEncoded: false), 0o755) == 0
+            }))
         #expect(throws: SinkError.accessDenied) {
-            try FileSink().save(snapshot, to: chosen.appendingPathComponent("shot.png"), overwrite: false)
+            try sink.save(snapshot, to: chosen.appendingPathComponent("shot.png"), overwrite: false)
         }
-        #expect(throws: SinkError.accessDenied) { try FileSink().saveUnique(snapshot, in: chosen) }
-        #expect(TestSupport.directoryEntries(elsewhere.appendingPathComponent("shots")).isEmpty)
+        try #require(replaced, "control: the folder was never replaced")
+        #expect(TestSupport.directoryEntries(chosen).isEmpty)
+        #expect(TestSupport.directoryEntries(aside).isEmpty)
     }
 
     // R03 (adversarial review of T1a): the destination's mode and ACL were read by path, following

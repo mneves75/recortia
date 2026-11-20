@@ -94,6 +94,8 @@ struct POSIXFileSystem {
     /// The stage's name inside its private folder.
     static let stageName = "stage"
 
+    /// Runs once the folder's identity is read and its spelling resolved, before it is opened.
+    var afterResolve: (URL) -> Void = { _ in }
     /// Runs once the stage's bytes are on disk, while it is still owner-only and without an ACL.
     var afterSync: (URL) -> Void = { _ in }
     /// Runs before the destination is examined and the stage is published.
@@ -115,7 +117,7 @@ struct POSIXFileSystem {
     /// `names[0]` when `overwrite` allows, and returns the name used. Without `overwrite`, a taken
     /// name moves on to the next; when none is left the save fails with EEXIST.
     func save(_ data: Data, in folder: URL, names: [String], overwrite: Bool) throws(FileSystemFailure) -> String {
-        let directory = try Self.openFolder(folder)
+        let directory = try openFolder(folder)
         defer { close(directory) }
         let stage = try Stage(in: directory, folder: folder, data: data, fileSystem: self)
         defer { stage.remove() }
@@ -133,28 +135,26 @@ struct POSIXFileSystem {
 
     // MARK: Folder
 
-    /// The approved folder as a descriptor: not a link, and the folder its path names now, so a
-    /// renamed ancestor cannot redirect the save. macOS's own /var, /tmp and /etc links lead to
-    /// /private.
-    static func openFolder(_ url: URL) throws(FileSystemFailure) -> Int32 {
-        var path = url.standardizedFileURL.path(percentEncoded: false)
-        while path.count > 1, path.hasSuffix("/") { path.removeLast() }
-        let directory = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+    /// The approved folder as a descriptor, admitted by identity rather than spelling: the system
+    /// resolves the path (links, letter case, Unicode form) to a folder, and the descriptor opened
+    /// at that resolved path, without following a final link, must be that same folder. A folder
+    /// replaced in between is refused.
+    func openFolder(_ url: URL) throws(FileSystemFailure) -> Int32 {
+        let path = url.standardizedFileURL.path(percentEncoded: false)
+        var expected = stat()
+        guard stat(path, &expected) == 0 else { throw FileSystemFailure(code: errno) }
+        guard expected.st_mode & S_IFMT == S_IFDIR else { throw Self.substitutedFailure }
+        guard let resolved = realpath(path, nil) else { throw FileSystemFailure(code: errno) }
+        defer { free(resolved) }
+        afterResolve(url)
+        let directory = open(resolved, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
         guard directory >= 0 else {
-            throw errno == ELOOP || errno == ENOTDIR ? substitutedFailure : FileSystemFailure(code: errno)
+            throw errno == ELOOP || errno == ENOTDIR ? Self.substitutedFailure : FileSystemFailure(code: errno)
         }
-        var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
-        guard fcntl(directory, F_GETPATH, &buffer) == 0 else {
-            let failure = errno
+        var actual = stat()
+        guard fstat(directory, &actual) == 0, FileIdentity(actual) == FileIdentity(expected) else {
             close(directory)
-            throw FileSystemFailure(code: failure)
-        }
-        let actual = String(cString: buffer).precomposedStringWithCanonicalMapping
-        let expected = path.precomposedStringWithCanonicalMapping
-        let systemLink = ["/var/", "/tmp/", "/etc/"].contains { expected.hasPrefix($0) }
-        guard actual == expected || (systemLink && actual == "/private" + expected) else {
-            close(directory)
-            throw substitutedFailure
+            throw Self.substitutedFailure
         }
         return directory
     }
