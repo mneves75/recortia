@@ -23,7 +23,8 @@ public enum ImportFailure: Error, Hashable, Sendable {
     case multipleFrames
     case corrupt
     case unreadable
-    /// Beyond `ImportCoordinator.maximumOpenedFiles` in one request from the system; never read.
+    /// Beyond `ImportCoordinator.maximumOpenedFiles` in one request from the system (never read),
+    /// or beyond what is left of its `ImportLimits.maxOpenedPixelArea` (never decoded).
     case tooManyFiles
 
     init(_ error: ImportError) {
@@ -54,13 +55,19 @@ public final class ImportCoordinator {
 
     @discardableResult
     public func importImage(from source: ImportSource) async -> Result<DocumentSession, ImportFailure> {
+        await importImage(from: source, pixelBudget: nil).map(\.session)
+    }
+
+    private func importImage(from source: ImportSource, pixelBudget: Int?) async
+        -> Result<(session: DocumentSession, pixelArea: Int), ImportFailure>
+    {
         do throws(ImportFailure) {
             let admission = try imageImporter.admit { source }
-            let info = try await imageImporter.importImage(admission)
+            let info = try await imageImporter.importImage(admission, pixelBudget: pixelBudget)
             let session = DocumentSession(document: Document(asset: info))
             lastFailure = nil
             onImported?(session, admission.fileName)
-            return .success(session)
+            return .success((session, info.pixelSize.checkedArea ?? Int.max))
         } catch {
             lastFailure = error
             return .failure(error)
@@ -73,12 +80,15 @@ public final class ImportCoordinator {
 
     /// Opens files handed over by the system, one editor each, through the same admission as
     /// File › Open. Files are imported one after another so the shared slot admits each in turn;
-    /// a refused file does not stop the rest. Returns the refusals, in order, for one report.
+    /// a refused file does not stop the rest, and together they hold at most
+    /// `ImportLimits.maxOpenedPixelArea` decoded pixels. Returns the refusals, in order, for one report.
     public func openFiles(_ urls: [URL]) async -> [ImportFailure] {
         var failures: [ImportFailure] = []
+        var pixelsLeft = ImportLimits.maxOpenedPixelArea
         for url in urls.prefix(Self.maximumOpenedFiles) {
-            if case .failure(let failure) = await importImage(from: .file(url)) {
-                failures.append(failure)
+            switch await importImage(from: .file(url), pixelBudget: pixelsLeft) {
+            case .success(let opened): pixelsLeft -= min(opened.pixelArea, pixelsLeft)
+            case .failure(let failure): failures.append(failure)
             }
         }
         failures += repeatElement(.tooManyFiles, count: max(0, urls.count - Self.maximumOpenedFiles))
@@ -152,8 +162,11 @@ public final class ImageImporter {
         try await importImage(admit(readSource: readSource))
     }
 
-    /// Reads and decodes an admitted source, then frees the slot.
-    public func importImage(_ admission: ImportAdmission) async throws(ImportFailure) -> ImageAssetInfo {
+    /// Reads and decodes an admitted source, then frees the slot. With a `pixelBudget`, a source
+    /// that declares more pixels is refused as `.tooManyFiles` before the decoder allocates.
+    public func importImage(_ admission: ImportAdmission, pixelBudget: Int? = nil) async throws(ImportFailure)
+        -> ImageAssetInfo
+    {
         // Cancellation does not free the slot while a reader or decoder still owns its buffers.
         defer { isImporting = false }
         guard !Task.isCancelled else { throw .cancelled }
@@ -175,6 +188,15 @@ public final class ImageImporter {
             data = dropped
             origin = .imported
         }
+        if let pixelBudget {
+            let size: PixelSize
+            do throws(ImportError) {
+                size = try await Self.declaredSize(data)
+            } catch {
+                throw Task.isCancelled ? .cancelled : ImportFailure(error)
+            }
+            guard let area = size.checkedArea, area <= pixelBudget else { throw .tooManyFiles }
+        }
         guard !Task.isCancelled else { throw .cancelled }
         let info: ImageAssetInfo
         do throws(ImportError) {
@@ -187,5 +209,9 @@ public final class ImageImporter {
             throw .cancelled
         }
         return info
+    }
+
+    @concurrent private static func declaredSize(_ data: Data) async throws(ImportError) -> PixelSize {
+        try ImageHeader.pixelSize(data)
     }
 }

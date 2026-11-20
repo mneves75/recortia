@@ -2893,18 +2893,18 @@
         }
       }
     },
-    "Recortia opens at most %lld images at a time." : {
+    "Recortia opens at most %lld images, and %lld megapixels in all, at a time." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recortia opens at most %lld images at a time."
+            "value" : "Recortia opens at most %lld images, and %lld megapixels in all, at a time."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Recortia abre no máximo %lld imagens por vez."
+            "value" : "O Recortia abre no máximo %lld imagens, com %lld megapixels no total, por vez."
           }
         }
       }

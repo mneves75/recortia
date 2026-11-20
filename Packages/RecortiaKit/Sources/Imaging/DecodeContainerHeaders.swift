@@ -11,6 +11,19 @@ public enum ImageSignature {
     public static func isSupported(_ head: Data) -> Bool { DecodeFormat.sniff(head) != nil }
 }
 
+/// The dimensions a PNG or JPEG declares, read from its container headers with the per-image
+/// limits applied and before any pixel decode; the decoder later requires the decoded image to
+/// have exactly this size.
+public enum ImageHeader {
+    public static func pixelSize(_ data: Data) throws(ImportError) -> PixelSize {
+        switch DecodeFormat.sniff(data) {
+        case .png: try DecodePNGStructure.layout(data).header.pixelSize
+        case .jpeg: try DecodeJPEGStructure.header(data).pixelSize
+        case nil: throw .unsupportedFormat
+        }
+    }
+}
+
 enum DecodeFormat: Equatable {
     case png
     case jpeg

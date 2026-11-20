@@ -158,7 +158,10 @@ extension UserMessage {
             case .corrupt: String(localized: "The image data is damaged.")
             case .unreadable: String(localized: "The file could not be read.")
             case .tooManyFiles:
-                String(localized: "Recortia opens at most \(ImportCoordinator.maximumOpenedFiles) images at a time.")
+                String(
+                    localized:
+                        "Recortia opens at most \(ImportCoordinator.maximumOpenedFiles) images, and \(ImportLimits.maxOpenedPixelArea / 1_000_000) megapixels in all, at a time."
+                )
             }
         return UserMessage(title: title, detail: detail)
     }

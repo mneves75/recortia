@@ -48,11 +48,28 @@ struct OpenFilesTests {
         #expect(h.fileNames == ["first.png", "last.jpg"])
     }
 
-    @Test("Eleven files in one request: the first ten are read and opened, the eleventh is refused unread")
-    func batchLimit() async {
+    @Test("One request holds at most 80 MP: a file over what is left is refused before it decodes; later files fit")
+    func pixelBudget() async throws {
         let h = ImportHarness()
+        h.assets.reportsDeclaredSize = true
+        let thirty = try ContainerCrafting.blankOneBitPNG(width: 6000, height: 5000)
+        let ten = try ContainerCrafting.blankOneBitPNG(width: 4000, height: 2500)
+        let files = [url("a.png"), url("b.png"), url("c.png"), url("d.png")]
+        for (file, data) in zip(files, [thirty, thirty, thirty, ten]) { h.input.files[file] = .success(data) }
+        let failures = await h.coordinator.openFiles(files)
+        #expect(failures == [.tooManyFiles], "30 + 30 MP fit; the third 30 MP file would make 90")
+        #expect(h.fileNames == ["a.png", "b.png", "d.png"])
+        #expect(h.assets.imported.count == 3, "the refused file never reached the decoder")
+        #expect(h.input.fileReads == files)
+        #expect(!h.coordinator.isImporting)
+    }
+
+    @Test("Eleven files in one request: the first ten are read and opened, the eleventh is refused unread")
+    func batchLimit() async throws {
+        let h = ImportHarness()
+        let png = try ContainerCrafting.blankOneBitPNG(width: 4, height: 3)
         let files = (0..<11).map { url("\($0).png") }
-        for file in files { h.input.files[file] = .success(Data([1])) }
+        for file in files { h.input.files[file] = .success(png) }
         let failures = await h.coordinator.openFiles(files)
         #expect(h.imported.count == 10)
         #expect(h.input.fileReads == Array(files.prefix(10)))
@@ -60,11 +77,12 @@ struct OpenFilesTests {
     }
 
     @Test("Requests queued before launch keep their own limit and open one after another")
-    func queuedRequestsKeepTheirBoundaries() async {
+    func queuedRequestsKeepTheirBoundaries() async throws {
         let h = ImportHarness()
+        let png = try ContainerCrafting.blankOneBitPNG(width: 4, height: 3)
         let first = (0..<6).map { url("first-\($0).png") }
         let second = (0..<6).map { url("second-\($0).png") }
-        for file in first + second { h.input.files[file] = .success(Data([1])) }
+        for file in first + second { h.input.files[file] = .success(png) }
         let failures = await h.coordinator.openRequests([first, second])
         #expect(failures == [[], []])
         #expect(h.imported.count == 12)

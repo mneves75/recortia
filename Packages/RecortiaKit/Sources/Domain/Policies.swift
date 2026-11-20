@@ -12,6 +12,10 @@ public enum ImportLimitViolation: Error, Hashable, Sendable {
 public enum ImportLimits {
     public static let maxCompressedBytes = 64 * 1024 * 1024
     public static let maxPixelArea = 40_000_000
+    /// Decoded pixels one Open With, Dock-icon drop or `open -a` request may hold over all its
+    /// files: two images at the per-image limit, about 305 MiB as 8-bit RGBA. Without it ten
+    /// 40 MP files keep about 1.49 GiB of source rasters (T1 security 4B).
+    public static let maxOpenedPixelArea = 2 * maxPixelArea
 
     public static func check(byteCount: Int) -> ImportLimitViolation? {
         byteCount > maxCompressedBytes ? .tooManyBytes : nil
