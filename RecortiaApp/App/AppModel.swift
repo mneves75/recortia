@@ -38,15 +38,15 @@ struct FeatureModels {
 /// AppKit presenters, and implements `AppActions` for the menu and global shortcuts.
 ///
 /// `openDocument` receives every new document (capture, import, paste, drop, scroll) and
-/// `recognizeText` receives Capture Text results. Commands that depend on an unset hook or on
-/// missing services are disabled.
+/// `recognizeText` receives Capture Text results. Commands that depend on an unset hook are
+/// disabled.
 @MainActor
 @Observable
 final class AppModel: AppActions {
     let settings: SettingsStore
     let onboarding: OnboardingModel
     let shortcutStatus: ShortcutStatusModel
-    let features: FeatureModels?
+    let features: FeatureModels
     private var isStartingScrollingCapture = false
 
     var openDocument: ((DocumentSession, EditorInitialAction) -> EditorModel?)?
@@ -85,7 +85,7 @@ final class AppModel: AppActions {
     @ObservationIgnored private var quitDecision = 0
 
     init(
-        settings: SettingsStore, services: AppServices?, shortcutRegistry: any ShortcutRegistry,
+        settings: SettingsStore, services: AppServices, shortcutRegistry: any ShortcutRegistry,
         showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
         confirmQuit: @escaping @MainActor (QuitDiscards) -> Bool = { MessagePresenter.confirmDiscardOnQuit($0) },
         requestTermination: @escaping @MainActor () -> Void = { NSApp.terminate(nil) },
@@ -98,11 +98,9 @@ final class AppModel: AppActions {
         self.chooseSaveFolder = chooseSaveFolder
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
-        features = services.map { FeatureModels(services: $0, settings: settings) }
-        captureWindowVisibility = features.map {
-            CaptureWindowVisibility(capture: $0.capture, scroll: $0.scroll) { [weak self] in
-                self?.isStartingScrollingCapture == true
-            }
+        features = FeatureModels(services: services, settings: settings)
+        captureWindowVisibility = CaptureWindowVisibility(capture: features.capture, scroll: features.scroll) {
+            [weak self] in self?.isStartingScrollingCapture == true
         }
         spacePolicy.start()
         AppPresence.shared.start()
@@ -118,9 +116,7 @@ final class AppModel: AppActions {
     func launch(kind: LaunchKind) {
         guard !didLaunch else { return }
         didLaunch = true
-        if let features {
-            wire(features)
-        }
+        wire(features)
         registerShortcutHandlers()
         switch LaunchWindow.choose(onboardingPending: onboarding.shouldPresent, kind: kind) {
         case .onboarding: showOnboarding()
@@ -139,20 +135,19 @@ final class AppModel: AppActions {
         if AppCommand.captureModes.contains(command), isStartingScrollingCapture { return false }
         switch command {
         case .captureRegion, .captureDisplay, .captureWindow, .captureWithDelay:
-            return features != nil && openDocument != nil && features?.scroll.state.isActive == false
+            return openDocument != nil && !features.scroll.state.isActive
         case .scrollingCapture:
-            return features != nil && openDocument != nil && features?.capture.state.isActive == false
+            return openDocument != nil && !features.capture.state.isActive
         case .openImage, .pasteImage:
-            return features != nil && openDocument != nil && features?.importer.isImporting == false
+            return openDocument != nil && !features.importer.isImporting
         case .repeatLastRegion:
-            return features?.capture.hasRepeatRegion == true && openDocument != nil
-                && features?.scroll.state.isActive == false
+            return features.capture.hasRepeatRegion && openDocument != nil && !features.scroll.state.isActive
         case .captureText:
-            return features != nil && recognizeText != nil && features?.scroll.state.isActive == false
+            return recognizeText != nil && !features.scroll.state.isActive
         case .captureMenu:
             return AppCommand.captureModes.contains { isEnabled($0) }
         case .bringPinsForward, .closeAllPins:
-            return features?.pins.pins.isEmpty == false
+            return !features.pins.pins.isEmpty
         case .settings, .featureTour, .about, .quit:
             return true
         }
@@ -166,21 +161,18 @@ final class AppModel: AppActions {
             captureWindowVisibility?.suspend()
         }
         switch command {
-        case .captureRegion: features?.capture.start(.region)
-        case .captureDisplay: features?.capture.start(.display)
-        case .captureWindow: features?.capture.start(.window)
-        case .captureWithDelay:
-            if let capture = features?.capture {
-                capture.start(.region, delaySeconds: capture.delayForDelayedCapture)
-            }
-        case .repeatLastRegion: features?.capture.start(.repeatRegion)
+        case .captureRegion: features.capture.start(.region)
+        case .captureDisplay: features.capture.start(.display)
+        case .captureWindow: features.capture.start(.window)
+        case .captureWithDelay: features.capture.start(.region, delaySeconds: features.capture.delayForDelayedCapture)
+        case .repeatLastRegion: features.capture.start(.repeatRegion)
         case .scrollingCapture: startScrollingCapture()
-        case .captureText: features?.capture.start(.region, purpose: .recognizeText)
+        case .captureText: features.capture.start(.region, purpose: .recognizeText)
         case .captureMenu: captureMenu.present()
         case .openImage: chooseImageFile()
         case .pasteImage: importImage(from: .pasteboard)
-        case .bringPinsForward: features?.pins.bringForward()
-        case .closeAllPins: features?.pins.closeAll()
+        case .bringPinsForward: features.pins.bringForward()
+        case .closeAllPins: features.pins.closeAll()
         case .settings: showSettings()
         case .featureTour:
             if !onboardingWindow.isVisible { onboarding.beginTour() }
@@ -197,7 +189,7 @@ final class AppModel: AppActions {
     /// stitched capture still in review are confirmed here (FR-04, FR-10).
     func shouldTerminate() -> Bool {
         let discards = QuitDiscards(
-            editedImages: unexportedEditCount(), scrollingReview: features?.scroll.state == .reviewing)
+            editedImages: unexportedEditCount(), scrollingReview: features.scroll.state == .reviewing)
         return discards.isEmpty || confirmQuit(discards)
     }
 
@@ -214,9 +206,9 @@ final class AppModel: AppActions {
         let outcome = withObservationTracking {
             QuitAfterLastWindow.decide(
                 keepsRunningInMenuBar: settings.preferences.keepsRunningInMenuBar,
-                isExporting: features?.export.isBusy == true || automaticExportsInFlight > 0,
+                isExporting: features.export.isBusy || automaticExportsInFlight > 0,
                 hasUserWindow: AppPresence.shared.hasUserWindow,
-                isCapturing: features?.capture.state.isActive == true || features?.scroll.state.isActive == true
+                isCapturing: features.capture.state.isActive || features.scroll.state.isActive
                     || isStartingScrollingCapture)
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in self?.decideQuit(decision) }
@@ -251,7 +243,7 @@ final class AppModel: AppActions {
 
     /// Imports a dropped or opened file; used by Open Image and by drop targets.
     func importImage(from source: ImportSource) {
-        guard let importer = features?.importer else { return }
+        let importer = features.importer
         Task {
             if case .failure(let failure) = await importer.importImage(from: source) {
                 showMessage(.importFailure(failure))
@@ -308,7 +300,7 @@ final class AppModel: AppActions {
         case .edit:
             // Decided here, synchronously, before anything else can run on the main actor: a
             // setting changed by a job queued after this belongs to the next capture (R-3).
-            let plan = features?.export.automaticExportPlan()
+            let plan = features.export.automaticExportPlan()
             let masks = settings.preferences.autoRedactsSensitiveText
             let editor = openDocument?(completion.session, masks ? .maskSensitiveText : .none)
             runAutomaticExports(plan, for: completion.session, editor: editor, masks: masks)
@@ -322,9 +314,10 @@ final class AppModel: AppActions {
     /// land, and freshness is checked against its live session, so an edit made while the export
     /// renders, or closing the editor, keeps the earlier state from being sent.
     private func runAutomaticExports(
-        _ plan: AutomaticExportPlan?, for session: DocumentSession, editor: EditorModel?, masks: Bool
+        _ plan: AutomaticExportPlan, for session: DocumentSession, editor: EditorModel?, masks: Bool
     ) {
-        guard let export = features?.export, let plan, !plan.isEmpty else { return }
+        guard !plan.isEmpty else { return }
+        let export = features.export
         // Counted until reported, so quitting after the last window waits for the save and shows
         // its failure first.
         automaticExportsInFlight += 1
@@ -360,7 +353,7 @@ final class AppModel: AppActions {
     }
 
     private func startScrollingCapture() {
-        guard let scroll = features?.scroll else { return }
+        let scroll = features.scroll
         isStartingScrollingCapture = true
         Task {
             // Permission denial can leave the scroll model idle without an observed transition.
@@ -375,7 +368,7 @@ final class AppModel: AppActions {
     }
 
     private func toggleScrollingCapture() {
-        guard let scroll = features?.scroll else { return }
+        let scroll = features.scroll
         switch scroll.state {
         case .collecting, .paused: scroll.stop()
         case .armed: scroll.start()

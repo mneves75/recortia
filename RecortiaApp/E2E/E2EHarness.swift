@@ -88,7 +88,7 @@
                 confirmQuit: { [quit] in quit.answer($0) },
                 requestTermination: { [terminations] in terminations.request() },
                 chooseSaveFolder: { [folderChooser] in folderChooser.next() })
-            guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
+            let features = app.features
             self.features = features
             environment = EditorEnvironment(
                 renderer: services.renderer, export: features.export, folders: services.folders,
