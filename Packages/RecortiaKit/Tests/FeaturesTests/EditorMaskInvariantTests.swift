@@ -149,6 +149,28 @@ struct EditorMaskInvariantTests {
         #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
     }
 
+    @Test("Deleting a layer keeps a box's protection on another layer of the same image (F-02)")
+    func deleteKeepsSharedAssetCovered() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 300, y: 250, width: 10, height: 10))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let b1 = try await fixture.addLayer(
+            width: 50, height: 50, secrets: [FixtureRect(x: 10, y: 10, width: 20, height: 20)])
+        m.selectTool(.select)
+        m.setSelection([.layer(b1)])
+        m.duplicateSelection()
+        m.setFrame(Rect(x: 90, y: 90, width: 50, height: 50), for: .layer(b1))
+        // B2's copy of the secret at (20, 20) is hidden because B1's is under the box.
+        let copy = FixtureRect(x: 20, y: 20, width: 20, height: 20)
+        #expect(fixture.secretPixels(in: try await fixture.exported(), copy) == 0)
+        m.setSelection([.layer(b1)])
+        m.deleteSelection()
+        #expect(m.document.layers.count == 2)
+        #expect(fixture.secretPixels(in: try await fixture.exported(), copy) == 0)
+    }
+
     @Test("Align moves a selected layer and its selected mask once, from the same starting document (R4-01)")
     func alignResolvesFromOneSnapshot() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 0, y: 100, width: 20, height: 20))

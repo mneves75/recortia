@@ -94,9 +94,13 @@ extension EditorModel {
             if modifiers.contains(.shift) {
                 if abs(dx) > abs(dy) { dy = 0 } else { dx = 0 }
             }
-            var moved = original
+            let moved: Document
             do {
-                try Self.translate(&moved, items: items, dx: dx, dy: dy)
+                // The same path as every edit (R2); masks in the drag re-bind instead.
+                moved = try Self.applying(
+                    { try Self.translate(&$0, items: items, dx: dx, dy: dy) },
+                    to: original, explicitMasks: Self.maskIDs(items)
+                ).updated
             } catch {
                 if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
@@ -106,10 +110,13 @@ extension EditorModel {
             // Back at the press point the resize minimum or snapping could still alter the object,
             // so the original snapshot is restored exactly (no re-bind, no history).
             guard !isWithinClick(p, of: start) else { return replaceDocumentInGesture("Resize", with: original) }
-            var resized = original
             let target = Point<DocumentSpace>(x: anchor.x + p.x - start.x, y: anchor.y + p.y - start.y)
+            let resized: Document
             do {
-                try resize(&resized, item: item, handle: handle, frame: frame, to: target, modifiers: modifiers)
+                resized = try Self.applying(
+                    { try resize(&$0, item: item, handle: handle, frame: frame, to: target, modifiers: modifiers) },
+                    to: original, explicitMasks: Self.maskIDs([item])
+                ).updated
             } catch {
                 if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return

@@ -99,8 +99,9 @@ struct EditorCompositionTests {
         #expect(document.layers.first?.placement.translation == .zero)
         #expect(document.annotations.first?.kind == .arrow(start: Point(x: 100, y: 70), end: Point(x: 200, y: 70)))
         #expect(document.masks.first?.outputRect == Rect(x: 60, y: 30, width: 20, height: 20))
-        #expect(document.masks.first?.sourceRegions == regions)
-        #expect(document.masks.first?.sourceRegions[assetID] != nil)
+        // The box keeps its original binding; Fit Canvas also bound what was under it then (R2).
+        let bound = try #require(document.masks.first?.sourceRegions[assetID])
+        #expect(Set(try #require(regions?[assetID])).isSubset(of: bound))
     }
 
     @Test("Fitting the canvas also contains masks and cosmetic effects past its edges")

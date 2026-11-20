@@ -101,7 +101,6 @@ extension EditorModel {
         let value = min(max(scale, 0.01), 16)
         edit("Layer Scale") { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
-            try Self.preserveCoverage(&document)
             document.layers[index].placement.scale = value
         }
     }
@@ -131,7 +130,6 @@ extension EditorModel {
             guard let first = document.layers.first, let firstAsset = document.assets[first.assetID] else { return }
             let targetHeight = first.documentBounds(assetSize: firstAsset.pixelSize).height
             guard targetHeight > 0 else { return }
-            try Self.preserveCoverage(&document)
             var x = 0.0
             for index in document.layers.indices {
                 guard let asset = document.assets[document.layers[index].assetID] else {
@@ -236,7 +234,7 @@ extension EditorModel {
             }
         }
         // Every delta comes from the same starting frames and lands in one pass (R4-01).
-        edit("Align") { document in try Self.move(&document, by: deltas) }
+        edit("Align", explicitMasks: Self.maskIDs(deltas.keys)) { document in try Self.move(&document, by: deltas) }
     }
 
     // MARK: Presentation

@@ -228,15 +228,20 @@ public final class EditorModel {
 
     /// Applies one change to the document. Returns false when the change threw (for example a
     /// mask over an unmappable layer); the document is then unchanged.
+    ///
+    /// Every edit first makes each mask's coverage durable (`preserveCoverage`), so no edit can
+    /// uncover what a box hides by moving, scaling, cropping, adding or removing a layer (R2).
+    /// `explicitMasks` are the masks this edit moves or resizes itself: they re-bind instead.
     @discardableResult
-    func edit(_ label: String, _ change: (inout Document) throws -> Void) -> Bool {
+    func edit(
+        _ label: String, explicitMasks: Set<MaskID> = [], _ change: (inout Document) throws -> Void
+    ) -> Bool {
         guard !isClosed else { return false }
         let before = session.document
         let epoch = session.privacyEpoch
         do {
-            var updated = before
-            try change(&updated)
-            guard updated != before else { return true }
+            let (preserved, updated) = try Self.applying(change, to: before, explicitMasks: explicitMasks)
+            guard updated != preserved else { return true }
             settleTransformGesture()
             try session.perform(label) { $0 = updated }
         } catch {
@@ -538,9 +543,6 @@ public final class EditorModel {
         endContinuousChange()
         let ok = edit("Duplicate") { document in
             created = []
-            if document.layers.contains(where: { items.contains(.layer($0.id)) }) {
-                try Self.preserveCoverage(&document)
-            }
             for index in document.layers.indices where items.contains(.layer(document.layers[index].id)) {
                 var copy = document.layers[index]
                 copy.id = LayerID()
@@ -581,7 +583,9 @@ public final class EditorModel {
         let items = orderedSelection
         guard !items.isEmpty, dx.isFinite, dy.isFinite, dx != 0 || dy != 0 else { return }
         endContinuousChange()
-        edit("Nudge") { document in try Self.translate(&document, items: items, dx: dx, dy: dy) }
+        edit("Nudge", explicitMasks: Self.maskIDs(items)) { document in
+            try Self.translate(&document, items: items, dx: dx, dy: dy)
+        }
     }
 
     public func reorderSelection(_ order: EditorZOrder) {
@@ -647,11 +651,10 @@ public final class EditorModel {
     }
 
     /// Moves each item by its own delta, all resolved against the same starting document, in one
-    /// pass. A box never moves with a layer: protection first becomes durable (`preserveCoverage`),
-    /// then layers move. A mask in `deltas` is an explicit mask move and moves by whole pixels
-    /// (`setMaskRect`) after the layers it may be selected with (FR-06).
+    /// pass. A box never moves with a layer (the caller's edit made its coverage durable first).
+    /// A mask in `deltas` is an explicit mask move and moves by whole pixels (`setMaskRect`)
+    /// after the layers it may be selected with (FR-06).
     static func move(_ document: inout Document, by deltas: [EditorItemID: (dx: Double, dy: Double)]) throws {
-        if document.layers.contains(where: { deltas[.layer($0.id)] != nil }) { try preserveCoverage(&document) }
         for index in document.layers.indices {
             guard let (dx, dy) = deltas[.layer(document.layers[index].id)] else { continue }
             document.layers[index].placement.translation =
@@ -680,12 +683,31 @@ public final class EditorModel {
         }
     }
 
-    /// Before a layer moves, scales, changes or is duplicated: every mask also binds the source
-    /// pixels now under its box, including those of layers added after it, whose protection the
-    /// renderer otherwise derives from the box at render time. A layer edit then never uncovers
-    /// what a box hides, wherever the pixels go.
-    static func preserveCoverage(_ document: inout Document) throws {
-        for index in document.masks.indices {
+    /// The one path every edit and drag takes: coverage first becomes durable, then `change`
+    /// runs. Returns the document after each stage, so a caller can tell a no-op from a change.
+    /// A mask whose box cannot be mapped refuses only an edit that changes layers; other edits
+    /// cannot uncover anything, so they still apply.
+    static func applying(
+        _ change: (inout Document) throws -> Void, to document: Document, explicitMasks: Set<MaskID>
+    ) throws -> (preserved: Document, updated: Document) {
+        var preserved = document
+        var refusal: (any Error)?
+        do { try preserveCoverage(&preserved, except: explicitMasks) } catch {
+            preserved = document
+            refusal = error
+        }
+        var updated = preserved
+        try change(&updated)
+        if let refusal, updated.layers != document.layers { throw refusal }
+        return (preserved, updated)
+    }
+
+    /// Before any edit: every mask other than `explicit` also binds the source pixels now under
+    /// its box, including those of layers added after it, whose protection the renderer otherwise
+    /// derives from the box at render time. A later edit then never uncovers what a box hides,
+    /// wherever the pixels go or whichever layer showing them is removed.
+    static func preserveCoverage(_ document: inout Document, except explicit: Set<MaskID> = []) throws {
+        for index in document.masks.indices where !explicit.contains(document.masks[index].id) {
             for (asset, regions) in try document.sourceRegions(for: document.masks[index].outputRect) {
                 let bound = document.masks[index].sourceRegions[asset] ?? []
                 let added = regions.filter { !bound.contains($0) }
@@ -717,6 +739,10 @@ public final class EditorModel {
         }
         document.masks[index].outputRect = snapped
         document.masks[index].sourceRegions = regions
+    }
+
+    static func maskIDs(_ items: some Sequence<EditorItemID>) -> Set<MaskID> {
+        Set(items.compactMap { if case .mask(let id) = $0 { id } else { nil } })
     }
 
     private static func contains(_ outer: PixelRect, _ inner: PixelRect) -> Bool {
@@ -761,7 +787,6 @@ public final class EditorModel {
             guard bounds.width > 0 else { throw DocumentError.invalidGeometry }
             let scale = document.layers[index].placement.scale * rect.width / bounds.width
             guard scale.isFinite, scale > 0 else { throw DocumentError.invalidScale }
-            try preserveCoverage(&document)
             document.layers[index].placement.scale = scale
             let resized = document.layers[index].documentBounds(assetSize: asset.pixelSize)
             document.layers[index].placement.translation = document.layers[index].placement.translation.offset(
@@ -793,7 +818,7 @@ public final class EditorModel {
         } else {
             isCurve = false
         }
-        edit("Set Frame") { document in
+        edit("Set Frame", explicitMasks: Self.maskIDs([item])) { document in
             do { try Self.setFrame(&document, item: item, to: rect) } catch {
                 if isCurve { throw ArrowGeometryFailure.invalid }
                 throw error
