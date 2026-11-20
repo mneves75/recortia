@@ -565,6 +565,16 @@
     ],
     "authorization": "Release preparation for 0.14.0 build 28 as recorded in docs/handoffs/2026-11-11-0503-redesign-fixes-release-pending.md (review fixes and redesign ship in one release). Tagging, notarization and publication are separate owner actions."
   },
+  "source_candidate_0_15_0": {
+    "candidate": "0.15.0 source candidate",
+    "app_version": "0.15.0",
+    "build": 29,
+    "date": "2026-11-20",
+    "scope": "FP-048 (program 2026-11 T1): macOS 26 deployment floor (ADR-008); optional masking of e-mail addresses and phone numbers in new captures, failing closed; Open With for PNG and JPEG; filename templates; optional capture sound; latency signposts; editor on system split containers with every toolbar item visible at 980 pt; Output Preview read-only; secure masks never moved by layer edits; file-save and GitHub-consent hardening; one window presentation order; edit values admitted once in Domain. See CHANGELOG.md.",
+    "distribution_status": "Source only: not tagged, notarized, published or installed. Branch train/t1, PR #42; merging is the owner's.",
+    "evidence": [],
+    "not_verified": "Bilingual native E2E on this tree; macOS 26.0 launch (no such host); VoiceOver and Full Keyboard Access on the regrouped toolbar; physical Spaces (space probe dynamic mode) and the installed-app fullscreen check after the presentation-order change; recognition recall on real screens; the T1d deadline on an idle Mac."
+  },
   "tasks": [
     {
       "id": "FP-001",
@@ -1812,31 +1822,31 @@
       "id": "FP-047",
       "milestone": "M7",
       "title": "Program 2026-11 T0: evidence and experiments",
-      "status": "in_progress",
+      "status": "completed",
       "depends_on": ["FP-046"],
       "requirement_ids": ["FR-01", "FR-02", "FR-04", "FR-06", "FR-08", "FR-14"],
       "acceptance_test_ids": [],
       "scope": "Record the 2026-11-19 decisions; baseline gate and bilingual screenshot set; capability inventory of the installed reference app (licence first, nothing copied); architecture second opinion; whole-project defect review per module; modernisation audit for the macOS 26 floor; comment audit; experiments: one small slice timed through the full loop, an editor spike on macOS 26 containers with before/after screenshots, and an automatic-redaction recall and latency spike.",
       "deliverables": ["docs/specs/program-2026-11/plan.md", "docs/specs/program-2026-11/review-list.md", "docs/specs/feature-discovery/reference-matrix.md"],
       "completion_contract": "Every T0 output is recorded in docs/specs/program-2026-11/ with its source; the owner has answered the before/after and spike-numbers stop.",
-      "evidence": [],
+      "evidence": ["docs/specs/program-2026-11/plan.md", "docs/specs/program-2026-11/decisions.md", "docs/specs/program-2026-11/review-list.md", "docs/specs/program-2026-11/design-direction.md"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": ""
+      "status_note": "T0 outputs are in docs/specs/program-2026-11/ (plan, decisions, review-list, design-direction). The before/after and spike-numbers stop was taken by the coordinator under the owner's 2026-11-20 run-to-completion instruction and logged in decisions.md (auto-redaction timing, detector and tile size; editor material)."
     },
     {
       "id": "FP-048",
       "milestone": "M7",
       "title": "Program 2026-11 T1 (0.15): macOS 26 foundation",
-      "status": "not_started",
+      "status": "in_progress",
       "depends_on": ["FP-047"],
       "requirement_ids": ["FR-01", "FR-03", "FR-04", "FR-06", "FR-07", "FR-08", "FR-14"],
       "acceptance_test_ids": [],
       "scope": "CI toolchain and XcodeGen pin fixes; ADR-008 macOS 26 floor; certain review fixes and comment pruning; opt-in automatic redaction of e-mail addresses and phone numbers at capture; editor refresh on standard macOS 26 containers; A-1 window titles, A-2 Open With, A-9 filename templates, A-12 capture sound, A-13 step 1 latency signposts.",
       "deliverables": [],
       "completion_contract": "Each slice has a failing test first; './init.sh check --unsigned' and the bilingual E2E for every touched flow pass; cross-model review recorded.",
-      "evidence": [],
+      "evidence": ["PR #42 (train/t1)", "docs/specs/program-2026-11/decisions.md"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": ""
+      "status_note": "All slices (T1a toolchain and review fixes, ADR-008 floor, T1b module deepening, T1c editor chrome, T1d automatic redaction, T1e Open With, filename templates, capture sound, signposts) are merged on branch train/t1, PR #42 (draft). Gate passed on bf7daf8; bilingual native E2E on the final tree, the T1d deadline measurement and the owner-run space probe and installed-app fullscreen check are outstanding. See source_candidate_0_15_0."
     },
     {
       "id": "FP-049",
