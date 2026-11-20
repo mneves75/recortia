@@ -102,6 +102,37 @@ struct AnnotationRendererTests {
         #expect(dark.lightest > 0xC0 && dark.darkest >= 0x2E)
     }
 
+    @Test("A step numeral over a translucent fill stays visible on dark and light backgrounds")
+    func translucentStepNumeralVisible() throws {
+        for background in [ChartFixture.Color(0, 0, 0), ChartFixture.Color(255, 255, 255)] {
+            for alpha: UInt8 in [0, 128] {
+                let context = try #require(ChartFixture.context(width: 120, height: 80))
+                context.setFillColor(
+                    CGColor(
+                        srgbRed: Double(background.r) / 255, green: Double(background.g) / 255,
+                        blue: Double(background.b) / 255, alpha: 1))
+                context.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+                context.translateBy(x: 0, y: 80)
+                context.scaleBy(x: 1, y: -1)
+                let fill = RGBA(r: 0x90, g: 0x90, b: 0x90, a: alpha)
+                try AnnotationRenderer.draw(
+                    [
+                        Annotation(
+                            kind: .step(center: Point(x: 60, y: 40), number: 8), style: Annotation.Style(stroke: fill))
+                    ], in: context)
+                let p = try pixels(try #require(context.makeImage()))
+                // A numeral stroke differs from the background by at least 160 in some pixel.
+                var strongest = 0
+                for y in 30..<50 {
+                    for x in 54..<66 {
+                        strongest = max(strongest, abs(Int(p.pixel(x: x, y: y).r) - Int(background.r)))
+                    }
+                }
+                #expect(strongest >= 160, "background \(background.r), fill alpha \(alpha): \(strongest)")
+            }
+        }
+    }
+
     @Test("Highlighter is translucent and numbered steps render their number")
     func highlighterAndStep() throws {
         let highlight = try draw([

@@ -178,7 +178,13 @@ public enum AnnotationRenderer {
         let font =
             CTFontCreateUIFontForLanguage(.emphasizedSystem, radius * 1.1, nil)
             ?? CTFontCreateWithName("Helvetica-Bold" as CFString, radius * 1.1, nil)
-        guard let line = makeLine(String(number), font: font, color: textColor) else { return }
+        guard let line = makeLine(String(number), font: font, color: textColor, outline: nil) else { return }
+        // A translucent fill shows an unknown background, so the numeral sits on an opposite-color
+        // outline, stroked first so the fill on top keeps the glyph's full width.
+        let halo =
+            fill.a < 255
+            ? makeLine(String(number), font: font, color: textColor, outline: textColor == .black ? .white : .black)
+            : nil
         var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
         let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
         context.saveGState()
@@ -186,12 +192,21 @@ public enum AnnotationRenderer {
         context.scaleBy(x: 1, y: -1)
         context.textMatrix = .identity
         context.textPosition = .zero
+        if let halo {
+            CTLineDraw(halo, context)
+            context.textPosition = .zero
+        }
         CTLineDraw(line, context)
         context.restoreGState()
     }
 
-    private static func makeLine(_ string: String, font: CTFont, color: RGBA) -> CTLine? {
-        let attributes: [CFString: Any] = [kCTFontAttributeName: font, kCTForegroundColorAttributeName: color.cgColor]
+    private static func makeLine(_ string: String, font: CTFont, color: RGBA, outline: RGBA?) -> CTLine? {
+        var attributes: [CFString: Any] = [kCTFontAttributeName: font, kCTForegroundColorAttributeName: color.cgColor]
+        if let outline {
+            // A positive width strokes without filling; the width is a percentage of the font size.
+            attributes[kCTStrokeWidthAttributeName] = 24.0
+            attributes[kCTStrokeColorAttributeName] = outline.cgColor
+        }
         guard let attributed = CFAttributedStringCreate(nil, string as CFString, attributes as CFDictionary) else {
             return nil
         }
