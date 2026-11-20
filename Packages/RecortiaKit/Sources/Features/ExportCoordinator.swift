@@ -251,16 +251,23 @@ public final class ExportCoordinator {
                     apply(.cancel)
                     return .canceled
                 }
+                // Rechecked by the uploader before each request: main-actor work queued before
+                // this task (a Settings change) runs before it starts.
+                let settings = self.settings
+                let consentHolds = { @MainActor @Sendable () -> Bool in
+                    settings.githubUploadConsentID == consentID
+                        && settings.preferences.githubUpload?.automatic == true
+                        && settings.preferences.githubUpload?.destination == destination
+                }
+                let isLive = { @MainActor @Sendable [weak self] () -> Bool in
+                    guard let self else { return false }
+                    return self.operation?.cancelRequested == false && consentHolds() && isCurrent(snapshot)
+                }
                 let task = Task<URL, any Error> { [weak self] in
                     try await upload.upload(
-                        snapshot, to: destination, intent: intent,
+                        snapshot, to: destination, intent: intent, isLive: isLive,
                         isCurrent: { [weak self] in
-                            guard let self, self.operation?.cancelRequested == false,
-                                self.settings.githubUploadConsentID == consentID,
-                                self.settings.preferences.githubUpload?.automatic == true,
-                                self.settings.preferences.githubUpload?.destination == destination,
-                                isCurrent(snapshot)
-                            else { return false }
+                            guard let self, isLive() else { return false }
                             self.apply(.commit)
                             return true
                         })
@@ -270,7 +277,11 @@ public final class ExportCoordinator {
                 case .success(let url): completed = .uploaded(url)
                 case .failure(let error):
                     let failure = (error as? GitHubUploadFailure) ?? .completionUnknown
-                    if failure == .canceled {
+                    // Consent revoked before the image request started is the person's own
+                    // action: any failure then (a lookup's 403 or timeout included) ends the upload
+                    // silently, as a revocation before the step does. Once the image request has
+                    // started (`.committing`), its failed or unknown result is reported.
+                    if failure == .canceled || (!consentHolds() && state != .committing) {
                         if state != .canceled { apply(.cancel) }
                         return .canceled
                     }
@@ -471,6 +482,7 @@ public final class ExportCoordinator {
         case .diskFull: .diskFull
         case .volumeUnavailable: .volumeUnavailable
         case .writeFailed(let code): .system(code: code)
+        case .leftover(let name): .leftover(name: name)
         }
     }
 }

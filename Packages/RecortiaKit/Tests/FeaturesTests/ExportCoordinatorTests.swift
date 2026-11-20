@@ -32,18 +32,37 @@ final class ExportHarness {
     }
 }
 
-/// Counts upload requests; succeeds only while the coordinator's live check still allows it.
+/// Counts upload requests, each made only while the coordinator's live check allows it, as the
+/// real uploader does; succeeds only while its commit check still allows it.
 @MainActor
 private final class RecordingUpload: GitHubUploadService {
     private(set) var requests = 0
 
     func upload(
         _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL {
+        guard isLive() else { throw .staleDocument }
         requests += 1
         guard isCurrent() else { throw .canceled }
         return URL(fileURLWithPath: "/tmp/recortia-tests/never-uploaded.png")
+    }
+}
+
+/// Runs a test's script in place of the uploader, with the coordinator's own checks.
+@MainActor
+private final class ScriptedUpload: GitHubUploadService {
+    var script: (_ isLive: () -> Bool, _ isCurrent: () -> Bool) throws(GitHubUploadFailure) -> URL = { _, _ in
+        throw .network
+    }
+
+    func upload(
+        _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async throws(GitHubUploadFailure) -> URL {
+        try script(isLive, isCurrent)
     }
 }
 
@@ -71,6 +90,7 @@ struct ExportCoordinatorTests {
             (.diskFull, .diskFull),
             (.volumeUnavailable, .volumeUnavailable),
             (.writeFailed(code: 5), .system(code: 5)),
+            (.leftover(name: ".recortia-x/stage"), .leftover(name: ".recortia-x/stage")),
         ])
     func fileSinkErrors(error: SinkError, expected: ExportFailure) async {
         let h = ExportHarness()
@@ -448,6 +468,104 @@ struct ExportCoordinatorTests {
         render.resolve(.success(()))
         _ = await run.value
         #expect(upload.requests == 0, "a stale batch reached the upload service after its render")
+    }
+
+    // R2-D07 (program 2026-11): the step's consent check ran synchronously, then the upload ran in
+    // a new task; a Settings change already queued on the main actor ran in between, and the
+    // upload still made its authenticated lookups.
+    @Test("Consent renewed after the upload step's check but before its task runs sends no request, silently")
+    func consentRenewedBeforeTheUploadTaskRunsSendsNothing() async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        let upload = RecordingUpload()
+        let h = ExportHarness(upload: upload)
+        h.settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true) }
+        let plan = h.coordinator.automaticExportPlan()
+        let consentBefore = h.settings.githubUploadConsentID
+        var queued = false
+        let session = h.session
+        let outcomes = await h.coordinator.runAutomaticExports(
+            plan, for: session,
+            currentSession: {
+                // First called by the freshness check after the render, before the step's
+                // consent guard: queue a revoke-and-re-enable as Settings would.
+                if !queued {
+                    queued = true
+                    Task { @MainActor in
+                        h.settings.update { $0.githubUpload?.automatic = false }
+                        h.settings.update { $0.githubUpload?.automatic = true }
+                    }
+                }
+                return session
+            })
+        #expect(queued && h.settings.githubUploadConsentID != consentBefore, "control: consent was never renewed")
+        #expect(upload.requests == 0, "a request was sent for consent that was no longer live")
+        // Revoking consent is the person's own action, not a failure to report.
+        #expect(outcomes == [.canceled])
+    }
+
+    enum Revocation: String, CaseIterable, Sendable {
+        /// Upload turned off while a lookup runs; the lookup then fails (a 403, a timeout).
+        case duringLookup
+        /// Upload turned off after the image request started.
+        case afterImageRequest
+        /// Nothing revoked: the lookup's failure is reported.
+        case none
+    }
+
+    // R10 (adversarial review of T1a): turning upload off while a lookup ran, then that lookup
+    // failing, reported an upload failure the person had opted out of.
+    @Test(
+        "A failure after the person revoked consent is silent before the image request, reported after",
+        arguments: Revocation.allCases)
+    func failureAfterRevocation(revocation: Revocation) async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        let upload = ScriptedUpload()
+        let h = ExportHarness(upload: upload)
+        h.settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true) }
+        upload.script = { isLive, isCurrent throws(GitHubUploadFailure) in
+            guard isLive() else { throw .staleDocument }
+            switch revocation {
+            case .duringLookup:
+                h.settings.update { $0.githubUpload?.automatic = false }
+                throw .accessDenied
+            case .afterImageRequest:
+                guard isCurrent() else { throw .staleDocument }
+                h.settings.update { $0.githubUpload?.automatic = false }
+                throw .completionUnknown
+            case .none:
+                throw .accessDenied
+            }
+        }
+        let plan = h.coordinator.automaticExportPlan()
+        let session = h.session
+        let outcomes = await h.coordinator.runAutomaticExports(plan, for: session, currentSession: { session })
+        switch revocation {
+        case .duringLookup: #expect(outcomes == [.canceled])
+        case .afterImageRequest: #expect(outcomes == [.failed(.upload(.completionUnknown))])
+        case .none: #expect(outcomes == [.failed(.upload(.accessDenied))])
+        }
+    }
+
+    @Test("A document that changes before the upload's first request still fails the upload visibly")
+    func documentChangedBeforeTheUploadTaskRunsFails() async {
+        let destination = GitHubDestination(owner: "synthetic", repository: "private-fixtures")
+        let upload = RecordingUpload()
+        let h = ExportHarness(upload: upload)
+        h.settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true) }
+        let plan = h.coordinator.automaticExportPlan()
+        let session = h.session
+        let edited = TestFixtures.session()
+        var calls = 0
+        let outcomes = await h.coordinator.runAutomaticExports(
+            plan, for: session,
+            currentSession: {
+                // Current for the post-render freshness check, then another document.
+                calls += 1
+                return calls == 1 ? session : edited
+            })
+        #expect(calls > 1, "control: the upload never rechecked the document")
+        #expect(upload.requests == 0)
+        #expect(outcomes == [.failed(.upload(.staleDocument))])
     }
 
     @Test("Turning automatic save off while the copy renders still writes nothing")

@@ -3972,12 +3972,44 @@
         }
       }
     },
+    "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O salvamento não terminou e deixou “%@” na pasta. Verifique-o e apague-o se não precisar dele."
+          }
+        }
+      }
+    },
     "The save folder is unavailable, so automatic saves fail. Choose another folder." : {
       "localizations" : {
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "A pasta de salvamento está indisponível, então os salvamentos automáticos falham. Escolha outra pasta."
+          }
+        }
+      }
+    },
+    "The saved GitHub token isn't valid. Replace it in Settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The saved GitHub token isn't valid. Replace it in Settings."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O token do GitHub salvo não é válido. Substitua-o nos Ajustes."
           }
         }
       }

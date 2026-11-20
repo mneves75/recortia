@@ -35,6 +35,8 @@ public struct GitHubUploadPreferences: Hashable, Sendable, Codable {
 public enum GitHubUploadFailure: Error, Hashable, Sendable {
     case invalidDestination
     case missingCredential
+    /// A pasted or stored token that is not a GitHub token shape the token store admits.
+    case invalidCredential
     case credentialsUnavailable
     case publicRepository
     case tooLarge

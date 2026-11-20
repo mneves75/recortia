@@ -154,6 +154,8 @@ public enum ExportFailure: Hashable, Sendable {
     case volumeUnavailable
     case staleDocument
     case system(code: Int)
+    /// A save failed and left this entry, relative to its folder.
+    case leftover(name: String)
 }
 
 /// Export: requested → snapshotting → sanitizing → rendering → encoding → committing → succeeded.
