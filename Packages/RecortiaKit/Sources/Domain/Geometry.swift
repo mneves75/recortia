@@ -170,7 +170,7 @@ public struct PixelRect: Hashable, Sendable, Codable {
     public var isEmpty: Bool { width <= 0 || height <= 0 }
     public var area: Int { width * height }
 
-    var asRect: Rect<SourcePixelSpace> {
+    public var asRect: Rect<SourcePixelSpace> {
         Rect(x: Double(x), y: Double(y), width: Double(width), height: Double(height))
     }
 

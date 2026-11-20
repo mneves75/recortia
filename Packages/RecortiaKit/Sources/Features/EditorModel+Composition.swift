@@ -101,9 +101,8 @@ extension EditorModel {
         let value = min(max(scale, 0.01), 16)
         edit("Layer Scale") { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
-            let before = document
+            try Self.preserveCoverage(&document)
             document.layers[index].placement.scale = value
-            try Self.carryMasks(&document, from: before)
         }
     }
 
@@ -132,7 +131,7 @@ extension EditorModel {
             guard let first = document.layers.first, let firstAsset = document.assets[first.assetID] else { return }
             let targetHeight = first.documentBounds(assetSize: firstAsset.pixelSize).height
             guard targetHeight > 0 else { return }
-            let before = document
+            try Self.preserveCoverage(&document)
             var x = 0.0
             for index in document.layers.indices {
                 guard let asset = document.assets[document.layers[index].assetID] else {
@@ -145,7 +144,6 @@ extension EditorModel {
                 document.layers[index].placement.translation = Point(x: x, y: 0)
                 x += document.layers[index].documentBounds(assetSize: asset.pixelSize).width + spacing
             }
-            try Self.carryMasks(&document, from: before)
             document.canvasSize = Size(width: (x - spacing).rounded(.up), height: targetHeight.rounded(.up))
             document.crop = nil
         }

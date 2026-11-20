@@ -98,8 +98,7 @@ struct EditorCompositionTests {
         #expect(document.canvasSize == Size(width: 450, height: 320))
         #expect(document.layers.first?.placement.translation == .zero)
         #expect(document.annotations.first?.kind == .arrow(start: Point(x: 100, y: 70), end: Point(x: 200, y: 70)))
-        // The mask followed its layer to (-40, -10), then shifted with everything (+50, +20).
-        #expect(document.masks.first?.outputRect == Rect(x: 10, y: 10, width: 20, height: 20))
+        #expect(document.masks.first?.outputRect == Rect(x: 60, y: 30, width: 20, height: 20))
         #expect(document.masks.first?.sourceRegions == regions)
         #expect(document.masks.first?.sourceRegions[assetID] != nil)
     }

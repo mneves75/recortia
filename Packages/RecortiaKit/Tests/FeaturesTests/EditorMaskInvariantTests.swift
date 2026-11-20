@@ -5,9 +5,9 @@ import Testing
 
 @testable import Features
 
-// Failure modes (FR-06, RED-04, decisions "masks move with layers"): a mask re-binds its hidden
-// source pixels as a side effect of an edit that is not an effective move or resize of that mask,
-// so the export shows the secret. Every case checks the exported pixels, not only the model.
+// Failure modes (FR-06, RED-04): an edit that is not an effective move or resize of a mask moves
+// its box or drops what it hides, so the export shows the secret. A box moves only when the person
+// moves that mask. Every case checks the exported pixels, not only the model.
 @Suite("Secure masks keep their secret covered through geometry edits (RED-04)")
 @MainActor
 struct EditorMaskInvariantTests {
@@ -31,21 +31,81 @@ struct EditorMaskInvariantTests {
         fixture.secretPixels(in: try await fixture.exported(), FixtureRect(x: x, y: 10, width: 20, height: 20))
     }
 
-    // MARK: I1 masks follow their layer
+    // MARK: R1–R3 a layer edit never moves a box or drops protection
 
-    @Test("Moving a layer carries its masks with their bindings; a co-move with the mask keeps them too")
-    func masksFollowTheirLayer() async throws {
-        let (fixture, maskID, layerID) = try await maskWithMovedLayer()
+    @Test("Dragging a layer leaves the box in place and the secret filled where the layer now is")
+    func layerDragLeavesBox() async throws {
+        let fixture = try await SecretExport(secret: Self.secret)
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.clearSelection()
+        h.drag((200, 200), (300, 200))
+        #expect(m.document.layers.first?.placement.translation == Point(x: 100, y: 0))
+        #expect(m.document.masks == [mask])
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels) == 0)
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 10, y: 10, width: 20, height: 20)) == 0)
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 110, y: 10, width: 20, height: 20)) == 0)
+    }
+
+    @Test("Moving layers does not change what a box hides on a pasted image (paired export, R4-02)")
+    func boxKeepsLateCoverage() async throws {
+        let box = FixtureRect(x: 100, y: 100, width: 20, height: 20)
+        var exports: [[DecodedPixels]] = []
+        for green: UInt8 in [0, 200] {
+            let fixture = try await SecretExport(secret: box)
+            let h = fixture.harness
+            let m = h.model
+            m.selectTool(.redact)
+            h.drag((100, 100), (120, 120))
+            let a = try #require(m.document.layers.first).id
+            let b = try await fixture.addLayer(secrets: [box], green: green)
+            m.selectTool(.select)
+            var run = [try await fixture.exported()]
+            m.setFrame(Rect(x: 50, y: 0, width: 400, height: 300), for: .layer(a))
+            run.append(try await fixture.exported())
+            m.setFrame(Rect(x: 50, y: 0, width: 400, height: 300), for: .layer(b))
+            run.append(try await fixture.exported())
+            #expect(run.allSatisfy { fixture.secretPixels(in: $0) == 0 })
+            exports.append(run)
+        }
+        #expect(exports[0][0] == exports[1][0], "the variants differ only inside the box")
+        #expect(exports[0][1] == exports[1][1], "moving A must not uncover B inside the box")
+        #expect(exports[0][2] == exports[1][2], "moving B off the box must keep its pixels filled")
+    }
+
+    @Test("Moving the image out from under a box keeps a stationary object in the box covered (R4-03)")
+    func boxKeepsStationaryObject() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 20, y: 20, width: 10, height: 10))
+        let h = fixture.harness
+        let m = h.model
+        m.setFillColor(.yellow)
+        m.selectTool(.rectangle)
+        h.drag((40, 20), (100, 40))
+        m.selectTool(.redact)
+        h.drag((10, 10), (180, 60))
+        let layer = try #require(m.document.layers.first).id
+        m.selectTool(.select)
+        m.setFrame(Rect(x: 200, y: 0, width: 400, height: 300), for: .layer(layer))
+        let pixels = try await fixture.exported()
+        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 10, y: 10, width: 170, height: 50)) == 0)
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 200, y: 0, width: 200, height: 100)) == 0)
+    }
+
+    @Test("Moving a box keeps the protection of pixels its layer already carried away (R3)")
+    func explicitMoveKeepsDisplaced() async throws {
+        let (fixture, maskID, _) = try await maskWithMovedLayer()
         let m = fixture.harness.model
-        let bound = try #require(m.document.masks.first).sourceRegions
-        #expect(m.document.masks.first?.outputRect == Rect(x: 110, y: 10, width: 20, height: 20))
+        #expect(m.document.masks.first?.outputRect == Rect(x: 10, y: 10, width: 20, height: 20))
         #expect(try await secretCovered(fixture, at: 110) == 0)
-
-        m.setSelection([.layer(layerID), .mask(maskID)])
-        m.nudgeSelection(dx: 1, dy: 0)
-        #expect(m.document.masks.first?.outputRect == Rect(x: 111, y: 10, width: 20, height: 20))
-        #expect(m.document.masks.first?.sourceRegions == bound)
-        #expect(try await secretCovered(fixture, at: 111) == 0)
+        m.select(.mask(maskID))
+        fixture.harness.drag((20, 20), (60, 20))
+        #expect(m.document.masks.first?.outputRect == Rect(x: 50, y: 10, width: 20, height: 20))
+        #expect(try await secretCovered(fixture, at: 110) == 0)
     }
 
     // MARK: I2 only an effective move or resize re-binds

@@ -530,6 +530,9 @@ public final class EditorModel {
         endContinuousChange()
         let ok = edit("Duplicate") { document in
             created = []
+            if document.layers.contains(where: { items.contains(.layer($0.id)) }) {
+                try Self.preserveCoverage(&document)
+            }
             for index in document.layers.indices where items.contains(.layer(document.layers[index].id)) {
                 var copy = document.layers[index]
                 copy.id = LayerID()
@@ -630,100 +633,81 @@ public final class EditorModel {
         }
     }
 
-    /// Translates `items` in `document`. Masks bound to moved layers move with them and keep their
-    /// bindings; a mask the person moves without its layers moves by whole pixels and re-derives
-    /// its source regions (FR-06).
+    /// Translates `items` in `document`; see `move(_:by:)`.
     static func translate(_ document: inout Document, items: [EditorItemID], dx: Double, dy: Double) throws {
-        let set = Set(items)
-        let before = document
-        for index in document.layers.indices where set.contains(.layer(document.layers[index].id)) {
+        try move(&document, by: Dictionary(items.map { ($0, (dx, dy)) }, uniquingKeysWith: { first, _ in first }))
+    }
+
+    /// Moves each item by its own delta, all resolved against the same starting document, in one
+    /// pass. A box never moves with a layer: protection first becomes durable (`preserveCoverage`),
+    /// then layers move. A mask in `deltas` is an explicit mask move and moves by whole pixels
+    /// (`setMaskRect`) after the layers it may be selected with (FR-06).
+    static func move(_ document: inout Document, by deltas: [EditorItemID: (dx: Double, dy: Double)]) throws {
+        if document.layers.contains(where: { deltas[.layer($0.id)] != nil }) { try preserveCoverage(&document) }
+        for index in document.layers.indices {
+            guard let (dx, dy) = deltas[.layer(document.layers[index].id)] else { continue }
             document.layers[index].placement.translation =
                 document.layers[index].placement.translation.offset(dx: dx, dy: dy)
         }
-        let carried = try carryMasks(&document, from: before)
-        for index in document.obfuscations.indices where set.contains(.obfuscation(document.obfuscations[index].id)) {
+        for index in document.obfuscations.indices {
+            guard let (dx, dy) = deltas[.obfuscation(document.obfuscations[index].id)] else { continue }
             document.obfuscations[index].rect = document.obfuscations[index].rect.offsetBy(dx: dx, dy: dy)
         }
-        for index in document.annotations.indices where set.contains(.annotation(document.annotations[index].id)) {
+        for index in document.annotations.indices {
+            guard let (dx, dy) = deltas[.annotation(document.annotations[index].id)] else { continue }
             let moved = document.annotations[index].translated(dx: dx, dy: dy)
             try validateArrow(moved)
             document.annotations[index] = moved
         }
-        for index in document.callouts.indices where set.contains(.callout(document.callouts[index].id)) {
+        for index in document.callouts.indices {
+            guard let (dx, dy) = deltas[.callout(document.callouts[index].id)] else { continue }
             document.callouts[index].kind = translated(
                 document.callouts[index].kind, dx: dx, dy: dy, movesSource: false)
         }
-        let mdx = dx.rounded(), mdy = dy.rounded()
-        if mdx != 0 || mdy != 0 {
-            for index in document.masks.indices
-            where set.contains(.mask(document.masks[index].id)) && !carried.contains(document.masks[index].id) {
-                try setMaskRect(&document, index: index, document.masks[index].outputRect.offsetBy(dx: mdx, dy: mdy))
-            }
-        }
-    }
-
-    /// Masks follow their layers ("masks move with layers"). After layer placements changed from
-    /// `before`, a mask whose bound layers all changed by one unrotated map moves with them and
-    /// keeps its source bindings, so its rectangle still shows where the hidden pixels appear. A
-    /// mask whose layers moved differently, or rotated, stays and keeps its bindings, which still
-    /// hide the source pixels. Returns the masks moved.
-    @discardableResult
-    static func carryMasks(_ document: inout Document, from before: Document) throws -> Set<MaskID> {
-        var carried: Set<MaskID> = []
         for index in document.masks.indices {
-            let mask = document.masks[index]
-            let assets = Set(mask.sourceRegions.compactMap { $0.value.isEmpty ? nil : $0.key })
-            var map: AffineMap<DocumentSpace, DocumentSpace>?
-            var moved = false, consistent = true
-            for old in before.layers where assets.contains(old.assetID) {
-                guard let new = document.layers.first(where: { $0.id == old.id }),
-                    let size = before.assets[old.assetID]?.pixelSize,
-                    let inverse = try? old.sourceToDocument(assetSize: size).inverted()
-                else {
-                    consistent = false
-                    break
-                }
-                let change = inverse.then(new.sourceToDocument(assetSize: size))
-                moved = moved || new.placement != old.placement
-                if let map, !Self.nearlyEqual(map, change) {
-                    consistent = false
-                    break
-                }
-                map = change
+            guard let (dx, dy) = deltas[.mask(document.masks[index].id)] else { continue }
+            let mdx = dx.rounded(), mdy = dy.rounded()
+            guard mdx != 0 || mdy != 0 else { continue }
+            try setMaskRect(&document, index: index, document.masks[index].outputRect.offsetBy(dx: mdx, dy: mdy))
+        }
+    }
+
+    /// Before a layer moves, scales, changes or is duplicated: every mask also binds the source
+    /// pixels now under its box, including those of layers added after it, whose protection the
+    /// renderer otherwise derives from the box at render time. A layer edit then never uncovers
+    /// what a box hides, wherever the pixels go.
+    static func preserveCoverage(_ document: inout Document) throws {
+        for index in document.masks.indices {
+            for (asset, regions) in try document.sourceRegions(for: document.masks[index].outputRect) {
+                let bound = document.masks[index].sourceRegions[asset] ?? []
+                let added = regions.filter { !bound.contains($0) }
+                if !added.isEmpty { document.masks[index].sourceRegions[asset] = bound + added }
             }
-            guard moved, consistent, let map, map.b == 0, map.c == 0, map.a > 0, map.d > 0 else { continue }
-            let mapped = map.apply(mask.outputRect)
-            // Snap floating-point noise before rounding outward, so a whole-pixel move stays exact.
-            func clean(_ v: Double) -> Double { abs(v - v.rounded()) < 1e-6 ? v.rounded() : v }
-            let rect = EditorGeometry.outwardIntegral(
-                Rect(
-                    spanning: Point(x: clean(mapped.minX), y: clean(mapped.minY)),
-                    Point(x: clean(mapped.maxX), y: clean(mapped.maxY))))
-            guard EditorGeometry.isFinite(rect), !rect.isEmpty else { throw DocumentError.invalidGeometry }
-            document.masks[index].outputRect = rect
-            carried.insert(mask.id)
-        }
-        return carried
-    }
-
-    private static func nearlyEqual(
-        _ x: AffineMap<DocumentSpace, DocumentSpace>, _ y: AffineMap<DocumentSpace, DocumentSpace>
-    )
-        -> Bool
-    {
-        zip([x.a, x.b, x.c, x.d, x.tx, x.ty], [y.a, y.b, y.c, y.d, y.tx, y.ty]).allSatisfy {
-            abs($0 - $1) <= 1e-9 * max(1, abs($0), abs($1))
         }
     }
 
+    /// An explicit move or resize of a mask. Its box now hides what is under the new rectangle,
+    /// and it keeps the bound pixels a layer edit already carried away from its old box: those
+    /// are still hidden where they are, and only deleting the mask releases them.
     static func setMaskRect(_ document: inout Document, index: Int, _ rect: Rect<DocumentSpace>) throws {
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard EditorGeometry.isFinite(snapped), !snapped.isEmpty else { throw DocumentError.invalidGeometry }
-        // An unchanged rectangle keeps its binding: remapping it after its layer moved would drop
-        // the source pixels it still hides.
-        guard snapped != document.masks[index].outputRect else { return }
+        let old = document.masks[index]
+        // An unchanged rectangle keeps its binding (a click within the slop changes nothing).
+        guard snapped != old.outputRect else { return }
+        var regions = try document.sourceRegions(for: snapped)
+        for (asset, bound) in old.sourceRegions {
+            let footprints = document.layers.compactMap { layer -> AffineMap<SourcePixelSpace, DocumentSpace>? in
+                guard layer.assetID == asset, let size = document.assets[asset]?.pixelSize else { return nil }
+                return layer.sourceToDocument(assetSize: size)
+            }
+            for region in bound
+            where !footprints.contains(where: { $0.apply(region.asRect).intersects(old.outputRect) }) {
+                if !(regions[asset]?.contains(region) ?? false) { regions[asset, default: []].append(region) }
+            }
+        }
         document.masks[index].outputRect = snapped
-        document.masks[index].sourceRegions = try document.sourceRegions(for: snapped)
+        document.masks[index].sourceRegions = regions
     }
 
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).
@@ -763,12 +747,11 @@ public final class EditorModel {
             guard bounds.width > 0 else { throw DocumentError.invalidGeometry }
             let scale = document.layers[index].placement.scale * rect.width / bounds.width
             guard scale.isFinite, scale > 0 else { throw DocumentError.invalidScale }
-            let before = document
+            try preserveCoverage(&document)
             document.layers[index].placement.scale = scale
             let resized = document.layers[index].documentBounds(assetSize: asset.pixelSize)
             document.layers[index].placement.translation = document.layers[index].placement.translation.offset(
                 dx: rect.minX - resized.minX, dy: rect.minY - resized.minY)
-            try carryMasks(&document, from: before)
         case .mask(let id):
             guard let index = document.masks.firstIndex(where: { $0.id == id }) else { return }
             try setMaskRect(&document, index: index, rect)
