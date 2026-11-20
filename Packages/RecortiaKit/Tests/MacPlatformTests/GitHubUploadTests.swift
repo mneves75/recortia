@@ -346,6 +346,7 @@ struct GitHubUploadTests {
         let transport = GitHubURLTransport(makeSession: { session })
         let request = URLRequest(url: try #require(URL(string: "https://api.github.com/repos/fixture/captures")))
         var revoked = false
+        let (revocation, signal) = AsyncStream<Void>.makeStream()
         let mayStart: @MainActor @Sendable () -> Bool = {
             session.log("check")
             guard !revoked else { return false }
@@ -353,14 +354,19 @@ struct GitHubUploadTests {
             Task { @MainActor in
                 revoked = true
                 session.log("revoke")
+                signal.yield()
+                signal.finish()
             }
             return true
         }
         let response = try await transport.send(request, mayStart: mayStart)
         #expect(response.statusCode == 200)
-        await Task.yield()
+        // Wait for the revocation itself, not for scheduling luck.
+        for await _ in revocation { break }
         #expect(revoked, "control: the revocation never ran")
         #expect(session.events == ["check", "create", "resume", "revoke"])
+        #expect(
+            session.offMainActorCalls.isEmpty, "created or resumed off the main actor: \(session.offMainActorCalls)")
         await #expect(throws: GitHubUploadFailure.staleDocument) {
             _ = try await transport.send(request, mayStart: mayStart)
         }
@@ -368,15 +374,34 @@ struct GitHubUploadTests {
             session.events == ["check", "create", "resume", "revoke", "check"], "a request started after revocation")
     }
 
-    @Test("A response larger than the bound is refused and its task canceled")
+    /// The response bound streamed in 64 KiB chunks, as URLSession delivers a body.
+    static let chunksToTheLimit: [Data] = {
+        let chunk = 64 * 1024
+        let limit = GitHubUploader.maximumResponseBytes
+        return stride(from: 0, to: limit, by: chunk).map { Data(count: min(chunk, limit - $0)) }
+    }()
+
+    // R3-10 (third review of T1a): the bound was tested with one callback larger than the limit,
+    // so a per-callback check would pass; and the cancellation error that follows was never sent.
+    @Test("A body streamed past the bound by one byte is refused and its task canceled")
     func oversizedResponseIsRefused() async throws {
-        let session = RecordingGitHubSession(body: Data(count: GitHubUploader.maximumResponseBytes + 1))
+        let session = RecordingGitHubSession(chunks: Self.chunksToTheLimit + [Data(count: 1)])
         let transport = GitHubURLTransport(makeSession: { session })
         let request = URLRequest(url: try #require(URL(string: "https://api.github.com/repos/fixture/captures")))
         await #expect(throws: GitHubUploadFailure.invalidResponse) {
             _ = try await transport.send(request, mayStart: { true })
         }
         #expect(session.events.contains("cancel"))
+    }
+
+    @Test("A body of exactly the bound, streamed in chunks, is accepted whole")
+    func responseAtTheBoundIsAccepted() async throws {
+        let session = RecordingGitHubSession(chunks: Self.chunksToTheLimit)
+        let transport = GitHubURLTransport(makeSession: { session })
+        let request = URLRequest(url: try #require(URL(string: "https://api.github.com/repos/fixture/captures")))
+        let response = try await transport.send(request, mayStart: { true })
+        #expect(response.body.count == GitHubUploader.maximumResponseBytes)
+        #expect(!session.events.contains("cancel"))
     }
 
     @Test("Redirect delegate declines the redirected request")
@@ -398,19 +423,35 @@ struct GitHubUploadTests {
     }
 }
 
-/// A session that records when tasks are created, started and canceled, and answers each started
-/// task at once with a 200 and `body`.
+/// A session that records when tasks are created, started and canceled, and whether creation and
+/// start ran on the main actor. Each started task answers with a 200, delivering `chunks` one
+/// callback each; a task canceled meanwhile completes with URLError(.cancelled), as URLSession does.
 final class RecordingGitHubSession: GitHubSession, Sendable {
-    private let state = Mutex<[String]>([])
-    private let body: Data
+    private struct State {
+        var events: [String] = []
+        var offMainActor: [String] = []
+        var canceled = false
+    }
 
-    init(body: Data = Data("{}".utf8)) { self.body = body }
+    private let state = Mutex(State())
+    private let chunks: [Data]
 
-    var events: [String] { state.withLock { $0 } }
-    func log(_ event: String) { state.withLock { $0.append(event) } }
+    init(chunks: [Data] = [Data("{}".utf8)]) { self.chunks = chunks }
+
+    var events: [String] { state.withLock { $0.events } }
+    var offMainActorCalls: [String] { state.withLock { $0.offMainActor } }
+    func log(_ event: String) { state.withLock { $0.events.append(event) } }
+
+    private func logOnMainActor(_ event: String) {
+        let onMain = Thread.isMainThread
+        state.withLock {
+            $0.events.append(event)
+            if !onMain { $0.offMainActor.append(event) }
+        }
+    }
 
     func task(for request: URLRequest, collector: GitHubResponseCollector) -> any GitHubSessionTask {
-        log("create")
+        logOnMainActor("create")
         return Task(session: self, request: request, collector: collector)
     }
 
@@ -422,13 +463,24 @@ final class RecordingGitHubSession: GitHubSession, Sendable {
         let collector: GitHubResponseCollector
 
         func resume() {
-            session.log("resume")
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            session.logOnMainActor("resume")
+            guard let url = request.url,
+                let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)
+            else { return collector.complete(error: URLError(.badURL)) }
             collector.receive(response: response)
-            collector.receive(data: session.body, cancel: cancel)
-            collector.complete(error: nil)
+            for chunk in session.chunks {
+                guard !session.state.withLock({ $0.canceled }) else { break }
+                collector.receive(data: chunk, cancel: cancel)
+            }
+            let canceled = session.state.withLock { $0.canceled }
+            collector.complete(error: canceled ? URLError(.cancelled) : nil)
         }
 
-        func cancel() { session.log("cancel") }
+        func cancel() {
+            session.state.withLock {
+                $0.canceled = true
+                $0.events.append("cancel")
+            }
+        }
     }
 }

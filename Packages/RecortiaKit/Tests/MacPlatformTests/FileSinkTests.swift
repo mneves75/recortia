@@ -192,7 +192,21 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(resolved) == ["shot.png", unique.lastPathComponent].sorted())
     }
 
-    @Test("A folder spelled with different letter case on a case-insensitive volume is admitted")
+    /// Whether the temporary folder's volume ignores letter case; the case-alias test needs one.
+    static let temporaryVolumeIgnoresCase: Bool = {
+        guard let root = try? TestSupport.makeTemporaryDirectory() else { return false }
+        defer { TestSupport.removeDirectory(root) }
+        let folder = root.appendingPathComponent("Probe", isDirectory: true)
+        guard (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)) != nil
+        else { return false }
+        return FileManager.default.fileExists(atPath: root.appendingPathComponent("probe").path(percentEncoded: false))
+    }()
+
+    // R3-11 (third review of T1a): on a case-sensitive temporary volume the fixture's precondition
+    // failed before FileSink ran; the test now runs only where letter case is ignored.
+    @Test(
+        "A folder spelled with different letter case on a case-insensitive volume is admitted",
+        .enabled(if: temporaryVolumeIgnoresCase, "the temporary folder's volume is case-sensitive"))
     func caseVariantFolderIsAdmitted() throws {
         let root = try TestSupport.makeTemporaryDirectory()
         defer { TestSupport.removeDirectory(root) }
