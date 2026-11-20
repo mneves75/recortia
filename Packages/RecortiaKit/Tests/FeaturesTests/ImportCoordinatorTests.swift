@@ -131,6 +131,23 @@ struct SupportModelTests {
         #expect(model.lastErrorOccurred)
     }
 
+    @Test("A login-item warning clears once the system reports the requested state")
+    func loginItemWarningClearsAfterApproval() {
+        let service = FakeLoginItem()
+        let model = LoginItemModel(service: service)
+        service.error = TestError()  // registration awaits approval in System Settings
+        model.setEnabled(true)
+        #expect(model.lastErrorOccurred)
+
+        model.refresh()
+        #expect(model.lastErrorOccurred)  // still not enabled: the warning stays
+
+        service.isEnabled = true  // the person approved the item
+        model.refresh()
+        #expect(model.isEnabled)
+        #expect(model.lastErrorOccurred == false)
+    }
+
     @Test("OCR languages are loaded from the service, never assumed")
     func ocrLanguages() async {
         let service = FakeTextRecognition()
