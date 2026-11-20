@@ -1,5 +1,6 @@
 import Domain
 import Foundation
+import RecortiaFixtures
 import Testing
 
 @testable import Features
@@ -110,6 +111,29 @@ struct EditorRedactionTests {
         m.clearSelection()
         h.click(destination.midX, destination.midY)
         #expect(m.selection == [.mask(mask.id)])
+    }
+
+    @Test("A drag on magnifier pixels beside a mask moves the magnifier and the secret stays covered")
+    func magnifierBesideMaskKeepsSecretCovered() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.magnifier)
+        h.drag((300, 200), (330, 220))
+        let magnifier = try #require(m.document.callouts.first)
+        m.setFrame(Rect(x: 118, y: 100, width: 60, height: 40), for: .callout(magnifier.id))
+        #expect(m.frame(of: .callout(magnifier.id))?.minX == 118)
+        m.selectTool(.select)
+        m.clearSelection()
+        // x = 122 is outside the mask but inside its hit tolerance, and on the magnifier's pixels.
+        h.drag((122, 110), (137, 110))
+        #expect(m.document.masks.first?.outputRect == mask.outputRect)
+        #expect(m.selection == [.callout(magnifier.id)])
+        let pixels = try await fixture.exported()
+        #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
 
     @Test("A redaction over a layer whose transform cannot be inverted is refused")

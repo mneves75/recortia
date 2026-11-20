@@ -398,9 +398,9 @@ public final class EditorModel {
         guard p.isFinite else { return nil }
         let tolerance = viewport.documentLength(4)
         let d = session.document
-        // Same order as the canvas draws, top first: masks cover callouts.
-        for mask in d.masks.reversed()
-        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
+        // Masks draw over callouts, so a mask's own pixels win; its tolerance band does not beat
+        // a callout's pixels, or a drag on a visible magnifier would move the mask off its secret.
+        for mask in d.masks.reversed() where EditorGeometry.containsInclusive(mask.outputRect, p) {
             return .mask(mask.id)
         }
         for callout in d.callouts.reversed() {
@@ -409,6 +409,10 @@ public final class EditorModel {
             {
                 return .callout(callout.id)
             }
+        }
+        for mask in d.masks.reversed()
+        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
+            return .mask(mask.id)
         }
         for annotation in d.annotations.reversed() where EditorGeometry.hits(annotation, at: p, tolerance: tolerance) {
             return .annotation(annotation.id)
