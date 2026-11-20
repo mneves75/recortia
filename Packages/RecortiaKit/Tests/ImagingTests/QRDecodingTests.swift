@@ -106,6 +106,19 @@ struct QRDecodingTests {
         #expect(QRBitstream.messageBytes(fromDataCodewords: Data(), expectedString: nil) == nil)
     }
 
+    @Test("Reading order is the same whatever order Vision reports the codes in")
+    func readingOrderIgnoresInputOrder() {
+        // Height 0.5: A and B share a row, C is the row below (review RCI-08).
+        let a = CGRect(x: 0.7, y: 0.4, width: 0.1, height: 0.5)
+        let b = CGRect(x: 0.4, y: 0.2, width: 0.1, height: 0.5)
+        let c = CGRect(x: 0.1, y: 0.0, width: 0.1, height: 0.5)
+        let permutations = [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]]
+        for boxes in permutations {
+            let ordered = QRDecoder.readingOrder(boxes).map { boxes[$0] }
+            #expect(ordered == [b, a, c], "input \(boxes.map(\.minX))")
+        }
+    }
+
     @Test("Imaging never opens, fetches, or executes anything")
     func imagingSourcesHaveNoSideEffectAPIs() throws {
         let imaging = URL(fileURLWithPath: #filePath)
