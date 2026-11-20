@@ -18,6 +18,8 @@ extension EditorModel {
         autoRedactionRequest = request
         let service = environment.sensitiveText
         let clock = environment.clock
+        // Absolute and monotonic, taken now: a timer that starts or resumes late does not extend it.
+        let deadline = clock.uptime() + Self.autoRedactionDeadline
         let detection = Task { [weak self] in
             let result: Result<[PixelRect], any Error>
             do {
@@ -25,15 +27,17 @@ extension EditorModel {
             } catch {
                 result = .failure(error)
             }
-            self?.finishAutoRedaction(result, for: request)
+            // An overdue result fails closed exactly like the timeout, whether or not the timer ran.
+            let onTime = clock.uptime() < deadline
+            self?.finishAutoRedaction(onTime ? result : .failure(CancellationError()), for: request)
         }
-        let deadline = Task { [weak self] in
-            do { try await clock.sleep(for: Self.autoRedactionDeadline) } catch { return }
+        let timer = Task { [weak self] in
+            do { try await clock.sleep(for: max(.zero, deadline - clock.uptime())) } catch { return }
             // Stops the sweep even when no editor is left to settle.
             detection.cancel()
             self?.finishAutoRedaction(.failure(CancellationError()), for: request)
         }
-        autoRedactionTasks = [detection, deadline]
+        autoRedactionTasks = [detection, timer]
     }
 
     /// What the capture's automatic batch may export once masking is no longer pending (at once when

@@ -390,6 +390,32 @@ struct EditorAutoRedactionTests {
         #expect(await model.export(.copy) == .copied, "manual export is allowed again")
     }
 
+    /// T1 security 3B: the deadline is measured from when masking started, not from when its timer
+    /// task wakes. A result that settles after it, before the timer's continuation runs, fails closed.
+    @Test(
+        "A detection result after the deadline fails closed even when the timer has not fired", arguments: [7.0, 9.0])
+    func overdueResultFailsClosed(elapsedSeconds: Double) async throws {
+        let capture = try await MaskingCapture(configure: enableCopyAndSave)
+        let (h, model) = (capture.harness, capture.model)
+        defer { model.close() }
+        let plan = h.export.automaticExportPlan()
+        let batch = Task { await model.runAutomaticExports(plan) }
+        await capture.waitForDetection()
+        await waitFor("deadline armed") { h.clock.pendingSleepCount == 1 }
+        h.clock.stall(bySeconds: elapsedSeconds)
+        await capture.finishDetection()
+        let outcomes = await batch.value
+        if elapsedSeconds < Double(EditorModel.autoRedactionDeadline.components.seconds) {
+            #expect(model.autoRedaction == .done && model.document.masks.count == 1)
+            #expect(outcomes.count == 2 && outcomes.allSatisfy(\.didWrite), "\(outcomes)")
+        } else {
+            #expect(model.autoRedaction == .failed && model.notice == .maskingFailed)
+            #expect(model.document.masks.isEmpty && !model.canUndo)
+            #expect(outcomes == [.failed(.maskingUnfinished)])
+            #expect(h.exporter.snapshotCount == 0 && h.clipboard.writes.isEmpty && h.files.uniqueSaves.isEmpty)
+        }
+    }
+
     @Test("Closing the editor while masking cancels detection, skips the batch and releases the asset")
     func closeWhilePending() async throws {
         let capture = try await MaskingCapture(configure: enableCopyAndSave)

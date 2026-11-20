@@ -155,6 +155,13 @@ final class ManualClock: FeatureClock {
         for sleeper in due { sleeper.continuation.resume() }
     }
 
+    /// Time passes but no sleeper wakes: a timer that started late or whose continuation is still
+    /// queued. A later `advance` wakes whatever is due by then.
+    func stall(bySeconds seconds: Double) {
+        current = current.addingTimeInterval(seconds)
+        elapsed += .seconds(seconds)
+    }
+
     private func cancelSleeper(_ id: UUID) {
         guard let index = sleepers.firstIndex(where: { $0.id == id }) else { return }
         sleepers.remove(at: index).continuation.resume(throwing: CancellationError())
