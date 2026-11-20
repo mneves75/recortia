@@ -180,7 +180,6 @@ struct ScrollSessionModelTests {
         #expect(h.model.partialReason == .ambiguous(.ambiguousMatch))
         await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
-        #expect(h.assets.registeredStitched.first?.isPartialScrollCapture == true)
         #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: .ambiguous(.ambiguousMatch)))
     }
 

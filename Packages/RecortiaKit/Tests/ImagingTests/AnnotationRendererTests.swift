@@ -46,7 +46,8 @@ struct AnnotationRendererTests {
             let first = try draw([annotation])
             let second = try draw([annotation])
             #expect(first == second, "\(annotation.kind) is not deterministic")
-            let b = annotation.outsetBounds
+            // The stroke, and an arrow's head, reach past the geometric bounds.
+            let b = annotation.bounds.insetBy(dx: -annotation.style.lineWidth * 4, dy: -annotation.style.lineWidth * 4)
             let bounds = FixtureRect(
                 x: Int(b.minX.rounded(.down)) - 2, y: Int(b.minY.rounded(.down)) - 2,
                 width: Int(b.width.rounded(.up)) + 4, height: Int(b.height.rounded(.up)) + 4)

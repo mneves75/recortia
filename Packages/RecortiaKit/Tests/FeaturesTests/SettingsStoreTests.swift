@@ -67,7 +67,7 @@ struct SettingsStoreTests {
         let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let allowed: Set<String> = [
             "schemaVersion", "hasCompletedOnboarding", "captureDelaySeconds", "captureShowsCursor",
-            "captureIncludesWindowShadow", "autoCopy", "autoSave", "launchAtLogin", "updateChecksEnabled",
+            "captureIncludesWindowShadow", "autoCopy", "autoSave", "updateChecksEnabled",
             "automaticScrollingEnabled", "defaultExportFormat", "jpegQuality", "defaultExportScale", "ocrTextMode",
             "pinDefaultOpacity", "preferredSaveFolderBookmark", "editorContentSize", "keepsRunningInMenuBarChoice",
         ]

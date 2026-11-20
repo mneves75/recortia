@@ -29,10 +29,4 @@ public final class PendingOffer<Outcome: Sendable> {
         current.continuation.resume(returning: outcome)
         return true
     }
-
-    /// Resolves whichever offer is current, if any (a new offer replaces it, or the user dismisses it).
-    func resolveCurrent(with outcome: Outcome) {
-        guard let id = current?.id else { return }
-        resolve(id, with: outcome)
-    }
 }

@@ -15,7 +15,7 @@ struct PolicyTests {
     @Test("Side-effect preferences default to off")
     func preferencesDefaults() throws {
         let prefs = Preferences()
-        #expect(!prefs.autoCopy && !prefs.autoSave && !prefs.launchAtLogin && !prefs.updateChecksEnabled)
+        #expect(!prefs.autoCopy && !prefs.autoSave && !prefs.updateChecksEnabled)
         #expect(!prefs.automaticScrollingEnabled)
         #expect(!prefs.captureShowsCursor)
         let round = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(prefs))

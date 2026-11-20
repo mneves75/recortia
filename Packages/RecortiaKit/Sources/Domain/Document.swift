@@ -55,10 +55,6 @@ public struct ImageAssetInfo: Identifiable, Hashable, Sendable, Codable {
         return nil
     }
 
-    public var isPartialScrollCapture: Bool {
-        if case .scrollCapture(let reason) = origin { return reason != nil }
-        return false
-    }
 }
 
 /// Uniform scale only: the model cannot express a silently stretched aspect ratio (FR-12).
@@ -318,10 +314,5 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
     /// stroke points are shared between snapshots (copy-on-write) and are not counted here.
     var structuralByteCost: Int {
         (annotations.count + masks.count + obfuscations.count + layers.count + callouts.count + assets.count) * 64
-    }
-
-    /// Every source-pixel region masked for `assetID`, across all masks.
-    public func maskedRegions(for assetID: AssetID) -> [PixelRect] {
-        masks.flatMap { $0.sourceRegions[assetID] ?? [] }
     }
 }

@@ -29,7 +29,6 @@ public struct EditorEnvironment {
     public let textRecognition: any TextRecognitionService
     public let qrDecoder: any QRDecodingService
     public let assets: any ImageAssetService
-    public let input: any ImageInputService
     public let imageImporter: ImageImporter
     public let pins: PinsModel
     public let textClipboard: any TextClipboardService
@@ -48,7 +47,6 @@ public struct EditorEnvironment {
         self.textRecognition = textRecognition
         self.qrDecoder = qrDecoder
         self.assets = assets
-        self.input = input
         self.imageImporter = imageImporter ?? ImageImporter(input: input, assets: assets)
         self.pins = pins
         self.textClipboard = textClipboard

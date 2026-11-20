@@ -88,7 +88,6 @@ enum AutomaticStepCheck: Hashable, Sendable {
 @Observable
 public final class ExportCoordinator {
     public private(set) var state: ExportState?
-    private(set) var lastOutcome: ExportOutcome?
     private var operation: Operation?
     private var automaticBatch: Operation?
 
@@ -456,7 +455,6 @@ public final class ExportCoordinator {
     }
 
     private func finish(_ outcome: ExportOutcome) -> ExportOutcome {
-        lastOutcome = outcome
         return outcome
     }
 

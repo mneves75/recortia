@@ -61,22 +61,8 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
         return allCases.first { $0.shortcutKey == lowered }
     }
 
-    /// True only for the tool that performs secure source-pixel replacement.
-    var isSecureRedaction: Bool { self == .redact }
-
     /// Blur and pixelation: obfuscation that must always be labeled as not secure.
     public var isCosmeticObfuscation: Bool { self == .blur || self == .pixelate }
-
-    /// Tools whose drag creates a new object in the document.
-    var createsObject: Bool {
-        switch self {
-        case .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
-            .spotlight, .magnifier:
-            true
-        case .select, .hand, .crop, .loupe, .ruler, .colorPicker:
-            false
-        }
-    }
 
     /// Whether the tool uses stroke/fill/width/opacity style controls.
     public var usesStyle: Bool {
@@ -290,7 +276,6 @@ public struct EditorMeasurement: Hashable, Sendable {
     public var distancePixels: Double { (dxPixels * dxPixels + dyPixels * dyPixels).squareRoot() }
     public var dxPoints: Double? { pointPixelScale.map { dxPixels / $0 } }
     public var dyPoints: Double? { pointPixelScale.map { dyPixels / $0 } }
-    var distancePoints: Double? { pointPixelScale.map { distancePixels / $0 } }
 }
 
 /// Nearest-neighbor loupe pixels: an exact crop of the sanitized base, never interpolated.

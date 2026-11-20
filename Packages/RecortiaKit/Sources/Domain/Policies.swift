@@ -201,7 +201,6 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var captureIncludesWindowShadow = true
     public var autoCopy = false
     public var autoSave = false
-    public var launchAtLogin = false
     public var updateChecksEnabled = false
     public var automaticScrollingEnabled = false
     public var defaultExportFormat = ExportFormatKind.png
