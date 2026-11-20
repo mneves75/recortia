@@ -130,6 +130,8 @@ struct ScrollReviewView: View {
     let seams: [Int]
     let partialReason: ScrollPartialReason?
     let assemblyFailed: Bool
+    /// False until the preview is shown and while an Accept is assembling.
+    let canAccept: Bool
     let onAccept: () -> Void
     let onDiscard: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
@@ -191,7 +193,7 @@ struct ScrollReviewView: View {
                     action: onAccept
                 )
                 .keyboardShortcut(.defaultAction)
-                .disabled(assemblyFailed)
+                .disabled(assemblyFailed || !canAccept)
                 .accessibilityIdentifier("scroll.review.accept")
             }
         }
@@ -269,7 +271,7 @@ struct ScrollReviewView: View {
     #Preview("Review, partial") {
         ScrollReviewView(
             preview: PreviewSupport.image(width: 400, height: 1_200), outputSize: PixelSize(width: 800, height: 2_400),
-            seams: [600, 1_200, 1_800], partialReason: .limit(.height), assemblyFailed: false, onAccept: {},
-            onDiscard: {})
+            seams: [600, 1_200, 1_800], partialReason: .limit(.height), assemblyFailed: false, canAccept: true,
+            onAccept: {}, onDiscard: {})
     }
 #endif

@@ -522,11 +522,19 @@ final class FakeStitcher: ScrollStitchService {
         return result
     }
 
+    var previewFails = false
     func preview(maxHeight: Int) async -> CGImage? {
-        acceptedFrameCount > 0 ? makeImage(width: 4, height: 8) : nil
+        acceptedFrameCount > 0 && !previewFails ? makeImage(width: 4, height: 8) : nil
     }
 
+    /// When set, each `assemble` suspends until `assembles.resolve(())`, like a large stitch.
+    var holdAssemble = false
+    let assembles = Pending<Void>()
+    private(set) var assembleCount = 0
+
     func assemble() async throws -> CGImage {
+        assembleCount += 1
+        if holdAssemble { await assembles.wait() }
         if assembleFails { throw ExportServiceError(.budgetExceeded) }
         guard let image = makeImage(width: max(1, outputSize.width), height: max(1, outputSize.height)) else {
             throw ExportServiceError(.renderFailed)

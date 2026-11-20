@@ -173,6 +173,6 @@ private struct LiveScrollReview: View {
         ScrollReviewView(
             preview: model.preview, outputSize: model.outputSize, seams: model.seams,
             partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
-            onAccept: { Task { await model.accept() } }, onDiscard: onDiscard)
+            canAccept: model.canAccept, onAccept: { Task { await model.accept() } }, onDiscard: onDiscard)
     }
 }

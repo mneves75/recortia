@@ -163,6 +163,7 @@ struct ScrollSessionModelEndingTests {
         #expect(h.scroller.stopCount >= 1)
         #expect(h.frames.stopCount >= 1)
 
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .accepted)
         #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil))
@@ -420,6 +421,7 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.state == .reviewing)
         h.model.interrupt(because: .screenLocked)
         #expect(h.model.state == .reviewing)
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .accepted)
         #expect(h.accepted.count == 1)

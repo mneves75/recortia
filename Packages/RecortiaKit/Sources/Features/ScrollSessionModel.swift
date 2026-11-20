@@ -83,6 +83,9 @@ public final class ScrollSessionModel {
     /// stopped; the review is frozen once that append settles, so its rows, seam, and counters
     /// land in one snapshot.
     @ObservationIgnored private var pendingFinish: PendingFinish?
+    /// The session whose Accept is assembling; admitted before the first await, so a repeated
+    /// Accept cannot start a second full-size assembly.
+    private var acceptingSession: UUID?
 
     /// How collection is to end once the admitted append settles.
     private struct PendingFinish {
@@ -106,6 +109,9 @@ public final class ScrollSessionModel {
     }
 
     public var isPartial: Bool { partialReason != nil }
+
+    /// Accept needs a shown preview (the person reviews the seams first) and no Accept in progress.
+    public var canAccept: Bool { state == .reviewing && preview != nil && acceptingSession == nil }
 
     // MARK: Commands
 
@@ -225,7 +231,9 @@ public final class ScrollSessionModel {
     }
 
     public func accept() async {
-        guard state == .reviewing, let id = sessionID else { return }
+        guard canAccept, let id = sessionID else { return }
+        acceptingSession = id
+        defer { if acceptingSession == id { acceptingSession = nil } }
         let reason = partialReason
         let image: CGImage
         let info: ImageAssetInfo
@@ -437,6 +445,12 @@ public final class ScrollSessionModel {
             guard let self else { return }
             let image = await self.stitcher.preview(maxHeight: Self.previewMaxHeight)
             guard self.sessionID == id, self.state == .reviewing else { return }
+            // No preview means the stitch cannot be drawn within its budget: say so, rather than
+            // leave the review waiting with Accept unavailable.
+            guard let image else {
+                self.notice = .assemblyFailed
+                return
+            }
             self.preview = image
         }
     }
@@ -499,6 +513,7 @@ public final class ScrollSessionModel {
 
     private func resetProgress() {
         pendingFinish = nil
+        acceptingSession = nil
         appendInFlight = false
         acceptedFrames = 0
         outputSize = PixelSize(width: 0, height: 0)
