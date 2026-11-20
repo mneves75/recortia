@@ -242,19 +242,19 @@ extension EditorModel {
     static let presentationRange: ClosedRange<Double> = 0...512
 
     public func setBackground(_ background: Presentation.Background) {
-        edit("Background") { $0.presentation.background = background }
+        edit("Background", inPreview: true) { $0.presentation.background = background }
     }
 
     public func setPadding(_ padding: Double) {
         guard padding.isFinite else { return }
         let value = min(max(padding, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
-        edit("Padding") { $0.presentation.padding = value }
+        edit("Padding", inPreview: true) { $0.presentation.padding = value }
     }
 
     public func setCornerRadius(_ radius: Double) {
         guard radius.isFinite else { return }
         let value = min(max(radius, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
-        edit("Corner Radius") { $0.presentation.cornerRadius = value }
+        edit("Corner Radius", inPreview: true) { $0.presentation.cornerRadius = value }
     }
 
     public func setShadow(_ shadow: Presentation.Shadow?) {
@@ -263,7 +263,7 @@ extension EditorModel {
                 return
             }
         }
-        edit("Shadow") { $0.presentation.shadow = shadow }
+        edit("Shadow", inPreview: true) { $0.presentation.shadow = shadow }
     }
 
     public func setSpotlightDim(_ dim: Double, for id: CalloutID) {

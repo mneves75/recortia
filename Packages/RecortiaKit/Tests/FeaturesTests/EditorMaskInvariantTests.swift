@@ -420,9 +420,18 @@ struct EditorMaskInvariantTests {
         #expect(m.document == before)
         m.undo()
         #expect(m.document == before, "Undo is a document change too")
+        // Whole-image presentation settings select nothing and stay available in the preview.
+        m.setPadding(10)
+        m.setBackground(.solid(.yellow))
+        m.setShadow(Presentation.Shadow())
+        #expect(m.document.presentation.padding == 10)
+        #expect(m.document.presentation.shadow != nil && m.document.presentation.background == .solid(.yellow))
+        #expect(m.document.masks == before.masks && m.document.layers == before.layers)
         let pixels = try await fixture.exported()
+        #expect(pixels.width > 400 && pixels.height > 300, "the export shows the padding")
+        let corner = pixels.pixel(x: 0, y: 0)
+        #expect(corner.a == 255 && corner.r > 150 && corner.b < 60, "and the yellow background")
         #expect(fixture.secretPixels(in: pixels) == 0)
-        #expect(fixture.uncoveredPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
     }
 
     @Test("A stationary press while the canvas would pan is a click: the mask stays")

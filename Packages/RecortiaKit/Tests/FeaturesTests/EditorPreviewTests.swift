@@ -174,7 +174,7 @@ struct EditorPreviewTests {
         #expect(h.model.calloutBaseImage == nil)
     }
 
-    @Test("The output preview renders the full document, which cannot change while it is shown")
+    @Test("The output preview renders the full document and drops stale results")
     func outputPreview() async throws {
         let pending = Pending<Result<CGImage, TestError>>()
         let h = EditorHarness()
@@ -183,11 +183,13 @@ struct EditorPreviewTests {
         h.model.setShowsOutputPreview(true)
         await waitFor("output render") { pending.waiterCount == 1 }
         h.model.setPadding(20)
-        #expect(h.model.document.presentation.padding == 0, "the preview is read-only")
+        pending.resolve(.success(try #require(makeImage(width: 440, height: 340))))
+        await waitFor("follow-up") { pending.waiterCount == 1 }
+        #expect(h.model.outputPreview == nil)
         pending.resolve(.success(try #require(makeImage(width: 440, height: 340))))
         await h.settle()
         #expect(h.model.isOutputPreviewCurrent)
-        #expect(h.renderer.fullRenders.count == 1)
+        #expect(h.renderer.fullRenders.last?.presentation.padding == 20)
     }
 
     @Test("Toggling output preview retains ownership until the canceled render finishes")

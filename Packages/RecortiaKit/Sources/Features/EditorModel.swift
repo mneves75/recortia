@@ -232,12 +232,15 @@ public final class EditorModel {
     /// Every edit first makes each mask's coverage durable (`preserveCoverage`), so no edit can
     /// uncover what a box hides by moving, scaling, cropping, adding or removing a layer (R2).
     /// `explicitMasks` are the masks this edit moves or resizes itself: they re-bind instead.
+    /// `inPreview` marks a whole-image presentation setting, which selects nothing.
     @discardableResult
     func edit(
-        _ label: String, explicitMasks: Set<MaskID> = [], _ change: (inout Document) throws -> Void
+        _ label: String, explicitMasks: Set<MaskID> = [], inPreview: Bool = false,
+        _ change: (inout Document) throws -> Void
     ) -> Bool {
-        // Output Preview is read-only: what it shows cannot be selected or edited (F-04).
-        guard !isClosed, !showsOutputPreview else { return false }
+        // Output Preview is read-only for selection and objects (F-04); whole-image presentation
+        // settings stay available there, where their effect is seen.
+        guard !isClosed, !showsOutputPreview || inPreview else { return false }
         let before = session.document
         let epoch = session.privacyEpoch
         do {
