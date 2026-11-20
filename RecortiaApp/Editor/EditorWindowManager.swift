@@ -180,6 +180,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             item.animator().isCollapsed = collapse
         }
         (window.contentViewController as? EditorSplitViewController)?.syncPanes()
+        EditorCommands.shared.panesChanged(self)
         if collapse, let responder = window.firstResponder as? NSView,
             responder.isDescendant(of: item.viewController.view)
         {
@@ -408,7 +409,11 @@ final class EditorSplitViewController: NSSplitViewController {
         guard splitViewItems.count == 3 else { return }
         let sidebar = splitViewItems[0].isCollapsed
         let inspector = splitViewItems[2].isCollapsed
-        if panes.sidebarCollapsed != sidebar { panes.sidebarCollapsed = sidebar }
-        if panes.inspectorCollapsed != inspector { panes.inspectorCollapsed = inspector }
+        guard panes.sidebarCollapsed != sidebar || panes.inspectorCollapsed != inspector else { return }
+        panes.sidebarCollapsed = sidebar
+        panes.inspectorCollapsed = inspector
+        if let editor = view.window?.windowController as? EditorWindowController {
+            EditorCommands.shared.panesChanged(editor)
+        }
     }
 }
