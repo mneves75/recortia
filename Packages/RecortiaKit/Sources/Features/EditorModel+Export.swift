@@ -3,9 +3,9 @@ import Foundation
 
 public enum EditorExportRequest: Hashable, Sendable {
     case copy
-    /// A destination the user chose in a save panel; `overwriteConfirmed` when the panel confirmed
-    /// replacing an existing file.
-    case save(URL, overwriteConfirmed: Bool)
+    /// A destination the user chose in a save panel, in the format that panel named;
+    /// `overwriteConfirmed` when the user confirmed replacing an existing file.
+    case save(URL, format: ExportFormat, overwriteConfirmed: Bool)
     case saveToPreferredFolder
     case drag
 }
@@ -29,8 +29,8 @@ extension EditorModel {
         switch request {
         case .copy:
             action = .copy
-        case .save(let url, let confirmed):
-            action = .save(to: url, overwriteConfirmed: confirmed)
+        case .save(let url, let format, let confirmed):
+            action = .save(to: url, format: format, overwriteConfirmed: confirmed)
         case .drag:
             action = .drag
         case .saveToPreferredFolder:

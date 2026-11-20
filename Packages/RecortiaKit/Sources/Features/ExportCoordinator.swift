@@ -7,8 +7,10 @@ import Observation
 public enum ExportAction: Hashable, Sendable {
     /// Copy Image: always a sanitized PNG only (FR-07).
     case copy
-    /// Save to a user-chosen URL; `overwriteConfirmed` only after the user confirmed replacing a file.
-    case save(to: URL, overwriteConfirmed: Bool)
+    /// Save to a user-chosen URL in the format its save panel named, so the bytes match the
+    /// extension even if the preference changed meanwhile; `overwriteConfirmed` only after the user
+    /// confirmed replacing a file.
+    case save(to: URL, format: ExportFormat, overwriteConfirmed: Bool)
     /// Save with a collision-free name into a previously authorized folder.
     case saveToFolder(URL)
     case drag
@@ -237,7 +239,7 @@ public final class ExportCoordinator {
                 apply(.commit)
                 try clipboard.write(snapshot)
                 completed = .copied
-            case .save(let url, let overwrite):
+            case .save(let url, _, let overwrite):
                 apply(.commit)
                 completed = .saved(try await files.save(snapshot, to: url, overwrite: overwrite))
             case .saveToFolder(let folder):
@@ -437,7 +439,11 @@ public final class ExportCoordinator {
 
     public func exportOptions(for action: ExportAction) -> ExportOptions {
         var options = settings.preferences.exportOptions
-        if action == .copy { options.format = .png }
+        switch action {
+        case .copy: options.format = .png
+        case .save(_, let format, _): options.format = format
+        case .saveToFolder, .drag, .upload: break
+        }
         return options
     }
 

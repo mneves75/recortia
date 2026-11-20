@@ -202,14 +202,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         panel.isExtensionHidden = false
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = panel.url, let self else { return }
-            Task { await self.saveImage(to: url) }
+            Task { await self.saveImage(to: url, format: format) }
         }
     }
 
     /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent.
     @discardableResult
-    func saveImage(to url: URL, confirmReplacement: (() async -> Bool)? = nil) async -> ExportOutcome {
-        let outcome = await model.export(.save(url, overwriteConfirmed: false))
+    func saveImage(
+        to url: URL, format: ExportFormat, confirmReplacement: (() async -> Bool)? = nil
+    ) async -> ExportOutcome {
+        let outcome = await model.export(.save(url, format: format, overwriteConfirmed: false))
         guard outcome == .failed(.destinationExists) else { return outcome }
         model.dismissNotice()
         let confirmed: Bool
@@ -219,7 +221,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             confirmed = await self.confirmReplacement()
         }
         guard confirmed else { return .canceled }
-        return await model.export(.save(url, overwriteConfirmed: true))
+        return await model.export(.save(url, format: format, overwriteConfirmed: true))
     }
 
     private func confirmReplacement() async -> Bool {

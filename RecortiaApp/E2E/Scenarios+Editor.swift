@@ -434,7 +434,7 @@
             await E2EActions.snapshotEditor(controller, context, shot: "editor")
 
             let url = harness.output.workDirectory.appending(path: "redaction-export.png")
-            let outcome = await E2EActions.export(controller, .save(url, overwriteConfirmed: false))
+            let outcome = await E2EActions.export(controller, .save(url, format: .png, overwriteConfirmed: false))
             try context.require("export saved the PNG", outcome == .saved(url), "\(outcome)")
             let data = try Data(contentsOf: url)
             let decoded = try E2EActions.decode(data, "export", context)
@@ -498,7 +498,7 @@
                 model.setCrop(Rect(x: 8, y: 8, width: 464, height: 224))
                 model.setResizeScale(0.5)
                 let url = harness.output.workDirectory.appending(path: "\(name)-export.png")
-                let outcome = await model.export(.save(url, overwriteConfirmed: false))
+                let outcome = await model.export(.save(url, format: .png, overwriteConfirmed: false))
                 guard outcome == .saved(url) else { throw E2EAbort("\(name) export: \(outcome)") }
                 let data = try Data(contentsOf: url)
                 controller.window?.close()
@@ -542,7 +542,7 @@
             await E2EActions.snapshotEditor(controller, context, shot: "crop")
 
             let url = harness.output.workDirectory.appending(path: "crop-resize.png")
-            let outcome = await E2EActions.export(controller, .save(url, overwriteConfirmed: false))
+            let outcome = await E2EActions.export(controller, .save(url, format: .png, overwriteConfirmed: false))
             try context.require("export saved", outcome == .saved(url), "\(outcome)")
             let decoded = try E2EActions.decode(try Data(contentsOf: url), "crop export", context)
             context.check(
@@ -694,7 +694,7 @@
                 model.document.outputPixelSize(exportScale: 1) == expected,
                 "\(model.document.outputPixelSize(exportScale: 1))")
             let url = harness.output.workDirectory.appending(path: "composition.png")
-            let outcome = await E2EActions.export(controller, .save(url, overwriteConfirmed: false))
+            let outcome = await E2EActions.export(controller, .save(url, format: .png, overwriteConfirmed: false))
             try context.require("composition exported", outcome == .saved(url), "\(outcome)")
             let decoded = try E2EActions.decode(try Data(contentsOf: url), "composition", context)
             context.check(
