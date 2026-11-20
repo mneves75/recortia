@@ -25,6 +25,10 @@ public final class SettingsStore {
     public private(set) var loadIssue: LoadIssue?
     /// Session-only identity: restoring the same settings cannot revive a revoked upload.
     public private(set) var githubUploadConsentID = UUID()
+    /// Session-only count of the person's save-folder choices (choose, clear, or the folder asked
+    /// for when turning automatic save on). A renewed bookmark for the same folder does not count,
+    /// so an automatic save can tell a new choice from a moved or unreachable planned folder.
+    @ObservationIgnored var saveFolderSelection = 0
 
     @ObservationIgnored private let storage: any PreferenceStorage
     @ObservationIgnored private let integrity: any PreferenceIntegrityService
@@ -50,6 +54,7 @@ public final class SettingsStore {
     /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
         githubUploadConsentID = UUID()
+        saveFolderSelection += 1
         preferences = Preferences()
         loadIssue = nil
         persist()

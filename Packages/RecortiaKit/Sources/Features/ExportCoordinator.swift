@@ -55,6 +55,8 @@ public struct AutomaticExportPlan: Hashable, Sendable {
 
     let copy: Bool
     let save: Save?
+    /// `SettingsStore.saveFolderSelection` at capture: a later choice of folder revokes the save.
+    let saveFolderSelection: Int
     let upload: GitHubDestination?
     let uploadConsentID: UUID
 
@@ -62,7 +64,7 @@ public struct AutomaticExportPlan: Hashable, Sendable {
 }
 
 /// The live check an automatic step makes when it starts and again after its render (EXP-03).
-public enum AutomaticStepCheck: Hashable, Sendable {
+enum AutomaticStepCheck: Hashable, Sendable {
     case allowed
     /// The person turned the step off or chose another destination: skipped without a message.
     case revoked
@@ -135,8 +137,18 @@ public final class ExportCoordinator {
     /// its editor closed) and is consulted after the snapshot, before anything is committed.
     public func export(
         _ action: ExportAction, session: DocumentSession,
+        currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
+    ) async -> ExportOutcome {
+        await export(
+            action, session: session, currentSession: currentSession, uploadConsentID: nil, isAllowed: { .allowed })
+    }
+
+    /// The automatic path: `isAllowed` is the step's live check after its render, and an upload
+    /// carries the consent identity its batch was planned with.
+    private func export(
+        _ action: ExportAction, session: DocumentSession,
         currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
-        uploadConsentID: UUID? = nil, isAllowed: @escaping @MainActor () -> AutomaticStepCheck = { .allowed }
+        uploadConsentID: UUID?, isAllowed: @escaping @MainActor () -> AutomaticStepCheck
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
@@ -230,6 +242,11 @@ public final class ExportCoordinator {
                 completed = .saved(try await files.saveUnique(snapshot, in: folder))
             case .upload(let destination, let intent):
                 guard let upload else { return fail(.upload(.missingCredential)) }
+                // No request of any kind (lookups included) for consent that is no longer live.
+                guard settings.githubUploadConsentID == consentID else {
+                    apply(.cancel)
+                    return finish(.canceled)
+                }
                 let task = Task<URL, any Error> { [weak self] in
                     try await upload.upload(
                         snapshot, to: destination, intent: intent,
@@ -353,7 +370,7 @@ public final class ExportCoordinator {
             ? chosen.preferredSaveFolderBookmark.flatMap(folders.resolveFolder).map { .folder($0) }
                 ?? .folderUnavailable : nil
         return AutomaticExportPlan(
-            copy: chosen.autoCopy, save: save,
+            copy: chosen.autoCopy, save: save, saveFolderSelection: settings.saveFolderSelection,
             upload: chosen.githubUpload.flatMap { $0.automatic ? $0.destination : nil },
             uploadConsentID: settings.githubUploadConsentID)
     }
@@ -371,44 +388,46 @@ public final class ExportCoordinator {
         // only if it is still allowed when it starts, and the same live check runs again after its
         // render.
         var outcomes: [ExportOutcome] = []
-        if plan.copy {
+        let copyCheck = { @MainActor () -> AutomaticStepCheck in settings.preferences.autoCopy ? .allowed : .revoked }
+        if plan.copy, copyCheck() == .allowed {
             outcomes.append(
                 await export(
-                    .copy, session: session, currentSession: currentSession,
-                    isAllowed: { settings.preferences.autoCopy ? .allowed : .revoked }))
+                    .copy, session: session, currentSession: currentSession, uploadConsentID: nil,
+                    isAllowed: copyCheck))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if let save = plan.save, settings.preferences.autoSave {
-            if case .folder(let folder) = save {
-                let saveCheck = { @MainActor [folders] () -> AutomaticStepCheck in
-                    guard settings.preferences.autoSave else { return .revoked }
-                    // Compare folders, not bookmark bytes: a moved folder's bookmark is renewed.
-                    // A chosen folder that no longer resolves (an ejected volume) is a failure.
-                    guard let live = settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder)
-                    else { return .failed(.accessDenied) }
-                    return live == folder ? .allowed : .revoked
-                }
-                switch saveCheck() {
-                case .allowed:
+        if let save = plan.save {
+            let saveCheck = { @MainActor [folders] () -> AutomaticStepCheck in
+                // Off, or another folder chosen since the capture: skipped without a message.
+                guard settings.preferences.autoSave, settings.saveFolderSelection == plan.saveFolderSelection
+                else { return .revoked }
+                // The planned folder (its bookmark may have been renewed after a move) that does
+                // not resolve, such as an ejected volume, is a failure.
+                guard case .folder(let folder) = save,
+                    let live = settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder)
+                else { return .failed(.accessDenied) }
+                return live == folder ? .allowed : .revoked
+            }
+            switch saveCheck() {
+            case .allowed:
+                if case .folder(let folder) = save {
                     outcomes.append(
                         await export(
                             .saveToFolder(folder), session: session, currentSession: currentSession,
-                            isAllowed: saveCheck))
-                case .revoked: break
-                case .failed(let failure): outcomes.append(.failed(failure))
+                            uploadConsentID: nil, isAllowed: saveCheck))
                 }
-            } else {
-                outcomes.append(.failed(.accessDenied))
+            case .revoked: break
+            case .failed(let failure): outcomes.append(.failed(failure))
             }
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
         if let destination = plan.upload, let live = settings.preferences.githubUpload, live.automatic,
-            live.destination == destination
+            live.destination == destination, settings.githubUploadConsentID == plan.uploadConsentID
         {
             outcomes.append(
                 await export(
                     .upload(to: destination, intent: UUID()), session: session,
-                    currentSession: currentSession, uploadConsentID: plan.uploadConsentID))
+                    currentSession: currentSession, uploadConsentID: plan.uploadConsentID, isAllowed: { .allowed }))
         }
         return outcomes
     }
