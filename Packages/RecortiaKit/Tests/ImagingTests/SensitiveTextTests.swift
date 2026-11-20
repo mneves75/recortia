@@ -329,12 +329,40 @@ struct SensitiveTextSweepTests {
         _ = await tiles.next()
         let clock = ContinuousClock()
         let cancelledAt = clock.now
+        let startedBeforeCancel = started.count.load(ordering: .relaxed)
         task.cancel()
         await #expect(throws: CancellationError.self) { _ = try await task.value }
         let elapsed = clock.now - cancelledAt
-        // Only the tiles already running when the cancellation arrived ever started.
-        #expect(started.count.load(ordering: .relaxed) <= SensitiveTextScanner.concurrentTiles)
+        // At most `concurrentTiles` were queued but not yet running when the cancellation arrived;
+        // nothing after it starts, so the sweep never reaches its end.
+        let total = started.count.load(ordering: .relaxed)
+        #expect(total <= startedBeforeCancel + SensitiveTextScanner.concurrentTiles, "\(total) tiles started")
+        #expect(total < jobs.count, "\(total) of \(jobs.count) tiles started")
         #expect(elapsed < .seconds(10), "ended \(elapsed) after cancellation")
+    }
+
+    @Test("Once the sweep is cancelled no tile starts, even when the running tiles return normally")
+    func cancelledSchedulerStartsNoTile() async throws {
+        let started = TileCounter()
+        let concurrency = 3
+        let task = Task {
+            try await SensitiveTextScanner.scanTiles(Array(0..<20), concurrency: concurrency) { job in
+                started.count.add(1, ordering: .relaxed)
+                // The first tiles run until cancelled and then return without throwing, as a
+                // recognizer that ignores cancellation would.
+                while job < concurrency, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(1)) }
+                return []
+            }
+        }
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(10)
+        while started.count.load(ordering: .relaxed) < concurrency, clock.now < deadline {
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        try #require(started.count.load(ordering: .relaxed) == concurrency)
+        task.cancel()
+        _ = try? await task.value
+        #expect(started.count.load(ordering: .relaxed) == concurrency, "a tile started after the cancellation")
     }
 }
 

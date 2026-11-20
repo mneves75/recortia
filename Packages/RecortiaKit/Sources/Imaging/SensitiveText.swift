@@ -609,22 +609,31 @@ public struct SensitiveTextScanner: Sendable {
         let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
         let jobs = try Self.tileJobs(for: bounds.size, pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide)
         let recognizer = self.recognizer
-        let found = try await withThrowingTaskGroup(of: [BoxedMatch].self) { group in
+        let found = try await Self.scanTiles(jobs, concurrency: Self.concurrentTiles) { job in
+            tileStarted()
+            return try await Self.scanTile(
+                of: image, sourceRect: job.rect, layout: job.layout, kinds: kinds, languages: languages,
+                matcher: matcher, recognizer: recognizer)
+        }
+        return try Self.finalRegions(found, within: bounds)
+    }
+
+    /// Runs `scan` over `jobs`, at most `concurrency` at a time, and collects the matches. Once the
+    /// sweep is cancelled no further job starts, even when the running ones return normally; the
+    /// caller's `finalRegions` then throws `CancellationError`.
+    static func scanTiles<Job: Sendable>(
+        _ jobs: [Job], concurrency: Int, scan: @escaping @Sendable (Job) async throws -> [BoxedMatch]
+    ) async throws -> [BoxedMatch] {
+        try await withThrowingTaskGroup(of: [BoxedMatch].self) { group in
             var next = 0
             var collected: [BoxedMatch] = []
             func enqueue() {
                 guard next < jobs.count else { return }
                 let job = jobs[next]
                 next += 1
-                // A cancelled sweep starts no further tile.
-                _ = group.addTaskUnlessCancelled {
-                    tileStarted()
-                    return try await Self.scanTile(
-                        of: image, sourceRect: job.rect, layout: job.layout, kinds: kinds, languages: languages,
-                        matcher: matcher, recognizer: recognizer)
-                }
+                _ = group.addTaskUnlessCancelled { try await scan(job) }
             }
-            for _ in 0..<Self.concurrentTiles { enqueue() }
+            for _ in 0..<concurrency { enqueue() }
             while let tile = try await group.next() {
                 collected.append(contentsOf: tile)
                 // Throwing here cancels the tiles still in flight.
@@ -633,7 +642,6 @@ public struct SensitiveTextScanner: Sendable {
             }
             return collected
         }
-        return try Self.finalRegions(found, within: bounds)
     }
 
     /// Budgets that keep one sweep's work and memory bounded. Exceeding one fails the sweep with a
