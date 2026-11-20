@@ -292,6 +292,20 @@ least 300 s) and the load average is under 8. No such window came during T1d. Ev
 console locked, with load averages between 17 and 42 on 18 cores. So the deadline is the brief's
 fallback, `EditorModel.autoRedactionDeadline = .seconds(8)`, until the measurement below runs.
 
+**Measured 2026-11-20 on `76c4000`** (console locked, load average 7.9 at the start and 10.6 at the
+end on 18 cores; `.scratch/logs/t1d-latency.log`), one process per case, 30 warm runs:
+
+| capture | cold ms | warm p50 ms | warm p95 ms | warm p99 ms |
+|---|---|---|---|---|
+| 2560×1440 @2x | 2138 | 784 | 2151 | 2183 |
+| 2560×1440 @1x | 1919 | 917 | 1844 | 1933 |
+| 1440×900 @2x | 632 | 553 | 718 | 931 |
+| 1440×900 @1x | 665 | 548 | 636 | 655 |
+
+The rule gives 4 s. The deadline stays 8 s (decisions.md, "Masking deadline"): this Mac ran at load
+17–55 for most of the day, where masking a 2560×1440 capture takes several seconds, and 4 s would
+fail ordinary captures closed.
+
 Measurement, one process per case so its first scan is the cold one after launch:
 
 ```sh

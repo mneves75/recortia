@@ -358,7 +358,7 @@ Benchmark on a physical Apple Silicon Mac with at least 16 GB RAM, a 4K 60 Hz di
 | Measure | Proposed gate | Measurement |
 |---|---|---|
 | Warm capture overlay presentation | p95 <= 100 ms | Shortcut handler entry to first overlay frame, 100 runs |
-| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs. With automatic redaction on, the editor window meets this target and the capture's pixels follow once its masks land (FR-06) |
+| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs. With automatic redaction on, the editor window meets this target and the capture's pixels follow once its masks land (FR-06): measured warm p95 2.2 s and cold 2.1 s at 2560×1440 2×, 0.7 s at 1440×900, with an 8 s fail-closed deadline |
 | Cold launch to ready menu bar | p95 <= 1.5 s | 30 process launches; report caching conditions |
 | Common drawing gestures | 60 Hz target without sustained main-thread stalls | Frame pacing plus Instruments traces, not FPS claims alone |
 | Local OCR | p95 <= 1.5 s on the defined 1080p text fixture subset | 100 runs; report languages, revision, and corpus |
