@@ -175,6 +175,8 @@ clipped to the viewport at high zoom. Qualification is tracked in the text-appea
 The default privacy tool MUST replace selected source pixels with a fully opaque solid color. Masks MUST cover pixel boundaries conservatively, be applied before resampling or neighborhood effects, and invalidate dependent render/OCR/magnifier caches. When the same image asset is used in multiple places, source-bound masks must apply to all render references to that asset. Independently reimported copies and secrets elsewhere are not automatically discovered; make this limitation clear.
 
 Adding a mask to a composite maps intersected raster-layer regions into each asset's coordinate system and also maintains an output-space mask for vector/text coverage. If a transform cannot be safely mapped, reject the operation or require an explicit flatten-and-redact workflow; never fall back to a translucent overlay. The output-space mask hides annotations, text and callouts only where the box is: moving or growing one the person drew out from under a box reveals it, by design.
+Source-pixel protection fails closed: a box moved off a scaled or rotated image can leave a filled patch
+where it was, because the rounded source footprint does not fit inside its old box.
 
 Secure export MUST create a fresh, flattened raster with no original layer, undo record, alternate unredacted representation, textual OCR metadata, hidden thumbnail, or transparent RGB leak. Ordinary project/document models must never go directly to an export sink. OCR and magnifiers operate on the privacy-sanitized view of the document. A project-file format is deliberately outside v1.
 
