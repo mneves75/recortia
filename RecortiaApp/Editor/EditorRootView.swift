@@ -291,7 +291,7 @@ private struct ExportButtons: View {
             Label(String(localized: "Pin", table: "Editor"), systemImage: "pin")
         }
         .help(String(localized: "Pin the image in a floating window", table: "Editor"))
-        .disabled(model.isExporting)
+        .disabled(model.isExporting || model.isMaskingPending)
         .accessibilityIdentifier("toolbar.pin")
         Button {
             actions.dragOut()

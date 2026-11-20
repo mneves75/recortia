@@ -64,6 +64,8 @@ struct EditorInspectorView: View {
                 }
             }
             .formStyle(.grouped)
+            // No edit can start while automatic masking runs (FR-06 amendment).
+            .disabled(model.isMaskingPending)
         }
         .controlSize(.small)
         .onChange(of: model.selection) { chosenTab = nil }

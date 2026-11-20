@@ -130,6 +130,14 @@
             context.check(
                 "manual export works after a failed masking",
                 manual == .copied && harness.clipboard.writeCount == copies + 3, "\(manual)")
+            // Positive control: the same capture unmasked does show the secret, so the masked
+            // checks above can see it.
+            let unmaskedData = try context.unwrap(
+                "unmasked PNG on the pasteboard", harness.clipboard.pasteboard.data(forType: .png))
+            let unmasked = try E2EActions.decode(unmaskedData, "manual copy", context)
+            context.check(
+                "the unmasked copy shows the secret", secretBackground(in: unmasked) > 0,
+                "\(secretBackground(in: unmasked)) secret pixels")
         }
 
         /// `E2EActions.captureRegion` without waiting for a base render, which a pending editor
