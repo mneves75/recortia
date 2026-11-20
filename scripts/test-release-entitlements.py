@@ -48,6 +48,25 @@ class ReleaseEntitlementTests(unittest.TestCase):
     def test_reviewed_entitlement_set_is_required(self) -> None:
         self.assertNotEqual(0, self.run_gate({"keychain-access-groups": [GROUP]}))
 
+    def test_values_other_than_the_reviewed_ones_are_rejected(self) -> None:
+        reviewed = {
+            "com.apple.application-identifier": GROUP,
+            "com.apple.developer.team-identifier": "Q96FUTC5G8",
+            "keychain-access-groups": [GROUP],
+        }
+        for key, value in (
+            ("keychain-access-groups", [GROUP, "Q96FUTC5G8.dev.mvneves.Other"]),
+            ("keychain-access-groups", [GROUP, GROUP]),
+            ("keychain-access-groups", []),
+            ("com.apple.developer.team-identifier", "any string"),
+            ("com.apple.developer.team-identifier", "q96futc5g8"),
+            ("com.apple.developer.team-identifier", "Q96FUTC5G"),
+            ("com.apple.developer.team-identifier", "ABCDEFGHIJ"),  # well formed, not the group's team
+            ("com.apple.application-identifier", "Q96FUTC5G8.dev.mvneves.Other"),
+        ):
+            with self.subTest(key=key, value=value):
+                self.assertNotEqual(0, self.run_gate(dict(reviewed, **{key: value})))
+
     def test_reviewed_entitlement_set_passes(self) -> None:
         self.assertEqual(0, self.run_gate({
             "com.apple.application-identifier": GROUP,
