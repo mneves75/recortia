@@ -14,17 +14,13 @@ final class SettingsWindowController {
         self.model = model
     }
 
-    /// Orders the window onto the current Space, then activates: the window moves to the user
-    /// instead of macOS switching to the Space where it was last shown.
     func show() {
         if window == nil {
             let created = Self.makeWindow(model: model)
             created.center(on: ScreenChoice.screen())
             window = created
         }
-        AppPresence.shared.windowWillAppear()
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        if let window { AppPresence.shared.present(window) }
     }
 
     static func makeWindow(model: AppModel) -> NSWindow {

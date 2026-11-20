@@ -92,8 +92,7 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
             case nil: nil
             }
         window.center(on: ScreenChoice.screen(displayID: displayID))
-        AppPresence.shared.activate()
-        window.makeKeyAndOrderFront(nil)
+        AppPresence.shared.present(window)
     }
 
     /// The one destructive path out of the review: close, Escape, and Discard all ask here first.

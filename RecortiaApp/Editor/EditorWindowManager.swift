@@ -176,8 +176,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             let size = window.frame.size
             window.setFrameOrigin(NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
         }
-        AppPresence.shared.activate()
-        window.makeKeyAndOrderFront(nil)
+        AppPresence.shared.present(window)
         // SwiftUI attaches the canvas lazily. It must belong to this window before AppKit
         // can accept it as first responder, including on the first capture after launch.
         window.contentView?.layoutSubtreeIfNeeded()
@@ -218,13 +217,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         canvas.finishTextEditing(commit: true)
         guard model.isDirty, !discardConfirmed else { return true }
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(localized: "Discard your edits?", table: "Editor")
-        alert.informativeText = Self.discardOnCloseDetail
-        let discard = alert.addButton(withTitle: String(localized: "Discard", table: "Editor"))
-        discard.hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel", table: "Editor"))
+        let alert = MessagePresenter.makeConfirmation(
+            title: String(localized: "Discard your edits?", table: "Editor"), detail: Self.discardOnCloseDetail,
+            action: String(localized: "Discard", table: "Editor"), cancel: String(localized: "Cancel", table: "Editor"))
         alert.beginSheetModal(for: sender) { [weak self] response in
             guard response == .alertFirstButtonReturn, let self else { return }
             self.discardConfirmed = true
@@ -311,12 +306,10 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     private func confirmReplacement() async -> Bool {
         guard let window else { return false }
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(localized: "Replace Existing File?", table: "Editor")
-        alert.informativeText = String(localized: "A file exists at this destination. Replace it?", table: "Editor")
-        alert.addButton(withTitle: String(localized: "Replace", table: "Editor")).hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel", table: "Editor"))
+        let alert = MessagePresenter.makeConfirmation(
+            title: String(localized: "Replace Existing File?", table: "Editor"),
+            detail: String(localized: "A file exists at this destination. Replace it?", table: "Editor"),
+            action: String(localized: "Replace", table: "Editor"), cancel: String(localized: "Cancel", table: "Editor"))
         return await withCheckedContinuation { continuation in
             alert.beginSheetModal(for: window) { continuation.resume(returning: $0 == .alertFirstButtonReturn) }
         }

@@ -320,19 +320,13 @@ final class OnboardingWindowController {
     var isVisible: Bool { window?.isVisible == true }
 
     func show(onboarding: OnboardingModel, shortcutStatus: ShortcutStatusModel) {
-        if let window {
-            AppPresence.shared.windowWillAppear()
-            window.makeKeyAndOrderFront(nil)
-            AppPresence.shared.activate()
-            return
-        }
+        if let window { return AppPresence.shared.present(window) }
         let window = Self.makeWindow(onboarding: onboarding, shortcutStatus: shortcutStatus) { [weak self] in
             self?.close()
         }
         window.center(on: ScreenChoice.screen())
         self.window = window
-        AppPresence.shared.activate()
-        window.makeKeyAndOrderFront(nil)
+        AppPresence.shared.present(window)
     }
 
     private func close() {
