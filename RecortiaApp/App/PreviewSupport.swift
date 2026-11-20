@@ -13,8 +13,11 @@
             SettingsStore(storage: PreviewPreferenceStorage(), integrity: PreviewPreferenceIntegrity())
         }
 
+        /// Settings' folder controls get a chooser that cancels: no open panel, no bookmark.
         static func appModel() -> AppModel {
-            AppModel(settings: settings(), services: services(), shortcutRegistry: PreviewShortcutRegistry())
+            AppModel(
+                settings: settings(), services: services(), shortcutRegistry: PreviewShortcutRegistry(),
+                chooseSaveFolder: { nil })
         }
 
         /// Inert services for previews and the E2E last-window probe: nothing reaches the screen,
