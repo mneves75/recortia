@@ -12,8 +12,15 @@ root=$PWD
 : "${DEVELOPER_DIR:=/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
 
+# Anything but no argument or exactly --dry-run is refused: a misspelt dry run must never select
+# the real release path.
 dry_run=0
-[[ "${1:-}" == "--dry-run" ]] && dry_run=1
+if (( $# == 1 )) && [[ "$1" == "--dry-run" ]]; then
+  dry_run=1
+elif (( $# != 0 )); then
+  echo "release: usage: scripts/release.sh [--dry-run]" >&2
+  exit 2
+fi
 
 # Development mode cannot qualify an archive, including a release-pipeline dry run.
 scripts/doctor.sh --release

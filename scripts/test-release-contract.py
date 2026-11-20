@@ -15,8 +15,10 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # The reviewed stable pin comes from the record, never a copy: a copied pin fails every release
 # control the moment the toolchain is re-observed.
-STABLE = json.loads((ROOT / "TOOLCHAIN.json").read_text())["stable_xcode_baseline"]
+RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
+STABLE = RECORD["stable_xcode_baseline"]
 STABLE_XCODE = f"Xcode {STABLE['version']}\\nBuild version {STABLE['build']}\\n"
+SWIFT_XCRUN = f"#!/bin/sh\necho 'Apple Swift version {RECORD['expected_bundled_swift_compiler_major_minor']}.0 (fixture)'\n"
 RELEASE = ROOT / "scripts/release.sh"
 RESOLVED = ROOT / "Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
 NOTICE = "KeyboardShortcuts-LICENSE.txt"
@@ -34,7 +36,7 @@ class ReleaseFixture:
         self.bin = root / "bin"
         self.bin.mkdir()
         self.write_tool("xcodegen", "#!/bin/sh\nexit 0\n")
-        self.write_tool("xcrun", "#!/bin/sh\necho 'Swift fixture compiler'\n")
+        self.write_tool("xcrun", SWIFT_XCRUN)
         (self.bin / "python3").symlink_to(sys.executable)
         self.write_tool("xcodebuild", "#!/bin/sh\n"
                         f"if [ \"$1\" = -version ]; then printf '{STABLE_XCODE}'; "
@@ -141,6 +143,17 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertEqual(2, len(fresh), "each dry run needs its own reservation")
         self.assertTrue((fixture.root / "archive-reached").exists(), "dry run control reaches archive")
 
+    def test_unknown_arguments_stop_before_the_toolchain_or_release_path(self) -> None:
+        for arguments in (("--dryrun",), ("dry-run",), ("--dry-run", "extra"), ("",)):
+            with self.subTest(arguments=arguments):
+                fixture = self.fixture()
+                result = fixture.run(*arguments)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn("usage: scripts/release.sh [--dry-run]", result.stderr)
+                self.assertNotIn("doctor:", result.stdout + result.stderr)
+                self.assertFalse((fixture.root / ".build").exists())
+                self.assertFalse((fixture.root / "gate-reached").exists())
+
     def test_missing_xcodegen_fails_release_gate_before_archive(self) -> None:
         fixture = self.fixture()
         (fixture.bin / "xcodegen").unlink()
@@ -175,7 +188,7 @@ class ReleaseContractTests(unittest.TestCase):
             for name, source in {
                 "git": '#!/bin/sh\necho "git boundary reached (mode=$RECORTIA_TOOLCHAIN_MODE)" >&2\nexit 87\n',
                 "xcodegen": "#!/bin/sh\nexit 0\n",
-                "xcrun": "#!/bin/sh\necho 'Swift fixture compiler'\n",
+                "xcrun": SWIFT_XCRUN,
             }.items():
                 executable = binaries / name
                 executable.write_text(source)
