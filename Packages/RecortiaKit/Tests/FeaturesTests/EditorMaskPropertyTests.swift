@@ -8,9 +8,10 @@ import Testing
 // Acceptance gate for the mask rule (R4): no editor operation other than an explicit mask edit may
 // make the export depend on pixels a mask protected. Two documents differ only inside the masked
 // patches, on the bottom image (bound when each mask was made) and on a pasted image (one patch
-// protected only by the box over it when it was pasted). The same seeded sequence of non-mask
-// edits must leave their exports identical after every step. Setup is outside Undo's reach:
-// undoing a mask's creation is an explicit mask edit.
+// protected only by the box over it when it was pasted); an image imported mid-run may carry a
+// further variant patch placed exactly under a box. The same seeded sequence of non-mask edits,
+// through the model's own entry points, must leave their exports identical after every step.
+// Setup is outside Undo's reach: undoing a mask's creation is an explicit mask edit.
 @Suite("Non-mask edits never reveal protected pixels (R4)")
 @MainActor
 struct EditorMaskPropertyTests {
@@ -29,22 +30,37 @@ struct EditorMaskPropertyTests {
             let steps = (0..<Int.random(in: 1...12, using: &rng)).map { _ in Step.random(using: &rng) }
             let variants = [try await Self.variant(green: 0), try await Self.variant(green: 200)]
             for (index, step) in steps.enumerated() {
-                for fixture in variants { await step.apply(to: fixture) }
-                let red = try? await variants[0].exported()
-                let other = try? await variants[1].exported()
-                if red != nil { compared += 1 }
-                guard red == other else {
-                    let differing = zip(red?.bytes ?? [], other?.bytes ?? []).filter { $0 != $1 }.count
+                for (green, fixture) in zip([UInt8(0), 200], variants) { await step.apply(to: fixture, green: green) }
+                let red = await Self.outcome(variants[0])
+                let other = await Self.outcome(variants[1])
+                guard red == other, case .success = red else {
                     Issue.record(
                         """
-                        seed \(seed), step \(index + 1) of \(steps): the export reveals protected pixels \
-                        (\(differing) differing bytes; exported \(red != nil) and \(other != nil))
+                        seed \(seed), step \(index + 1) of [\(steps.map { "\($0)" }.joined(separator: ", "))]: the exports differ or failed \
+                        (\(Self.describe(red)) vs \(Self.describe(other)))
                         """)
                     return
                 }
+                compared += 1
             }
         }
-        #expect(compared > 100, "most steps produce an export to compare")
+        #expect(compared > 100)
+    }
+
+    private enum Outcome: Equatable {
+        case success(DecodedPixels)
+        case failure(String)
+    }
+
+    private static func outcome(_ fixture: SecretExport) async -> Outcome {
+        do { return .success(try await fixture.exported()) } catch { return .failure("\(error)") }
+    }
+
+    private static func describe(_ outcome: Outcome) -> String {
+        switch outcome {
+        case .success(let pixels): "\(pixels.width)×\(pixels.height) pixels"
+        case .failure(let error): "export failed: \(error)"
+        }
     }
 
     /// The bottom image has all three patches; `early`'s mask predates the pasted image, which
@@ -67,81 +83,82 @@ struct EditorMaskPropertyTests {
 
 /// One editor operation that is not an explicit mask edit, with every random choice drawn up front
 /// so both variants receive exactly the same input.
-private enum Step: CustomStringConvertible {
+private enum Step {
     case nudgeLayer(pick: Int, dx: Double, dy: Double)
     case setLayerFrame(pick: Int, x: Double, y: Double, factor: Double)
     case layerScale(pick: Int, scale: Double)
+    case resizeLayer(pick: Int, handle: Int, dx: Double, dy: Double)
     case sideBySide
     case align(picks: Int, alignment: EditorAlignment)
     case dragLayer(x: Double, y: Double, dx: Double, dy: Double)
-    case paste(width: Int, height: Int)
-    case duplicateLayer(pick: Int)
+    case importImage(width: Int, height: Int, underMask: Int?)
+    case duplicate(pick: Int)
+    case delete(pick: Int)
+    case reorder(pick: Int, order: EditorZOrder)
+    case layerOpacity(pick: Int, opacity: Double)
     case addRectangle(x: Double, y: Double, width: Double, height: Double)
+    case addText(x: Double, y: Double, text: String)
+    case restyle(pick: Int, lineWidth: Double, fontSize: Double)
+    case continuousRestyle(pick: Int, widths: [Double])
     case nudgeAnnotation(pick: Int, dx: Double, dy: Double)
     case addMagnifier(x: Double, y: Double, width: Double, height: Double)
     case nudgeCallout(pick: Int, dx: Double, dy: Double)
     case fitCanvas
     case crop(x: Double, y: Double, width: Double, height: Double)
+    case resetCrop
     case undo
     case redo
     case togglePreview
     case zoomPan(zoom: Double, dx: Double, dy: Double)
-
-    var description: String {
-        switch self {
-        case .nudgeLayer(let pick, let dx, let dy): "nudgeLayer(\(pick), \(dx), \(dy))"
-        case .setLayerFrame(let pick, let x, let y, let factor): "setLayerFrame(\(pick), \(x), \(y), ×\(factor))"
-        case .layerScale(let pick, let scale): "layerScale(\(pick), \(scale))"
-        case .sideBySide: "sideBySide"
-        case .align(let picks, let alignment): "align(\(picks), \(alignment))"
-        case .dragLayer(let x, let y, let dx, let dy): "dragLayer(\(x), \(y), +\(dx), +\(dy))"
-        case .paste(let width, let height): "paste(\(width)×\(height))"
-        case .duplicateLayer(let pick): "duplicateLayer(\(pick))"
-        case .addRectangle(let x, let y, let w, let h): "addRectangle(\(x), \(y), \(w), \(h))"
-        case .nudgeAnnotation(let pick, let dx, let dy): "nudgeAnnotation(\(pick), \(dx), \(dy))"
-        case .addMagnifier(let x, let y, let w, let h): "addMagnifier(\(x), \(y), \(w), \(h))"
-        case .nudgeCallout(let pick, let dx, let dy): "nudgeCallout(\(pick), \(dx), \(dy))"
-        case .fitCanvas: "fitCanvas"
-        case .crop(let x, let y, let w, let h): "crop(\(x), \(y), \(w), \(h))"
-        case .undo: "undo"
-        case .redo: "redo"
-        case .togglePreview: "togglePreview"
-        case .zoomPan(let zoom, let dx, let dy): "zoomPan(\(zoom), \(dx), \(dy))"
-        }
-    }
 
     static func random(using rng: inout SplitMix64) -> Step {
         func coordinate() -> Double { Double(Int.random(in: -25...200, using: &rng)) }
         func delta() -> Double { Double(Int.random(in: -60...60, using: &rng)) }
         func length() -> Double { Double(Int.random(in: 5...75, using: &rng)) }
         let pick = Int.random(in: 0..<64, using: &rng)
-        switch Int.random(in: 0..<18, using: &rng) {
+        switch Int.random(in: 0..<26, using: &rng) {
         case 0: return .nudgeLayer(pick: pick, dx: delta(), dy: delta())
         case 1:
             return .setLayerFrame(
                 pick: pick, x: coordinate(), y: coordinate(), factor: Double.random(in: 0.4...1.6, using: &rng))
         case 2: return .layerScale(pick: pick, scale: Double.random(in: 0.3...2, using: &rng))
-        case 3: return .sideBySide
-        case 4: return .align(picks: pick, alignment: EditorAlignment.allCases.randomElement(using: &rng) ?? .left)
-        case 5: return .dragLayer(x: coordinate(), y: coordinate(), dx: delta(), dy: delta())
-        case 6:
-            return .paste(width: Int.random(in: 20...100, using: &rng), height: Int.random(in: 20...75, using: &rng))
-        case 7: return .duplicateLayer(pick: pick)
-        case 8: return .addRectangle(x: coordinate(), y: coordinate(), width: length(), height: length())
-        case 9: return .nudgeAnnotation(pick: pick, dx: delta(), dy: delta())
-        case 10: return .addMagnifier(x: coordinate(), y: coordinate(), width: length(), height: length())
-        case 11: return .nudgeCallout(pick: pick, dx: delta(), dy: delta())
-        case 12: return .fitCanvas
-        case 13: return .crop(x: coordinate(), y: coordinate(), width: length() * 2, height: length() * 2)
-        case 14: return .undo
-        case 15: return .redo
-        case 16: return .togglePreview
+        case 3: return .resizeLayer(pick: pick, handle: Int.random(in: 0..<4, using: &rng), dx: delta(), dy: delta())
+        case 4: return .sideBySide
+        case 5: return .align(picks: pick, alignment: EditorAlignment.allCases.randomElement(using: &rng) ?? .left)
+        case 6: return .dragLayer(x: coordinate(), y: coordinate(), dx: delta(), dy: delta())
+        case 7:
+            return .importImage(
+                width: 2 * Int.random(in: 10...100, using: &rng), height: 2 * Int.random(in: 10...75, using: &rng),
+                underMask: Bool.random(using: &rng) ? pick : nil)
+        case 8: return .duplicate(pick: pick)
+        case 9: return .delete(pick: pick)
+        case 10: return .reorder(pick: pick, order: [.forward, .backward, .front, .back][pick % 4])
+        case 11: return .layerOpacity(pick: pick, opacity: Double.random(in: 0...1, using: &rng))
+        case 12: return .addRectangle(x: coordinate(), y: coordinate(), width: length(), height: length())
+        case 13: return .addText(x: coordinate(), y: coordinate(), text: String(repeating: "W", count: 1 + pick % 8))
+        case 14:
+            return .restyle(
+                pick: pick, lineWidth: Double(Int.random(in: 1...20, using: &rng)),
+                fontSize: Double(Int.random(in: 8...72, using: &rng)))
+        case 15:
+            return .continuousRestyle(
+                pick: pick, widths: (0..<3).map { _ in Double(Int.random(in: 1...20, using: &rng)) })
+        case 16: return .nudgeAnnotation(pick: pick, dx: delta(), dy: delta())
+        case 17: return .addMagnifier(x: coordinate(), y: coordinate(), width: length(), height: length())
+        case 18: return .nudgeCallout(pick: pick, dx: delta(), dy: delta())
+        case 19: return .fitCanvas
+        case 20: return .crop(x: coordinate(), y: coordinate(), width: length() * 2, height: length() * 2)
+        case 21: return .resetCrop
+        case 22: return .undo
+        case 23: return .redo
+        case 24: return .togglePreview
         default: return .zoomPan(zoom: Double.random(in: 0.1...4, using: &rng), dx: delta(), dy: delta())
         }
     }
 
+    /// `green` is the variant's patch color, used only for a patch placed exactly under a box.
     @MainActor
-    func apply(to fixture: SecretExport) async {
+    func apply(to fixture: SecretExport, green: UInt8) async {
         let h = fixture.harness
         let m = h.model
         let layers = m.document.layers.map { EditorItemID.layer($0.id) }
@@ -162,6 +179,13 @@ private enum Step: CustomStringConvertible {
         case .layerScale(let pick, let scale):
             guard case .layer(let id)? = one(layers, pick) else { return }
             m.setLayerScale(scale, for: id)
+        case .resizeLayer(let pick, let handle, let dx, let dy):
+            guard let layer = one(layers, pick) else { return }
+            m.setSelection([layer])
+            let handles = m.selectionHandles
+            guard !handles.isEmpty else { return }
+            let p = handles[handle % handles.count].point
+            h.drag((p.x, p.y), (p.x + dx, p.y + dy))
         case .sideBySide:
             m.arrangeSideBySide()
         case .align(let picks, let alignment):
@@ -172,16 +196,62 @@ private enum Step: CustomStringConvertible {
             m.clearSelection()
             guard case .layer? = m.item(at: Point(x: x, y: y)) else { return }
             h.drag((x, y), (x + dx, y + dy))
-        case .paste(let width, let height):
-            _ = try? await fixture.addLayer(width: width, height: height, secrets: [])
-        case .duplicateLayer(let pick):
-            guard let layer = one(layers, pick) else { return }
-            m.setSelection([layer])
+        case .importImage(let width, let height, let underMask):
+            // addImageLayer centers an image that fits at scale 1; with even margins its pixels
+            // land on whole document pixels, so a patch can sit exactly under a box. A patched
+            // import is as large as the canvas (up to 400 × 300), so every box on it fits.
+            let canvas = m.document.canvasSize
+            var width = width, height = height
+            if underMask != nil, canvas.width <= 400, canvas.height <= 300 {
+                (width, height) = (Int(canvas.width), Int(canvas.height))
+            }
+            let left = (canvas.width - Double(width)) / 2, top = (canvas.height - Double(height)) / 2
+            var secrets: [FixtureRect] = []
+            if let underMask, !m.document.masks.isEmpty, left >= 0, top >= 0, left == left.rounded(),
+                top == top.rounded()
+            {
+                let box = m.document.masks[underMask % m.document.masks.count].outputRect
+                let patch = FixtureRect(
+                    x: Int(box.minX - left), y: Int(box.minY - top), width: Int(box.width), height: Int(box.height))
+                if patch.x >= 0, patch.y >= 0, patch.x + patch.width <= width, patch.y + patch.height <= height {
+                    secrets = [patch]
+                }
+            }
+            _ = try? await fixture.importLayer(width: width, height: height, secrets: secrets, green: green)
+        case .duplicate(let pick):
+            guard let item = one(layers + annotations, pick) else { return }
+            m.setSelection([item])
             m.duplicateSelection()
+        case .delete(let pick):
+            guard let item = one(layers + annotations, pick) else { return }
+            m.setSelection([item])
+            m.deleteSelection()
+        case .reorder(let pick, let order):
+            guard let item = one(layers + annotations, pick) else { return }
+            m.setSelection([item])
+            m.reorderSelection(order)
+        case .layerOpacity(let pick, let opacity):
+            guard case .layer(let id)? = one(layers, pick) else { return }
+            m.setLayerOpacity(opacity, for: id)
         case .addRectangle(let x, let y, let width, let height):
             m.setFillColor(.yellow)
             m.selectTool(.rectangle)
             h.drag((x, y), (x + width, y + height))
+        case .addText(let x, let y, let text):
+            m.selectTool(.text)
+            h.click(x, y)
+            m.commitTextEditing(text)
+        case .restyle(let pick, let lineWidth, let fontSize):
+            guard let annotation = one(annotations, pick) else { return }
+            m.setSelection([annotation])
+            m.setLineWidth(lineWidth)
+            m.setFontSize(fontSize)
+        case .continuousRestyle(let pick, let widths):
+            guard let annotation = one(annotations, pick) else { return }
+            m.setSelection([annotation])
+            let id = m.beginContinuousChange()
+            for width in widths { m.setLineWidth(width) }
+            m.endContinuousChange(id)
         case .nudgeAnnotation(let pick, let dx, let dy):
             guard let annotation = one(annotations, pick) else { return }
             m.setSelection([annotation])
@@ -198,6 +268,8 @@ private enum Step: CustomStringConvertible {
         case .crop(let x, let y, let width, let height):
             m.selectTool(.crop)
             h.drag((x, y), (x + width, y + height))
+        case .resetCrop:
+            m.setCrop(nil)
         case .undo:
             m.undo()
         case .redo:

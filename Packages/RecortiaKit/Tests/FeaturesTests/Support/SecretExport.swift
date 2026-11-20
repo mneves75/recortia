@@ -24,11 +24,13 @@ struct SecretExport {
             origin: .imported)
         self.store = store
         harness = EditorHarness(session: DocumentSession(document: Document(asset: info)))
+        harness.assets.store = store
         pipeline = ExportPipeline(renderer: PrivacyRenderer(store: store))
     }
 
     private init(harness: EditorHarness, store: ImageStore) {
         self.harness = harness
+        harness.assets.store = store
         self.store = store
         pipeline = ExportPipeline(renderer: PrivacyRenderer(store: store))
     }
@@ -69,6 +71,15 @@ struct SecretExport {
             document.layers.append(layer)
         }
         return layer.id
+    }
+
+    /// Imports an image through the editor's real import path (as a drop or paste does): it is
+    /// decoded into this store and placed by `addImageLayer`.
+    @discardableResult
+    func importLayer(width: Int, height: Int, secrets: [FixtureRect], green: UInt8 = 0) async throws -> Bool {
+        let png = try ContainerCrafting.pngData(
+            Self.image(width: width, height: height, secrets: secrets, green: green))
+        return await harness.model.addImageLayer(from: .droppedData(png))
     }
 
     /// Exported pixels anywhere that still show the secret's red.
