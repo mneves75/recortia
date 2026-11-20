@@ -12,8 +12,10 @@ if [[ "${1:-}" == "--unsigned" ]]; then
   sign_args=(CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=-)
 fi
 
-# scripts/tests-report.py binds this log's verdict to the commit named here.
-echo "check: commit $(git rev-parse HEAD)"
+# scripts/tests-report.py credits this log's verdict to the commit named here only when the tree
+# was clean at both ends of the run.
+tree_state() { local s; s=$(git status --porcelain --untracked-files=all) || { echo unknown; return; }; [[ -z $s ]] && echo clean || echo dirty; }
+echo "check: commit $(git rev-parse HEAD) tree $(tree_state)"
 scripts/doctor.sh
 
 echo "== toolchain and E2E isolation regressions"
@@ -53,4 +55,5 @@ xcodebuild -project Recortia.xcodeproj -scheme RecortiaE2E -configuration Debug 
   -destination 'platform=macOS' -derivedDataPath .build/dd -onlyUsePackageVersionsFromResolvedFile \
   "${sign_args[@]}" build | tail -3
 
+echo "check: end tree $(tree_state)"
 echo "check: all gates passed"

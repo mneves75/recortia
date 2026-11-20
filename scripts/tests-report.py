@@ -181,9 +181,16 @@ def evidence_commit(run: str, prefix: str) -> str | None:
     return found.group(1) if found else None
 
 
+def ran_on_clean_tree(run: str, prefix: str) -> bool:
+    """A commit's verdict needs the committed tree: clean when the run started and when it ended."""
+    start = re.match(rf"{re.escape(prefix)}: commit [0-9a-f]{{40}} tree (\S+)", run)
+    ends = re.findall(rf"(?m)^{re.escape(prefix)}: end tree (\S+)$", run)
+    return start is not None and start.group(1) == "clean" and bool(ends) and ends[-1] == "clean"
+
+
 def e2e_is_full_suite(text: str) -> bool:
     """Both languages and every scenario: the selection the suite's command names."""
-    headers = re.findall(r"(?m)^e2e: commit [0-9a-f]{40} lang (\S+) only (\S+)$", text)
+    headers = re.findall(r"(?m)^e2e: commit [0-9a-f]{40} tree \S+ lang (\S+) only (\S+)$", text)
     if not headers or headers[-1] != ("all", "-"):
         return False
     languages = set(re.findall(r"(?m)^e2e\[([^\]]+)\]: \d+/\d+ scenarios passed", text))
@@ -229,6 +236,9 @@ def observe(suite: dict[str, str], head: str) -> dict[str, object]:
     elif ran_at != head:
         # A verdict proves only the commit it ran at; the report speaks for HEAD.
         status = "stale"
+    elif status == "passed" and not ran_on_clean_tree(run or "", suite["prefix"]):
+        # Uncommitted changes were tested, not HEAD.
+        status = "dirty"
     elif suite["id"] == "e2e" and status == "passed" and not e2e_is_full_suite(run or ""):
         status = "partial"
     return {

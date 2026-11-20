@@ -42,7 +42,8 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 source_commit=$(git rev-parse HEAD)
-echo "release: commit $source_commit"
+tree_state() { local s; s=$(git status --porcelain --untracked-files=all) || { echo unknown; return; }; [[ -z $s ]] && echo clean || echo dirty; }
+echo "release: commit $source_commit tree $(tree_state)"
 version=$(git show "${source_commit}:project.yml" | sed -n 's/^ *MARKETING_VERSION: *//p')
 build=$(git show "${source_commit}:project.yml" | sed -n 's/^ *CURRENT_PROJECT_VERSION: *//p')
 if [[ ! "$version" =~ '^[0-9]+\.[0-9]+(\.[0-9]+)?$' || ! "$build" =~ '^[0-9]+$' ]]; then
@@ -199,6 +200,7 @@ PY
   echo "sha256: $sha"
 } > "$out/manifest.txt"
 cat "$out/manifest.txt"
+echo "release: end tree $(tree_state)"
 if (( dry_run )); then echo "release: dry run complete ($label, manifest $out/manifest.txt)"
 else echo "release: complete ($label, manifest $out/manifest.txt)"
 fi

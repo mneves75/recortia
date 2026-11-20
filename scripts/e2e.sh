@@ -34,8 +34,10 @@ case "$lang" in
   *) echo "e2e: --lang must be en, pt-BR, or all" >&2; exit 2 ;;
 esac
 
-# scripts/tests-report.py reads this header: a run of one language or of --only ids is partial.
-echo "e2e: commit $(git rev-parse HEAD) lang $lang only ${only:--}"
+# scripts/tests-report.py reads this header: a run of one language or of --only ids is partial, and
+# a tree that was not clean at both ends does not qualify the commit.
+tree_state() { local s; s=$(git status --porcelain --untracked-files=all) || { echo unknown; return; }; [[ -z $s ]] && echo clean || echo dirty; }
+echo "e2e: commit $(git rev-parse HEAD) tree $(tree_state) lang $lang only ${only:--}"
 scripts/doctor.sh
 toolchain_mode="${RECORTIA_TOOLCHAIN_MODE:-stable}"
 xcode_version=$(xcodebuild -version)
@@ -220,5 +222,6 @@ PY
   echo "e2e[$language]: $summary (exit $exit_code)"
   (( exit_code == 0 )) || rc=1
 done
+echo "e2e: end tree $(tree_state)"
 echo "e2e: output in $run_root"
 exit $rc
