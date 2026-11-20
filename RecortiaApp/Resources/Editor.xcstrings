@@ -3746,6 +3746,18 @@
         "en": { "stringUnit": { "state": "translated", "value": "System" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Sistema" } }
       }
+    },
+    "Expanded": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Expanded" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Expandido" } }
+      }
+    },
+    "Collapsed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Collapsed" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Recolhido" } }
+      }
     }
   },
   "version": "1.0"

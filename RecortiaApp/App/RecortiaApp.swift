@@ -24,8 +24,7 @@ struct RecortiaApp: App {
                     .keyboardShortcut(",")
             }
             // The editor's columns and Arrange commands act on the key editor window only.
-            CommandGroup(replacing: .sidebar) { EditorViewMenuItems(commands: .shared) }
-            CommandMenu(String(localized: "Arrange", table: "Editor")) { EditorArrangeMenu(commands: .shared) }
+            EditorMenuCommands(commands: .shared)
             CommandGroup(replacing: .help) {}
         }
         // Settings is an AppKit window (SettingsWindowController) so it follows the active Space.

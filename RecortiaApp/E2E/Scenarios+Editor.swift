@@ -88,9 +88,9 @@
             let beforeRemoval = model.document
             let remainingColors = model.savedAnnotationColors.filter { $0 != .red }
             await E2ESnapshot.settle(root)
-            _ = try await E2EAccessibilityControl.chooseFromMenu(
-                String(localized: "Remove Saved Color", table: "Editor"), opening: "palette.apply.E53935", in: root,
-                context, contextMenu: true)
+            // VoiceOver reaches removal as the swatch's named action; pointers use its context menu.
+            try E2EAccessibilityControl.performCustomAction(
+                String(localized: "Remove Saved Color", table: "Editor"), on: "palette.apply.E53935", in: root, context)
             try context.require(
                 "the swatch's Remove Saved Color removes the saved color",
                 await E2EWait.until { model.savedAnnotationColors == remainingColors })
@@ -211,6 +211,13 @@
             model.select(.layer(layer.id))
             let root = try context.unwrap("editor content", controller.contentRoot)
             await E2ESnapshot.settle(root)
+            // Position and Size starts collapsed; open it as a person does, and close it at the end.
+            await E2EActions.scrollInspector(controller, to: 1)
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.pressCheckingEffect("inspector.positionAndSize", in: root, context)
+            await E2ESnapshot.settle(root)
+            await E2EActions.scrollInspector(controller, to: 0)
+            await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "before")
             let fields = EditorWindowController.all(NSTextField.self, in: root)
             let field = try context.unwrap(
@@ -238,6 +245,10 @@
                 model.frame(of: .layer(layer.id)) == Rect(x: 0, y: 0, width: 800, height: 600))
             context.check("height field agrees with the document", field.doubleValue == 600)
             await E2EActions.snapshotEditor(controller, context)
+            await E2EActions.scrollInspector(controller, to: 1)
+            await E2ESnapshot.settle(root)
+            try E2EAccessibilityControl.pressCheckingEffect("inspector.positionAndSize", in: root, context)
+            await E2ESnapshot.settle(root)
         }
 
         static func annotations(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

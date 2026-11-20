@@ -132,28 +132,21 @@ private struct CanvasHost: NSViewRepresentable {
 
 // MARK: - Tool bar
 
-/// The window toolbar: Select·Hand | Crop | drawing tools | Redact·Effects | Measure | Undo·Redo,
-/// then Copy·Save | Pin·Drag at the trailing edge. Every item stays visible at the minimum
-/// content width (980 pt).
+/// The window toolbar: the tools in their order (Select, Hand, Crop, drawing tools, Redact,
+/// Effects, Measure), Undo·Redo, then Copy·Save·Pin·Drag at the trailing edge. The system draws
+/// the group capsules; fixed spacers between every group pushed Pin and Drag into the overflow
+/// menu at the minimum content width (980 pt), where every item must stay visible.
 struct EditorToolbarContent: ToolbarContent {
     let model: EditorModel
     let actions: any EditorWindowActions
 
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) { tools([.select, .hand]) }
-        ToolbarSpacer(.fixed, placement: .navigation)
-        ToolbarItemGroup(placement: .navigation) { tools([.crop]) }
-        ToolbarSpacer(.fixed, placement: .navigation)
         ToolbarItemGroup(placement: .navigation) {
-            tools([.text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step])
-        }
-        ToolbarSpacer(.fixed, placement: .navigation)
-        ToolbarItemGroup(placement: .navigation) {
-            tools([.redact])
+            tools([
+                .select, .hand, .crop, .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step,
+                .redact,
+            ])
             ToolMenu(group: .effects, model: model, actions: actions)
-        }
-        ToolbarSpacer(.fixed, placement: .navigation)
-        ToolbarItemGroup(placement: .navigation) {
             ToolMenu(group: .measure, model: model, actions: actions)
         }
         ToolbarSpacer(.fixed, placement: .navigation)
@@ -178,9 +171,6 @@ struct EditorToolbarContent: ToolbarContent {
         ToolbarSpacer(.flexible)
         ToolbarItemGroup(placement: .primaryAction) {
             CopySaveButtons(model: model, actions: actions)
-        }
-        ToolbarSpacer(.fixed, placement: .primaryAction)
-        ToolbarItemGroup(placement: .primaryAction) {
             PinDragButtons(model: model, actions: actions)
         }
     }

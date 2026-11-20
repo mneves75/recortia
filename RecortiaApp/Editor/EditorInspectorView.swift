@@ -275,14 +275,11 @@ private struct SavedColorsRow: View {
                 alignment: .leading, spacing: DesignTokens.Space.xs
             ) {
                 ForEach(model.savedAnnotationColors, id: \.self) { color in
-                    Swatch(color: color, isSelected: color == current) { model.applySavedColor(color) }
-                        .disabled(isUnavailable)
-                        .contextMenu {
-                            Button(String(localized: "Remove Saved Color", table: "Editor")) {
-                                model.removeSavedColor(color)
-                            }
-                            .disabled(isUnavailable)
-                        }
+                    Swatch(
+                        color: color, isSelected: color == current, apply: { model.applySavedColor(color) },
+                        remove: { model.removeSavedColor(color) }
+                    )
+                    .disabled(isUnavailable)
                 }
                 Button {
                     model.saveCurrentStrokeColor()
@@ -314,10 +311,14 @@ private struct SavedColorsRow: View {
     }
 }
 
+/// A saved color: pressing applies it; the context menu and the matching accessibility action
+/// (VoiceOver's actions rotor) remove it.
 private struct Swatch: View {
     let color: RGBA
     let isSelected: Bool
     let apply: () -> Void
+    let remove: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: apply) {
@@ -339,7 +340,13 @@ private struct Swatch: View {
         .accessibilityIdentifier("palette.apply.\(color.hex.dropFirst())")
         .accessibilityLabel(color.hex)
         .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
+        .accessibilityAction(named: Text(String(localized: "Remove Saved Color", table: "Editor"))) {
+            if isEnabled { remove() }
+        }
         .help(color.hex)
+        .contextMenu {
+            Button(String(localized: "Remove Saved Color", table: "Editor"), action: remove)
+        }
     }
 }
 
@@ -672,22 +679,39 @@ private struct BoxBackgroundRows: View {
     }
 }
 
-/// X, Y, Width and Height in a disclosure that starts collapsed and keeps its state this session.
+/// X, Y, Width and Height behind a disclosure that starts collapsed and keeps its state this
+/// session. The header is a plain button, so VoiceOver and accessibility Press reach it directly.
 private struct PositionSection: View {
     let model: EditorModel
     let item: EditorListItem
     @Bindable private var state = InspectorSessionState.shared
 
     var body: some View {
+        let expanded = state.showsPositionAndSize
         Section {
-            DisclosureGroup(isExpanded: $state.showsPositionAndSize) {
+            Button {
+                state.showsPositionAndSize.toggle()
+            } label: {
+                HStack {
+                    Text(String(localized: "Position and Size", table: "Editor"))
+                    Spacer(minLength: DesignTokens.Space.s)
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(
+                expanded
+                    ? String(localized: "Expanded", table: "Editor") : String(localized: "Collapsed", table: "Editor")
+            )
+            .accessibilityIdentifier("inspector.positionAndSize")
+            if expanded {
                 FrameFields(frame: item.frame, identifier: "frame", preservesAspectRatio: item.kind == .image) {
                     model.setFrame($0, for: item.id)
                 }
-            } label: {
-                Text(String(localized: "Position and Size", table: "Editor"))
             }
-            .accessibilityIdentifier("inspector.positionAndSize")
         }
     }
 }

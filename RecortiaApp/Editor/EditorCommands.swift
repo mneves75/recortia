@@ -16,17 +16,23 @@ final class EditorPanes {
 }
 
 /// The editor window that is key, for the View and Arrange menus: their commands act on that
-/// editor alone and are disabled while any other window (or none) is key.
-@Observable
-final class EditorCommands {
+/// editor alone and are disabled while any other window (or none) is key. Menu-bar commands
+/// re-read state only through `@ObservedObject`, so this publishes a change whenever the key
+/// editor or its columns change.
+final class EditorCommands: ObservableObject {
     static let shared = EditorCommands()
 
-    private(set) var keyEditor: EditorWindowController?
+    @Published private(set) var keyEditor: EditorWindowController?
+    @Published private(set) var panesRevision = 0
 
     func editorBecameKey(_ editor: EditorWindowController) { keyEditor = editor }
 
     func editorResignedKey(_ editor: EditorWindowController) {
         if keyEditor === editor { keyEditor = nil }
+    }
+
+    func panesChanged(_ editor: EditorWindowController) {
+        if keyEditor === editor { panesRevision &+= 1 }
     }
 }
 
@@ -69,31 +75,46 @@ enum EditorArrangeCommand: Hashable {
 
 // MARK: - Menu bar
 
-/// View › Show/Hide Sidebar (⌃⌘S) and Show/Hide Inspector (⌃⌘I) for the key editor window.
-struct EditorViewMenuItems: View {
-    let commands: EditorCommands
+/// View › Show/Hide Sidebar (⌃⌘S) and Show/Hide Inspector (⌃⌘I), and the Arrange menu, for the
+/// key editor window.
+struct EditorMenuCommands: Commands {
+    @ObservedObject var commands: EditorCommands
 
-    var body: some View {
+    var body: some Commands {
         let editor = commands.keyEditor
         let panes = editor?.panes
-        Button(
-            panes?.sidebarCollapsed == true
-                ? String(localized: "Show Sidebar", table: "Editor")
-                : String(localized: "Hide Sidebar", table: "Editor")
-        ) {
-            editor?.toggle(.sidebar)
+        CommandGroup(replacing: .sidebar) {
+            Button(
+                panes?.sidebarCollapsed == true
+                    ? String(localized: "Show Sidebar", table: "Editor")
+                    : String(localized: "Hide Sidebar", table: "Editor")
+            ) {
+                editor?.toggle(.sidebar)
+            }
+            .keyboardShortcut("s", modifiers: [.control, .command])
+            .disabled(editor == nil)
+            Button(
+                panes?.inspectorCollapsed == true
+                    ? String(localized: "Show Inspector", table: "Editor")
+                    : String(localized: "Hide Inspector", table: "Editor")
+            ) {
+                editor?.toggle(.inspector)
+            }
+            .keyboardShortcut("i", modifiers: [.control, .command])
+            .disabled(editor == nil)
         }
-        .keyboardShortcut("s", modifiers: [.control, .command])
-        .disabled(editor == nil)
-        Button(
-            panes?.inspectorCollapsed == true
-                ? String(localized: "Show Inspector", table: "Editor")
-                : String(localized: "Hide Inspector", table: "Editor")
-        ) {
-            editor?.toggle(.inspector)
+        // Enabled for a key editor; each command checks the selection and text input when chosen.
+        CommandMenu(String(localized: "Arrange", table: "Editor")) {
+            EditorArrangeMenuItems(isAvailable: editor != nil) { command in
+                guard let editor else { return }
+                editor.commitPendingText()
+                guard EditorArrangeCommand.isAvailable(for: editor.model) else {
+                    NSSound.beep()
+                    return
+                }
+                command.perform(on: editor.model)
+            }
         }
-        .keyboardShortcut("i", modifiers: [.control, .command])
-        .disabled(editor == nil)
     }
 }
 
@@ -123,21 +144,6 @@ struct EditorArrangeMenuItems: View {
             }
         }
         .disabled(!isAvailable)
-    }
-}
-
-/// The top-level Arrange menu's content, bound to the key editor.
-struct EditorArrangeMenu: View {
-    let commands: EditorCommands
-
-    var body: some View {
-        let editor = commands.keyEditor
-        EditorArrangeMenuItems(isAvailable: editor.map { EditorArrangeCommand.isAvailable(for: $0.model) } ?? false) {
-            command in
-            guard let editor else { return }
-            editor.commitPendingText()
-            command.perform(on: editor.model)
-        }
     }
 }
 
