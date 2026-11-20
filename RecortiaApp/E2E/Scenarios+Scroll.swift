@@ -111,6 +111,14 @@
                 "a declined discard leaves the stitched capture in review", model.state == .reviewing,
                 "\(model.state)")
 
+            // Review R3-D19: a single frame or seam read "1 frames" / "1 quadros" / "1 junções".
+            let oneFrame = String(localized: "\(1) frames · \(480) pixels tall")
+            let oneJoin = String(localized: "Stitched preview with \(1) joins")
+            context.check(
+                "one frame and one join read in the singular",
+                !["1 frames", "1 quadros", "1 joins", "1 junções"].contains { (oneFrame + oneJoin).contains($0) },
+                "\(oneFrame) | \(oneJoin)")
+
             let before = harness.editors.controllers.count
             await model.accept()
             let controller = try await E2EActions.waitForNewEditor(harness, after: before, context)
