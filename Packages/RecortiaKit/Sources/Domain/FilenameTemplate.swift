@@ -157,14 +157,15 @@ public struct ExportName: Hashable, Sendable {
     }
 
     /// The number `name` carries when it is this counting name with some number: digits without
-    /// a leading zero, at most nine of them, so resuming above it cannot overflow.
+    /// a leading zero, at most nine of them, so resuming above it cannot overflow. Text after
+    /// `{counter}` may start with digits, so each length is tried against the whole name.
     public func number(in name: String) -> Int? {
         guard counts, name.hasPrefix(parts[0]) else { return nil }
         let digits = name.dropFirst(parts[0].count).prefix { $0.isASCII && $0.isNumber }
-        guard (1...9).contains(digits.count), let number = Int(digits), number > 0,
-            self.name(attempt: number) == name
-        else { return nil }
-        return number
+        guard !digits.isEmpty else { return nil }
+        return (1...min(9, digits.count)).lazy.compactMap { Int(digits.prefix($0)) }.first {
+            $0 > 0 && self.name(attempt: $0) == name
+        }
     }
 
     /// Whether the name carries its own number, the template's `{counter}`.

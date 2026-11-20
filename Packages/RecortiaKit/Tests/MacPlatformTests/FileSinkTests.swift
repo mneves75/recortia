@@ -68,14 +68,20 @@ struct FileSinkTests {
         #expect(try Data(contentsOf: folder.appendingPathComponent("Shot 2.png")) == priorBytes)
     }
 
-    @Test("With Shot 1 to Shot 1000 present, a counting save takes Shot 1001 (A-9)")
-    func countingPastTheAttemptBound() throws {
+    // T1 security 1F: with a digit right after {counter}, the parser read those digits as part of
+    // the number, matched no existing name, restarted at 1 and failed once 1 to 1000 were taken.
+    @Test(
+        "With numbers 1 to 1000 present, a counting save takes number 1001 (A-9)",
+        arguments: [("Shot {counter}", "Shot 1001.png"), ("Shot {counter}2026", "Shot 10012026.png")])
+    func countingPastTheAttemptBound(template: String, expected: String) throws {
         let folder = try TestSupport.makeTemporaryDirectory()
         defer { TestSupport.removeDirectory(folder) }
-        for number in 1...1000 { try priorBytes.write(to: folder.appendingPathComponent("Shot \(number).png")) }
-        let filename = try FilenameTemplate(validating: "Shot {counter}").name(for: Date(), format: .png)
+        let filename = try FilenameTemplate(validating: template).name(for: Date(), format: .png)
+        for number in 1...1000 {
+            try priorBytes.write(to: folder.appendingPathComponent(filename.name(attempt: number)))
+        }
         let url = try FileSink().saveUnique(TestSupport.snapshot(filename: filename), in: folder)
-        #expect(url.lastPathComponent == "Shot 1001.png")
+        #expect(url.lastPathComponent == expected)
     }
 
     @Test("A name longer than the destination volume allows is refused by name, and nothing is written")
