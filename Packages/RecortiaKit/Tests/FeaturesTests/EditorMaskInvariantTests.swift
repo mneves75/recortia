@@ -309,6 +309,26 @@ struct EditorMaskInvariantTests {
         #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
     }
 
+    @Test("A secret pushed under a box's off-canvas strip stays hidden after the box moves (R6-01)")
+    func explicitMoveOffCanvasStrip() async throws {
+        let fixture = try await SecretExport(secrets: [FixtureRect(x: 0, y: 10, width: 10, height: 20)])
+        let h = fixture.harness
+        let m = h.model
+        let layer = try #require(m.document.layers.first).id
+        m.selectTool(.redact)
+        h.drag((0, 10), (20, 30))
+        let mask = try #require(m.document.masks.first).id
+        m.selectTool(.select)
+        m.setSelection([.mask(mask)])
+        m.nudgeSelection(dx: -10, dy: 0)
+        m.setSelection([.layer(layer)])
+        m.nudgeSelection(dx: -10, dy: 0)
+        m.setFrame(Rect(x: 100, y: 10, width: 20, height: 20), for: .mask(mask))
+        m.fitCanvasToContent()
+        #expect(m.document.canvasSize.width == 410)
+        #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
+    }
+
     @Test("A redaction added while Output Preview is on does nothing (R5-03)")
     func redactionRefusedInPreview() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))

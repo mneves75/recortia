@@ -754,6 +754,9 @@ public final class EditorModel {
         // An unchanged rectangle keeps its binding (a click within the slop changes nothing).
         guard snapped != old.outputRect else { return }
         var regions = try document.sourceRegions(for: snapped)
+        // The box as rendered is clipped to the canvas; a binding under its off-canvas part was
+        // never visibly covered there, so it is judged against the visible part alone (R6-01).
+        let visible = old.outputRect.intersection(document.canvasRect)
         for (asset, bound) in old.sourceRegions {
             // A binding hides the asset in every layer that shows it, so it is released only when
             // the old box wholly contains its exact document footprint in every one of them; any
@@ -763,7 +766,9 @@ public final class EditorModel {
                 return layer.sourceToDocument(assetSize: size)
             }
             for region in bound
-            where !footprints.allSatisfy({ Self.contains(old.outputRect, $0.apply(region.asRect)) }) {
+            where
+                !(visible.map { box in footprints.allSatisfy { Self.contains(box, $0.apply(region.asRect)) } } ?? false)
+            {
                 if !(regions[asset]?.contains(region) ?? false) { regions[asset, default: []].append(region) }
             }
         }
