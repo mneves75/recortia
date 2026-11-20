@@ -31,6 +31,7 @@ struct GeneralSettingsTab: View {
                         )
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.loginItem.warning")
                     }
                 } else {
                     Toggle("Open Recortia at login", isOn: .constant(false))
@@ -49,6 +50,10 @@ struct GeneralSettingsTab: View {
         }
         .formStyle(.grouped)
         .onAppear { loginItem?.refresh() }
+        // Approval happens in System Settings; returning to this window shows the new state.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            loginItem?.refresh()
+        }
     }
 }
 
