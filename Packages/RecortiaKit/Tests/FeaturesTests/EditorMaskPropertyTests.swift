@@ -110,13 +110,18 @@ private enum Step {
     case redo
     case togglePreview
     case zoomPan(zoom: Double, dx: Double, dy: Double)
+    // Mixed mask and layer edits (R5-01): a layer always moves, so these are not explicit mask
+    // edits; an align that would move only masks is undone (that would be an explicit edit).
+    case alignMixed(picks: Int, alignment: EditorAlignment)
+    case nudgeMixed(pick: Int, dx: Double)
+    case zoomedDragMixed(pick: Int, viewDX: Double)
 
     static func random(using rng: inout SplitMix64) -> Step {
         func coordinate() -> Double { Double(Int.random(in: -25...200, using: &rng)) }
         func delta() -> Double { Double(Int.random(in: -60...60, using: &rng)) }
         func length() -> Double { Double(Int.random(in: 5...75, using: &rng)) }
         let pick = Int.random(in: 0..<64, using: &rng)
-        switch Int.random(in: 0..<26, using: &rng) {
+        switch Int.random(in: 0..<29, using: &rng) {
         case 0: return .nudgeLayer(pick: pick, dx: delta(), dy: delta())
         case 1:
             return .setLayerFrame(
@@ -152,6 +157,10 @@ private enum Step {
         case 22: return .undo
         case 23: return .redo
         case 24: return .togglePreview
+        case 25:
+            return .alignMixed(picks: pick, alignment: EditorAlignment.allCases.randomElement(using: &rng) ?? .left)
+        case 26: return .nudgeMixed(pick: pick, dx: [0.45, -0.45, 1, 15][Int.random(in: 0..<4, using: &rng)])
+        case 27: return .zoomedDragMixed(pick: pick, viewDX: [3.6, -3.6, 8][Int.random(in: 0..<3, using: &rng)])
         default: return .zoomPan(zoom: Double.random(in: 0.1...4, using: &rng), dx: delta(), dy: delta())
         }
     }
@@ -279,6 +288,30 @@ private enum Step {
         case .zoomPan(let zoom, let dx, let dy):
             m.setZoom(zoom)
             m.pan(dx: dx, dy: dy)
+        case .alignMixed(let picks, let alignment):
+            let masks = m.document.masks.map { EditorItemID.mask($0.id) }
+            let candidates = layers + masks + annotations
+            m.setSelection(Set(candidates.enumerated().filter { picks & (1 << ($0.offset % 6)) != 0 }.map(\.element)))
+            let before = m.document
+            m.align(alignment)
+            if m.document.layers == before.layers, m.document.masks.map(\.outputRect) != before.masks.map(\.outputRect)
+            {
+                m.undo()
+            }
+        case .nudgeMixed(let pick, let dx):
+            guard let layer = one(layers, pick), let mask = m.document.masks.first?.id else { return }
+            m.setSelection([layer, .mask(mask)])
+            m.nudgeSelection(dx: dx, dy: 0)
+        case .zoomedDragMixed(let pick, let viewDX):
+            guard let layer = one(layers, pick), let mask = m.document.masks.first?.id,
+                let frame = m.frame(of: layer)
+            else { return }
+            m.setSelection([layer, .mask(mask)])
+            m.setZoom(8)
+            let press = Point<DocumentSpace>(x: frame.midX, y: frame.midY)
+            guard m.item(at: press) == layer else { return }
+            let a = m.viewport.viewPoint(press)
+            h.dragInView(a, Point(x: a.x + viewDX, y: a.y), steps: 1)
         }
         m.selectTool(.select)
     }
