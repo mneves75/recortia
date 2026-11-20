@@ -49,6 +49,15 @@ extension EditorModel {
         return baseImage
     }
 
+    /// False while the render of what the canvas displays failed for the current state: the canvas
+    /// then shows older pixels than any export would produce, so exports and pins are refused
+    /// (R2-D12). A render still on its way counts as ready, as it always has. Undo back to the
+    /// installed render is ready again, and so is switching Output Preview off over a base that
+    /// rendered: each shows a successful render of what it displays.
+    public var isPreviewReady: Bool {
+        showsOutputPreview ? failedOutputKey != currentOutputKey : failedBaseKey != currentBaseKey
+    }
+
     public var isOutputPreviewCurrent: Bool { outputPreview != nil && installedOutputKey == currentOutputKey }
 
     func scheduleBaseRender() {
@@ -78,11 +87,9 @@ extension EditorModel {
                 baseImage = image
                 installedBaseKey = key
                 failedBaseKey = nil
-                baseRenderFailed = false
             case .failure:
                 failedBaseKey = key
-                baseRenderFailed = true
-                post(.previewFailed)
+                renderFailed()
             }
         } else {
             droppedResultCount += 1
@@ -100,7 +107,6 @@ extension EditorModel {
             outputPreview = nil
             installedOutputKey = nil
             failedOutputKey = nil
-            outputRenderFailed = false
         }
     }
 
@@ -134,16 +140,21 @@ extension EditorModel {
                 outputPreview = image
                 installedOutputKey = key
                 failedOutputKey = nil
-                outputRenderFailed = false
             case .failure:
                 failedOutputKey = key
-                outputRenderFailed = true
-                post(.previewFailed)
+                renderFailed()
             }
         } else {
             droppedResultCount += 1
         }
         scheduleOutputRender()
+    }
+
+    /// The current state failed to render: an offered drag of it must not write either (R2-D12a). A
+    /// receiver that already claimed the lease may finish, as with any revocation.
+    private func renderFailed() {
+        environment.export.invalidatePendingDrag(documentID: session.document.id)
+        post(.previewFailed)
     }
 
     /// Called whenever the privacy epoch changed: every derivative of the old epoch is stale.

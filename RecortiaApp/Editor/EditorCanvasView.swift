@@ -118,7 +118,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         _ = model.recognition
         _ = model.outputPreview
         _ = model.showsOutputPreview
-        _ = model.isPreviewFailed
+        _ = model.isPreviewReady
         _ = model.redactionFill
         let tool = model.tool
         syncTextEditing(model.textEditing)
@@ -250,7 +250,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()
 
-        if model.isPreviewFailed {
+        if !model.isPreviewReady {
             drawPreviewFailure(over: canvas)
             return
         }
