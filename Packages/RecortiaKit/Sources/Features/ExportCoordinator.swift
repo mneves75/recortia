@@ -61,6 +61,15 @@ public struct AutomaticExportPlan: Hashable, Sendable {
     public var isEmpty: Bool { !copy && save == nil && upload == nil }
 }
 
+/// The live check an automatic step makes when it starts and again after its render (EXP-03).
+public enum AutomaticStepCheck: Hashable, Sendable {
+    case allowed
+    /// The person turned the step off or chose another destination: skipped without a message.
+    case revoked
+    /// The step is still wanted but cannot run, such as a save folder that stopped resolving.
+    case failed(ExportFailure)
+}
+
 /// Drives `ExportState` for Copy, Save, Drag, and GitHub upload (FR-07, EXP-02, NET-01).
 ///
 /// Order: take an immutable snapshot through the export pipeline, verify that it still matches
@@ -127,7 +136,7 @@ public final class ExportCoordinator {
     public func export(
         _ action: ExportAction, session: DocumentSession,
         currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
-        uploadConsentID: UUID? = nil, isAllowed: @escaping @MainActor () -> Bool = { true }
+        uploadConsentID: UUID? = nil, isAllowed: @escaping @MainActor () -> AutomaticStepCheck = { .allowed }
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
@@ -159,7 +168,7 @@ public final class ExportCoordinator {
 
     private func run(
         _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?,
-        isAllowed: @escaping @MainActor () -> Bool = { true }, fixedScale: Double? = nil,
+        isAllowed: @escaping @MainActor () -> AutomaticStepCheck = { .allowed }, fixedScale: Double? = nil,
         makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
         isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
     ) async -> ExportOutcome {
@@ -198,9 +207,12 @@ public final class ExportCoordinator {
 
         guard isCurrent(snapshot) else { return fail(.staleDocument) }
         // The setting that authorized an automatic write may have changed during the render.
-        guard isAllowed() else {
+        switch isAllowed() {
+        case .allowed: break
+        case .revoked:
             apply(.cancel)
             return finish(.canceled)
+        case .failed(let failure): return fail(failure)
         }
 
         do throws(SinkError) {
@@ -363,21 +375,27 @@ public final class ExportCoordinator {
             outcomes.append(
                 await export(
                     .copy, session: session, currentSession: currentSession,
-                    isAllowed: { settings.preferences.autoCopy }))
+                    isAllowed: { settings.preferences.autoCopy ? .allowed : .revoked }))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
         if let save = plan.save, settings.preferences.autoSave {
             if case .folder(let folder) = save {
-                let saveAllowed = { @MainActor [folders] in
+                let saveCheck = { @MainActor [folders] () -> AutomaticStepCheck in
+                    guard settings.preferences.autoSave else { return .revoked }
                     // Compare folders, not bookmark bytes: a moved folder's bookmark is renewed.
-                    settings.preferences.autoSave
-                        && settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder) == folder
+                    // A chosen folder that no longer resolves (an ejected volume) is a failure.
+                    guard let live = settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder)
+                    else { return .failed(.accessDenied) }
+                    return live == folder ? .allowed : .revoked
                 }
-                if saveAllowed() {
+                switch saveCheck() {
+                case .allowed:
                     outcomes.append(
                         await export(
                             .saveToFolder(folder), session: session, currentSession: currentSession,
-                            isAllowed: saveAllowed))
+                            isAllowed: saveCheck))
+                case .revoked: break
+                case .failed(let failure): outcomes.append(.failed(failure))
                 }
             } else {
                 outcomes.append(.failed(.accessDenied))

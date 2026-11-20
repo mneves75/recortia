@@ -355,6 +355,36 @@ struct ExportCoordinatorTests {
         #expect(outcomes == [.copied])
     }
 
+    // Failure mode (review R2-D05): an ejected volume made the save vanish from the batch with no
+    // failure, because "not reachable" was treated like "setting changed".
+    @Test("An unchanged save folder that stops resolving reports a failure, never a silent skip")
+    func automaticSaveReportsAnUnreachableFolder() async {
+        let h = ExportHarness()
+        let folder = URL(fileURLWithPath: "/tmp/recortia-tests/folder-a", isDirectory: true)
+        h.folders.folder = folder
+        h.settings.update {
+            $0.autoCopy = true
+            $0.autoSave = true
+            $0.preferredSaveFolderBookmark = Data([1])
+        }
+        // Unreachable before the save step starts.
+        let beforeStep = await batchChangingDuringCopy(h) { h.folders.folder = nil }
+        #expect(beforeStep == [.copied, .failed(.accessDenied)])
+
+        // Unreachable while the save itself renders.
+        h.folders.folder = folder
+        h.settings.update { $0.autoCopy = false }
+        let render = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = render
+        let plan = h.coordinator.automaticExportPlan()
+        let run = Task { await h.coordinator.runAutomaticExports(plan, for: h.session, currentSession: { h.session }) }
+        await waitFor("automatic save rendering") { render.waiterCount == 1 }
+        h.folders.folder = nil
+        render.resolve(.success(()))
+        #expect(await run.value == [.failed(.accessDenied)])
+        #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty)
+    }
+
     @Test("Turning automatic save off while the copy renders still writes nothing")
     func automaticBatchStillStopsARevokedSave() async {
         let h = ExportHarness()
