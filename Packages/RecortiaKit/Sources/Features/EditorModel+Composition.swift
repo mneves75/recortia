@@ -95,8 +95,7 @@ extension EditorModel {
     }
 
     public func setLayerOpacity(_ opacity: Double, for id: LayerID) {
-        guard opacity.isFinite else { return }
-        let value = min(max(opacity, 0), 1)
+        guard let value = (0.0...1).admit(opacity) else { return }
         edit("Layer Opacity") { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
             document.layers[index].opacity = value
@@ -254,14 +253,12 @@ extension EditorModel {
     }
 
     public func setPadding(_ padding: Double) {
-        guard padding.isFinite else { return }
-        let value = min(max(padding, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
+        guard let value = Self.presentationRange.admit(padding) else { return }
         edit("Padding", inPreview: true) { $0.presentation.padding = value }
     }
 
     public func setCornerRadius(_ radius: Double) {
-        guard radius.isFinite else { return }
-        let value = min(max(radius, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
+        guard let value = Self.presentationRange.admit(radius) else { return }
         edit("Corner Radius", inPreview: true) { $0.presentation.cornerRadius = value }
     }
 
@@ -275,8 +272,7 @@ extension EditorModel {
     }
 
     public func setSpotlightDim(_ dim: Double, for id: CalloutID) {
-        guard dim.isFinite else { return }
-        let value = min(max(dim, 0), 1)
+        guard let value = (0.0...1).admit(dim) else { return }
         edit("Spotlight") { document in
             guard let index = document.callouts.firstIndex(where: { $0.id == id }),
                 case .spotlight(let rect, _) = document.callouts[index].kind
@@ -287,8 +283,7 @@ extension EditorModel {
 
     /// Blur radius or pixel block size of a cosmetic effect.
     public func setObfuscationAmount(_ amount: Double, for id: MaskID) {
-        guard amount.isFinite else { return }
-        let value = min(max(amount, 1), 128)
+        guard let value = (1.0...128).admit(amount) else { return }
         edit("Effect Strength") { document in
             guard let index = document.obfuscations.firstIndex(where: { $0.id == id }) else { return }
             switch document.obfuscations[index].style {

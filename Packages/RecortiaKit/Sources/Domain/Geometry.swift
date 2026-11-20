@@ -89,6 +89,9 @@ public struct Rect<Space>: Hashable, Sendable, Codable {
         return self
     }
 
+    /// Geometry an edit may store: what `validated()` accepts.
+    public var isValid: Bool { (try? validated()) != nil }
+
     public func contains(_ point: Point<Space>) -> Bool {
         point.x >= minX && point.x < maxX && point.y >= minY && point.y < maxY
     }
@@ -192,5 +195,12 @@ public struct PixelRect: Hashable, Sendable, Codable {
         let cx1 = min(bounds.width, Int(x1)), cy1 = min(bounds.height, Int(y1))
         guard cx1 > cx0, cy1 > cy0 else { return nil }
         return PixelRect(x: cx0, y: cy0, width: cx1 - cx0, height: cy1 - cy0)
+    }
+}
+
+extension ClosedRange where Bound == Double {
+    /// Admits a value entering an edit: nil when it is not finite, else clamped into the range.
+    public func admit(_ value: Double) -> Double? {
+        value.isFinite ? Swift.min(Swift.max(value, lowerBound), upperBound) : nil
     }
 }
