@@ -196,7 +196,8 @@ enum EditorStrings {
             String(
                 localized: "This redaction cannot be mapped onto the image safely, so it was not added.",
                 table: "Editor")
-        case .importFailed(let failure): importMessage(failure)
+        // The alert's wording, shown inline: one mapping for both.
+        case .importFailed(let failure): UserMessage.importFailure(failure).detail
         case .pinned: String(localized: "Pinned.", table: "Editor")
         case .pinFailed(let error):
             switch error {
@@ -209,7 +210,10 @@ enum EditorStrings {
         case .pinsInvalidated(let count):
             String(localized: "Redactions changed, so \(count) older pins were closed.", table: "Editor")
         case .exported(let outcome): exportMessage(outcome)
-        case .automaticExportFailed(let failure): automaticExportFailure(failure)
+        case .automaticExportFailed(let failure):
+            // The alert's title and detail: one step of an automatic batch failed, so the notice
+            // never says that nothing was exported.
+            "\(UserMessage.export(failure).title). \(UserMessage.export(failure).detail)"
         case .noPreferredFolder:
             String(localized: "No save folder is set. Choose one in Settings › Export.", table: "Editor")
         case .undoHistoryTrimmed:
@@ -242,11 +246,6 @@ enum EditorStrings {
         return String(localized: "Not available on this Mac: \(list)", table: "Editor")
     }
 
-    /// The alert's wording (`UserMessage.importFailure`), shown inline: one mapping for both.
-    static func importMessage(_ failure: ImportFailure) -> String {
-        UserMessage.importFailure(failure).detail
-    }
-
     static func exportMessage(_ outcome: ExportOutcome) -> String {
         switch outcome {
         case .copied: String(localized: "Image copied.", table: "Editor")
@@ -261,17 +260,10 @@ enum EditorStrings {
         }
     }
 
-    /// The alert's title and detail for the same failure (`UserMessage.export`): one step of an
-    /// automatic batch failed, so the notice never says that nothing was exported.
-    static func automaticExportFailure(_ failure: ExportFailure) -> String {
-        let message = UserMessage.export(failure)
-        return "\(message.title). \(message.detail)"
-    }
-
     static func exportFailure(_ failure: ExportFailure) -> String {
         switch failure {
-        case .busy: String(localized: "Automatic export was skipped because another export is still running.")
-        case .upload(let failure): GitHubUploadStrings.message(failure)
+        // Worded as the alert words them; the rest say that this one write did not happen.
+        case .busy, .upload: UserMessage.export(failure).detail
         case .renderFailed, .encodeFailed:
             String(localized: "Nothing was exported: the image could not be rendered.", table: "Editor")
         case .budgetExceeded: String(localized: "Nothing was exported: the image is too large.", table: "Editor")

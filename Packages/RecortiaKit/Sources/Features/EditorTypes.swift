@@ -105,6 +105,14 @@ public enum EditorItemKind: String, Hashable, Sendable, CaseIterable {
     public var isSecure: Bool { self == .redaction }
     public var isCosmetic: Bool { self == .blur || self == .pixelate }
 
+    init(_ style: CosmeticObfuscation.Style) {
+        if case .blur = style { self = .blur } else { self = .pixelate }
+    }
+
+    init(_ kind: Callout.Kind) {
+        if case .spotlight = kind { self = .spotlight } else { self = .magnifier }
+    }
+
     init(_ kind: Annotation.Kind) {
         switch kind {
         case .text: self = .text

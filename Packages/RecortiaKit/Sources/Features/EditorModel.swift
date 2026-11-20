@@ -375,14 +375,8 @@ public final class EditorModel {
         case .annotation(let id): return d.annotations.first { $0.id == id }.map { EditorItemKind($0.kind) }
         case .layer(let id): return d.layers.contains { $0.id == id } ? .image : nil
         case .mask(let id): return d.masks.contains { $0.id == id } ? .redaction : nil
-        case .obfuscation(let id):
-            guard let effect = d.obfuscations.first(where: { $0.id == id }) else { return nil }
-            if case .blur = effect.style { return .blur }
-            return .pixelate
-        case .callout(let id):
-            guard let callout = d.callouts.first(where: { $0.id == id }) else { return nil }
-            if case .spotlight = callout.kind { return .spotlight }
-            return .magnifier
+        case .obfuscation(let id): return d.obfuscations.first { $0.id == id }.map { EditorItemKind($0.style) }
+        case .callout(let id): return d.callouts.first { $0.id == id }.map { EditorItemKind($0.kind) }
         }
     }
 
@@ -416,8 +410,7 @@ public final class EditorModel {
             append(.layer(layer.id), .image, EditorGeometry.frame(of: layer, in: d))
         }
         for effect in d.obfuscations {
-            let kind: EditorItemKind = if case .blur = effect.style { .blur } else { .pixelate }
-            append(.obfuscation(effect.id), kind, effect.rect)
+            append(.obfuscation(effect.id), EditorItemKind(effect.style), effect.rect)
         }
         for annotation in d.annotations {
             var step: Int?
@@ -430,8 +423,7 @@ public final class EditorModel {
             append(.mask(mask.id), .redaction, mask.outputRect)
         }
         for callout in d.callouts {
-            let kind: EditorItemKind = if case .spotlight = callout.kind { .spotlight } else { .magnifier }
-            append(.callout(callout.id), kind, EditorGeometry.frame(of: callout))
+            append(.callout(callout.id), EditorItemKind(callout.kind), EditorGeometry.frame(of: callout))
         }
         return bottomUp.reversed()
     }
