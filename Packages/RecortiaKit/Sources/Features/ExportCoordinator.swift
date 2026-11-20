@@ -210,7 +210,7 @@ public final class ExportCoordinator {
         let task = Task<ShareSnapshot, any Error> { try await makeSnapshot(options, date) }
         snapshotTask = task
         let result = await task.result
-        if operation?.cancelRequested == true { return finish(.canceled) }
+        if operation?.cancelRequested == true { return .canceled }
 
         let snapshot: ShareSnapshot
         switch result {
@@ -227,7 +227,7 @@ public final class ExportCoordinator {
         case .allowed: break
         case .revoked:
             apply(.cancel)
-            return finish(.canceled)
+            return .canceled
         case .failed(let failure): return fail(failure)
         }
 
@@ -249,7 +249,7 @@ public final class ExportCoordinator {
                 // No request of any kind (lookups included) for consent that is no longer live.
                 guard settings.githubUploadConsentID == consentID else {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
                 }
                 let task = Task<URL, any Error> { [weak self] in
                     try await upload.upload(
@@ -272,7 +272,7 @@ public final class ExportCoordinator {
                     let failure = (error as? GitHubUploadFailure) ?? .completionUnknown
                     if failure == .canceled {
                         if state != .canceled { apply(.cancel) }
-                        return finish(.canceled)
+                        return .canceled
                     }
                     return fail(.upload(failure))
                 }
@@ -299,21 +299,21 @@ public final class ExportCoordinator {
                     completed = .dragged
                 } else if operation?.cancelRequested == true {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
                 } else if lease.isRevoked || delivery == .delivered {
                     // Revoked before the write, or a sink that reported delivery without it.
                     return fail(.staleDocument)
                 } else {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
                 }
             }
             if operation?.cancelRequested == true {
                 apply(.cancel)
-                return finish(.alreadyCompleted(completed))
+                return .alreadyCompleted(completed)
             }
             apply(.committed)
-            return finish(completed)
+            return completed
         } catch {
             return fail(Self.failure(for: error))
         }
@@ -449,13 +449,9 @@ public final class ExportCoordinator {
     // MARK: Helpers
 
     private func fail(_ failure: ExportFailure) -> ExportOutcome {
-        if state == .canceled { return finish(.canceled) }
+        if state == .canceled { return .canceled }
         apply(.fail(failure))
-        return finish(.failed(failure))
-    }
-
-    private func finish(_ outcome: ExportOutcome) -> ExportOutcome {
-        return outcome
+        return .failed(failure)
     }
 
     private func apply(_ event: ExportEvent) {
