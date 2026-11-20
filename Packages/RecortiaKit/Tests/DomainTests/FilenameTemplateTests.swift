@@ -47,26 +47,30 @@ struct FilenameTemplateTests {
         #expect(try name("Shot {date}", attempt: 3) == "Shot 2026-11-20 (3).png")
     }
 
-    @Test(
-        "Unusable templates are refused with their reason",
-        arguments: [
-            ("", FilenameTemplateError.empty),
-            ("   ", .empty),
-            ("/", .unsupportedCharacter),
-            ("a/b", .unsupportedCharacter),
-            ("a:b", .unsupportedCharacter),
-            ("a\\b", .unsupportedCharacter),
-            ("..", .leadingDot),
-            (".hidden", .leadingDot),
-            ("Shot 😀", .unsupportedCharacter),
-            ("Shot 1️⃣", .unsupportedCharacter),
-            ("tab\tname", .unsupportedCharacter),
-            ("{weekday}", .unknownPlaceholder),
-            ("{date", .unknownPlaceholder),
-            ("date}", .unknownPlaceholder),
-            (String(repeating: "a", count: FilenameTemplate.maximumLength + 1), .tooLong),
-            (String(repeating: "ç", count: FilenameTemplate.maximumLength / 2 + 1), .tooLong),
-        ])
+    private static let unusable: [(String, FilenameTemplateError)] = [
+        ("", FilenameTemplateError.empty),
+        ("   ", .empty),
+        ("/", .unsupportedCharacter),
+        ("a/b", .unsupportedCharacter),
+        ("a:b", .unsupportedCharacter),
+        ("a\\b", .unsupportedCharacter),
+        ("..", .misplacedPeriod),
+        (".hidden", .misplacedPeriod),
+        ("Shot.", .misplacedPeriod),
+        ("Shot {counter}.", .misplacedPeriod),
+        ("a..b", .misplacedPeriod),
+        ("a.{date}..b", .misplacedPeriod),
+        ("Shot 😀", .unsupportedCharacter),
+        ("Shot 1️⃣", .unsupportedCharacter),
+        ("tab\tname", .unsupportedCharacter),
+        ("{weekday}", .unknownPlaceholder),
+        ("{date", .unknownPlaceholder),
+        ("date}", .unknownPlaceholder),
+        (String(repeating: "a", count: FilenameTemplate.maximumLength + 1), .tooLong),
+        (String(repeating: "ç", count: FilenameTemplate.maximumLength / 2 + 1), .tooLong),
+    ]
+
+    @Test("Unusable templates are refused with their reason", arguments: unusable)
     func refusals(template: String, expected: FilenameTemplateError) {
         #expect(throws: expected) { try FilenameTemplate(validating: template) }
     }
@@ -85,6 +89,18 @@ struct FilenameTemplateTests {
         #expect(try JSONDecoder().decode(FilenameTemplate.self, from: data) == template)
         let unreadable = try JSONEncoder().encode("{weekday}/x")
         #expect(try JSONDecoder().decode(FilenameTemplate.self, from: unreadable) == .default)
+    }
+
+    @Test("A stored template of the wrong JSON type falls back to the default; every other setting loads")
+    func wrongTypeFallsBack() throws {
+        var stored = Preferences()
+        stored.autoCopy = true
+        stored.captureDelaySeconds = 7
+        var blob = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(stored)) as? [String: Any])
+        blob["filenameTemplateChoice"] = ["text": "Shot"]
+        let decoded = try JSONDecoder().decode(Preferences.self, from: JSONSerialization.data(withJSONObject: blob))
+        #expect(decoded.filenameTemplate == .default)
+        #expect(decoded.autoCopy && decoded.captureDelaySeconds == 7)
     }
 
     @Test("Preferences without a template, from before A-9, name files the default way")

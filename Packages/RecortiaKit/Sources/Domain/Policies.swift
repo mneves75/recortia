@@ -230,7 +230,8 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { playsCaptureSoundChoice = newValue }
     }
 
-    /// How saved, dragged and uploaded files are named (FR-07).
+    /// How saved and dragged files are named (FR-07). GitHub uploads keep their per-intent path
+    /// (ADR-006).
     public var filenameTemplate: FilenameTemplate {
         get { filenameTemplateChoice ?? .default }
         set { filenameTemplateChoice = newValue }

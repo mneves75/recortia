@@ -63,28 +63,31 @@ public struct FileSink {
             throw .writeFailed(code: Int(EINVAL))
         }
         do {
-            return try fileSystem.save(
-                snapshot.bytes, in: url.deletingLastPathComponent(), names: [name], overwrite: overwrite)
+            return try fileSystem.save(snapshot.bytes, in: url.deletingLastPathComponent(), overwrite: overwrite) {
+                _ in [name]
+            }
         } catch { throw Self.map(error) }
     }
 
-    /// Saves under the snapshot's sanitized name in an authorized `folder`: a counting name takes
-    /// the first free number, any other adds " (n)" before the extension until the name is free.
-    /// Never overwrites.
+    /// Saves under the snapshot's sanitized name in an authorized `folder`. A counting name
+    /// resumes above the highest number of that name already in the folder; any other adds " (n)"
+    /// before the extension. Either way at most `maxUniqueAttempts` names are tried, each by
+    /// exclusive creation. Never overwrites.
     public func saveUnique(_ snapshot: ShareSnapshot, in folder: URL) throws(SinkError) -> URL {
         guard folder.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
+        let filename = snapshot.filename
         let fallback = snapshot.format.fileExtension
-        let names: [String]
-        if snapshot.filename.counts {
-            names = (1...Self.maxUniqueAttempts).map {
-                SafeFilename.sanitize(snapshot.filename.name(attempt: $0), fallbackExtension: fallback)
-            }
-        } else {
-            let name = SafeFilename.sanitize(snapshot.suggestedFilename, fallbackExtension: fallback)
-            names = (1...Self.maxUniqueAttempts).map { ExportFilename.deduplicated(name, attempt: $0) }
-        }
         do {
-            return try fileSystem.save(snapshot.bytes, in: folder, names: names, overwrite: false)
+            return try fileSystem.save(snapshot.bytes, in: folder, overwrite: false) { existing in
+                guard filename.counts else {
+                    let name = SafeFilename.sanitize(snapshot.suggestedFilename, fallbackExtension: fallback)
+                    return (1...Self.maxUniqueAttempts).map { ExportFilename.deduplicated(name, attempt: $0) }
+                }
+                let start = (existing().compactMap(filename.number(in:)).max() ?? 0) + 1
+                return (start..<(start + Self.maxUniqueAttempts)).map {
+                    SafeFilename.sanitize(filename.name(attempt: $0), fallbackExtension: fallback)
+                }
+            }
         } catch { throw Self.map(error) }
     }
 
@@ -95,6 +98,7 @@ public struct FileSink {
         case EACCES, EPERM, EROFS: .accessDenied
         case ENOENT, ENXIO, ENODEV: .volumeUnavailable
         case EEXIST: .destinationExists
+        case ENAMETOOLONG: .nameTooLong
         default: .writeFailed(code: Int(failure.code))
         }
     }
@@ -209,12 +213,19 @@ struct VolumeTraits {
     var failWrite: Int32?
     /// Fails the publishing rename with this code.
     var failPublish: Int32?
+    /// The longest name, in bytes, the admitted folder's volume accepts, like fpathconf(2)
+    /// `_PC_NAME_MAX`; -1 with `errno` on failure. A test can model a volume with shorter names.
+    var nameLimit: (Int32) -> Int = { fpathconf($0, _PC_NAME_MAX) }
 
-    /// Writes `data` under the first of `names` that it can take in `folder`, or replaces
-    /// `names[0]` when `overwrite` allows, and returns the saved file's URL in the admitted folder,
-    /// which a link retargeted after admission cannot redirect. Without `overwrite`, a taken name
-    /// moves on to the next; when none is left the save fails with EEXIST.
-    func save(_ data: Data, in folder: URL, names: [String], overwrite: Bool) throws(FileSystemFailure) -> URL {
+    /// Writes `data` under the first of the candidate `names` that it can take in `folder`, or
+    /// replaces the first when `overwrite` allows, and returns the saved file's URL in the admitted
+    /// folder, which a link retargeted after admission cannot redirect. `names` receives a reader
+    /// of the admitted folder's entry names. Without `overwrite`, a taken name moves on to the
+    /// next; when none is left the save fails with EEXIST. Before anything is written, a candidate
+    /// longer than the folder's volume accepts fails the save with ENAMETOOLONG.
+    func save(
+        _ data: Data, in folder: URL, overwrite: Bool, names candidates: (_ existing: () -> [String]) -> [String]
+    ) throws(FileSystemFailure) -> URL {
         let directory = try openFolder(folder)
         defer { close(directory) }
         var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
@@ -222,8 +233,23 @@ struct VolumeTraits {
         let admitted = URL(
             fileURLWithPath: String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self),
             isDirectory: true)
+        let names = candidates { Self.entryNames(at: admitted) }
+        let limit = nameLimit(directory)
+        guard limit > 0 else { throw FileSystemFailure(code: errno) }
+        guard names.allSatisfy({ $0.utf8.count <= limit }) else { throw FileSystemFailure(code: ENAMETOOLONG) }
         let name = try saveName(data, in: directory, folder: folder, names: names, overwrite: overwrite)
         return admitted.appendingPathComponent(name, isDirectory: false)
+    }
+
+    /// The admitted folder's entry names: only a hint for where a counting name resumes, since
+    /// exclusive creation still decides every name. A folder that can be written but not listed
+    /// (a drop box) gives none, so counting starts at 1 and moves past taken names as usual.
+    private static func entryNames(at folder: URL) -> [String] {
+        do {
+            return try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
+        } catch {
+            return []
+        }
     }
 
     private func saveName(

@@ -373,7 +373,7 @@ struct FilenameTemplateSection: View {
     var body: some View {
         Section {
             TextField(
-                "File name",
+                "Name of saved files",
                 text: Binding(get: { draft ?? settings.preferences.filenameTemplate.text }, set: admit)
             )
             .accessibilityIdentifier("settings.filenameTemplate")
@@ -422,7 +422,8 @@ struct FilenameTemplateSection: View {
         switch refusal {
         case .empty: String(localized: "Enter a file name.")
         case .tooLong: String(localized: "The name is too long.")
-        case .leadingDot: String(localized: "A file name cannot start with a period.")
+        case .misplacedPeriod:
+            String(localized: "A file name cannot start or end with a period, or have two periods in a row.")
         case .unsupportedCharacter:
             String(localized: "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses.")
         case .unknownPlaceholder: String(localized: "Use only the placeholders {date}, {time} and {counter}.")

@@ -150,6 +150,8 @@ public enum ExportFailure: Hashable, Sendable {
     case clipboardFailed
     case accessDenied
     case destinationExists
+    /// The file name is longer than the destination's volume accepts.
+    case nameTooLong
     case diskFull
     case volumeUnavailable
     case staleDocument

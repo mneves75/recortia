@@ -3,16 +3,18 @@ import Foundation
 public enum FilenameTemplateError: Error, Hashable, Sendable {
     case empty
     case tooLong
-    case leadingDot
+    /// A period first or last, or two in a row: a hidden file, or `..` before the extension.
+    case misplacedPeriod
     /// Anything but letters, digits, spaces and `- _ . ( )`: path separators, emoji, controls.
     case unsupportedCharacter
     /// A brace that does not enclose one of `FilenameTemplate.Placeholder`.
     case unknownPlaceholder
 }
 
-/// How saved, dragged and uploaded files are named (FR-07, A-9): fixed text plus a closed set of
+/// How saved and dragged files are named (FR-07, A-9): fixed text plus a closed set of
 /// placeholders. None carries window titles, app names or recognized text: those are captured
-/// content and would leak into file names. A value exists only once `init(validating:)` has
+/// content and would leak into file names. GitHub uploads keep their per-intent path (ADR-006)
+/// and do not use it. A value exists only once `init(validating:)` has
 /// accepted its text, so everything downstream renders it without checking again.
 public struct FilenameTemplate: Hashable, Sendable {
     public enum Placeholder: String, CaseIterable, Hashable, Sendable {
@@ -49,7 +51,7 @@ public struct FilenameTemplate: Hashable, Sendable {
         let text = input.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { throw .empty }
         guard text.utf8.count <= Self.maximumLength else { throw .tooLong }
-        guard !text.hasPrefix(".") else { throw .leadingDot }
+        guard !text.hasPrefix("."), !text.hasSuffix("."), !text.contains("..") else { throw .misplacedPeriod }
         var pieces: [Piece] = []
         var literal = ""
         var remaining = Substring(text)
@@ -121,11 +123,17 @@ extension FilenameTemplate: Codable {
         try container.encode(text)
     }
 
-    /// A stored template this version cannot accept (written by a later version, or edited by
-    /// hand) names files the default way instead of failing the whole preferences blob, which
-    /// would lose every other setting (PREF-01).
+    /// A stored template this version cannot accept (written by a later version, edited by hand,
+    /// or not even a string) names files the default way instead of failing the whole preferences
+    /// blob, which would lose every other setting (PREF-01).
     public init(from decoder: any Decoder) throws {
-        let text = try decoder.singleValueContainer().decode(String.self)
+        let text: String
+        do {
+            text = try decoder.singleValueContainer().decode(String.self)
+        } catch is DecodingError {
+            self = .default
+            return
+        }
         do throws(FilenameTemplateError) {
             self = try FilenameTemplate(validating: text)
         } catch {
@@ -146,6 +154,17 @@ public struct ExportName: Hashable, Sendable {
     /// A finished name that numbers with " (n)".
     package init(literal name: String) {
         parts = [name]
+    }
+
+    /// The number `name` carries when it is this counting name with some number: digits without
+    /// a leading zero, at most nine of them, so resuming above it cannot overflow.
+    public func number(in name: String) -> Int? {
+        guard counts, name.hasPrefix(parts[0]) else { return nil }
+        let digits = name.dropFirst(parts[0].count).prefix { $0.isASCII && $0.isNumber }
+        guard (1...9).contains(digits.count), let number = Int(digits), number > 0,
+            self.name(attempt: number) == name
+        else { return nil }
+        return number
     }
 
     /// Whether the name carries its own number, the template's `{counter}`.

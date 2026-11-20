@@ -184,6 +184,9 @@ extension UserMessage {
             case .accessDenied:
                 String(localized: "Recortia cannot write to that folder. Choose a folder in Settings › Export.")
             case .destinationExists: String(localized: "A file with that name already exists.")
+            case .nameTooLong:
+                String(
+                    localized: "The file name is too long for that folder. Choose a shorter name in Settings › Export.")
             case .diskFull: String(localized: "The disk is full.")
             case .volumeUnavailable: String(localized: "The destination volume is not available.")
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")

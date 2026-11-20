@@ -157,18 +157,18 @@
         }
       }
     },
-    "A file name cannot start with a period." : {
+    "A file name cannot start or end with a period, or have two periods in a row." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A file name cannot start with a period."
+            "value" : "A file name cannot start or end with a period, or have two periods in a row."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O nome do arquivo não pode começar com um ponto."
+            "value" : "O nome do arquivo não pode começar nem terminar com ponto, nem ter dois pontos seguidos."
           }
         }
       }
@@ -1721,22 +1721,6 @@
         }
       }
     },
-    "File name" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "File name"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nome do arquivo"
-          }
-        }
-      }
-    },
     "Finding windows…" : {
       "localizations" : {
         "en" : {
@@ -2129,6 +2113,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Várias imagens em uma tela"
+          }
+        }
+      }
+    },
+    "Name of saved files" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name of saved files"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nome dos arquivos salvos"
           }
         }
       }
@@ -3920,6 +3920,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O arquivo tem mais de 64 MB."
+          }
+        }
+      }
+    },
+    "The file name is too long for that folder. Choose a shorter name in Settings › Export." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file name is too long for that folder. Choose a shorter name in Settings › Export."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome do arquivo é longo demais para essa pasta. Escolha um nome mais curto em Ajustes › Exportação."
           }
         }
       }

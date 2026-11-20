@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Nothing was saved: the file name is too long for that folder.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Nothing was saved: the file name is too long for that folder." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Nada foi salvo: o nome do arquivo é longo demais para essa pasta." } }
+      }
+    },
     "Framing": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Framing" } },
