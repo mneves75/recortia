@@ -434,9 +434,10 @@ public final class EditorModel {
         return nil
     }
 
-    /// Handles of the single selected item, for drawing and hit testing.
+    /// Handles of the single selected item, for drawing and hit testing. Output Preview hides them,
+    /// so none can be grabbed there either.
     public var selectionHandles: [(handle: EditorHandle, point: Point<DocumentSpace>)] {
-        guard selection.count == 1, let item = selection.first else { return [] }
+        guard !showsOutputPreview, selection.count == 1, let item = selection.first else { return [] }
         return handles(for: item).map { (handle: $0.0, point: $0.1) }
     }
 
@@ -464,8 +465,12 @@ public final class EditorModel {
         }
     }
 
-    /// Side of the handle square the canvas draws, in view points; hit testing uses the same size.
+    /// Side of the handle square the canvas fills, in view points.
     public static func handleSquareSide(increasedContrast: Bool) -> Double { increasedContrast ? 10 : 8 }
+
+    /// Width of the stroke the canvas draws centered on a handle square's edge, in view points. A
+    /// handle's hit area is the painted square: its side plus this width.
+    public static func handleLineWidth(increasedContrast: Bool) -> Double { increasedContrast ? 2 : 1 }
 
     /// The contrast mode the canvas last drew handles in, so a handle's hit area is the drawn square.
     @ObservationIgnored public var handlesDrawnWithIncreasedContrast = false
@@ -474,8 +479,10 @@ public final class EditorModel {
         // A mask's handle grabs only on its drawn square: the wider hit radius around it could
         // start a resize from another object's visible pixels and uncover the secret.
         if case .mask = selection.first {
+            let contrast = handlesDrawnWithIncreasedContrast
             let half = viewport.documentLength(
-                Self.handleSquareSide(increasedContrast: handlesDrawnWithIncreasedContrast) / 2)
+                (Self.handleSquareSide(increasedContrast: contrast) + Self.handleLineWidth(increasedContrast: contrast))
+                    / 2)
             return selectionHandles.first { abs($0.point.x - p.x) <= half && abs($0.point.y - p.y) <= half }
         }
         let tolerance = viewport.documentLength(6)

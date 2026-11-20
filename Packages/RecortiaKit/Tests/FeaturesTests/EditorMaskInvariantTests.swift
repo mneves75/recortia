@@ -223,9 +223,10 @@ struct EditorMaskInvariantTests {
         m.handlesDrawnWithIncreasedContrast = increasedContrast
         let side = EditorModel.handleSquareSide(increasedContrast: increasedContrast)
         #expect(side == (increasedContrast ? 10 : 8))
-        // 4.5 pt right of the right handle's center: inside the 10 pt square, outside the 8 pt one.
-        // Outside the square the press lands on the image, which carries the mask unresized.
-        h.drag((124.5, 110), (134.5, 110))
+        #expect(EditorModel.handleLineWidth(increasedContrast: increasedContrast) == (increasedContrast ? 2 : 1))
+        // 5.5 pt right of the right handle's center: inside the 12 pt painted square (10 plus a
+        // 2 pt stroke), outside the 9 pt one. Outside it the press drags the image, not the mask.
+        h.drag((125.5, 110), (135.5, 110))
         let width = try #require(m.document.masks.first).outputRect.width
         #expect(width == (increasedContrast ? 30 : 20))
     }
@@ -255,6 +256,33 @@ struct EditorMaskInvariantTests {
         #expect(m.document.masks.first == mask)
         let pixels = try await fixture.exported()
         #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 100, y: 100, width: 20, height: 20)) == 0)
+    }
+
+    @Test("While Show Output Preview hides handles, a drag on a hidden handle changes nothing")
+    func outputPreviewDisablesHandles() async throws {
+        let fixture = try await SecretExport(secret: FixtureRect(x: 100, y: 100, width: 20, height: 20))
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((100, 100), (120, 120))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.select)
+        m.select(.mask(mask.id))
+        m.setShowsOutputPreview(true)
+        #expect(m.selectionHandles.isEmpty)
+        let before = m.document
+        h.drag((123, 110), (113, 110))
+        h.drag((110, 110), (150, 110))
+        #expect(m.document == before)
+        #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
+        // Entering the preview mid-drag abandons the drag.
+        m.setShowsOutputPreview(false)
+        m.select(.mask(mask.id))
+        m.pointerDown(at: Point(x: 110, y: 110))
+        m.pointerDragged(to: Point(x: 150, y: 110))
+        m.setShowsOutputPreview(true)
+        m.pointerUp(at: Point(x: 150, y: 110))
+        #expect(m.document == before)
     }
 
     // MARK: I4 Undo during a gesture cancels only the gesture

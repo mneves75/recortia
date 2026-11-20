@@ -327,7 +327,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
                 handle.handle == .start || handle.handle == .end ? NSBezierPath(ovalIn: rect) : NSBezierPath(rect: rect)
             NSColor.white.setFill()
             path.fill()
-            path.lineWidth = width
+            path.lineWidth = CGFloat(EditorModel.handleLineWidth(increasedContrast: increaseContrast))
             (increaseContrast ? NSColor.black : NSColor.controlAccentColor).setStroke()
             path.stroke()
         }

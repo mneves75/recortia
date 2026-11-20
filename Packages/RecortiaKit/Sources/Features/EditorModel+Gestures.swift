@@ -13,6 +13,23 @@ extension EditorModel {
         // Beginning text input keeps an open adjustment; committing the text closes it.
         if tool != .select && tool != .text && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
         cancelGesture()
+        // Output Preview shows no handles or drafts, so only selecting, panning and color picking
+        // work there: nothing may change geometry the person cannot see (R4-04).
+        if showsOutputPreview {
+            switch tool {
+            case .select:
+                if let hit = item(at: p) {
+                    select(hit, extending: modifiers.contains(.shift))
+                } else if !modifiers.contains(.shift) {
+                    clearSelection()
+                }
+                return
+            case .hand, .colorPicker:
+                break
+            default:
+                return
+            }
+        }
         switch tool {
         case .hand:
             break
