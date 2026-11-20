@@ -2623,6 +2623,22 @@
         }
       }
     },
+    "Play a sound after capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play a sound after capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocar um som após a captura"
+          }
+        }
+      }
+    },
     "Preparing preview" : {
       "localizations" : {
         "en" : {

@@ -213,6 +213,13 @@ public protocol LoginItemService: AnyObject {
     func setEnabled(_ enabled: Bool) throws
 }
 
+/// One short sound for a completed capture (FR-01, A-12): a system sound, silent when the system's
+/// interface sound effects are off. Never records anything.
+@MainActor
+public protocol CaptureSoundService: AnyObject {
+    func playCaptureSound()
+}
+
 @MainActor
 public protocol FeatureClock: AnyObject {
     func now() -> Date

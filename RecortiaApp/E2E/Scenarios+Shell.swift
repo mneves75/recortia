@@ -355,6 +355,10 @@
                         "General holds the Pins section",
                         E2EAccessibilityControl.isPresent("settings.pinOpacity", in: pane))
                 case "capture":
+                    context.check(
+                        "Capture holds the capture sound switch, off by default",
+                        E2EAccessibilityControl.isPresent("settings.captureSound", in: pane)
+                            && !harness.settings.preferences.playsCaptureSound)
                     for identifier in ["settings.automaticScrolling", "settings.accessibilityStatus"] {
                         context.check(
                             "Capture holds the Scrolling Capture control \(identifier)",

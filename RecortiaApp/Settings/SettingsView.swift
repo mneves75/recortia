@@ -113,6 +113,8 @@ struct CaptureSettingsTab: View {
             Section {
                 Toggle("Show the pointer in captures", isOn: settings.binding(\.captureShowsCursor))
                 Toggle("Include window shadow", isOn: settings.binding(\.captureIncludesWindowShadow))
+                Toggle("Play a sound after capture", isOn: settings.binding(\.playsCaptureSound))
+                    .accessibilityIdentifier("settings.captureSound")
             }
             ScrollingSettingsSection(settings: settings, accessibility: accessibility)
         }

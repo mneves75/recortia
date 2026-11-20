@@ -219,8 +219,16 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var keepsRunningInMenuBarChoice: Bool?
     /// Stored only once the person sets one; read `filenameTemplate` (A-9).
     public var filenameTemplateChoice: FilenameTemplate?
+    /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
+    public var playsCaptureSoundChoice: Bool?
 
     public init() {}
+
+    /// Whether a completed capture plays a short sound (FR-01). Off by default.
+    public var playsCaptureSound: Bool {
+        get { playsCaptureSoundChoice ?? false }
+        set { playsCaptureSoundChoice = newValue }
+    }
 
     /// How saved, dragged and uploaded files are named (FR-07).
     public var filenameTemplate: FilenameTemplate {

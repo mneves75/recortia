@@ -91,6 +91,7 @@ public final class CaptureCoordinator {
     @ObservationIgnored private let assets: any ImageAssetService
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
+    @ObservationIgnored private let sound: (any CaptureSoundService)?
     @ObservationIgnored private var active: ActiveCapture?
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -108,13 +109,14 @@ public final class CaptureCoordinator {
 
     public init(
         capture: any CaptureService, permission: any ScreenPermissionService, assets: any ImageAssetService,
-        clock: any FeatureClock, settings: SettingsStore
+        clock: any FeatureClock, settings: SettingsStore, sound: (any CaptureSoundService)?
     ) {
         self.capture = capture
         self.permission = permission
         self.assets = assets
         self.clock = clock
         self.settings = settings
+        self.sound = sound
     }
 
     public var hasRepeatRegion: Bool { repeatRegion != nil }
@@ -320,6 +322,8 @@ public final class CaptureCoordinator {
             requestID: id, session: DocumentSession(document: Document(asset: info)), purpose: purpose)
         apply(.captureSucceeded)
         finish()
+        // A capture to edit, not Capture Text: its result is copied text, not a screenshot.
+        if purpose == .edit, settings.preferences.playsCaptureSound { sound?.playCaptureSound() }
         onCaptured?(completion)
     }
 

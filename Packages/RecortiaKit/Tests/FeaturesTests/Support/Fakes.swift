@@ -202,6 +202,12 @@ final class FakeCaptureService: CaptureService {
 }
 
 @MainActor
+final class FakeCaptureSound: CaptureSoundService {
+    private(set) var playCount = 0
+    func playCaptureSound() { playCount += 1 }
+}
+
+@MainActor
 final class FakeScreenPermission: ScreenPermissionService {
     var isGranted: Bool
     /// When set, `request` suspends until resolved; otherwise it answers `grantOnRequest`.
