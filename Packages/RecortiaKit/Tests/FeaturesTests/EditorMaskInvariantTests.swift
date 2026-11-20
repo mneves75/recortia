@@ -389,10 +389,15 @@ struct EditorMaskInvariantTests {
 
         m.undo()
         #expect(m.document.masks.isEmpty)
+        let undone = m.document
+        let redo = m.session.redoLabel
         m.pointerDown(at: Point(x: 200, y: 200))
         m.pointerDragged(to: Point(x: 220, y: 220))
+        #expect(m.document != undone, "the drag moved the image")
         m.redo()
-        #expect(m.document.masks.isEmpty, "Redo during a gesture cancels the gesture only")
+        #expect(m.document == undone, "Redo during a gesture restores the pre-drag document")
+        #expect(m.session.redoLabel == redo && m.canRedo, "and keeps the redo entry")
         m.pointerUp(at: Point(x: 220, y: 220))
+        #expect(m.document == undone, "mouse-up after the cancelled drag is inert")
     }
 }
