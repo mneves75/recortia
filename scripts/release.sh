@@ -158,6 +158,10 @@ if ! cmp -s "$src/LICENSE" "$app/Contents/Resources/Recortia-LICENSE.txt"; then
   echo "release: the bundled Recortia license is missing or differs from the reviewed source" >&2
   exit 1
 fi
+if ! cmp -s "$src/RecortiaApp/Resources/Fosco-LICENSE.txt" "$app/Contents/Resources/Fosco-LICENSE.txt"; then
+  echo "release: the bundled Fosco notice is missing or differs from the reviewed source" >&2
+  exit 1
+fi
 
 # Notarize and staple the app itself before it goes into the image, so a copy dragged out of the DMG
 # still passes Gatekeeper offline. The DMG is notarized and stapled again below.
