@@ -54,7 +54,7 @@ for variant in "$@"; do
   kill $host 2>/dev/null
   wait $host 2>/dev/null
   cat "$work/result"
-  if (( probe_status != 0 )) || ! python3 - "$variant" "$work/result" <<'PY'
+  if (( probe_status != 0 )) || ! python3 - "$variant" "$work/result" "$mode" <<'PY'
 import json, pathlib, sys
 lines = [line for line in pathlib.Path(sys.argv[2]).read_text().splitlines() if line.strip()]
 try:
@@ -64,7 +64,10 @@ except json.JSONDecodeError:
 if not isinstance(result, dict):
     sys.exit(1)
 count = result.get("spaceChanges")
-sys.exit(0 if result.get("variant") == sys.argv[1] and type(count) is int else 1)
+# A count measures a Space change only from the requested mode with the fullscreen host in front.
+valid = (result.get("variant") == sys.argv[1] and result.get("mode") == sys.argv[3]
+         and result.get("hostFrontBefore") is True and type(count) is int)
+sys.exit(0 if valid else 1)
 PY
   then
     echo "space-probe: no valid result for $variant (probe exit $probe_status)" >&2

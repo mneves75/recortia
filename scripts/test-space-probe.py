@@ -26,7 +26,9 @@ else:
     out.write_text('''#!/bin/sh
 [ "$1" = "$PROBE_SILENT_VARIANT" ] && exit 0
 case "$PROBE_BEHAVIOUR" in
-  report) printf '{{"spaceChanges":0,"variant":"%s"}}\\\\n' "$1" ;;
+  report) printf '{{"hostFrontBefore":true,"mode":"%s","spaceChanges":0,"variant":"%s"}}\\\\n' "$2" "$1" ;;
+  wrong-mode) printf '{{"hostFrontBefore":true,"mode":"other","spaceChanges":0,"variant":"%s"}}\\\\n' "$1" ;;
+  host-not-front) printf '{{"hostFrontBefore":false,"mode":"%s","spaceChanges":0,"variant":"%s"}}\\\\n' "$2" "$1" ;;
   other-variant) printf '{{"spaceChanges":0,"variant":"other"}}\\\\n' ;;
   no-count) printf '{{"variant":"%s"}}\\\\n' "$1" ;;
   silent) ;;
@@ -73,7 +75,7 @@ class SpaceProbeRunTests(unittest.TestCase):
         self.assertIn("usage:", result.stderr)
 
     def test_a_missing_or_invalid_result_fails(self) -> None:
-        for behaviour in ("silent", "crash", "other-variant", "no-count"):
+        for behaviour in ("silent", "crash", "other-variant", "no-count", "wrong-mode", "host-not-front"):
             with self.subTest(behaviour=behaviour):
                 result = self.run_probe(behaviour, "fresh", "default")
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
