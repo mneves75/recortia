@@ -106,7 +106,7 @@ public struct GitHubUploader: Sendable {
             guard file.type == "file", file.sha == sha else { throw .conflict }
             guard !Task.isCancelled else { throw .canceled }
             guard await isCurrent() else { throw .staleDocument }
-            return try validatedLink(file.html_url, destination: destination, path: path)
+            return try link(to: destination, path: path)
         }
         try checkStatus(existing, expected: [404])
         var put = try request(contentsURL, token: token)
@@ -123,9 +123,7 @@ public struct GitHubUploader: Sendable {
         try checkStatus(response, expected: [201], committing: true)
         let result: Created = try decode(response.body, committing: true)
         guard result.content.sha == sha else { throw .completionUnknown }
-        do { return try validatedLink(result.content.html_url, destination: destination, path: path) } catch {
-            throw .completionUnknown
-        }
+        do { return try link(to: destination, path: path) } catch { throw .completionUnknown }
     }
 
     /// Git's blob identifier, not an authentication or integrity security primitive.
@@ -181,19 +179,25 @@ public struct GitHubUploader: Sendable {
         }
     }
 
-    private func validatedLink(_ address: String, destination: GitHubDestination, path: String)
-        throws(GitHubUploadFailure) -> URL
-    {
-        guard let url = URL(string: address), url.scheme == "https", url.host == "github.com",
-            url.user == nil, url.password == nil, url.port == nil, url.query == nil, url.fragment == nil,
-            url.path.lowercased().hasPrefix("/\(destination.owner)/\(destination.repository)/blob/".lowercased()),
-            url.path.hasSuffix("/\(path)")
-        else { throw .invalidResponse }
+    /// The file's page on github.com, built only from the admitted destination and the generated
+    /// path; HEAD is the default branch the upload commits to. Nothing from a response reaches it,
+    /// so a responder cannot put the token, or anything else, in the link the editor offers.
+    private func link(to destination: GitHubDestination, path: String) throws(GitHubUploadFailure) -> URL {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "github.com"
+        // Each segment is percent-encoded by URLComponents; the destination is validated already.
+        components.path =
+            "/"
+            + ([destination.owner, destination.repository, "blob", "HEAD"] + path.split(separator: "/").map(String.init))
+            .joined(separator: "/")
+        guard let url = components.url else { throw .invalidDestination }
         return url
     }
 
     private struct Repository: Decodable { let `private`: Bool; let archived: Bool; let full_name: String }
-    private struct File: Decodable { let sha: String; let html_url: String; let type: String? }
+    /// The response's own links are not decoded; see `link(to:path:)`.
+    private struct File: Decodable { let sha: String; let type: String? }
     private struct Created: Decodable { let content: File }
     private struct Payload: Encodable { let message: String; let content: String }
 }

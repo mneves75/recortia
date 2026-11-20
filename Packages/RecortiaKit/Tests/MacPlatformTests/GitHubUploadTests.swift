@@ -131,7 +131,7 @@ struct GitHubUploadTests {
             await transport.requests.last?.value(forHTTPHeaderField: "Accept") == "application/vnd.github.object+json")
     }
 
-    @Test("Mixed-case settings accept GitHub's canonical repository link")
+    @Test("Mixed-case settings get a link to the configured repository")
     func canonicalLink() async throws {
         let snapshot = TestSupport.snapshot()
         let transport = UploadTransportFixture([privateRepo, reply(404, "{}"), file(snapshot, wrapped: true)])
@@ -139,6 +139,28 @@ struct GitHubUploadTests {
         let result = try await GitHubUploader(transport: transport).upload(
             snapshot, to: configured, token: try Self.token(), intent: intent, isLive: { true }, isCurrent: { true })
         #expect(result.host == "github.com")
+    }
+
+    // R08 (adversarial review of T1a): the success link was the response's html_url, so a
+    // responder could put the bearer token in its branch segment and the editor would offer it.
+    @Test("The success link is built from the destination and path, never taken from the response")
+    func linkIgnoresResponseURL() async throws {
+        let snapshot = TestSupport.snapshot()
+        let path = "screenshots/\(intent.uuidString.lowercased()).png"
+        let sha = GitHubUploader.blobSHA(snapshot.bytes)
+        let reflected =
+            "{\"sha\":\"\(sha)\",\"type\":\"file\",\"html_url\":\"https://github.com/fixture-owner/private-captures/blob/ghp_synthetic/\(path)\"}"
+        let expected = "https://github.com/fixture-owner/private-captures/blob/HEAD/\(path)"
+        for replies in [
+            [privateRepo, reply(404, "{}"), reply(201, "{\"content\":\(reflected)}")],  // created
+            [privateRepo, reply(200, reflected)],  // already uploaded by this intent
+        ] {
+            let link = try await GitHubUploader(transport: UploadTransportFixture(replies)).upload(
+                snapshot, to: destination, token: try Self.token(), intent: intent, isLive: { true },
+                isCurrent: { true })
+            #expect(!link.absoluteString.contains("synthetic"), "the token reached the link")
+            #expect(link.absoluteString == expected)
+        }
     }
 
     @Test(
