@@ -182,7 +182,7 @@ Secure export MUST create a fresh, flattened raster with no original layer, undo
 
 Do not promise that OCR-based “find sensitive data” is exhaustive. Do not promise secure erasure of memory, SSD blocks, backups, other apps' clipboard histories, or files the user exported earlier.
 
-**Automatic redaction at capture (owner amendment, 2026-11-19).** An opt-in setting, off by default, adds secure masks over e-mail addresses and phone numbers that on-device text recognition and fixed patterns find in a new capture, before the editor, a pin or any automatic export receives it. It uses no AI and no network. The masks are ordinary secure masks the person can select and delete. It is a review aid: the UI states how many areas it masked and never claims that nothing sensitive remains. When recognition fails, is cancelled or exceeds its deadline, the capture opens unmasked with a notice and that capture's automatic exports do not run. The automatic export plan is still fixed when the pixels arrive, so a Settings change during recognition does not alter it. Capture Text skips it. The pattern design is adapted from Fosco by Gabriel Buzzi (MIT), credited in the third-party notices.
+**Automatic redaction at capture (owner amendment, 2026-11-19; timing revised 2026-11-20).** An opt-in setting, off by default, adds opaque secure masks over e-mail addresses and phone numbers in a new capture. Detection runs on this Mac: fixed patterns over the system's text recognition, with no AI and no network. It is a review aid that can miss text, such as small or stylised text and formats the patterns do not know: the UI states how many items it masked and never claims that nothing sensitive remains. The editor window opens at once. Until the masks land (as one undo step; the person can undo it or delete any mask), the canvas shows a neutral placeholder instead of the capture, and the editor accepts no edit, selection, export, pin, Output Preview or recognition; the capture's automatic exports wait and then run on the masked document. It fails closed: when recognition fails, is cancelled or exceeds its deadline, nothing is masked, the editor shows the capture with a notice, manual export is allowed again, and that capture's automatic exports do not run. Closing the editor while masking cancels the masking and the automatic exports. The masking choice and the automatic export plan are both fixed when the capture completes, so a Settings change during recognition applies to the next capture. Capture Text skips it. The §10 region-commit target covers the window, not the masked pixels. The pattern design is adapted from Fosco by Gabriel Buzzi (MIT), whose notice ships in the app bundle.
 
 ### FR-07 — Export and explicit side effects
 
@@ -358,7 +358,7 @@ Benchmark on a physical Apple Silicon Mac with at least 16 GB RAM, a 4K 60 Hz di
 | Measure | Proposed gate | Measurement |
 |---|---|---|
 | Warm capture overlay presentation | p95 <= 100 ms | Shortcut handler entry to first overlay frame, 100 runs |
-| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs |
+| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs. With automatic redaction on, the editor window meets this target and the capture's pixels follow once its masks land (FR-06) |
 | Cold launch to ready menu bar | p95 <= 1.5 s | 30 process launches; report caching conditions |
 | Common drawing gestures | 60 Hz target without sustained main-thread stalls | Frame pacing plus Instruments traces, not FPS claims alone |
 | Local OCR | p95 <= 1.5 s on the defined 1080p text fixture subset | 100 runs; report languages, revision, and corpus |
@@ -408,7 +408,7 @@ An integration may open the app or initiate a user-visible workflow; an untruste
 
 Optional writing assistance may suggest alt text, summarize user-selected OCR text, or draft a bug report locally. Availability, supported languages, and model access are runtime capabilities. It must remain off the capture critical path, work without any cloud fallback, and show editable output before a side effect. Recheck the then-current SDK/model documentation before selecting an implementation. Do not assume an earlier year's model/API capability set is still current.
 
-Screenshot content is data, not instructions. AI has no authority to capture additional screens, access files, invoke tools, apply “secure redaction,” or transmit data. Automatic sensitive-data suggestions remain review aids, not a guarantee that no secrets remain.
+Screenshot content is data, not instructions. AI has no authority to capture additional screens, access files, invoke tools, apply “secure redaction,” or transmit data. Automatic masking and sensitive-data suggestions remain review aids, not a guarantee that no secrets remain.
 
 ## 14. Completion and first handoff
 

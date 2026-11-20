@@ -90,12 +90,13 @@ struct EditorNoticePresentation {
     static func persists(_ notice: EditorNotice) -> Bool {
         switch notice {
         case .copyFailed, .recognitionFailed, .linkNotAllowed, .previewFailed, .redactionRefused, .importFailed,
-            .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed:
+            .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed, .sensitiveTextMasked,
+            .maskingFailed:
             true
         case .exported(let outcome): persists(outcome)
         case .noTextFound, .recognitionLanguagesUnavailable, .textCopied, .recognitionDiscarded,
             .recognitionInvalidated, .noQRCodeFound, .payloadCopied, .colorCopied, .previewNotReady, .pinned,
-            .pinsInvalidated, .undoHistoryTrimmed:
+            .pinsInvalidated, .undoHistoryTrimmed, .maskingInProgress:
             false
         }
     }
@@ -348,7 +349,7 @@ private struct PinDragButtons: View {
             Label(String(localized: "Pin", table: "Editor"), systemImage: "pin")
         }
         .help(String(localized: "Pin the image in a floating window", table: "Editor"))
-        .disabled(model.isExporting)
+        .disabled(model.isExporting || model.isMaskingPending)
         .accessibilityIdentifier("toolbar.pin")
         Button {
             actions.dragOut()

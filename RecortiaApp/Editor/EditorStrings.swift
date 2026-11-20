@@ -214,7 +214,25 @@ enum EditorStrings {
             String(localized: "No save folder is set. Choose one in Settings › Export.", table: "Editor")
         case .undoHistoryTrimmed:
             String(localized: "The oldest undo steps were discarded to limit memory use.", table: "Editor")
+        case .sensitiveTextMasked(let count):
+            String(
+                localized:
+                    "Masked \(count) e-mail addresses or phone numbers. Check the image for anything else before you share it.",
+                table: "Editor")
+        case .maskingFailed:
+            String(
+                localized:
+                    "Automatic masking did not finish, so nothing was masked. Check the image before you share it.",
+                table: "Editor")
+        case .maskingInProgress:
+            String(
+                localized: "Masking e-mail addresses and phone numbers. Try again when it finishes.", table: "Editor")
         }
+    }
+
+    /// The canvas while automatic masking runs.
+    static var maskingPlaceholder: String {
+        String(localized: "Masking e-mail addresses and phone numbers…", table: "Editor")
     }
 
     /// "Not available on this Mac: English, Portuguese" with language names in the user's locale.
@@ -273,6 +291,8 @@ enum EditorStrings {
                 localized:
                     "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it.",
                 table: "Editor")
+        case .maskingUnfinished:
+            String(localized: "Nothing was exported: automatic masking did not finish.", table: "Editor")
         }
     }
 }

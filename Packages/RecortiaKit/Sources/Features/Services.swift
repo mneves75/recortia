@@ -161,6 +161,16 @@ public protocol QRDecodingService: AnyObject {
     func decode(_ image: CGImage) async throws -> [QRPayload]
 }
 
+/// Finds e-mail addresses and phone numbers in a new capture for automatic masking (FR-06). The
+/// live service reads the asset's pixels inside Imaging; Features receives only rectangles.
+@MainActor
+public protocol SensitiveTextService: AnyObject {
+    /// Whole-pixel rectangles of `asset`'s source pixels that show an e-mail address or a phone
+    /// number. Throws when any part of the image could not be read, and on cancellation, so a
+    /// partial result is never returned as complete.
+    func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect]
+}
+
 // MARK: - Scrolling capture
 
 @MainActor

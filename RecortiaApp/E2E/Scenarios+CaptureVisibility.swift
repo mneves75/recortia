@@ -42,8 +42,9 @@
             defer { foregroundFixture.requestStop() }
             var controller: EditorWindowController?
             let originalOpenDocument = harness.app.openDocument
-            harness.app.openDocument = { session in
-                let model = EditorModel(session: session, environment: harness.environment)
+            harness.app.openDocument = { session, action in
+                let model = EditorModel(
+                    session: session, environment: harness.environment, autoRedacts: action == .maskSensitiveText)
                 let opened = EditorWindowController(model: model)
                 // Exercise production presentation without exposing desktop pixels or
                 // intercepting real input. Snapshots render this synthetic view only.

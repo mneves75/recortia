@@ -277,6 +277,8 @@ enum SaveFolderPanel {
 // MARK: - Privacy
 
 struct PrivacySettingsTab: View {
+    let settings: SettingsStore
+
     var body: some View {
         Form {
             Section("What stays on this Mac") {
@@ -288,6 +290,11 @@ struct PrivacySettingsTab: View {
                 )
             }
             Section("Redaction") {
+                Toggle(
+                    "Mask e-mail addresses and phone numbers in new captures",
+                    isOn: settings.binding(\.autoRedactsSensitiveText)
+                )
+                .accessibilityIdentifier("settings.autoRedactsSensitiveText")
                 Text(
                     "Solid redaction replaces the covered pixels with an opaque color in the exported image. It is the secure tool."
                 )
@@ -467,7 +474,7 @@ struct ScrollingSettingsSection: View {
     }
 
     #Preview("Privacy") {
-        PrivacySettingsTab()
+        PrivacySettingsTab(settings: PreviewSupport.settings())
             .frame(width: 560, height: 520)
     }
 

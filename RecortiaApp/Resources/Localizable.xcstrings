@@ -4471,6 +4471,38 @@
           }
         }
       }
+    },
+    "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O mascaramento automático não terminou: nada foi mascarado, e esta captura não foi copiada, salva nem enviada automaticamente."
+          }
+        }
+      }
+    },
+    "Mask e-mail addresses and phone numbers in new captures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mask e-mail addresses and phone numbers in new captures"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mascarar e-mails e números de telefone em novas capturas"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

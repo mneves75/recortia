@@ -348,6 +348,18 @@ class ReleaseContractTests(unittest.TestCase):
             positions[3], script.index('codesign --verify --deep --strict "$app"', positions[3]),
         )
 
+    def test_every_shipped_notice_is_checked_in_the_bundle_before_notarization(self) -> None:
+        script = RELEASE.read_text()
+        notarize = script.index("== notarize the app")
+        notices = sorted(path.name for path in (ROOT / "RecortiaApp/Resources").glob("*-LICENSE.txt"))
+        self.assertIn("Fosco-LICENSE.txt", notices)
+        for name in notices:
+            with self.subTest(notice=name):
+                bundled = f'"$app/Contents/Resources/{name}"'
+                check = re.search(r"cmp -s [^\n]*" + re.escape(bundled) + r"|" + re.escape(f"={bundled}"), script)
+                self.assertIsNotNone(check, f"release.sh never compares the bundled {name}")
+                self.assertLess(check.start(), notarize, f"{name} is checked only after notarization")
+
     def test_bundled_notice_matches_pinned_dependency(self) -> None:
         if not hasattr(self, "app"):
             self.skipTest("run with --app and --package-checkout to check the bundled notices")
@@ -365,6 +377,9 @@ class ReleaseContractTests(unittest.TestCase):
             (ROOT / "LICENSE").read_bytes(),
             (self.app / "Contents/Resources/Recortia-LICENSE.txt").read_bytes(),
         )
+        fosco = (ROOT / "RecortiaApp/Resources/Fosco-LICENSE.txt").read_bytes()
+        self.assertIn(b"Copyright (c) 2026 Gabriel Buzzi Venturi", fosco)
+        self.assertEqual(fosco, (self.app / "Contents/Resources/Fosco-LICENSE.txt").read_bytes())
 
 
 if __name__ == "__main__":

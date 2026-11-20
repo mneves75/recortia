@@ -24,6 +24,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     private var trackingArea: NSTrackingArea?
     private var elements: [EditorItemID: EditorAccessibilityElement] = [:]
     private var lastListItems: [EditorListItem] = []
+    /// Shown, over a neutral placeholder, while automatic masking runs (FR-06).
+    private var maskingIndicator: NSProgressIndicator?
 
     init(model: EditorModel) {
         self.model = model
@@ -128,6 +130,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         _ = model.showsOutputPreview
         _ = model.isPreviewReady
         _ = model.redactionFill
+        syncMaskingIndicator(model.isMaskingPending)
         let tool = model.tool
         syncTextEditing(model.textEditing)
         needsDisplay = true
@@ -146,6 +149,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         super.layout()
         reportViewport()
         noteFocusRingMaskChanged()
+        maskingIndicator?.frame.origin = NSPoint(x: bounds.midX - 16, y: bounds.midY - 40)
     }
 
     override func viewDidChangeBackingProperties() {
@@ -209,6 +213,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         // Neutral, opaque ground: never a translucent window material (FR-13).
         NSColor.underPageBackgroundColor.setFill()
         bounds.fill()
+        // Automatic masking is running: no capture pixel is drawn until its masks land (FR-06).
+        if model.isMaskingPending { return drawMaskingPlaceholder() }
 
         let viewport = model.viewport
         let document = model.document
@@ -272,6 +278,34 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             drawDraft(viewport)
             drawRuler(viewport)
             drawLoupe(viewport)
+        }
+    }
+
+    private func drawMaskingPlaceholder() {
+        let text = NSAttributedString(
+            string: EditorStrings.maskingPlaceholder,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ])
+        let size = text.size()
+        text.draw(at: CGPoint(x: bounds.midX - size.width / 2, y: bounds.midY + 4))
+    }
+
+    private func syncMaskingIndicator(_ pending: Bool) {
+        if pending, maskingIndicator == nil {
+            let indicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 32, height: 32))
+            indicator.style = .spinning
+            indicator.isIndeterminate = true
+            indicator.setAccessibilityLabel(EditorStrings.maskingPlaceholder)
+            addSubview(indicator)
+            indicator.startAnimation(nil)
+            maskingIndicator = indicator
+            needsLayout = true
+        } else if !pending, let indicator = maskingIndicator {
+            indicator.stopAnimation(nil)
+            indicator.removeFromSuperview()
+            maskingIndicator = nil
         }
     }
 
