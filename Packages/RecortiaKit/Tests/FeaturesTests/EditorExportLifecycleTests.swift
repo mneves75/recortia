@@ -190,4 +190,23 @@ struct EditorExportLifecycleTests {
         #expect(h.clipboard.writes.count == 1)
         #expect(other.canStartExport && h.model.canStartExport)
     }
+
+    @Test("A Save confirmed while another editor exports shows the busy message and writes nothing")
+    func saveConfirmedWhileBusyIsRejected() async {
+        let h = EditorHarness()
+        let other = EditorModel(session: EditorFixtures.session(), environment: h.model.environment)
+        defer { h.model.close(); other.close() }
+        let gate = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = gate
+        let task = Task { await h.model.export(.copy) }
+        await waitFor("snapshot suspended") { gate.waiterCount == 1 }
+        let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
+        #expect(await other.export(.save(url, format: .png, overwriteConfirmed: false)) == .rejectedBusy)
+        #expect(other.notice == .exported(.rejectedBusy))
+        #expect(h.files.saves.isEmpty)
+        #expect(h.exporter.snapshotCount == 1, "the rejected save reserved nothing and rendered nothing")
+        h.exporter.pending = nil
+        gate.resolve(.success(()))
+        #expect(await task.value == .copied)
+    }
 }

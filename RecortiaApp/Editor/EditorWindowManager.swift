@@ -188,17 +188,24 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     func copyImage() {
         commitPendingText()
+        guard exportSlotIsFree() else { return }
         Task { await model.export(.copy) }
+    }
+
+    /// Another editor holds the shared export slot: beep and submit nothing, like a disabled
+    /// toolbar button (R3-D04a). A Save sheet confirmed after the slot was taken is not reserved;
+    /// its request gets the existing busy message and writes nothing.
+    private func exportSlotIsFree() -> Bool {
+        guard model.canStartExport else {
+            NSSound.beep()
+            return false
+        }
+        return true
     }
 
     func saveImage() {
         commitPendingText()
-        guard let window else { return }
-        // Another editor holds the shared export slot: do not offer a panel that would be refused.
-        guard model.canStartExport else {
-            NSSound.beep()
-            return
-        }
+        guard let window, exportSlotIsFree() else { return }
         let format = model.environment.settings.preferences.exportOptions.format
         let panel = NSSavePanel()
         panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
@@ -244,6 +251,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     func saveToPreferredFolder() {
         commitPendingText()
+        guard exportSlotIsFree() else { return }
         Task { await model.export(.saveToPreferredFolder) }
     }
 
@@ -276,6 +284,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
 
     func dragOut() {
         commitPendingText()
+        guard exportSlotIsFree() else { return }
         Task { await model.export(.drag) }
     }
 }

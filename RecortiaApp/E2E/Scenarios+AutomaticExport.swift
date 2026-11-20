@@ -120,6 +120,16 @@
             context.check(
                 "an automatic-export failure with an editor open raises no modal alert",
                 harness.messages.values.count == messagesBefore, "\(harness.messages.values)")
+            // R3-D04a: Copy (⌘C) in another editor while the shared slot is taken submits nothing,
+            // so no busy rejection replaces the editor's notice and the clipboard stays untouched.
+            let clipboardBefore = harness.clipboard.writeCount
+            busyEditor.copyImage()
+            try? await Task.sleep(for: .milliseconds(300))
+            context.check(
+                "Copy while another editor exports submits nothing",
+                busyEditor.model.notice == .automaticExportFailed(.busy)
+                    && harness.clipboard.writeCount == clipboardBefore,
+                "\(String(describing: busyEditor.model.notice))")
             harness.exportGate.release()
             _ = await running.value
             harness.settings.update { $0.autoCopy = false }
