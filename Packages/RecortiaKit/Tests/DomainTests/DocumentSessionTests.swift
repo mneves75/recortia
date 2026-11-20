@@ -49,6 +49,16 @@ struct DocumentSessionTests {
         #expect(session.document.annotations.map(\.kind) == [arrow(2).kind])
     }
 
+    @Test("An open group that committing would evict does not offer Undo")
+    func openGroupOverBudget() throws {
+        var session = DocumentSession(document: makeDocument().0, undoByteBudget: 0)
+        session.beginGroup("Drag")
+        try session.perform("Drag") { $0.annotations.append(arrow(1)) }
+        #expect(!session.canUndo)
+        session.undo()
+        #expect(session.document.annotations.count == 1, "the group was committed and evicted, nothing undone")
+    }
+
     @Test("The undo budget evicts the oldest complete groups and reports it")
     func undoBudgetEvictsOldest() throws {
         var session = DocumentSession(document: makeDocument().0, undoLimit: 3)

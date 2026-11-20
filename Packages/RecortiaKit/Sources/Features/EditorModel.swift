@@ -296,7 +296,7 @@ public final class EditorModel {
     }
 
     public func undo() {
-        guard !isClosed, textEditing == nil else { return }
+        guard !isClosed, textEditing == nil, canUndo else { return }
         cancelGesture()
         endContinuousChange()
         let before = session.document, epoch = session.privacyEpoch
@@ -305,7 +305,7 @@ public final class EditorModel {
     }
 
     public func redo() {
-        guard !isClosed, textEditing == nil else { return }
+        guard !isClosed, textEditing == nil, canRedo else { return }
         cancelGesture()
         endContinuousChange()
         let before = session.document, epoch = session.privacyEpoch
