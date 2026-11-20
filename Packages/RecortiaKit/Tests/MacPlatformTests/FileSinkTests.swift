@@ -51,6 +51,20 @@ struct FileSinkTests {
         #expect(TestSupport.directoryEntries(folder).count == 3)
     }
 
+    @Test("A counting template takes the first free number in the folder (A-9)")
+    func countingNames() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        try priorBytes.write(to: folder.appendingPathComponent("Shot 2.png"))
+        let filename = try FilenameTemplate(validating: "Shot {counter}").name(for: Date(), format: .png)
+        let sink = FileSink()
+        let names = try (0..<3).map { _ in
+            try sink.saveUnique(TestSupport.snapshot(filename: filename), in: folder).lastPathComponent
+        }
+        #expect(names == ["Shot 1.png", "Shot 3.png", "Shot 4.png"])
+        #expect(try Data(contentsOf: folder.appendingPathComponent("Shot 2.png")) == priorBytes)
+    }
+
     @Test(
         "Suggested names cannot escape the folder, hide the file, or be empty",
         arguments: [

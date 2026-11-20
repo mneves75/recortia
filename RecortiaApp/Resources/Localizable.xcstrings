@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ Saved files keep the default name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Saved files keep the default name."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Os arquivos salvos mantêm o nome padrão."
+          }
+        }
+      }
+    },
     "%@/%@" : {
       "localizations" : {
         "en" : {
@@ -137,6 +153,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld × %lld px"
+          }
+        }
+      }
+    },
+    "A file name cannot start with a period." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A file name cannot start with a period."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome do arquivo não pode começar com um ponto."
           }
         }
       }
@@ -1567,6 +1599,22 @@
         }
       }
     },
+    "Enter a file name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a file name."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite um nome de arquivo."
+          }
+        }
+      }
+    },
     "Enter a valid GitHub owner and repository name." : {
       "localizations" : {
         "en" : {
@@ -1615,6 +1663,22 @@
         }
       }
     },
+    "Example: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example: %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exemplo: %@"
+          }
+        }
+      }
+    },
     "Export" : {
       "localizations" : {
         "en" : {
@@ -1653,6 +1717,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tour de recursos"
+          }
+        }
+      }
+    },
+    "File name" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File name"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nome do arquivo"
           }
         }
       }
@@ -2523,6 +2603,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "As fixações ficam até você fechá-las e não são restauradas depois que o Recortia é encerrado."
+          }
+        }
+      }
+    },
+    "Placeholders: {date}, {time}, {counter}" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Placeholders: {date}, {time}, {counter}"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcadores: {date}, {time}, {counter}"
           }
         }
       }
@@ -3972,6 +4068,22 @@
         }
       }
     },
+    "The name is too long." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The name is too long."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome é longo demais."
+          }
+        }
+      }
+    },
     "The page stopped moving. If you reached the end, press Stop." : {
       "localizations" : {
         "en" : {
@@ -4276,6 +4388,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use um repositório privado dedicado e um token limitado a ele, com permissão Contents: leitura e escrita. O token fica nas Chaves. Cada envio cria um commit em screenshots/."
+          }
+        }
+      }
+    },
+    "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use apenas letras, números, espaços, hífens, sublinhados, pontos e parênteses."
+          }
+        }
+      }
+    },
+    "Use only the placeholders {date}, {time} and {counter}." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use only the placeholders {date}, {time} and {counter}."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use apenas os marcadores {date}, {time} e {counter}."
           }
         }
       }

@@ -338,7 +338,7 @@ final class FakeExportService: ExportService {
         return ShareSnapshot(
             documentID: session.document.id, revision: session.revision, privacyEpoch: session.privacyEpoch,
             format: options.format, pixelSize: PixelSize(width: 8, height: 8), bytes: Data([0x89, 0x50]),
-            suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
+            filename: options.filenameTemplate.name(for: date, format: options.format, timeZone: .gmt))
     }
 
     private(set) var pinnedRequests: [(image: CGImage, exportID: DocumentID, options: ExportOptions)] = []
@@ -353,7 +353,7 @@ final class FakeExportService: ExportService {
         return ShareSnapshot(
             documentID: exportID, revision: 0, privacyEpoch: privacyEpoch, format: options.format,
             pixelSize: PixelSize(width: image.width, height: image.height), bytes: Data([0x89, 0x50]),
-            suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
+            filename: options.filenameTemplate.name(for: date, format: options.format, timeZone: .gmt))
     }
 }
 

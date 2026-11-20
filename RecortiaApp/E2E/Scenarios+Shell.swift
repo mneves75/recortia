@@ -384,6 +384,7 @@
                 harness.settings.update {
                     $0.pinDefaultOpacity = preferences.pinDefaultOpacity
                     $0.automaticScrollingEnabled = preferences.automaticScrollingEnabled
+                    $0.filenameTemplateChoice = preferences.filenameTemplateChoice
                 }
             }
             let foreground = try await E2EForegroundFixture.start(context)
@@ -449,7 +450,45 @@
             context.check(
                 "with Accessibility granted, nothing is requested", harness.accessibility.requestCount == requests + 1,
                 "\(harness.accessibility.requestCount - requests)")
+            try await filenameTemplateField(tabs: tabs, activate: activate, root: root, harness, context)
             await foreground.stop(context)
+        }
+
+        /// Settings › Export's file-name field (A-9), typed through its native field editor: an
+        /// accepted template is stored and shown as an example; a refused one stores nothing and
+        /// says why.
+        private static func filenameTemplateField(
+            tabs: NSTabView, activate: () async throws -> Void, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async throws {
+            tabs.selectTabViewItem(at: 3)
+            try await activate()
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            let pane = try context.unwrap("the Export pane", tabs.selectedTabViewItem?.view)
+            try await E2EAccessibilityControl.enterNumber(
+                "settings.filenameTemplate", text: "Captura {counter}", in: pane, context)
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "the file-name field stores an accepted template",
+                harness.settings.preferences.filenameTemplateChoice?.text == "Captura {counter}",
+                String(describing: harness.settings.preferences.filenameTemplateChoice?.text))
+            let example = try E2EAccessibilityControl.text(
+                .value, for: "settings.filenameTemplate.example", in: pane, context)
+            context.check(
+                "the example shows the template's name", example.contains("Captura 1.png"), example)
+            context.snapshot(pane, shot: "export-filename")
+            try await activate()
+            try await E2EAccessibilityControl.enterNumber(
+                "settings.filenameTemplate", text: "../x", in: pane, context)
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "a refused template stores nothing, so files keep the default name",
+                harness.settings.preferences.filenameTemplateChoice == nil
+                    && harness.settings.preferences.filenameTemplate == .default)
+            context.check(
+                "the field says why the template was refused",
+                E2EAccessibilityControl.isPresent("settings.filenameTemplate.message", in: pane))
+            context.snapshot(pane, shot: "export-filename-refused")
         }
 
         /// A pane is as tall as its own content hosted alone at the pane width, and its form does

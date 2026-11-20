@@ -68,12 +68,21 @@ public struct FileSink {
         } catch { throw Self.map(error) }
     }
 
-    /// Saves under the snapshot's sanitized suggested name in an authorized `folder`, adding
-    /// " (n)" before the extension until the name is free. Never overwrites.
+    /// Saves under the snapshot's sanitized name in an authorized `folder`: a counting name takes
+    /// the first free number, any other adds " (n)" before the extension until the name is free.
+    /// Never overwrites.
     public func saveUnique(_ snapshot: ShareSnapshot, in folder: URL) throws(SinkError) -> URL {
         guard folder.isFileURL else { throw .writeFailed(code: Int(EINVAL)) }
-        let name = SafeFilename.sanitize(snapshot.suggestedFilename, fallbackExtension: snapshot.format.fileExtension)
-        let names = (1...Self.maxUniqueAttempts).map { ExportFilename.deduplicated(name, attempt: $0) }
+        let fallback = snapshot.format.fileExtension
+        let names: [String]
+        if snapshot.filename.counts {
+            names = (1...Self.maxUniqueAttempts).map {
+                SafeFilename.sanitize(snapshot.filename.name(attempt: $0), fallbackExtension: fallback)
+            }
+        } else {
+            let name = SafeFilename.sanitize(snapshot.suggestedFilename, fallbackExtension: fallback)
+            names = (1...Self.maxUniqueAttempts).map { ExportFilename.deduplicated(name, attempt: $0) }
+        }
         do {
             return try fileSystem.save(snapshot.bytes, in: folder, names: names, overwrite: false)
         } catch { throw Self.map(error) }

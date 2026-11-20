@@ -159,6 +159,7 @@ struct ExportSettingsTab: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            FilenameTemplateSection(settings: settings)
             Section {
                 if settings.loadIssue == .unverifiedConsent {
                     Label(
@@ -358,6 +359,74 @@ struct OCRSettingsTab: View {
 }
 
 // MARK: - Pins (a section of General)
+
+/// How saved files are named (FR-07, A-9). Each edit is admitted once by
+/// `FilenameTemplate(validating:)`: an accepted template is stored, a refused one stores nothing
+/// and files keep the default name while the field says why.
+struct FilenameTemplateSection: View {
+    let settings: SettingsStore
+    @State private var draft: String?
+    @State private var refusal: FilenameTemplateError?
+
+    var body: some View {
+        Section {
+            TextField(
+                "File name",
+                text: Binding(get: { draft ?? settings.preferences.filenameTemplate.text }, set: admit)
+            )
+            .accessibilityIdentifier("settings.filenameTemplate")
+            if let refusal {
+                Label {
+                    Text("\(Self.reason(refusal)) Saved files keep the default name.")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
+                .font(.callout)
+                .accessibilityIdentifier("settings.filenameTemplate.message")
+            } else {
+                Text("Example: \(example)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .accessibilityIdentifier("settings.filenameTemplate.example")
+            }
+        } footer: {
+            Text("Placeholders: {date}, {time}, {counter}")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var example: String {
+        let options = settings.preferences.exportOptions
+        return options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
+    }
+
+    private func admit(_ text: String) {
+        draft = text
+        do throws(FilenameTemplateError) {
+            let template = try FilenameTemplate(validating: text)
+            refusal = nil
+            settings.update { $0.filenameTemplate = template }
+        } catch {
+            refusal = error
+            settings.update { $0.filenameTemplateChoice = nil }
+        }
+    }
+
+    static func reason(_ refusal: FilenameTemplateError) -> String {
+        switch refusal {
+        case .empty: String(localized: "Enter a file name.")
+        case .tooLong: String(localized: "The name is too long.")
+        case .leadingDot: String(localized: "A file name cannot start with a period.")
+        case .unsupportedCharacter:
+            String(localized: "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses.")
+        case .unknownPlaceholder: String(localized: "Use only the placeholders {date}, {time} and {counter}.")
+        }
+    }
+}
 
 struct PinsSettingsSection: View {
     let settings: SettingsStore

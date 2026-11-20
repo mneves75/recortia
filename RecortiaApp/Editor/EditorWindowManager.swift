@@ -226,10 +226,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     func saveImage() {
         commitPendingText()
         guard let window, exportSlotIsFree() else { return }
-        let format = model.environment.settings.preferences.exportOptions.format
+        let options = model.environment.settings.preferences.exportOptions
+        let format = options.format
         let panel = NSSavePanel()
         panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
-        panel.nameFieldStringValue = ExportFilename.make(for: Date(), format: format)
+        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: format).name(attempt: 1)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.beginSheetModal(for: window) { [weak self] response in
