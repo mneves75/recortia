@@ -84,6 +84,11 @@ Each change has a regression test that failed first. Commits are on `spike/auto-
 | R17 | Regions are merged in a total geometry order. | c7486f5 |
 | S1 | An "@" after more than 64 local characters (glued prefix, CJK or Thai without spaces) is matched from 64 characters before it. The mask may be wider than the address but never narrower. | 5c120be |
 | S2 | Patterns declare a UTF-16 length bound from their own repetition limits (longest: 1067 units). The window overlap is 2048, and the matcher refuses to build if any bound reaches it. | 5c120be |
+| W1 | Second review (2026-11-20): every match is widened to its whole token, an address's run of non-whitespace and a number's adjacent digit groups. Over-coverage is accepted; a visible prefix or suffix is not. | 14a2559 |
+| W2 | One span representation: UTF-16 `NSRange` from regex output to box mapping; a range that cannot be mapped throws `rangeUnmappable`. | 14a2559 |
+| W3 | Null, degenerate, non-finite or outside-the-image boxes fail the sweep before padding. | 14a2559 |
+| W4 | No height filter after matching. The review's 2200 px address across both middle crops of a 5120 px capture is fully covered, even with the old filter restored, so no edge extension was added. | 14a2559 |
+| W5 | Tile count checked before allocation, the per-tile match budget enforced on append, 2048 observations per tile, cancellation injected after finalization's entry check, the sampler cancelled on every exit. The default fine tile is now 1024 px (decisions.md). | 14a2559, e41b276 |
 | R10, R11, R14–R16 | Benchmark: area precision, ground truth from painted pixels in the composed line, metadata-only outcomes with absolute and baseline memory, content fixed across conditions, 1024 tiles at 2560×1440. | 21f8d51, 791abfb |
 
 ## Method
@@ -129,6 +134,9 @@ xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sou
 ## Results
 
 ### Hardened detector, 2048 vs 1024 fine tiles
+
+**These numbers predate W1–W4.** Whole-token coverage and the removed coarse-height filter can only
+add masked pixels, so recall can only rise and area precision may fall. The run was not repeated.
 
 Run 2026-11-19 to 2026-11-20 (wall time 2117 s), method A, the full matrix (288 screens, 33,472
 planted items). Content is now the same across scale, font size and theme, so these counts are not
