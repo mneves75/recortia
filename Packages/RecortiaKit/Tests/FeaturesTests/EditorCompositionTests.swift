@@ -103,6 +103,27 @@ struct EditorCompositionTests {
         #expect(document.masks.first?.sourceRegions[assetID] != nil)
     }
 
+    @Test("Fitting the canvas also contains masks and cosmetic effects past its edges")
+    func fitCanvasContainsMasksAndEffects() throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.blur)
+        h.drag((300, 200), (330, 230))
+        let effect = try #require(m.document.obfuscations.first)
+        m.setFrame(Rect(x: -10, y: 0, width: 20, height: 20), for: .mask(mask.id))
+        m.setFrame(Rect(x: 390, y: 280, width: 30, height: 30), for: .obfuscation(effect.id))
+        #expect(m.document.masks.first?.outputRect.minX == -10)
+        #expect(m.document.obfuscations.first?.rect.maxX == 420)
+        m.fitCanvasToContent()
+        let document = m.document
+        #expect(document.canvasSize == Size(width: 430, height: 310))
+        #expect(document.masks.first?.outputRect == Rect(x: 0, y: 0, width: 20, height: 20))
+        #expect(document.obfuscations.first?.rect == Rect(x: 400, y: 280, width: 30, height: 30))
+    }
+
     @Test("Expanding the canvas adds margins and moves content by the top/left margins")
     func expandCanvas() {
         let h = EditorHarness()

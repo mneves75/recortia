@@ -166,6 +166,8 @@ extension EditorModel {
                     union = union.union(frame)
                 }
             }
+            for mask in document.masks { union = union.union(mask.outputRect) }
+            for effect in document.obfuscations { union = union.union(effect.rect) }
             let dx = max(0, -union.minX).rounded(.up), dy = max(0, -union.minY).rounded(.up)
             try Self.shiftContent(&document, dx: dx, dy: dy)
             document.canvasSize = Size(
