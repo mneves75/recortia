@@ -695,8 +695,8 @@ public final class EditorModel {
     }
 
     /// An explicit move or resize of a mask. Its box now hides what is under the new rectangle,
-    /// and it keeps the bound pixels a layer edit already carried away from its old box in any
-    /// layer: those are still hidden where they are, and only deleting the mask releases them.
+    /// and it keeps the bound pixels a layer edit carried wholly or partly out of its old box in
+    /// any layer: those are still hidden where they are, and only deleting the mask releases them.
     static func setMaskRect(_ document: inout Document, index: Int, _ rect: Rect<DocumentSpace>) throws {
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard EditorGeometry.isFinite(snapped), !snapped.isEmpty else { throw DocumentError.invalidGeometry }
@@ -705,19 +705,23 @@ public final class EditorModel {
         guard snapped != old.outputRect else { return }
         var regions = try document.sourceRegions(for: snapped)
         for (asset, bound) in old.sourceRegions {
-            let footprints = document.layers.compactMap { layer -> AffineMap<SourcePixelSpace, DocumentSpace>? in
-                guard layer.assetID == asset, let size = document.assets[asset]?.pixelSize else { return nil }
-                return layer.sourceToDocument(assetSize: size)
+            // What the old box covers now in each layer that shows the asset. A binding hides the
+            // asset in all of them, so it is released only when the old box still covers it whole
+            // in every one; any displacement, even partial, keeps it.
+            let covered = try document.layers.filter { $0.assetID == asset }.map {
+                try document.coveredSourceRect(of: $0, by: old.outputRect)
             }
-            // A binding hides the asset in every layer that shows it, so it is released only when
-            // every such layer still has that region under the old box.
-            for region in bound
-            where !footprints.allSatisfy({ $0.apply(region.asRect).intersects(old.outputRect) }) {
+            for region in bound where !covered.allSatisfy({ $0.map { Self.contains($0, region) } ?? false }) {
                 if !(regions[asset]?.contains(region) ?? false) { regions[asset, default: []].append(region) }
             }
         }
         document.masks[index].outputRect = snapped
         document.masks[index].sourceRegions = regions
+    }
+
+    private static func contains(_ outer: PixelRect, _ inner: PixelRect) -> Bool {
+        outer.x <= inner.x && outer.y <= inner.y && outer.x + outer.width >= inner.x + inner.width
+            && outer.y + outer.height >= inner.y + inner.height
     }
 
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).

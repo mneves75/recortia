@@ -283,27 +283,32 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
     public func sourceRegions(for rect: Rect<DocumentSpace>) throws -> [AssetID: [PixelRect]] {
         var regions: [AssetID: [PixelRect]] = [:]
         for layer in layers {
-            guard let asset = assets[layer.assetID] else { throw DocumentError.unknownAsset }
-            let toDocument = layer.sourceToDocument(assetSize: asset.pixelSize)
-            // Invert before the intersection test: a degenerate layer has empty bounds and would
-            // otherwise be skipped silently instead of refusing the mask (FR-06).
-            let toSource: AffineMap<DocumentSpace, SourcePixelSpace>
-            do { toSource = try toDocument.inverted() } catch { throw DocumentError.unmappableTransform }
-            guard layer.documentBounds(assetSize: asset.pixelSize).intersects(rect) else { continue }
-            // Validate before clipping: clipping can hide overflowing corners or spans.
-            let corners = rect.corners.map(toSource.apply)
-            guard corners.allSatisfy(\.isFinite), let sourceRect = Rect<SourcePixelSpace>.bounding(corners),
-                sourceRect.width.isFinite, sourceRect.height.isFinite, sourceRect.corners.allSatisfy(\.isFinite)
-            else { throw DocumentError.unmappableTransform }
-            let visible = layer.visibleSourceRect(assetSize: asset.pixelSize)
-            guard let clipped = sourceRect.intersection(visible.asRect),
-                let covered = try PixelRect.covering(clipped, within: asset.pixelSize)
-            else { continue }
+            guard let covered = try coveredSourceRect(of: layer, by: rect) else { continue }
             if !(regions[layer.assetID]?.contains(covered) ?? false) {
                 regions[layer.assetID, default: []].append(covered)
             }
         }
         return regions
+    }
+
+    /// The visible source pixels of `layer` that the document-space `rect` covers, rounded
+    /// outward; nil when it covers none.
+    public func coveredSourceRect(of layer: ImageLayer, by rect: Rect<DocumentSpace>) throws -> PixelRect? {
+        guard let asset = assets[layer.assetID] else { throw DocumentError.unknownAsset }
+        let toDocument = layer.sourceToDocument(assetSize: asset.pixelSize)
+        // Invert before the intersection test: a degenerate layer has empty bounds and would
+        // otherwise be skipped silently instead of refusing the mask (FR-06).
+        let toSource: AffineMap<DocumentSpace, SourcePixelSpace>
+        do { toSource = try toDocument.inverted() } catch { throw DocumentError.unmappableTransform }
+        guard layer.documentBounds(assetSize: asset.pixelSize).intersects(rect) else { return nil }
+        // Validate before clipping: clipping can hide overflowing corners or spans.
+        let corners = rect.corners.map(toSource.apply)
+        guard corners.allSatisfy(\.isFinite), let sourceRect = Rect<SourcePixelSpace>.bounding(corners),
+            sourceRect.width.isFinite, sourceRect.height.isFinite, sourceRect.corners.allSatisfy(\.isFinite)
+        else { throw DocumentError.unmappableTransform }
+        let visible = layer.visibleSourceRect(assetSize: asset.pixelSize)
+        guard let clipped = sourceRect.intersection(visible.asRect) else { return nil }
+        return try PixelRect.covering(clipped, within: asset.pixelSize)
     }
 
     /// Approximate bytes of unique data held by the document model (no pixels). Used with

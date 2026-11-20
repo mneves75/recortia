@@ -129,6 +129,26 @@ struct EditorMaskInvariantTests {
         #expect(fixture.secretPixels(in: pixels, FixtureRect(x: 210, y: 10, width: 20, height: 20)) == 0)
     }
 
+    @Test(
+        "Moving a box off its image keeps pixels a layer edit partly carried out of it covered (F-01)",
+        arguments: ["nudge", "duplicate"])
+    func explicitMoveKeepsPartlyDisplaced(edit: String) async throws {
+        let fixture = try await SecretExport(secret: Self.secret)
+        let h = fixture.harness
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let mask = try #require(m.document.masks.first).id
+        let layer = try #require(m.document.layers.first).id
+        m.selectTool(.select)
+        m.setSelection([.layer(layer)])
+        // The secret ends up partly outside the box: nudged to x=25, or a copy at (20, 20).
+        if edit == "nudge" { m.nudgeSelection(dx: 15, dy: 0) } else { m.duplicateSelection() }
+        m.setFrame(Rect(x: 100, y: 100, width: 20, height: 20), for: .mask(mask))
+        #expect(m.document.masks.first?.outputRect == Rect(x: 100, y: 100, width: 20, height: 20))
+        #expect(fixture.secretPixels(in: try await fixture.exported()) == 0)
+    }
+
     @Test("Align moves a selected layer and its selected mask once, from the same starting document (R4-01)")
     func alignResolvesFromOneSnapshot() async throws {
         let fixture = try await SecretExport(secret: FixtureRect(x: 0, y: 100, width: 20, height: 20))
