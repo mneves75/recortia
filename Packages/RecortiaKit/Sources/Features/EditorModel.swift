@@ -90,6 +90,8 @@ public final class EditorModel {
     /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
     @ObservationIgnored var automaticExportBaseline: DocumentSession?
     @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
+    /// The deferred automatic batch waiting for the shared export slot (`waitForExportSlot`).
+    @ObservationIgnored var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
 
     enum Gesture {
         case idle

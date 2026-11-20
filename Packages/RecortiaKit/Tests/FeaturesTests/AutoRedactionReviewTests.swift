@@ -101,10 +101,10 @@ struct AutoRedactionReviewTests {
         #expect(model.notice != nil && model.notice != .sensitiveTextMasked(1))
     }
 
-    /// Finding R-3 (P3): masking defers the batch by up to the deadline, and the batch still
-    /// refuses to queue behind another editor's export, so the capture's automatic copy and save
-    /// are dropped with a busy failure instead of running once the slot is free.
-    @Test("An export in another editor when masking settles drops the capture's automatic copy and save")
+    /// Finding R-2 (P3): masking defers the batch by up to the deadline, so another editor's
+    /// export may hold the shared slot when it settles. The batch waits for the slot instead of
+    /// dropping the capture's automatic copy and save with a busy failure.
+    @Test("An export in another editor when masking settles delays the capture's automatic copy and save")
     func batchCollidesWithAnotherEditorsExport() async throws {
         let (h, model) = try await Self.capture(regions: [Self.region])
         defer { model.close() }
@@ -119,15 +119,58 @@ struct AutoRedactionReviewTests {
         h.sensitiveText.pending?.resolve(())
         await waitFor("masking settled") { model.autoRedaction != .pending }
         await drain()
-        h.exporter.pending?.resolve(.success(()))
-        await drain()
+        // Detached first: the waiting batch renders as soon as the slot frees.
+        let rendering = h.exporter.pending
         h.exporter.pending = nil
+        rendering?.resolve(.success(()))
+        await drain()
         let outcomes = await batch.value
         #expect(await manual.value == .copied)
         #expect(model.autoRedaction == .done)
-        withKnownIssue("R-3: the deferred automatic batch is refused as busy instead of waiting for the slot") {
-            #expect(outcomes.count == 2 && outcomes.allSatisfy(\.didWrite), "\(outcomes)")
+        #expect(outcomes.count == 2 && outcomes.allSatisfy(\.didWrite), "\(outcomes)")
+    }
+
+    enum WhileWaiting: CaseIterable { case close, edit }
+
+    @MainActor final class BatchEnded { var value = false }
+
+    /// R-2: a batch waiting for the slot still fails closed when its editor closes or its document
+    /// changes before the slot frees.
+    @Test(
+        "A batch waiting for another editor's export writes nothing once its editor closes or changes",
+        arguments: WhileWaiting.allCases)
+    func waitingBatchFailsClosed(_ event: WhileWaiting) async throws {
+        let (h, model) = try await Self.capture(regions: [Self.region])
+        defer { model.close() }
+        await h.settle()
+        let plan = h.export.automaticExportPlan()
+        let ended = BatchEnded()
+        let batch = Task {
+            let outcomes = await model.runAutomaticExports(plan)
+            ended.value = true
+            return outcomes
         }
-        #expect(outcomes == [.failed(.busy)], "documents today's behaviour")
+        await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
+        let rendering = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = rendering
+        let manual = Task { await h.model.export(.copy) }
+        await waitFor("manual export rendering") { rendering.waiterCount == 1 }
+        h.exporter.pending = nil
+        h.sensitiveText.pending?.resolve(())
+        await waitFor("masking settled") { model.autoRedaction == .done }
+        await drain()
+        #expect(!ended.value, "the batch waits for the slot")
+        switch event {
+        case .close:
+            model.close()
+            // Closing wakes the batch at once; it does not wait for the other editor's export.
+            await waitFor("the closed editor's batch ended") { ended.value }
+        case .edit: model.undo()
+        }
+        rendering.resolve(.success(()))
+        #expect(await manual.value == .copied)
+        let outcomes = await batch.value
+        #expect(outcomes == [event == .close ? .canceled : .failed(.staleDocument)], "\(outcomes)")
+        #expect(h.clipboard.writes.count == 1 && h.files.uniqueSaves.isEmpty, "only the manual copy was written")
     }
 }
