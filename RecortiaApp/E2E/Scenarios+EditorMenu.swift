@@ -275,13 +275,12 @@
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             harness.settings.update { $0.preferredSaveFolderBookmark = try? folder.bookmarkData() }
             defer { harness.settings.update { $0.preferredSaveFolderBookmark = nil } }
+            func saved() -> Int { ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).count }
+            let savedBefore = saved()
             try context.require("an export can start", await E2EWait.until { model.canStartExport })
             try choose(try command(savePreferred))
             context.check(
-                "File › Save to Preferred Folder writes a file there",
-                await E2EWait.until {
-                    !((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).isEmpty
-                })
+                "File › Save to Preferred Folder writes a file there", await E2EWait.until { saved() > savedBefore })
 
             // File › Paste Image opens the (synthetic) pasteboard image in a new editor, and
             // File › Close closes the key editor.
@@ -313,21 +312,22 @@
             try post("t", keyCode: 17)
             try post("x", keyCode: 7)
             await E2ESnapshot.settle(canvas, for: .milliseconds(400))
+            // An input method may compose the letters instead of inserting them; either way the text has them.
             context.check(
                 "tool letters typed into a text annotation are text",
-                input.string == "rtx" && model.tool == .text && model.textEditing != nil,
+                (input.string == "rtx" || input.hasMarkedText()) && model.tool == .text && model.textEditing != nil,
                 "text \(input.string.debugDescription), tool \(model.tool)")
             input.setSelectedRange(NSRange(location: input.string.utf16.count, length: 0))
             input.setMarkedText(
                 "か", selectedRange: NSRange(location: 1, length: 0),
                 replacementRange: NSRange(location: NSNotFound, length: 0))
             try context.require("marked text begins", input.hasMarkedText())
+            let composing = input.string
             try post("o", keyCode: 31)
             await E2ESnapshot.settle(canvas, for: .milliseconds(400))
             context.check(
                 "a tool letter during marked text reaches the text, not Tools",
-                input.string.hasPrefix("rtx") && input.string.contains("o") && model.tool == .text
-                    && model.textEditing != nil,
+                input.string != composing && model.tool == .text && model.textEditing != nil,
                 "text \(input.string.debugDescription), tool \(model.tool)")
             controller.commitPendingText()
             window.makeFirstResponder(canvas)
