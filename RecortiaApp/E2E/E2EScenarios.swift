@@ -99,6 +99,9 @@
                 run: EditorScenarios.inspectorHeight),
             E2EScenario(id: "redaction", title: "Redaction and RED-01", run: EditorScenarios.redaction),
             E2EScenario(id: "crop-resize", title: "Crop and resize", run: EditorScenarios.cropResize),
+            E2EScenario(
+                id: "layer-transforms", title: "Rotate, flip and duplicate keep masks and exports aligned",
+                run: LayerTransformScenarios.layerTransforms),
             E2EScenario(id: "ocr-qr", title: "Text recognition and QR", run: RecognitionScenarios.ocrAndQR),
             E2EScenario(id: "pixel-tools", title: "Loupe, ruler, and color picker", run: EditorScenarios.pixelTools),
             E2EScenario(

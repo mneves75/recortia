@@ -432,6 +432,14 @@
                 find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0))
         }
 
+        /// Whether `identifier` is in the accessibility tree under `root` now, recording nothing: for
+        /// scrolling a lazily built inspector until the control exists.
+        static func exists(_ identifier: String, in root: NSView) -> Bool {
+            var visited: Set<ObjectIdentifier> = []
+            var remaining = 4096
+            return find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0) != nil
+        }
+
         private static func pressFrame(
             _ control: NSObject, in root: NSView, _ context: ScenarioContext, secondary: Bool = false
         ) throws {

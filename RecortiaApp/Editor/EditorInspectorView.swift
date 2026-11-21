@@ -51,6 +51,7 @@ struct EditorInspectorView: View {
                 case .image:
                     BackgroundSection(model: model, coalescer: coalescer)
                     SizeSection(model: model)
+                    TransformSection(model: model)
                     ImagesSection(model: model, actions: actions)
                     RecognitionSection(model: model, mode: $ocrTextMode)
                 }
@@ -102,6 +103,9 @@ private struct FormatTab: View {
         }
         if [.loupe, .colorPicker, .ruler].contains(tool) {
             PixelToolsSection(model: model)
+        }
+        if tool == .crop {
+            CropSection(model: model)
         }
         if let single {
             PositionSection(model: model, item: single)
@@ -914,6 +918,7 @@ private struct ObjectDetails: View {
                     title: String(localized: "Scale", table: "Editor"), value: layer.placement.scale, range: 0.05...4,
                     model: model, format: { EditorFormat.percent($0 * 100) }
                 ) { model.setLayerScale($0, for: id) }
+                LayerTransformRow(model: model)
             }
         case .mask:
             // The redaction color is in the Redaction section, which shows for a selected redaction.
@@ -1291,6 +1296,72 @@ private struct ImagesSection: View {
             .help(String(localized: "Show the top image half-transparent over the others", table: "Editor"))
         } header: {
             Text(String(localized: "Images", table: "Editor"))
+        }
+    }
+}
+
+/// Rotate and flip the whole image (A-10); the Image menu has the same commands.
+private struct TransformSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            HStack {
+                ForEach(ImageTransform.allCases, id: \.self) { transform in
+                    Button {
+                        model.transformImage(transform)
+                    } label: {
+                        Label(transform.imageTitle, systemImage: transform.systemImage).labelStyle(.iconOnly)
+                    }
+                    .help(transform.imageTitle)
+                    .accessibilityIdentifier("image.\(transform.identifier)")
+                }
+            }
+            .disabled(!model.canTransformImage)
+        } header: {
+            Text(String(localized: "Rotate and Flip", table: "Editor"))
+        }
+    }
+}
+
+/// The selected image layer's rotate, flip and duplicate commands (A-10).
+private struct LayerTransformRow: View {
+    let model: EditorModel
+
+    var body: some View {
+        HStack {
+            ForEach(ImageTransform.allCases, id: \.self) { transform in
+                Button {
+                    model.transformSelectedLayers(transform)
+                } label: {
+                    Label(transform.layerTitle, systemImage: transform.systemImage).labelStyle(.iconOnly)
+                }
+                .help(transform.layerTitle)
+                .accessibilityIdentifier("layer.\(transform.identifier)")
+                .disabled(!model.canTransformLayers)
+            }
+            Button(String(localized: "Duplicate", table: "Editor")) { model.duplicateSelection() }
+                .accessibilityIdentifier("layer.duplicate")
+                .disabled(!model.canArrangeSelection)
+        }
+    }
+}
+
+/// The crop tool's aspect preset (A-10).
+private struct CropSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            Picker(
+                String(localized: "Aspect Ratio", table: "Editor"),
+                selection: Binding(get: { model.cropAspect }, set: { model.setCropAspect($0) })
+            ) {
+                ForEach(CropAspect.allCases, id: \.self) { aspect in
+                    Text(verbatim: aspect.title).tag(aspect)
+                }
+            }
+            .accessibilityIdentifier("crop.aspect")
         }
     }
 }

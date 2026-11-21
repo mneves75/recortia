@@ -26,7 +26,7 @@ enum EditorInspectorTab: Hashable, CaseIterable {
     /// Tools whose options live in the Format tab.
     static let formatTools: Set<EditorTool> = [
         .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
-        .loupe, .ruler, .colorPicker,
+        .loupe, .ruler, .colorPicker, .crop,
     ]
 
     var title: String {
@@ -78,6 +78,8 @@ final class EditorCommands: ObservableObject {
         withObservationTracking {
             let model = editor.model
             _ = model.canArrangeSelection
+            _ = model.canTransformImage
+            _ = model.canTransformLayers
             _ = model.tool
             _ = model.selection
             _ = model.showsOutputPreview
@@ -286,6 +288,9 @@ struct EditorMenuCommands: Commands {
                 }
                 command.perform(on: target.model)
             }
+        }
+        CommandMenu(String(localized: "Image", table: "Editor")) {
+            EditorImageMenuItems(model: model)
         }
     }
 

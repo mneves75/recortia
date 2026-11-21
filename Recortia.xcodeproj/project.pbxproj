@@ -27,8 +27,10 @@
 		18A45AB75723F8BFA3916DBD /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
 		1A98A7B62D4C8919FAF4D280 /* Scenarios+AutomaticSave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695E6CF017268288FAA2B8A3 /* Scenarios+AutomaticSave.swift */; };
+		1D174842EBCD9A51C589C61D /* EditorImageCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9E78A8FF840E180CE7CF49 /* EditorImageCommands.swift */; };
 		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
 		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
+		2133948662674C38E5A43683 /* Scenarios+LayerTransforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92BB9D351D46D925D163B32 /* Scenarios+LayerTransforms.swift */; };
 		2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */; };
 		264C7CB58873A517AFF4FF88 /* Fosco-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00D5C84AF5B28414C2FA8C5C /* Fosco-LICENSE.txt */; };
 		2D8C368CE36FD821F3E7C2DC /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
@@ -100,6 +102,7 @@
 		7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
 		80CDF8847AC39BD8B97FCD94 /* ObservationLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */; };
 		82EBC1096E7479ECFD0E39E1 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 7E46F8A5AF01477393049017 /* Features */; };
+		838003972152BAF51333EC9B /* EditorImageCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9E78A8FF840E180CE7CF49 /* EditorImageCommands.swift */; };
 		86A1C1B0D1C683EBB2C8CB6D /* SyntheticImages.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */; };
 		86C00E2E2FFA0E88047FA20A /* MessagePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */; };
 		8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCF94E91512C394BD839071 /* EditorPreview.swift */; };
@@ -234,6 +237,7 @@
 		4E084E166124DB22614616F5 /* ChooserViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChooserViews.swift; sourceTree = "<group>"; };
 		4E65BE730BC431A6770FF18A /* E2EForegroundState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EForegroundState.swift; sourceTree = "<group>"; };
 		4EA685B6DEAA67735A12A3D2 /* Scenarios+PinsOnTop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+PinsOnTop.swift"; sourceTree = "<group>"; };
+		4F9E78A8FF840E180CE7CF49 /* EditorImageCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorImageCommands.swift; sourceTree = "<group>"; };
 		4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWindowVisibility.swift; sourceTree = "<group>"; };
 		5E4F6B9E7DA4239CD17642B8 /* Recortia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Recortia.entitlements; sourceTree = "<group>"; };
 		61D5324EB9E2AA47D945093A /* EditorRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorRootView.swift; sourceTree = "<group>"; };
@@ -305,6 +309,7 @@
 		F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ERunner.swift; sourceTree = "<group>"; };
 		F6F75F17F28F9F2CBD1E4D14 /* RecortiaE2EForegroundHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2EForegroundHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F902EF52885BED5F7982DA2C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		F92BB9D351D46D925D163B32 /* Scenarios+LayerTransforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+LayerTransforms.swift"; sourceTree = "<group>"; };
 		F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+CurvedArrows.swift"; sourceTree = "<group>"; };
 		FBEF619B471E0C3284F9AED2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Editor.xcstrings; sourceTree = "<group>"; };
@@ -494,6 +499,7 @@
 				A75CDF46F47D5D021E76221E /* Scenarios+Inspector.swift */,
 				0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */,
 				E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */,
+				F92BB9D351D46D925D163B32 /* Scenarios+LayerTransforms.swift */,
 				AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */,
 				4EA685B6DEAA67735A12A3D2 /* Scenarios+PinsOnTop.swift */,
 				3B32C7A4F3E1EE9466F2B262 /* Scenarios+PrebuiltWindows.swift */,
@@ -563,6 +569,7 @@
 				15116A7454558F3FA0807632 /* EditorCanvasView.swift */,
 				F48537C0299ADF945358D808 /* EditorCommands.swift */,
 				962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */,
+				4F9E78A8FF840E180CE7CF49 /* EditorImageCommands.swift */,
 				64983A912E3CFA1502563B16 /* EditorInspectorView.swift */,
 				1FCF94E91512C394BD839071 /* EditorPreview.swift */,
 				61D5324EB9E2AA47D945093A /* EditorRootView.swift */,
@@ -789,6 +796,7 @@
 				09F8AA7FCD99E9FB0EB48D00 /* EditorCanvasView.swift in Sources */,
 				75DAB48C82B17F161440D16D /* EditorCommands.swift in Sources */,
 				AC4AFBDA384BF5B9EAE8BAC8 /* EditorFormat.swift in Sources */,
+				1D174842EBCD9A51C589C61D /* EditorImageCommands.swift in Sources */,
 				6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */,
 				8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */,
 				0F8A047AFF5175B2658E32DA /* EditorRootView.swift in Sources */,
@@ -836,6 +844,7 @@
 				343C95A17D363ADD5FC27914 /* Scenarios+Inspector.swift in Sources */,
 				3BB7356881116137AE7EAF5E /* Scenarios+LastWindow.swift in Sources */,
 				B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */,
+				2133948662674C38E5A43683 /* Scenarios+LayerTransforms.swift in Sources */,
 				F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */,
 				CEB6C99421BFA77CF5426484 /* Scenarios+PinsOnTop.swift in Sources */,
 				634BB4EC84974E27511E1B4D /* Scenarios+PrebuiltWindows.swift in Sources */,
@@ -887,6 +896,7 @@
 				31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */,
 				61AAC7F70EA6E61FC071A9C0 /* EditorCommands.swift in Sources */,
 				3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */,
+				838003972152BAF51333EC9B /* EditorImageCommands.swift in Sources */,
 				694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */,
 				356E67D7EF867A549346181D /* EditorPreview.swift in Sources */,
 				F42EBFAC336DDBFD742F2784 /* EditorRootView.swift in Sources */,

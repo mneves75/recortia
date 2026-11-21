@@ -1,6 +1,78 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Rotate Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar para a esquerda" } }
+      }
+    },
+    "Rotate Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar para a direita" } }
+      }
+    },
+    "Flip Horizontal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Horizontal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar horizontalmente" } }
+      }
+    },
+    "Flip Vertical": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Vertical" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar verticalmente" } }
+      }
+    },
+    "Rotate Layer Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Layer Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar camada para a esquerda" } }
+      }
+    },
+    "Rotate Layer Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Layer Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar camada para a direita" } }
+      }
+    },
+    "Flip Layer Horizontal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Layer Horizontal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar camada horizontalmente" } }
+      }
+    },
+    "Flip Layer Vertical": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Layer Vertical" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar camada verticalmente" } }
+      }
+    },
+    "Rotate and Flip": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate and Flip" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar e espelhar" } }
+      }
+    },
+    "Aspect Ratio": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Aspect Ratio" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Proporção" } }
+      }
+    },
+    "Free": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Free" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Livre" } }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Original" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Original" } }
+      }
+    },
     "Contrast": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Contrast" } },
