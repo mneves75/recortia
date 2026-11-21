@@ -76,7 +76,8 @@ public final class SettingsStore {
     /// so the caller tells the person how to get back (open Recortia again).
     @discardableResult
     public func setShowsMenuBarIcon(_ shows: Bool) -> Bool {
-        let explains = !shows && preferences.showsMenuBarIcon && preferences.hasExplainedHiddenMenuBarIcon != true
+        guard shows != preferences.showsMenuBarIcon else { return false }
+        let explains = !shows && preferences.hasExplainedHiddenMenuBarIcon != true
         update {
             $0.showsMenuBarIcon = shows
             if explains { $0.hasExplainedHiddenMenuBarIcon = true }
