@@ -20,6 +20,8 @@ final class QuickActionsHarness {
     let assets = FakeAssetService()
     let clock = ManualClock()
     let settings = SettingsStore(storage: MemoryPreferenceStorage())
+    let upload = QuickUpload()
+    let textClipboard = FakeTextClipboard()
     let export: ExportCoordinator
     let pins: PinsModel
     let model: QuickActionsModel
@@ -29,11 +31,11 @@ final class QuickActionsHarness {
     init() {
         export = ExportCoordinator(
             exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: settings)
+            settings: settings, upload: upload)
         pins = PinsModel(renderer: renderer, settings: settings, export: export)
         model = QuickActionsModel(
             export: export, pins: pins, renderer: renderer, assets: assets, folders: folders, settings: settings,
-            clock: clock)
+            clock: clock, textClipboard: textClipboard)
         model.onOpenInEditor = { [weak self] in self?.opened.append($0) }
     }
 
@@ -44,6 +46,27 @@ final class QuickActionsHarness {
         let outcomes = await model.present(shown ?? session, after: export.automaticExportPlan())
         #expect(outcomes.isEmpty)
         #expect(model.isShown)
+    }
+}
+
+/// Returns a link named after the uploaded snapshot's document, so a test can tell whose it is.
+@MainActor
+final class QuickUpload: GitHubUploadService {
+    private(set) var uploaded: [DocumentID] = []
+
+    func upload(
+        _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
+        isCurrent: @escaping @MainActor @Sendable () -> Bool
+    ) async throws(GitHubUploadFailure) -> URL {
+        guard isCurrent() else { throw .staleDocument }
+        uploaded.append(snapshot.documentID)
+        return Self.link(for: snapshot.documentID)
+    }
+
+    static func link(for document: DocumentID) -> URL {
+        URL(string: "https://github.com/fixture/captures/blob/main/\(document.raw.uuidString).png")
+            ?? URL(filePath: "/")
     }
 }
 
@@ -248,5 +271,46 @@ struct QuickActionsModelTests {
         await h.shown(next)
         #expect(h.model.capture?.session.document.id == next.document.id)
         #expect(h.assets.released == h.assetIDs)
+    }
+
+    @Test("Copy Link copies this capture's own upload link and keeps the thumbnail")
+    func copyLink() async {
+        let h = QuickActionsHarness()
+        h.settings.update {
+            $0.githubUpload = GitHubUploadPreferences(
+                destination: GitHubDestination(owner: "fixture", repository: "captures"), automatic: true)
+        }
+        let link = QuickUpload.link(for: h.session.document.id)
+        #expect(await h.model.present(h.session, after: h.export.automaticExportPlan()) == [.uploaded(link)])
+        #expect(h.model.capture?.uploadedURL == link)
+        #expect(h.model.copyLink())
+        #expect(h.textClipboard.writes == [link.absoluteString])
+        // Copying the link is not an export of the capture: the thumbnail and its pixels stay.
+        #expect(h.model.isShown && h.assets.released.isEmpty)
+        await waitFor("the timer still runs") { h.clock.pendingSleepCount == 1 }
+
+        h.textClipboard.fails = true
+        #expect(!h.model.copyLink())
+        #expect(h.model.isShown)
+    }
+
+    @Test("Without its own upload a capture offers no link, not even the previous capture's")
+    func noLinkWithoutUpload() async {
+        let h = QuickActionsHarness()
+        h.settings.update {
+            $0.githubUpload = GitHubUploadPreferences(
+                destination: GitHubDestination(owner: "fixture", repository: "captures"), automatic: true)
+        }
+        _ = await h.model.present(h.session, after: h.export.automaticExportPlan())
+        #expect(h.model.capture?.uploadedURL != nil)
+        h.settings.update { $0.githubUpload?.automatic = false }
+        let next = TestFixtures.session()
+        await h.shown(next)
+        #expect(h.model.capture?.session.document.id == next.document.id)
+        #expect(h.model.capture?.uploadedURL == nil)
+        #expect(!h.model.copyLink())
+        #expect(h.textClipboard.writes.isEmpty)
+        h.model.dismiss()
+        #expect(!h.model.copyLink())
     }
 }

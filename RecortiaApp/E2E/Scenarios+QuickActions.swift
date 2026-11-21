@@ -3,6 +3,7 @@
     import Domain
     import Features
     import Imaging
+    import MacPlatform
 
     /// The quick-action thumbnail (B-1, ADR-009) through the real capture path, `AppModel`'s
     /// synchronous follow-up decision, the product's thumbnail controller and its SwiftUI buttons.
@@ -60,6 +61,8 @@
                 let shown = try E2EAccessibilityControl.name(for: "quickActions.\(id)", in: root, context)
                 context.check("the \(id) action is labelled “\(name)”", shown == name, shown)
             }
+            context.check(
+                "no Copy Link without an upload", !E2EAccessibilityControl.isPresent("quickActions.copyLink", in: root))
             let thumbnail = try context.unwrap(
                 "the preview view", EditorWindowController.first(QuickActionsThumbnailView.self, in: root))
             context.check("the preview shows the sanitized render", model.capture?.preview != nil)
@@ -88,9 +91,52 @@
             context.check("Dismiss releases the capture", await waitForCount(store, baseline))
             context.check("Dismiss writes nothing", harness.clipboard.writeCount == copies + 2)
 
+            // Copy Link: this capture's own automatic upload, as text; the thumbnail stays.
+            let destination = GitHubDestination(owner: "fixture", repository: "private-captures")
+            try harness.github.store(GitHubTokenStore.validatedToken("ghp_synthetic"), for: destination)
+            harness.settings.update {
+                $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true)
+            }
+            let uploads = harness.github.snapshots.count
+            let linkRoot = try await showThumbnail(harness, context)
+            let uploadedCapture = try context.unwrap("the uploaded capture", model.capture)
+            context.check(
+                "the automatic upload ran before the thumbnail showed",
+                harness.github.snapshots.count == uploads + 1
+                    && harness.github.snapshots.last?.documentID == uploadedCapture.session.document.id)
+            let link = try context.unwrap("this capture's upload link", uploadedCapture.uploadedURL)
+            let linkName = try E2EAccessibilityControl.name(for: "quickActions.copyLink", in: linkRoot, context)
+            context.check(
+                "the Copy Link action is labelled “\(String(localized: "Copy Link"))”",
+                linkName == String(localized: "Copy Link"), linkName)
+            harness.textPasteboard.clearContents()
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.copyLink", in: linkRoot, context)
+            try context.require(
+                "Copy Link writes the link as text",
+                await E2EWait.until { harness.textPasteboard.string(forType: .string) == link.absoluteString },
+                harness.textPasteboard.string(forType: .string) ?? "nothing")
+            context.check(
+                "the link is a GitHub link for the fixture repository",
+                link.absoluteString.hasPrefix("https://github.com/fixture/private-captures/"))
+            await E2ESnapshot.settle(linkRoot)
+            let linkHeld = await store.count
+            context.check(
+                "Copy Link keeps the thumbnail and the capture",
+                model.capture?.id == uploadedCapture.id && model.isShown && linkHeld == baseline + 1,
+                "\(linkHeld) of \(baseline)")
+            context.check("Copy Link writes no image", harness.clipboard.writeCount == copies + 2)
+            context.snapshot(linkRoot, shot: "copy-link")
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.dismiss", in: linkRoot, context)
+            context.check("the uploaded capture is released", await waitForCount(store, baseline))
+            harness.settings.update { $0.githubUpload = nil }
+
             // Open in Editor: the ordinary editor takes the capture, which stays in the store.
             let editRoot = try await showThumbnail(harness, context)
             let held = try context.unwrap("the held capture", model.capture?.session.document.id)
+            context.check(
+                "the next capture offers no link from the earlier upload",
+                model.capture?.uploadedURL == nil
+                    && !E2EAccessibilityControl.isPresent("quickActions.copyLink", in: editRoot))
             try E2EAccessibilityControl.pressCheckingEffect("quickActions.edit", in: editRoot, context)
             try context.require(
                 "Open in Editor opens an editor",

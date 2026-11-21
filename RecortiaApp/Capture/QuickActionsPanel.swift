@@ -60,6 +60,9 @@ final class QuickActionsUIController {
 
     func pin() async -> String? { (await model.pin()).map { EditorStrings.message(.pinFailed($0)) } }
 
+    /// Copies the upload link as text; the thumbnail stays (it exports nothing of the capture).
+    func copyLink() -> String? { model.copyLink() ? nil : String(localized: "Could not copy the link.") }
+
     func openInEditor() { model.openInEditor() }
 
     func dismiss() { model.dismiss() }
@@ -130,6 +133,12 @@ struct QuickActionsView: View {
                     actions.openInEditor()
                 }
                 button(String(localized: "Pin", table: "Editor"), "pin", id: "pin") { perform(actions.pin) }
+                // Only when this capture's own automatic upload returned a link.
+                if capture.uploadedURL != nil {
+                    button(String(localized: "Copy Link"), "link", id: "copyLink", whileActing: true) {
+                        perform(actions.copyLink)
+                    }
+                }
                 Divider().frame(height: 16)
                 button(String(localized: "Dismiss", table: "Editor"), "xmark", id: "dismiss", whileActing: true) {
                     actions.dismiss()

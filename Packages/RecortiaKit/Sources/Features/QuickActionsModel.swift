@@ -25,6 +25,8 @@ public struct QuickCapture: Identifiable, Sendable {
     public let id: UUID
     public let session: DocumentSession
     public internal(set) var preview: CGImage?
+    /// The link this capture's own automatic upload returned, if it uploaded.
+    public internal(set) var uploadedURL: URL?
 }
 
 /// The quick-action thumbnail after a capture (B-1, ADR-009). One capture at a time: its
@@ -60,12 +62,14 @@ public final class QuickActionsModel {
     @ObservationIgnored private let folders: any SaveFolderService
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let clock: any FeatureClock
+    @ObservationIgnored private let textClipboard: any TextClipboardService
     @ObservationIgnored private var timer: Task<Void, Never>?
     @ObservationIgnored private var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
 
     public init(
         export: ExportCoordinator, pins: PinsModel, renderer: any RenderService, assets: any ImageAssetService,
-        folders: any SaveFolderService, settings: SettingsStore, clock: any FeatureClock
+        folders: any SaveFolderService, settings: SettingsStore, clock: any FeatureClock,
+        textClipboard: any TextClipboardService
     ) {
         self.export = export
         self.pins = pins
@@ -74,6 +78,7 @@ public final class QuickActionsModel {
         self.folders = folders
         self.settings = settings
         self.clock = clock
+        self.textClipboard = textClipboard
     }
 
     /// Holds `session`, discarding any earlier capture, runs `plan` (decided when the capture
@@ -95,6 +100,8 @@ public final class QuickActionsModel {
         let preview = try? await renderer.render(document, scale: min(1, Self.previewMaxPixels / max(side, 1)))
         guard capture?.id == id else { return outcomes }
         capture?.preview = preview
+        // Only this batch's outcome, run under the consent identity fixed at capture.
+        capture?.uploadedURL = outcomes.lazy.compactMap(\.uploadedURL).first
         isShown = true
         armTimer()
         return outcomes
@@ -149,6 +156,13 @@ public final class QuickActionsModel {
             end(held, finished: false)
             return error
         }
+    }
+
+    /// Copies the link this capture's own automatic upload returned, as plain text. It exports
+    /// nothing of the capture, so the thumbnail stays and its timer keeps running.
+    public func copyLink() -> Bool {
+        guard isShown, let url = capture?.uploadedURL else { return false }
+        return textClipboard.writePlainText(url.absoluteString)
     }
 
     /// Hands the capture to an ordinary editor, which then owns its pixels. Cancels an action in

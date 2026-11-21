@@ -1227,12 +1227,44 @@
         }
       }
     },
+    "Copy Link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Link"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar link"
+          }
+        }
+      }
+    },
     "Copy, Save or Drag Out" : {
       "localizations" : {
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar, Salvar ou Arrastar para fora"
+          }
+        }
+      }
+    },
+    "Could not copy the link." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not copy the link."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível copiar o link."
           }
         }
       }

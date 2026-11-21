@@ -16,8 +16,12 @@ struct FeatureModels {
     let ocrLanguages: OCRLanguagesModel
     let loginItem: LoginItemModel
 
-    init(services: AppServices, settings: SettingsStore) {
+    /// The plain-text clipboard for explicit Copy actions on text (recognized text, an upload link).
+    let textClipboard: any TextClipboardService
+
+    init(services: AppServices, settings: SettingsStore, textClipboard: any TextClipboardService) {
         self.services = services
+        self.textClipboard = textClipboard
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
             clock: services.clock, settings: settings, sound: services.captureSound)
@@ -32,7 +36,7 @@ struct FeatureModels {
         pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
         quickActions = QuickActionsModel(
             export: export, pins: pins, renderer: services.renderer, assets: services.assets,
-            folders: services.folders, settings: settings, clock: services.clock)
+            folders: services.folders, settings: settings, clock: services.clock, textClipboard: textClipboard)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
     }
@@ -100,7 +104,8 @@ final class AppModel: AppActions {
         showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
         confirmQuit: @escaping @MainActor (QuitDiscards) -> Bool = { MessagePresenter.confirmDiscardOnQuit($0) },
         requestTermination: @escaping @MainActor () -> Void = { NSApp.terminate(nil) },
-        chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() }
+        chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() },
+        textClipboard: any TextClipboardService = PasteboardTextClipboard()
     ) {
         self.settings = settings
         self.showMessage = showMessage
@@ -109,7 +114,7 @@ final class AppModel: AppActions {
         self.chooseSaveFolder = chooseSaveFolder
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
-        features = FeatureModels(services: services, settings: settings)
+        features = FeatureModels(services: services, settings: settings, textClipboard: textClipboard)
         captureWindowVisibility = CaptureWindowVisibility(capture: features.capture, scroll: features.scroll) {
             [weak self] in self?.isStartingScrollingCapture == true
         }
@@ -321,7 +326,7 @@ final class AppModel: AppActions {
             renderer: services.renderer, export: features.export, folders: services.folders,
             textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
             sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
-            pins: features.pins, textClipboard: PasteboardTextClipboard(), links: WorkspaceLinkOpener(),
+            pins: features.pins, textClipboard: features.textClipboard, links: WorkspaceLinkOpener(),
             settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
         openDocument = { [editors] session, action, fileName in
             editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)

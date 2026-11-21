@@ -89,14 +89,15 @@
                 showMessage: { messages.values.append($0) },
                 confirmQuit: { [quit] in quit.answer($0) },
                 requestTermination: { [terminations] in terminations.request() },
-                chooseSaveFolder: { [folderChooser] in folderChooser.next() })
+                chooseSaveFolder: { [folderChooser] in folderChooser.next() },
+                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard))
             let features = app.features
             self.features = features
             environment = EditorEnvironment(
                 renderer: services.renderer, export: features.export, folders: services.folders,
                 textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
                 sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
-                pins: features.pins, textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links,
+                pins: features.pins, textClipboard: features.textClipboard, links: links,
                 settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
             editors = E2EEditorHost(environment: environment)
             quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
