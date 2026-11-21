@@ -127,6 +127,19 @@ final class MaskingSource {
     func secretPixels(_ pixels: DecodedPixels) -> Int {
         SecretExport.secretPixels(in: pixels, Self.secret, green: 0)
     }
+
+    /// Pixels of the planted address that are not the black mask fill: the measure that sees a
+    /// leak of any colour, where a colour count would also see look-alikes elsewhere in the image.
+    func uncoveredPixels(_ pixels: DecodedPixels) -> Int {
+        var count = 0
+        for y in Self.secret.y..<min(pixels.height, Self.secret.y + Self.secret.height) {
+            for x in Self.secret.x..<min(pixels.width, Self.secret.x + Self.secret.width) {
+                let p = pixels.pixel(x: x, y: y)
+                if max(p.r, p.g, p.b) > 30 { count += 1 }
+            }
+        }
+        return count
+    }
 }
 
 @Suite("Automatic masking of scrolling captures and opened images (FR-06 amendment, T2)")
@@ -258,9 +271,11 @@ struct SourceAutoRedactionTests {
         #expect(LiveSensitiveText.pixelsPerPoint(of: .pasted) == 1)
     }
 
-    @Test("RED: a masked scrolling capture's copy, save, drag and pin bytes cover the planted address")
-    func scrollCaptureExportsAreMasked() async throws {
-        let new = MaskingSource(.scrollCapture, masking: true)
+    @Test(
+        "RED: a masked new document's copy, save, drag and pin bytes cover every pixel of the planted address",
+        arguments: MaskingSource.Source.allCases)
+    func exportsAreMasked(_ source: MaskingSource.Source) async throws {
+        let new = MaskingSource(source, masking: true)
         let model = new.open(try await new.create())
         defer { model.close() }
         let h = new.editors
@@ -271,7 +286,7 @@ struct SourceAutoRedactionTests {
         await model.settlePreviews()
 
         #expect(await model.export(.copy) == .copied)
-        let saveURL = MaskingSource.folder.appending(path: "scroll.png")
+        let saveURL = MaskingSource.folder.appending(path: "\(source.rawValue).png")
         #expect(
             await model.export(.save(saveURL, format: .fixed(.png), overwriteConfirmed: true)) == .saved(saveURL))
         #expect(await model.export(.drag) == .dragged)
@@ -284,14 +299,17 @@ struct SourceAutoRedactionTests {
             ("pin", try ContainerInspector.decodePixels(try ContainerCrafting.pngData(pin.image))),
         ]
         for (sink, pixels) in exported {
-            #expect(pixels.height == MaskingSource.height, "\(sink) exports the whole stitched page")
+            #expect(pixels.height == MaskingSource.height, "\(sink) exports the whole image")
             #expect(new.secretPixels(pixels) == 0, "\(sink) shows the planted address")
+            #expect(new.uncoveredPixels(pixels) == 0, "\(sink) leaves planted pixels unmasked")
         }
 
         // Positive control: after the person's Undo the same sinks see the address.
         model.undo()
         await model.settlePreviews()
         #expect(await model.export(.copy) == .copied)
-        #expect(new.secretPixels(try new.pixels(try #require(h.clipboard.writes.last))) > 0)
+        let undone = try new.pixels(try #require(h.clipboard.writes.last))
+        #expect(new.secretPixels(undone) > 0)
+        #expect(new.uncoveredPixels(undone) > 0)
     }
 }

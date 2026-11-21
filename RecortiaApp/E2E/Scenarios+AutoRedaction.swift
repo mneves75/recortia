@@ -20,7 +20,10 @@
                 width: Int(secret.width * scale), height: Int(secret.height * scale))
         }
 
-        /// The secret line's pale-yellow background (`SyntheticDesktop.image`), found nowhere else.
+        /// The secret line's pale-yellow background (`SyntheticDesktop.image`), found nowhere else in
+        /// the notes window. The whole desktop has look-alikes: 18 anti-aliased edge pixels of the white
+        /// "4" on the bottom-right amber marker match too, so a full-desktop image is judged by
+        /// `uncovered` over the planted rect instead.
         static func secretBackground(in pixels: DecodedPixels) -> Int {
             var count = 0
             for y in 0..<pixels.height {
@@ -209,9 +212,11 @@
             }
             try await settleMasked(opened, band: secret, harness, context, "opened image")
             let openedCopy = try await copiedPixels(opened, harness, context, "opened image")
+            // Every pixel of the planted line must be mask fill. The secret is drawn only inside
+            // `secretRect` (its 3-pixel surround is the notes page's white).
             context.check(
-                "the opened image's copy is masked", secretBackground(in: openedCopy) == 0,
-                "\(secretBackground(in: openedCopy)) secret pixels")
+                "the opened image's copy is masked", uncovered(secret, in: openedCopy) == 0,
+                "\(uncovered(secret, in: openedCopy)) uncovered pixels of the planted line")
             await E2EActions.snapshotEditor(opened, context, shot: "opened-masked")
 
             // Failed: the opened image is shown with a notice and manual export shows the secret.
@@ -228,8 +233,8 @@
             try await harness.editors.waitForBase(failed.model)
             let shown = try await copiedPixels(failed, harness, context, "failed opened image")
             context.check(
-                "positive control: the unmasked copy shows the secret", secretBackground(in: shown) > 0,
-                "\(secretBackground(in: shown)) secret pixels")
+                "positive control: the unmasked copy shows the secret", uncovered(secret, in: shown) > 0,
+                "\(uncovered(secret, in: shown)) visible pixels of the planted line")
             context.check(
                 "neither source ran an automatic copy", harness.clipboard.writeCount == copies + 4,
                 "\(harness.clipboard.writeCount - copies) copies, all manual")
