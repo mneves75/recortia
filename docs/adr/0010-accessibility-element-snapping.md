@@ -1,7 +1,8 @@
 # ADR-010: Region selections snap to interface elements, read as frames only
 
-**Status:** Proposed (2026-11-21). Built on `feat/t3-element-snapping`; BACKLOG FP-050 requires the
-owner's sign-off on this ADR before B-7 ships.
+**Status:** Accepted (2026-11-21) by the coordinator at the plan's scheduled ADR stop, under the
+owner's 2026-11-20 delegation (`docs/specs/program-2026-11/decisions.md`); the owner may overrule it
+before the release that ships it.
 **Requirements:** FR-02 · Program 2026-11 B-7 · **Verification:** `ElementSnappingTests`,
 `ElementSnappingCaptureTests`, bilingual E2E `element-snapping` and `settings`
 
