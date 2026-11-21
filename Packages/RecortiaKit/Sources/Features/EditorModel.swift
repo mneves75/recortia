@@ -105,8 +105,6 @@ public final class EditorModel {
     /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
     @ObservationIgnored var automaticExportBaseline: DocumentSession?
     @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
-    /// The person dismissed the masking-failed notice (`isKeptOnClose`).
-    @ObservationIgnored var maskingFailureAcknowledged = false
     /// An automatic upload's notice that waits until the masking count is dismissed (3C).
     @ObservationIgnored var waitingNotice: EditorNotice?
     /// The deferred automatic batch waiting for the shared export slot (`waitForExportSlot`).
@@ -164,7 +162,6 @@ public final class EditorModel {
 
     /// Dismissal, the person's or the timeout's, frees the slot for a notice waiting behind it.
     public func dismissNotice() {
-        if notice == .maskingFailed { maskingFailureAcknowledged = true }
         notice = nil
         if let waiting = waitingNotice {
             waitingNotice = nil
