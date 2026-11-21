@@ -251,6 +251,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// `SettingsStore.sanitized` sets it back to false, so it is always encoded, because 0.14.0
     /// and earlier require the key and rolling back must keep the person's preferences (PREF-01).
     package var launchAtLogin: Bool? = false
+    /// Never read; read `checksForUpdatesAutomatically`. Kept because 0.14.0 and earlier require
+    /// the key, so rolling back keeps the person's preferences (PREF-01).
     public var updateChecksEnabled = false
     public var automaticScrollingEnabled = false
     /// The fixed format, PNG or JPEG; read `exportFormat`. 0.14 and earlier decode only those two,
@@ -298,11 +300,21 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var colorFormatChoice: ColorFormat?
     /// Stored only once the person changes it; read `writesDiagnosticsFile` (B-10).
     public var writesDiagnosticsFileChoice: Bool?
+    /// Stored only once the person changes it; read `checksForUpdatesAutomatically` (FP-024).
+    /// Optional so blobs, and their seals, written before 0.15 decode unchanged.
+    public var checksForUpdatesAutomaticallyChoice: Bool?
     /// The framing new captures open with (FR-13); nil until the person saves one in the editor.
     /// Documents already open never change with it.
     public var defaultFraming: Presentation?
 
     public init() {}
+
+    /// Whether the updater asks the update feed on its own schedule (FP-024, PRIV-01). Off by
+    /// default: Recortia then asks the feed only when the person chooses Check for Updates….
+    public var checksForUpdatesAutomatically: Bool {
+        get { checksForUpdatesAutomaticallyChoice ?? false }
+        set { checksForUpdatesAutomaticallyChoice = newValue }
+    }
 
     /// Whether Recortia writes the local diagnostics file of typed events (B-10). Off by default;
     /// turning it off stops writing and keeps the file until the person deletes it.
@@ -409,11 +421,12 @@ public struct Preferences: Hashable, Sendable, Codable {
 }
 
 extension Preferences {
-    /// Settings that let Recortia act on a capture without a further user action. Honored only
+    /// Settings that let Recortia act on a capture, or ask the update feed, without a further
+    /// user action. Honored only
     /// from preferences Recortia sealed itself (SettingsStore, THREAT_MODEL.md).
     public var grantsSideEffects: Bool {
         autoCopy || autoSave || automaticScrollingEnabled || preferredSaveFolderBookmark != nil
-            || githubUpload?.automatic == true
+            || githubUpload?.automatic == true || checksForUpdatesAutomatically
     }
 
     public var withoutSideEffectConsent: Preferences {
@@ -423,6 +436,7 @@ extension Preferences {
         copy.automaticScrollingEnabled = false
         copy.preferredSaveFolderBookmark = nil
         copy.githubUpload?.automatic = false
+        copy.checksForUpdatesAutomaticallyChoice = nil
         return copy
     }
 }

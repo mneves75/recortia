@@ -20,6 +20,8 @@ struct GeneralSettingsTab: View {
     let loginItem: LoginItemModel?
     /// `AppModel.setShowsMenuBarIcon`, which explains the first hiding.
     let setShowsMenuBarIcon: (Bool) -> Void
+    /// Nil in previews; its toggle shows only in a build that can verify updates (FP-024).
+    var updater: UpdaterModel? = nil
 
     var body: some View {
         Form {
@@ -53,6 +55,15 @@ struct GeneralSettingsTab: View {
                     isOn: Binding(get: { settings.preferences.showsMenuBarIcon }, set: setShowsMenuBarIcon)
                 )
                 .accessibilityIdentifier("settings.showsMenuBarIcon")
+                if let updater, updater.isOffered {
+                    Toggle(
+                        "Check for updates automatically",
+                        isOn: Binding(
+                            get: { updater.checksAutomatically }, set: { updater.setChecksAutomatically($0) })
+                    )
+                    .disabled(updater.status != .started)
+                    .accessibilityIdentifier("settings.checksForUpdatesAutomatically")
+                }
             }
             EditorZoomSettingsSection(settings: settings)
             PinsSettingsSection(settings: settings)

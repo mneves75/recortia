@@ -92,6 +92,17 @@ enum MessagePresenter {
         return runModal(alert) == .alertFirstButtonReturn
     }
 
+    /// Offers the updater's window for an update a check found. True opens it.
+    static func confirmUpdate(_ message: UserMessage) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = message.title
+        alert.informativeText = message.detail
+        alert.addButton(withTitle: String(localized: "Show Update"))
+        alert.addButton(withTitle: String(localized: "Later"))
+        return runModal(alert) == .alertFirstButtonReturn
+    }
+
     /// Asks before Save replaces an existing file from a window without a sheet parent (the
     /// quick-action thumbnail); the editor asks the same in a sheet.
     static func confirmReplacement(of existing: URL) -> Bool {
@@ -158,6 +169,24 @@ enum MessagePresenter {
 }
 
 extension UserMessage {
+    static func updateNotFound(version: String) -> UserMessage {
+        UserMessage(
+            title: String(localized: "Recortia is up to date"),
+            detail: String(localized: "Recortia \(version) is the newest version."))
+    }
+
+    static var updateCheckFailed: UserMessage {
+        UserMessage(
+            title: String(localized: "Could not check for updates"),
+            detail: String(localized: "Recortia could not read the update feed. Try again later."))
+    }
+
+    static func updateAvailable(version: String) -> UserMessage {
+        UserMessage(
+            title: String(localized: "Recortia \(version) is available"),
+            detail: String(localized: "Recortia checks the update’s signature before installing it."))
+    }
+
     /// Said once, the first time the menu-bar icon is hidden (FR-01).
     static var menuBarIconHidden: UserMessage {
         UserMessage(

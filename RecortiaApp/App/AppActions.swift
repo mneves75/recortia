@@ -23,6 +23,8 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
     case settings
     case featureTour
     case about
+    /// Shown only in a build that can verify updates (FP-024).
+    case checkForUpdates
     case quit
 
     var id: String { rawValue }
@@ -52,6 +54,7 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
         case .settings: String(localized: "Settings…")
         case .featureTour: String(localized: "Feature Tour")
         case .about: String(localized: "About Recortia")
+        case .checkForUpdates: String(localized: "Check for Updates…")
         case .quit: String(localized: "Quit Recortia")
         }
     }

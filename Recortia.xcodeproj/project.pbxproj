@@ -38,6 +38,7 @@
 		2B878BA9E5961403BD36DCAB /* Scenarios+Framing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4FF3324557151CDC4E347 /* Scenarios+Framing.swift */; };
 		2D8C368CE36FD821F3E7C2DC /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		2DD16A3919445D7FAA908F82 /* E2ERunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */; };
+		2F4FB7FE8751D7C4750993C6 /* Scenarios+Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 153B94748C02F0E8300DA421 /* Scenarios+Updater.swift */; };
 		302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		30B346D5FCE3BE82877BD2A2 /* LiveScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = B885E83C460249621067B7FB /* LiveScrolling.swift */; };
 		30D34F21A538DECAD6DDA000 /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
@@ -216,6 +217,7 @@
 		12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shortcuts.swift"; sourceTree = "<group>"; };
 		143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+AutomaticExport.swift"; sourceTree = "<group>"; };
 		15116A7454558F3FA0807632 /* EditorCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCanvasView.swift; sourceTree = "<group>"; };
+		153B94748C02F0E8300DA421 /* Scenarios+Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Updater.swift"; sourceTree = "<group>"; };
 		157FFAAB86E949F9B49035CB /* HostMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostMain.swift; sourceTree = "<group>"; };
 		15C59423A6DA2A4DDE9C01F6 /* Scenarios+CapturePrecision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+CapturePrecision.swift"; sourceTree = "<group>"; };
 		1A4B3763DE55CA83F21962CF /* Recortia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Recortia.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -232,6 +234,7 @@
 		3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2E.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B32C7A4F3E1EE9466F2B262 /* Scenarios+PrebuiltWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+PrebuiltWindows.swift"; sourceTree = "<group>"; };
 		3C4ABAB4ECC0B1ED5754B253 /* Scenarios+ArrowStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+ArrowStyles.swift"; sourceTree = "<group>"; };
+		3D6504F8D497D76BC380D67C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3DCF5452C8392723EB823CFA /* E2EForegroundFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EForegroundFixture.swift; sourceTree = "<group>"; };
 		3F28E2BD01C5C58B01ED7275 /* Recortia-Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Recortia-Release.entitlements"; sourceTree = "<group>"; };
 		414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shell.swift"; sourceTree = "<group>"; };
@@ -491,6 +494,7 @@
 				F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */,
 				E33BB654473B6F3033727605 /* E2EScenarios.swift */,
 				293033569B29300AB2B89925 /* E2ESnapshot.swift */,
+				3D6504F8D497D76BC380D67C /* Info.plist */,
 				06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */,
 				3C4ABAB4ECC0B1ED5754B253 /* Scenarios+ArrowStyles.swift */,
 				143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */,
@@ -529,6 +533,7 @@
 				1054033F6519FF4F5EECEDA7 /* Scenarios+TextAppearance.swift */,
 				8CB5F8BBE3C3ECB34B0C587E /* Scenarios+TextDecorations.swift */,
 				7EDA8E84C4E3B1FA1595F23D /* Scenarios+TextRedaction.swift */,
+				153B94748C02F0E8300DA421 /* Scenarios+Updater.swift */,
 				E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */,
 				D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */,
 				BBB4E1E8AFCE71B3B564906B /* ForegroundHost */,
@@ -880,6 +885,7 @@
 				F24989E79F912C5D586F81CE /* Scenarios+TextAppearance.swift in Sources */,
 				9B89A1BC56B6C7226ED6FB51 /* Scenarios+TextDecorations.swift in Sources */,
 				F1056D01EDD1DD943916A71D /* Scenarios+TextRedaction.swift in Sources */,
+				2F4FB7FE8751D7C4750993C6 /* Scenarios+Updater.swift in Sources */,
 				12EB55C49634E5E3F58A096D /* ScreenChoice.swift in Sources */,
 				652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */,
 				D24EE0E8714F0274DE8B1AEC /* ScrollViews.swift in Sources */,
@@ -1056,7 +1062,7 @@
 				CODE_SIGN_ENTITLEMENTS = RecortiaApp/Recortia.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = RecortiaApp/Info.plist;
+				INFOPLIST_FILE = RecortiaApp/E2E/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1261,7 +1267,7 @@
 				CODE_SIGN_ENTITLEMENTS = RecortiaApp/Recortia.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = RecortiaApp/Info.plist;
+				INFOPLIST_FILE = RecortiaApp/E2E/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

@@ -81,6 +81,16 @@ Sparkle is started once, at launch, from the composition root. `SPUUpdater` is c
 `startingUpdater: false` and started explicitly so a failure is observable; a failure disables
 the menu item and never blocks the app.
 
+As built (T2): the protocol is `start(checksAutomatically:)`, `setChecksAutomatically(_:)`,
+`checkForUpdates() async` and `installUpdate()`, with `UpdaterModel` in `Features` owning the
+shown/enabled state. A build without `SUPublicEDKey` never creates Sparkle and hides both entry
+points. The opt-in lives in Recortia's sealed preferences (`checksForUpdatesAutomaticallyChoice`,
+a side-effect consent an unsealed blob cannot grant), not in Sparkle's own default: Sparkle's
+second-launch permission prompt is suppressed and its `mayPerformUpdateCheck` delegate refuses
+every scheduled check while the preference is off. Check for Updates… runs Sparkle's probing check
+(`checkForUpdateInformation`) and reports "no update" and "check failed" in Recortia's alert; an
+update found asks first, then opens Sparkle's own window, which downloads, verifies and installs.
+
 ### Info.plist
 
 - `SUFeedURL` = `https://mneves75.github.io/recortia/appcast.xml`

@@ -33,6 +33,9 @@ struct MenuContent: View {
             item(.settings)
                 .keyboardShortcut(",")
             item(.about)
+            if model.features.updater.isOffered {
+                item(.checkForUpdates)
+            }
             item(.featureTour)
             Divider()
             item(.quit)

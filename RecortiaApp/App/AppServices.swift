@@ -36,6 +36,8 @@ struct AppServices {
     var interfaceElements: (any InterfaceElementFrameService)? = nil
     /// The optional diagnostics file (B-10); a run folder in the E2E runner, nil in previews.
     var diagnosticsLog: DiagnosticsLog? = nil
+    /// The signed updater (FP-024); synthetic in the E2E runner, nil in previews.
+    var updates: (any UpdateService)? = nil
 }
 
 extension DiagnosticVersions {
@@ -125,6 +127,7 @@ extension AppServices {
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
             loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound(),
             interfaceElements: LiveInterfaceElements(),
-            diagnosticsLog: DiagnosticsLog.standardDirectory().map { DiagnosticsLog(directory: $0) })
+            diagnosticsLog: DiagnosticsLog.standardDirectory().map { DiagnosticsLog(directory: $0) },
+            updates: SparkleUpdateService(info: Bundle.main.infoDictionary))
     }
 }

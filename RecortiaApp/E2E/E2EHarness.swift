@@ -26,6 +26,7 @@
         let textPasteboard: NSPasteboard
         let drag: SyntheticDragReceiver
         let github = SyntheticGitHubUpload()
+        let updates = SyntheticUpdateService()
         let exportGate: SyntheticExportGate
         let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
@@ -87,7 +88,8 @@
                 clock: sensitiveText.clock,
                 interfaceElements: interfaceElements,
                 diagnosticsLog: DiagnosticsLog(
-                    directory: work.appending(path: "diagnostics", directoryHint: .isDirectory)))
+                    directory: work.appending(path: "diagnostics", directoryHint: .isDirectory)),
+                updates: updates)
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(
@@ -96,6 +98,7 @@
                     takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
                 showMessage: { messages.present($0, on: $1) },
                 confirmQuit: { [quit] in quit.answer($0) },
+                confirmUpdate: { messages.confirm($0) },
                 requestTermination: { [terminations] in terminations.request() },
                 chooseSaveFolder: { [folderChooser] in folderChooser.next() },
                 textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard))
@@ -118,6 +121,8 @@
             quickActionsUI.chooseSaveDestination = { nil }
             quickActionsUI.confirmReplacement = { _ in false }
             wire()
+            // What a normal launch does for the updater, with the synthetic one: no request.
+            features.updater.start()
             // What a normal launch does (ADR-005), without registering any handler.
             ShortcutDefaults.seedIfNeeded(isNewInstall: !settings.preferences.hasCompletedOnboarding)
             app.shortcutStatus.refreshAll()
@@ -191,9 +196,17 @@
         }
 
         private(set) var requests: [Request] = []
+        /// Questions asked through `confirm`, answered from `answers` (declining when it is empty).
+        private(set) var confirmations: [UserMessage] = []
+        var answers: [Bool] = []
         /// Every message, alert or sheet, in the order it was asked for.
         var values: [UserMessage] { requests.map(\.message) }
         var alerts: [UserMessage] { requests.filter { !$0.isSheet }.map(\.message) }
+
+        func confirm(_ message: UserMessage) -> Bool {
+            confirmations.append(message)
+            return answers.isEmpty ? false : answers.removeFirst()
+        }
 
         func present(_ message: UserMessage, on target: MessageTarget) {
             switch target {
