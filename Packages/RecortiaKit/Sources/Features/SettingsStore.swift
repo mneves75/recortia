@@ -1,5 +1,6 @@
 import Domain
 import Foundation
+import Imaging
 import Observation
 
 /// Preferences persisted as one versioned JSON blob (SPEC §7). Stores settings only: never
@@ -30,16 +31,27 @@ public final class SettingsStore {
     /// so an automatic save can tell a new choice from a moved or unreachable planned folder.
     @ObservationIgnored var saveFolderSelection = 0
 
+    /// Whether this Mac encodes HEIC; without it, HEIC is not offered and a stored HEIC choice
+    /// exports PNG (B-9a).
+    public let encodesHEIC: Bool
+
     @ObservationIgnored private let storage: any PreferenceStorage
     @ObservationIgnored private let integrity: any PreferenceIntegrityService
 
-    public init(storage: any PreferenceStorage, integrity: any PreferenceIntegrityService) {
+    public init(
+        storage: any PreferenceStorage, integrity: any PreferenceIntegrityService,
+        encodesHEIC: Bool = ExportCapabilities.encodesHEIC
+    ) {
         self.storage = storage
         self.integrity = integrity
+        self.encodesHEIC = encodesHEIC
         let (loaded, issue) = Self.load(from: storage, integrity: integrity)
         preferences = loaded
         loadIssue = issue
     }
+
+    /// The options every export starts from (FR-07).
+    public var exportOptions: ExportOptions { preferences.exportOptions(encodesHEIC: encodesHEIC) }
 
     public func update(_ change: (inout Preferences) -> Void) {
         var updated = preferences
@@ -127,9 +139,15 @@ public final class SettingsStore {
         output.launchAtLogin = false
         output.captureDelaySeconds = CaptureRequest.clampedDelay(input.captureDelaySeconds)
         output.jpegQuality = input.jpegQuality.isFinite ? min(max(input.jpegQuality, 0), 1) : defaults.jpegQuality
-        if input.defaultExportFormat == .automatic {
+        // Recortia 0.14 reads only PNG or JPEG in this key; the other choices have their own.
+        switch input.defaultExportFormat {
+        case .png, .jpeg: break
+        case .automatic:
             output.defaultExportFormat = defaults.defaultExportFormat
             output.automaticExportFormatChoice = true
+        case .heic:
+            output.defaultExportFormat = defaults.defaultExportFormat
+            if input.automaticExportFormatChoice != true { output.heicExportFormatChoice = true }
         }
         output.defaultExportScale =
             input.defaultExportScale.isFinite && ExportOptions.validScaleRange.contains(input.defaultExportScale)

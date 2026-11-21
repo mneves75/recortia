@@ -27,23 +27,23 @@ struct ScrollStitchingTests {
         #expect(ScrollStitcher.endOfPageStationaryFrames == 3)
     }
 
-    @Test("Preview is bounded by maxHeight, keeps aspect ratio, and is nil before any frame")
+    @Test("Preview is bounded by maxLength, keeps aspect ratio, and is nil before any frame")
     func preview() throws {
         var stitcher = ScrollStitcher()
-        #expect(stitcher.preview(maxHeight: 100) == nil)
+        #expect(stitcher.preview(maxLength: 100) == nil)
         #expect(throws: ScrollStitchError.noFrames) { try stitcher.assemble() }
         let fixture = ScrollPageFixture(seed: 13, pageHeight: 1200)
         for (index, offset) in [0, 100, 200, 300, 400].enumerated() {
             _ = stitcher.append(try #require(fixture.frame(offset: offset, index: index)), elapsed: .zero)
         }
         let size = stitcher.outputSize
-        let preview = try #require(stitcher.preview(maxHeight: 200))
+        let preview = try #require(stitcher.preview(maxLength: 200))
         #expect(preview.height <= 200)
         let expectedWidth = Double(size.width) * Double(preview.height) / Double(size.height)
         #expect(abs(Double(preview.width) - expectedWidth) <= 1)
-        let full = try #require(stitcher.preview(maxHeight: 100_000))
+        let full = try #require(stitcher.preview(maxLength: 100_000))
         #expect(full.width == size.width && full.height == size.height)
-        #expect(stitcher.preview(maxHeight: 0) == nil)
+        #expect(stitcher.preview(maxLength: 0) == nil)
     }
 
     @Test("Fixed header and footer appear exactly once and seams copy source rows without blending")

@@ -60,6 +60,8 @@ public enum CaptureError: Error, Equatable, Sendable {
 
 public enum SinkError: Error, Equatable, Sendable {
     case clipboardWriteFailed
+    /// The snapshot could not be handed to the print panel.
+    case printFailed
     case destinationExists
     /// The name is longer than the destination's volume accepts.
     case nameTooLong

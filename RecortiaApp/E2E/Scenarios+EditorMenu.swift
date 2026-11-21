@@ -23,6 +23,7 @@
             let close = String(localized: "Close", table: "Editor")
             let save = String(localized: "Save…", table: "Editor")
             let savePreferred = String(localized: "Save to Preferred Folder", table: "Editor")
+            let print = String(localized: "Print…", table: "Editor")
             let zoomIn = String(localized: "Zoom In", table: "Editor")
             let zoomOut = String(localized: "Zoom Out", table: "Editor")
             let actualPixels = String(localized: "Actual Pixels", table: "Editor")
@@ -34,7 +35,8 @@
             let toolTitles = tools.map { EditorStrings.name($0) }
             let shortcuts: [(String, String, NSEvent.ModifierFlags)] = [
                 (AppCommand.openImage.title, "o", .command), (AppCommand.pasteImage.title, "", []),
-                (close, "w", .command), (save, "s", .command), (savePreferred, "", []), (zoomIn, "+", .command),
+                (close, "w", .command), (save, "s", .command), (savePreferred, "", []), (print, "p", .command),
+                (zoomIn, "+", .command),
                 (zoomOut, "-", .command), (actualPixels, "1", .command), (zoomToFit, "0", .command),
                 (zoomToSelection, "", []), (preview, "", []), (inspector, "", []),
                 (EditorInspectorTab.format.title, "", []), (EditorInspectorTab.image.title, "", []),
@@ -42,7 +44,7 @@
             // Every command that needs a key editor; Zoom to Selection also needs a selection.
             let editorTitles =
                 [
-                    close, save, savePreferred, zoomIn, zoomOut, actualPixels, zoomToFit, preview, inspector,
+                    close, save, savePreferred, print, zoomIn, zoomOut, actualPixels, zoomToFit, preview, inspector,
                     EditorInspectorTab.format.title, EditorInspectorTab.image.title,
                 ] + toolTitles
             let editActions = ["undo:", "redo:", "copy:", "delete:", "selectAll:"]

@@ -182,6 +182,141 @@
         }
     }
 
+    extension ScrollScenarios {
+        /// B-9b: a page that scrolls to the right, chosen with the HUD's direction control before
+        /// Start, through the real stitcher: the result is as wide as the page, every column in
+        /// order, with one seam per join drawn as a vertical band, and the review scrolls sideways.
+        static func horizontal(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let model = harness.features.scroll
+            let choice = harness.settings.preferences.scrollCaptureDirectionChoice
+            defer { harness.settings.update { $0.scrollCaptureDirectionChoice = choice } }
+            harness.settings.update { $0.scrollCaptureDirectionChoice = nil }
+            // The vertical fixture transposed: a 420 × 300 viewport over a page 1,800 columns wide
+            // with fixed columns at the left and right.
+            let fixture = ScrollPageFixture(
+                seed: 0xE2E6, kind: .text, width: 300, viewportHeight: 420, pageHeight: 1800)
+            let offsets = fixture.forwardOffsets(steps: 90...170)
+            let frames = offsets.enumerated().compactMap {
+                fixture.horizontalFrame(offset: $0.element, index: $0.offset)
+            }
+            try context.require("all horizontal fixture frames render", frames.count == offsets.count)
+            harness.scrollFrames.load(frames, holdAfter: nil)
+
+            try context.require("the session begins", await model.begin(), "\(model.state)")
+            let region = Rect<DesktopSpace>(x: 300, y: 160, width: 210, height: 150)
+            model.chooseTarget(.region(region, display: harness.capture.display))
+            try context.require("choosing the area arms the session", model.state == .armed, "\(model.state)")
+            context.check("a new session is vertical by default", model.direction == .vertical)
+
+            let hud = ScrollUIController.makeHUDPanel()
+            hud.setContent(HUDFollower(model: model))
+            E2ESnapshot.park(hud)
+            defer { hud.close() }
+            let hudRoot = try context.unwrap("HUD has content", hud.contentView)
+            await E2ESnapshot.settle(hudRoot)
+            let directions = [String(localized: "Vertical"), String(localized: "Horizontal")]
+            let control = try context.unwrap(
+                "the armed HUD offers Vertical and Horizontal",
+                EditorWindowController.all(NSSegmentedControl.self, in: hudRoot).first { control in
+                    control.segmentCount == directions.count
+                        && (0..<control.segmentCount).map { control.label(forSegment: $0) ?? "" } == directions
+                })
+            context.check(
+                "the direction control starts on Vertical", control.selectedSegment == 0, "\(control.selectedSegment)")
+            control.setSelected(true, forSegment: 1)
+            try context.require(
+                "the direction control sends its action", control.sendAction(control.action, to: control.target))
+            context.check(
+                "choosing Horizontal sets the session and remembers it",
+                model.direction == .horizontal && harness.settings.preferences.scrollCaptureDirection == .horizontal,
+                "\(model.direction), stored \(harness.settings.preferences.scrollCaptureDirection)")
+            await E2ESnapshot.settle(hudRoot)
+            context.snapshot(hudRoot, shot: "hud-horizontal")
+            await context.darkCompanion(hudRoot, in: hud, shot: "hud-horizontal", surface: "armed scrolling HUD")
+
+            model.start()
+            let drained = await E2EWait.until(timeout: .seconds(30)) {
+                harness.scrollFrames.isExhausted && harness.scrollFrames.isHolding && model.acceptedFrames > 0
+            }
+            try context.require(
+                "every frame was offered", drained, "\(harness.scrollFrames.deliveredCount)/\(frames.count)")
+            model.stop()
+            try context.require("Stop opens the review", model.state == .reviewing, "\(model.state)")
+            let expected = fixture.expectedHorizontalOutput(lastOffset: offsets.last ?? 0)
+            context.check(
+                "stitched width equals the page",
+                model.outputSize == PixelSize(width: expected.width, height: expected.height),
+                "\(model.outputSize.width) × \(model.outputSize.height), expected \(expected.width) × \(expected.height)"
+            )
+            context.check("the result is complete, not partial", !model.isPartial)
+            context.check(
+                "one seam per join, each a column inside the stitch, left to right",
+                model.seams.count == model.acceptedFrames - 1 && model.seams == model.seams.sorted()
+                    && (model.seams.last ?? 0) < model.outputSize.width,
+                "\(model.seams.count) seams, \(model.acceptedFrames) accepted frames, last \(model.seams.last ?? -1)")
+            _ = await E2EWait.until(timeout: .seconds(10)) { model.preview != nil }
+            let preview = try context.unwrap("the review has a preview", model.preview)
+            context.check(
+                "the preview is wide and no wider than its bound",
+                preview.width > preview.height && preview.width <= 2_000, "\(preview.width) × \(preview.height)")
+
+            let review = NSWindow(contentViewController: NSHostingController(rootView: ReviewFollower(model: model)))
+            review.styleMask = [.titled]
+            review.isReleasedWhenClosed = false
+            E2ESnapshot.park(review)
+            defer { review.close() }
+            let reviewRoot = try context.unwrap("review has content", review.contentView)
+            await E2ESnapshot.settle(reviewRoot)
+            context.snapshot(reviewRoot, shot: "review-horizontal")
+            let previewArea = try context.unwrap(
+                "the review's preview is in a scroll view",
+                EditorWindowController.first(NSScrollView.self, in: reviewRoot))
+            let documentWidth = previewArea.documentView?.frame.width ?? 0
+            context.check(
+                "the wide preview fits the review's height and scrolls sideways",
+                documentWidth > previewArea.frame.width,
+                "content \(documentWidth) pt in a \(previewArea.frame.width) pt viewport")
+            await context.darkCompanion(
+                reviewRoot, in: review, shot: "review-horizontal", surface: "horizontal scrolling review",
+                excluding: [previewArea])
+
+            let before = harness.editors.controllers.count
+            await model.accept()
+            let controller = try await E2EActions.waitForNewEditor(harness, after: before, context)
+            let base = try context.unwrap("stitched image", controller.model.baseImage)
+            let stitched = try E2EActions.pixels(of: base, "stitched", context)
+            let badColumns = compareColumns(stitched, expected, fixture: fixture)
+            context.check(
+                "every stitched column equals the page column in order (no missing or repeated columns)",
+                badColumns.isEmpty,
+                badColumns.isEmpty
+                    ? "\(stitched.width) columns" : "\(badColumns.count) bad columns, first: \(badColumns.prefix(8))")
+        }
+    }
+
+    extension ScrollScenarios {
+        /// `compare` for a horizontal stitch: output columns whose pixels differ from the expected
+        /// page column. The fixture animates in its vertical orientation, so (x, y) is its (y, x).
+        static func compareColumns(
+            _ actual: DecodedPixels, _ expected: ScrollPageBuffer, fixture: ScrollPageFixture
+        ) -> [Int] {
+            guard actual.width == expected.width, actual.height == expected.height else { return [-1] }
+            var bad: [Int] = []
+            for x in 0..<actual.width {
+                var columnOK = true
+                for y in 0..<actual.height where !fixture.isAnimated(outputX: y, outputY: x) {
+                    let i = (y * actual.width + x) * 4
+                    for c in 0..<3 where abs(Int(actual.bytes[i + c]) - Int(expected.pixels[i + c])) > 3 {
+                        columnOK = false
+                    }
+                    if !columnOK { break }
+                }
+                if !columnOK { bad.append(x) }
+            }
+            return bad
+        }
+    }
+
     /// Mirrors the app's private HUD adapter over `ScrollSessionModel`.
     /// The HUD panel keeps its focus, level and Space contract, and reserves no title-bar band:
     /// its content is exactly as tall as the HUD view hosted alone.
@@ -220,7 +355,7 @@
                     ScrollHUDView(
                         hud: ScrollHUDState(
                             source: "", state: .collecting, mode: .manual, notice: nil, acceptedFrames: count,
-                            outputHeight: 480),
+                            outputLength: 480),
                         onStart: {}, onPause: {}, onResume: {}, onStop: {}, onCancel: {}))
                 defer { hud.close() }
                 let hudRoot = try context.unwrap("HUD hosted", hud.contentView)
@@ -265,9 +400,11 @@
         var body: some View {
             ScrollHUDView(
                 hud: ScrollHUDState(
-                    source: source, state: model.state, mode: model.mode, notice: model.notice,
-                    acceptedFrames: model.acceptedFrames, outputHeight: model.outputSize.height),
-                onStart: { model.start() }, onPause: { model.pause() }, onResume: { model.resume() },
+                    source: source, state: model.state, mode: model.mode, direction: model.direction,
+                    notice: model.notice, acceptedFrames: model.acceptedFrames,
+                    outputLength: model.direction == .horizontal ? model.outputSize.width : model.outputSize.height),
+                onChooseDirection: { model.chooseDirection($0) }, onStart: { model.start() },
+                onPause: { model.pause() }, onResume: { model.resume() },
                 onStop: { model.stop() }, onCancel: { model.cancel() })
         }
 
@@ -284,7 +421,7 @@
 
         var body: some View {
             ScrollReviewView(
-                preview: model.preview, outputSize: model.outputSize, seams: model.seams,
+                preview: model.preview, outputSize: model.outputSize, direction: model.direction, seams: model.seams,
                 partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
                 isPreparingPreview: model.isPreparingPreview, canAccept: model.canAccept,
                 canDiscard: model.canDiscard, onAccept: {}, onDiscard: {})

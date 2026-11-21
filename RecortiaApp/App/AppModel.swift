@@ -15,6 +15,8 @@ struct FeatureModels {
     let quickActions: QuickActionsModel
     let ocrLanguages: OCRLanguagesModel
     let loginItem: LoginItemModel
+    /// Check for Updates… and its Settings toggle (FP-024).
+    let updater: UpdaterModel
     /// Reopen Closed Capture: filled only by closing an editor window.
     let closedCapture: ClosedCaptureSlot
     /// Nil only without a diagnostics log (previews).
@@ -36,8 +38,8 @@ struct FeatureModels {
             elements: services.interfaceElements, diagnostics: diagnostics)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
-            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload,
-            diagnostics: diagnostics)
+            printer: services.printer, folders: services.folders, clock: services.clock, settings: settings,
+            upload: services.githubUpload, diagnostics: diagnostics)
         importer = ImportCoordinator(input: services.input, assets: services.assets, settings: settings)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
@@ -49,6 +51,7 @@ struct FeatureModels {
             folders: services.folders, settings: settings, clock: services.clock, textClipboard: textClipboard)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
+        updater = UpdaterModel(service: services.updates, settings: settings)
         closedCapture = ClosedCaptureSlot(assets: services.assets, clock: services.clock)
     }
 }
@@ -104,6 +107,8 @@ final class AppModel: AppActions {
     @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
     /// Asks whether to quit and discard what `QuitDiscards` describes.
     @ObservationIgnored private let confirmQuit: @MainActor (QuitDiscards) -> Bool
+    /// Asks whether to open the updater's window for an update a check found.
+    @ObservationIgnored private let confirmUpdate: @MainActor (UserMessage) -> Bool
     /// Normal termination (`applicationShouldTerminate` still confirms unexported edits).
     @ObservationIgnored private let requestTermination: @MainActor () -> Void
     /// Asks the person for the automatic-save folder; nil when they cancel.
@@ -122,6 +127,7 @@ final class AppModel: AppActions {
             MessagePresenter.present($0, on: $1)
         },
         confirmQuit: @escaping @MainActor (QuitDiscards) -> Bool = { MessagePresenter.confirmDiscardOnQuit($0) },
+        confirmUpdate: @escaping @MainActor (UserMessage) -> Bool = { MessagePresenter.confirmUpdate($0) },
         requestTermination: @escaping @MainActor () -> Void = { NSApp.terminate(nil) },
         chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() },
         textClipboard: any TextClipboardService = PasteboardTextClipboard()
@@ -129,6 +135,7 @@ final class AppModel: AppActions {
         self.settings = settings
         self.showMessage = showMessage
         self.confirmQuit = confirmQuit
+        self.confirmUpdate = confirmUpdate
         self.requestTermination = requestTermination
         self.chooseSaveFolder = chooseSaveFolder
         onboarding = OnboardingModel(settings: settings)
@@ -154,6 +161,7 @@ final class AppModel: AppActions {
         guard !didLaunch else { return }
         didLaunch = true
         features.diagnostics?.recordLaunch()
+        features.updater.start()
         wire(features)
         registerShortcutHandlers()
         switch LaunchWindow.choose(
@@ -193,6 +201,8 @@ final class AppModel: AppActions {
             return !features.pins.pins.isEmpty
         case .unlockAllPins:
             return features.pins.hasClickThroughPin
+        case .checkForUpdates:
+            return features.updater.canCheck
         case .settings, .featureTour, .about, .quit:
             return true
         }
@@ -229,7 +239,23 @@ final class AppModel: AppActions {
         case .about:
             AppPresence.shared.activate()
             NSApp.orderFrontStandardAboutPanel(nil)
+        case .checkForUpdates: Task { await checkForUpdates() }
         case .quit: NSApp.terminate(nil)
+        }
+    }
+
+    /// Check for Updates… (FP-024): the only request a fresh install ever makes to the update feed.
+    /// An update found opens the updater's own window only after the person agrees.
+    func checkForUpdates() async {
+        guard let result = await features.updater.check() else { return }
+        switch result {
+        case .noUpdate:
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+            showMessage(.updateNotFound(version: version), .app)
+        case .failed: showMessage(.updateCheckFailed, .app)
+        case .updateAvailable(let version):
+            if confirmUpdate(.updateAvailable(version: version)) { features.updater.install() }
+        case .inProgress: break
         }
     }
 

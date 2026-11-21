@@ -8,6 +8,30 @@
     // DEBUG-only replacements for the boundaries that would need TCC, real input, or the user's
     // clipboard. Every other service in the E2E run is the live one from `AppServices.live()`.
 
+    /// Stands in for Sparkle (FP-024): scripted results, no network, no updater window.
+    @MainActor
+    final class SyntheticUpdateService: UpdateService {
+        var result = UpdateCheckResult.noUpdate
+        private(set) var starts: [Bool] = []
+        private(set) var automatic: [Bool] = []
+        private(set) var checks = 0
+        private(set) var installs = 0
+
+        func start(checksAutomatically: Bool) -> UpdaterStart {
+            starts.append(checksAutomatically)
+            return .started
+        }
+
+        func setChecksAutomatically(_ enabled: Bool) { automatic.append(enabled) }
+
+        func checkForUpdates() async -> UpdateCheckResult {
+            checks += 1
+            return result
+        }
+
+        func installUpdate() { installs += 1 }
+    }
+
     /// Records automatic-scroll steps instead of posting events. The E2E run grants Accessibility
     /// synthetically, so the live scroller would drive whatever window a target names, possibly one
     /// of the host Mac's own. No scenario needs a real scroll: frames come from
@@ -16,17 +40,19 @@
     @MainActor
     final class SyntheticAutoScroll: AutoScrollService {
         private(set) var steppedTargets: [CaptureTarget] = []
+        private(set) var stepDirections: [ScrollCaptureDirection] = []
         private(set) var stopCount = 0
         var atEnd: Bool?
 
-        func step(_ target: CaptureTarget) async -> AutoScrollStep {
+        func step(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> AutoScrollStep {
             steppedTargets.append(target)
+            stepDirections.append(direction)
             return .scrolled
         }
 
         func stop() { stopCount += 1 }
 
-        func isAtEnd(_ target: CaptureTarget) async -> Bool? { atEnd }
+        func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool? { atEnd }
     }
 
     /// Returns crops of the generated synthetic desktop with a correct `CaptureGeometry`.
@@ -267,6 +293,19 @@
         func write(_ snapshot: ShareSnapshot) throws(SinkError) {
             try ClipboardSink(pasteboard: pasteboard).write(snapshot)
             writeCount += 1
+        }
+    }
+
+    /// Stands in for the print panel (B-9a): builds the real print operation for each snapshot and
+    /// records it, but never runs it, so no panel, printer or PDF is touched.
+    final class RecordingPrinter: PrintSinkService {
+        private(set) var snapshots: [ShareSnapshot] = []
+        private(set) var operations: [NSPrintOperation] = []
+
+        func present(_ snapshot: ShareSnapshot) throws(SinkError) {
+            let operation = try PrintSink.operation(for: snapshot)
+            snapshots.append(snapshot)
+            operations.append(operation)
         }
     }
 

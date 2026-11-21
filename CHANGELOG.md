@@ -15,6 +15,62 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+Program 2026-11 trains T2 to T6 (PRs #43 to #47): not tagged, versioned or published. It requires
+macOS 26 or later. Not verified: the full bilingual native E2E of these trains, macOS 26.0 itself,
+VoiceOver and Full Keyboard Access on the new surfaces, physical keyboard, mouse-wheel, Spaces and
+permission checks, a real print panel, horizontal scrolling in real apps, and recognition recall
+on real screens.
+
+### Added
+
+- Quick actions after a capture (Settings › Capture › After a capture): a thumbnail with Copy,
+  Save, drag, Pin, Open in Editor, Dismiss and, when this capture was uploaded, Copy Link. The
+  capture's automatic exports run first; dismissing the thumbnail or leaving it for 8 seconds
+  discards the capture. With automatic masking on, captures still open in the editor.
+- Automatic masking of e-mail addresses and phone numbers now also covers scrolling captures and
+  images opened as new documents (Open, Open With, a drop on the app, Paste Image). Images added
+  as a layer to an open editor are not scanned.
+- An Automatic export format that saves a JPEG when it is much smaller than the PNG, and a PNG
+  otherwise. Copy Image stays PNG.
+- HEIC as a save format where this Mac can encode it, and File › Print… for the sanitized image.
+- Horizontal scrolling capture, chosen in the scrolling HUD.
+- A primary language for text recognition.
+- A solid background colour for window captures, editable afterwards in the Image inspector.
+- Zoom with a mouse scroll wheel, with a reverse-direction option. Trackpad scrolling always
+  scrolls.
+- An option to hide the menu-bar icon; opening Recortia again shows Settings.
+- Editor commands in the menu bar, including single-letter tool shortcuts in the Tools menu.
+- Region selection snaps to windows and interface elements, nudges with the arrow keys, and can
+  keep an aspect ratio.
+- Pins can stay on top or let clicks pass through, and Unlock All Pins restores them.
+- Text Only redaction covers just the recognized lines inside a rectangle.
+- Colour tools: copy a sampled colour in several formats, sample the darkest pixel, and read the
+  WCAG contrast of two colours.
+- Framing aspect presets, balance, swatches and a default framing for new captures.
+- Rotate, flip and crop presets in the Image menu.
+- Arrowhead styles and freehand smoothing.
+- File › Reopen Closed Capture (⇧⌘T) brings back the last closed editor's capture for 10 minutes,
+  in memory only. A capture whose automatic masking is pending or failed is never kept.
+- An optional local diagnostics file (Settings › Privacy, off by default) that records typed
+  events without text, paths or error messages; Recortia never sends it anywhere.
+- Check for Updates…, available only in builds signed with the update key; automatic checks are
+  opt-in and Recortia never installs an update without the person choosing it. Built with Sparkle
+  2.10.1 (MIT).
+
+### Changed
+
+- Refreshed onboarding (five pages), Settings, the scrolling review, pins, the window chooser,
+  the countdown and the drag chip, each with one primary action.
+- Failures about an open editor appear as a sheet on that editor; asking to discard a scrolling
+  capture is a sheet on its review window.
+- The Replace question names the file it would replace, and only that file is replaced.
+
+### Fixed
+
+- Rounded and monospaced text could fail to render under heavy load because a shared system font
+  cache returned nothing while another thread released fonts. Those fonts now come from Core Text.
+- The Replace Existing File question is translated into Portuguese.
+
 ## [0.15.0] - 2026-11-20
 
 Source candidate, build 29: not tagged or published. It requires macOS 26 or later. Not verified on

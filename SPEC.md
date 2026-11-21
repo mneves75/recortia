@@ -51,10 +51,10 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-04 | Crop, zoom, pan, resize; select, move, delete, duplicate; undo/redo | 0.1 | EDIT / GEO |
 | FR-05 | Text, straight/curved arrows, straight line, rectangle, ellipse, freehand, highlighter, numbered steps | 0.1 | EDIT |
 | FR-06 | Solid secure redaction; cosmetic blur/pixelation clearly distinguished | 0.1 | RED |
-| FR-07 | Flattened PNG/JPEG save, PNG clipboard copy, safe drag-out | 0.1 | EXP / RED |
+| FR-07 | Flattened PNG/JPEG/HEIC save, PNG clipboard copy and print, safe drag-out | 0.1 | EXP / RED |
 | FR-08 | On-device OCR and QR decoding, EN and PT-BR workflows | 0.1 | OCR |
 | FR-09 | Reference pins with opacity, zoom, copy, drag-out, and explicit close | 0.1 | PIN / PRIV |
-| FR-10 | Manual and automatic vertical scrolling capture with confidence checks | 1.0 | SCR / PERM |
+| FR-10 | Manual and automatic vertical or horizontal scrolling capture with confidence checks | 1.0 | SCR / PERM |
 | FR-11 | Pixel loupe, ruler, dimensions, sRGB color inspection | 1.0 | PIX / GEO |
 | FR-12 | Multiple-image canvas, transparency overlays, side-by-side comparison | 1.0 | COMP / RED |
 | FR-13 | Background, padding, corner radius, shadow, spotlight, magnifier callout | 1.0 | COMP / RED |
@@ -219,7 +219,7 @@ Do not promise that OCR-based “find sensitive data” is exhaustive. Do not pr
 
 All save, clipboard, drag-out, and later upload operations MUST receive the same immutable ShareSnapshot produced by the approved export pipeline. The snapshot identifies document revision, privacy epoch, output format/scale/color space, and sanitized bytes. It contains no raw source references.
 
-PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Saved files may instead use Automatic: an image without transparency is also encoded as JPEG at quality 0.92, and the JPEG is kept only when the PNG is over 0.5 MB and more than four times its size, or over 2 MB and more than twice its size; the file extension follows the bytes kept. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
+PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Saved files may instead use Automatic: an image without transparency is also encoded as JPEG at quality 0.92, and the JPEG is kept only when the PNG is over 0.5 MB and more than four times its size, or over 2 MB and more than twice its size; the file extension follows the bytes kept. HEIC is offered where the Mac's ImageIO encodes it, flattened like JPEG at the same quality setting and holding image items only; elsewhere a stored HEIC choice saves PNG, and Automatic never picks HEIC. Print hands the same sanitized PNG as Copy Image to the system print panel and is refused whenever Copy is. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
 
 Save uses a user-selected destination or a previously authorized preferred folder, sanitized collision-resistant filenames, a same-directory temporary file, and atomic replacement/rename where supported. Overwrite requires confirmation. Encode failure leaves the destination intact. Quota, revocation, full disk, and disconnected volumes are explicit errors. File promises for drag-out must keep sanitized bytes alive until the receiving app completes or the transfer is canceled; do not delete a promised file prematurely.
 
@@ -251,7 +251,7 @@ Pipeline: capture stable viewport frames; normalize orientation/scale; mask know
 
 Handle stationary frames, smooth scrolling, repeated text, lazy-loaded assets, fixed headers/footers, animated cursors, and a page ending. Low texture or repetitive patterns may be inherently ambiguous: pause, offer manual overlap adjustment, retain a clearly labeled partial result, or stop. Do not stretch missing content or fabricate pixels with generative AI.
 
-Choose an initial vertical direction. Unexpected reversal pauses rather than duplicating content. Limit duration to 120 seconds, input to 200 accepted frames, output to 40 megapixels, any side to 32,768 pixels, and default output height to 20,000 pixels; the first reached limit wins. Output limits include final encoding buffers, not just matching thumbnails.
+Before Start the person chooses Vertical (the default, remembered once changed) or Horizontal for a page that scrolls to the right; a horizontal session runs the same pipeline on transposed frames, scrolls sideways in automatic mode, and draws its seams as vertical bands. Unexpected reversal pauses rather than duplicating content. Limit duration to 120 seconds, input to 200 accepted frames, output to 40 megapixels, any side to 32,768 pixels, and default output length along the scroll direction (height, or width) to 20,000 pixels; the first reached limit wins. Output limits include final encoding buffers, not just matching thumbnails.
 
 Keep at most two full-resolution viewport buffers plus bounded working tiles and previews. Do not assume ImageIO can encode an arbitrarily large output without materializing it. Refuse operations that exceed the declared allocation plan. A user-confirmed partial result may be exported, but must never be labeled complete. Stop immediately on target/focus/display change, lock, permission revocation, or canceled control. Focus may move between the bound target and Recortia's own UI; another app taking focus ends the session.
 

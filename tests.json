@@ -120,6 +120,16 @@
       ]
     },
     {
+      "id": "updater-plist",
+      "protected_file": "scripts/check-updater-plist.py",
+      "tests": [
+        "scripts/test-updater-plist.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
       "id": "package-tests",
       "protected_file": "Packages/RecortiaKit/Package.swift",
       "tests": [],

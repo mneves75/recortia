@@ -16,6 +16,7 @@ final class QuickActionsHarness {
     let clipboard = FakeClipboard()
     let files = FakeFileSink()
     let drag = FakeDragSink()
+    let printer = FakePrinter()
     let folders = FakeSaveFolders()
     let assets = FakeAssetService()
     let clock = ManualClock()
@@ -30,8 +31,8 @@ final class QuickActionsHarness {
 
     init() {
         export = ExportCoordinator(
-            exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: settings, upload: upload)
+            exporter: exporter, clipboard: clipboard, files: files, drag: drag, printer: printer, folders: folders,
+            clock: clock, settings: settings, upload: upload)
         pins = PinsModel(renderer: renderer, settings: settings, export: export)
         model = QuickActionsModel(
             export: export, pins: pins, renderer: renderer, assets: assets, folders: folders, settings: settings,

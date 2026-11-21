@@ -52,6 +52,24 @@ struct PolicyTests {
         #expect(!old.launchAtLogin, "the login item, not this key, is the truth")
     }
 
+    @Test("Export formats round-trip, and the encodings builds before HEIC wrote decode unchanged")
+    func exportFormatCoding() throws {
+        for format in [ExportFormat.png, .jpeg(quality: 0.8), .heic(quality: 0.7)] {
+            #expect(try JSONDecoder().decode(ExportFormat.self, from: JSONEncoder().encode(format)) == format)
+        }
+        let png = try JSONDecoder().decode(ExportFormat.self, from: Data(#"{"png":{}}"#.utf8))
+        let jpeg = try JSONDecoder().decode(ExportFormat.self, from: Data(#"{"jpeg":{"quality":0.9}}"#.utf8))
+        #expect(png == .png && jpeg == .jpeg(quality: 0.9))
+        #expect(ExportFormat.heic(quality: 0.5).fileExtension == "heic")
+        #expect(ExportFormat.heic(quality: 0.5).utTypeIdentifier == "public.heic")
+        #expect(throws: ExportOptionsError.invalidQuality) {
+            try ExportOptions(format: .heic(quality: .nan)).validated()
+        }
+        #expect(throws: ExportOptionsError.translucentJPEGBackground) {
+            try ExportOptions(format: .heic(quality: 0.5), jpegBackground: RGBA(r: 0, g: 0, b: 0, a: 10)).validated()
+        }
+    }
+
     @Test("Capture delay is clamped to 0…10 seconds")
     func captureDelayClamp() {
         #expect(CaptureRequest.clampedDelay(-3) == 0)

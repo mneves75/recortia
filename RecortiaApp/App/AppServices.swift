@@ -20,6 +20,7 @@ struct AppServices {
     let clipboard: any ClipboardSinkService
     let files: any FileSinkService
     let drag: any DragSinkService
+    let printer: any PrintSinkService
     let folders: any SaveFolderService
     let textRecognition: any TextRecognitionService
     let qrDecoder: any QRDecodingService
@@ -36,6 +37,8 @@ struct AppServices {
     var interfaceElements: (any InterfaceElementFrameService)? = nil
     /// The optional diagnostics file (B-10); a run folder in the E2E runner, nil in previews.
     var diagnosticsLog: DiagnosticsLog? = nil
+    /// The signed updater (FP-024); synthetic in the E2E runner, nil in previews.
+    var updates: (any UpdateService)? = nil
 }
 
 extension DiagnosticVersions {
@@ -60,28 +63,28 @@ final class SystemClock: FeatureClock {
 
 /// Holds the value-type stitcher in an actor so frame matching runs off the main actor.
 private actor StitchEngine {
-    private var stitcher = ScrollStitcher()
+    private var stitcher: ScrollStitcher
 
-    func reset() { stitcher = ScrollStitcher() }
+    init(direction: ScrollCaptureDirection) { stitcher = ScrollStitcher(direction: direction) }
 
     func append(_ frame: CGImage, elapsed: Duration) -> (ScrollAppendResult, Int, PixelSize, Bool) {
         let result = stitcher.append(frame, elapsed: elapsed)
         return (result, stitcher.acceptedFrameCount, stitcher.outputSize, stitcher.endOfPageDetected)
     }
 
-    func preview(maxHeight: Int) -> CGImage? { stitcher.preview(maxHeight: maxHeight) }
+    func preview(maxLength: Int) -> CGImage? { stitcher.preview(maxLength: maxLength) }
 
     func assemble() throws -> CGImage { try stitcher.assemble() }
 }
 
 final class LiveStitcher: ScrollStitchService {
-    private var engine = StitchEngine()
+    private var engine = StitchEngine(direction: .vertical)
     private(set) var acceptedFrameCount = 0
     private(set) var outputSize = PixelSize(width: 0, height: 0)
     private(set) var endOfPageDetected = false
 
-    func reset() {
-        engine = StitchEngine()
+    func reset(direction: ScrollCaptureDirection) {
+        engine = StitchEngine(direction: direction)
         acceptedFrameCount = 0
         outputSize = PixelSize(width: 0, height: 0)
         endOfPageDetected = false
@@ -98,8 +101,8 @@ final class LiveStitcher: ScrollStitchService {
         return result
     }
 
-    func preview(maxHeight: Int) async -> CGImage? {
-        await engine.preview(maxHeight: maxHeight)
+    func preview(maxLength: Int) async -> CGImage? {
+        await engine.preview(maxLength: maxLength)
     }
 
     func assemble() async throws -> CGImage {
@@ -120,11 +123,12 @@ extension AppServices {
             capture: capture, screenPermission: LiveScreenPermission(), accessibility: LiveAccessibilityPermission(),
             assets: LiveImageAssets(store: store), input: LiveImageInput(), renderer: LiveRenderer(store: store),
             exporter: LiveExporter(store: store), clipboard: LiveClipboard(), files: LiveFiles(), drag: LiveDragSink(),
-            folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
+            printer: LivePrinter(), folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
             qrDecoder: recognition, sensitiveText: LiveSensitiveText(store: store),
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
             loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound(),
             interfaceElements: LiveInterfaceElements(),
-            diagnosticsLog: DiagnosticsLog.standardDirectory().map { DiagnosticsLog(directory: $0) })
+            diagnosticsLog: DiagnosticsLog.standardDirectory().map { DiagnosticsLog(directory: $0) },
+            updates: SparkleUpdateService(info: Bundle.main.infoDictionary))
     }
 }

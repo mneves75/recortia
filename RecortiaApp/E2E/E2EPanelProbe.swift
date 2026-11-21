@@ -142,7 +142,8 @@
             let services = AppServices.live(settings: settings)
             let export = ExportCoordinator(
                 exporter: services.exporter, clipboard: services.clipboard, files: services.files,
-                drag: services.drag, folders: services.folders, clock: services.clock, settings: settings)
+                drag: services.drag, printer: services.printer, folders: services.folders, clock: services.clock,
+                settings: settings)
             let pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
             let notes = SyntheticDesktop.notesWindow
             guard

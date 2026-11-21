@@ -82,6 +82,21 @@ the window's frame view so they show the toolbar. Bridged items perform AXPress 
 `accessibilityPerformPress()` returns false, so scenarios check the effect. Keep `inspector-context`
 and `editor-toolbar` in bilingual E2E.
 
+Program 2026-11 invariants (T2–T6, `docs/specs/program-2026-11/decisions.md`):
+- **Quick actions:** the thumbnail exports only through ShareSnapshot. A Replace answer that arrives after its capture is dismissed or replaced writes nothing.
+- **Reopen Closed Capture:** a single slot held in memory, never on disk. It records a monotonic deadline and checks it on every read, so a late timer cannot extend the 10 minutes. It never keeps a capture whose masking is pending or has failed, even after the notice is dismissed.
+- **Diagnostics file:** off by default. It records typed events only, never text, paths or error messages.
+- **HEIC:** a HEIC export holds only the primary item and the `hvc1` tiles it names through `dimg`; anything else is refused, never passed.
+- **Printing:** always a fixed PNG through ExportPipeline, and it never marks the document exported.
+- **Horizontal scrolling capture:** must leave vertical stitching byte-identical (the digest tests).
+- **Updater (FP-024):** Sparkle is imported only in `MacPlatform/SparkleUpdateService.swift`.
+  - Without `SUPublicEDKey` and an https feed it is never created.
+  - Before it starts, it overrides Sparkle's stored feed, system-profile and download settings, and fails closed if any of them reads back otherwise.
+  - Recortia's sealed preference admits each scheduled check.
+  - `SUAllowsAutomaticUpdates` stays false.
+- **Preference enums:** a new value of a stored preference enum goes in its own optional `…Choice` key. An older build fails the whole blob on an unknown case.
+- **Bilingual E2E:** keep `quick-actions`, `editor-menu`, `editor-zoom`, `capture-precision`, `element-snapping`, `pin-on-top`, `latency-prebuilt`, `text-redaction`, `colour-tools`, `layer-transforms`, `arrow-styles`, `framing-presets`, `reopen-closed`, `diagnostics`, `heic-and-print`, `scroll-horizontal` and `updater` in the bilingual E2E run.
+
 Full-source review invariants (2026-10, `docs/specs/full-source-review/plan.md`): every
 independent document edit settles an active move/resize first (`settleTransformGesture`), so a
 drag never overwrites it; a committed text edit closes an open adjustment, while beginning or

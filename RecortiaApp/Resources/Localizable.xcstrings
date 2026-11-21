@@ -1067,6 +1067,38 @@
         }
       }
     },
+    "Check for Updates…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar atualizações…"
+          }
+        }
+      }
+    },
+    "Check for updates automatically" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates automatically"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar atualizações automaticamente"
+          }
+        }
+      }
+    },
     "Check the GitHub upload" : {
       "localizations" : {
         "en" : {
@@ -1329,6 +1361,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar, Salvar ou Arrastar para fora"
+          }
+        }
+      }
+    },
+    "Could not check for updates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not check for updates"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível buscar atualizações"
           }
         }
       }
@@ -2061,6 +2109,38 @@
         }
       }
     },
+    "HEIC" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC"
+          }
+        }
+      }
+    },
+    "HEIC quality" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC quality"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualidade do HEIC"
+          }
+        }
+      }
+    },
     "Hold Option to scroll." : {
       "localizations" : {
         "en" : {
@@ -2211,6 +2291,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "As informações de idioma não estão disponíveis."
+          }
+        }
+      }
+    },
+    "Later" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais tarde"
           }
         }
       }
@@ -3096,6 +3192,38 @@
         }
       }
     },
+    "Recortia %@ is available" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia %@ is available"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia %@ está disponível"
+          }
+        }
+      }
+    },
+    "Recortia %@ is the newest version." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia %@ is the newest version."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia %@ é a versão mais recente."
+          }
+        }
+      }
+    },
     "Recortia asks for Screen Recording permission the first time you capture, not now. Opening and editing images never needs it." : {
       "localizations" : {
         "en" : {
@@ -3144,6 +3272,38 @@
         }
       }
     },
+    "Recortia checks the update’s signature before installing it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia checks the update’s signature before installing it."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia verifica a assinatura da atualização antes de instalá-la."
+          }
+        }
+      }
+    },
+    "Recortia could not read the update feed. Try again later." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia could not read the update feed. Try again later."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia não conseguiu ler o feed de atualizações. Tente novamente mais tarde."
+          }
+        }
+      }
+    },
     "Recortia could not remember access to that folder. Choose another folder." : {
       "localizations" : {
         "en" : {
@@ -3156,6 +3316,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Recortia não conseguiu guardar o acesso a essa pasta. Escolha outra pasta."
+          }
+        }
+      }
+    },
+    "Recortia is up to date" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia is up to date"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia está atualizado"
           }
         }
       }
@@ -3712,6 +3888,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar menu de captura"
+          }
+        }
+      }
+    },
+    "Show Update" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Update"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar atualização"
           }
         }
       }
@@ -4458,6 +4650,22 @@
         }
       }
     },
+    "The print panel could not be opened." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The print panel could not be opened."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir o painel de impressão."
+          }
+        }
+      }
+    },
     "The ruler measures in image pixels and, for captures, in points." : {
       "localizations" : {
         "en" : {
@@ -5114,6 +5322,162 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zoom com a roda de rolagem"
+          }
+        }
+      }
+    },
+    "Direction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direction"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direção"
+          }
+        }
+      }
+    },
+    "Vertical" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertical"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertical"
+          }
+        }
+      }
+    },
+    "Horizontal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal"
+          }
+        }
+      }
+    },
+    "Paused: scrolling changed direction. Scroll right again, then resume." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused: scrolling changed direction. Scroll right again, then resume."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausado: a rolagem mudou de direção. Role para a direita novamente e depois retome."
+          }
+        }
+      }
+    },
+    "The image is too large to assemble. Discard it and capture a narrower area." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The image is too large to assemble. Discard it and capture a narrower area."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A imagem é grande demais para ser montada. Descarte-a e capture uma área mais estreita."
+          }
+        }
+      }
+    },
+    "The 20,000-pixel width limit was reached." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The 20,000-pixel width limit was reached."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O limite de 20.000 pixels de largura foi atingido."
+          }
+        }
+      }
+    },
+    "%lld frames · %lld pixels wide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@frames@ · %2$lld pixels wide"
+          },
+          "substitutions" : {
+            "frames" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg frame"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg frames"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@frames@ · %2$lld pixels de largura"
+          },
+          "substitutions" : {
+            "frames" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg quadro"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg quadros"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

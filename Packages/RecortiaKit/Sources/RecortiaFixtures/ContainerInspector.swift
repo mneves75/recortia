@@ -79,6 +79,61 @@ public enum ContainerInspector {
         data.range(of: Data(needle.utf8)) != nil
     }
 
+    /// The item types a HEIC file's `meta` box declares (`hvc1`, `grid`, `Exif`, `mime`, ...), and
+    /// every box type met on the way, read straight from the ISOBMFF structure.
+    public static func heicStructure(_ data: Data) throws(ContainerInspectionError)
+        -> (boxes: [String], itemTypes: [String])
+    {
+        let bytes = [UInt8](data)
+        func uint32(_ i: Int) -> Int { (0..<4).reduce(0) { $0 << 8 | Int(bytes[i + $1]) } }
+        func type(_ i: Int) -> String { String(decoding: bytes[i..<(i + 4)], as: UTF8.self) }
+        var boxes: [String] = []
+        var items: [String] = []
+        func walk(_ start: Int, _ end: Int) throws(ContainerInspectionError) {
+            var offset = start
+            while offset + 8 <= end {
+                var size = uint32(offset), header = 8
+                if size == 1 {
+                    guard offset + 16 <= end else { throw .truncated }
+                    size = uint32(offset + 8) << 32 | uint32(offset + 12)
+                    header = 16
+                } else if size == 0 {
+                    size = end - offset
+                }
+                guard size >= header, offset + size <= end else { throw .truncated }
+                let name = type(offset + 4)
+                boxes.append(name)
+                let body = offset + header
+                switch name {
+                case "meta": try walk(body + 4, offset + size)
+                case "iprp", "ipco", "dinf": try walk(body, offset + size)
+                case "iinf": try walk(body + 4 + (bytes[body] == 0 ? 2 : 4), offset + size)
+                case "infe":
+                    let version = bytes[body]
+                    guard version >= 2 else { break }
+                    let at = body + 4 + (version == 2 ? 2 : 4) + 2
+                    guard at + 4 <= offset + size else { throw .truncated }
+                    items.append(type(at))
+                default: break
+                }
+                offset += size
+            }
+            guard offset == end else { throw .truncated }
+        }
+        guard bytes.count >= 12, type(4) == "ftyp" else { throw .undecodable }
+        try walk(0, bytes.count)
+        return (boxes, items)
+    }
+
+    /// The keys of one nested ImageIO property dictionary (such as `{TIFF}`); empty when absent.
+    public static func propertyKeys(_ data: Data, in dictionary: String) -> Set<String> {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],
+            let nested = properties[dictionary] as? [String: Any]
+        else { return [] }
+        return Set(nested.keys)
+    }
+
     /// Top-level ImageIO property keys plus nested dictionary names, for metadata assertions.
     public static func propertyKeys(_ data: Data) -> Set<String> {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),

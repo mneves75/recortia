@@ -33,6 +33,9 @@
                 run: DesktopScenarios.captureMenuFocus),
             E2EScenario(id: "settings", title: "Settings tabs", run: ShellScenarios.settings),
             E2EScenario(
+                id: "updater", title: "Check for Updates reports each result without network",
+                run: UpdaterScenarios.updater),
+            E2EScenario(
                 id: "quit-confirmation", title: "Quit asks before discarding edits",
                 run: ShellScenarios.quitConfirmation),
             E2EScenario(id: "shortcuts", title: "macOS-style default shortcuts", run: ShortcutScenarios.defaults),
@@ -118,6 +121,9 @@
                 run: FramingScenarios.framingPresets),
             E2EScenario(id: "export-sinks", title: "Copy, save, and drag out", run: OutputScenarios.exportSinks),
             E2EScenario(
+                id: "heic-and-print", title: "Save as HEIC and print the sanitized image",
+                run: HEICPrintScenarios.heicAndPrint),
+            E2EScenario(
                 id: "automatic-export", title: "Automatic export cancellation, busy notice and GitHub",
                 run: AutomaticExportScenarios.regression),
             E2EScenario(
@@ -156,6 +162,9 @@
                 id: "latency-prebuilt", title: "Pre-built capture windows: measured, and invisible while spare",
                 run: PrebuiltWindowScenarios.latency),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
+            E2EScenario(
+                id: "scroll-horizontal", title: "Scrolling capture of a page that scrolls to the right",
+                run: ScrollScenarios.horizontal),
             E2EScenario(
                 id: "scroll-target-binding", title: "Automatic scrolling stays bound through discovery and Stop",
                 run: ScrollScenarios.automaticTarget),

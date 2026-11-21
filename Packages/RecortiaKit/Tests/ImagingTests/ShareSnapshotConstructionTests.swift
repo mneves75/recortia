@@ -55,4 +55,36 @@ struct ShareSnapshotConstructionTests {
         }
         #expect(allowedSites == 1, "the export pipeline must be the single construction site")
     }
+
+    /// B-9a: printing is an export. `PrintSink` builds its operation from a `ShareSnapshot` only,
+    /// so no other file may create a print operation from a view, a raster or a document.
+    static let printFile = "Packages/RecortiaKit/Sources/MacPlatform/PrintSink.swift"
+    static let printPattern = try? NSRegularExpression(
+        pattern: #"NSPrintOperation\s*(\.\s*init\s*)?\(|\.printOperation\s*\("#)
+
+    static func printSites(in source: String) -> Int {
+        guard let printPattern else { return 0 }
+        return printPattern.numberOfMatches(in: source, range: NSRange(source.startIndex..., in: source))
+    }
+
+    @Test("Only the print sink creates a print operation")
+    func onlyPrintSinkPrints() throws {
+        // Planted controls: the scanner sees both spellings and ignores a type mention.
+        #expect(Self.printSites(in: "let op = NSPrintOperation(view: canvas)") == 1)
+        #expect(Self.printSites(in: "let op = window.printOperation(with: [:])") == 1)
+        #expect(Self.printSites(in: "func run(_ operation: NSPrintOperation) {}") == 0)
+        let root = Self.repositoryRoot
+        let files = swiftFiles(under: "Packages/RecortiaKit/Sources") + swiftFiles(under: "RecortiaApp")
+        var allowedSites = 0
+        for file in files {
+            let sites = Self.printSites(in: try String(contentsOf: file, encoding: .utf8))
+            let relative = String(file.standardizedFileURL.path.dropFirst(root.standardizedFileURL.path.count + 1))
+            if relative == Self.printFile {
+                allowedSites = sites
+            } else {
+                #expect(sites == 0, "\(relative) creates a print operation")
+            }
+        }
+        #expect(allowedSites == 1, "the print sink must be the single print operation")
+    }
 }

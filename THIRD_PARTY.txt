@@ -1,0 +1,33 @@
+Third-party software in Recortia
+
+Recortia's own code is MIT-licensed (LICENSE, shipped as Recortia-LICENSE.txt). The app bundle
+also contains the components below. Each license text ships verbatim in the app's
+Contents/Resources folder, and scripts/release.sh refuses a build whose bundled copy differs.
+
+1. KeyboardShortcuts 3.1.0, by Sindre Sorhus. MIT.
+   Source: https://github.com/sindresorhus/KeyboardShortcuts, tag 3.1.0,
+   commit 772133d9dbe800fdac0473226822994c5c162c58.
+   Text: RecortiaApp/Resources/KeyboardShortcuts-LICENSE.txt (the package's `license` file).
+
+2. Fosco, by Gabriel Buzzi. MIT. The e-mail and phone-number patterns, tiled sweep and fragment
+   joining behind automatic masking are adapted from it.
+   Source: https://github.com/gabrielbuzziv/fosco, commit cf6ca8d4f176a5c6628a6ccfdb2c2db0abaa5ba8.
+   Text: RecortiaApp/Resources/Fosco-LICENSE.txt.
+
+3. Sparkle 2.10.1, by the Sparkle Project contributors (Andy Matuschak, Elgato Systems GmbH,
+   Kornel Lesiński, Mayur Pawashe, C.W. Betts, Petroules Corporation, Big Nerd Ranch). MIT.
+   Source: https://github.com/sparkle-project/Sparkle, tag 2.10.1,
+   commit ab7d71291238df6e0492143b120c9b696a35f603; binary
+   Sparkle-for-Swift-Package-Manager.zip, SHA-256
+   4c2e48a3e50ebcc2c88a58a4c7264a1a99c3c31857ce754357afb9cdb323022a.
+   Text: RecortiaApp/Resources/Sparkle-LICENSE.txt (upstream LICENSE at that tag, identical to
+   the LICENSE inside the binary zip; SHA-256
+   389a4e4e9a32f059775b13a06e25a591445ba229d2838d26dd3e7c0c45127cfe).
+   The same file's "EXTERNAL LICENSES" section covers the components Sparkle bundles:
+   3a. bsdiff 4.3 (bspatch.c, bsdiff.c), by Colin Percival. BSD 2-clause.
+   3b. sais-lite 2010/08/07 (sais.c, sais.h), by Yuta Mori. MIT.
+   3c. Portable C implementation of Ed25519 (https://github.com/orlp/ed25519), by Orson Peters.
+       zlib.
+   3d. SUSignatureVerifier.m, by Mark Hamlin. BSD 2-clause.
+   Sparkle's localized strings, images and helper executables (Autoupdate, Updater.app,
+   Downloader.xpc, Installer.xpc) are part of Sparkle and covered by its MIT license.

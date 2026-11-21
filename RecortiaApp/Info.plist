@@ -49,5 +49,11 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Recortia contributors</string>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://mneves75.github.io/recortia/appcast.xml</string>
 </dict>
 </plist>
