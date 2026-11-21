@@ -21,7 +21,7 @@ struct SecretExport {
         let store = ImageStore()
         let info = await store.insert(
             try ImageDecoder.canonicalize(Self.image(width: width, height: height, secrets: secrets, green: green)),
-            origin: .imported)
+            origin: .imported(pointPixelScale: 1))
         self.store = store
         harness = EditorHarness(session: DocumentSession(document: Document(asset: info)))
         harness.assets.store = store
@@ -64,7 +64,7 @@ struct SecretExport {
         -> LayerID
     {
         let image = try Self.image(width: width, height: height, secrets: secrets, green: green)
-        let info = await store.insert(try ImageDecoder.canonicalize(image), origin: .imported)
+        let info = await store.insert(try ImageDecoder.canonicalize(image), origin: .imported(pointPixelScale: 1))
         let layer = ImageLayer(assetID: info.id)
         _ = harness.model.edit("Paste") { document in
             document.assets[info.id] = info

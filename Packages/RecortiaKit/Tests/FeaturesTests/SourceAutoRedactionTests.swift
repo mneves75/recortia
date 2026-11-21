@@ -1,6 +1,7 @@
 import CoreGraphics
 import Domain
 import Foundation
+import ImageIO
 import Imaging
 import RecortiaFixtures
 import Testing
@@ -48,10 +49,13 @@ final class MaskingSource {
     let importer = ImportHarness()
     let pins: PinsModel
     let environment: EditorEnvironment
+    /// The density an opened file declares in its pHYs chunk; none when nil.
+    let dpi: Double?
     private var created = 0
 
-    init(_ source: Source, masking: Bool) {
+    init(_ source: Source, masking: Bool, dpi: Double? = nil) {
         self.source = source
+        self.dpi = dpi
         scroll.assets.store = store
         importer.assets.store = store
         editors.assets.store = store
@@ -97,7 +101,9 @@ final class MaskingSource {
         case .openedFile:
             created += 1
             let url = URL(fileURLWithPath: "/tmp/recortia-tests/source-masking-\(created).png")
-            importer.input.files[url] = .success(try ContainerCrafting.pngData(Self.image()))
+            let density: [CFString: Any] =
+                dpi.map { [kCGImagePropertyDPIWidth: $0, kCGImagePropertyDPIHeight: $0] } ?? [:]
+            importer.input.files[url] = .success(try ContainerCrafting.pngData(Self.image(), properties: density))
             let pending = Pending<Void>()
             importer.assets.pendingImport = pending
             let opening = Task { await importer.coordinator.importImage(from: .file(url)) }
@@ -240,7 +246,7 @@ struct SourceAutoRedactionTests {
 
     /// Measured (decisions.md, T2): a 2880 × 10000 Retina scroll capture swept at 1 pixel per point
     /// took 12.8–16.6 s, past the deadline, and 3.4–4.6 s at its real 2.
-    @Test("A scrolling capture is swept at its own pixels per point; an opened image at 1")
+    @Test("Every origin is swept at the pixels per point it recorded")
     func sweepDensity() async throws {
         let h = ScrollHarness()
         // The harness's target is 400 points wide; the stitched page is 800 pixels wide.
@@ -254,8 +260,8 @@ struct SourceAutoRedactionTests {
         let origin = try #require(h.assets.registeredStitched.first?.origin)
         #expect(origin == .scrollCapture(partialReason: nil, pointPixelScale: 2))
         #expect(LiveSensitiveText.pixelsPerPoint(of: origin) == 2)
-        #expect(LiveSensitiveText.pixelsPerPoint(of: .imported) == 1)
-        #expect(LiveSensitiveText.pixelsPerPoint(of: .pasted) == 1)
+        #expect(LiveSensitiveText.pixelsPerPoint(of: .imported(pointPixelScale: 2)) == 2)
+        #expect(LiveSensitiveText.pixelsPerPoint(of: .pasted(pointPixelScale: 3)) == 3)
     }
 
     @Test("RED: a masked scrolling capture's copy, save, drag and pin bytes cover the planted address")
@@ -263,6 +269,23 @@ struct SourceAutoRedactionTests {
         let new = MaskingSource(.scrollCapture, masking: true)
         let model = new.open(try await new.create())
         defer { model.close() }
+        try await expectMaskedExports(new, model)
+    }
+
+    @Test("RED: an opened 144-dpi image is swept at 2 pixels per point and every export covers the address")
+    func openedRetinaImageExportsAreMasked() async throws {
+        let new = MaskingSource(.openedFile, masking: true, dpi: 144)
+        let model = new.open(try await new.create())
+        defer { model.close() }
+        let origin = try #require(model.document.assets.values.first?.origin)
+        #expect(origin == .imported(pointPixelScale: 2))
+        #expect(LiveSensitiveText.pixelsPerPoint(of: origin) == 2)
+        try await expectMaskedExports(new, model)
+    }
+
+    /// Lands the detected mask, then requires copy, save, drag and pin bytes to cover the address,
+    /// and the person's Undo to show it again (positive control).
+    private func expectMaskedExports(_ new: MaskingSource, _ model: EditorModel) async throws {
         let h = new.editors
         await new.waitForDetection()
         h.sensitiveText.pending?.resolve(())
@@ -284,7 +307,7 @@ struct SourceAutoRedactionTests {
             ("pin", try ContainerInspector.decodePixels(try ContainerCrafting.pngData(pin.image))),
         ]
         for (sink, pixels) in exported {
-            #expect(pixels.height == MaskingSource.height, "\(sink) exports the whole stitched page")
+            #expect(pixels.height == MaskingSource.height, "\(sink) exports the whole image")
             #expect(new.secretPixels(pixels) == 0, "\(sink) shows the planted address")
         }
 

@@ -169,7 +169,8 @@ struct EditorRedactionTests {
 
     @Test("A redaction over a layer whose transform cannot be inverted is refused")
     func unmappableLayerRefused() {
-        let asset = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 100, height: 100), origin: .imported)
+        let asset = ImageAssetInfo(
+            id: AssetID(), pixelSize: PixelSize(width: 100, height: 100), origin: .imported(pointPixelScale: 1))
         let degenerate = ImageLayer(assetID: asset.id, placement: LayerPlacement(scale: 0))
         let document = Document(
             assets: [asset.id: asset], canvasSize: Size(width: 100, height: 100), layers: [degenerate])

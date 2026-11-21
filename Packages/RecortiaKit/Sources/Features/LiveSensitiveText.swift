@@ -25,13 +25,13 @@ public final class LiveSensitiveText: SensitiveTextService {
         }
     }
 
-    /// The density the sweep is laid out for: a capture's and a scrolling capture's own; an opened
-    /// or pasted image records none, so it is read as 1, the slower sweep that upsamples more.
+    /// The density the sweep is laid out for: the one each origin recorded. An opened or pasted
+    /// image's comes from its file and is 1 when the file declares none, the slower sweep that
+    /// upsamples more.
     static func pixelsPerPoint(of origin: AssetOrigin) -> Double {
         switch origin {
         case .captured(let geometry): geometry.pointPixelScale
-        case .scrollCapture(_, let scale): scale
-        case .imported, .pasted: 1
+        case .scrollCapture(_, let scale), .imported(let scale), .pasted(let scale): scale
         }
     }
 }

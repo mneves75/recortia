@@ -14,7 +14,8 @@ struct AutomaticFormatExportTests {
     private func photographicHarness() async throws -> ExportHarness {
         let store = ImageStore()
         let info = await store.insert(
-            try ImageDecoder.canonicalize(try ChartFixture.photographic(width: 1200, height: 900)), origin: .imported)
+            try ImageDecoder.canonicalize(try ChartFixture.photographic(width: 1200, height: 900)),
+            origin: .imported(pointPixelScale: 1))
         let h = ExportHarness()
         h.exporter.pipeline = ExportPipeline(renderer: PrivacyRenderer(store: store))
         h.session = DocumentSession(document: Document(asset: info))

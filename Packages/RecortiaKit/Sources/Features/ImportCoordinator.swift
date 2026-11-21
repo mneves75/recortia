@@ -176,7 +176,7 @@ public final class ImageImporter {
         defer { isImporting = false }
         guard !Task.isCancelled else { throw .cancelled }
         let data: Data
-        let origin: AssetOrigin
+        let origin: (Double) -> AssetOrigin
         switch admission.source {
         case .file(let url), .droppedFile(let url):
             do throws(ImportError) {
@@ -184,14 +184,14 @@ public final class ImageImporter {
             } catch {
                 throw Task.isCancelled ? .cancelled : ImportFailure(error)
             }
-            origin = .imported
+            origin = AssetOrigin.imported
         case .pasteboard:
             guard let pasted = input.readPasteboardImage() else { throw .nothingToPaste }
             data = pasted
-            origin = .pasted
+            origin = AssetOrigin.pasted
         case .droppedData(let dropped):
             data = dropped
-            origin = .imported
+            origin = AssetOrigin.imported
         }
         if let pixelBudget {
             let size: PixelSize

@@ -655,7 +655,8 @@
             }
             let png = try await harness.openImported(chart, name: "import-valid.png")
             let asset = try context.unwrap("imported asset", png.model.document.assets.values.first)
-            context.check("PNG imports as an imported asset", asset.origin == .imported)
+            let isImported = if case .imported = asset.origin { true } else { false }
+            context.check("PNG imports as an imported asset", isImported, "\(asset.origin)")
             context.check("PNG size is 320 × 240", asset.pixelSize == PixelSize(width: 320, height: 240))
             context.check("an imported image has no screen scale", png.model.measurementPointScale == nil)
 

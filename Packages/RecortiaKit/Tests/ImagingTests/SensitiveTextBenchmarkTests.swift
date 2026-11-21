@@ -2,6 +2,7 @@ import CoreGraphics
 import Darwin
 import Domain
 import Foundation
+import ImageIO
 import RecortiaFixtures
 import Synchronization
 import Testing
@@ -533,7 +534,10 @@ struct SensitiveTextLatencyTests {
                     widthPoints: item.width, heightPoints: item.height, scale: item.scale, pointSize: 12,
                     theme: index % 2 == 0 ? .light : .dark, language: index % 3 == 0 ? .portugueseBrazil : .english,
                     layout: index % 2 == 0 ? .denseColumns : .singleColumn)
-                assets.append(await store.insert(try ImageDecoder.canonicalize(screen.image), origin: .imported).id)
+                assets.append(
+                    await store.insert(
+                        try ImageDecoder.canonicalize(screen.image), origin: .imported(pointPixelScale: 1)
+                    ).id)
             }
             var times: [Double] = []
             for id in assets {
@@ -556,5 +560,42 @@ struct SensitiveTextLatencyTests {
             measured += 1
         }
         #expect(measured > 0)
+    }
+
+    /// An opened Retina screenshot (T2): a 2880 × 4000 PNG that declares 144 dpi goes through the
+    /// real decode and is swept at the density it declares. Runs with `RECORTIA_REDACT_LATENCY_OPENED=1`.
+    @Test(
+        "Cold and warm scan time of an opened 144-dpi image",
+        .enabled(if: environment["RECORTIA_REDACT_LATENCY_OPENED"] == "1", "set RECORTIA_REDACT_LATENCY_OPENED=1"),
+        VisionRuntime.required, .timeLimit(.minutes(60)))
+    func openedImageLatency() async throws {
+        let runs = Int(Self.environment["RECORTIA_REDACT_LATENCY_RUNS"] ?? "") ?? 5
+        let languages = [OCRRecognitionTests.english, OCRRecognitionTests.portuguese]
+        let clock = ContinuousClock()
+        var times: [Double] = []
+        var density = 0.0
+        for index in 0...runs {
+            let screen = try SensitiveScreen.render(
+                widthPoints: 1440, heightPoints: 2000, scale: 2, pointSize: 12,
+                theme: index % 2 == 0 ? .light : .dark, language: index % 3 == 0 ? .portugueseBrazil : .english,
+                layout: index % 2 == 0 ? .denseColumns : .singleColumn)
+            let file = try ContainerCrafting.pngData(
+                screen.image, properties: [kCGImagePropertyDPIWidth: 144, kCGImagePropertyDPIHeight: 144])
+            let decoded = try ImageDecoder.decode(file)
+            density = decoded.pointPixelScale
+            let store = ImageStore()
+            let id = await store.insert(decoded, origin: .imported(pointPixelScale: density)).id
+            let start = clock.now
+            _ = try await SensitiveTextScanner().sensitiveRegions(
+                of: id, in: store, pixelsPerPoint: density, languages: languages)
+            let elapsed = start.duration(to: clock.now)
+            times.append(Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1e15)
+        }
+        let cold = times.removeFirst()
+        let warm = times.sorted()
+        print(
+            "| opened 2880×4000, 144 dpi → \(density) px/pt | cold \(String(format: "%.0f", cold)) ms | warm "
+                + warm.map { String(format: "%.0f", $0) }.joined(separator: ", ") + " ms |")
+        #expect(density == 2)
     }
 }

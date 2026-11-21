@@ -129,7 +129,7 @@ final class FakeLinkOpener: ExternalLinkOpenerService {
 
 enum EditorFixtures {
     static func session(
-        width: Int = 400, height: Int = 300, origin: AssetOrigin = .imported, undoLimit: Int = 200
+        width: Int = 400, height: Int = 300, origin: AssetOrigin = .imported(pointPixelScale: 1), undoLimit: Int = 200
     ) -> DocumentSession {
         let asset = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: width, height: height), origin: origin)
         return DocumentSession(document: Document(asset: asset), undoLimit: undoLimit)
