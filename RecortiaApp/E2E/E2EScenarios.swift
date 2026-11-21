@@ -78,6 +78,8 @@
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(
+                id: "arrow-styles", title: "Arrowhead styles and smoothed strokes", run: ArrowStyleScenarios.styles),
+            E2EScenario(
                 id: "saved-colors", title: "Explicit saved annotation colors", run: EditorScenarios.savedColors),
             E2EScenario(
                 id: "text-font-designs", title: "Native editable text font designs",
@@ -99,9 +101,18 @@
                 run: EditorScenarios.inspectorHeight),
             E2EScenario(id: "redaction", title: "Redaction and RED-01", run: EditorScenarios.redaction),
             E2EScenario(id: "crop-resize", title: "Crop and resize", run: EditorScenarios.cropResize),
+            E2EScenario(
+                id: "layer-transforms", title: "Rotate, flip and duplicate keep masks and exports aligned",
+                run: LayerTransformScenarios.layerTransforms),
             E2EScenario(id: "ocr-qr", title: "Text recognition and QR", run: RecognitionScenarios.ocrAndQR),
             E2EScenario(id: "pixel-tools", title: "Loupe, ruler, and color picker", run: EditorScenarios.pixelTools),
+            E2EScenario(
+                id: "colour-tools", title: "Colour copy formats, darkest-pixel sampling and contrast",
+                run: ColourToolsScenarios.colourTools),
             E2EScenario(id: "composition", title: "Composition and presentation", run: EditorScenarios.composition),
+            E2EScenario(
+                id: "framing-presets", title: "Framing presets, balance, swatches and the saved default framing",
+                run: FramingScenarios.framingPresets),
             E2EScenario(id: "export-sinks", title: "Copy, save, and drag out", run: OutputScenarios.exportSinks),
             E2EScenario(
                 id: "automatic-export", title: "Automatic export cancellation, busy notice and GitHub",
@@ -119,6 +130,9 @@
                 id: "auto-redaction-sources",
                 title: "Scrolling captures and opened images are masked before they are shown",
                 run: AutoRedactionScenarios.sources),
+            E2EScenario(
+                id: "text-redaction", title: "Text-only redaction covers each recognized line, never less",
+                run: TextRedactionScenarios.textRedaction),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(
                 id: "pin-on-top", title: "Pins float and let clicks through only when asked, and unlock together",

@@ -238,19 +238,20 @@ extension EditorModel {
             let index = document.annotations.firstIndex(where: { $0.id == id })
         {
             switch document.annotations[index].kind {
-            case .arrow(let start, let end, let control):
+            case .arrow(let start, let end, let control, let head):
                 var changed = document.annotations[index]
                 if handle == .bend {
                     guard control != nil else { return }
                     changed.kind = .arrow(
-                        start: start, end: end, control: ArrowCurve.control(start: start, end: end, bend: p))
+                        start: start, end: end, control: ArrowCurve.control(start: start, end: end, bend: p),
+                        head: head)
                 } else {
                     let original = handle == .start ? start : end
                     let movedControl = control?.offset(dx: p.x / 2 - original.x / 2, dy: p.y / 2 - original.y / 2)
                     changed.kind =
                         handle == .start
-                        ? .arrow(start: p, end: end, control: movedControl)
-                        : .arrow(start: start, end: p, control: movedControl)
+                        ? .arrow(start: p, end: end, control: movedControl, head: head)
+                        : .arrow(start: start, end: p, control: movedControl, head: head)
                 }
                 try Self.validateArrow(changed)
                 document.annotations[index] = changed
@@ -307,10 +308,12 @@ extension EditorModel {
                         EditorGeometry.constrainedRect(from: start, to: current, square: modifiers.contains(.shift))),
                     style: style.annotationStyle))
         case .freehand:
-            draft = .annotation(Annotation(kind: .freehand(points), style: style.annotationStyle))
+            draft = .annotation(Annotation(kind: .freehand(points, smoothed: nil), style: style.annotationStyle))
         case .highlighter:
-            draft = .annotation(Annotation(kind: .highlighter(points), style: style.highlighterStyle))
-        case .crop, .redact, .blur, .pixelate, .spotlight, .magnifier:
+            draft = .annotation(Annotation(kind: .highlighter(points, smoothed: nil), style: style.highlighterStyle))
+        case .crop:
+            draft = .region(tool, cropRect(from: start, to: current, modifiers: modifiers))
+        case .redact, .blur, .pixelate, .spotlight, .magnifier:
             draft = .region(
                 tool, EditorGeometry.constrainedRect(from: start, to: current, square: modifiers.contains(.shift)))
         default:
@@ -363,19 +366,24 @@ extension EditorModel {
             }
         case .freehand, .highlighter:
             guard points.count >= 2 else { return }
+            // Smoothing happens once, here; the stored points are what the canvas and export draw.
+            let smoothed: Bool? = style.smoothsStrokes ? true : nil
+            let kept =
+                style.smoothsStrokes ? StrokeSmoothing.simplify(points, tolerance: StrokeSmoothing.tolerance) : points
             let stroke =
                 tool == .freehand
-                ? Annotation(kind: .freehand(points), style: style.annotationStyle)
-                : Annotation(kind: .highlighter(points), style: style.highlighterStyle)
+                ? Annotation(kind: .freehand(kept, smoothed: smoothed), style: style.annotationStyle)
+                : Annotation(kind: .highlighter(kept, smoothed: smoothed), style: style.highlighterStyle)
             if edit(tool == .freehand ? "Draw" : "Highlight", { $0.annotations.append(stroke) }) {
                 created = .annotation(stroke.id)
             }
         case .crop:
-            guard !isClick else { return }
-            setCrop(rect)
+            let crop = cropRect(from: start, to: end, modifiers: modifiers)
+            guard !isClick, !crop.isEmpty else { return }
+            setCrop(crop)
         case .redact:
             guard !isClick, let area = rect.intersection(document.canvasRect) else { return }
-            created = addRedaction(covering: area)
+            created = redactsTextOnly ? addTextRedaction(covering: area) : addRedaction(covering: area)
         case .blur, .pixelate:
             guard !isClick, let area = rect.intersection(document.canvasRect) else { return }
             let effect = CosmeticObfuscation(
@@ -402,7 +410,8 @@ extension EditorModel {
     private func arrowKind(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) -> Annotation.Kind {
         .arrow(
             start: start, end: end,
-            control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil)
+            control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil,
+            head: style.arrowHead == .filled ? nil : style.arrowHead)
     }
 
     static let defaultBlurRadius = 12.0

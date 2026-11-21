@@ -164,10 +164,12 @@ extension EditorModel {
         textEditing = nil
         isClosed = true
         cancelAutoRedaction()
+        cancelTextRedaction()
         resumeExportSlotWaiters()
         waitingNotice = nil
         environment.export.cancel(documentID: session.document.id)
         invalidateColorPick()
+        clearContrastColors()
         baseTask?.cancel()
         outputTask?.cancel()
         baseTask = nil

@@ -51,6 +51,7 @@ struct EditorInspectorView: View {
                 case .image:
                     BackgroundSection(model: model, coalescer: coalescer)
                     SizeSection(model: model)
+                    TransformSection(model: model)
                     ImagesSection(model: model, actions: actions)
                     RecognitionSection(model: model, mode: $ocrTextMode)
                 }
@@ -91,6 +92,9 @@ private struct FormatTab: View {
         if (tool.usesStyle && tool != .select) || !selectedAnnotations.isEmpty {
             AppearanceSection(model: model, annotations: selectedAnnotations, coalescer: coalescer)
             ArrowCurveSection(model: model, annotations: selectedAnnotations)
+            if tool == .freehand || tool == .highlighter {
+                StrokeSmoothingSection(model: model)
+            }
             if tool == .text || selectedAnnotations.contains(where: { if case .text = $0.kind { true } else { false } })
             {
                 TextSection(model: model, annotations: selectedAnnotations, coalescer: coalescer)
@@ -102,6 +106,9 @@ private struct FormatTab: View {
         }
         if [.loupe, .colorPicker, .ruler].contains(tool) {
             PixelToolsSection(model: model)
+        }
+        if tool == .crop {
+            CropSection(model: model)
         }
         if let single {
             PositionSection(model: model, item: single)
@@ -370,7 +377,7 @@ private struct ArrowCurveSection: View {
 
     private var selectedStates: [Bool] {
         annotations.compactMap { annotation in
-            guard case .arrow(_, _, let control) = annotation.kind else { return nil }
+            guard case .arrow(_, _, let control, _) = annotation.kind else { return nil }
             return control != nil
         }
     }
@@ -391,6 +398,15 @@ private struct ArrowCurveSection: View {
                     Text("Mixed arrow shapes", tableName: "Editor")
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("arrow.mixed")
+                }
+                let head = model.arrowHeadState
+                HStack(spacing: DesignTokens.Space.s) {
+                    ForEach(Annotation.ArrowHead.allCases, id: \.self) { choice($0, state: head) }
+                }
+                if head == nil {
+                    Text("Mixed arrowheads", tableName: "Editor")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("arrow.head.mixed")
                 }
                 Group {
                     if model.style.curvedArrows {
@@ -436,6 +452,44 @@ private struct ArrowCurveSection: View {
         .accessibilityIdentifier(curved ? "arrow.curved" : "arrow.straight")
         .accessibilityLabel(Text(title))
         .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
+    }
+
+    private func choice(_ head: Annotation.ArrowHead, state: Annotation.ArrowHead?) -> some View {
+        let (title, symbol): (String, String) =
+            switch head {
+            case .filled: (String(localized: "Filled Head", table: "Editor"), "arrowtriangle.right.fill")
+            case .open: (String(localized: "Open Head", table: "Editor"), "chevron.right")
+            case .plain: (String(localized: "No Head", table: "Editor"), "minus")
+            case .double: (String(localized: "Double Head", table: "Editor"), "arrow.left.and.right")
+            }
+        let isSelected = state == head
+        return Button {
+            model.setArrowHead(head)
+        } label: {
+            Image(systemName: symbol)
+        }
+        .buttonStyle(ChoiceButtonStyle(isSelected: isSelected))
+        .help(title)
+        .accessibilityIdentifier("arrow.head.\(head.rawValue)")
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
+    }
+}
+
+/// Smoothing for strokes the freehand and highlighter tools draw next; drawn strokes keep theirs.
+private struct StrokeSmoothingSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            Toggle(
+                String(localized: "Smooth", table: "Editor"),
+                isOn: Binding(get: { model.style.smoothsStrokes }, set: { model.setStrokeSmoothing($0) })
+            )
+            .toggleStyle(.switch)
+            .help(String(localized: "Applies to new strokes.", table: "Editor"))
+            .accessibilityIdentifier("stroke.smooth")
+        }
     }
 }
 
@@ -728,6 +782,13 @@ private struct RedactionSection: View {
                 supportsOpacity: false
             )
             .accessibilityIdentifier("redaction.color")
+            if model.tool == .redact {
+                Toggle(
+                    String(localized: "Text Only", table: "Editor"),
+                    isOn: Binding(get: { model.redactsTextOnly }, set: { model.setRedactsTextOnly($0) })
+                )
+                .accessibilityIdentifier("redaction.textOnly")
+            }
             // A required disclosure (ACCEPTANCE_TESTS RED): what redaction changes, and what it does not.
             EditorNoticeLabel(
                 text: String(
@@ -907,6 +968,7 @@ private struct ObjectDetails: View {
                     title: String(localized: "Scale", table: "Editor"), value: layer.placement.scale, range: 0.05...4,
                     model: model, format: { EditorFormat.percent($0 * 100) }
                 ) { model.setLayerScale($0, for: id) }
+                LayerTransformRow(model: model)
             }
         case .mask:
             // The redaction color is in the Redaction section, which shows for a selected redaction.
@@ -967,7 +1029,11 @@ private struct PixelToolsSection: View {
                 .help(
                     String(
                         localized: "Area picks average sRGB colors and alpha. Samples stop at image edges.",
-                        table: "Editor"))
+                        table: "Editor")
+                )
+                .disabled(model.samplesDarkestPixel)
+                Toggle(String(localized: "Darkest Pixel", table: "Editor"), isOn: $model.samplesDarkestPixel)
+                    .accessibilityIdentifier("color.samplesDarkest")
             }
             let sample = model.tool == .colorPicker ? model.pickedColor : model.inspection
             if let sample {
@@ -996,9 +1062,30 @@ private struct PixelToolsSection: View {
                 }
                 .help(units)
                 if model.tool == .colorPicker {
+                    Picker(selection: $model.colorFormat) {
+                        ForEach(ColorFormat.allCases, id: \.self) { format in
+                            Text(verbatim: EditorStrings.name(format)).tag(format)
+                        }
+                    } label: {
+                        Text("Format", tableName: "Editor")
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("color.format")
+                    if let text = model.pickedColorText {
+                        Text(verbatim: text).monospaced().textSelection(.enabled)
+                            .accessibilityIdentifier("color.formatted")
+                    }
                     ButtonRow {
-                        Button(String(localized: "Copy HEX", table: "Editor")) { model.copyPickedColor(asHex: true) }
-                        Button(String(localized: "Copy RGB", table: "Editor")) { model.copyPickedColor(asHex: false) }
+                        Button(String(localized: "Copy", table: "Editor")) { model.copyPickedColor() }
+                            .accessibilityIdentifier("color.copy")
+                        Button(String(localized: "Use as Text", table: "Editor")) { model.usePickedColor(as: .text) }
+                            .disabled(!sample.color.isOpaque)
+                            .accessibilityIdentifier("color.useAsText")
+                        Button(String(localized: "Use as Background", table: "Editor")) {
+                            model.usePickedColor(as: .background)
+                        }
+                        .disabled(!sample.color.isOpaque)
+                        .accessibilityIdentifier("color.useAsBackground")
                     }
                 }
             } else if model.tool != .ruler {
@@ -1024,6 +1111,76 @@ private struct PixelToolsSection: View {
         } header: {
             Text(String(localized: "Pixel tools", table: "Editor"))
         }
+        if model.tool == .colorPicker, model.contrastText != nil || model.contrastBackground != nil {
+            ContrastSection(model: model)
+        }
+    }
+}
+
+/// The WCAG 2 contrast of two picked colors, with AA and AAA marks for normal and large text.
+private struct ContrastSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            slot(String(localized: "Text", table: "Editor"), model.contrastText, id: "color.contrast.text")
+            slot(
+                String(localized: "Background", table: "Editor"), model.contrastBackground,
+                id: "color.contrast.background")
+            if let contrast = model.contrast {
+                LabeledContent(String(localized: "Contrast", table: "Editor")) {
+                    Text(verbatim: contrast.shownRatio.formatted(.number.precision(.fractionLength(2))) + ":1")
+                        .monospacedDigit()
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("color.contrast.ratio")
+                }
+                Grid(
+                    alignment: .leading, horizontalSpacing: DesignTokens.Space.m, verticalSpacing: DesignTokens.Space.s
+                ) {
+                    GridRow {
+                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                        Text("Normal", tableName: "Editor").foregroundStyle(.secondary)
+                        Text("Large", tableName: "Editor").foregroundStyle(.secondary)
+                    }
+                    ForEach(ContrastRatio.Level.allCases, id: \.self) { level in
+                        GridRow {
+                            Text(verbatim: level == .aa ? "AA" : "AAA")
+                            verdict(contrast, level, largeText: false)
+                            verdict(contrast, level, largeText: true)
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text(String(localized: "Contrast", table: "Editor"))
+        }
+    }
+
+    private func slot(_ title: String, _ color: RGBA?, id: String) -> some View {
+        LabeledContent(title) {
+            if let color {
+                HStack(spacing: DesignTokens.Space.s) {
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
+                        .fill(Color(cgColor: color.cgColor))
+                        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.control).stroke(.separator))
+                        .frame(width: 18, height: 14)
+                        .accessibilityHidden(true)
+                    Text(verbatim: color.hex).monospaced().accessibilityIdentifier(id)
+                }
+            } else {
+                Text(verbatim: "—").foregroundStyle(.secondary).accessibilityIdentifier(id)
+            }
+        }
+    }
+
+    /// A pass or fail mark that does not rely on color: the word and a distinct symbol.
+    private func verdict(_ contrast: ContrastRatio, _ level: ContrastRatio.Level, largeText: Bool) -> some View {
+        let passes = contrast.passes(level, largeText: largeText)
+        return Label(
+            passes ? String(localized: "Pass", table: "Editor") : String(localized: "Fail", table: "Editor"),
+            systemImage: passes ? "checkmark.circle" : "xmark.circle"
+        )
+        .accessibilityIdentifier("color.contrast.\(level == .aa ? "aa" : "aaa").\(largeText ? "large" : "normal")")
     }
 }
 
@@ -1077,7 +1234,7 @@ private struct BackgroundSection: View {
     let model: EditorModel
     let coalescer: ChangeCoalescer
 
-    private enum BackgroundKind: Hashable { case plain, solid, gradient }
+    private enum BackgroundKind: Hashable { case plain, solid, gradient, radial }
 
     var body: some View {
         let presentation = model.document.presentation
@@ -1089,8 +1246,10 @@ private struct BackgroundSection: View {
                 Text(String(localized: "None", table: "Editor")).tag(BackgroundKind.plain)
                 Text(String(localized: "Color", table: "Editor")).tag(BackgroundKind.solid)
                 Text(String(localized: "Gradient", table: "Editor")).tag(BackgroundKind.gradient)
+                Text(String(localized: "Radial Gradient", table: "Editor")).tag(BackgroundKind.radial)
             }
             .accessibilityIdentifier("image.background")
+            BackgroundSwatches(model: model, current: presentation.background)
             switch presentation.background {
             case .none:
                 EmptyView()
@@ -1121,6 +1280,41 @@ private struct BackgroundSection: View {
                             }
                         }),
                     supportsOpacity: false)
+            case .radialGradient(let center, let edge):
+                ColorPicker(
+                    String(localized: "Center color", table: "Editor"),
+                    selection: colorBinding(
+                        { center },
+                        { c in coalescer.run(model) { model.setBackground(.radialGradient(center: c, edge: edge)) } }
+                    ),
+                    supportsOpacity: false)
+                ColorPicker(
+                    String(localized: "Edge color", table: "Editor"),
+                    selection: colorBinding(
+                        { edge },
+                        { c in coalescer.run(model) { model.setBackground(.radialGradient(center: center, edge: c)) } }
+                    ),
+                    supportsOpacity: false)
+            }
+            Picker(
+                String(localized: "Aspect Ratio", table: "Editor"),
+                selection: Binding(get: { presentation.aspect }, set: { model.setAspect($0) })
+            ) {
+                ForEach(FramingAspect.allCases, id: \.self) { aspect in
+                    if let ratio = aspect.ratio {
+                        Text(verbatim: "\(ratio.width):\(ratio.height)").tag(aspect)
+                    } else {
+                        Text(String(localized: "Free", table: "Editor")).tag(aspect)
+                    }
+                }
+            }
+            .accessibilityIdentifier("image.aspect")
+            if presentation.aspect != .free {
+                Toggle(
+                    String(localized: "Balance", table: "Editor"),
+                    isOn: Binding(get: { presentation.balancesContent }, set: { model.setBalancesContent($0) })
+                )
+                .accessibilityIdentifier("image.balance")
             }
             UndoableSlider(
                 title: String(localized: "Padding", table: "Editor"), value: presentation.padding, range: 0...256,
@@ -1140,6 +1334,14 @@ private struct BackgroundSection: View {
                 isOn: Binding(get: { model.showsOutputPreview }, set: { model.setShowsOutputPreview($0) })
             )
             .help(String(localized: "Show exactly what Copy and Save produce, including framing", table: "Editor"))
+            ButtonRow {
+                Button(String(localized: "Save as Default Framing", table: "Editor")) { model.saveDefaultFraming() }
+                    .disabled(model.defaultFraming == presentation)
+                    .accessibilityIdentifier("image.saveDefaultFraming")
+                Button(String(localized: "Reset Default Framing", table: "Editor")) { model.resetDefaultFraming() }
+                    .disabled(model.defaultFraming == nil)
+                    .accessibilityIdentifier("image.resetDefaultFraming")
+            }
         } header: {
             Text(String(localized: "Framing", table: "Editor"))
         }
@@ -1150,6 +1352,7 @@ private struct BackgroundSection: View {
         case .none: .plain
         case .solid: .solid
         case .linearGradient: .gradient
+        case .radialGradient: .radial
         }
     }
 
@@ -1161,6 +1364,77 @@ private struct BackgroundSection: View {
         case .gradient:
             model.setBackground(
                 .linearGradient(from: RGBA(r: 99, g: 99, b: 102), to: RGBA(r: 44, g: 44, b: 46), angleDegrees: 135))
+        case .radial:
+            model.setBackground(.radialGradient(center: RGBA(r: 99, g: 99, b: 102), edge: RGBA(r: 44, g: 44, b: 46)))
+        }
+    }
+}
+
+/// The built-in backgrounds as one row of swatches; pressing one applies it.
+private struct BackgroundSwatches: View {
+    let model: EditorModel
+    let current: Presentation.Background
+
+    private static let names = [
+        String(localized: "White", table: "Editor"), String(localized: "Silver", table: "Editor"),
+        String(localized: "Graphite", table: "Editor"), String(localized: "Black", table: "Editor"),
+        String(localized: "Blue", table: "Editor"), String(localized: "Green", table: "Editor"),
+        String(localized: "Graphite Gradient", table: "Editor"), String(localized: "Sky Gradient", table: "Editor"),
+        String(localized: "Sunset Gradient", table: "Editor"),
+        String(localized: "Silver Radial Gradient", table: "Editor"),
+    ]
+
+    var body: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 20, maximum: 20), spacing: DesignTokens.Space.xs)],
+            alignment: .leading, spacing: DesignTokens.Space.xs
+        ) {
+            ForEach(Array(Presentation.backgroundSwatches.enumerated()), id: \.offset) { index, background in
+                let name = Self.names[index]
+                let selected = background == current
+                Button {
+                    model.setBackground(background)
+                } label: {
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
+                        .fill(Self.fill(background))
+                        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.control).strokeBorder(.separator))
+                        .frame(width: 16, height: 16)
+                        .padding(2)
+                        .overlay {
+                            if selected {
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.control).strokeBorder(
+                                    .primary, lineWidth: 2)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("image.swatch.\(index)")
+                .accessibilityLabel(name)
+                .accessibilityValue(selected ? String(localized: "Selected", table: "Editor") : "")
+                .help(name)
+            }
+        }
+    }
+
+    private static func color(_ rgba: RGBA) -> Color { Color(cgColor: rgba.cgColor) }
+
+    private static func fill(_ background: Presentation.Background) -> AnyShapeStyle {
+        switch background {
+        case .none:
+            return AnyShapeStyle(Color.clear)
+        case .solid(let rgba):
+            return AnyShapeStyle(color(rgba))
+        case .linearGradient(let from, let to, let angle):
+            // The renderer's direction: angle in degrees, y down, through the middle.
+            let dx = cos(angle * .pi / 180) / 2, dy = sin(angle * .pi / 180) / 2
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [color(from), color(to)], startPoint: UnitPoint(x: 0.5 - dx, y: 0.5 - dy),
+                    endPoint: UnitPoint(x: 0.5 + dx, y: 0.5 + dy)))
+        case .radialGradient(let center, let edge):
+            return AnyShapeStyle(
+                RadialGradient(colors: [color(center), color(edge)], center: .center, startRadius: 0, endRadius: 11))
         }
     }
 }
@@ -1189,6 +1463,72 @@ private struct ImagesSection: View {
             .help(String(localized: "Show the top image half-transparent over the others", table: "Editor"))
         } header: {
             Text(String(localized: "Images", table: "Editor"))
+        }
+    }
+}
+
+/// Rotate and flip the whole image (A-10); the Image menu has the same commands.
+private struct TransformSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            HStack {
+                ForEach(ImageTransform.allCases, id: \.self) { transform in
+                    Button {
+                        model.transformImage(transform)
+                    } label: {
+                        Label(transform.imageTitle, systemImage: transform.systemImage).labelStyle(.iconOnly)
+                    }
+                    .help(transform.imageTitle)
+                    .accessibilityIdentifier("image.\(transform.identifier)")
+                }
+            }
+            .disabled(!model.canTransformImage)
+        } header: {
+            Text(String(localized: "Rotate and Flip", table: "Editor"))
+        }
+    }
+}
+
+/// The selected image layer's rotate, flip and duplicate commands (A-10).
+private struct LayerTransformRow: View {
+    let model: EditorModel
+
+    var body: some View {
+        HStack {
+            ForEach(ImageTransform.allCases, id: \.self) { transform in
+                Button {
+                    model.transformSelectedLayers(transform)
+                } label: {
+                    Label(transform.layerTitle, systemImage: transform.systemImage).labelStyle(.iconOnly)
+                }
+                .help(transform.layerTitle)
+                .accessibilityIdentifier("layer.\(transform.identifier)")
+                .disabled(!model.canTransformLayers)
+            }
+            Button(String(localized: "Duplicate", table: "Editor")) { model.duplicateSelection() }
+                .accessibilityIdentifier("layer.duplicate")
+                .disabled(!model.canArrangeSelection)
+        }
+    }
+}
+
+/// The crop tool's aspect preset (A-10).
+private struct CropSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            Picker(
+                String(localized: "Aspect Ratio", table: "Editor"),
+                selection: Binding(get: { model.cropAspect }, set: { model.setCropAspect($0) })
+            ) {
+                ForEach(CropAspect.allCases, id: \.self) { aspect in
+                    Text(verbatim: aspect.title).tag(aspect)
+                }
+            }
+            .accessibilityIdentifier("crop.aspect")
         }
     }
 }

@@ -177,10 +177,14 @@ public struct EditorStyle: Hashable, Sendable {
     /// Local future boxed-text fill; nil means automatic white. Shape/plain-text fill is separate.
     public var textBackgroundColor: RGBA?
     public var curvedArrows: Bool
+    public var arrowHead: Annotation.ArrowHead
+    /// New freehand and highlighter strokes are simplified and drawn as curves when they end.
+    public var smoothsStrokes: Bool
 
     public init(
         stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24,
-        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false
+        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false,
+        arrowHead: Annotation.ArrowHead = .filled, smoothsStrokes: Bool = true
     ) {
         self.stroke = stroke
         self.fill = fill
@@ -190,6 +194,8 @@ public struct EditorStyle: Hashable, Sendable {
         self.textAppearance = textAppearance
         self.textBackgroundColor = textBackgroundColor
         self.curvedArrows = curvedArrows
+        self.arrowHead = arrowHead
+        self.smoothsStrokes = smoothsStrokes
     }
 
     public static let lineWidthRange: ClosedRange<Double> = 1...40
@@ -272,6 +278,12 @@ public struct EditorColorSample: Hashable, Sendable {
     public var rgbText: String { "\(color.r) \(color.g) \(color.b)" }
 }
 
+/// Which side of a contrast pair a picked colour fills (FR-11).
+public enum ContrastRole: Hashable, Sendable {
+    case text
+    case background
+}
+
 /// Ruler measurement between two anchors, in document pixels; points only when the document is a
 /// single capture with a known point-to-pixel scale (imported images never get one).
 public struct EditorMeasurement: Hashable, Sendable {
@@ -336,6 +348,13 @@ public enum EditorNotice: Hashable, Sendable {
     case maskingFailed
     /// The action waits until automatic masking finishes.
     case maskingInProgress
+    /// The action waits until a text-only redaction's lines are found (A-6).
+    case textRedactionInProgress
+    /// A text-only redaction covered this many recognized lines.
+    case textLinesCovered(Int)
+    /// A text-only redaction found no line, failed, timed out or went stale: the whole rectangle
+    /// stays covered.
+    case textRedactionKeptArea
 }
 
 /// Automatic masking of a new capture (FR-06). While `pending` the editor shows no capture pixels
@@ -348,4 +367,24 @@ public enum AutoRedaction: Hashable, Sendable {
     case done
     /// Detection failed, was cancelled or missed its deadline: nothing was masked.
     case failed
+}
+
+/// A crop tool preset (A-10): the width-to-height ratio the crop rectangle keeps while it is drawn.
+public enum CropAspect: CaseIterable, Hashable, Sendable {
+    case free, original, square, fourByThree, threeByTwo, sixteenByNine, nineBySixteen
+
+    /// Width and height; `original` is the canvas's own ratio. Nil constrains nothing.
+    public func ratio(canvas: Size<DocumentSpace>) -> (width: Double, height: Double)? {
+        switch self {
+        case .free: nil
+        case .original:
+            canvas.width.isFinite && canvas.height.isFinite && canvas.width > 0 && canvas.height > 0
+                ? (canvas.width, canvas.height) : nil
+        case .square: SelectionAspect.square.ratio
+        case .fourByThree: SelectionAspect.fourByThree.ratio
+        case .threeByTwo: SelectionAspect.threeByTwo.ratio
+        case .sixteenByNine: SelectionAspect.sixteenByNine.ratio
+        case .nineBySixteen: (9, 16)
+        }
+    }
 }

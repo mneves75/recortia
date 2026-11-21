@@ -257,6 +257,30 @@ extension EditorModel {
         edit("Shadow", inPreview: true) { $0.presentation.shadow = shadow }
     }
 
+    /// The output ratio the background grows to (FR-13); the padding stays a minimum.
+    public func setAspect(_ aspect: FramingAspect) {
+        edit("Aspect Ratio", inPreview: true) { $0.presentation.aspect = aspect }
+    }
+
+    public func setBalancesContent(_ balances: Bool) {
+        edit("Balance", inPreview: true) { $0.presentation.balancesContent = balances }
+    }
+
+    /// The framing new captures open with; nil until one is saved. Open documents never change.
+    public var defaultFraming: Presentation? { environment.settings.preferences.defaultFraming }
+
+    /// Saves this document's framing as the default for new captures. Not a document edit.
+    public func saveDefaultFraming() {
+        guard !isClosed else { return }
+        let framing = document.presentation
+        environment.settings.update { $0.defaultFraming = framing }
+    }
+
+    public func resetDefaultFraming() {
+        guard !isClosed else { return }
+        environment.settings.update { $0.defaultFraming = nil }
+    }
+
     public func setSpotlightDim(_ dim: Double, for id: CalloutID) {
         guard let value = (0.0...1).admit(dim) else { return }
         edit("Spotlight") { document in

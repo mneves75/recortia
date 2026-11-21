@@ -1,6 +1,264 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Rotate Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar para a esquerda" } }
+      }
+    },
+    "Rotate Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar para a direita" } }
+      }
+    },
+    "Flip Horizontal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Horizontal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar horizontalmente" } }
+      }
+    },
+    "Flip Vertical": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Vertical" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar verticalmente" } }
+      }
+    },
+    "Rotate Layer Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Layer Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar camada para a esquerda" } }
+      }
+    },
+    "Rotate Layer Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Layer Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar camada para a direita" } }
+      }
+    },
+    "Flip Layer Horizontal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Layer Horizontal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar camada horizontalmente" } }
+      }
+    },
+    "Flip Layer Vertical": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Layer Vertical" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar camada verticalmente" } }
+      }
+    },
+    "Rotate and Flip": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate and Flip" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar e espelhar" } }
+      }
+    },
+    "Aspect Ratio": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Aspect Ratio" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Proporção" } }
+      }
+    },
+    "Balance": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Balance" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Equilibrar" } }
+      }
+    },
+    "Black": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Black" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Preto" } }
+      }
+    },
+    "Blue": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Blue" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Azul" } }
+      }
+    },
+    "Center color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Center color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor do centro" } }
+      }
+    },
+    "Edge color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edge color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor da borda" } }
+      }
+    },
+    "Free": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Free" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Livre" } }
+      }
+    },
+    "Graphite": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Graphite" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Grafite" } }
+      }
+    },
+    "Graphite Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Graphite Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê grafite" } }
+      }
+    },
+    "Green": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Green" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Verde" } }
+      }
+    },
+    "Radial Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Radial Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê radial" } }
+      }
+    },
+    "Reset Default Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset Default Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Redefinir moldura padrão" } }
+      }
+    },
+    "Save as Default Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save as Default Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar como moldura padrão" } }
+      }
+    },
+    "Silver": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Silver" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Prata" } }
+      }
+    },
+    "Silver Radial Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Silver Radial Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê radial prata" } }
+      }
+    },
+    "Sky Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sky Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê céu" } }
+      }
+    },
+    "Sunset Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sunset Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê pôr do sol" } }
+      }
+    },
+    "White": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "White" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Branco" } }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Original" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Original" } }
+      }
+    },
+    "Filled Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Filled Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta cheia" } }
+      }
+    },
+    "Open Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta aberta" } }
+      }
+    },
+    "No Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Sem ponta" } }
+      }
+    },
+    "Double Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Double Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta dupla" } }
+      }
+    },
+    "Mixed arrowheads": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed arrowheads" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pontas diferentes" } }
+      }
+    },
+    "Smooth": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Smooth" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Suavizar" } }
+      }
+    },
+    "Applies to new strokes.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Applies to new strokes." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Vale para novos traços." } }
+      }
+    },
+    "Contrast": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Contrast" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Contraste" } }
+      }
+    },
+    "Darkest Pixel": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Darkest Pixel" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pixel mais escuro" } }
+      }
+    },
+    "Fail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fail" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Falha" } }
+      }
+    },
+    "Large": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Large" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Grande" } }
+      }
+    },
+    "Normal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Normal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Normal" } }
+      }
+    },
+    "Pass": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pass" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Passa" } }
+      }
+    },
+    "Use as Background": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use as Background" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Usar como fundo" } }
+      }
+    },
+    "Use as Text": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use as Text" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Usar como texto" } }
+      }
+    },
     "Collapsed": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Collapsed" } },
@@ -101,6 +359,94 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Covered %lld lines of text.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Covered %lld line of text."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Covered %lld lines of text."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld linha de texto coberta."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld linhas de texto cobertas."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Finding the text to cover. Try again when it finishes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding the text to cover. Try again when it finishes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procurando o texto a cobrir. Tente de novo quando terminar."
+          }
+        }
+      }
+    },
+    "No text lines were found, so the whole area stays covered.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No text lines were found, so the whole area stays covered."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma linha de texto foi encontrada, então toda a área continua coberta."
+          }
+        }
+      }
+    },
+    "Text Only": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text Only"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Somente texto"
           }
         }
       }
@@ -1247,38 +1593,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Copiar"
-          }
-        }
-      }
-    },
-    "Copy HEX": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy HEX"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copiar HEX"
-          }
-        }
-      }
-    },
-    "Copy RGB": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy RGB"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copiar RGB"
           }
         }
       }

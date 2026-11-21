@@ -231,6 +231,11 @@ Decode fixtures for ordinary text, HTTPS, unsupported schemes, payment/Wi-Fi-lik
 
 Use an sRGB chart with known encoded RGB values and exact geometry. HEX/RGB output matches the defined pixel sampling method, ruler distances remain invariant under editor zoom, and point/pixel labels are unambiguous. A nearest-neighbor loupe does not interpolate. Imported images do not acquire a fictitious Retina scale.
 
+Each copy format matches reference strings, including alpha 0 and rounding; OKLab matches Ottosson's
+published example pairs; WCAG contrast matches published pairs (#777777 on white is 4.48:1, failing AA
+for normal text). Darkest sampling over a synthetic glyph finds it, and point or darkest sampling over a
+secure mask returns the mask fill, never the hidden pixel (`colour-tools`, both languages).
+
 Oversized finite document coordinates yield no sample; extreme loupe radii clamp to the image without
 integer overflow. Rapid output-preview toggles retain one in-flight render and discard canceled results.
 
@@ -255,6 +260,13 @@ Exercise the 120-second, 200-frame, 40-MP, 32,768-side, 20,000-default-height, a
 ### COMP-01 — Composite rendering and redaction
 
 Combine at least three images with scaling, opacity, overlap, a background, rounded corners, shadows, spotlight, and magnifier. Verify order, aspect ratios, crop, and output size. Reject render-graph cycles. Re-run RED-01 through RED-03 after every new derived effect or export-capable surface.
+
+Each aspect preset's output is an exact ratio no smaller than the padded content; a synthetic
+window with an asymmetric translucent margin is centred by its opaque body with Balance on and by
+its box with it off; a radial gradient has its centre colour in the middle and its edge colour at
+the corners; 1:1 and 9:16 PNG exports match their size pixel for pixel; a document written before
+presets decodes unchanged. A saved default framing reaches new captures only (`framing-presets`,
+both languages, with dark companions).
 
 ## UX, privacy, performance, and release
 

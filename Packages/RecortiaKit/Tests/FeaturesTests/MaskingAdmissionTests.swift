@@ -159,6 +159,7 @@ struct MaskingAdmissionTests {
             Step(name: "setTextBackgroundColor", expectation: .refused) { model.setTextBackgroundColor(.white) },
             Step(name: "setTextAppearance", expectation: .refused) { #expect(!model.setTextAppearance(.boxed)) },
             Step(name: "setArrowCurved", expectation: .refused) { #expect(!model.setArrowCurved(false)) },
+            Step(name: "setArrowHead", expectation: .refused) { #expect(!model.setArrowHead(.double)) },
             Step(name: "setArrowBend", expectation: .refused) {
                 model.selection = [.annotation(arrow)]
                 defer { model.selection = all }
@@ -178,6 +179,10 @@ struct MaskingAdmissionTests {
             Step(name: "setLayerOpacity", expectation: .refused) { model.setLayerOpacity(0.5, for: layer) },
             Step(name: "setLayerScale", expectation: .refused) { model.setLayerScale(0.5, for: layer) },
             Step(name: "toggleTransparencyComparison", expectation: .refused) { model.toggleTransparencyComparison() },
+            Step(name: "transformImage", expectation: .refused) { model.transformImage(.rotateRight) },
+            Step(name: "transformSelectedLayers", expectation: .refused) {
+                model.transformSelectedLayers(.flipVertical)
+            },
             Step(name: "arrangeSideBySide", expectation: .refused) { model.arrangeSideBySide() },
             Step(name: "fitCanvasToContent", expectation: .refused) { model.fitCanvasToContent() },
             Step(name: "expandCanvas", expectation: .refused) { model.expandCanvas(top: 20, left: 20) },
@@ -185,6 +190,8 @@ struct MaskingAdmissionTests {
             Step(name: "setPadding", expectation: .refused) { model.setPadding(20) },
             Step(name: "setCornerRadius", expectation: .refused) { model.setCornerRadius(12) },
             Step(name: "setShadow", expectation: .refused) { model.setShadow(Presentation.Shadow()) },
+            Step(name: "setAspect", expectation: .refused) { model.setAspect(.square) },
+            Step(name: "setBalancesContent", expectation: .refused) { model.setBalancesContent(false) },
             Step(name: "setSpotlightDim", expectation: .refused) { model.setSpotlightDim(0.2, for: spotlight) },
             Step(name: "setObfuscationAmount", expectation: .refused) { model.setObfuscationAmount(40, for: effect) },
             Step(name: "commitTextEditing", expectation: .refused) {
@@ -270,6 +277,7 @@ struct MaskingAdmissionTests {
             Step(name: "copyQRPayload", expectation: .inert) { #expect(!model.copyQRPayload(at: 0)) },
             Step(name: "openQRPayload", expectation: .inert) { #expect(!model.openQRPayload(payload, at: 0)) },
             Step(name: "copyPickedColor", expectation: .inert) { #expect(!model.copyPickedColor()) },
+            Step(name: "usePickedColor", expectation: .inert) { #expect(!model.usePickedColor(as: .text)) },
             Step(name: "loupe", expectation: .inert) { #expect(model.loupe() == nil) },
             Step(name: "clearRecognition", expectation: .inert) { model.clearRecognition() },
             Step(name: "clearQR", expectation: .inert) { model.clearQR() },
@@ -279,8 +287,14 @@ struct MaskingAdmissionTests {
             Step(name: "item", expectation: .inert) { _ = model.item(at: point) },
             // Tools, future-object defaults, preferences and the viewport.
             Step(name: "selectTool", expectation: .inert) { model.selectTool(.rectangle) },
+            Step(name: "setRedactsTextOnly", expectation: .inert) { model.setRedactsTextOnly(true) },
             Step(name: "setColorSampleSize", expectation: .inert) { model.setColorSampleSize(.fiveByFive) },
+            Step(name: "setStrokeSmoothing", expectation: .inert) { model.setStrokeSmoothing(false) },
+            Step(name: "setSamplesDarkestPixel", expectation: .inert) { model.setSamplesDarkestPixel(true) },
+            Step(name: "setCropAspect", expectation: .inert) { model.setCropAspect(.sixteenByNine) },
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
+            Step(name: "saveDefaultFraming", expectation: .inert) { model.saveDefaultFraming() },
+            Step(name: "resetDefaultFraming", expectation: .inert) { model.resetDefaultFraming() },
             Step(name: "applySavedColor", expectation: .inert) { model.applySavedColor(model.style.stroke) },
             Step(name: "removeSavedColor", expectation: .inert) { model.removeSavedColor(model.style.stroke) },
             Step(name: "clearRuler", expectation: .inert) { model.clearRuler() },

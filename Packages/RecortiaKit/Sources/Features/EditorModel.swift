@@ -21,6 +21,10 @@ public final class EditorModel {
     public internal(set) var style = EditorStyle()
     /// Opaque fill for new secure redactions.
     public internal(set) var redactionFill: RGBA = .black
+    /// New redactions cover only the text lines recognized inside them (EditorModel+TextRedaction.swift).
+    public internal(set) var redactsTextOnly = false
+    /// The ratio the crop tool holds (EditorModel+Transforms.swift).
+    public internal(set) var cropAspect: CropAspect = .free
     public internal(set) var viewport = EditorViewport()
     public internal(set) var viewportSize = Size<ViewSpace>(width: 0, height: 0)
     /// Device pixels per view point of the canvas's screen; 100 % zoom shows one document pixel per device pixel.
@@ -35,6 +39,8 @@ public final class EditorModel {
     public internal(set) var isClosed = false
     /// Automatic masking of a new capture (EditorModel+AutoRedaction.swift).
     public internal(set) var autoRedaction: AutoRedaction = .off
+    /// A text-only redaction waiting for recognition (EditorModel+TextRedaction.swift).
+    var textRedaction: PendingTextRedaction?
 
     // Preview (EditorModel+Preview.swift)
     public internal(set) var baseImage: CGImage?
@@ -55,6 +61,15 @@ public final class EditorModel {
         get { storedColorSampleSize }
         set { setColorSampleSize(newValue) }
     }
+    var storedSamplesDarkestPixel = false
+    /// Picks take the darkest pixel of a 20-point box instead of the sample area (text colour).
+    public var samplesDarkestPixel: Bool {
+        get { storedSamplesDarkestPixel }
+        set { setSamplesDarkestPixel(newValue) }
+    }
+    /// The two opaque colours whose WCAG contrast the picker shows; cleared with the privacy epoch.
+    public internal(set) var contrastText: RGBA?
+    public internal(set) var contrastBackground: RGBA?
     public internal(set) var ruler: EditorMeasurement?
 
     @ObservationIgnored public let environment: EditorEnvironment
@@ -129,7 +144,7 @@ public final class EditorModel {
 
     // An editor released without `close()` still stops its detection and deadline.
     isolated deinit {
-        for task in autoRedactionTasks { task.cancel() }
+        for task in autoRedactionTasks + (textRedaction?.tasks ?? []) { task.cancel() }
     }
 
     public var document: Document { session.document }
@@ -491,7 +506,7 @@ public final class EditorModel {
         case .annotation(let id):
             guard let annotation = d.annotations.first(where: { $0.id == id }) else { return [] }
             switch annotation.kind {
-            case .arrow(let start, let end, let control):
+            case .arrow(let start, let end, let control, _):
                 let endpoints: [(EditorHandle, Point<DocumentSpace>)] = [(.start, start), (.end, end)]
                 guard let control else { return endpoints }
                 return endpoints + [(.bend, ArrowCurve.bend(start: start, end: end, control: control))]
@@ -501,7 +516,7 @@ public final class EditorModel {
             default: return EditorGeometry.handles(for: frame, cornersOnly: false)
             }
         case .layer(let id):
-            guard let layer = d.layers.first(where: { $0.id == id }), layer.placement.rotation == 0 else { return [] }
+            guard let layer = d.layers.first(where: { $0.id == id }), layer.placement.isAxisAligned else { return [] }
             return EditorGeometry.handles(for: frame, cornersOnly: true)
         case .mask, .obfuscation, .callout:
             return EditorGeometry.handles(for: frame, cornersOnly: false)
@@ -943,7 +958,7 @@ public final class EditorModel {
         let isCurve: Bool
         if case .annotation(let id) = item,
             let annotation = document.annotations.first(where: { $0.id == id }),
-            case .arrow(_, _, .some) = annotation.kind
+            case .arrow(_, _, .some, _) = annotation.kind
         {
             isCurve = true
         } else {

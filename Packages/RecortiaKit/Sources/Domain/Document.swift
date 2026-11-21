@@ -64,11 +64,43 @@ public struct LayerPlacement: Hashable, Sendable, Codable {
     public var scale: Double
     /// Radians, about the layer's top-left corner.
     public var rotation: Double
+    /// The asset is mirrored left to right before it is rotated (A-10). A mirror is not a
+    /// stretch: the scale stays uniform.
+    public var mirrored: Bool
 
-    public init(translation: Point<DocumentSpace> = .zero, scale: Double = 1, rotation: Double = 0) {
+    public init(
+        translation: Point<DocumentSpace> = .zero, scale: Double = 1, rotation: Double = 0, mirrored: Bool = false
+    ) {
         self.translation = translation
         self.scale = scale
         self.rotation = rotation
+        self.mirrored = mirrored
+    }
+
+    private enum CodingKeys: String, CodingKey { case translation, scale, rotation, mirrored }
+
+    /// A placement written before mirroring existed has no `mirrored` key and is not mirrored;
+    /// an unmirrored placement is written without the key, so old documents keep their bytes.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        translation = try c.decode(Point<DocumentSpace>.self, forKey: .translation)
+        scale = try c.decode(Double.self, forKey: .scale)
+        rotation = try c.decode(Double.self, forKey: .rotation)
+        mirrored = try c.decodeIfPresent(Bool.self, forKey: .mirrored) ?? false
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(translation, forKey: .translation)
+        try c.encode(scale, forKey: .scale)
+        try c.encode(rotation, forKey: .rotation)
+        if mirrored { try c.encode(true, forKey: .mirrored) }
+    }
+
+    /// Whether the rotation is a whole number of quarter turns, so the layer's edges stay
+    /// horizontal and vertical.
+    public var isAxisAligned: Bool {
+        (0..<4).contains { rotation == Double($0) * (.pi / 2) }
     }
 }
 
@@ -96,10 +128,18 @@ public struct ImageLayer: Identifiable, Hashable, Sendable, Codable {
         sourceCrop ?? PixelRect(x: 0, y: 0, width: assetSize.width, height: assetSize.height)
     }
 
-    /// Maps asset pixels into document space: crop offset, rotation, scale, then translation.
+    /// Maps asset pixels into document space: crop offset, mirror, rotation, scale, then
+    /// translation. A mirror keeps the visible pixels where they were before it, so `translation`
+    /// is still the unrotated top-left corner.
     public func sourceToDocument(assetSize: PixelSize) -> AffineMap<SourcePixelSpace, DocumentSpace> {
         let visible = visibleSourceRect(assetSize: assetSize)
-        return AffineMap<SourcePixelSpace, SourcePixelSpace>.translation(dx: -Double(visible.x), dy: -Double(visible.y))
+        var local = AffineMap<SourcePixelSpace, SourcePixelSpace>.translation(
+            dx: -Double(visible.x), dy: -Double(visible.y))
+        if placement.mirrored {
+            local = local.then(AffineMap(a: -1, b: 0, c: 0, d: 1, tx: Double(visible.width), ty: 0))
+        }
+        return
+            local
             .then(AffineMap<SourcePixelSpace, DocumentSpace>.rotation(placement.rotation))
             .then(.scale(placement.scale))
             .then(.translation(dx: placement.translation.x, dy: placement.translation.y))
@@ -147,12 +187,15 @@ public struct CosmeticObfuscation: Identifiable, Hashable, Sendable, Codable {
     }
 }
 
-/// Presentation framing (FR-13). Padding surrounds the (cropped) content.
+/// Presentation framing (FR-13). Padding surrounds the (cropped) content; an aspect preset grows
+/// the background around it to a fixed output ratio, never reducing the padding.
 public struct Presentation: Hashable, Sendable, Codable {
     public enum Background: Hashable, Sendable, Codable {
         case none
         case solid(RGBA)
         case linearGradient(from: RGBA, to: RGBA, angleDegrees: Double)
+        /// `center` at the middle of the output, `edge` at its corners.
+        case radialGradient(center: RGBA, edge: RGBA)
     }
 
     public struct Shadow: Hashable, Sendable, Codable {
@@ -171,17 +214,57 @@ public struct Presentation: Hashable, Sendable, Codable {
     public var padding: Double
     public var cornerRadius: Double
     public var shadow: Shadow?
+    public var aspect: FramingAspect
+    /// With an aspect preset, centre the content's opaque pixels rather than its box, so a window
+    /// capture's transparent shadow margin does not push the window off centre.
+    public var balancesContent: Bool
 
-    public init(background: Background = .none, padding: Double = 0, cornerRadius: Double = 0, shadow: Shadow? = nil) {
+    public init(
+        background: Background = .none, padding: Double = 0, cornerRadius: Double = 0, shadow: Shadow? = nil,
+        aspect: FramingAspect = .free, balancesContent: Bool = true
+    ) {
         self.background = background
         self.padding = padding
         self.cornerRadius = cornerRadius
         self.shadow = shadow
+        self.aspect = aspect
+        self.balancesContent = balancesContent
     }
 
     public static let plain = Presentation()
 
     public var isPlain: Bool { self == .plain }
+
+    /// Whether the renderer centres the opaque content bounds instead of the content box.
+    public var centresOpaqueContent: Bool { aspect != .free && balancesContent }
+
+    private enum CodingKeys: String, CodingKey {
+        case background, padding, cornerRadius, shadow, aspect, balancesContent
+    }
+
+    /// Documents and preferences written before aspect presets have no `aspect` or
+    /// `balancesContent` key; they decode as Free with balance on.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        background = try container.decode(Background.self, forKey: .background)
+        padding = try container.decode(Double.self, forKey: .padding)
+        cornerRadius = try container.decode(Double.self, forKey: .cornerRadius)
+        shadow = try container.decodeIfPresent(Shadow.self, forKey: .shadow)
+        aspect = try container.decodeIfPresent(FramingAspect.self, forKey: .aspect) ?? .free
+        balancesContent = try container.decodeIfPresent(Bool.self, forKey: .balancesContent) ?? true
+    }
+
+    /// Free and balance on are written without their keys, each on its own, so documents and
+    /// preferences from before presets keep their bytes.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(background, forKey: .background)
+        try container.encode(padding, forKey: .padding)
+        try container.encode(cornerRadius, forKey: .cornerRadius)
+        try container.encodeIfPresent(shadow, forKey: .shadow)
+        if aspect != .free { try container.encode(aspect, forKey: .aspect) }
+        if !balancesContent { try container.encode(false, forKey: .balancesContent) }
+    }
 }
 
 /// Spotlight and magnifier callouts (FR-13). A magnifier samples the sanitized raster layers,
@@ -255,13 +338,17 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
 
     /// A new capture's document. A window capture is framed over a solid `windowBackground`
     /// (FR-02); the colour is a presentation step, so the source pixels, and any secure mask
-    /// filled into them, stay as captured.
-    public init(capture asset: ImageAssetInfo, windowBackground: WindowCaptureBackground) {
+    /// filled into them, stay as captured. A saved default framing applies to every capture; its
+    /// background wins unless it is None, which keeps the window background.
+    public init(
+        capture asset: ImageAssetInfo, windowBackground: WindowCaptureBackground, defaultFraming: Presentation? = nil
+    ) {
         self.init(asset: asset)
-        if case .captured(let geometry) = asset.origin, case .window = geometry.source,
-            case .solid(let color) = windowBackground
+        presentation = defaultFraming ?? .plain
+        if presentation.background == .none, case .captured(let geometry) = asset.origin,
+            case .window = geometry.source, case .solid(let color) = windowBackground
         {
-            presentation = Presentation(background: .solid(color))
+            presentation.background = .solid(color)
         }
     }
 
@@ -275,16 +362,49 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
         return crop.intersection(canvasRect) ?? Rect(x: 0, y: 0, width: 0, height: 0)
     }
 
-    /// Output pixel size at `exportScale`, including presentation padding.
-    public func outputPixelSize(exportScale: Double) -> PixelSize {
+    /// Output pixel size at `exportScale`, including presentation padding and aspect expansion.
+    public func outputPixelSize(exportScale: Double) -> PixelSize { outputFrame(exportScale: exportScale).pixelSize }
+
+    /// The framed output at `exportScale`: its pixel size and where the content's top-left corner
+    /// sits in it, in output pixels. Free keeps the padding on every side; an aspect preset takes
+    /// the smallest whole multiple of its ratio that holds the padded content and centres the
+    /// content box on whole pixels, so the ratio is exact and the padding is a minimum: the top
+    /// and left sides keep it to the whole pixel below, the bottom and right sides in full.
+    public func outputFrame(exportScale: Double) -> OutputFrame {
+        let empty = OutputFrame(pixelSize: PixelSize(width: 0, height: 0), contentOriginX: 0, contentOriginY: 0)
         let scale = exportScale * resizeScale
-        let padding = presentation.padding * 2
-        let width = ((contentRect.width + padding) * scale).rounded()
-        let height = ((contentRect.height + padding) * scale).rounded()
+        let padding = presentation.padding
+        let width = (contentRect.width + padding * 2) * scale
+        let height = (contentRect.height + padding * 2) * scale
         guard width.isFinite, height.isFinite, width < Double(Int32.max), height < Double(Int32.max) else {
-            return PixelSize(width: 0, height: 0)
+            return empty
         }
-        return PixelSize(width: max(1, Int(width)), height: max(1, Int(height)))
+        let framed = PixelSize(width: max(1, Int(width.rounded())), height: max(1, Int(height.rounded())))
+        guard let ratio = presentation.aspect.ratio else {
+            return OutputFrame(pixelSize: framed, contentOriginX: padding * scale, contentOriginY: padding * scale)
+        }
+        // Rounded up, not to nearest: with fractional content (a resize) a padded size rounded
+        // down leaves the floored centring a whole pixel short of the padding on one side.
+        let least = PixelSize(width: max(1, Int(width.rounded(.up))), height: max(1, Int(height.rounded(.up))))
+        let multiple = max(
+            (least.width + ratio.width - 1) / ratio.width, (least.height + ratio.height - 1) / ratio.height)
+        let size = PixelSize(width: multiple * ratio.width, height: multiple * ratio.height)
+        guard size.width < Int(Int32.max), size.height < Int(Int32.max) else { return empty }
+        return OutputFrame(
+            pixelSize: size,
+            contentOriginX: ((Double(size.width) - contentRect.width * scale) / 2).rounded(.down),
+            contentOriginY: ((Double(size.height) - contentRect.height * scale) / 2).rounded(.down))
+    }
+
+    /// The whole output at `exportScale` in document units, before any balance shift: the
+    /// rectangle the rendered output covers when it is drawn over the document.
+    public func framedRect(exportScale: Double) -> Rect<DocumentSpace> {
+        let scale = exportScale * resizeScale
+        let frame = outputFrame(exportScale: exportScale)
+        guard scale.isFinite, scale > 0, !frame.pixelSize.isEmpty else { return contentRect }
+        return Rect(
+            x: contentRect.minX - frame.contentOriginX / scale, y: contentRect.minY - frame.contentOriginY / scale,
+            width: Double(frame.pixelSize.width) / scale, height: Double(frame.pixelSize.height) / scale)
     }
 
     /// Computes the source-pixel regions a document-space mask covers in every intersecting layer.

@@ -294,8 +294,19 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var regionAspectChoice: SelectionAspect?
     /// Stored only once the person changes it; read `snapsToInterfaceElements` (B-7).
     public var snapsToInterfaceElementsChoice: Bool?
+    /// Stored only once the person picks one in the colour picker; read `colorFormat` (A-7).
+    public var colorFormatChoice: ColorFormat?
+    /// The framing new captures open with (FR-13); nil until the person saves one in the editor.
+    /// Documents already open never change with it.
+    public var defaultFraming: Presentation?
 
     public init() {}
+
+    /// How the colour picker copies a colour (FR-11). HEX by default.
+    public var colorFormat: ColorFormat {
+        get { colorFormatChoice ?? .hex }
+        set { colorFormatChoice = newValue }
+    }
 
     /// Whether a completed capture plays a short sound (FR-01). Off by default.
     public var playsCaptureSound: Bool {

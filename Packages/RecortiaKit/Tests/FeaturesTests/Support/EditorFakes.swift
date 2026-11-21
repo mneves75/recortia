@@ -83,25 +83,41 @@ final class EditorFakeQRDecoder: QRDecodingService {
     }
 }
 
-/// Returns scripted regions; optionally suspends until the test resolves `pending`. Records whether
-/// the caller had cancelled it by the time it would have returned.
+/// Returns scripted regions and text lines; optionally suspends until the test resolves
+/// `pending`. Records whether the caller had cancelled it by the time it would have returned.
 @MainActor
 final class FakeSensitiveText: SensitiveTextService {
     var regions: [PixelRect] = []
+    var lines: [PixelRect] = []
     var pending: Pending<Void>?
     var error: (any Error)?
     private(set) var requests: [ImageAssetInfo] = []
+    private(set) var lineRequests: [PixelRect] = []
+    /// The hidden source pixels passed with each line request.
+    private(set) var hiddenRequests: [[PixelRect]] = []
     private(set) var observedCancellation = false
 
     func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
         requests.append(asset)
+        return try await answer(regions)
+    }
+
+    func textLineRegions(
+        in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]
+    ) async throws -> [PixelRect] {
+        lineRequests.append(area)
+        hiddenRequests.append(hidden)
+        return try await answer(lines)
+    }
+
+    private func answer(_ result: [PixelRect]) async throws -> [PixelRect] {
         if let pending { await pending.wait() }
         if Task.isCancelled {
             observedCancellation = true
             throw CancellationError()
         }
         if let error { throw error }
-        return regions
+        return result
     }
 }
 

@@ -6,6 +6,19 @@ import Imaging
 /// User-visible names for editor values. Every string lives in the "Editor" table
 /// (Editor.xcstrings) with English and pt-BR translations.
 enum EditorStrings {
+    /// Names of copy formats: code and CSS identifiers, the same in every language.
+    static func name(_ format: ColorFormat) -> String {
+        switch format {
+        case .hex: "HEX"
+        case .cssRGB: "CSS rgb()"
+        case .normalizedRGB: "RGB 0–1"
+        case .swiftUI: "SwiftUI"
+        case .uiKit: "UIKit"
+        case .android: "Android"
+        case .oklch: "OKLCH"
+        }
+    }
+
     static func name(_ appearance: TextAppearance) -> String {
         switch appearance {
         case .standard: String(localized: "Standard", table: "Editor")
@@ -236,6 +249,11 @@ enum EditorStrings {
         case .maskingInProgress:
             String(
                 localized: "Masking e-mail addresses and phone numbers. Try again when it finishes.", table: "Editor")
+        case .textRedactionInProgress:
+            String(localized: "Finding the text to cover. Try again when it finishes.", table: "Editor")
+        case .textLinesCovered(let count): String(localized: "Covered \(count) lines of text.", table: "Editor")
+        case .textRedactionKeptArea:
+            String(localized: "No text lines were found, so the whole area stays covered.", table: "Editor")
         }
     }
 

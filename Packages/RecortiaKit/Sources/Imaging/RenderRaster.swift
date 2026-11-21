@@ -116,6 +116,28 @@ struct RenderRaster {
         }
     }
 
+    /// The smallest rectangle inside `rect` (clipped to the raster) holding every pixel with alpha
+    /// 255; nil when there is none.
+    func opaqueBounds(in rect: PixelRect) -> PixelRect? {
+        guard let clipped = rect.clipped(to: bounds) else { return nil }
+        let rowBytes = width * 4
+        var minX = Int.max, minY = Int.max, maxX = -1, maxY = -1
+        // Invariant: `clipped` lies inside the raster, so every index is below `buffer.count`.
+        unsafe bytes.withUnsafeBytes { buffer in
+            for y in clipped.y..<clipped.maxY {
+                let row = y * rowBytes + 3
+                for x in clipped.x..<clipped.maxX where unsafe buffer[row + x * 4] == 255 {
+                    minX = min(minX, x)
+                    maxX = max(maxX, x)
+                    minY = min(minY, y)
+                    maxY = y
+                }
+            }
+        }
+        guard maxX >= 0 else { return nil }
+        return PixelRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+    }
+
     /// Copies the pixels of `rect` clipped to the raster bounds, row-major; empty when they do
     /// not intersect. The copy is `clipped.width × clipped.height × 4` bytes.
     func pixels(in requested: PixelRect) -> [UInt8] {
