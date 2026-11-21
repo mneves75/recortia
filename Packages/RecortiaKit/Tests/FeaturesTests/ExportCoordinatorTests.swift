@@ -18,13 +18,14 @@ final class ExportHarness {
     let folders = FakeSaveFolders()
     let clock = ManualClock()
     let settings = SettingsStore(storage: MemoryPreferenceStorage())
+    let diagnostics = FakeDiagnostics()
     let coordinator: ExportCoordinator
     var session = TestFixtures.session()
 
     init(upload: (any GitHubUploadService)? = nil) {
         coordinator = ExportCoordinator(
             exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: settings, upload: upload)
+            settings: settings, upload: upload, diagnostics: diagnostics)
     }
 
     func export(_ action: ExportAction) async -> ExportOutcome {

@@ -100,6 +100,7 @@ public final class ExportCoordinator {
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let upload: (any GitHubUploadService)?
+    @ObservationIgnored private let diagnostics: (any DiagnosticsSink)?
     @ObservationIgnored private var snapshotTask: Task<ShareSnapshot, any Error>?
     @ObservationIgnored private var pendingDrag: PendingDrag?
     @ObservationIgnored private var uploadTask: Task<URL, any Error>?
@@ -121,7 +122,7 @@ public final class ExportCoordinator {
         exporter: any ExportService, clipboard: any ClipboardSinkService, files: any FileSinkService,
         drag: any DragSinkService,
         folders: any SaveFolderService, clock: any FeatureClock, settings: SettingsStore,
-        upload: (any GitHubUploadService)? = nil
+        upload: (any GitHubUploadService)? = nil, diagnostics: (any DiagnosticsSink)? = nil
     ) {
         self.exporter = exporter
         self.clipboard = clipboard
@@ -131,6 +132,7 @@ public final class ExportCoordinator {
         self.clock = clock
         self.settings = settings
         self.upload = upload
+        self.diagnostics = diagnostics
     }
 
     public var isBusy: Bool { operation != nil }
@@ -182,6 +184,50 @@ public final class ExportCoordinator {
     private func run(
         _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?,
         isAllowed: @escaping @MainActor () -> AutomaticStepCheck = { .allowed }, fixedScale: Double? = nil,
+        makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
+        isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
+    ) async -> ExportOutcome {
+        let started = clock.uptime()
+        let outcome = await perform(
+            action, documentID: documentID, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
+            fixedScale: fixedScale, makeSnapshot: makeSnapshot, isCurrent: isCurrent)
+        recordDiagnostics(outcome, of: action, duration: clock.uptime() - started)
+        return outcome
+    }
+
+    /// One typed line per export outcome; a busy refusal started nothing and is not recorded.
+    private func recordDiagnostics(_ outcome: ExportOutcome, of action: ExportAction, duration: Duration) {
+        guard let diagnostics else { return }
+        let sink: DiagnosticExportSink =
+            switch action {
+            case .copy: .clipboard
+            case .save, .saveToFolder: .file
+            case .drag: .drag
+            case .upload: .github
+            }
+        let format: DiagnosticImageFormat =
+            switch exportOptions(for: action).formatChoice {
+            case .fixed(.png): .png
+            case .fixed(.jpeg): .jpeg
+            case .automatic: .automatic
+            }
+        switch outcome {
+        case .copied, .saved, .dragged, .uploaded, .alreadyCompleted:
+            diagnostics.record(.exportFinished(sink: sink, format: format, duration: duration))
+        case .canceled:
+            diagnostics.record(.exportCancelled(sink: sink, format: format, duration: duration))
+        case .failed(let failure):
+            diagnostics.record(
+                .exportFailed(sink: sink, format: format, failure: DiagnosticExportFailure(failure), duration: duration)
+            )
+        case .rejectedBusy:
+            break
+        }
+    }
+
+    private func perform(
+        _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?,
+        isAllowed: @escaping @MainActor () -> AutomaticStepCheck, fixedScale: Double?,
         makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
         isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
     ) async -> ExportOutcome {

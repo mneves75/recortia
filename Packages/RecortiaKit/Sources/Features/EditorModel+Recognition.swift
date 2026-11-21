@@ -15,6 +15,7 @@ extension EditorModel {
         guard !isClosed else { return }
         guard admitsAction(explaining: true) else { return }
         let request = UUID()
+        let started = environment.clock.uptime()
         recognitionRequest = request
         recognition = .running
         recognizedResult = nil
@@ -45,8 +46,10 @@ extension EditorModel {
             unavailableRecognitionLanguages = unavailable
             if !unavailable.isEmpty { post(.recognitionLanguagesUnavailable) }
         }
+        let duration = environment.clock.uptime() - started
         switch outcome {
         case .success((let result, let toDocument)):
+            environment.diagnostics?.record(.textRecognitionFinished(lines: result.lines.count, duration: duration))
             guard !result.isEmpty else {
                 recognition = .noText
                 post(.noTextFound)
@@ -58,6 +61,7 @@ extension EditorModel {
             }
             recognition = .recognized(lines: lines, languages: result.languages)
         case .failure:
+            environment.diagnostics?.record(.textRecognitionFailed(duration: duration))
             recognition = .failed
             post(.recognitionFailed)
         }
@@ -112,6 +116,7 @@ extension EditorModel {
         guard !isClosed else { return }
         guard admitsAction(explaining: true) else { return }
         let request = UUID()
+        let started = environment.clock.uptime()
         qrRequest = request
         qr = .running
         let identity = session.requestIdentity()
@@ -131,8 +136,10 @@ extension EditorModel {
             post(.recognitionDiscarded)
             return
         }
+        let duration = environment.clock.uptime() - started
         switch outcome {
         case .success(let payloads):
+            environment.diagnostics?.record(.qrDecodingFinished(codes: payloads.count, duration: duration))
             if payloads.isEmpty {
                 qr = .noCode
                 post(.noQRCodeFound)
@@ -140,6 +147,7 @@ extension EditorModel {
                 qr = .decoded(payloads)
             }
         case .failure:
+            environment.diagnostics?.record(.qrDecodingFailed(duration: duration))
             qr = .failed
             post(.recognitionFailed)
         }

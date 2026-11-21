@@ -296,11 +296,20 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var snapsToInterfaceElementsChoice: Bool?
     /// Stored only once the person picks one in the colour picker; read `colorFormat` (A-7).
     public var colorFormatChoice: ColorFormat?
+    /// Stored only once the person changes it; read `writesDiagnosticsFile` (B-10).
+    public var writesDiagnosticsFileChoice: Bool?
     /// The framing new captures open with (FR-13); nil until the person saves one in the editor.
     /// Documents already open never change with it.
     public var defaultFraming: Presentation?
 
     public init() {}
+
+    /// Whether Recortia writes the local diagnostics file of typed events (B-10). Off by default;
+    /// turning it off stops writing and keeps the file until the person deletes it.
+    public var writesDiagnosticsFile: Bool {
+        get { writesDiagnosticsFileChoice ?? false }
+        set { writesDiagnosticsFileChoice = newValue }
+    }
 
     /// How the colour picker copies a colour (FR-11). HEX by default.
     public var colorFormat: ColorFormat {

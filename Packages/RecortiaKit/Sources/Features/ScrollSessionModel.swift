@@ -69,6 +69,7 @@ public final class ScrollSessionModel {
     @ObservationIgnored private let assets: any ImageAssetService
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
+    @ObservationIgnored private let diagnostics: (any DiagnosticsSink)?
     @ObservationIgnored private var sessionID: UUID?
     @ObservationIgnored private var streamStarted = false
     /// The session that last started the frame source; a stale session stops only its own stream.
@@ -99,7 +100,8 @@ public final class ScrollSessionModel {
     public init(
         frames: any ScrollFrameSourceService, stitcher: any ScrollStitchService, autoScroller: (any AutoScrollService)?,
         accessibility: any AccessibilityPermissionService, screenPermission: any ScreenPermissionService,
-        assets: any ImageAssetService, clock: any FeatureClock, settings: SettingsStore
+        assets: any ImageAssetService, clock: any FeatureClock, settings: SettingsStore,
+        diagnostics: (any DiagnosticsSink)? = nil
     ) {
         self.frames = frames
         self.stitcher = stitcher
@@ -109,6 +111,7 @@ public final class ScrollSessionModel {
         self.assets = assets
         self.clock = clock
         self.settings = settings
+        self.diagnostics = diagnostics
     }
 
     public var isPartial: Bool { partialReason != nil }
@@ -138,8 +141,11 @@ public final class ScrollSessionModel {
         autoScroller?.stop()
         resetProgress()
         notice = nil
-        if !screenPermission.isGranted {
+        let isGranted = screenPermission.isGranted
+        diagnostics?.record(.permissionStatus(permission: .screenRecording, granted: isGranted))
+        if !isGranted {
             let granted = await screenPermission.request()
+            diagnostics?.record(.permissionStatus(permission: .screenRecording, granted: granted))
             guard granted else {
                 notice = .screenPermissionDenied
                 return false
@@ -156,7 +162,9 @@ public final class ScrollSessionModel {
         self.target = target
         mode = .manual
         if settings.preferences.automaticScrollingEnabled {
-            if accessibility.isTrusted, autoScroller != nil {
+            let isTrusted = accessibility.isTrusted
+            diagnostics?.record(.permissionStatus(permission: .accessibility, granted: isTrusted))
+            if isTrusted, autoScroller != nil {
                 mode = .automatic
             } else {
                 notice = .automaticNeedsAccessibility
@@ -474,10 +482,15 @@ public final class ScrollSessionModel {
             partialReason = nil
             stitcher.reset()
             apply(.fail(.noFrames))
+            diagnostics?.record(.scrollCaptureFailed(failure: .noFrames, frames: 0))
             sessionID = nil
             return
         }
         acceptedFrames = stitcher.acceptedFrameCount
+        diagnostics?.record(
+            .scrollCaptureFinished(
+                frames: acceptedFrames, automatic: mode == .automatic, partial: partial != nil,
+                duration: elapsedSinceStart()))
         outputSize = stitcher.outputSize
         guard let id = sessionID else { return }
         task = Task { [weak self] in
@@ -511,6 +524,8 @@ public final class ScrollSessionModel {
 
     private func fail(_ failure: ScrollFailure) {
         guard state.isActive else { return }
+        diagnostics?.record(
+            .scrollCaptureFailed(failure: DiagnosticScrollFailure(failure), frames: stitcher.acceptedFrameCount))
         tearDown()
         apply(.fail(failure))
     }
