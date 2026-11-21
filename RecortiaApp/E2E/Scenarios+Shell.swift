@@ -80,7 +80,10 @@
             context.check("reopening an unfinished tour starts at the first page", onboarding.step == .localProcessing)
             await E2ESnapshot.settle(root)
 
-            let pages: [OnboardingModel.Step] = [.capture, .editing, .recognition, .composition, .sharing, .shortcuts]
+            // Five pages since T2: the recognition and composition lists merged into editing and sharing.
+            let pages: [OnboardingModel.Step] = [.capture, .editing, .sharing, .shortcuts]
+            context.check(
+                "the tour has five pages", OnboardingModel.pageCount == 5, "\(OnboardingModel.pageCount) pages")
             for page in pages {
                 try pressTourControl("tour.next", in: root, context)
                 await E2ESnapshot.settle(root)

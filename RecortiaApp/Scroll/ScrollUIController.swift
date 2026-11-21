@@ -123,7 +123,7 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
         let window = NSWindow(
             contentViewController: NSHostingController(
                 rootView: LiveScrollReview(model: model, onDiscard: { [weak self] in self?.requestDiscard() })))
-        window.title = String(localized: "Review Scrolling Capture")
+        window.title = String(localized: "Scrolling Capture")
         // Titled windows keep a close button; `windowShouldClose` asks before a close discards.
         window.styleMask = [.titled, .closable, .resizable]
         window.isReleasedWhenClosed = false
