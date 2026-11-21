@@ -28,7 +28,7 @@
                 !updater.checksAutomatically && updates.checks == 0, "\(updates.checks) checks")
             context.check(
                 "the menu item is localized",
-                AppCommand.checkForUpdates.title == (portuguese ? "Buscar Atualizações…" : "Check for Updates…"),
+                AppCommand.checkForUpdates.title == (portuguese ? "Buscar atualizações…" : "Check for Updates…"),
                 AppCommand.checkForUpdates.title)
 
             let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""

@@ -1078,7 +1078,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar Atualizações…"
+            "value" : "Buscar atualizações…"
           }
         }
       }
@@ -2274,7 +2274,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mais Tarde"
+            "value" : "Mais tarde"
           }
         }
       }
@@ -3871,7 +3871,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar Atualização"
+            "value" : "Mostrar atualização"
           }
         }
       }
