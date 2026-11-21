@@ -1449,6 +1449,22 @@
         }
       }
     },
+    "Delete" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apagar"
+          }
+        }
+      }
+    },
     "Destination saved, but the previous destination's token could not be removed from Keychain." : {
       "localizations" : {
         "en" : {
@@ -1477,6 +1493,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Destino salvo. Ative o envio automático separadamente."
+          }
+        }
+      }
+    },
+    "Diagnostics" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnóstico"
           }
         }
       }
@@ -2393,6 +2425,22 @@
         }
       }
     },
+    "Only event names, counts and durations, never images, text or file names. Recortia never sends it; attach it to a report yourself." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only event names, counts and durations, never images, text or file names. Recortia never sends it; attach it to a report yourself."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somente nomes de eventos, contagens e durações, nunca imagens, textos ou nomes de arquivo. O Recortia nunca envia o arquivo; anexe-o você mesmo a um relato."
+          }
+        }
+      }
+    },
     "Only PNG and JPEG images are supported." : {
       "localizations" : {
         "en" : {
@@ -2618,6 +2666,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Colar imagem"
+          }
+        }
+      }
+    },
+    "Reopen Closed Capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen Closed Capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reabrir captura fechada"
           }
         }
       }
@@ -3648,6 +3712,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar menu de captura"
+          }
+        }
+      }
+    },
+    "Show in Finder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show in Finder"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar no Finder"
           }
         }
       }
@@ -4826,6 +4906,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fundo da janela"
+          }
+        }
+      }
+    },
+    "Write a diagnostics file" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a diagnostics file"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gravar um arquivo de diagnóstico"
           }
         }
       }

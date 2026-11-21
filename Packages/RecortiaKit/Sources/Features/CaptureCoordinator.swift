@@ -97,6 +97,9 @@ public final class CaptureCoordinator {
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let sound: (any CaptureSoundService)?
     @ObservationIgnored private let elements: (any InterfaceElementFrameService)?
+    @ObservationIgnored private let diagnostics: (any DiagnosticsSink)?
+    /// When the current request started, for the diagnostics file's durations.
+    @ObservationIgnored private var startedAt: Duration = .zero
     /// The current request's start-to-overlay interval (A-13).
     @ObservationIgnored private var overlayInterval: LatencyInterval?
     /// Each capture call's own interval, so a stale one closes only its own.
@@ -120,7 +123,7 @@ public final class CaptureCoordinator {
     public init(
         capture: any CaptureService, permission: any ScreenPermissionService, assets: any ImageAssetService,
         clock: any FeatureClock, settings: SettingsStore, sound: (any CaptureSoundService)?,
-        elements: (any InterfaceElementFrameService)?
+        elements: (any InterfaceElementFrameService)?, diagnostics: (any DiagnosticsSink)? = nil
     ) {
         self.capture = capture
         self.permission = permission
@@ -129,6 +132,7 @@ public final class CaptureCoordinator {
         self.settings = settings
         self.sound = sound
         self.elements = elements
+        self.diagnostics = diagnostics
     }
 
     public var hasRepeatRegion: Bool { repeatRegion != nil }
@@ -164,14 +168,17 @@ public final class CaptureCoordinator {
         self.purpose = purpose
         notice = nil
         lastSelectionWasClamped = false
+        let isGranted = permission.isGranted
+        diagnostics?.record(.permissionStatus(permission: .screenRecording, granted: isGranted))
         apply(.request)
 
-        if permission.isGranted {
+        if isGranted {
             beginSelection(id)
         } else {
             task = Task { [weak self] in
                 guard let self else { return }
                 let granted = await self.permission.request()
+                self.diagnostics?.record(.permissionStatus(permission: .screenRecording, granted: granted))
                 guard self.isCurrent(id) else { return }
                 if granted {
                     self.beginSelection(id)
@@ -377,6 +384,12 @@ public final class CaptureCoordinator {
                     defaultFraming: preferences.defaultFraming)),
             purpose: purpose)
         apply(.captureSucceeded)
+        if let mode {
+            diagnostics?.record(
+                .captureFinished(
+                    mode: DiagnosticCaptureMode(mode), purpose: DiagnosticCapturePurpose(purpose),
+                    duration: clock.uptime() - startedAt, width: info.pixelSize.width, height: info.pixelSize.height))
+        }
         finish()
         // A capture to edit, not Capture Text: its result is copied text, not a screenshot.
         if purpose == .edit, settings.preferences.playsCaptureSound { sound?.playCaptureSound() }
@@ -454,6 +467,30 @@ public final class CaptureCoordinator {
         } catch {
             // An illegal transition is a programming error; keep the last valid state.
             assertionFailure("\(error)")
+            return
+        }
+        recordDiagnostics(event)
+    }
+
+    /// Start, cancellation and failure; success is recorded with the image size in `run`.
+    private func recordDiagnostics(_ event: CaptureEvent) {
+        guard let diagnostics, let current = self.mode else { return }
+        let mode = DiagnosticCaptureMode(current)
+        switch event {
+        case .request:
+            startedAt = clock.uptime()
+            diagnostics.record(.captureStarted(mode: mode, purpose: DiagnosticCapturePurpose(purpose)))
+        case .cancel:
+            diagnostics.record(.captureCancelled(mode: mode, duration: clock.uptime() - startedAt))
+        case .captureFailed(let failure):
+            diagnostics.record(
+                .captureFailed(
+                    mode: mode, failure: DiagnosticCaptureFailure(failure), duration: clock.uptime() - startedAt))
+        case .permissionDenied:
+            diagnostics.record(
+                .captureFailed(mode: mode, failure: .permissionDenied, duration: clock.uptime() - startedAt))
+        case .permissionGranted, .selectionCommitted, .countdownTick, .countdownFinished, .captureSucceeded, .reset:
+            break
         }
     }
 }

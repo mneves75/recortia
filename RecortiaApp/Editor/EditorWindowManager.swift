@@ -38,6 +38,8 @@ final class EditorWindowManager {
     private enum Spare { case next }
 
     private var controllers: [DocumentID: EditorWindowController] = [:]
+    /// Where a closing editor leaves its document for Reopen Closed Capture; nil closes as before.
+    var closedCapture: ClosedCaptureSlot?
     /// With pre-building, one hidden editor window shell, without a document, for the next editor.
     private let spares: WindowSparePool<Spare, NSWindow>
 
@@ -67,7 +69,8 @@ final class EditorWindowManager {
         let model = EditorModel(
             session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
         let controller = EditorWindowController(
-            model: model, importedFileName: importedFileName, window: spares.take(.next))
+            model: model, importedFileName: importedFileName, window: spares.take(.next),
+            closedCapture: closedCapture)
         controller.onClosed = { [weak self] in self?.controllers[id] = nil }
         controllers[id] = controller
         if spares.isEnabled {
@@ -98,6 +101,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     var onClosed: (() -> Void)?
     private let canvas: EditorCanvasView
     private var discardConfirmed = false
+    /// Receives the document when the window closes (Reopen Closed Capture).
+    private let closedCapture: ClosedCaptureSlot?
 
     /// The window shell, without a document: what a spare holds (A-13 step 2) and what every
     /// editor is built in. Its Space policy is set here, at construction (FR-01).
@@ -116,12 +121,15 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     }
 
     /// `window` is a spare shell from `makeWindow()` that was never shown; nil builds one.
+    /// `closedCapture` keeps the document when the window closes; without it, closing releases it.
     init(
         model: EditorModel, importedFileName: String? = nil,
-        noticePresentation: EditorNoticePresentation = EditorNoticePresentation(), window: NSWindow? = nil
+        noticePresentation: EditorNoticePresentation = EditorNoticePresentation(), window: NSWindow? = nil,
+        closedCapture: ClosedCaptureSlot? = nil
     ) {
         let openedAt = Date.now
         self.model = model
+        self.closedCapture = closedCapture
         canvas = EditorCanvasView(model: model)
         let window = window ?? Self.makeWindow()
         let origin = model.document.layers.first.flatMap { model.document.assets[$0.assetID]?.origin }
@@ -280,16 +288,23 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     // MARK: NSWindowDelegate
 
     /// What closing an edited editor discards. Only a copy or save keeps edits; a pin does not.
-    static var discardOnCloseDetail: String {
-        String(
-            localized: "This image has changes that were not copied or saved. Closing discards them.", table: "Editor")
+    /// A document Reopen Closed Capture will keep can come back for `ClosedCaptureSlot.lifetime`.
+    var discardOnCloseDetail: String {
+        closedCapture != nil && model.isKeptOnClose
+            ? String(
+                localized:
+                    "This image has changes that were not copied or saved; after closing, you can reopen it for 10 minutes, until you quit.",
+                table: "Editor")
+            : String(
+                localized: "This image has changes that were not copied or saved. Closing discards them.",
+                table: "Editor")
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         canvas.finishTextEditing(commit: true)
         guard model.isDirty, !discardConfirmed else { return true }
         let alert = MessagePresenter.makeConfirmation(
-            title: String(localized: "Discard your edits?", table: "Editor"), detail: Self.discardOnCloseDetail,
+            title: String(localized: "Discard your edits?", table: "Editor"), detail: discardOnCloseDetail,
             action: String(localized: "Discard", table: "Editor"), cancel: String(localized: "Cancel", table: "Editor"))
         alert.beginSheetModal(for: sender) { [weak self] response in
             guard response == .alertFirstButtonReturn, let self else { return }
@@ -322,7 +337,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             for sheet in window.sheets { window.endSheet(sheet, returnCode: .abort) }
         }
         EditorCommands.shared.editorResignedKey(self)
-        model.close()
+        if let closedCapture { closedCapture.close(model) } else { model.close() }
         window?.contentViewController = nil
         onClosed?()
         onClosed = nil

@@ -75,6 +75,9 @@
             E2EScenario(
                 id: "editor-menu", title: "Every editor command is in the menu bar",
                 run: EditorMenuScenarios.commands),
+            E2EScenario(
+                id: "reopen-closed", title: "A closed editor's image can be reopened for 10 minutes",
+                run: ReopenClosedScenarios.reopenClosed),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(
@@ -123,6 +126,9 @@
             E2EScenario(
                 id: "automatic-save-settings", title: "Automatic save writes only to the folder chosen in Settings",
                 run: AutomaticSaveScenarios.settings),
+            E2EScenario(
+                id: "diagnostics", title: "The diagnostics file holds only typed events, and only while it is on",
+                run: DiagnosticsScenarios.file),
             E2EScenario(
                 id: "auto-redaction", title: "New captures are masked before they are shown or exported",
                 run: AutoRedactionScenarios.autoRedaction),

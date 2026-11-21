@@ -233,7 +233,8 @@
                 .captureRegion: true, .captureDisplay: true, .captureWindow: true, .captureWithDelay: true,
                 .repeatLastRegion: false, .scrollingCapture: true, .captureText: true, .captureMenu: true,
                 .openImage: true,
-                .pasteImage: true, .bringPinsForward: false, .closeAllPins: false, .unlockAllPins: false,
+                .pasteImage: true, .reopenClosedCapture: false, .bringPinsForward: false, .closeAllPins: false,
+                .unlockAllPins: false,
                 .settings: true, .about: true,
                 .featureTour: true, .quit: true,
             ]
@@ -798,7 +799,7 @@
                 host(
                     GitHubUploadSettings(
                         settings: model.settings, credentials: model.features.services.githubCredentials))
-            case 5: host(PrivacySettingsTab(settings: model.settings))
+            case 5: host(PrivacySettingsTab(settings: model.settings, diagnostics: model.features.diagnostics))
             case 6: host(OCRSettingsTab(settings: model.settings, languages: model.features.ocrLanguages))
             default: nil
             }

@@ -1,3 +1,4 @@
+import Features
 import KeyboardShortcuts
 import SwiftUI
 
@@ -20,6 +21,8 @@ struct MenuContent: View {
             Divider()
             item(.openImage)
             item(.pasteImage)
+            item(.reopenClosedCapture)
+                .keyboardShortcut("t", modifiers: [.command, .shift])
             Divider()
             Menu(String(localized: "Pins")) {
                 item(.bringPinsForward)
@@ -41,6 +44,34 @@ struct MenuContent: View {
         Button(command.title) { model.perform(command) }
             .disabled(!model.isEnabled(command))
             .globalShortcut(shortcut.flatMap { model.shortcutStatus.state(of: $0.rawValue) == .active ? $0 : nil })
+    }
+}
+
+/// Whether Reopen Closed Capture can act, for the app's menu bar: SwiftUI re-reads menu-bar
+/// commands only through `@ObservedObject` (see `PinMenuState`), so this republishes the slot.
+final class ReopenMenuState: ObservableObject {
+    @Published private(set) var canReopen = false
+    private var loop: ObservationLoop?
+
+    init(slot: ClosedCaptureSlot) {
+        loop = ObservationLoop { [weak self, weak slot] in
+            guard let self, let slot, canReopen == slot.isEmpty else { return }
+            canReopen = !slot.isEmpty
+        }
+    }
+}
+
+/// File › Reopen Closed Capture (⇧⌘T, B-6), after Open Image… and Paste Image.
+struct ReopenMenuCommands: Commands {
+    @ObservedObject var state: ReopenMenuState
+    let app: any AppActions
+
+    var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button(AppCommand.reopenClosedCapture.title) { app.perform(.reopenClosedCapture) }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(!state.canReopen)
+        }
     }
 }
 

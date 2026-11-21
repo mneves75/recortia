@@ -85,7 +85,9 @@
                 scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem,
                 clock: sensitiveText.clock,
-                interfaceElements: interfaceElements)
+                interfaceElements: interfaceElements,
+                diagnosticsLog: DiagnosticsLog(
+                    directory: work.appending(path: "diagnostics", directoryHint: .isDirectory)))
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(
@@ -104,8 +106,9 @@
                 textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
                 sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
                 pins: features.pins, textClipboard: features.textClipboard, links: links,
-                settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
-            editors = E2EEditorHost(environment: environment)
+                settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter,
+                diagnostics: features.diagnostics)
+            editors = E2EEditorHost(environment: environment, closedCapture: features.closedCapture)
             quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
             quickActionsUI.present = { panel in
                 panel.sizeToContentIfUnsized()
@@ -242,16 +245,19 @@
     }
 
     /// `EditorWindowManager.open` without `present()`: real editor windows and models, parked
-    /// offscreen at one fixed content size.
+    /// offscreen at one fixed content size. Closing a window leaves its document in the app's
+    /// Reopen Closed Capture slot, as in the app; `closeAll` empties the slot again.
     @MainActor
     final class E2EEditorHost {
         private let environment: EditorEnvironment
+        private let closedCapture: ClosedCaptureSlot
         private(set) var controllers: [EditorWindowController] = []
         /// Applied to editors opened from now on; scenarios record announcements through it.
         var noticePresentation = EditorNoticePresentation()
 
-        init(environment: EditorEnvironment) {
+        init(environment: EditorEnvironment, closedCapture: ClosedCaptureSlot) {
             self.environment = environment
+            self.closedCapture = closedCapture
         }
 
         @discardableResult
@@ -261,7 +267,8 @@
             let model = EditorModel(
                 session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
             let controller = EditorWindowController(
-                model: model, importedFileName: importedFileName, noticePresentation: noticePresentation)
+                model: model, importedFileName: importedFileName, noticePresentation: noticePresentation,
+                closedCapture: closedCapture)
             if let window = controller.window {
                 window.setContentSize(E2ESnapshot.editorSize)
                 E2ESnapshot.park(window)
@@ -276,9 +283,12 @@
 
         var unexportedEditCount: Int { controllers.filter { $0.hasUnexportedEdits() }.count }
 
+        /// Closes every editor and releases what they left for Reopen Closed Capture, so a
+        /// scenario's closes release pixels as before unless it closes a window itself.
         func closeAll() {
             for controller in controllers { controller.window?.close() }
             controllers.removeAll()
+            closedCapture.clear()
         }
 
         /// Waits until the sanitized base render matches the current document.

@@ -15,6 +15,10 @@ struct FeatureModels {
     let quickActions: QuickActionsModel
     let ocrLanguages: OCRLanguagesModel
     let loginItem: LoginItemModel
+    /// Reopen Closed Capture: filled only by closing an editor window.
+    let closedCapture: ClosedCaptureSlot
+    /// Nil only without a diagnostics log (previews).
+    let diagnostics: DiagnosticsRecorder?
 
     /// The plain-text clipboard for explicit Copy actions on text (recognized text, an upload link).
     let textClipboard: any TextClipboardService
@@ -22,24 +26,30 @@ struct FeatureModels {
     init(services: AppServices, settings: SettingsStore, textClipboard: any TextClipboardService) {
         self.services = services
         self.textClipboard = textClipboard
+        let diagnostics = services.diagnosticsLog.map {
+            DiagnosticsRecorder(log: $0, settings: settings, clock: services.clock, versions: .current)
+        }
+        self.diagnostics = diagnostics
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
             clock: services.clock, settings: settings, sound: services.captureSound,
-            elements: services.interfaceElements)
+            elements: services.interfaceElements, diagnostics: diagnostics)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
-            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
+            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload,
+            diagnostics: diagnostics)
         importer = ImportCoordinator(input: services.input, assets: services.assets, settings: settings)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
             accessibility: services.accessibility, screenPermission: services.screenPermission,
-            assets: services.assets, clock: services.clock, settings: settings)
+            assets: services.assets, clock: services.clock, settings: settings, diagnostics: diagnostics)
         pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
         quickActions = QuickActionsModel(
             export: export, pins: pins, renderer: services.renderer, assets: services.assets,
             folders: services.folders, settings: settings, clock: services.clock, textClipboard: textClipboard)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
+        closedCapture = ClosedCaptureSlot(assets: services.assets, clock: services.clock)
     }
 }
 
@@ -58,6 +68,8 @@ final class AppModel: AppActions {
     let features: FeatureModels
     /// Window › Unlock All Pins in the app's menu bar.
     @ObservationIgnored let pinMenu: PinMenuState
+    /// File › Reopen Closed Capture in the app's menu bar.
+    @ObservationIgnored let reopenMenu: ReopenMenuState
     private var isStartingScrollingCapture = false
 
     var openDocument: ((DocumentSession, EditorInitialAction, _ importedFileName: String?) -> EditorModel?)?
@@ -123,6 +135,7 @@ final class AppModel: AppActions {
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = FeatureModels(services: services, settings: settings, textClipboard: textClipboard)
         pinMenu = PinMenuState(pins: features.pins)
+        reopenMenu = ReopenMenuState(slot: features.closedCapture)
         captureWindowVisibility = CaptureWindowVisibility(capture: features.capture, scroll: features.scroll) {
             [weak self] in self?.isStartingScrollingCapture == true
         }
@@ -140,6 +153,7 @@ final class AppModel: AppActions {
     func launch(kind: LaunchKind) {
         guard !didLaunch else { return }
         didLaunch = true
+        features.diagnostics?.recordLaunch()
         wire(features)
         registerShortcutHandlers()
         switch LaunchWindow.choose(
@@ -167,6 +181,8 @@ final class AppModel: AppActions {
             return openDocument != nil && !features.capture.state.isActive
         case .openImage, .pasteImage:
             return openDocument != nil && !features.importer.isImporting
+        case .reopenClosedCapture:
+            return openDocument != nil && !features.closedCapture.isEmpty
         case .repeatLastRegion:
             return features.capture.hasRepeatRegion && openDocument != nil && !features.scroll.state.isActive
         case .captureText:
@@ -200,6 +216,9 @@ final class AppModel: AppActions {
         case .captureMenu: captureMenu.present()
         case .openImage: chooseImageFile()
         case .pasteImage: importImage(from: .pasteboard)
+        case .reopenClosedCapture:
+            // A new editor through the normal open path; masking already settled before the close.
+            if let session = features.closedCapture.take() { _ = openDocument?(session, .none, nil) }
         case .bringPinsForward: features.pins.bringForward()
         case .closeAllPins: features.pins.closeAll()
         case .unlockAllPins: features.pins.unlockAll()
@@ -221,6 +240,11 @@ final class AppModel: AppActions {
         let discards = QuitDiscards(
             editedImages: unexportedEditCount(), scrollingReview: features.scroll.state == .reviewing)
         return discards.isEmpty || confirmQuit(discards)
+    }
+
+    /// `applicationWillTerminate`: the kept closed document never outlives the process's quit.
+    func willTerminate() {
+        features.closedCapture.clear()
     }
 
     /// The person closed Recortia's last window (FR-01). With "keep running in the menu bar" off
@@ -346,10 +370,12 @@ final class AppModel: AppActions {
             textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
             sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
             pins: features.pins, textClipboard: features.textClipboard, links: WorkspaceLinkOpener(),
-            settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
+            settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter,
+            diagnostics: features.diagnostics)
         openDocument = { [editors] session, action, fileName in
             editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)
         }
+        editors.closedCapture = features.closedCapture
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
         editorWindow = { [editors] in editors.window(for: $0) }
         let monitor = SystemEventMonitor { [weak self] event in
