@@ -585,8 +585,9 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         model.scrollWheel(
             EditorScrollWheel(
                 deltaX: event.scrollingDeltaX, deltaY: event.scrollingDeltaY,
-                isPrecise: event.hasPreciseScrollingDeltas, command: event.modifierFlags.contains(.command),
-                option: event.modifierFlags.contains(.option)),
+                isPrecise: event.hasPreciseScrollingDeltas,
+                isMouseWheel: event.phase.isEmpty && event.momentumPhase.isEmpty,
+                command: event.modifierFlags.contains(.command), option: event.modifierFlags.contains(.option)),
             at: Point(x: p.x, y: p.y))
     }
 

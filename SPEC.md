@@ -150,14 +150,13 @@ Tools MUST support consistent selection handles, hit testing, move, resize, dupl
 
 Provide fit, actual-pixel, zoom-in/out, selection zoom, and Space-drag pan. Basic arrows precede curved arrows; decoration is not a dependency of correct capture or export. No drawn object may change position merely because the editor zoom changed.
 
-Settings › General › Editor decides how a new editor first frames its image: Fit (the default:
-the whole image inside the canvas with a margin, never above 100 %) or "Actual size when it fits"
-(100 % when the image fits the canvas at that size, otherwise Fit). Because Fit never enlarges,
-the two differ only for an image that fits at 100 % but not with Fit's margin. "Zoom with the
-scroll wheel" is off by default: the wheel scrolls and ⌘-wheel zooms, as before. On, the wheel
-zooms around the pointer and ⌥-wheel scrolls; "Reverse zoom direction", shown only then, turns
-both wheel zooms the other way. Wheel zoom stays inside the editor's zoom range. Pinch and the
-zoom commands do not change.
+Fit, the zoom every new editor opens at, never enlarges past 100 %, so a small image opens at
+actual size. Settings › General › Editor › "Zoom with the scroll wheel" is off by default: the
+wheel scrolls and ⌘-wheel zooms, as before. On, a mouse wheel zooms around the pointer and
+⌥-wheel scrolls; "Reverse zoom direction", shown only then, turns both wheel zooms the other way.
+Only classic mouse-wheel events (no scroll phase and no momentum phase) wheel-zoom: trackpad and
+other gesture scrolling, and its momentum, keep scrolling. Wheel zoom stays inside the editor's
+zoom range. Pinch and the zoom commands do not change.
 
 The straight-line tool draws a segment without arrowheads, with the same document-space
 endpoint editing and creation-drag Shift 45-degree constraint as arrows. Shortcut D selects it only outside

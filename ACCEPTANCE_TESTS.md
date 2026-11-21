@@ -147,12 +147,11 @@ Repeat for window key loss, app deactivation, and mid-pan interruption. An unrel
 notification must not interrupt the canvas; normal held/released Space remains a control.
 The synthetic `canvas-focus` scenario covers these cases; live IME/VoiceOver checks remain separate.
 
-Zoom preferences: with Fit, an image 20 points smaller than the canvas opens below 100 %; with
-"Actual size when it fits" it opens at 100 %, and an image larger than the canvas still opens
-fitted. With wheel zoom off a real wheel event scrolls and ⌘-wheel zooms; on, the wheel zooms
-with the point under the pointer fixed, ⌥-wheel scrolls, and Reverse zoom direction inverts the
-same movement (bilingual `editor-zoom`; model math in `EditorZoomPreferenceTests`). Physical
-mouse and trackpad checks remain manual.
+Wheel zoom: off, a real wheel event scrolls and ⌘-wheel zooms; on, a mouse-wheel event (no
+scroll or momentum phase) zooms with the point under the pointer fixed, ⌥-wheel scrolls, a phased
+(trackpad) or momentum event still scrolls, and Reverse zoom direction inverts the same movement
+(bilingual `editor-zoom`; model rule and math in `EditorZoomPreferenceTests`). Physical mouse,
+Magic Mouse and trackpad checks remain manual.
 
 ### PIN-01 — Reference lifecycle
 

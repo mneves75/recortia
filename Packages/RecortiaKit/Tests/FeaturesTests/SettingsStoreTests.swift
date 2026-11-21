@@ -95,18 +95,16 @@ struct SettingsStoreTests {
     }
 
     // Failure mode: a required zoom key would make every older blob fail to decode and reset all
-    // settings; a choice that does not persist reopens every editor at Fit.
-    @Test("Editor zoom preferences default to Fit and no wheel zoom, persist, and older blobs still load")
+    // settings; a choice that does not persist turns wheel zoom off at every launch.
+    @Test("Wheel zoom defaults off, persists, and older blobs still load")
     func editorZoomPreferences() throws {
         let storage = MemoryPreferenceStorage()
         let store = SettingsStore(storage: storage)
         store.update {
-            $0.editorOpenZoom = .actualSizeWhenFits
             $0.zoomsWithScrollWheel = true
             $0.reversesScrollWheelZoom = true
         }
         let reloaded = SettingsStore(storage: storage).preferences
-        #expect(reloaded.editorOpenZoom == .actualSizeWhenFits)
         #expect(reloaded.zoomsWithScrollWheel && reloaded.reversesScrollWheelZoom)
 
         let written = try #require(storage.values[SettingsStore.storageKey])
@@ -118,7 +116,6 @@ struct SettingsStoreTests {
         let loaded = SettingsStore(storage: legacy)
         #expect(loaded.loadIssue == nil)
         #expect(loaded.preferences.captureDelaySeconds == 2)
-        #expect(loaded.preferences.editorOpenZoom == .fit)
         #expect(!loaded.preferences.zoomsWithScrollWheel && !loaded.preferences.reversesScrollWheelZoom)
     }
 

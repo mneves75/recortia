@@ -295,22 +295,6 @@
         }
       }
     },
-    "Actual size when it fits" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actual size when it fits"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tamanho real quando couber"
-          }
-        }
-      }
-    },
     "Add a background, padding, rounded corners and a shadow. Spotlight and Magnifier draw attention to a detail." : {
       "localizations" : {
         "en" : {
@@ -1693,22 +1677,6 @@
         }
       }
     },
-    "Fit" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fit"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajustar à janela"
-          }
-        }
-      }
-    },
     "Format" : {
       "localizations" : {
         "en" : {
@@ -2261,22 +2229,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opacidade"
-          }
-        }
-      }
-    },
-    "Open images at" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open images at"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir imagens em"
           }
         }
       }

@@ -383,18 +383,17 @@
             try await settingsMergedControls(harness, context)
         }
 
-        /// General's editor zoom controls: Fit and a wheel that scrolls by default; Reverse zoom
-        /// direction appears only while wheel zoom is on, and the pane still fits its content.
+        /// General's wheel zoom control, off by default; Reverse zoom direction appears only while
+        /// wheel zoom is on, and the pane still fits its content.
         private static func checkZoomControls(
             index: Int, pane: NSView, in window: NSWindow, root: NSView, _ harness: E2EHarness,
             _ context: ScenarioContext
         ) async {
             let preferences = harness.settings.preferences
             context.check(
-                "General holds the opening zoom and wheel zoom controls, Fit and off by default",
-                E2EAccessibilityControl.isPresent("settings.editorOpenZoom", in: pane)
-                    && E2EAccessibilityControl.isPresent("settings.zoomsWithScrollWheel", in: pane)
-                    && preferences.editorOpenZoom == .fit && !preferences.zoomsWithScrollWheel)
+                "General holds the wheel zoom control, off by default",
+                E2EAccessibilityControl.isPresent("settings.zoomsWithScrollWheel", in: pane)
+                    && !preferences.zoomsWithScrollWheel)
             context.check(
                 "Reverse zoom direction is hidden while wheel zoom is off",
                 !E2EAccessibilityControl.isPresent("settings.reversesScrollWheelZoom", in: pane))

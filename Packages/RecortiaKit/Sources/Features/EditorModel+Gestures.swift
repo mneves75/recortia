@@ -491,31 +491,25 @@ extension EditorModel {
 
     // MARK: Viewport
 
-    /// Called by the canvas on layout; the first call frames the document as Settings says.
+    /// Called by the canvas on layout; the first call fits the document.
     public func setViewportSize(_ size: Size<ViewSpace>, backingScale: Double) {
         guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
         viewportSize = size
         if backingScale.isFinite, backingScale > 0 { self.backingScale = backingScale }
         if !hasFittedViewport {
             hasFittedViewport = true
-            let actual = 1 / self.backingScale
-            let content = document.contentRect
-            let fitsAtActualSize = content.width * actual <= size.width && content.height * actual <= size.height
-            if environment.settings.preferences.editorOpenZoom == .actualSizeWhenFits, fitsAtActualSize {
-                zoomToActualPixels()
-            } else {
-                zoomToFit()
-            }
+            zoomToFit()
         }
     }
 
-    /// The wheel zooms around `anchor` when Settings turns wheel zoom on (Option scrolls) or with
-    /// Command; otherwise it scrolls. A notched wheel's line counts as ten points.
+    /// A mouse wheel zooms around `anchor` when Settings turns wheel zoom on (Option scrolls);
+    /// any scroll zooms with Command; otherwise it scrolls. Trackpad and momentum scrolling never
+    /// wheel-zoom. A notched wheel's line counts as ten points.
     public func scrollWheel(_ wheel: EditorScrollWheel, at anchor: Point<ViewSpace>) {
         guard wheel.deltaX.isFinite, wheel.deltaY.isFinite else { return }
         let preferences = environment.settings.preferences
         let points = wheel.isPrecise ? 1.0 : 10.0
-        let zooms = preferences.zoomsWithScrollWheel ? !wheel.option : wheel.command
+        let zooms = preferences.zoomsWithScrollWheel && wheel.isMouseWheel ? !wheel.option : wheel.command
         guard zooms else { return pan(dx: wheel.deltaX * points, dy: wheel.deltaY * points) }
         guard anchor.isFinite else { return }
         let direction = preferences.zoomsWithScrollWheel && preferences.reversesScrollWheelZoom ? -1.0 : 1.0

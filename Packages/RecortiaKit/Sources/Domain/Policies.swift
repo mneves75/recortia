@@ -198,14 +198,6 @@ public enum WindowCaptureBackground: Hashable, Sendable, Codable {
     case solid(RGBA)
 }
 
-/// How a new editor first frames its image (FR-04).
-public enum EditorOpenZoom: String, Hashable, Sendable, Codable, CaseIterable {
-    /// The whole image inside the canvas with a margin, never above 100 %.
-    case fit
-    /// 100 % when the image fits the canvas at that size; otherwise as `fit`.
-    case actualSizeWhenFits
-}
-
 /// User preferences. No screenshots, OCR text, or other content is ever stored here (SPEC.md §7).
 /// Every side-effect toggle defaults to off.
 public struct Preferences: Hashable, Sendable, Codable {
@@ -236,9 +228,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var annotationPalette: SavedAnnotationPalette?
     /// The editor window content size the user last chose; nil until they resize an editor.
     public var editorContentSize: Size<DesktopSpace>?
-    /// Stored only once the person changes them; read `editorOpenZoom`, `zoomsWithScrollWheel`
-    /// and `reversesScrollWheelZoom`.
-    public var editorOpenZoomChoice: EditorOpenZoom?
+    /// Stored only once the person changes them; read `zoomsWithScrollWheel` and
+    /// `reversesScrollWheelZoom`.
     public var zoomsWithScrollWheelChoice: Bool?
     public var reversesScrollWheelZoomChoice: Bool?
     /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
@@ -277,14 +268,9 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { windowCaptureBackgroundChoice = newValue }
     }
 
-    /// How a new editor first frames its image (FR-04). Fit by default.
-    public var editorOpenZoom: EditorOpenZoom {
-        get { editorOpenZoomChoice ?? .fit }
-        set { editorOpenZoomChoice = newValue }
-    }
-
-    /// Whether the scroll wheel zooms the editor canvas around the pointer, with Option to scroll
-    /// (FR-04). Off by default: the wheel scrolls and Command-wheel zooms.
+    /// Whether a mouse wheel zooms the editor canvas around the pointer, with Option to scroll
+    /// (FR-04). Off by default: the wheel scrolls and Command-wheel zooms. Trackpad scrolling
+    /// always scrolls.
     public var zoomsWithScrollWheel: Bool {
         get { zoomsWithScrollWheelChoice ?? false }
         set { zoomsWithScrollWheelChoice = newValue }
