@@ -83,6 +83,10 @@ Reviewer marked these read-verified; the coordinator has not yet read them.
    out of tracked docs and trains until you rule; the class-B five need your yes anyway.
 2. **RecortiaE2E opened from Finder runs live services** (R3-D01, DEBUG only, never shipped).
    *Recommend:* the E2E target refuses to launch without the runner argument.
+   Done in T1 (`1dcae30`, `5380201`, `757af07`): `E2ERunner.admit` validates the whole launch
+   request in `AppDelegate.init` before `AppModel` exists and exits 2 with one stderr line;
+   `test-e2e-isolation.py` launches the built binary with no arguments and 13 malformed requests
+   (decisions.md).
 3. **Discard warning after a successful pin** (R3-D17): the warning says the image was never pinned.
    *Recommend:* say what is lost ("edits that were not copied or saved") on close and quit alike.
 4. **Release build in CI** (R3-D09, R3-D10). *Recommend:* add an unsigned Release build of the
