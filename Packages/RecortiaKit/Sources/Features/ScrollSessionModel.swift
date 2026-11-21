@@ -57,7 +57,9 @@ public final class ScrollSessionModel {
     static let automaticSettleInterval: Duration = .milliseconds(1_500)
     static let maxDuration = ScrollLimits.default.maxDuration
 
-    @ObservationIgnored public var onAccepted: ((DocumentSession) -> Void)?
+    /// Receives the accepted capture and whether its e-mail addresses and phone numbers are to be
+    /// masked before it is shown (FR-06), read once when the document is created.
+    @ObservationIgnored public var onAccepted: ((DocumentSession, _ masksSensitiveText: Bool) -> Void)?
 
     @ObservationIgnored private let frames: any ScrollFrameSourceService
     @ObservationIgnored private let stitcher: any ScrollStitchService
@@ -256,7 +258,8 @@ public final class ScrollSessionModel {
         do {
             image = try await stitcher.assemble()
             guard sessionID == id, state == .reviewing else { return }
-            info = try await assets.registerStitched(image, partialReason: reason)
+            info = try await assets.registerStitched(
+                image, partialReason: reason, pointPixelScale: Self.pointPixelScale(of: image, on: target))
         } catch {
             guard sessionID == id else { return }
             notice = .assemblyFailed
@@ -270,10 +273,26 @@ public final class ScrollSessionModel {
         stitcher.reset()
         preview = nil
         sessionID = nil
-        onAccepted?(DocumentSession(document: Document(asset: info)))
+        onAccepted?(DocumentSession(document: Document(asset: info)), settings.preferences.autoRedactsSensitiveText)
     }
 
     func clearNotice() { notice = nil }
+
+    /// Pixels per point of the stitched image, measured from its width: every frame spans the
+    /// target at its display's scale. A target the display clips measures lower, which only makes
+    /// automatic masking's sweep slower (it upsamples more, FR-06); 1 when it cannot be measured.
+    static func pointPixelScale(of image: CGImage, on target: CaptureTarget?) -> Double {
+        let points: Double? =
+            switch target {
+            case .region(let rect, _): rect.width
+            case .display(let display): display.frame.width
+            case .window(let window): window.frame.width
+            case nil: nil
+            }
+        guard let points, points > 0 else { return 1 }
+        let scale = Double(image.width) / points
+        return scale.isFinite ? max(1, scale) : 1
+    }
 
     // MARK: Collection
 

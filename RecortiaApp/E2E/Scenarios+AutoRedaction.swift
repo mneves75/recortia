@@ -140,6 +140,170 @@
                 "\(secretBackground(in: unmasked)) secret pixels")
         }
 
+        /// A scrolling capture accepted from review and an image opened from a file get the same
+        /// pending, masked and failed flow as a capture (FR-06 amendment, T2). Neither has an
+        /// automatic export batch, so automatic copy stays untouched. Detection is scripted.
+        static func sources(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let detection = harness.sensitiveText
+            harness.settings.update {
+                $0.autoRedactsSensitiveText = true
+                $0.autoCopy = true
+            }
+            let copies = harness.clipboard.writeCount
+
+            // Scrolling capture: a short synthetic page, stitched for real, then accepted.
+            let fixture = ScrollPageFixture(seed: 0xA5C0, kind: .text, width: 480, viewportHeight: 360, pageHeight: 900)
+            let offsets = fixture.forwardOffsets(steps: 90...170)
+            let frames = offsets.enumerated().compactMap { fixture.frame(offset: $0.element, index: $0.offset) }
+            try context.require("all fixture frames render", frames.count == offsets.count)
+            harness.scrollFrames.load(frames, holdAfter: nil)
+            let scroll = harness.features.scroll
+            try context.require("the scrolling session begins", await scroll.begin(), "\(scroll.state)")
+            let area = Rect<DesktopSpace>(x: 300, y: 160, width: 240, height: 180)
+            scroll.chooseTarget(.region(area, display: harness.capture.display))
+            scroll.start()
+            try context.require(
+                "every frame was offered",
+                await E2EWait.until(timeout: .seconds(30)) {
+                    harness.scrollFrames.isExhausted && harness.scrollFrames.isHolding
+                })
+            scroll.stop()
+            try context.require(
+                "the review shows the stitched page",
+                await E2EWait.until(timeout: .seconds(10)) { scroll.state == .reviewing && scroll.preview != nil },
+                "\(scroll.state)")
+            let band = PixelRect(x: 0, y: 120, width: 480, height: 60)
+            detection.regions = [band]
+            detection.holds = true
+            let scrolled = try await acceptPending(harness, context, "scrolling capture") { await scroll.accept() }
+            let scrolledDocument = scrolled.model.document
+            let scrollAsset = try context.unwrap(
+                "stitched asset", scrolledDocument.layers.first.flatMap { scrolledDocument.assets[$0.assetID] })
+            let recordedScale = if case .scrollCapture(_, let scale) = scrollAsset.origin { scale } else { 0.0 }
+            context.check(
+                "the stitched capture records its pixels per point", recordedScale == 2, "\(scrollAsset.origin)")
+            try await settleMasked(scrolled, band: band, harness, context, "scrolling capture")
+            let scrollCopy = try await copiedPixels(scrolled, harness, context, "scrolling capture")
+            context.check(
+                "the scrolling capture's copy is masked", uncovered(band, in: scrollCopy) == 0,
+                "\(uncovered(band, in: scrollCopy)) uncovered pixels")
+            scrolled.model.undo()
+            try await harness.editors.waitForBase(scrolled.model)
+            let undone = try await copiedPixels(scrolled, harness, context, "scrolling capture after Undo")
+            context.check(
+                "positive control: after Undo the band is exported", uncovered(band, in: undone) > 0,
+                "\(uncovered(band, in: undone)) visible pixels")
+
+            // Opened file: the synthetic desktop as a PNG, its secret line detected.
+            let secret = PixelRect(
+                x: Int(SyntheticDesktop.secretRect.minX * SyntheticDesktop.scale),
+                y: Int(SyntheticDesktop.secretRect.minY * SyntheticDesktop.scale),
+                width: Int(SyntheticDesktop.secretRect.width * SyntheticDesktop.scale),
+                height: Int(SyntheticDesktop.secretRect.height * SyntheticDesktop.scale))
+            let url = harness.output.workDirectory.appending(path: "auto-redaction-source.png")
+            try E2EDrawing.png(try SyntheticDesktop.image()).write(to: url, options: .atomic)
+            detection.regions = [secret]
+            detection.holds = true
+            let opened = try await acceptPending(harness, context, "opened image") {
+                _ = await harness.features.importer.importImage(from: .file(url))
+            }
+            try await settleMasked(opened, band: secret, harness, context, "opened image")
+            let openedCopy = try await copiedPixels(opened, harness, context, "opened image")
+            context.check(
+                "the opened image's copy is masked", secretBackground(in: openedCopy) == 0,
+                "\(secretBackground(in: openedCopy)) secret pixels")
+            await E2EActions.snapshotEditor(opened, context, shot: "opened-masked")
+
+            // Failed: the opened image is shown with a notice and manual export shows the secret.
+            detection.holds = false
+            detection.fails = true
+            let before = harness.editors.controllers.count
+            _ = await harness.features.importer.importImage(from: .file(url))
+            let failed = try await newEditor(harness, after: before, context, "failed opened image")
+            try context.require(
+                "masking the opened image fails closed", await E2EWait.until { failed.model.autoRedaction == .failed })
+            context.check(
+                "the editor says masking failed", failed.model.notice == .maskingFailed,
+                "\(String(describing: failed.model.notice))")
+            try await harness.editors.waitForBase(failed.model)
+            let shown = try await copiedPixels(failed, harness, context, "failed opened image")
+            context.check(
+                "positive control: the unmasked copy shows the secret", secretBackground(in: shown) > 0,
+                "\(secretBackground(in: shown)) secret pixels")
+            context.check(
+                "neither source ran an automatic copy", harness.clipboard.writeCount == copies + 4,
+                "\(harness.clipboard.writeCount - copies) copies, all manual")
+        }
+
+        /// Runs `open`, then requires the new editor to be pending with detection running and its
+        /// exports refused.
+        private static func acceptPending(
+            _ harness: E2EHarness, _ context: ScenarioContext, _ name: String, _ open: () async -> Void
+        ) async throws -> EditorWindowController {
+            let before = harness.editors.controllers.count
+            await open()
+            let editor = try await newEditor(harness, after: before, context, name)
+            let model = editor.model
+            try context.require(
+                "detection runs on the \(name)", await E2EWait.until { harness.sensitiveText.isWaiting })
+            context.check(
+                "the \(name) opens pending without its pixels", model.isMaskingPending && model.baseImage == nil)
+            let copy = await model.export(.copy)
+            context.check(
+                "Copy of the \(name) is refused while masking", copy == .failed(.maskingUnfinished), "\(copy)")
+            return editor
+        }
+
+        /// Releases detection and requires one opaque mask over `band`, bound to the asset.
+        private static func settleMasked(
+            _ editor: EditorWindowController, band: PixelRect, _ harness: E2EHarness, _ context: ScenarioContext,
+            _ name: String
+        ) async throws {
+            let model = editor.model
+            harness.sensitiveText.release()
+            try context.require("masking the \(name) finishes", await E2EWait.until { model.autoRedaction == .done })
+            let asset = try context.unwrap("\(name) asset", model.document.layers.first?.assetID)
+            context.check(
+                "the \(name) has one mask over the detected pixels, as one undo step",
+                model.document.masks.map(\.sourceRegions) == [[asset: [band]]] && model.canUndo,
+                "\(model.document.masks)")
+            context.check(
+                "the editor says how many items it masked in the \(name)", model.notice == .sensitiveTextMasked(1),
+                "\(String(describing: model.notice))")
+            try await harness.editors.waitForBase(model)
+        }
+
+        private static func newEditor(
+            _ harness: E2EHarness, after count: Int, _ context: ScenarioContext, _ name: String
+        ) async throws -> EditorWindowController {
+            try context.require(
+                "an editor opened for the \(name)", await E2EWait.until { harness.editors.controllers.count > count })
+            return try context.unwrap("\(name) editor", harness.editors.controllers.last)
+        }
+
+        /// A manual Copy Image of `editor`, decoded from the pasteboard.
+        private static func copiedPixels(
+            _ editor: EditorWindowController, _ harness: E2EHarness, _ context: ScenarioContext, _ name: String
+        ) async throws -> DecodedPixels {
+            let outcome = await editor.model.export(.copy)
+            try context.require("Copy of the \(name) succeeds", outcome == .copied, "\(outcome)")
+            let data = try context.unwrap(
+                "\(name) PNG on the pasteboard", harness.clipboard.pasteboard.data(forType: .png))
+            return try E2EActions.decode(data, name, context)
+        }
+
+        /// Pixels in `rect` that are not the black mask fill.
+        private static func uncovered(_ rect: PixelRect, in pixels: DecodedPixels) -> Int {
+            var count = 0
+            for y in max(0, rect.y)..<min(pixels.height, rect.y + rect.height) {
+                for x in max(0, rect.x)..<min(pixels.width, rect.x + rect.width) {
+                    let p = pixels.pixel(x: x, y: y)
+                    if max(p.r, p.g, p.b) > 30 { count += 1 }
+                }
+            }
+            return count
+        }
+
         /// `E2EActions.captureRegion` without waiting for a base render, which a pending editor
         /// never starts.
         private static func captureNotes(_ harness: E2EHarness, _ context: ScenarioContext) async throws

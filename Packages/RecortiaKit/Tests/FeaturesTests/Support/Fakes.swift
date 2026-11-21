@@ -282,12 +282,17 @@ final class FakeAssetService: ImageAssetService {
         return info
     }
 
-    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-        -> ImageAssetInfo
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+        async throws(ImportError) -> ImageAssetInfo
     {
-        let info = ImageAssetInfo(
-            id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height),
-            origin: .scrollCapture(partialReason: partialReason))
+        let origin = AssetOrigin.scrollCapture(partialReason: partialReason, pointPixelScale: pointPixelScale)
+        let info: ImageAssetInfo
+        if let store {
+            info = await store.insert(try ImageDecoder.canonicalize(image), origin: origin)
+        } else {
+            info = ImageAssetInfo(
+                id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height), origin: origin)
+        }
         registeredStitched.append(info)
         return info
     }
@@ -574,11 +579,14 @@ final class FakeStitcher: ScrollStitchService {
     var holdFirstAssemble = false
     let assembles = Pending<Void>()
     private(set) var assembleCount = 0
+    /// When set, `assemble` returns this image instead of a blank one of the stitched size.
+    var assembled: CGImage?
 
     func assemble() async throws -> CGImage {
         assembleCount += 1
         if holdFirstAssemble, assembleCount == 1 { await assembles.wait() }
         if assembleFails { throw ExportServiceError(.budgetExceeded) }
+        if let assembled { return assembled }
         guard let image = makeImage(width: max(1, outputSize.width), height: max(1, outputSize.height)) else {
             throw ExportServiceError(.renderFailed)
         }

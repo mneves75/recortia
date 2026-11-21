@@ -333,7 +333,7 @@ public final class EditorModel {
     /// so a partial result is never presented as complete (FR-10).
     public var partialScrollCaptureReason: ScrollPartialReason? {
         for asset in session.document.assets.values {
-            if case .scrollCapture(let reason?) = asset.origin { return reason }
+            if case .scrollCapture(let reason?, _) = asset.origin { return reason }
         }
         return nil
     }

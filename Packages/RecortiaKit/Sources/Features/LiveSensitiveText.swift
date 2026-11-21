@@ -15,15 +15,23 @@ public final class LiveSensitiveText: SensitiveTextService {
     }
 
     public func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
-        let pixelsPerPoint: Double =
-            if case .captured(let geometry) = asset.origin { geometry.pointPixelScale } else { 1 }
         let regions = try await scanner.sensitiveRegions(
-            of: asset.id, in: store, pixelsPerPoint: pixelsPerPoint, languages: Self.languages)
+            of: asset.id, in: store, pixelsPerPoint: Self.pixelsPerPoint(of: asset.origin), languages: Self.languages)
         // The scanner returns whole-pixel rectangles; rounding only drops floating-point noise.
         return regions.map {
             PixelRect(
                 x: Int($0.rect.minX.rounded()), y: Int($0.rect.minY.rounded()), width: Int($0.rect.width.rounded()),
                 height: Int($0.rect.height.rounded()))
+        }
+    }
+
+    /// The density the sweep is laid out for: a capture's and a scrolling capture's own; an opened
+    /// or pasted image records none, so it is read as 1, the slower sweep that upsamples more.
+    static func pixelsPerPoint(of origin: AssetOrigin) -> Double {
+        switch origin {
+        case .captured(let geometry): geometry.pointPixelScale
+        case .scrollCapture(_, let scale): scale
+        case .imported, .pasted: 1
         }
     }
 }

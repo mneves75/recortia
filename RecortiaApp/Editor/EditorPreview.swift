@@ -139,8 +139,8 @@
         func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
             throw .unreadable
         }
-        func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-            -> ImageAssetInfo
+        func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+            async throws(ImportError) -> ImageAssetInfo
         {
             throw .unreadable
         }

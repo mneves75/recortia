@@ -24,6 +24,7 @@ final class ScrollHarness {
     let settings = SettingsStore(storage: MemoryPreferenceStorage())
     let model: ScrollSessionModel
     var accepted: [DocumentSession] = []
+    var acceptedMasking: [Bool] = []
     let target = CaptureTarget.region(Rect(x: 0, y: 0, width: 400, height: 300), display: TestFixtures.primaryDisplay)
 
     init(trusted: Bool = false, automaticPreference: Bool = false, screenGranted: Bool = true) {
@@ -33,7 +34,10 @@ final class ScrollHarness {
         model = ScrollSessionModel(
             frames: frames, stitcher: stitcher, autoScroller: scroller, accessibility: accessibility,
             screenPermission: permission, assets: assets, clock: clock, settings: settings)
-        model.onAccepted = { [unowned self] in self.accepted.append($0) }
+        model.onAccepted = { [unowned self] session, masks in
+            self.accepted.append(session)
+            self.acceptedMasking.append(masks)
+        }
     }
 
     func startCollecting() async {
@@ -180,7 +184,9 @@ struct ScrollSessionModelTests {
         #expect(h.model.partialReason == .ambiguous(.ambiguousMatch))
         await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
-        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: .ambiguous(.ambiguousMatch)))
+        #expect(
+            h.assets.registeredStitched.first?.origin
+                == .scrollCapture(partialReason: .ambiguous(.ambiguousMatch), pointPixelScale: 1))
     }
 
     @Test("A reached limit ends collection into review with a partial reason (SCR-04)")

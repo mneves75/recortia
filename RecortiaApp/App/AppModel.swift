@@ -28,7 +28,7 @@ struct FeatureModels {
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
             folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
-        importer = ImportCoordinator(input: services.input, assets: services.assets)
+        importer = ImportCoordinator(input: services.input, assets: services.assets, settings: settings)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
             accessibility: services.accessibility, screenPermission: services.screenPermission,
@@ -317,11 +317,13 @@ final class AppModel: AppActions {
         features.capture.onCaptured = { [weak self] completion in
             self?.handleCapture(completion)
         }
-        features.importer.onImported = { [weak self] session, fileName in
-            _ = self?.openDocument?(session, .none, fileName)
+        // Scrolling captures and new documents from Open, Open With, a drop or Paste have no
+        // automatic export batch; masking, when on, is decided as each document is created.
+        features.importer.onImported = { [weak self] session, fileName, masks in
+            _ = self?.openDocument?(session, masks ? .maskSensitiveText : .none, fileName)
         }
-        features.scroll.onAccepted = { [weak self] session in
-            _ = self?.openDocument?(session, .none, nil)
+        features.scroll.onAccepted = { [weak self] session, masks in
+            _ = self?.openDocument?(session, masks ? .maskSensitiveText : .none, nil)
         }
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })

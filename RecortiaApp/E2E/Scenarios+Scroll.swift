@@ -117,7 +117,8 @@
             await model.accept()
             let controller = try await E2EActions.waitForNewEditor(harness, after: before, context)
             let asset = try context.unwrap("stitched asset", controller.model.document.assets.values.first)
-            context.check("the asset is a complete scroll capture", asset.origin == .scrollCapture(partialReason: nil))
+            let complete = if case .scrollCapture(partialReason: nil, _) = asset.origin { true } else { false }
+            context.check("the asset is a complete scroll capture", complete, "\(asset.origin)")
             let base = try context.unwrap("stitched image", controller.model.baseImage)
             let stitched = try E2EActions.pixels(of: base, "stitched", context)
             let badRows = compare(stitched, expected, fixture: fixture)

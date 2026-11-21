@@ -122,8 +122,10 @@
             features.capture.onCaptured = { [weak app] completion in
                 app?.handleCapture(completion)
             }
-            features.importer.onImported = { editors.open($0, importedFileName: $1) }
-            features.scroll.onAccepted = { editors.open($0) }
+            features.importer.onImported = {
+                editors.open($0, importedFileName: $1, initialAction: $2 ? .maskSensitiveText : .none)
+            }
+            features.scroll.onAccepted = { editors.open($0, initialAction: $1 ? .maskSensitiveText : .none) }
             app.openDocument = { editors.open($0, importedFileName: $2, initialAction: $1).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
             features.quickActions.onOpenInEditor = { editors.open($0) }

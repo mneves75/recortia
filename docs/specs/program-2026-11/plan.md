@@ -187,8 +187,9 @@ both appearances (AGENTS.md). Use the `swiftui-liquid-glass`, `swiftui-whats-new
   `SettingsWindowController.swift:70`, `E2E/Scenarios+Shell.swift:474`); reword the Export footer
   (`SettingsView.swift:203-205`); pt-BR strings. SPEC's 300 ms capture-to-editor p95 gains a stated
   exception for this opt-in path with the measured number.
-- **Scope:** region/window/display/repeat captures. Scrolling, import, paste and the B-1 thumbnail
-  show the same redacted document where they reach it; adding detection to scroll/import is T2.
+- **Scope:** region/window/display/repeat captures; since T2 (2026-11-21) also scrolling captures
+  accepted from review and images opened as new documents (Open, Open With, drop on the app, Paste
+  Image), decided when the document is created. Image layers added to an open editor are not scanned.
 - **Proof:** RED family with planted controls (8–24 pt, 1×/2×, light/dark, EN/PT-BR addresses and
   numbers fully covered in copy, save, drag and pin bytes); failing-first: auto-copy publishes masked
   bytes; turning save/upload on or changing the folder during detection does not join the batch;
