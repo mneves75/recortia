@@ -1,7 +1,6 @@
 {
   "sourceLanguage": "en",
   "strings": {
-<<<<<<< HEAD
     "Rotate Left": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Rotate Left" } },
@@ -72,7 +71,8 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Original" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Original" } }
-=======
+      }
+    },
     "Filled Head": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Filled Head" } },
@@ -113,7 +113,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Applies to new strokes." } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Vale para novos traços." } }
->>>>>>> origin/feat/t4-arrows-smoothing
       }
     },
     "Contrast": {
