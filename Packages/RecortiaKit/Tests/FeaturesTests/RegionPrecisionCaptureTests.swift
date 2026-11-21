@@ -50,15 +50,6 @@ struct RegionPrecisionCaptureTests {
         #expect(failed.coordinator.commitRegion(failed.regionRect, on: TestFixtures.primaryDisplay))
     }
 
-    @Test("The chosen ratio is remembered as a preference")
-    func remembersAspect() {
-        let h = CaptureHarness()
-        #expect(h.coordinator.regionAspect == .free)
-        h.coordinator.setRegionAspect(.sixteenByNine)
-        #expect(h.settings.preferences.regionAspect == .sixteenByNine)
-        #expect(CaptureHarness().coordinator.regionAspect == .free)
-    }
-
     @Test("Nudges are in points: 2 px on the 2x display, 1 px on the 1x one, and stop at its edge")
     func nudgesInPoints() {
         func resized(_ rect: Rect<DesktopSpace>, on display: DisplayInfo) -> PixelSize {

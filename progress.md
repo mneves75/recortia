@@ -272,3 +272,11 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   readouts also passed, exposing the next assertion in `colour-tools`: the four Pass/Fail marks
   are static text and the scenario had been querying their accessible names. The next replay
   reads their values and still checks each localized verdict exactly.
+- On `812a68c`, `colour-tools` passed in both languages in `20261121-170801-10350`.
+  The following full run `20261121-170832-15352` was void after console input and was stopped.
+  The focused report completed before the console interruption.
+- With owner approval, removed the duplicate `RegionPrecisionCaptureTests.remembersAspect` case.
+  `capture-precision` exercised the same 16:9 control, read the saved preference, and verified
+  the next selection inherited it in both languages in `20261121-170244-80788`.
+  `RegionPrecisionTests.aspectPreference` still checks fresh and legacy defaults and persisted
+  round-trip equality. The pre-pruning unsigned baseline ran 1,086 package tests.
