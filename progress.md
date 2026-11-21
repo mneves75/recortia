@@ -232,9 +232,9 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   and the hosted Debug and Release checks. Its focused native rerun was void when the console
   resumed input. No outcomes from that rerun qualify the candidate.
 - The current T6 head `8d1ed31` follows AppKit's cooperative activation contract. It passed
-  the unsigned E2E target build with stable Xcode 27.2 (27B52) and a fresh read-only review. The
-  exact-head hosted gate and an uninterrupted native rerun are pending. Opus cross-model review
-  hit its usage limit.
+  the unsigned E2E target build with stable Xcode 27.2 (27B52), a fresh read-only review and the
+  exact-head [hosted Debug and Release checks](https://github.com/mneves75/recortia/actions/runs/44922689305).
+  An uninterrupted native rerun is pending. Opus cross-model review hit its usage limit.
 - A-5 proceeds in an isolated worktree with live region selection as the default and an explicit
   freeze action for one display during selection. Its crop and magnifier use the same frame.
 - The repository generates `tests.json` as its test inventory and
