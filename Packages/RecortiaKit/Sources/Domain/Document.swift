@@ -64,11 +64,23 @@ public struct LayerPlacement: Hashable, Sendable, Codable {
     public var scale: Double
     /// Radians, about the layer's top-left corner.
     public var rotation: Double
+    /// The asset is mirrored left to right before it is rotated (A-10). A mirror is not a
+    /// stretch: the scale stays uniform.
+    public var mirrored: Bool
 
-    public init(translation: Point<DocumentSpace> = .zero, scale: Double = 1, rotation: Double = 0) {
+    public init(
+        translation: Point<DocumentSpace> = .zero, scale: Double = 1, rotation: Double = 0, mirrored: Bool = false
+    ) {
         self.translation = translation
         self.scale = scale
         self.rotation = rotation
+        self.mirrored = mirrored
+    }
+
+    /// Whether the rotation is a whole number of quarter turns, so the layer's edges stay
+    /// horizontal and vertical.
+    public var isAxisAligned: Bool {
+        (0..<4).contains { rotation == Double($0) * (.pi / 2) }
     }
 }
 
@@ -96,10 +108,18 @@ public struct ImageLayer: Identifiable, Hashable, Sendable, Codable {
         sourceCrop ?? PixelRect(x: 0, y: 0, width: assetSize.width, height: assetSize.height)
     }
 
-    /// Maps asset pixels into document space: crop offset, rotation, scale, then translation.
+    /// Maps asset pixels into document space: crop offset, mirror, rotation, scale, then
+    /// translation. A mirror keeps the visible pixels where they were before it, so `translation`
+    /// is still the unrotated top-left corner.
     public func sourceToDocument(assetSize: PixelSize) -> AffineMap<SourcePixelSpace, DocumentSpace> {
         let visible = visibleSourceRect(assetSize: assetSize)
-        return AffineMap<SourcePixelSpace, SourcePixelSpace>.translation(dx: -Double(visible.x), dy: -Double(visible.y))
+        var local = AffineMap<SourcePixelSpace, SourcePixelSpace>.translation(
+            dx: -Double(visible.x), dy: -Double(visible.y))
+        if placement.mirrored {
+            local = local.then(AffineMap(a: -1, b: 0, c: 0, d: 1, tx: Double(visible.width), ty: 0))
+        }
+        return
+            local
             .then(AffineMap<SourcePixelSpace, DocumentSpace>.rotation(placement.rotation))
             .then(.scale(placement.scale))
             .then(.translation(dx: placement.translation.x, dy: placement.translation.y))

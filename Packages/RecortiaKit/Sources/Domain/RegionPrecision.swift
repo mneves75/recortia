@@ -103,11 +103,20 @@ public enum RegionPrecision {
         anchor: Point<Space>, pointer: Point<Space>, aspect: SelectionAspect, keys: SelectionKeys,
         guides: [SnapGuide<Space>], within bounds: Rect<Space>
     ) -> SelectionDrag<Space> {
+        drag(anchor: anchor, pointer: pointer, ratio: aspect.ratio, keys: keys, guides: guides, within: bounds)
+    }
+
+    /// `drag(anchor:pointer:aspect:keys:guides:within:)` for any positive width-to-height
+    /// `ratio`, such as an image's own (the editor's crop presets, A-10); nil constrains nothing.
+    public static func drag<Space>(
+        anchor: Point<Space>, pointer: Point<Space>, ratio: (width: Double, height: Double)?, keys: SelectionKeys,
+        guides: [SnapGuide<Space>], within bounds: Rect<Space>
+    ) -> SelectionDrag<Space> {
         let clamped = Point<Space>(
             x: min(max(pointer.x, bounds.minX), bounds.maxX), y: min(max(pointer.y, bounds.minY), bounds.maxY))
         let snapped =
             keys.command ? SelectionDrag(corner: clamped, guides: []) : snap(clamped, anchor: anchor, guides: guides)
-        guard let ratio = keys.shift ? (width: 1, height: 1) : aspect.ratio else { return snapped }
+        guard let ratio = keys.shift ? (width: 1, height: 1) : ratio else { return snapped }
         let corner = constrained(anchor: anchor, pointer: snapped.corner, ratio: ratio, within: bounds)
         let shown = snapped.guides.filter { ($0.axis == .vertical ? corner.x : corner.y) == $0.position }
         return SelectionDrag(corner: corner, guides: shown)

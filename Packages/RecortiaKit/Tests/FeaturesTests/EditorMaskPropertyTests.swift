@@ -115,13 +115,19 @@ private enum Step {
     case alignMixed(picks: Int, alignment: EditorAlignment)
     case nudgeMixed(pick: Int, dx: Double)
     case zoomedDragMixed(pick: Int, viewDX: Double)
+    // Rotate and flip (A-10): a layer turn or mirror is a layer edit; a whole-image one moves
+    // every box with the content under it.
+    case transformLayer(pick: Int, transform: ImageTransform)
+    case transformImage(ImageTransform)
+    /// An import whose patch only a box protects, turned or mirrored before any other edit binds it.
+    case importAndTransform(width: Int, height: Int, pick: Int, transform: ImageTransform)
 
     static func random(using rng: inout SplitMix64) -> Step {
         func coordinate() -> Double { Double(Int.random(in: -25...200, using: &rng)) }
         func delta() -> Double { Double(Int.random(in: -60...60, using: &rng)) }
         func length() -> Double { Double(Int.random(in: 5...75, using: &rng)) }
         let pick = Int.random(in: 0..<64, using: &rng)
-        switch Int.random(in: 0..<29, using: &rng) {
+        switch Int.random(in: 0..<32, using: &rng) {
         case 0: return .nudgeLayer(pick: pick, dx: delta(), dy: delta())
         case 1:
             return .setLayerFrame(
@@ -161,6 +167,12 @@ private enum Step {
             return .alignMixed(picks: pick, alignment: EditorAlignment.allCases.randomElement(using: &rng) ?? .left)
         case 26: return .nudgeMixed(pick: pick, dx: [0.45, -0.45, 1, 15][Int.random(in: 0..<4, using: &rng)])
         case 27: return .zoomedDragMixed(pick: pick, viewDX: [3.6, -3.6, 8][Int.random(in: 0..<3, using: &rng)])
+        case 28: return .transformLayer(pick: pick, transform: ImageTransform.allCases[pick % 4])
+        case 29: return .transformImage(ImageTransform.allCases[pick % 4])
+        case 30:
+            return .importAndTransform(
+                width: 2 * Int.random(in: 10...100, using: &rng), height: 2 * Int.random(in: 10...75, using: &rng),
+                pick: pick, transform: ImageTransform.allCases[Int.random(in: 0..<4, using: &rng)])
         default: return .zoomPan(zoom: Double.random(in: 0.1...4, using: &rng), dx: delta(), dy: delta())
         }
     }
@@ -326,6 +338,17 @@ private enum Step {
             guard m.item(at: press) == layer else { return }
             let a = m.viewport.viewPoint(press)
             h.dragInView(a, Point(x: a.x + viewDX, y: a.y), steps: 1)
+        case .transformLayer(let pick, let transform):
+            guard let layer = one(layers, pick) else { return }
+            m.setSelection([layer])
+            m.transformSelectedLayers(transform)
+        case .transformImage(let transform):
+            m.transformImage(transform)
+        case .importAndTransform(let width, let height, let pick, let transform):
+            await Step.importImage(width: width, height: height, underMask: pick).apply(to: fixture, green: green)
+            guard let top = m.document.layers.last?.id, layers.count < m.document.layers.count else { return }
+            m.setSelection([.layer(top)])
+            m.transformSelectedLayers(transform)
         }
         m.selectTool(.select)
     }

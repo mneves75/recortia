@@ -23,6 +23,8 @@ public final class EditorModel {
     public internal(set) var redactionFill: RGBA = .black
     /// New redactions cover only the text lines recognized inside them (EditorModel+TextRedaction.swift).
     public internal(set) var redactsTextOnly = false
+    /// The ratio the crop tool holds (EditorModel+Transforms.swift).
+    public internal(set) var cropAspect: CropAspect = .free
     public internal(set) var viewport = EditorViewport()
     public internal(set) var viewportSize = Size<ViewSpace>(width: 0, height: 0)
     /// Device pixels per view point of the canvas's screen; 100 % zoom shows one document pixel per device pixel.
@@ -514,7 +516,7 @@ public final class EditorModel {
             default: return EditorGeometry.handles(for: frame, cornersOnly: false)
             }
         case .layer(let id):
-            guard let layer = d.layers.first(where: { $0.id == id }), layer.placement.rotation == 0 else { return [] }
+            guard let layer = d.layers.first(where: { $0.id == id }), layer.placement.isAxisAligned else { return [] }
             return EditorGeometry.handles(for: frame, cornersOnly: true)
         case .mask, .obfuscation, .callout:
             return EditorGeometry.handles(for: frame, cornersOnly: false)

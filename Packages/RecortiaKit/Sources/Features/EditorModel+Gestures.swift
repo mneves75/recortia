@@ -310,7 +310,9 @@ extension EditorModel {
             draft = .annotation(Annotation(kind: .freehand(points), style: style.annotationStyle))
         case .highlighter:
             draft = .annotation(Annotation(kind: .highlighter(points), style: style.highlighterStyle))
-        case .crop, .redact, .blur, .pixelate, .spotlight, .magnifier:
+        case .crop:
+            draft = .region(tool, cropRect(from: start, to: current, modifiers: modifiers))
+        case .redact, .blur, .pixelate, .spotlight, .magnifier:
             draft = .region(
                 tool, EditorGeometry.constrainedRect(from: start, to: current, square: modifiers.contains(.shift)))
         default:
@@ -371,8 +373,9 @@ extension EditorModel {
                 created = .annotation(stroke.id)
             }
         case .crop:
-            guard !isClick else { return }
-            setCrop(rect)
+            let crop = cropRect(from: start, to: end, modifiers: modifiers)
+            guard !isClick, !crop.isEmpty else { return }
+            setCrop(crop)
         case .redact:
             guard !isClick, let area = rect.intersection(document.canvasRect) else { return }
             created = redactsTextOnly ? addTextRedaction(covering: area) : addRedaction(covering: area)
