@@ -81,8 +81,9 @@ public final class CaptureCoordinator {
     public private(set) var purpose: CapturePurpose = .edit
     public private(set) var selectionContext: SelectionContext?
     public private(set) var notice: Notice?
-    /// Frames of other apps' on-screen windows that a region selection snaps to (A-4); empty until
-    /// listed, outside a region selection, and when listing fails.
+    /// Frames of other apps' on-screen windows that a region selection snaps to (A-4), then the
+    /// interface elements of the app under the pointer when that setting is on (B-7); empty until
+    /// listed, outside a region selection, and when listing fails. Held for one selection only.
     public private(set) var snapFrames: [Rect<DesktopSpace>] = []
     private(set) var lastSelectionWasClamped = false
     private var repeatRegion: RepeatRegion?
@@ -95,6 +96,7 @@ public final class CaptureCoordinator {
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let sound: (any CaptureSoundService)?
+    @ObservationIgnored private let elements: (any InterfaceElementFrameService)?
     /// The current request's start-to-overlay interval (A-13).
     @ObservationIgnored private var overlayInterval: LatencyInterval?
     /// Each capture call's own interval, so a stale one closes only its own.
@@ -117,7 +119,8 @@ public final class CaptureCoordinator {
 
     public init(
         capture: any CaptureService, permission: any ScreenPermissionService, assets: any ImageAssetService,
-        clock: any FeatureClock, settings: SettingsStore, sound: (any CaptureSoundService)?
+        clock: any FeatureClock, settings: SettingsStore, sound: (any CaptureSoundService)?,
+        elements: (any InterfaceElementFrameService)?
     ) {
         self.capture = capture
         self.permission = permission
@@ -125,6 +128,7 @@ public final class CaptureCoordinator {
         self.clock = clock
         self.settings = settings
         self.sound = sound
+        self.elements = elements
     }
 
     public var hasRepeatRegion: Bool { repeatRegion != nil }
@@ -296,15 +300,27 @@ public final class CaptureCoordinator {
         }
     }
 
-    /// Lists window frames for snapping alongside the region overlay. A failed list only leaves
-    /// window snapping off: display edges still snap, and the selection itself does not depend on it.
+    /// Lists window frames for snapping alongside the region overlay, then, with element snapping
+    /// on as the selection starts, the element frames of the app under the pointer. A failed list
+    /// or read only leaves that snapping off: display edges and the window frames already listed
+    /// still snap, and the selection itself depends on neither. A result is accepted only while
+    /// the same request is still selecting a region.
     private func loadSnapFrames(_ id: RequestID) {
+        let snapsToElements = settings.preferences.snapsToInterfaceElements
         snapTask = Task { [weak self] in
             guard let self else { return }
-            guard let windows = try? await self.capture.windows() else { return }
-            guard self.isCurrent(id), self.state == .selecting, self.mode == .region else { return }
-            self.snapFrames = windows.map(\.frame)
+            guard let windows = try? await self.capture.windows(), self.isSelectingRegion(id) else { return }
+            let windowFrames = windows.map(\.frame)
+            self.snapFrames = windowFrames
+            guard snapsToElements, let elements = self.elements, case .region(let displays)? = self.selectionContext,
+                let walk = await elements.frames(under: windows), self.isSelectingRegion(id)
+            else { return }
+            self.snapFrames = windowFrames + ElementSnapping.admitted(walk.frames, displays: displays.map(\.frame))
         }
+    }
+
+    private func isSelectingRegion(_ id: RequestID) -> Bool {
+        isCurrent(id) && state == .selecting && mode == .region
     }
 
     private func run(_ target: CaptureTarget, id: RequestID) async {

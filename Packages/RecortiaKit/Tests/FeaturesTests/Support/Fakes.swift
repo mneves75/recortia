@@ -208,6 +208,21 @@ final class FakeCaptureService: CaptureService {
     }
 }
 
+/// Element frames for region snapping (B-7). It has no prompt path to count: the service protocol
+/// offers none. `pending` holds each read until the test resolves it, oldest first.
+@MainActor
+final class FakeInterfaceElements: InterfaceElementFrameService {
+    var result: ElementSnapping.Walk?
+    var pending: Pending<ElementSnapping.Walk?>?
+    private(set) var calls: [[WindowInfo]] = []
+
+    func frames(under windows: [WindowInfo]) async -> ElementSnapping.Walk? {
+        calls.append(windows)
+        if let pending { return await pending.wait() }
+        return result
+    }
+}
+
 @MainActor
 final class FakeCaptureSound: CaptureSoundService {
     private(set) var playCount = 0

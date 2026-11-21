@@ -48,6 +48,9 @@
             E2EScenario(
                 id: "capture-precision", title: "Region selection nudges, keeps a ratio and snaps to windows",
                 run: CapturePrecisionScenarios.precision),
+            E2EScenario(
+                id: "element-snapping", title: "Region selection snaps to interface elements when allowed",
+                run: ElementSnappingScenarios.snapping),
             E2EScenario(id: "window-chooser", title: "Window chooser", run: CaptureScenarios.windowChooser),
             E2EScenario(id: "countdown", title: "Delayed capture countdown", run: CaptureScenarios.countdown),
             E2EScenario(id: "capture-editor", title: "Capture to editor", run: CaptureScenarios.captureToEditor),

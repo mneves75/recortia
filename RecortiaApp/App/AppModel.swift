@@ -24,7 +24,8 @@ struct FeatureModels {
         self.textClipboard = textClipboard
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
-            clock: services.clock, settings: settings, sound: services.captureSound)
+            clock: services.clock, settings: settings, sound: services.captureSound,
+            elements: services.interfaceElements)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
             folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)

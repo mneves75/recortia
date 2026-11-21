@@ -135,6 +135,71 @@
         func requestWithPrompt() { requestCount += 1 }
     }
 
+    /// Element frames for region snapping (B-7) from a synthetic interface tree of the first listed
+    /// window's app, walked by the product's `ElementSnapping.walk`. It never calls Accessibility:
+    /// trust is the harness's synthetic flag, and like the live service it has no prompt path.
+    /// `holds` keeps each read waiting until `releaseOldest()`, so a scenario can end the selection
+    /// first.
+    final class SyntheticInterfaceElements: InterfaceElementFrameService {
+        /// A button inside the synthetic notes window, away from every window edge.
+        static let button = Rect<DesktopSpace>(x: 520, y: 300, width: 80, height: 30)
+        /// The toolbar, sidebar, content area and button; the tree also holds one element too small
+        /// and one off the display, which the overlay must not snap to.
+        static let admittedCount = 4
+
+        private let accessibility: SyntheticAccessibilityPermission
+        var holds = false
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+        private(set) var readCount = 0
+        var waitingCount: Int { waiters.count }
+
+        init(accessibility: SyntheticAccessibilityPermission) {
+            self.accessibility = accessibility
+        }
+
+        func frames(under windows: [WindowInfo]) async -> ElementSnapping.Walk? {
+            guard accessibility.isTrusted, let window = windows.first else { return nil }
+            readCount += 1
+            if holds { await withCheckedContinuation { waiters.append($0) } }
+            return ElementSnapping.walk(from: Self.tree(in: window.frame)) { .zero }
+        }
+
+        func releaseOldest() {
+            guard !waiters.isEmpty else { return }
+            waiters.removeFirst().resume()
+        }
+
+        func releaseAll() {
+            while !waiters.isEmpty { releaseOldest() }
+        }
+
+        private static func tree(in window: Rect<DesktopSpace>) -> SyntheticElementNode {
+            func element(_ frame: Rect<DesktopSpace>, _ children: [SyntheticElementNode] = []) -> SyntheticElementNode {
+                SyntheticElementNode(reading: InterfaceElementReading(frame: frame, kind: .element), nodes: children)
+            }
+            let toolbar = element(Rect(x: window.minX, y: window.minY, width: window.width, height: 32))
+            let sidebar = element(Rect(x: window.minX, y: window.minY + 32, width: 160, height: window.height - 32))
+            let content = element(
+                Rect(x: window.minX + 160, y: window.minY + 32, width: window.width - 160, height: window.height - 32),
+                [element(button), element(Rect(x: 700, y: 400, width: 4, height: 4))])
+            // Off the synthetic display altogether.
+            let offscreen = element(Rect(x: 4_000, y: 300, width: 80, height: 30))
+            let windowNode = SyntheticElementNode(
+                reading: InterfaceElementReading(frame: window, kind: .container),
+                nodes: [toolbar, sidebar, content, offscreen])
+            return SyntheticElementNode(
+                reading: InterfaceElementReading(frame: nil, kind: .container), nodes: [windowNode])
+        }
+    }
+
+    struct SyntheticElementNode: InterfaceElementNode {
+        let reading: InterfaceElementReading
+        let nodes: [SyntheticElementNode]
+
+        func read() -> InterfaceElementReading? { reading }
+        func children(limit: Int) -> [SyntheticElementNode] { Array(nodes.prefix(limit)) }
+    }
+
     /// Feeds pre-rendered viewport frames of a RecortiaFixtures long page. `holdAfter` pauses the
     /// feed after that many frames until `release()`, so the HUD can be captured mid-collection.
     final class SyntheticScrollFrames: ScrollFrameSourceService {

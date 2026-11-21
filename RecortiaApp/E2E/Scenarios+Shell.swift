@@ -471,6 +471,7 @@
                 harness.settings.update {
                     $0.pinDefaultOpacity = preferences.pinDefaultOpacity
                     $0.automaticScrollingEnabled = preferences.automaticScrollingEnabled
+                    $0.snapsToInterfaceElementsChoice = preferences.snapsToInterfaceElementsChoice
                     $0.filenameTemplateChoice = preferences.filenameTemplateChoice
                     $0.defaultExportFormat = preferences.defaultExportFormat
                     $0.automaticExportFormatChoice = preferences.automaticExportFormatChoice
@@ -534,6 +535,23 @@
                 "\(harness.messages.values.count - messages) messages")
 
             harness.accessibility.isTrusted = false
+            let snapRequests = harness.accessibility.requestCount
+            try await click("settings.snapsToInterfaceElements", tab: 2)
+            context.check(
+                "the Capture switch turns snapping to interface elements on",
+                harness.settings.preferences.snapsToInterfaceElements)
+            context.check(
+                "turning snapping on without Accessibility asks exactly once",
+                harness.accessibility.requestCount == snapRequests + 1,
+                "\(harness.accessibility.requestCount - snapRequests)")
+            try await click("settings.snapsToInterfaceElements", tab: 2)
+            context.check(
+                "the Capture switch turns snapping to interface elements off",
+                !harness.settings.preferences.snapsToInterfaceElements)
+            context.check(
+                "turning snapping off asks nothing", harness.accessibility.requestCount == snapRequests + 1,
+                "\(harness.accessibility.requestCount - snapRequests)")
+
             let requests = harness.accessibility.requestCount
             try await click("settings.automaticScrolling", tab: 2)
             context.check(

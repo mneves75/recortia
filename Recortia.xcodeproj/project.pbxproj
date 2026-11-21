@@ -65,6 +65,7 @@
 		5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
 		55BAD47DF14454678FB1B355 /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
 		56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
+		57130F368972E6B891A931A5 /* LiveInterfaceElements.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3E510BEE5779CA9318B9F4D /* LiveInterfaceElements.swift */; };
 		5C28BD37596715D88F7CEDD6 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C105D1B70AD241C287604A0 /* DesignTokens.swift */; };
 		5E94361B15760DC5E2C550DE /* QuickActionsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2881502EC406FE486A88BC /* QuickActionsPanel.swift */; };
 		60647A0CC1731D110C1B38C3 /* Scenarios+CapturePrecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C59423A6DA2A4DDE9C01F6 /* Scenarios+CapturePrecision.swift */; };
@@ -94,6 +95,7 @@
 		75DAB48C82B17F161440D16D /* EditorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48537C0299ADF945358D808 /* EditorCommands.swift */; };
 		778801BF8774508093BCD36C /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
 		77E19BC6CF2BA34198B7BC2C /* QuickActionsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA2881502EC406FE486A88BC /* QuickActionsPanel.swift */; };
+		7840318B8091C92195150356 /* Scenarios+ElementSnapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B95E6E8332CC6B9D00D21A /* Scenarios+ElementSnapping.swift */; };
 		78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
 		7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
 		80CDF8847AC39BD8B97FCD94 /* ObservationLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */; };
@@ -122,6 +124,7 @@
 		B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */; };
 		B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
 		B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
+		BAD15C6C4B11D9D24A5EA519 /* LiveInterfaceElements.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3E510BEE5779CA9318B9F4D /* LiveInterfaceElements.swift */; };
 		BC6C21B7119974713B056736 /* Scenarios+EditorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BEF2C3C44B97A8D9E7B102 /* Scenarios+EditorMenu.swift */; };
 		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		BE76CF85696B2F1702597E5C /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = CB78FDBEC0994FB58607CBEA /* Imaging */; };
@@ -258,6 +261,7 @@
 		9C6AABCCCF1691C1818B8DB7 /* RecortiaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RecortiaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2BB042ABB66368D5ABDCE3E /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		A39817EE5D149AB669AEE652 /* Scenarios+EditorWindowSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+EditorWindowSize.swift"; sourceTree = "<group>"; };
+		A3E510BEE5779CA9318B9F4D /* LiveInterfaceElements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveInterfaceElements.swift; sourceTree = "<group>"; };
 		A75CDF46F47D5D021E76221E /* Scenarios+Inspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Inspector.swift"; sourceTree = "<group>"; };
 		AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Output.swift"; sourceTree = "<group>"; };
 		AA8FDDAC5FCCED2C45FF6F20 /* EditorStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorStrings.swift; sourceTree = "<group>"; };
@@ -285,6 +289,7 @@
 		E6069EC3842FAD127FFC00AB /* SyntheticImages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticImages.swift; sourceTree = "<group>"; };
 		E688E3EDFF1C9F0D63A08CA3 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Latency.swift"; sourceTree = "<group>"; };
+		E8B95E6E8332CC6B9D00D21A /* Scenarios+ElementSnapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+ElementSnapping.swift"; sourceTree = "<group>"; };
 		E8D31CC0BCFF030833F67F96 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E9E15812A71A550789FBC15D /* EditorTextDecorationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorTextDecorationView.swift; sourceTree = "<group>"; };
 		EA2881502EC406FE486A88BC /* QuickActionsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsPanel.swift; sourceTree = "<group>"; };
@@ -365,6 +370,7 @@
 				D97C30D7091C2051638564FB /* GlobalShortcuts.swift */,
 				78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */,
 				6610A99F1B386ECA2E10FF6C /* LiveGitHubUpload.swift */,
+				A3E510BEE5779CA9318B9F4D /* LiveInterfaceElements.swift */,
 				F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */,
 				B885E83C460249621067B7FB /* LiveScrolling.swift */,
 				68A32821DBE9F97E4B468E29 /* LiveServices.swift */,
@@ -479,6 +485,7 @@
 				48EBB8A0BC002235126E837B /* Scenarios+EditorToolbar.swift */,
 				A39817EE5D149AB669AEE652 /* Scenarios+EditorWindowSize.swift */,
 				C186BEADBF278BAA60ADCD23 /* Scenarios+EditorZoom.swift */,
+				E8B95E6E8332CC6B9D00D21A /* Scenarios+ElementSnapping.swift */,
 				A75CDF46F47D5D021E76221E /* Scenarios+Inspector.swift */,
 				0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */,
 				E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */,
@@ -790,6 +797,7 @@
 				B87B52BC83ED4BC1B4B78FBC /* HostingPanel.swift in Sources */,
 				AE228DFF7511E5EB3A9CB2A8 /* LaunchKind.swift in Sources */,
 				3D6140BA1D228918E1B4AE7F /* LiveGitHubUpload.swift in Sources */,
+				BAD15C6C4B11D9D24A5EA519 /* LiveInterfaceElements.swift in Sources */,
 				41302BAADF8304A81FE45EC9 /* LiveRecognition.swift in Sources */,
 				A8A476C5D3007B4823361E64 /* LiveScrolling.swift in Sources */,
 				F719870225B18848414BD58A /* LiveServices.swift in Sources */,
@@ -817,6 +825,7 @@
 				BFDFF7362CE5EC24BCDFBF6C /* Scenarios+EditorToolbar.swift in Sources */,
 				747BEF5FD53C4B739E049209 /* Scenarios+EditorWindowSize.swift in Sources */,
 				E36A4397CD83B34DCF351AA2 /* Scenarios+EditorZoom.swift in Sources */,
+				7840318B8091C92195150356 /* Scenarios+ElementSnapping.swift in Sources */,
 				343C95A17D363ADD5FC27914 /* Scenarios+Inspector.swift in Sources */,
 				3BB7356881116137AE7EAF5E /* Scenarios+LastWindow.swift in Sources */,
 				B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */,
@@ -884,6 +893,7 @@
 				778801BF8774508093BCD36C /* HostingPanel.swift in Sources */,
 				CB41D288F549F14A5DD8BED4 /* LaunchKind.swift in Sources */,
 				F0163A96FE80D54253E0E1EF /* LiveGitHubUpload.swift in Sources */,
+				57130F368972E6B891A931A5 /* LiveInterfaceElements.swift in Sources */,
 				4EC666D8B2EF6F97E6C3EFED /* LiveRecognition.swift in Sources */,
 				30B346D5FCE3BE82877BD2A2 /* LiveScrolling.swift in Sources */,
 				3367D3E7A76BC8AE1494A1F8 /* LiveServices.swift in Sources */,

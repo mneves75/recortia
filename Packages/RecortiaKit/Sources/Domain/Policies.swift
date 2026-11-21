@@ -292,6 +292,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var primaryRecognitionLanguage: String?
     /// Stored only once the person picks one in the region overlay; read `regionAspect` (A-4).
     public var regionAspectChoice: SelectionAspect?
+    /// Stored only once the person changes it; read `snapsToInterfaceElements` (B-7).
+    public var snapsToInterfaceElementsChoice: Bool?
 
     public init() {}
 
@@ -305,6 +307,13 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var regionAspect: SelectionAspect {
         get { regionAspectChoice ?? .free }
         set { regionAspectChoice = newValue }
+    }
+
+    /// Whether a region selection also snaps to the interface elements of the app under the
+    /// pointer, read through Accessibility (FR-02, ADR-010). Off by default.
+    public var snapsToInterfaceElements: Bool {
+        get { snapsToInterfaceElementsChoice ?? false }
+        set { snapsToInterfaceElementsChoice = newValue }
     }
 
     /// What a completed capture opens; the editor by default (ADR-009).

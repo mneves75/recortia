@@ -142,7 +142,7 @@ struct CaptureSettingsTab: View {
                 Toggle("Play a sound after capture", isOn: settings.binding(\.playsCaptureSound))
                     .accessibilityIdentifier("settings.captureSound")
             }
-            ScrollingSettingsSection(settings: settings, accessibility: accessibility)
+            AccessibilitySettingsSections(settings: settings, accessibility: accessibility)
         }
         .formStyle(.grouped)
     }
@@ -373,7 +373,7 @@ struct PrivacySettingsTab: View {
             }
             Section("Permissions") {
                 Text(
-                    "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on automatic scrolling."
+                    "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on snapping to interface elements or automatic scrolling."
                 )
             }
         }
@@ -536,34 +536,34 @@ struct PinsSettingsSection: View {
     }
 }
 
-// MARK: - Scrolling Capture (a section of Capture)
+// MARK: - Accessibility features (sections of Capture)
 
-struct ScrollingSettingsSection: View {
+/// The two Capture options that use Accessibility, element snapping (ADR-010) and automatic
+/// scrolling (ADR-002), with the one permission status they share. Turning either on is the only
+/// place Recortia asks for Accessibility.
+struct AccessibilitySettingsSections: View {
     let settings: SettingsStore
     let accessibility: (any AccessibilityPermissionService)?
     @State private var isTrusted = false
 
     var body: some View {
+        Section {
+            Toggle("Snap to interface elements", isOn: binding(\.snapsToInterfaceElements))
+                .disabled(accessibility == nil)
+                .accessibilityIdentifier("settings.snapsToInterfaceElements")
+            Text("Reads only the position and size of buttons and other elements under the pointer, never their text.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
         Section("Scrolling Capture") {
-            Toggle(
-                "Scroll automatically",
-                isOn: Binding(
-                    get: { settings.preferences.automaticScrollingEnabled },
-                    set: { enabled in
-                        settings.update { $0.automaticScrollingEnabled = enabled }
-                        if enabled, let accessibility, !accessibility.isTrusted {
-                            accessibility.requestWithPrompt()
-                        }
-                        refresh()
-                    })
-            )
-            .disabled(accessibility == nil)
-            .help(
-                Text(
-                    "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+            Toggle("Scroll automatically", isOn: binding(\.automaticScrollingEnabled))
+                .disabled(accessibility == nil)
+                .help(
+                    Text(
+                        "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+                    )
                 )
-            )
-            .accessibilityIdentifier("settings.automaticScrolling")
+                .accessibilityIdentifier("settings.automaticScrolling")
         }
         // The permission can change in System Settings while the pane is closed.
         .onAppear(perform: refresh)
@@ -583,6 +583,20 @@ struct ScrollingSettingsSection: View {
                     .accessibilityIdentifier("settings.accessibilityCheckAgain")
             }
         }
+    }
+
+    /// Turning the option on without Accessibility shows the system prompt once; turning it off
+    /// asks nothing.
+    private func binding(_ option: WritableKeyPath<Preferences, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { settings.preferences[keyPath: option] },
+            set: { enabled in
+                settings.update { $0[keyPath: option] = enabled }
+                if enabled, let accessibility, !accessibility.isTrusted {
+                    accessibility.requestWithPrompt()
+                }
+                refresh()
+            })
     }
 
     private func refresh() {
