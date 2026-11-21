@@ -96,6 +96,9 @@ Reviewer marked these read-verified; the coordinator has not yet read them.
 4. **Release build in CI** (R3-D09, R3-D10). *Recommend:* add an unsigned Release build of the
    shipping target plus `check-release-binary.sh` to hosted CI, and restrict the E2E foreground
    helper to Debug.
+   Done in T1 (`22a4eab`): CI runs `scripts/check-release-build.sh` after the Debug gate with the
+   Xcode `select-xcode.sh` picks from TOOLCHAIN.json; the foreground helper compiles only in Debug
+   (`ReleaseBuildGateTests` in `test-release-binary.py`; decisions.md).
 5. **Same-epoch render failure keeps the previous preview** (R2-D12). *Recommend:* show the failure
    over the stale preview and block export until a render succeeds, so the canvas never shows
    pixels the export would not produce.
