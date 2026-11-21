@@ -38,6 +38,8 @@ public final class ClosedCaptureSlot {
         let clock = self.clock
         expiry = Task { [weak self] in
             do { try await clock.sleep(for: Self.lifetime) } catch { return }
+            // A sleep that ended just before a newer close cancelled it must not clear that close.
+            guard !Task.isCancelled else { return }
             self?.clear()
         }
     }

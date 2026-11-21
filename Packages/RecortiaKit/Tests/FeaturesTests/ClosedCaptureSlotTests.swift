@@ -100,6 +100,22 @@ struct ClosedCaptureSlotTests {
         #expect(Set(h.assets.released) == firstAssets.union(secondAssets))
     }
 
+    @Test("An expiry that comes due as a newer close replaces its document does not clear the newer one")
+    func dueExpiryDoesNotClearNewerClose() async throws {
+        let h = EditorHarness()
+        let slot = ClosedCaptureSlot(assets: h.assets, clock: h.clock)
+        let first = Self.editor(h, try Self.editedSession())
+        let second = Self.editor(h, EditorFixtures.session())
+
+        slot.close(first)
+        await drain()
+        // The first expiry's sleep ends here; its task has not run again yet.
+        h.clock.advance(bySeconds: 600)
+        slot.close(second)
+        await drain()
+        #expect(slot.take()?.document == second.document)
+    }
+
     @Test("Quitting clears the slot and releases the pixels")
     func clearReleases() throws {
         let h = EditorHarness()
