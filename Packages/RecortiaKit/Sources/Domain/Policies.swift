@@ -225,6 +225,14 @@ public enum AfterCapture: String, Hashable, Sendable, Codable, CaseIterable {
     case showQuickActions
 }
 
+/// What a window capture is shown over (FR-02). The captured pixels keep their transparent
+/// corners and shadow; a solid colour is composited under them when the document is rendered.
+public enum WindowCaptureBackground: Hashable, Sendable, Codable {
+    case transparent
+    /// Always opaque once sanitized, so an export of the window has no transparent pixel.
+    case solid(RGBA)
+}
+
 /// User preferences. No screenshots, OCR text, or other content is ever stored here (SPEC.md §7).
 /// Every side-effect toggle defaults to off.
 public struct Preferences: Hashable, Sendable, Codable {
@@ -235,6 +243,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var captureDelaySeconds = 0
     public var captureShowsCursor = false
     public var captureIncludesWindowShadow = true
+    /// Stored only once the person picks one; read `windowCaptureBackground`.
+    public var windowCaptureBackgroundChoice: WindowCaptureBackground?
     public var autoCopy = false
     public var autoSave = false
     /// Never read: the login item is the truth. Optional so a blob without the key still decodes;
@@ -255,9 +265,17 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var annotationPalette: SavedAnnotationPalette?
     /// The editor window content size the user last chose; nil until they resize an editor.
     public var editorContentSize: Size<DesktopSpace>?
+    /// Stored only once the person changes them; read `zoomsWithScrollWheel` and
+    /// `reversesScrollWheelZoom`.
+    public var zoomsWithScrollWheelChoice: Bool?
+    public var reversesScrollWheelZoomChoice: Bool?
     /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
     /// 0.13 have no such key, and synthesized Codable cannot default a missing non-optional one.
     public var keepsRunningInMenuBarChoice: Bool?
+    /// Stored only once the person changes it; read `showsMenuBarIcon`.
+    public var showsMenuBarIconChoice: Bool?
+    /// True once Recortia has said how to get back with the icon hidden; never said again.
+    public var hasExplainedHiddenMenuBarIcon: Bool?
     /// Stored only once the person changes it; read `autoRedactsSensitiveText`. Optional for the
     /// same reason as `keepsRunningInMenuBarChoice`: blobs written before 0.15 have no such key.
     public var autoRedactsSensitiveTextChoice: Bool?
@@ -294,11 +312,39 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { filenameTemplateChoice = newValue }
     }
 
+    /// What a new window capture is shown over (FR-02). Transparent by default.
+    public var windowCaptureBackground: WindowCaptureBackground {
+        get { windowCaptureBackgroundChoice ?? .transparent }
+        set { windowCaptureBackgroundChoice = newValue }
+    }
+
+    /// Whether a mouse wheel zooms the editor canvas around the pointer, with Option to scroll
+    /// (FR-04). Off by default: the wheel scrolls and Command-wheel zooms. Trackpad scrolling
+    /// always scrolls.
+    public var zoomsWithScrollWheel: Bool {
+        get { zoomsWithScrollWheelChoice ?? false }
+        set { zoomsWithScrollWheelChoice = newValue }
+    }
+
+    /// Whether wheel zoom runs the other way. Has an effect only while `zoomsWithScrollWheel` is on.
+    public var reversesScrollWheelZoom: Bool {
+        get { reversesScrollWheelZoomChoice ?? false }
+        set { reversesScrollWheelZoomChoice = newValue }
+    }
+
     /// Whether Recortia stays in the menu bar after its last window closes (FR-01). On by default;
     /// off, closing the last window quits.
     public var keepsRunningInMenuBar: Bool {
         get { keepsRunningInMenuBarChoice ?? true }
         set { keepsRunningInMenuBarChoice = newValue }
+    }
+
+    /// Whether Recortia shows its icon in the menu bar (FR-01, ADR-007). On by default. Hidden,
+    /// opening Recortia again shows Settings and the global shortcuts keep working; it does not
+    /// change when Recortia quits.
+    public var showsMenuBarIcon: Bool {
+        get { showsMenuBarIconChoice ?? true }
+        set { showsMenuBarIconChoice = newValue }
     }
 
     /// Whether a new capture opens with secure masks over the e-mail addresses and phone numbers

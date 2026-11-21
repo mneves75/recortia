@@ -357,6 +357,7 @@
                     context.check(
                         "General holds the Pins section",
                         E2EAccessibilityControl.isPresent("settings.pinOpacity", in: pane))
+                    await checkZoomControls(index: index, pane: pane, in: window, root: root, harness, context)
                 case "capture":
                     context.check(
                         "Capture holds the capture sound switch, off by default",
@@ -371,6 +372,7 @@
                             "Capture holds the Scrolling Capture control \(identifier)",
                             E2EAccessibilityControl.isPresent(identifier, in: pane))
                     }
+                    await checkWindowBackground(index: index, pane: pane, in: window, root: root, harness, context)
                 case "export":
                     // A pane whose content grows after it is shown still fits it.
                     harness.settings.update { $0.defaultExportFormat = .jpeg }
@@ -383,6 +385,62 @@
                 }
             }
             try await settingsMergedControls(harness, context)
+        }
+
+        /// General's wheel zoom control, off by default; Reverse zoom direction appears only while
+        /// wheel zoom is on, and the pane still fits its content.
+        private static func checkZoomControls(
+            index: Int, pane: NSView, in window: NSWindow, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async {
+            let preferences = harness.settings.preferences
+            context.check(
+                "General holds the wheel zoom control, off by default",
+                E2EAccessibilityControl.isPresent("settings.zoomsWithScrollWheel", in: pane)
+                    && !preferences.zoomsWithScrollWheel)
+            context.check(
+                "Reverse zoom direction is hidden while wheel zoom is off",
+                !E2EAccessibilityControl.isPresent("settings.reversesScrollWheelZoom", in: pane))
+            harness.settings.update { $0.zoomsWithScrollWheel = true }
+            defer {
+                harness.settings.update { $0.zoomsWithScrollWheelChoice = preferences.zoomsWithScrollWheelChoice }
+            }
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "Reverse zoom direction appears, off, once wheel zoom is on",
+                E2EAccessibilityControl.isPresent("settings.reversesScrollWheelZoom", in: pane)
+                    && !harness.settings.preferences.reversesScrollWheelZoom)
+            await checkPaneFits("general with wheel zoom", index: index, pane: pane, harness.app, context)
+            context.snapshot(pane, shot: "general-wheel-zoom")
+            await context.darkCompanion(
+                pane, in: window, shot: "general-wheel-zoom", surface: "Settings general with wheel zoom",
+                settle: .milliseconds(400))
+        }
+
+        /// Capture's window background: Transparent by default with no colour well; Solid color
+        /// shows the well, and the pane still fits its content.
+        private static func checkWindowBackground(
+            index: Int, pane: NSView, in window: NSWindow, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async {
+            let choice = harness.settings.preferences.windowCaptureBackgroundChoice
+            context.check(
+                "Capture holds the window background control, Transparent by default",
+                E2EAccessibilityControl.isPresent("settings.windowBackground", in: pane)
+                    && harness.settings.preferences.windowCaptureBackground == .transparent
+                    && !E2EAccessibilityControl.isPresent("settings.windowBackgroundColor", in: pane))
+            harness.settings.update { $0.windowCaptureBackground = .solid(RGBA(r: 30, g: 120, b: 220)) }
+            defer { harness.settings.update { $0.windowCaptureBackgroundChoice = choice } }
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "Solid color shows the background colour well",
+                E2EAccessibilityControl.isPresent("settings.windowBackgroundColor", in: pane))
+            await checkPaneFits("capture with a window background", index: index, pane: pane, harness.app, context)
+            context.snapshot(pane, shot: "capture-window-background")
+            await context.darkCompanion(
+                pane, in: window, shot: "capture-window-background",
+                surface: "Settings capture with a window background",
+                settle: .milliseconds(400))
         }
 
         /// The Pins and Scrolling Capture controls, sections of General and Capture, change the
@@ -399,6 +457,8 @@
                     $0.defaultExportFormat = preferences.defaultExportFormat
                     $0.automaticExportFormatChoice = preferences.automaticExportFormatChoice
                     $0.primaryRecognitionLanguage = preferences.primaryRecognitionLanguage
+                    $0.showsMenuBarIconChoice = preferences.showsMenuBarIconChoice
+                    $0.hasExplainedHiddenMenuBarIcon = preferences.hasExplainedHiddenMenuBarIcon
                 }
             }
             let foreground = try await E2EForegroundFixture.start(context)
@@ -432,6 +492,28 @@
                 "the General Pins slider changes the default pin opacity",
                 changed != opacity && SettingsStore.opacityRange.contains(changed), "\(opacity) -> \(changed)")
             if let pane = tabs.selectedTabViewItem?.view { context.snapshot(pane, shot: "general-pins") }
+
+            // The menu-bar icon switch, on by default: the first time it is turned off, one message
+            // says how to get back; turning it on, or off again, says nothing.
+            context.check("the menu-bar icon shows by default", harness.settings.preferences.showsMenuBarIcon)
+            let messages = harness.messages.values.count
+            try await click("settings.showsMenuBarIcon", tab: 0)
+            context.check(
+                "the General switch hides the menu-bar icon", !harness.settings.preferences.showsMenuBarIcon)
+            context.check(
+                "hiding the icon the first time says how to get back",
+                Array(harness.messages.values.dropFirst(messages)) == [.menuBarIconHidden],
+                "\(harness.messages.values.dropFirst(messages).map(\.title))")
+            context.check(
+                "hiding the icon leaves keep running in the menu bar on",
+                harness.settings.preferences.keepsRunningInMenuBar)
+            try await click("settings.showsMenuBarIcon", tab: 0)
+            context.check("the switch shows the icon again", harness.settings.preferences.showsMenuBarIcon)
+            try await click("settings.showsMenuBarIcon", tab: 0)
+            context.check(
+                "hiding it again says nothing more",
+                !harness.settings.preferences.showsMenuBarIcon && harness.messages.values.count == messages + 1,
+                "\(harness.messages.values.count - messages) messages")
 
             harness.accessibility.isTrusted = false
             let requests = harness.accessibility.requestCount
@@ -631,7 +713,7 @@
             let loginItem = LoginItemModel(service: service)
             let host = E2ESnapshot.host(
                 GeneralSettingsTab(
-                    settings: .e2eInMemory(), loginItem: loginItem))
+                    settings: .e2eInMemory(), loginItem: loginItem, setShowsMenuBarIcon: { _ in }))
             defer { host.close() }
             let root = try context.unwrap("General pane hosted", host.contentView)
             loginItem.setEnabled(true)
@@ -651,7 +733,11 @@
         private static func settingsContent(_ index: Int, _ model: AppModel) -> NSView? {
             func host(_ view: some View) -> NSView { NSHostingView(rootView: view.frame(width: 560)) }
             return switch index {
-            case 0: host(GeneralSettingsTab(settings: model.settings, loginItem: model.features.loginItem))
+            case 0:
+                host(
+                    GeneralSettingsTab(
+                        settings: model.settings, loginItem: model.features.loginItem,
+                        setShowsMenuBarIcon: model.setShowsMenuBarIcon))
             case 1:
                 host(
                     ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)

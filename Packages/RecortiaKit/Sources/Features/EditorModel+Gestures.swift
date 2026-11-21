@@ -502,6 +502,20 @@ extension EditorModel {
         }
     }
 
+    /// A mouse wheel zooms around `anchor` when Settings turns wheel zoom on (Option scrolls);
+    /// any scroll zooms with Command; otherwise it scrolls. Trackpad and momentum scrolling never
+    /// wheel-zoom. A notched wheel's line counts as ten points.
+    public func scrollWheel(_ wheel: EditorScrollWheel, at anchor: Point<ViewSpace>) {
+        guard wheel.deltaX.isFinite, wheel.deltaY.isFinite else { return }
+        let preferences = environment.settings.preferences
+        let points = wheel.isPrecise ? 1.0 : 10.0
+        let zooms = preferences.zoomsWithScrollWheel && wheel.isMouseWheel ? !wheel.option : wheel.command
+        guard zooms else { return pan(dx: wheel.deltaX * points, dy: wheel.deltaY * points) }
+        guard anchor.isFinite else { return }
+        let direction = preferences.zoomsWithScrollWheel && preferences.reversesScrollWheelZoom ? -1.0 : 1.0
+        setZoom(viewport.zoom * exp(direction * wheel.deltaY * points * 0.01), anchor: anchor)
+    }
+
     public func setViewport(_ viewport: EditorViewport) {
         guard !isPointerGestureActive else { return }
         self.viewport = viewport

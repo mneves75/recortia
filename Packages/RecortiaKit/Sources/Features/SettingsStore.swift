@@ -60,6 +60,18 @@ public final class SettingsStore {
         update { $0.primaryRecognitionLanguage = nil }
     }
 
+    /// Shows or hides the menu-bar icon. Returns true only when this hides it for the first time,
+    /// so the caller tells the person how to get back (open Recortia again).
+    @discardableResult
+    public func setShowsMenuBarIcon(_ shows: Bool) -> Bool {
+        let explains = !shows && preferences.showsMenuBarIcon && preferences.hasExplainedHiddenMenuBarIcon != true
+        update {
+            $0.showsMenuBarIcon = shows
+            if explains { $0.hasExplainedHiddenMenuBarIcon = true }
+        }
+        return explains
+    }
+
     /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
         githubUploadConsentID = UUID()
@@ -106,7 +118,7 @@ public final class SettingsStore {
 
     /// Clamps capture delay, finite JPEG quality and finite pin opacity; non-finite quality or
     /// opacity and an invalid export scale become defaults; an invalid window size and a malformed
-    /// primary recognition language are discarded.
+    /// primary recognition language are discarded; a window background colour is made opaque.
     public static func sanitized(_ input: Preferences) -> Preferences {
         let defaults = Preferences()
         var output = input
@@ -127,6 +139,9 @@ public final class SettingsStore {
             : defaults.pinDefaultOpacity
         output.editorContentSize = input.editorContentSize.flatMap(EditorWindowSizing.rememberable)
         output.primaryRecognitionLanguage = input.primaryRecognitionLanguage.flatMap(languageIdentifier)
+        if case .solid(let color) = input.windowCaptureBackground {
+            output.windowCaptureBackground = .solid(color.withAlpha(255))
+        }
         // Automatic saving writes only to a folder the person chose; without one it is off.
         if input.preferredSaveFolderBookmark == nil { output.autoSave = false }
         return output

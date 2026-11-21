@@ -107,6 +107,13 @@ pointer), a finished action or a newer capture releases the capture's pixels. Wi
 masking on, captures always open in the editor. Capture Text and scrolling capture keep their
 own flows.
 
+Settings › General also offers "Show the icon in the menu bar", on by default (older preferences
+load as on). Off, Recortia removes its status item; opening Recortia again from Finder, the Dock,
+Spotlight or `open -a` shows Settings, and the global shortcuts keep working. The first time it is
+turned off, one message says how to get back. It changes neither when Recortia is regular or
+accessory nor when it quits: with "Keep running in the menu bar" on, the process keeps running
+without an icon (ADR-007 amendment).
+
 ### FR-02 — Capture
 
 Region selection invoked by a global shortcut must remain on the user's current desktop,
@@ -119,6 +126,14 @@ Return and Space; native menu invocation remains available.
 Provide region, individual display, user-selected window, a configurable 0–10 second delay, and repeat-last-region. Repeat geometry is session-only and bound to the source display identity/configuration, not an unchecked global rectangle. If the display disappears, rotates, or materially changes configuration, invalidate it and ask for a new selection.
 
 Region selection MUST work on every connected display, including negative desktop origins. A single region cannot cross displays in v1; clamp visibly to the starting display and explain the limitation. Do not silently resample a multi-display region. A window shortcut must use a reliable source identifier; when the foreground app has multiple ambiguous windows, present a chooser instead of guessing.
+
+Settings › Capture › "Window background" is Transparent by default: a window capture keeps
+its transparent corners and, per "Include window shadow", its shadow. Solid color opens each new
+window capture over an opaque colour the person picks, as the document's presentation background
+with no padding (FR-13), so every export of it is opaque. The colour is composited when the
+document is rendered, after secure masks have filled source pixels, never into the stored
+capture; the person can change or remove it in the editor's Image inspector. Region and display
+captures and imported images never get it. The desktop picture is not read.
 
 Use public ScreenCaptureKit APIs, exclude the app's overlay/editor/pin windows by default, and hide the cursor unless explicitly requested. Verify exclusions with a visible checkerboard test overlay. Do not use private capture frameworks, shell `screencapture`, or `CGWindowListCreateImage` as the primary implementation. One-shot capture and stream capture are separate code paths. [S06]
 
@@ -142,6 +157,14 @@ An editor document stores immutable raster assets plus editable annotation comma
 Tools MUST support consistent selection handles, hit testing, move, resize, duplicate, delete, stroke/fill/opacity, z-order, and keyboard nudging. Text editing MUST handle multiline input, Unicode, accents, emoji, bidirectional text, and input-method composition without dispatching editor shortcuts into text input. Numbered steps remain editable and have an explicit renumber command.
 
 Provide fit, actual-pixel, zoom-in/out, selection zoom, and Space-drag pan. Basic arrows precede curved arrows; decoration is not a dependency of correct capture or export. No drawn object may change position merely because the editor zoom changed.
+
+Fit, the zoom every new editor opens at, never enlarges past 100 %, so a small image opens at
+actual size. Settings › General › Editor › "Zoom with the scroll wheel" is off by default: the
+wheel scrolls and ⌘-wheel zooms, as before. On, a mouse wheel zooms around the pointer and
+⌥-wheel scrolls; "Reverse zoom direction", shown only then, turns both wheel zooms the other way.
+Only classic mouse-wheel events (no scroll phase and no momentum phase) wheel-zoom: trackpad and
+other gesture scrolling, and its momentum, keep scrolling. Wheel zoom stays inside the editor's
+zoom range. Pinch and the zoom commands do not change.
 
 The straight-line tool draws a segment without arrowheads, with the same document-space
 endpoint editing and creation-drag Shift 45-degree constraint as arrows. Shortcut D selects it only outside

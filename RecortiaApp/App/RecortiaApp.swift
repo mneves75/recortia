@@ -5,13 +5,17 @@ import SwiftUI
 import os
 
 /// Menu-bar app (LSUIElement) that joins ⌘Tab and the Dock while a window is open (ADR-007).
-/// Relaunching reuses this process; Settings stays reachable from the menu when no window is open.
+/// Relaunching reuses this process; Settings stays reachable from the menu when no window is open,
+/// and from opening Recortia again when the person hides the menu-bar icon.
 @main
 struct RecortiaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra {
+        let model = appDelegate.model
+        // Read here, not only in the binding, so the scene observes the preference.
+        let showsIcon = model.settings.preferences.showsMenuBarIcon
+        MenuBarExtra(isInserted: Binding(get: { showsIcon }, set: { model.setShowsMenuBarIcon($0) })) {
             MenuContent(model: appDelegate.model)
         } label: {
             Label(String(localized: "Recortia"), systemImage: "viewfinder")

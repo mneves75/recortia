@@ -715,6 +715,22 @@
         }
       }
     },
+    "Background color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background color"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cor de fundo"
+          }
+        }
+      }
+    },
     "Better" : {
       "localizations" : {
         "en" : {
@@ -1539,6 +1555,22 @@
         }
       }
     },
+    "Editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        }
+      }
+    },
     "Enable automatic upload" : {
       "localizations" : {
         "en" : {
@@ -1897,6 +1929,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Os envios ao GitHub têm limite de 8 MB. Reduza a escala de exportação."
+          }
+        }
+      }
+    },
+    "Hold Option to scroll." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold Option to scroll."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantenha a tecla Option pressionada para rolar."
           }
         }
       }
@@ -3156,6 +3204,22 @@
         }
       }
     },
+    "Reverse zoom direction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reverse zoom direction"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inverter a direção do zoom"
+          }
+        }
+      }
+    },
     "Runs right after a capture, before you edit or redact, and cannot be taken back from other apps." : {
       "localizations" : {
         "en" : {
@@ -3476,6 +3540,22 @@
         }
       }
     },
+    "Show the icon in the menu bar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the icon in the menu bar"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar o ícone na barra de menus"
+          }
+        }
+      }
+    },
     "Show the pointer in captures" : {
       "localizations" : {
         "en" : {
@@ -3520,6 +3600,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Menor"
+          }
+        }
+      }
+    },
+    "Solid color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solid color"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cor sólida"
           }
         }
       }
@@ -4090,6 +4186,22 @@
         }
       }
     },
+    "The menu bar icon is hidden" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The menu bar icon is hidden"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O ícone da barra de menus está oculto"
+          }
+        }
+      }
+    },
     "The name is too long." : {
       "localizations" : {
         "en" : {
@@ -4302,6 +4414,38 @@
         }
       }
     },
+    "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para voltar ao Recortia, abra-o de novo pela pasta Aplicativos ou pelo Spotlight. Os atalhos de teclado continuam funcionando."
+          }
+        }
+      }
+    },
+    "Transparent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparent"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparente"
+          }
+        }
+      }
+    },
     "Unavailable" : {
       "localizations" : {
         "en" : {
@@ -4510,6 +4654,22 @@
         }
       }
     },
+    "Window background" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Window background"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fundo da janela"
+          }
+        }
+      }
+    },
     "Your display arrangement changed, so capture stopped." : {
       "localizations" : {
         "en" : {
@@ -4682,6 +4842,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mascarar e-mails e números de telefone em novas capturas"
+          }
+        }
+      }
+    },
+    "Zoom with the scroll wheel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom with the scroll wheel"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom com a roda de rolagem"
           }
         }
       }

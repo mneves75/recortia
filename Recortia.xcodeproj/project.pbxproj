@@ -148,6 +148,7 @@
 		DEACB06F1D447813DD7A6E36 /* Recortia-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */; };
 		DFD6669E8BDD71353949837B /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		E11B8B8960E33C10DAF65BB2 /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
+		E36A4397CD83B34DCF351AA2 /* Scenarios+EditorZoom.swift in Sources */ = {isa = PBXBuildFile; fileRef = C186BEADBF278BAA60ADCD23 /* Scenarios+EditorZoom.swift */; };
 		E65AC2695767655A13BF576E /* Scenarios+EditorFixes.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCE525587D4EDB1319159B1 /* Scenarios+EditorFixes.swift */; };
 		EA0DC2557F5BDA232FDEBA6F /* PinPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E65B31A931DA8F9BA987BB /* PinPanels.swift */; };
 		EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */; };
@@ -260,6 +261,7 @@
 		BB9343DD04DF024A4E7B8C01 /* Scenarios+QuickActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+QuickActions.swift"; sourceTree = "<group>"; };
 		BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Presence.swift"; sourceTree = "<group>"; };
 		BFAA916D5D458FADC7481398 /* RecortiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecortiaApp.swift; sourceTree = "<group>"; };
+		C186BEADBF278BAA60ADCD23 /* Scenarios+EditorZoom.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+EditorZoom.swift"; sourceTree = "<group>"; };
 		CE69FEA380523086B4D11CEE /* Scenarios+Spaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Spaces.swift"; sourceTree = "<group>"; };
 		D07F8A23F06F222D5CAD4B07 /* Scenarios+Scroll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Scroll.swift"; sourceTree = "<group>"; };
 		D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticServices.swift; sourceTree = "<group>"; };
@@ -469,6 +471,7 @@
 				90BEF2C3C44B97A8D9E7B102 /* Scenarios+EditorMenu.swift */,
 				48EBB8A0BC002235126E837B /* Scenarios+EditorToolbar.swift */,
 				A39817EE5D149AB669AEE652 /* Scenarios+EditorWindowSize.swift */,
+				C186BEADBF278BAA60ADCD23 /* Scenarios+EditorZoom.swift */,
 				A75CDF46F47D5D021E76221E /* Scenarios+Inspector.swift */,
 				0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */,
 				E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */,
@@ -803,6 +806,7 @@
 				BC6C21B7119974713B056736 /* Scenarios+EditorMenu.swift in Sources */,
 				BFDFF7362CE5EC24BCDFBF6C /* Scenarios+EditorToolbar.swift in Sources */,
 				747BEF5FD53C4B739E049209 /* Scenarios+EditorWindowSize.swift in Sources */,
+				E36A4397CD83B34DCF351AA2 /* Scenarios+EditorZoom.swift in Sources */,
 				343C95A17D363ADD5FC27914 /* Scenarios+Inspector.swift in Sources */,
 				3BB7356881116137AE7EAF5E /* Scenarios+LastWindow.swift in Sources */,
 				B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */,

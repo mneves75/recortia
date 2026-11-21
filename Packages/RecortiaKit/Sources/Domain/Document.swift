@@ -252,6 +252,18 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
             layers: [ImageLayer(assetID: asset.id)])
     }
 
+    /// A new capture's document. A window capture is framed over a solid `windowBackground`
+    /// (FR-02); the colour is a presentation step, so the source pixels, and any secure mask
+    /// filled into them, stay as captured.
+    public init(capture asset: ImageAssetInfo, windowBackground: WindowCaptureBackground) {
+        self.init(asset: asset)
+        if case .captured(let geometry) = asset.origin, case .window = geometry.source,
+            case .solid(let color) = windowBackground
+        {
+            presentation = Presentation(background: .solid(color))
+        }
+    }
+
     public var canvasRect: Rect<DocumentSpace> { Rect(origin: .zero, size: canvasSize) }
 
     /// Region of the canvas that is exported: the crop clipped to the canvas, or the whole canvas
