@@ -1395,22 +1395,6 @@
         }
       }
     },
-    "Drag the image into another app." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drag the image into another app."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arraste a imagem para outro app."
-          }
-        }
-      }
-    },
     "Drag to Export" : {
       "localizations" : {
         "en" : {
