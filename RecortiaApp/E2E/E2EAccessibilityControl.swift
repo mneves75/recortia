@@ -209,6 +209,7 @@
                 E2EForegroundFixture.runnerIsForeground ? nil : try await E2EForegroundFixture.start(context)
             defer { foreground?.requestStop() }
             try await foreground?.yieldToRunner()
+            AppPresence.shared.activate()
             try context.require(
                 "the synthetic control window is visible, key and foreground",
                 await E2EWait.until { isReadyForInput(window) },
