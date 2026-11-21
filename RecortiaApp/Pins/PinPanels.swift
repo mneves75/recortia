@@ -52,7 +52,7 @@ final class PinPanel: NSPanel {
         isMovableByWindowBackground = true
         hasShadow = true
         // Transparent window: the pin's opacity must reveal what is behind it (FR-09); only the
-        // control bar paints a background.
+        // floating control strip paints a background.
         isOpaque = false
         backgroundColor = .clear
         collectionBehavior = SpacePolicy.joinsAllSpaces
@@ -90,11 +90,13 @@ final class PinPanel: NSPanel {
     }
 }
 
-/// The pin's content: the sanitized image and an always-visible control bar.
+/// The pin's content: the sanitized image and a control strip that floats over its bottom edge.
 struct PinContentView: View {
     let pinID: PinID
     let model: PinsModel
     let fitScale: Double
+    /// The strip appears on hover by default; scenarios that render or press it show it always.
+    var controlsAlwaysVisible = false
     /// How long a success notice stays: returns when it should go. Scenarios release it themselves.
     var successNoticeTimer: @MainActor () async -> Void = { try? await Task.sleep(for: .seconds(4)) }
     /// The latest copy or drag-out outcome, in the editor's words (PIN-02).
@@ -103,7 +105,7 @@ struct PinContentView: View {
     var body: some View {
         if let pin = model.pin(for: pinID) {
             PinView(
-                pin: pin, fitScale: fitScale, status: status?.text,
+                pin: pin, fitScale: fitScale, status: status?.text, controlsAlwaysVisible: controlsAlwaysVisible,
                 onOpacity: { model.setOpacity($0, for: pinID) },
                 onZoom: { model.setZoom($0, for: pinID) },
                 onExport: { action in Task { await export(action) } },
@@ -136,18 +138,29 @@ struct PinView: View {
     let pin: Pin
     let fitScale: Double
     var status: String?
+    var controlsAlwaysVisible = false
     let onOpacity: @MainActor (Double) -> Void
     let onZoom: (Double) -> Void
     let onExport: (PinExportAction) -> Void
     let onClose: () -> Void
+    @State private var isHovering = false
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The pop-up's choices; a pin opened at another default opacity shows its own value.
+    static let opacityChoices: [Double] = [1, 0.75, 0.5, 0.25]
 
     private var imageSize: CGSize {
         let scale = fitScale * pin.zoom / pin.displayScale
         return CGSize(width: Double(pin.image.width) * scale, height: Double(pin.image.height) * scale)
     }
 
+    /// Hidden until the pointer enters, so the pin shows only the image; always shown to
+    /// VoiceOver and while a copy or drag-out notice is up.
+    private var showsControls: Bool { controlsAlwaysVisible || isHovering || voiceOver || status != nil }
+
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             Image(decorative: pin.image, scale: 1)
                 .resizable()
                 .interpolation(pin.zoom * fitScale >= 2 ? .none : .high)
@@ -157,24 +170,40 @@ struct PinView: View {
                 // never read. Declare the element first, then label it (as the scroll preview does).
                 .accessibilityElement()
                 .accessibilityLabel(Text("Pinned screenshot"))
-            controls
+            strip
+                .opacity(showsControls ? 1 : 0)
+                .allowsHitTesting(showsControls)
+        }
+        .onHover { isHovering = $0 }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: showsControls)
+    }
+
+    private var strip: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Space.xs) {
             if let status {
-                // Wraps within the pin instead of widening it.
+                // Wraps within the strip instead of widening the pin.
                 Text(status)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: max(imageSize.width, 240), alignment: .leading)
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 6)
-                    .background(Color(nsColor: .windowBackgroundColor))
+                    .frame(maxWidth: max(imageSize.width - 4 * DesignTokens.Space.s, 220), alignment: .leading)
                     .accessibilityIdentifier("pin.status")
             }
+            controls
         }
+        .padding(DesignTokens.Space.s)
+        // No material: offscreen snapshots drop vibrancy, so its controls could not be judged.
+        .background(
+            Color(nsColor: .windowBackgroundColor).opacity(0.92),
+            in: RoundedRectangle(cornerRadius: DesignTokens.Radius.container)
+        )
+        .padding(DesignTokens.Space.s)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("pin.controls")
     }
 
     private var controls: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DesignTokens.Space.s) {
             Button(action: onClose) {
                 Label("Close Pin", systemImage: "xmark")
             }
@@ -210,7 +239,7 @@ struct PinView: View {
             Button {
                 onZoom(pin.zoom / 1.25)
             } label: {
-                Label("Zoom Out", systemImage: "minus.magnifyingglass")
+                Label("Zoom Out", systemImage: "minus")
             }
             .labelStyle(.iconOnly)
             .help(Text("Zoom Out"))
@@ -221,28 +250,31 @@ struct PinView: View {
             Button {
                 onZoom(pin.zoom * 1.25)
             } label: {
-                Label("Zoom In", systemImage: "plus.magnifyingglass")
+                Label("Zoom In", systemImage: "plus")
             }
             .labelStyle(.iconOnly)
             .help(Text("Zoom In"))
             .keyboardShortcut("=")
             Divider().frame(height: 16)
-            Slider(
-                value: Binding(get: { pin.opacity }, set: onOpacity), in: PinsModel.opacityRange
+            Picker(
+                selection: Binding(get: { pin.opacity }, set: onOpacity)
             ) {
+                ForEach(Self.opacityChoices, id: \.self) { value in
+                    Text(value, format: .percent.precision(.fractionLength(0))).tag(value)
+                }
+                if !Self.opacityChoices.contains(pin.opacity) {
+                    Text(pin.opacity, format: .percent.precision(.fractionLength(0))).tag(pin.opacity)
+                }
+            } label: {
                 Text("Opacity")
             }
+            .pickerStyle(.menu)
             .labelsHidden()
-            .frame(minWidth: 60, maxWidth: 120)
-            .accessibilityLabel(Text("Opacity"))
-            .accessibilityValue(Text(pin.opacity, format: .percent.precision(.fractionLength(0))))
+            .fixedSize()
             .help(Text("Opacity"))
+            .accessibilityIdentifier("pin.opacity")
         }
         .controlSize(.small)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .frame(minWidth: 240)
-        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
