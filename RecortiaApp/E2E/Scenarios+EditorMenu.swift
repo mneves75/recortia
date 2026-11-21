@@ -166,7 +166,7 @@
             try context.require(
                 "⌃⌘I shows it again", await E2EWait.until(timeout: .seconds(3)) { !inspectorItem.isCollapsed })
             window.makeFirstResponder(canvas)
-            for title in editorTitles {
+            for title in editorTitles + [inspector] {
                 context.check("\(title) is enabled for the key editor", try command(title).isEnabled)
             }
             context.check(

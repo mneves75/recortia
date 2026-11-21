@@ -280,3 +280,11 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   the next selection inherited it in both languages in `20261121-170244-80788`.
   `RegionPrecisionTests.aspectPreference` still checks fresh and legacy defaults and persisted
   round-trip equality. The pre-pruning unsigned baseline ran 1,086 package tests.
+- The unsigned gate passed all 1,085 package tests and both Debug targets on clean `a68231a`
+  in `.scratch/logs/check-a68231a-retry.log`. An earlier run on the same commit failed only on
+  the Imaging cancellation test's 10-second elapsed limit during heavy host load. The isolated
+  test passed in 0.25 seconds, and the unchanged gate passed on the retry.
+- Independent review strengthened two existing assertions. `capture-precision` now checks the
+  settings store independently of the coordinator, so a ratio cached only in the coordinator
+  cannot satisfy it. `editor-menu` still checks the Inspector submenu is reachable when an editor
+  is key, in addition to checking both tab commands are disabled without a key editor.

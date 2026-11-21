@@ -114,9 +114,9 @@
             // Aspect: 16:9 from the control, a square while Shift is held, then 16:9 again.
             before = try await begin("aspect")
             try choose(.sixteenByNine)
+            let storedAspect = harness.settings.preferences.regionAspect
             context.check(
-                "the chosen ratio is remembered as a preference", coordinator.regionAspect == .sixteenByNine,
-                "\(coordinator.regionAspect)")
+                "the chosen ratio is remembered as a preference", storedAspect == .sixteenByNine, "\(storedAspect)")
             try down(100, 60)
             try drag(300, 200, .shift)
             context.check(
