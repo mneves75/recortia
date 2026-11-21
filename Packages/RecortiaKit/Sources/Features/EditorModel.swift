@@ -228,7 +228,7 @@ public final class EditorModel {
     public func beginContinuousChange() -> UUID {
         // Refused while masking runs, so no group can hold the masks' undo step (the returned ID
         // then ends nothing).
-        guard !isMaskingPending else { return UUID() }
+        guard admitsAction() else { return UUID() }
         if let continuousChangeID { return continuousChangeID }
         let id = UUID()
         continuousChangeID = id
@@ -276,7 +276,7 @@ public final class EditorModel {
         // Output Preview is read-only for selection and objects (F-04); whole-image presentation
         // settings stay available there, where their effect is seen. Nothing changes while
         // automatic masking is pending.
-        guard !isClosed, !isMaskingPending, !showsOutputPreview || inPreview else { return false }
+        guard !isClosed, admitsAction(), !showsOutputPreview || inPreview else { return false }
         return performEdit(label, change)
     }
 
@@ -346,7 +346,7 @@ public final class EditorModel {
     }
 
     public func undo() {
-        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
+        guard !isClosed, admitsAction(), !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Undo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canUndo else { return }
@@ -357,7 +357,7 @@ public final class EditorModel {
     }
 
     public func redo() {
-        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
+        guard !isClosed, admitsAction(), !showsOutputPreview, textEditing == nil else { return }
         // During a drag, Redo cancels only that drag and never reaches the history past it.
         if case .idle = gesture {} else { return cancelGesture() }
         guard canRedo else { return }
@@ -535,7 +535,7 @@ public final class EditorModel {
     // MARK: - Selection
 
     public func select(_ item: EditorItemID, extending: Bool = false) {
-        guard !isMaskingPending, !showsOutputPreview, allItemIDs.contains(item) else { return }
+        guard admitsAction(), !showsOutputPreview, allItemIDs.contains(item) else { return }
         if extending {
             if selection.contains(item) { selection.remove(item) } else { selection.insert(item) }
         } else {
@@ -546,7 +546,7 @@ public final class EditorModel {
 
     /// Replaces the selection (object list); unknown items are ignored.
     public func setSelection(_ items: Set<EditorItemID>) {
-        guard !isMaskingPending, !showsOutputPreview else { return }
+        guard admitsAction(), !showsOutputPreview else { return }
         let existing = Set(allItemIDs)
         selection = items.filter(existing.contains)
         loadSelectedTextAppearance()
@@ -554,7 +554,10 @@ public final class EditorModel {
 
     public func selectAll() { setSelection(Set(allItemIDs)) }
 
-    public func clearSelection() { selection = [] }
+    public func clearSelection() {
+        guard admitsAction() else { return }
+        selection = []
+    }
 
     public func deleteSelection() {
         let items = selection
@@ -576,7 +579,7 @@ public final class EditorModel {
     /// Arrange commands (z-order, align, duplicate) act on a selection only while no text input
     /// owns the keyboard, automatic masking is settled and the document is editable.
     public var canArrangeSelection: Bool {
-        !selection.isEmpty && textEditing == nil && !isMaskingPending && !isClosed && !showsOutputPreview
+        !selection.isEmpty && textEditing == nil && admitsAction() && !isClosed && !showsOutputPreview
     }
 
     public func duplicateSelection() {
