@@ -82,7 +82,9 @@ final class AppModel: AppActions {
     /// Adopts framework-made windows (About, alerts) that lack a Space policy before the app
     /// activates, so activation cannot switch Spaces (FR-01).
     @ObservationIgnored private let spacePolicy = SpacePolicyMonitor()
-    @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
+    @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage, MessageTarget) -> Void
+    /// The window of an open editor, for messages shown as a sheet on it.
+    @ObservationIgnored var editorWindow: (EditorModel) -> NSWindow? = { _ in nil }
     /// Open editors whose edits were never copied or saved (a drag out saves; a pin does not).
     @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
     /// Asks whether to quit and discard what `QuitDiscards` describes.
@@ -101,7 +103,9 @@ final class AppModel: AppActions {
 
     init(
         settings: SettingsStore, services: AppServices, shortcutRegistry: any ShortcutRegistry,
-        showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
+        showMessage: @escaping @MainActor @Sendable (UserMessage, MessageTarget) -> Void = {
+            MessagePresenter.present($0, on: $1)
+        },
         confirmQuit: @escaping @MainActor (QuitDiscards) -> Bool = { MessagePresenter.confirmDiscardOnQuit($0) },
         requestTermination: @escaping @MainActor () -> Void = { NSApp.terminate(nil) },
         chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() },
@@ -243,7 +247,7 @@ final class AppModel: AppActions {
     }
 
     func report(_ message: UserMessage) {
-        showMessage(message)
+        showMessage(message, .app)
     }
 
     /// The General switch and removing the icon from the menu bar both come here; the first time
@@ -272,7 +276,7 @@ final class AppModel: AppActions {
         let importer = features.importer
         Task {
             if case .failure(let failure) = await importer.importImage(from: source) {
-                showMessage(.importFailure(failure))
+                showMessage(.importFailure(failure), .app)
             }
         }
     }
@@ -302,7 +306,7 @@ final class AppModel: AppActions {
         Task {
             defer { openRequestsInFlight -= 1 }
             for failures in await importer.openRequests(requests) {
-                if let message = UserMessage.openFailures(failures) { showMessage(message) }
+                if let message = UserMessage.openFailures(failures) { showMessage(message, .app) }
             }
         }
     }
@@ -338,6 +342,7 @@ final class AppModel: AppActions {
             editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)
         }
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
+        editorWindow = { [editors] in editors.window(for: $0) }
         let monitor = SystemEventMonitor { event in
             switch event {
             case .displaysChanged:
@@ -381,9 +386,7 @@ final class AppModel: AppActions {
         Task {
             defer { automaticExportsInFlight -= 1 }
             let outcomes = await quickActions.present(session, after: plan)
-            for failure in Self.routeAutomaticExport(outcomes, editorOpen: false).alerts {
-                showMessage(.export(failure))
-            }
+            reportAutomaticExport(outcomes, from: nil)
         }
     }
 
@@ -410,21 +413,36 @@ final class AppModel: AppActions {
             } else {
                 outcomes = await export.runAutomaticExports(plan, for: session, currentSession: { session })
             }
-            let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
-            for failure in route.alerts { showMessage(.export(failure)) }
-            // The masking count keeps the editor's notice slot (T1 security 3C): a failure the
-            // editor refuses is raised as an alert, so it is never lost either.
-            for outcome in route.editorNotices where editor?.reportAutomaticExport(outcome) != true {
-                if case .failed(let failure) = outcome { showMessage(.export(failure)) }
-            }
+            reportAutomaticExport(outcomes, from: editor)
         }
     }
 
+    /// Reports an automatic batch's results as `routeAutomaticExport` routes them. A message about
+    /// an editor is a sheet on its window while the person can see it, else an app alert.
+    func reportAutomaticExport(_ outcomes: [ExportOutcome], from editor: EditorModel?) {
+        let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
+        for failure in route.messages { showMessage(.export(failure), messageTarget(for: editor)) }
+        // The masking count keeps the editor's notice slot (T1 security 3C): a failure the
+        // editor refuses is raised as a message, so it is never lost either.
+        for outcome in route.editorNotices where editor?.reportAutomaticExport(outcome) != true {
+            if case .failed(let failure) = outcome { showMessage(.export(failure), messageTarget(for: editor)) }
+        }
+    }
+
+    /// Decided when each message is shown, so an editor closed or hidden meanwhile gets an alert.
+    private func messageTarget(for editor: EditorModel?) -> MessageTarget {
+        guard let editor, let window = editorWindow(editor) else { return .app }
+        let onScreen = window.isVisible && !window.isMiniaturized && window.isOnActiveSpace
+        return MessagePlacement(editorIsOpen: !editor.isClosed, windowIsOnScreen: onScreen) == .editorSheet
+            ? .sheet(window) : .app
+    }
+
     /// Where automatic-export results are reported. The editor has one notice slot, so it shows a
-    /// failure only when that is the batch's only report; otherwise failures become alerts, so
-    /// none is hidden behind another notice, and an upload link keeps the editor slot.
+    /// failure only when that is the batch's only report; otherwise failures become messages
+    /// (sheets or alerts), so none is hidden behind another notice, and an upload link keeps the
+    /// editor slot.
     static func routeAutomaticExport(_ outcomes: [ExportOutcome], editorOpen: Bool) -> (
-        editorNotices: [ExportOutcome], alerts: [ExportFailure]
+        editorNotices: [ExportOutcome], messages: [ExportFailure]
     ) {
         var failures: [ExportFailure] = []
         for case .failed(let failure) in outcomes { failures.append(failure) }
@@ -444,7 +462,7 @@ final class AppModel: AppActions {
                 captureWindowVisibility?.restoreIfFinished()
             }
             if !(await scroll.begin()), scroll.notice == .screenPermissionDenied {
-                showMessage(.capture(.permissionDenied))
+                showMessage(.capture(.permissionDenied), .app)
             }
         }
     }

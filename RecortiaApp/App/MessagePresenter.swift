@@ -9,9 +9,35 @@ struct UserMessage: Equatable {
     var offersScreenRecordingSettings = false
 }
 
-/// Shows messages as standard alerts. Content-free: never includes image data, OCR text,
-/// window titles, or paths (PRIV-01).
+/// Where a message is shown: an app-modal alert on the current Space, or a sheet on one editor's
+/// window (`MessagePlacement`).
+enum MessageTarget {
+    case app
+    case sheet(NSWindow)
+}
+
+/// Shows messages as standard alerts, or as sheets on the editor they concern. Content-free: never
+/// includes image data, OCR text, window titles, or paths (PRIV-01).
 enum MessagePresenter {
+    static func present(_ message: UserMessage, on target: MessageTarget) {
+        switch target {
+        case .app: present(message)
+        // Out of the close that ended the sheet, so no modal loop runs inside `windowWillClose`.
+        case .sheet(let window): beginSheet(message, on: window) { message in Task { present(message) } }
+        }
+    }
+
+    /// Shows `message` as a sheet on `window` without a modal loop. A sheet the window's close
+    /// ends unanswered (`.abort`) goes to `unanswered`, so closing the editor never drops it. Only
+    /// export failures are sheets; a message offering System Settings is always an app alert.
+    static func beginSheet(
+        _ message: UserMessage, on window: NSWindow, unanswered: @escaping @MainActor (UserMessage) -> Void
+    ) {
+        makeSheet(message).beginSheetModal(for: window) { response in
+            if response == .abort { unanswered(message) }
+        }
+    }
+
     static func present(_ message: UserMessage) {
         let response = runModal(makeAlert(message))
         if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
@@ -101,6 +127,14 @@ enum MessagePresenter {
     }
 
     static func makeAlert(_ message: UserMessage) -> NSAlert {
+        let alert = makeSheet(message)
+        // A message raised over another app's fullscreen Space must appear there (FR-01).
+        SpacePolicy.follow(alert.window)
+        return alert
+    }
+
+    /// The message's alert without a Space policy: a sheet stays on its parent window's Space.
+    static func makeSheet(_ message: UserMessage) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = message.title
         alert.informativeText = message.detail
@@ -111,8 +145,6 @@ enum MessagePresenter {
         } else {
             alert.addButton(withTitle: String(localized: "OK"))
         }
-        // A message raised over another app's fullscreen Space must appear there (FR-01).
-        SpacePolicy.follow(alert.window)
         return alert
     }
 }
