@@ -40,10 +40,12 @@ public final class ClosedCaptureSlot {
         clear()
         guard let document else { return }
         kept = document
-        deadline = clock.uptime() + Self.lifetime
+        let deadline = clock.uptime() + Self.lifetime
+        self.deadline = deadline
         let clock = self.clock
         expiry = Task { [weak self] in
-            do { try await clock.sleep(for: Self.lifetime) } catch { return }
+            // Sleep only what is left: a task that starts late still clears at the deadline.
+            do { try await clock.sleep(for: max(.zero, deadline - clock.uptime())) } catch { return }
             // A sleep that ended just before a newer close cancelled it must not clear that close.
             guard !Task.isCancelled else { return }
             self?.clear()
