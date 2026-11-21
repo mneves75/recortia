@@ -164,9 +164,17 @@
             context.check("replaying preserves completion", !onboarding.shouldPresent)
             try pressTourControl("tour.skip", in: replayRoot, context)
             context.check("Skip closes the replay window", !replayWindow.isVisible)
+            let replayResult = harness.settings.preferences
+            let changedFields = zip(
+                Mirror(reflecting: replayPreferences).children, Mirror(reflecting: replayResult).children
+            )
+            .compactMap { before, after in
+                (before.value as? AnyHashable) == (after.value as? AnyHashable) ? nil : before.label
+            }
             context.check(
                 "replay preserves export preferences and upload consent",
-                harness.settings.preferences == replayPreferences)
+                replayResult == replayPreferences, "changed preference fields: \(changedFields.joined(separator: ", "))"
+            )
             context.check(
                 "replay preserves the original upload consent identity",
                 harness.settings.githubUploadConsentID == consentID)
