@@ -59,7 +59,10 @@ final class DragChipPanel: NSPanel {
     ) {
         self.onEnd = onEnd
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 220, height: 190), styleMask: [.titled, .closable, .utilityWindow],
+            contentRect: NSRect(
+                x: 0, y: 0, width: DragChipView.size.width + 2 * DesignTokens.Space.m,
+                height: DragChipView.size.height + 2 * DesignTokens.Space.m),
+            styleMask: [.titled, .closable, .utilityWindow],
             backing: .buffered, defer: false)
         title = String(localized: "Drag to Export")
         isFloatingPanel = true
@@ -70,14 +73,11 @@ final class DragChipPanel: NSPanel {
         let chip = DragChipView(snapshot: snapshot, lease: lease, image: image) { [weak self] outcome in
             self?.onEnd(outcome)
         }
-        let label = NSTextField(labelWithString: String(localized: "Drag the image into another app."))
-        label.alignment = .center
-        label.font = .preferredFont(forTextStyle: .callout)
-        label.textColor = .secondaryLabelColor
-        let stack = NSStackView(views: [chip, label])
+        // The title says what to do; the chip needs no caption.
+        let stack = NSStackView(views: [chip])
         stack.orientation = .vertical
-        stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        let inset = DesignTokens.Space.m
+        stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: inset, right: inset)
         contentView = stack
     }
 
@@ -108,6 +108,7 @@ final class DragChipPanel: NSPanel {
 
 /// The draggable thumbnail. Accessible as a button whose action explains how to drag.
 final class DragChipView: NSImageView, NSDraggingSource {
+    static let size = NSSize(width: 196, height: 140)
     private let provider: DragOutProvider
     private let onEnd: @MainActor @Sendable (DragChipResult) -> Void
 
@@ -126,12 +127,12 @@ final class DragChipView: NSImageView, NSDraggingSource {
             }
         }
         self.onEnd = onEnd
-        super.init(frame: NSRect(x: 0, y: 0, width: 196, height: 140))
+        super.init(frame: NSRect(origin: .zero, size: Self.size))
         self.image = image
         imageScaling = .scaleProportionallyDown
         translatesAutoresizingMaskIntoConstraints = false
-        widthAnchor.constraint(equalToConstant: 196).isActive = true
-        heightAnchor.constraint(equalToConstant: 140).isActive = true
+        widthAnchor.constraint(equalToConstant: Self.size.width).isActive = true
+        heightAnchor.constraint(equalToConstant: Self.size.height).isActive = true
         setAccessibilityRole(.image)
         setAccessibilityLabel(String(localized: "Exported image, draggable"))
     }

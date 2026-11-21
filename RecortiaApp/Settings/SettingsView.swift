@@ -1,6 +1,7 @@
 import AppKit
 import Domain
 import Features
+import Imaging
 import SwiftUI
 
 extension SettingsStore {
@@ -17,6 +18,8 @@ extension SettingsStore {
 struct GeneralSettingsTab: View {
     let settings: SettingsStore
     let loginItem: LoginItemModel?
+    /// `AppModel.setShowsMenuBarIcon`, which explains the first hiding.
+    let setShowsMenuBarIcon: (Bool) -> Void
 
     var body: some View {
         Form {
@@ -45,7 +48,13 @@ struct GeneralSettingsTab: View {
                     isOn: settings.binding(\.keepsRunningInMenuBar)
                 )
                 .accessibilityIdentifier("settings.keepRunningInMenuBar")
+                Toggle(
+                    "Show the icon in the menu bar",
+                    isOn: Binding(get: { settings.preferences.showsMenuBarIcon }, set: setShowsMenuBarIcon)
+                )
+                .accessibilityIdentifier("settings.showsMenuBarIcon")
             }
+            EditorZoomSettingsSection(settings: settings)
             PinsSettingsSection(settings: settings)
         }
         .formStyle(.grouped)
@@ -53,6 +62,23 @@ struct GeneralSettingsTab: View {
         // Approval happens in System Settings; returning to this window shows the new state.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             loginItem?.refresh()
+        }
+    }
+}
+
+/// What a mouse wheel does over the editor canvas (FR-04).
+struct EditorZoomSettingsSection: View {
+    let settings: SettingsStore
+
+    var body: some View {
+        Section("Editor") {
+            Toggle("Zoom with the scroll wheel", isOn: settings.binding(\.zoomsWithScrollWheel))
+                .help(Text("Hold Option to scroll."))
+                .accessibilityIdentifier("settings.zoomsWithScrollWheel")
+            if settings.preferences.zoomsWithScrollWheel {
+                Toggle("Reverse zoom direction", isOn: settings.binding(\.reversesScrollWheelZoom))
+                    .accessibilityIdentifier("settings.reversesScrollWheelZoom")
+            }
         }
     }
 }
@@ -74,17 +100,9 @@ struct ShortcutsSettingsTab: View {
                 ForEach(ShortcutBinding.all) { binding in
                     ShortcutRecorderRow(binding: binding, status: status)
                 }
-            } footer: {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(
-                        "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
-                    )
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Button("Restore Defaults", action: onRestoreDefaults)
-                }
+            }
+            Section {
+                Button("Restore Defaults", action: onRestoreDefaults)
             }
         }
         .formStyle(.grouped)
@@ -101,24 +119,70 @@ struct CaptureSettingsTab: View {
     var body: some View {
         Form {
             Section {
+                Picker("After a capture", selection: settings.binding(\.afterCapture)) {
+                    Text("Open the editor").tag(AfterCapture.openEditor)
+                    Text("Show quick actions").tag(AfterCapture.showQuickActions)
+                }
+                .help(Text("Captures open in the editor while automatic masking is on."))
+                .accessibilityIdentifier("settings.afterCapture")
+            }
+            Section {
                 Stepper(value: settings.binding(\.captureDelaySeconds), in: 0...CaptureRequest.maxDelaySeconds) {
                     Text("Delay: \(settings.preferences.captureDelaySeconds) s")
                 }
-                Text(
-                    "Used by Capture with Delay. When set to 0, Capture with Delay waits \(CaptureCoordinator.fallbackDelaySeconds) seconds."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .help(
+                    Text(
+                        "Used by Capture with Delay. When set to 0, Capture with Delay waits \(CaptureCoordinator.fallbackDelaySeconds) seconds."
+                    ))
             }
             Section {
                 Toggle("Show the pointer in captures", isOn: settings.binding(\.captureShowsCursor))
                 Toggle("Include window shadow", isOn: settings.binding(\.captureIncludesWindowShadow))
+                WindowBackgroundSettings(settings: settings)
                 Toggle("Play a sound after capture", isOn: settings.binding(\.playsCaptureSound))
                     .accessibilityIdentifier("settings.captureSound")
             }
             ScrollingSettingsSection(settings: settings, accessibility: accessibility)
         }
         .formStyle(.grouped)
+    }
+}
+
+/// What a new window capture is shown over (FR-02). The colour is composited when the image is
+/// rendered, so the captured pixels and secure masks are unchanged.
+struct WindowBackgroundSettings: View {
+    let settings: SettingsStore
+    private enum Kind: Hashable { case transparent, solid }
+
+    var body: some View {
+        let background = settings.preferences.windowCaptureBackground
+        Picker(
+            "Window background",
+            selection: Binding(
+                get: { background == .transparent ? Kind.transparent : .solid },
+                set: { kind in
+                    let isSolid = settings.preferences.windowCaptureBackground != .transparent
+                    guard (kind == .solid) != isSolid else { return }
+                    settings.update { $0.windowCaptureBackground = kind == .solid ? .solid(.white) : .transparent }
+                })
+        ) {
+            Text("Transparent").tag(Kind.transparent)
+            Text("Solid color").tag(Kind.solid)
+        }
+        .accessibilityIdentifier("settings.windowBackground")
+        if case .solid(let color) = background {
+            ColorPicker(
+                "Background color",
+                selection: Binding(
+                    get: { color.cgColor },
+                    set: { picked in
+                        guard let rgba = RGBA(cgColor: picked) else { return }
+                        settings.update { $0.windowCaptureBackground = .solid(rgba) }
+                    }),
+                supportsOpacity: false
+            )
+            .accessibilityIdentifier("settings.windowBackgroundColor")
+        }
     }
 }
 
@@ -137,11 +201,14 @@ struct ExportSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Picker("Format", selection: settings.binding(\.defaultExportFormat)) {
+                Picker("Format", selection: settings.binding(\.exportFormat)) {
                     Text("PNG").tag(ExportFormatKind.png)
                     Text("JPEG").tag(ExportFormatKind.jpeg)
+                    Text("Automatic (PNG or JPEG)").tag(ExportFormatKind.automatic)
                 }
-                if settings.preferences.defaultExportFormat == .jpeg {
+                .help(Text("Copy Image always places a PNG on the clipboard."))
+                .accessibilityIdentifier("settings.exportFormat")
+                if settings.preferences.exportFormat == .jpeg {
                     Slider(value: settings.binding(\.jpegQuality), in: 0.1...1, step: 0.05) {
                         Text("JPEG quality")
                     } minimumValueLabel: {
@@ -157,9 +224,6 @@ struct ExportSettingsTab: View {
                     Text(1.0, format: .percent).tag(1.0)
                     Text(2.0, format: .percent).tag(2.0)
                 }
-                Text("Copy Image always places a PNG on the clipboard.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
             }
             FilenameTemplateSection(settings: settings)
             Section {
@@ -178,7 +242,7 @@ struct ExportSettingsTab: View {
                 .disabled(folders == nil)
                 .accessibilityIdentifier("settings.autoSave")
                 LabeledContent("Save folder") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: DesignTokens.Space.s) {
                         // A folder name is user data: truncate it and keep the whole value in a
                         // tooltip, so a long or localized name cannot wrap the row and push the
                         // control off its trailing edge.
@@ -208,13 +272,12 @@ struct ExportSettingsTab: View {
             } header: {
                 Text("Automatic export")
             } footer: {
-                Text(
-                    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                // FR-07's mandatory disclosure, the only footer left in Settings.
+                Text("Runs right after a capture, before you edit or redact, and cannot be taken back from other apps.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .formStyle(.grouped)
@@ -294,7 +357,7 @@ struct PrivacySettingsTab: View {
             }
             Section("Redaction") {
                 Toggle(
-                    "Mask e-mail addresses and phone numbers in new captures",
+                    "Mask e-mail addresses and phone numbers in new captures and opened images",
                     isOn: settings.binding(\.autoRedactsSensitiveText)
                 )
                 .accessibilityIdentifier("settings.autoRedactsSensitiveText")
@@ -332,16 +395,34 @@ struct OCRSettingsTab: View {
                     Text("Join into one line").tag(OCRTextMode.normalizedWhitespace)
                     Text("Exactly as recognized").tag(OCRTextMode.raw)
                 }
-                Text("Text is recognized on this Mac and never corrected automatically.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                if case .loaded(let list) = languages?.state {
+                    Picker("Primary language", selection: settings.binding(\.primaryRecognitionLanguage)) {
+                        Text("Automatic").tag(String?.none)
+                        ForEach(list, id: \.maximalIdentifier) { language in
+                            Text(Self.name(of: language)).tag(String?.some(language.maximalIdentifier))
+                        }
+                    }
+                    .accessibilityIdentifier("settings.primaryRecognitionLanguage")
+                }
             }
             Section("Available languages") {
                 languageList
             }
         }
         .formStyle(.grouped)
-        .task { await languages?.load() }
+        .task {
+            await languages?.load()
+            if case .loaded(let list) = languages?.state {
+                settings.forgetUnsupportedPrimaryRecognitionLanguage(supported: list)
+            }
+        }
+    }
+
+    static func name(of language: Locale.Language) -> String {
+        Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
+            // Vision reports some identifiers (such as "vi-VT") that name no region.
+            ?? language.languageCode.flatMap { Locale.current.localizedString(forLanguageCode: $0.identifier) }
+            ?? language.minimalIdentifier
     }
 
     @ViewBuilder
@@ -349,13 +430,7 @@ struct OCRSettingsTab: View {
         switch languages?.state {
         case .loaded(let list):
             ForEach(list, id: \.maximalIdentifier) { language in
-                Text(
-                    Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
-                        // Vision reports some identifiers (such as "vi-VT") that name no region.
-                        ?? language.languageCode.flatMap {
-                            Locale.current.localizedString(forLanguageCode: $0.identifier)
-                        }
-                        ?? language.minimalIdentifier)
+                Text(Self.name(of: language))
             }
         case .loading, .notLoaded:
             ProgressView()
@@ -383,6 +458,7 @@ struct FilenameTemplateSection: View {
                 "Name of saved files",
                 text: Binding(get: { draft ?? settings.preferences.filenameTemplate.text }, set: admit)
             )
+            .help(Text("Placeholders: {date}, {time}, {counter}"))
             .accessibilityIdentifier("settings.filenameTemplate")
             if let refusal {
                 Label {
@@ -393,18 +469,20 @@ struct FilenameTemplateSection: View {
                 .font(.callout)
                 .accessibilityIdentifier("settings.filenameTemplate.message")
             } else {
-                Text("Example: \(example)")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .accessibilityIdentifier("settings.filenameTemplate.example")
-            }
-        } footer: {
-            Text("Placeholders: {date}, {time}, {counter}")
+                Group {
+                    // Automatic decides after encoding: a JPEG only when it is much smaller (FR-07).
+                    if settings.preferences.exportFormat == .automatic {
+                        Text("Example: \(example), or .jpg when a JPEG is much smaller")
+                    } else {
+                        Text("Example: \(example)")
+                    }
+                }
                 .font(.callout)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .accessibilityIdentifier("settings.filenameTemplate.example")
+            }
         }
     }
 
@@ -454,9 +532,6 @@ struct PinsSettingsSection: View {
                 Text(settings.preferences.pinDefaultOpacity, format: .percent.precision(.fractionLength(0)))
             )
             .accessibilityIdentifier("settings.pinOpacity")
-            Text("Pins stay until you close them and are not restored after Recortia quits.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
         }
     }
 }
@@ -483,12 +558,12 @@ struct ScrollingSettingsSection: View {
                     })
             )
             .disabled(accessibility == nil)
-            .accessibilityIdentifier("settings.automaticScrolling")
-            Text(
-                "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+            .help(
+                Text(
+                    "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+                )
             )
-            .font(.callout)
-            .foregroundStyle(.secondary)
+            .accessibilityIdentifier("settings.automaticScrolling")
         }
         // The permission can change in System Settings while the pane is closed.
         .onAppear(perform: refresh)
@@ -529,8 +604,10 @@ struct ScrollingSettingsSection: View {
     }
 
     #Preview("General with login item") {
-        GeneralSettingsTab(settings: PreviewSupport.settings(), loginItem: PreviewSupport.loginItem())
-            .frame(width: 560)
+        GeneralSettingsTab(
+            settings: PreviewSupport.settings(), loginItem: PreviewSupport.loginItem(), setShowsMenuBarIcon: { _ in }
+        )
+        .frame(width: 560)
     }
 
     #Preview("Export") {

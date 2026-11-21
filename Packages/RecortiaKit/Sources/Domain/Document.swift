@@ -33,7 +33,8 @@ public enum AssetOrigin: Hashable, Sendable, Codable {
     case imported
     case pasted
     /// A stitched scrolling capture; `partialReason` is non-nil when the user accepted a partial result.
-    case scrollCapture(partialReason: ScrollPartialReason?)
+    /// `pointPixelScale` is the stitched image's pixels per point of its target.
+    case scrollCapture(partialReason: ScrollPartialReason?, pointPixelScale: Double)
 }
 
 /// Metadata for an immutable raster asset. The pixels themselves live in Imaging's asset store,
@@ -250,6 +251,18 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
             id: id, assets: [asset.id: asset],
             canvasSize: Size(width: Double(asset.pixelSize.width), height: Double(asset.pixelSize.height)),
             layers: [ImageLayer(assetID: asset.id)])
+    }
+
+    /// A new capture's document. A window capture is framed over a solid `windowBackground`
+    /// (FR-02); the colour is a presentation step, so the source pixels, and any secure mask
+    /// filled into them, stay as captured.
+    public init(capture asset: ImageAssetInfo, windowBackground: WindowCaptureBackground) {
+        self.init(asset: asset)
+        if case .captured(let geometry) = asset.origin, case .window = geometry.source,
+            case .solid(let color) = windowBackground
+        {
+            presentation = Presentation(background: .solid(color))
+        }
     }
 
     public var canvasRect: Rect<DocumentSpace> { Rect(origin: .zero, size: canvasSize) }

@@ -31,9 +31,27 @@ enum EditorInitialAction {
 /// `open(_:environment:)` for every new document; closing a window releases its model and the
 /// asset pixels it held.
 final class EditorWindowManager {
-    private var controllers: [DocumentID: EditorWindowController] = [:]
+    /// The shipped default (decisions 2026-11-21, A-13 step 2): off, because a spare can only be
+    /// the window shell, and the editor's cost is its document-bound content, not the shell.
+    static let prebuildsSpareByDefault = false
 
-    init() {}
+    private enum Spare { case next }
+
+    private var controllers: [DocumentID: EditorWindowController] = [:]
+    /// With pre-building, one hidden editor window shell, without a document, for the next editor.
+    private let spares: WindowSparePool<Spare, NSWindow>
+
+    init(prebuildsSpare: Bool = EditorWindowManager.prebuildsSpareByDefault) {
+        spares = WindowSparePool(isEnabled: prebuildsSpare) { _ in EditorWindowController.makeWindow() }
+    }
+
+    /// Builds the spare shell when pre-building and none is held.
+    func prepareSpare() {
+        spares.prepare([.next])
+    }
+
+    /// The hidden shell kept for the next editor, if any.
+    var spareWindow: NSWindow? { spares.spare(for: .next) }
 
     /// Opens `session` in a new window, or brings its existing window forward.
     @discardableResult
@@ -48,9 +66,14 @@ final class EditorWindowManager {
         }
         let model = EditorModel(
             session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
-        let controller = EditorWindowController(model: model, importedFileName: importedFileName)
+        let controller = EditorWindowController(
+            model: model, importedFileName: importedFileName, window: spares.take(.next))
         controller.onClosed = { [weak self] in self?.controllers[id] = nil }
         controllers[id] = controller
+        if spares.isEnabled {
+            // The next spare is built after this editor's first frame, never in its way.
+            controller.whenFirstDrawn { [weak self] in Task { @MainActor in self?.prepareSpare() } }
+        }
         controller.present()
         if initialAction == .recognizeText {
             Task { await model.recognizeText() }
@@ -61,6 +84,10 @@ final class EditorWindowManager {
     /// Editors whose edits were never copied or saved (a drag out saves; a pin does not).
     var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
 
+    /// The window of `model`'s editor, while it is open.
+    func window(for model: EditorModel) -> NSWindow? {
+        controllers.values.first { $0.model === model }?.window
+    }
 }
 
 /// One editor window: hosts the SwiftUI chrome around the AppKit canvas in a system split view, asks before discarding
@@ -72,17 +99,31 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     private let canvas: EditorCanvasView
     private var discardConfirmed = false
 
-    init(
-        model: EditorModel, importedFileName: String? = nil,
-        noticePresentation: EditorNoticePresentation = EditorNoticePresentation()
-    ) {
-        let openedAt = Date.now
-        self.model = model
-        canvas = EditorCanvasView(model: model)
+    /// The window shell, without a document: what a spare holds (A-13 step 2) and what every
+    /// editor is built in. Its Space policy is set here, at construction (FR-01).
+    static func makeWindow() -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
+        // The capture result follows the current Space, including another app's fullscreen
+        // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
+        window.collectionBehavior = SpacePolicy.followsActiveSpace
+        window.contentMinSize = NSSize(
+            width: EditorWindowSizing.minimumContentSize.width, height: EditorWindowSizing.minimumContentSize.height)
+        window.tabbingMode = .disallowed
+        return window
+    }
+
+    /// `window` is a spare shell from `makeWindow()` that was never shown; nil builds one.
+    init(
+        model: EditorModel, importedFileName: String? = nil,
+        noticePresentation: EditorNoticePresentation = EditorNoticePresentation(), window: NSWindow? = nil
+    ) {
+        let openedAt = Date.now
+        self.model = model
+        canvas = EditorCanvasView(model: model)
+        let window = window ?? Self.makeWindow()
         let origin = model.document.layers.first.flatMap { model.document.assets[$0.assetID]?.origin }
         let time = Date.FormatStyle.dateTime.hour().minute()
         switch origin {
@@ -99,12 +140,6 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
                 window.title = String(localized: "Image \(openedAt.formatted(time))", table: "Editor")
             }
         }
-        // The capture result follows the current Space, including another app's fullscreen
-        // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
-        window.collectionBehavior = SpacePolicy.followsActiveSpace
-        window.contentMinSize = NSSize(
-            width: EditorWindowSizing.minimumContentSize.width, height: EditorWindowSizing.minimumContentSize.height)
-        window.tabbingMode = .disallowed
         super.init(window: window)
         window.delegate = self
         canvas.actions = self
@@ -136,7 +171,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             rootView: EditorRootView(
                 model: model, canvas: canvas, actions: actions, panes: panes, noticePresentation: noticePresentation))
         content.sceneBridgingOptions = [.toolbars]
-        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions))
+        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions, panes: panes))
         // The split items own the column widths; the hosted views fill whatever they are given.
         sidebar.sizingOptions = []
         content.sizingOptions = []
@@ -160,6 +195,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         split.splitView.dividerStyle = .thin
         for item in [sidebarItem, contentItem, inspectorItem] { split.addSplitViewItem(item) }
         return split
+    }
+
+    /// Runs `body` once, after the canvas first draws the document's image.
+    func whenFirstDrawn(_ body: @escaping () -> Void) {
+        canvas.onFirstImageDraw = body
     }
 
     /// The split item that holds `pane`.
@@ -186,6 +226,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         {
             window.makeFirstResponder(canvas)
         }
+    }
+
+    /// View › Inspector › Format or Image: shows that tab, and the inspector if it is hidden.
+    func showInspectorTab(_ tab: EditorInspectorTab) {
+        panes.chosenInspectorTab = tab
+        if splitItem(.inspector)?.isCollapsed == true { toggle(.inspector) }
     }
 
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
@@ -270,6 +316,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     }
 
     func windowWillClose(_ notification: Notification) {
+        // A sheet still open or queued gets its answer: Replace and Save cancel, Discard does
+        // nothing, and an unread failure becomes an app alert (`MessagePresenter.beginSheet`).
+        if let window {
+            for sheet in window.sheets { window.endSheet(sheet, returnCode: .abort) }
+        }
         EditorCommands.shared.editorResignedKey(self)
         model.close()
         window?.contentViewController = nil
@@ -300,10 +351,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         commitPendingText()
         guard let window, exportSlotIsFree() else { return }
         let options = model.environment.settings.preferences.exportOptions
-        let format = options.format
+        let format = options.formatChoice
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
-        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: format).name(attempt: 1)
+        // Automatic offers the PNG name; the save then takes the extension of the format chosen.
+        panel.allowedContentTypes =
+            switch format {
+            case .fixed(.png): [.png]
+            case .fixed(.jpeg): [.jpeg]
+            case .automatic: [.png, .jpeg]
+            }
+        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.beginSheetModal(for: window) { [weak self] response in
@@ -312,30 +369,31 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         }
     }
 
-    /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent.
+    /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent
+    /// for the file it names; a retry that resolves to another existing file asks about that one.
     @discardableResult
     func saveImage(
-        to url: URL, format: ExportFormat, confirmReplacement: (() async -> Bool)? = nil
+        to url: URL, format: ExportFormatChoice, confirmReplacement: ((_ existing: URL) async -> Bool)? = nil
     ) async -> ExportOutcome {
-        let outcome = await model.export(.save(url, format: format, overwriteConfirmed: false))
-        guard outcome == .failed(.destinationExists) else { return outcome }
-        model.dismissNotice()
-        let confirmed: Bool
-        if let confirmReplacement {
-            confirmed = await confirmReplacement()
-        } else {
-            confirmed = await self.confirmReplacement()
+        var outcome = await model.export(.save(url, format: format, replacing: nil))
+        var asked: Set<URL> = []
+        while case .failed(.destinationExists(let existing?)) = outcome, asked.insert(existing).inserted {
+            model.dismissNotice()
+            let confirmed: Bool
+            if let confirmReplacement {
+                confirmed = await confirmReplacement(existing)
+            } else {
+                confirmed = await self.confirmReplacement(of: existing)
+            }
+            guard confirmed else { return .canceled }
+            outcome = await model.export(.save(url, format: format, replacing: existing))
         }
-        guard confirmed else { return .canceled }
-        return await model.export(.save(url, format: format, overwriteConfirmed: true))
+        return outcome
     }
 
-    private func confirmReplacement() async -> Bool {
+    private func confirmReplacement(of existing: URL) async -> Bool {
         guard let window else { return false }
-        let alert = MessagePresenter.makeConfirmation(
-            title: String(localized: "Replace Existing File?", table: "Editor"),
-            detail: String(localized: "A file exists at this destination. Replace it?", table: "Editor"),
-            action: String(localized: "Replace", table: "Editor"), cancel: String(localized: "Cancel", table: "Editor"))
+        let alert = MessagePresenter.makeReplacement(of: existing)
         return await withCheckedContinuation { continuation in
             alert.beginSheetModal(for: window) { continuation.resume(returning: $0 == .alertFirstButtonReturn) }
         }

@@ -463,16 +463,10 @@
         }
       }
     },
-    "Replace Existing File?": {
+    "“%@” already exists. Do you want to replace it?": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Replace Existing File?" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Substituir arquivo existente?" } }
-      }
-    },
-    "A file exists at this destination. Replace it?": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "A file exists at this destination. Replace it?" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Já existe um arquivo neste destino. Deseja substituí-lo?" } }
+        "en": { "stringUnit": { "state": "translated", "value": "“%@” already exists. Do you want to replace it?" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "“%@” já existe. Quer substituí-lo?" } }
       }
     },
     "Replace": {
@@ -3727,6 +3721,48 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Hide Sidebar" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Ocultar Barra Lateral" } }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Fechar" } }
+      }
+    },
+    "Zoom In": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom In" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ampliar" } }
+      }
+    },
+    "Zoom Out": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom Out" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Reduzir" } }
+      }
+    },
+    "Actual Pixels": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Actual Pixels" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pixels reais" } }
+      }
+    },
+    "Zoom to Fit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom to Fit" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ajustar à janela" } }
+      }
+    },
+    "Show Output Preview": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show Output Preview" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Mostrar resultado final" } }
+      }
+    },
+    "Tools": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Tools" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ferramentas" } }
       }
     },
     "Outline": {

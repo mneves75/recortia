@@ -13,7 +13,7 @@ extension EditorModel {
     /// within the crop when one is set, else the whole canvas.
     public func recognizeText(in region: Rect<DocumentSpace>? = nil) async {
         guard !isClosed else { return }
-        guard !isMaskingPending else { return post(.maskingInProgress) }
+        guard admitsAction(explaining: true) else { return }
         let request = UUID()
         recognitionRequest = request
         recognition = .running
@@ -86,7 +86,8 @@ extension EditorModel {
     }
 
     /// English and Portuguese when the system offers them, else whatever it supports (FR-08),
-    /// plus the preferred codes the system lacks. The caller publishes those only for a current request.
+    /// with the primary language from Settings first when the system still offers it, plus the
+    /// preferred codes the system lacks. The caller publishes those only for a current request.
     func preferredLanguages() async -> (languages: [Locale.Language], unavailable: [String]) {
         let supported = await environment.textRecognition.supportedLanguages()
         let codes = Set(supported.compactMap { $0.languageCode?.identifier })
@@ -94,7 +95,12 @@ extension EditorModel {
         let preferred = supported.filter {
             Self.preferredRecognitionLanguages.contains($0.languageCode?.identifier ?? "")
         }
-        return (preferred.isEmpty ? supported : preferred, unavailable)
+        let languages = preferred.isEmpty ? supported : preferred
+        environment.settings.forgetUnsupportedPrimaryRecognitionLanguage(supported: supported)
+        guard let primary = environment.settings.preferences.primaryRecognitionLanguage,
+            let first = supported.first(where: { $0.maximalIdentifier == primary })
+        else { return (languages, unavailable) }
+        return ([first] + languages.filter { $0.maximalIdentifier != primary }, unavailable)
     }
 
     static let preferredRecognitionLanguages = ["en", "pt"]
@@ -104,7 +110,7 @@ extension EditorModel {
     /// Decodes QR codes in the sanitized base. Payloads are shown as untrusted data only.
     public func decodeQR() async {
         guard !isClosed else { return }
-        guard !isMaskingPending else { return post(.maskingInProgress) }
+        guard admitsAction(explaining: true) else { return }
         let request = UUID()
         qrRequest = request
         qr = .running

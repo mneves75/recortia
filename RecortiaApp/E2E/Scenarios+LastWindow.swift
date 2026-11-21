@@ -231,11 +231,15 @@
             E2EActions.drag(controller.model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
             try context.require("the edit makes the document dirty", controller.model.isDirty)
             for discard in [false, true] {
+                let alerts = harness.messages.alerts.count
                 window.performClose(nil)
                 let sheet = try context.unwrap(
                     "closing an edited editor asks first",
                     await E2EWait.until(timeout: .seconds(5)) { window.attachedSheet != nil }
                         ? window.attachedSheet : nil)
+                context.check(
+                    "the close question is a sheet on that editor, not an alert",
+                    sheet.sheetParent === window && harness.messages.alerts.count == alerts)
                 if !discard {
                     // R3-D17: a pin keeps no edits, so the warning names only copy and save.
                     let expected =
@@ -312,12 +316,6 @@
             harness.quit.questions = []
             let before = requests()
             let controller = ScrollUIController(model: model, displays: { [] })
-            var answers: [Bool] = []
-            var asked = 0
-            controller.confirmDiscard = {
-                asked += 1
-                return answers.isEmpty ? false : answers.removeFirst()
-            }
             let window = try context.unwrap(
                 "the review window is shown",
                 await E2EWait.until { NSApp.windows.contains { $0.delegate === controller && $0.isVisible } }
@@ -329,24 +327,37 @@
             // click for these elements, and that click acts only while this window is key, which
             // another app taking the foreground undoes. The checks below verify the effect.
 
-            answers = [false]
             try E2EAccessibilityControl.pressCheckingEffect("scroll.review.discard", in: root, context)
+            try await ScrollScenarios.answerDiscardSheet(on: window, discard: false, harness, context)
             try? await Task.sleep(for: .milliseconds(400))
             context.check(
                 "declining Discard keeps the review and Recortia",
-                asked == 1 && window.isVisible && model.state == .reviewing && requests() == before,
-                "asked=\(asked), visible=\(window.isVisible), state=\(model.state), \(requests() - before) requests")
+                window.isVisible && model.state == .reviewing && requests() == before,
+                "visible=\(window.isVisible), state=\(model.state), \(requests() - before) requests")
+            context.check(
+                "closing the review asks in a sheet and keeps the window",
+                !controller.windowShouldClose(window) && model.state == .reviewing)
+            // Quit while the question is open still asks about the capture in review.
+            harness.quit.answers = [false]
+            context.check(
+                "Quit during the discard question still asks and keeps the review",
+                !harness.app.shouldTerminate() && model.state == .reviewing
+                    && harness.quit.questions == [QuitDiscards(editedImages: 0, scrollingReview: true)],
+                "\(harness.quit.questions)")
+            harness.quit.questions = []
+            try await ScrollScenarios.answerDiscardSheet(on: window, discard: false, harness, context, shot: "discard")
+            context.check("declining the close keeps the review", window.isVisible && model.state == .reviewing)
 
-            answers = [true]
             try E2EAccessibilityControl.pressCheckingEffect("scroll.review.discard", in: root, context)
+            try await ScrollScenarios.answerDiscardSheet(on: window, discard: true, harness, context)
             context.check(
                 "a confirmed Discard of the last window requests termination",
                 await E2EWait.until(timeout: .seconds(3)) { requests() == before + 1 },
                 "\(requests() - before) requests")
             try? await Task.sleep(for: .milliseconds(400))
             try context.require(
-                "a confirmed Discard requests termination exactly once, asked once",
-                requests() == before + 1 && asked == 2, "\(requests() - before) requests, asked=\(asked)")
+                "a confirmed Discard requests termination exactly once",
+                requests() == before + 1, "\(requests() - before) requests")
             context.check(
                 "the discarded review is gone", !window.isVisible && model.state == .canceled,
                 "visible=\(window.isVisible), state=\(model.state)")

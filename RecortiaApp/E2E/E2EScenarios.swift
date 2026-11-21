@@ -55,6 +55,9 @@
                 id: "editor-window-size", title: "Editors open at one consistent size",
                 run: EditorWindowSizeScenarios.consistentSize),
             E2EScenario(
+                id: "editor-zoom", title: "Wheel zoom acts on mouse wheels only",
+                run: EditorZoomScenarios.zoom),
+            E2EScenario(
                 id: "recapture", title: "Hide existing windows during recapture",
                 run: CaptureVisibilityScenarios.recapture),
             E2EScenario(
@@ -63,6 +66,9 @@
             E2EScenario(
                 id: "editor-toolbar", title: "Tools and actions live in the window toolbar",
                 run: EditorToolbarScenarios.toolbar),
+            E2EScenario(
+                id: "editor-menu", title: "Every editor command is in the menu bar",
+                run: EditorMenuScenarios.commands),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(
@@ -103,13 +109,23 @@
             E2EScenario(
                 id: "auto-redaction", title: "New captures are masked before they are shown or exported",
                 run: AutoRedactionScenarios.autoRedaction),
+            E2EScenario(
+                id: "auto-redaction-sources",
+                title: "Scrolling captures and opened images are masked before they are shown",
+                run: AutoRedactionScenarios.sources),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
+            E2EScenario(
+                id: "quick-actions", title: "Quick actions after a capture hold it only until dismissed",
+                run: QuickActionsScenarios.quickActions),
             E2EScenario(
                 id: "appearance-contrast", title: "Review marks stay visible on dark and light content",
                 run: AppearanceScenarios.reviewContrast),
             E2EScenario(
                 id: "window-latency", title: "Each window opens in under 50 ms", run: LatencyScenarios.windowLatency,
                 runsOnlyWhenNamed: true),
+            E2EScenario(
+                id: "latency-prebuilt", title: "Pre-built capture windows: measured, and invisible while spare",
+                run: PrebuiltWindowScenarios.latency),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
             E2EScenario(
                 id: "scroll-target-binding", title: "Automatic scrolling stays bound through discovery and Stop",

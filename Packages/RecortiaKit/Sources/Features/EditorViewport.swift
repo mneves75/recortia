@@ -88,3 +88,28 @@ public struct EditorViewport: Hashable, Sendable {
         return min(max(zoom, zoomRange.lowerBound), zoomRange.upperBound)
     }
 }
+
+/// One scroll-wheel event over the canvas, as the canvas reads it from AppKit.
+public struct EditorScrollWheel: Hashable, Sendable {
+    public var deltaX: Double
+    public var deltaY: Double
+    /// Trackpads and similar devices report points; a notched wheel reports lines.
+    public var isPrecise: Bool
+    /// A classic mouse-wheel event: no scroll phase and no momentum phase. Trackpad and other
+    /// gesture scrolling (and its momentum) is not, so it scrolls even with wheel zoom on.
+    public var isMouseWheel: Bool
+    public var command: Bool
+    public var option: Bool
+
+    public init(
+        deltaX: Double, deltaY: Double, isPrecise: Bool, isMouseWheel: Bool, command: Bool = false,
+        option: Bool = false
+    ) {
+        self.deltaX = deltaX
+        self.deltaY = deltaY
+        self.isPrecise = isPrecise
+        self.isMouseWheel = isMouseWheel
+        self.command = command
+        self.option = option
+    }
+}

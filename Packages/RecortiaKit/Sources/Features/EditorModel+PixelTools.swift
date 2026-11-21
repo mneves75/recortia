@@ -56,7 +56,7 @@ extension EditorModel {
     }
 
     public func inspect(at p: Point<DocumentSpace>) {
-        guard let pixel = pixel(at: p) else {
+        guard admitsAction(), let pixel = pixel(at: p) else {
             inspection = nil
             return
         }

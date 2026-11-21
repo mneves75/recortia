@@ -13,6 +13,25 @@ public enum ExportError: Error, Equatable, Sendable {
 /// allowlist. ImageIO adds metadata on its own (an `eXIf` chunk in PNG, Exif APP1 and
 /// Photoshop APP13 in JPEG), so the allowlist is enforced on the encoded bytes.
 enum ExportEncoder {
+    /// The bytes and the format they are in: `options.format`, or what Automatic chose.
+    static func encodeResolvingFormat(_ image: CGImage, options: ExportOptions) throws(ExportError)
+        -> (bytes: Data, format: ExportFormat)
+    {
+        guard options.automaticFormat else { return (try encode(image, options: options), options.format) }
+        var fixed = options
+        fixed.automaticFormat = false
+        fixed.format = .png
+        let png = try encode(image, options: fixed)
+        // Under the floor no JPEG can win, so none is encoded.
+        guard png.count > AutomaticFormatRule.minimumPNGByteCount, try !hasTransparency(image) else {
+            return (png, .png)
+        }
+        fixed.format = .jpeg(quality: AutomaticFormatRule.jpegQuality)
+        let jpeg = try encode(image, options: fixed)
+        return AutomaticFormatRule.keepsJPEG(pngByteCount: png.count, jpegByteCount: jpeg.count)
+            ? (jpeg, fixed.format) : (png, .png)
+    }
+
     static func encode(_ image: CGImage, options: ExportOptions) throws(ExportError) -> Data {
         switch options.format {
         case .png:
@@ -22,6 +41,19 @@ enum ExportEncoder {
             let encoded = try imageIO(
                 flattened, type: "public.jpeg", properties: [kCGImageDestinationLossyCompressionQuality: quality])
             return try ExportContainerFilter.jpeg(encoded)
+        }
+    }
+
+    /// Whether any pixel is not fully opaque; an image without an alpha channel never is.
+    static func hasTransparency(_ image: CGImage) throws(ExportError) -> Bool {
+        switch image.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast: return false
+        default: break
+        }
+        do {
+            return !(try RenderRaster(image: image)).isOpaque
+        } catch {
+            throw ExportError.encodingFailed
         }
     }
 
@@ -63,6 +95,17 @@ enum ExportEncoder {
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { throw ExportError.encodingFailed }
         return data as Data
+    }
+}
+
+/// Automatic format (FR-07): a JPEG replaces the PNG only when the PNG is over 0.5 MB and more
+/// than 4× the JPEG, or over 2 MB and more than 2× the JPEG. Sizes are decimal megabytes.
+enum AutomaticFormatRule {
+    static let jpegQuality = 0.92
+    static let minimumPNGByteCount = 500_000
+
+    static func keepsJPEG(pngByteCount png: Int, jpegByteCount jpeg: Int) -> Bool {
+        (png > minimumPNGByteCount && png > 4 * jpeg) || (png > 2_000_000 && png > 2 * jpeg)
     }
 }
 

@@ -24,6 +24,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     private var trackingArea: NSTrackingArea?
     /// This canvas's own "editor to first draw" interval (A-13), set when its window first shows.
     var firstDrawInterval: LatencyInterval?
+    /// Called once, after the first draw that shows the image.
+    var onFirstImageDraw: (() -> Void)?
     private var elements: [EditorItemID: EditorAccessibilityElement] = [:]
     private var lastListItems: [EditorListItem] = []
     /// Shown, over a neutral placeholder, while automatic masking runs (FR-06).
@@ -264,9 +266,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             return
         }
         if !model.showsOutputPreview { model.reportCanvasDrawSucceeded() }
-        if model.baseImage != nil, let firstDrawInterval {
-            firstDrawInterval.end()
-            self.firstDrawInterval = nil
+        if model.baseImage != nil {
+            firstDrawInterval?.end()
+            firstDrawInterval = nil
+            if let onFirstImageDraw {
+                self.onFirstImageDraw = nil
+                onFirstImageDraw()
+            }
         }
 
         NSColor.separatorColor.setStroke()
@@ -582,13 +588,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     override func scrollWheel(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
-        let scale: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 10
-        if event.modifierFlags.contains(.command) {
-            let factor = exp(Double(event.scrollingDeltaY * scale) * 0.01)
-            model.setZoom(model.viewport.zoom * factor, anchor: Point(x: p.x, y: p.y))
-        } else {
-            model.pan(dx: event.scrollingDeltaX * scale, dy: event.scrollingDeltaY * scale)
-        }
+        model.scrollWheel(
+            EditorScrollWheel(
+                deltaX: event.scrollingDeltaX, deltaY: event.scrollingDeltaY,
+                isPrecise: event.hasPreciseScrollingDeltas,
+                isMouseWheel: event.phase.isEmpty && event.momentumPhase.isEmpty,
+                command: event.modifierFlags.contains(.command), option: event.modifierFlags.contains(.option)),
+            at: Point(x: p.x, y: p.y))
     }
 
     override func magnify(with event: NSEvent) {
@@ -603,9 +609,32 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         return EditorArrangeCommand.contextMenu(for: model)
     }
 
+    // The standard Edit items reach the canvas through the responder chain. Their ⌘ shortcuts never
+    // get here: `performKeyEquivalent` takes them first, so one key press acts once.
+
     /// Edit › Delete removes the selection, like the Delete key.
     @objc func delete(_ sender: Any?) {
         model.deleteSelection()
+    }
+
+    /// Edit › Undo, like ⌘Z: while text is being edited it undoes the typing.
+    @objc func undo(_ sender: Any?) {
+        if let textView { textView.undoManager?.undo() } else { model.undo() }
+    }
+
+    /// Edit › Redo, like ⇧⌘Z.
+    @objc func redo(_ sender: Any?) {
+        if let textView { textView.undoManager?.redo() } else { model.redo() }
+    }
+
+    /// Edit › Select All, like ⌘A. Text being edited handles its own Select All first.
+    override func selectAll(_ sender: Any?) {
+        model.selectAll()
+    }
+
+    /// Edit › Copy copies the image, like ⌘C and the toolbar's Copy.
+    @objc func copy(_ sender: Any?) {
+        actions?.copyImage()
     }
 
     // MARK: - Cursor
@@ -967,14 +996,21 @@ final class EditorTextView: NSTextView {
     }
 }
 
-/// Builds a menu item that runs a closure. The item keeps its target alive through
-/// `representedObject` (the `target` reference itself is weak).
+/// The Edit items the canvas handles are enabled as their toolbar buttons and keys would act.
 extension EditorCanvasView: NSMenuItemValidation {
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
-        item.action == #selector(delete(_:)) ? !model.selection.isEmpty && model.textEditing == nil : true
+        switch item.action {
+        case #selector(delete(_:)): !model.selection.isEmpty && model.textEditing == nil
+        case #selector(undo(_:)): textView.map { $0.undoManager?.canUndo == true } ?? model.canUndo
+        case #selector(redo(_:)): textView.map { $0.undoManager?.canRedo == true } ?? model.canRedo
+        case #selector(copy(_:)): model.canStartExport
+        default: true
+        }
     }
 }
 
+/// Builds a menu item that runs a closure. The item keeps its target alive through
+/// `representedObject` (the `target` reference itself is weak).
 enum ClosureMenuItem {
     private final class Target: NSObject {
         let handler: () -> Void

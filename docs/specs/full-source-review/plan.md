@@ -32,7 +32,7 @@ untagged), branch `review/full-source-0.12.2`, PR #17. Candidate after fixes: 0.
 
 ## What the plan review changed
 
-- F-1 is treated as an incident whose cause is unproven; every mitigation needs a falsifier, and the
+- F-1 was treated as an incident whose cause was unproven (found on 2026-11-21, see the F-1 row); every mitigation needs a falsifier, and the
   error distinguishes the two nullable font calls so a recurrence is attributable.
 - B-1 covers every independently committed edit during a gesture (keyboard nudge as well as
   import), not only imports.
@@ -55,7 +55,7 @@ log references are filled in as each item closes; red/green logs live under
 
 | ID | P | Observable failure | Hypothesis / defect | Falsifier and sibling paths | Closure |
 |---|---|---|---|---|---|
-| F-1 | P1 | Hosted CI 38652457209 (`setTextAppearance(.monospaced)` false, main actor) and 38795897584 attempt 1 (`unavailableFont(.roundedBoxed)`, off-main export); both reruns green | Transient nil from `NSFont(descriptor:size:)` under load (cause unproven). Not reproduced on this host (300 cold processes × 512 resolutions) nor in hosted run 38821022009 (66 s for 1,920 resolutions vs 0.24 s locally); reproduced in the Codex sandbox: E0 1/30 runs, always at `NSFont(descriptor:size:)`, also with a process-wide lock held | The lock was falsified by its own criterion; main-actor pre-resolution was rejected because incident 1 failed on the main actor | Closed (mitigated) with stage-specific errors and a bounded retry: E1 caught a nil that the first repeat recovered; 100 sandboxed runs with the retry saw 3 nils (one on the main thread), all recovered on the first repeat, 0 failures. Root cause remains open |
+| F-1 | P1 | Hosted CI 38652457209 (`setTextAppearance(.monospaced)` false, main actor) and 38795897584 attempt 1 (`unavailableFont(.roundedBoxed)`, off-main export); both reruns green | Transient nil from `NSFont(descriptor:size:)` under load (cause unproven). Not reproduced on this host (300 cold processes × 512 resolutions) nor in hosted run 38821022009 (66 s for 1,920 resolutions vs 0.24 s locally); reproduced in the Codex sandbox: E0 1/30 runs, always at `NSFont(descriptor:size:)`, also with a process-wide lock held | The lock was falsified by its own criterion; main-actor pre-resolution was rejected because incident 1 failed on the main actor | Mitigated by stage-specific errors and a bounded retry (E1; 100 sandboxed runs: 3 nils, all recovered), which recurred on 2026-11-20 after the retry. **Cause found and fixed on 2026-11-21** ([f1-investigation.md](f1-investigation.md)): AppKit's font cache returns nil, or a system-font descriptor `withDesign` rejects, while another thread releases fonts; Core Text matched the same descriptor correctly in 166/166 probes. Designed fonts now come from Core Text objects only (bounded retry and stage errors kept). Old path under release churn: failures in 723/723 cold processes; fix: 0/618 under churn and 0/1,005 under natural load; gate test `resolutionWhileFontsAreReleased` failed 5/5 on the old path, passed 25/25 |
 | B-1 | P1 | Import completing during a move/resize drag is dropped | Move/resize replace the whole document from the gesture's `original` snapshot (`EditorModel+Gestures.swift:71-92`) | Siblings: `nudgeSelection` (`EditorModel.swift:502`) and any `edit()` during a gesture | Closed 60c44ac: red 9 failed expectations (import and nudge during move/resize); green; edits settle the drag via `settleTransformGesture` in `edit()` |
 | C-1 | P1 | One scroll event can be posted to an app the user switched to | `LiveAutoScroll` re-discovers the frontmost window instead of using the frame source's binding (`LiveScrolling.swift:76-140`) | Two windows of one PID; suspended discovery; superseded session | Closed f3050d7: red 12 failed checks; bilingual `scroll-target-binding` E2E passes 25 checks with zero events outside the bound window |
 | C-2 | P1 | Cancel during scroll-capture startup can still start a stream | `.starting` stop finishes the source without stopping the producer; preparation reaches `startCapture` (`ScrollFrameSource.swift:125`, `SCStreamFrameProducer.swift:52`) | Cancel during preparation and while the start callback is outstanding | Closed f3050d7: red showed a capture start after Stop; green for cancel during preparation and during the start callback |
@@ -85,6 +85,14 @@ log references are filled in as each item closes; red/green logs live under
    Strongest rejected alternative: a Core Text fallback (`CTFontCreateWithFontDescriptor`),
    which returned the right font in the sandbox but never returns nil, so a wrong-font fallback
    could pass silently.
+5. **Core Text-only resolution (chosen 2026-11-21, supersedes 4 as the fix; 4 stays as a
+   bound).** `CTFontCreateUIFontForLanguage(.system)` → `withDesign` →
+   `CTFontDescriptorCreateMatchingFontDescriptor` → `CTFontCreateWithFontDescriptor`, with the
+   created font required to carry the matched name (`mismatchedFont` otherwise), which answers
+   the silent-fallback objection to the Core Text fallback above. Evidence and falsifiers:
+   [f1-investigation.md](f1-investigation.md). Strongest alternative: a strong-reference keep-alive
+   for AppKit's cached descriptors, rejected because it is the cache AGENTS.md forbids and still
+   depends on AppKit's private cache rules.
 
 ## Overall approach
 

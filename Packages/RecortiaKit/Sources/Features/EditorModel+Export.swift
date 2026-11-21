@@ -4,8 +4,8 @@ import Foundation
 public enum EditorExportRequest: Hashable, Sendable {
     case copy
     /// A destination the user chose in a save panel, in the format that panel named;
-    /// `overwriteConfirmed` when the user confirmed replacing an existing file.
-    case save(URL, format: ExportFormat, overwriteConfirmed: Bool)
+    /// `replacing` is the existing file the person agreed to replace, as its collision named it.
+    case save(URL, format: ExportFormatChoice, replacing: URL?)
     case saveToPreferredFolder
     case drag
 }
@@ -59,10 +59,7 @@ extension EditorModel {
     @discardableResult
     public func export(_ request: EditorExportRequest) async -> ExportOutcome {
         guard !isClosed else { return .failed(.staleDocument) }
-        guard !isMaskingPending else {
-            post(.maskingInProgress)
-            return .failed(.maskingUnfinished)
-        }
+        guard admitsAction(explaining: true) else { return .failed(.maskingUnfinished) }
         guard isPreviewReady else {
             post(.previewFailed)
             return .failed(.renderFailed)
@@ -71,8 +68,8 @@ extension EditorModel {
         switch request {
         case .copy:
             action = .copy
-        case .save(let url, let format, let confirmed):
-            action = .save(to: url, format: format, overwriteConfirmed: confirmed)
+        case .save(let url, let format, let replacing):
+            action = .save(to: url, format: format, replacing: replacing)
         case .drag:
             action = .drag
         case .saveToPreferredFolder:
@@ -132,14 +129,14 @@ extension EditorModel {
 
     /// Whether the shared export slot is free. Copy, Save and Drag Out need it, so they are
     /// unavailable while any editor exports instead of opening a panel that would be refused.
-    public var canStartExport: Bool { !isMaskingPending && !environment.export.isBusy }
+    public var canStartExport: Bool { admitsAction() && !environment.export.isBusy }
 
     public func cancelExport() { environment.export.cancel(documentID: session.document.id) }
 
     /// Pins a sanitized render of the current document.
     public func pin() async {
         guard !isClosed else { return }
-        guard !isMaskingPending else { return post(.maskingInProgress) }
+        guard admitsAction(explaining: true) else { return }
         guard isPreviewReady else {
             post(.previewFailed)
             return

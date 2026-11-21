@@ -8,9 +8,10 @@ public enum ExportAction: Hashable, Sendable {
     /// Copy Image: always a sanitized PNG only (FR-07).
     case copy
     /// Save to a user-chosen URL in the format its save panel named, so the bytes match the
-    /// extension even if the preference changed meanwhile; `overwriteConfirmed` only after the user
-    /// confirmed replacing a file.
-    case save(to: URL, format: ExportFormat, overwriteConfirmed: Bool)
+    /// extension even if the preference changed meanwhile; under Automatic the file takes the
+    /// extension of the format chosen. `replacing` is the file the person agreed to replace, as
+    /// the collision named it; only that exact file is overwritten.
+    case save(to: URL, format: ExportFormatChoice, replacing: URL?)
     /// Save with a collision-free name into a previously authorized folder.
     case saveToFolder(URL)
     case drag
@@ -234,9 +235,18 @@ public final class ExportCoordinator {
                 apply(.commit)
                 try clipboard.write(snapshot)
                 completed = .copied
-            case .save(let url, _, let overwrite):
+            case .save(let url, let format, let replacing):
                 apply(.commit)
-                completed = .saved(try await files.save(snapshot, to: url, overwrite: overwrite))
+                let destination = format == .automatic ? Self.named(url, for: snapshot.format) : url
+                // Consent travels with this save and names one file. A retry that renders again
+                // may resolve to another (Automatic), which is then created exclusively and, if
+                // it exists, reported so the person is asked about it by name (FR-07).
+                let replaces = replacing?.standardizedFileURL == destination.standardizedFileURL
+                do throws(SinkError) {
+                    completed = .saved(try await files.save(snapshot, to: destination, overwrite: replaces))
+                } catch .destinationExists {
+                    return fail(.destinationExists(destination))
+                }
             case .saveToFolder(let folder):
                 apply(.commit)
                 completed = .saved(try await files.saveUnique(snapshot, in: folder))
@@ -446,11 +456,23 @@ public final class ExportCoordinator {
     public func exportOptions(for action: ExportAction) -> ExportOptions {
         var options = settings.preferences.exportOptions
         switch action {
-        case .copy: options.format = .png
-        case .save(_, let format, _): options.format = format
+        case .copy: options.formatChoice = .fixed(.png)
+        case .save(_, let format, _): options.formatChoice = format
         case .saveToFolder, .drag, .upload: break
         }
         return options
+    }
+
+    /// `url` with an extension for `format`: kept when it already names it (.jpg or .jpeg for
+    /// JPEG), replaced otherwise.
+    static func named(_ url: URL, for format: ExportFormat) -> URL {
+        let current = url.pathExtension.lowercased()
+        let matches =
+            switch format {
+            case .png: current == "png"
+            case .jpeg: current == "jpg" || current == "jpeg"
+            }
+        return matches ? url : url.deletingPathExtension().appendingPathExtension(format.fileExtension)
     }
 
     // MARK: Helpers
@@ -473,7 +495,7 @@ public final class ExportCoordinator {
     static func failure(for error: SinkError) -> ExportFailure {
         switch error {
         case .clipboardWriteFailed: .clipboardFailed
-        case .destinationExists: .destinationExists
+        case .destinationExists: .destinationExists(nil)
         case .nameTooLong: .nameTooLong
         case .accessDenied: .accessDenied
         case .diskFull: .diskFull

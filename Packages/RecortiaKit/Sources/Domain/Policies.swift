@@ -128,6 +128,13 @@ public enum ExportFormat: Hashable, Sendable, Codable {
     }
 }
 
+/// The format one export asks for (FR-07): a fixed format, or Automatic, which encodes both and
+/// keeps the PNG unless a JPEG is much smaller (`ExportOptions.automaticFormat`).
+public enum ExportFormatChoice: Hashable, Sendable {
+    case fixed(ExportFormat)
+    case automatic
+}
+
 public enum ExportOptionsError: Error, Equatable, Sendable {
     case invalidScale
     case invalidQuality
@@ -140,15 +147,33 @@ public struct ExportOptions: Hashable, Sendable, Codable {
     /// JPEG has no alpha: transparency is flattened against this opaque color (FR-07).
     public var jpegBackground: RGBA
     public var filenameTemplate: FilenameTemplate
+    /// Automatic: the encoder picks PNG or a JPEG, and `format` names only the PNG it starts from.
+    /// The snapshot records the format its bytes are in.
+    public var automaticFormat: Bool
 
     public init(
         format: ExportFormat = .png, scale: Double = 1, jpegBackground: RGBA = .white,
-        filenameTemplate: FilenameTemplate = .default
+        filenameTemplate: FilenameTemplate = .default, automaticFormat: Bool = false
     ) {
-        self.format = format
+        self.format = automaticFormat ? .png : format
         self.scale = scale
         self.jpegBackground = jpegBackground
         self.filenameTemplate = filenameTemplate
+        self.automaticFormat = automaticFormat
+    }
+
+    public var formatChoice: ExportFormatChoice {
+        get { automaticFormat ? .automatic : .fixed(format) }
+        set {
+            switch newValue {
+            case .fixed(let fixed):
+                format = fixed
+                automaticFormat = false
+            case .automatic:
+                format = .png
+                automaticFormat = true
+            }
+        }
     }
 
     public static let validScaleRange: ClosedRange<Double> = 0.1...8
@@ -160,6 +185,7 @@ public struct ExportOptions: Hashable, Sendable, Codable {
             guard quality.isFinite, (0...1).contains(quality) else { throw ExportOptionsError.invalidQuality }
             guard jpegBackground.isOpaque else { throw ExportOptionsError.translucentJPEGBackground }
         }
+        if automaticFormat, !jpegBackground.isOpaque { throw ExportOptionsError.translucentJPEGBackground }
         return self
     }
 }
@@ -188,6 +214,23 @@ public enum OCRTextMode: String, Hashable, Sendable, Codable, CaseIterable {
 public enum ExportFormatKind: String, Hashable, Sendable, Codable, CaseIterable {
     case png
     case jpeg
+    /// PNG or JPEG by size, for saved files (FR-07). Stored apart from `defaultExportFormat`.
+    case automatic
+}
+
+/// What a completed capture opens (FR-01, ADR-009).
+public enum AfterCapture: String, Hashable, Sendable, Codable, CaseIterable {
+    case openEditor
+    /// A small thumbnail with Copy, Save, Open in Editor, Pin and Dismiss.
+    case showQuickActions
+}
+
+/// What a window capture is shown over (FR-02). The captured pixels keep their transparent
+/// corners and shadow; a solid colour is composited under them when the document is rendered.
+public enum WindowCaptureBackground: Hashable, Sendable, Codable {
+    case transparent
+    /// Always opaque once sanitized, so an export of the window has no transparent pixel.
+    case solid(RGBA)
 }
 
 /// User preferences. No screenshots, OCR text, or other content is ever stored here (SPEC.md §7).
@@ -200,6 +243,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var captureDelaySeconds = 0
     public var captureShowsCursor = false
     public var captureIncludesWindowShadow = true
+    /// Stored only once the person picks one; read `windowCaptureBackground`.
+    public var windowCaptureBackgroundChoice: WindowCaptureBackground?
     public var autoCopy = false
     public var autoSave = false
     /// Never read: the login item is the truth. Optional so a blob without the key still decodes;
@@ -208,6 +253,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     package var launchAtLogin: Bool? = false
     public var updateChecksEnabled = false
     public var automaticScrollingEnabled = false
+    /// The fixed format, PNG or JPEG; read `exportFormat`. 0.14 and earlier decode only those two,
+    /// so `SettingsStore.sanitized` moves `.automatic` to `automaticExportFormatChoice`.
     public var defaultExportFormat = ExportFormatKind.png
     public var jpegQuality = 0.9
     public var defaultExportScale = 1.0
@@ -218,9 +265,17 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var annotationPalette: SavedAnnotationPalette?
     /// The editor window content size the user last chose; nil until they resize an editor.
     public var editorContentSize: Size<DesktopSpace>?
+    /// Stored only once the person changes them; read `zoomsWithScrollWheel` and
+    /// `reversesScrollWheelZoom`.
+    public var zoomsWithScrollWheelChoice: Bool?
+    public var reversesScrollWheelZoomChoice: Bool?
     /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
     /// 0.13 have no such key, and synthesized Codable cannot default a missing non-optional one.
     public var keepsRunningInMenuBarChoice: Bool?
+    /// Stored only once the person changes it; read `showsMenuBarIcon`.
+    public var showsMenuBarIconChoice: Bool?
+    /// True once Recortia has said how to get back with the icon hidden; never said again.
+    public var hasExplainedHiddenMenuBarIcon: Bool?
     /// Stored only once the person changes it; read `autoRedactsSensitiveText`. Optional for the
     /// same reason as `keepsRunningInMenuBarChoice`: blobs written before 0.15 have no such key.
     public var autoRedactsSensitiveTextChoice: Bool?
@@ -228,6 +283,13 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var filenameTemplateChoice: FilenameTemplate?
     /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
     public var playsCaptureSoundChoice: Bool?
+    /// Stored only once the person changes it; read `afterCapture` (B-1).
+    public var afterCaptureChoice: AfterCapture?
+    /// Stored only once the person picks a format; read `exportFormat`.
+    public var automaticExportFormatChoice: Bool?
+    /// The language text recognition tries first, as a full identifier (`pt-Latn-BR`); nil is
+    /// Automatic (FR-08).
+    public var primaryRecognitionLanguage: String?
 
     public init() {}
 
@@ -237,11 +299,37 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { playsCaptureSoundChoice = newValue }
     }
 
+    /// What a completed capture opens; the editor by default (ADR-009).
+    public var afterCapture: AfterCapture {
+        get { afterCaptureChoice ?? .openEditor }
+        set { afterCaptureChoice = newValue }
+    }
+
     /// How saved and dragged files are named (FR-07). GitHub uploads keep their per-intent path
     /// (ADR-006).
     public var filenameTemplate: FilenameTemplate {
         get { filenameTemplateChoice ?? .default }
         set { filenameTemplateChoice = newValue }
+    }
+
+    /// What a new window capture is shown over (FR-02). Transparent by default.
+    public var windowCaptureBackground: WindowCaptureBackground {
+        get { windowCaptureBackgroundChoice ?? .transparent }
+        set { windowCaptureBackgroundChoice = newValue }
+    }
+
+    /// Whether a mouse wheel zooms the editor canvas around the pointer, with Option to scroll
+    /// (FR-04). Off by default: the wheel scrolls and Command-wheel zooms. Trackpad scrolling
+    /// always scrolls.
+    public var zoomsWithScrollWheel: Bool {
+        get { zoomsWithScrollWheelChoice ?? false }
+        set { zoomsWithScrollWheelChoice = newValue }
+    }
+
+    /// Whether wheel zoom runs the other way. Has an effect only while `zoomsWithScrollWheel` is on.
+    public var reversesScrollWheelZoom: Bool {
+        get { reversesScrollWheelZoomChoice ?? false }
+        set { reversesScrollWheelZoomChoice = newValue }
     }
 
     /// Whether Recortia stays in the menu bar after its last window closes (FR-01). On by default;
@@ -251,6 +339,14 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { keepsRunningInMenuBarChoice = newValue }
     }
 
+    /// Whether Recortia shows its icon in the menu bar (FR-01, ADR-007). On by default. Hidden,
+    /// opening Recortia again shows Settings and the global shortcuts keep working; it does not
+    /// change when Recortia quits.
+    public var showsMenuBarIcon: Bool {
+        get { showsMenuBarIconChoice ?? true }
+        set { showsMenuBarIconChoice = newValue }
+    }
+
     /// Whether a new capture opens with secure masks over the e-mail addresses and phone numbers
     /// that on-device recognition finds (FR-06 amendment). Off by default.
     public var autoRedactsSensitiveText: Bool {
@@ -258,9 +354,20 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { autoRedactsSensitiveTextChoice = newValue }
     }
 
+    /// The format of saved, dragged and uploaded files (FR-07); Copy Image is always PNG.
+    public var exportFormat: ExportFormatKind {
+        get { automaticExportFormatChoice == true ? .automatic : defaultExportFormat }
+        set {
+            automaticExportFormatChoice = newValue == .automatic
+            if newValue != .automatic { defaultExportFormat = newValue }
+        }
+    }
+
     public var exportOptions: ExportOptions {
-        let format: ExportFormat = defaultExportFormat == .png ? .png : .jpeg(quality: jpegQuality)
-        return ExportOptions(format: format, scale: defaultExportScale, filenameTemplate: filenameTemplate)
+        let format: ExportFormat = defaultExportFormat == .jpeg ? .jpeg(quality: jpegQuality) : .png
+        return ExportOptions(
+            format: format, scale: defaultExportScale, filenameTemplate: filenameTemplate,
+            automaticFormat: exportFormat == .automatic)
     }
 }
 

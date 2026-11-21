@@ -11,7 +11,7 @@ struct ShortcutRecorderRow: View {
     let status: ShortcutStatusModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DesignTokens.Space.xs) {
             KeyboardShortcuts.Recorder(
                 shortcut: Binding(
                     get: { KeyboardShortcuts.getShortcut(for: binding.name) },
@@ -57,7 +57,7 @@ struct MacOSShortcutsNotice: View {
     static let keyboardSettingsURL = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignTokens.Space.s) {
             Text(
                 "macOS is still using some of these shortcuts. Turn them off in System Settings › Keyboard › Keyboard Shortcuts › Screenshots, and Recortia starts using them. Recortia never changes them itself."
             )

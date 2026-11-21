@@ -148,17 +148,20 @@
             let original = Data("existing owner file".utf8)
             try original.write(to: collision)
             var confirmations = 0
-            let declined = await controller.saveImage(to: collision, format: .png) {
+            var named: [String] = []
+            let declined = await controller.saveImage(to: collision, format: .fixed(.png)) {
                 confirmations += 1
+                named.append($0.lastPathComponent)
                 return false
             }
             context.check("replacement decline cancels the save", declined == .canceled)
             context.check("a collision asks before overwriting", confirmations == 1)
+            context.check("the question names the existing file", named == ["consent.png"], "\(named)")
             context.check("declining preserves the existing bytes", try Data(contentsOf: collision) == original)
             // R3-D05: the format changes while the replacement question is open. The retry still
             // writes the format the save panel named, so a .png name receives PNG bytes.
             let formatBefore = harness.settings.preferences.defaultExportFormat
-            let replaced = await controller.saveImage(to: collision, format: .png) {
+            let replaced = await controller.saveImage(to: collision, format: .fixed(.png)) { _ in
                 confirmations += 1
                 harness.settings.update { $0.defaultExportFormat = .jpeg }
                 return true
@@ -173,18 +176,50 @@
                 "replacement uses sanitized export pixels",
                 try E2EActions.decode(Data(contentsOf: collision), "replacement", context) == savedPixels)
             let fresh = folder.appending(path: "no-collision.png")
-            let created = await controller.saveImage(to: fresh, format: .png) {
+            let created = await controller.saveImage(to: fresh, format: .fixed(.png)) { _ in
                 confirmations += 1
                 return false
             }
             context.check(
                 "exclusive new save needs no replacement consent", created == .saved(fresh) && confirmations == 2)
+            // Automatic with report.png and report.jpg both present: the question names the file
+            // Automatic resolved to, and only that file is replaced; the other keeps its bytes.
+            let reportPNG = folder.appending(path: "report.png")
+            let reportJPEG = folder.appending(path: "report.jpg")
+            let pngBytes = Data("existing png".utf8)
+            let jpegBytes = Data("existing jpg".utf8)
+            try pngBytes.write(to: reportPNG)
+            try jpegBytes.write(to: reportJPEG)
+            var asked: [URL] = []
+            let automatic = await controller.saveImage(to: reportPNG, format: .automatic) {
+                asked.append($0)
+                return true
+            }
+            let replacedName = try context.unwrap("Automatic asked about one file", asked.first)
+            let kept = replacedName.lastPathComponent == "report.png" ? reportJPEG : reportPNG
+            context.check(
+                "Automatic asks once, naming the resolved report file",
+                asked.count == 1 && [reportPNG, reportJPEG].contains(replacedName), "\(asked.map(\.lastPathComponent))")
+            context.check(
+                "Automatic replaces exactly the named file", automatic == .saved(replacedName),
+                "\(automatic)")
+            context.check(
+                "the report file it did not name keeps its bytes",
+                (try? Data(contentsOf: kept)) == (kept == reportPNG ? pngBytes : jpegBytes),
+                kept.lastPathComponent)
             let beforeNative = try Data(contentsOf: collision)
-            let nativeSave = Task { await controller.saveImage(to: collision, format: .png) }
+            let nativeSave = Task { await controller.saveImage(to: collision, format: .fixed(.png)) }
             let sheetAppeared = await E2EWait.until { controller.window?.attachedSheet != nil }
             try context.require("collision presents the native replacement sheet", sheetAppeared)
             let sheet = try context.unwrap("replacement sheet", controller.window?.attachedSheet)
             let content = try context.unwrap("replacement sheet content", sheet.contentView)
+            let sheetTexts = EditorWindowController.all(NSTextField.self, in: content).map(\.stringValue)
+            let question = MessagePresenter.makeReplacement(of: collision).messageText
+            context.check(
+                "the replacement sheet names the file",
+                sheetTexts.contains(question) && question.contains("“consent.png”")
+                    && !sheetTexts.contains { $0.contains(folder.path) },
+                sheetTexts.joined(separator: " | "))
             await E2ESnapshot.settle(content)
             context.snapshot(content, shot: "replacement-consent")
             await context.darkCompanion(content, in: sheet, shot: "replacement-consent", surface: "replacement sheet")
@@ -265,13 +300,17 @@
             context.check("the dropped file holds the same bytes", (try? Data(contentsOf: dropped)) == pinBytes)
 
             // The pin's real SwiftUI content from the live model. The real `PinPanel` around it is
-            // exercised in a child process (below), because it can end the process.
-            let host = E2ESnapshot.host(PinContentView(pinID: pin.id, model: pins, fitScale: 1))
+            // exercised in a child process (below), because it can end the process. The control
+            // strip appears on hover, which an offscreen host cannot receive, so these renders and
+            // presses show it always; `checkPinStripHidden` covers the default.
+            let host = E2ESnapshot.host(
+                PinContentView(pinID: pin.id, model: pins, fitScale: 1, controlsAlwaysVisible: true))
             defer { host.close() }
             let root = try context.unwrap("pin content hosted", host.contentView)
             await E2ESnapshot.settle(root)
             context.snapshot(root)
             await darkPin(pin, pins, light: root, context)
+            try await checkPinStripHidden(pin, pins, shown: root, context)
             try await checkRepeatedPinNotice(pin, pins, context)
             await E2EPanelProbe.check(.pin, context)
 
@@ -309,7 +348,8 @@
             let timers = NoticeTimers()
             let host = E2ESnapshot.host(
                 PinContentView(
-                    pinID: pin.id, model: pins, fitScale: 1, successNoticeTimer: { await timers.wait() }))
+                    pinID: pin.id, model: pins, fitScale: 1, controlsAlwaysVisible: true,
+                    successNoticeTimer: { await timers.wait() }))
             defer {
                 while timers.count > 0 { timers.expireOldest() }
                 host.close()
@@ -335,14 +375,71 @@
         }
 
         /// The pin in dark appearance. Its image is user content: the chrome is the control strip
-        /// below it, so the image's own rectangle (fit scale 1) is masked out.
+        /// floating over its bottom edge, so the image (fit scale 1) is masked out around the strip.
         private static func darkPin(_ pin: Pin, _ pins: PinsModel, light: NSView, _ context: ScenarioContext) async {
+            await context.darkHosted(
+                PinContentView(pinID: pin.id, model: pins, fitScale: 1, controlsAlwaysVisible: true), light: light,
+                shot: nil, surface: "pin", areas: pinImageAround(pinStrip(in: light, context), pin))
+        }
+
+        /// The pin image's rectangle (fit scale 1, top-left origin), minus `strip`.
+        private static func pinImageAround(_ strip: CGRect?, _ pin: Pin) -> [CGRect] {
             let image = CGRect(
                 x: 0, y: 0, width: Double(pin.image.width) * pin.zoom / pin.displayScale,
                 height: Double(pin.image.height) * pin.zoom / pin.displayScale)
-            await context.darkHosted(
-                PinContentView(pinID: pin.id, model: pins, fitScale: 1), light: light, shot: nil, surface: "pin",
-                areas: [image])
+            guard let strip else { return [image] }
+            let band = image.maxY - strip.minY
+            return [
+                CGRect(x: image.minX, y: image.minY, width: image.width, height: strip.minY - image.minY),
+                CGRect(x: image.minX, y: strip.minY, width: max(0, strip.minX - image.minX), height: band),
+                CGRect(x: strip.maxX, y: strip.minY, width: max(0, image.maxX - strip.maxX), height: band),
+            ]
+        }
+
+        /// The control strip's frame in `root` (points, top-left origin), from its accessibility frame.
+        private static func pinStrip(in root: NSView, _ context: ScenarioContext) -> CGRect? {
+            guard let screen = try? E2EAccessibilityControl.frame("pin.controls", in: root, context),
+                let window = root.window
+            else {
+                context.check("the pin's control strip is accessible", false)
+                return nil
+            }
+            var rect = root.convert(window.convertFromScreen(screen), from: nil)
+            if !root.isFlipped { rect.origin.y = root.bounds.height - rect.maxY }
+            return rect
+        }
+
+        /// By default the strip is not drawn until the pointer enters: the band it covers shows the
+        /// image's own pixels, so most of that band differs from the render with the strip shown.
+        private static func checkPinStripHidden(
+            _ pin: Pin, _ pins: PinsModel, shown: NSView, _ context: ScenarioContext
+        ) async throws {
+            guard let strip = pinStrip(in: shown, context) else { return }
+            let host = E2ESnapshot.host(PinContentView(pinID: pin.id, model: pins, fitScale: 1))
+            defer { host.close() }
+            let root = try context.unwrap("default pin content hosted", host.contentView)
+            await E2ESnapshot.settle(root)
+            context.snapshot(root, shot: "pin-no-hover")
+            let withStrip = try ContainerInspector.decodePixels(E2ESnapshot.png(of: shown, background: .black))
+            let without = try ContainerInspector.decodePixels(E2ESnapshot.png(of: root, background: .black))
+            try context.require(
+                "the default pin renders at the shown pin's size",
+                withStrip.width == without.width && withStrip.height == without.height,
+                "\(withStrip.width)×\(withStrip.height) vs \(without.width)×\(without.height)")
+            let scale = E2ESnapshot.scale
+            var differing = 0
+            var total = 0
+            for y in Int(strip.minY * scale)..<min(withStrip.height, Int(strip.maxY * scale)) {
+                for x in Int(strip.minX * scale)..<min(withStrip.width, Int(strip.maxX * scale)) {
+                    let index = (y * withStrip.width + x) * 4
+                    total += 1
+                    let delta = (0..<3).map { abs(Int(withStrip.bytes[index + $0]) - Int(without.bytes[index + $0])) }
+                    if delta.max() ?? 0 > 24 { differing += 1 }
+                }
+            }
+            context.check(
+                "without hover the pin draws no control strip", total > 0 && differing * 2 > total,
+                "\(differing) of \(total) strip pixels differ from the shown strip")
         }
 
         static func importAdmission(_ harness: E2EHarness, _ context: ScenarioContext) async throws {

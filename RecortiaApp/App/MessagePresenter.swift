@@ -9,9 +9,35 @@ struct UserMessage: Equatable {
     var offersScreenRecordingSettings = false
 }
 
-/// Shows messages as standard alerts. Content-free: never includes image data, OCR text,
-/// window titles, or paths (PRIV-01).
+/// Where a message is shown: an app-modal alert on the current Space, or a sheet on one editor's
+/// window (`MessagePlacement`).
+enum MessageTarget {
+    case app
+    case sheet(NSWindow)
+}
+
+/// Shows messages as standard alerts, or as sheets on the editor they concern. Content-free: never
+/// includes image data, OCR text, window titles, or paths (PRIV-01).
 enum MessagePresenter {
+    static func present(_ message: UserMessage, on target: MessageTarget) {
+        switch target {
+        case .app: present(message)
+        // Out of the close that ended the sheet, so no modal loop runs inside `windowWillClose`.
+        case .sheet(let window): beginSheet(message, on: window) { message in Task { present(message) } }
+        }
+    }
+
+    /// Shows `message` as a sheet on `window` without a modal loop. A sheet the window's close
+    /// ends unanswered (`.abort`) goes to `unanswered`, so closing the editor never drops it. Only
+    /// export failures are sheets; a message offering System Settings is always an app alert.
+    static func beginSheet(
+        _ message: UserMessage, on window: NSWindow, unanswered: @escaping @MainActor (UserMessage) -> Void
+    ) {
+        makeSheet(message).beginSheetModal(for: window) { response in
+            if response == .abort { unanswered(message) }
+        }
+    }
+
     static func present(_ message: UserMessage) {
         let response = runModal(makeAlert(message))
         if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
@@ -21,17 +47,17 @@ enum MessagePresenter {
         }
     }
 
-    /// Asks before a scrolling capture is thrown away. Close, Escape, and Discard all route here,
-    /// so the review window can be closed without silently destroying an assembled result.
-    static func confirmDiscardScrollingCapture() -> Bool {
+    /// The question before a scrolling capture is thrown away. Close, Escape, and Discard all ask
+    /// it, as a sheet on the review window, so closing the review never silently destroys an
+    /// assembled result.
+    static func makeDiscardScrollingCapture() -> NSAlert {
         // No count here: a counted sentence needs plural variants in two languages, which waits
         // until the localization gate covers the plural branch.
-        let alert = makeConfirmation(
+        makeConfirmation(
             title: String(localized: "Discard this scrolling capture?"),
             detail: String(
                 localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image."),
             action: String(localized: "Discard"))
-        return runModal(alert) == .alertFirstButtonReturn
     }
 
     /// What Quit discards. Only a copy or save keeps edits: a pin is closed by quitting too.
@@ -66,6 +92,24 @@ enum MessagePresenter {
         return runModal(alert) == .alertFirstButtonReturn
     }
 
+    /// Asks before Save replaces an existing file from a window without a sheet parent (the
+    /// quick-action thumbnail); the editor asks the same in a sheet.
+    static func confirmReplacement(of existing: URL) -> Bool {
+        runModal(makeReplacement(of: existing)) == .alertFirstButtonReturn
+    }
+
+    /// Asks before replacing `existing`, named as the collision reported it, so the person knows
+    /// which file goes (report.jpg, not the report.png the panel showed). The file name only,
+    /// never its folder (PRIV-01).
+    static func makeReplacement(of existing: URL) -> NSAlert {
+        makeConfirmation(
+            title: String(
+                localized: "“\(existing.lastPathComponent)” already exists. Do you want to replace it?", table: "Editor"
+            ),
+            detail: "", action: String(localized: "Replace", table: "Editor"),
+            cancel: String(localized: "Cancel", table: "Editor"))
+    }
+
     /// A warning that asks before something is thrown away: the destructive action first, then
     /// Cancel. App-modal confirmations run it through `runModal`; editor sheets attach it.
     static func makeConfirmation(
@@ -91,6 +135,14 @@ enum MessagePresenter {
     }
 
     static func makeAlert(_ message: UserMessage) -> NSAlert {
+        let alert = makeSheet(message)
+        // A message raised over another app's fullscreen Space must appear there (FR-01).
+        SpacePolicy.follow(alert.window)
+        return alert
+    }
+
+    /// The message's alert without a Space policy: a sheet stays on its parent window's Space.
+    static func makeSheet(_ message: UserMessage) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = message.title
         alert.informativeText = message.detail
@@ -101,13 +153,21 @@ enum MessagePresenter {
         } else {
             alert.addButton(withTitle: String(localized: "OK"))
         }
-        // A message raised over another app's fullscreen Space must appear there (FR-01).
-        SpacePolicy.follow(alert.window)
         return alert
     }
 }
 
 extension UserMessage {
+    /// Said once, the first time the menu-bar icon is hidden (FR-01).
+    static var menuBarIconHidden: UserMessage {
+        UserMessage(
+            title: String(localized: "The menu bar icon is hidden"),
+            detail: String(
+                localized:
+                    "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working."
+            ))
+    }
+
     static func capture(_ failure: CaptureFailure) -> UserMessage {
         switch failure {
         case .permissionDenied:

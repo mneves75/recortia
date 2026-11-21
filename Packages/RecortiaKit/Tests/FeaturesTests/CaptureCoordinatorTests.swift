@@ -181,6 +181,32 @@ struct CaptureCoordinatorTests {
         #expect(h.capture.lastOptions?.includesShadow == false)
     }
 
+    // Failure mode: the window background preference never reaches the document, reaches
+    // region captures too, or is read after capture so a later change redirects it.
+    @Test("A window capture opens over the chosen background; a region capture does not")
+    func windowBackgroundFromPreferences() async {
+        let h = CaptureHarness()
+        let color = RGBA(r: 20, g: 200, b: 90)
+        h.settings.update { $0.windowCaptureBackground = .solid(color) }
+        h.coordinator.start(.window)
+        await waitFor("windows listed") { h.coordinator.selectionContext == .window([TestFixtures.window]) }
+        h.coordinator.commitSelection(.window(TestFixtures.window))
+        await waitFor("window captured") { h.completions.count == 1 }
+        #expect(h.completions[0].session.document.presentation == Presentation(background: .solid(color)))
+
+        h.coordinator.start(.region)
+        h.coordinator.commitRegion(h.regionRect, on: TestFixtures.primaryDisplay)
+        await waitFor("region captured") { h.completions.count == 2 }
+        #expect(h.completions[1].session.document.presentation == .plain)
+
+        h.settings.update { $0.windowCaptureBackground = .transparent }
+        h.coordinator.start(.window)
+        await waitFor("windows listed again") { h.coordinator.selectionContext == .window([TestFixtures.window]) }
+        h.coordinator.commitSelection(.window(TestFixtures.window))
+        await waitFor("window captured again") { h.completions.count == 3 }
+        #expect(h.completions[2].session.document.presentation == .plain)
+    }
+
     @Test("Repeat last region captures the remembered rectangle without selection")
     func repeatLastRegion() async {
         let h = CaptureHarness()

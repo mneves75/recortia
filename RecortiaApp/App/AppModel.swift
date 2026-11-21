@@ -12,23 +12,31 @@ struct FeatureModels {
     let importer: ImportCoordinator
     let scroll: ScrollSessionModel
     let pins: PinsModel
+    let quickActions: QuickActionsModel
     let ocrLanguages: OCRLanguagesModel
     let loginItem: LoginItemModel
 
-    init(services: AppServices, settings: SettingsStore) {
+    /// The plain-text clipboard for explicit Copy actions on text (recognized text, an upload link).
+    let textClipboard: any TextClipboardService
+
+    init(services: AppServices, settings: SettingsStore, textClipboard: any TextClipboardService) {
         self.services = services
+        self.textClipboard = textClipboard
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
             clock: services.clock, settings: settings, sound: services.captureSound)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
             folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
-        importer = ImportCoordinator(input: services.input, assets: services.assets)
+        importer = ImportCoordinator(input: services.input, assets: services.assets, settings: settings)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
             accessibility: services.accessibility, screenPermission: services.screenPermission,
             assets: services.assets, clock: services.clock, settings: settings)
         pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
+        quickActions = QuickActionsModel(
+            export: export, pins: pins, renderer: services.renderer, assets: services.assets,
+            folders: services.folders, settings: settings, clock: services.clock, textClipboard: textClipboard)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
     }
@@ -56,6 +64,7 @@ final class AppModel: AppActions {
     @ObservationIgnored private var captureUI: CaptureUIController?
     @ObservationIgnored private var scrollUI: ScrollUIController?
     @ObservationIgnored private var pinsUI: PinsUIController?
+    @ObservationIgnored private var quickActionsUI: QuickActionsUIController?
     @ObservationIgnored private var captureWindowVisibility: CaptureWindowVisibility?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
     /// Open requests the system made before launch wired the editors, each kept apart: a cold
@@ -73,7 +82,9 @@ final class AppModel: AppActions {
     /// Adopts framework-made windows (About, alerts) that lack a Space policy before the app
     /// activates, so activation cannot switch Spaces (FR-01).
     @ObservationIgnored private let spacePolicy = SpacePolicyMonitor()
-    @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage) -> Void
+    @ObservationIgnored private let showMessage: @MainActor @Sendable (UserMessage, MessageTarget) -> Void
+    /// The window of an open editor, for messages shown as a sheet on it.
+    @ObservationIgnored var editorWindow: (EditorModel) -> NSWindow? = { _ in nil }
     /// Open editors whose edits were never copied or saved (a drag out saves; a pin does not).
     @ObservationIgnored var unexportedEditCount: () -> Int = { 0 }
     /// Asks whether to quit and discard what `QuitDiscards` describes.
@@ -92,10 +103,13 @@ final class AppModel: AppActions {
 
     init(
         settings: SettingsStore, services: AppServices, shortcutRegistry: any ShortcutRegistry,
-        showMessage: @escaping @MainActor @Sendable (UserMessage) -> Void = { MessagePresenter.present($0) },
+        showMessage: @escaping @MainActor @Sendable (UserMessage, MessageTarget) -> Void = {
+            MessagePresenter.present($0, on: $1)
+        },
         confirmQuit: @escaping @MainActor (QuitDiscards) -> Bool = { MessagePresenter.confirmDiscardOnQuit($0) },
         requestTermination: @escaping @MainActor () -> Void = { NSApp.terminate(nil) },
-        chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() }
+        chooseSaveFolder: @escaping @MainActor () -> URL? = { SaveFolderPanel.choose() },
+        textClipboard: any TextClipboardService = PasteboardTextClipboard()
     ) {
         self.settings = settings
         self.showMessage = showMessage
@@ -104,7 +118,7 @@ final class AppModel: AppActions {
         self.chooseSaveFolder = chooseSaveFolder
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
-        features = FeatureModels(services: services, settings: settings)
+        features = FeatureModels(services: services, settings: settings, textClipboard: textClipboard)
         captureWindowVisibility = CaptureWindowVisibility(capture: features.capture, scroll: features.scroll) {
             [weak self] in self?.isStartingScrollingCapture == true
         }
@@ -233,7 +247,13 @@ final class AppModel: AppActions {
     }
 
     func report(_ message: UserMessage) {
-        showMessage(message)
+        showMessage(message, .app)
+    }
+
+    /// The General switch and removing the icon from the menu bar both come here; the first time
+    /// the icon is hidden, the person is told how to get back. Presence and quitting do not change.
+    func setShowsMenuBarIcon(_ shows: Bool) {
+        if settings.setShowsMenuBarIcon(shows) { showMessage(.menuBarIconHidden, .app) }
     }
 
     func showSettings() {
@@ -256,7 +276,7 @@ final class AppModel: AppActions {
         let importer = features.importer
         Task {
             if case .failure(let failure) = await importer.importImage(from: source) {
-                showMessage(.importFailure(failure))
+                showMessage(.importFailure(failure), .app)
             }
         }
     }
@@ -286,7 +306,7 @@ final class AppModel: AppActions {
         Task {
             defer { openRequestsInFlight -= 1 }
             for failures in await importer.openRequests(requests) {
-                if let message = UserMessage.openFailures(failures) { showMessage(message) }
+                if let message = UserMessage.openFailures(failures) { showMessage(message, .app) }
             }
         }
     }
@@ -297,32 +317,40 @@ final class AppModel: AppActions {
         features.capture.onCaptured = { [weak self] completion in
             self?.handleCapture(completion)
         }
-        features.importer.onImported = { [weak self] session, fileName in
-            _ = self?.openDocument?(session, .none, fileName)
+        // Scrolling captures and new documents from Open, Open With, a drop or Paste have no
+        // automatic export batch; masking, when on, is decided as each document is created.
+        features.importer.onImported = { [weak self] session, fileName, masks in
+            _ = self?.openDocument?(session, masks ? .maskSensitiveText : .none, fileName)
         }
-        features.scroll.onAccepted = { [weak self] session in
-            _ = self?.openDocument?(session, .none, nil)
+        features.scroll.onAccepted = { [weak self] session, masks in
+            _ = self?.openDocument?(session, masks ? .maskSensitiveText : .none, nil)
         }
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
         pinsUI = PinsUIController(model: features.pins)
+        quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
+        features.quickActions.onOpenInEditor = { [weak self] session in
+            _ = self?.openDocument?(session, .none, nil)
+        }
 
         let services = features.services
         let environment = EditorEnvironment(
             renderer: services.renderer, export: features.export, folders: services.folders,
             textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
             sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
-            pins: features.pins, textClipboard: PasteboardTextClipboard(), links: WorkspaceLinkOpener(),
+            pins: features.pins, textClipboard: features.textClipboard, links: WorkspaceLinkOpener(),
             settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
         openDocument = { [editors] session, action, fileName in
             editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)
         }
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
-        let monitor = SystemEventMonitor { event in
+        editorWindow = { [editors] in editors.window(for: $0) }
+        let monitor = SystemEventMonitor { [weak self] event in
             switch event {
             case .displaysChanged:
                 features.capture.displayConfigurationChanged()
                 features.scroll.interrupt(because: .displayChanged)
+                self?.prepareCaptureWindows()
             case .screenLocked:
                 features.capture.interrupt(because: .screenLocked)
                 features.scroll.interrupt(because: .screenLocked)
@@ -333,22 +361,46 @@ final class AppModel: AppActions {
         recognizeText = { [editors] session in
             editors.open(session, environment: environment, initialAction: .recognizeText)
         }
+        prepareCaptureWindows()
+    }
+
+    /// Pre-builds the windows a capture shows (A-13 step 2) on a later main-actor turn, so launch
+    /// and a display change finish first.
+    private func prepareCaptureWindows() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            captureUI?.prepareOverlays(features.services.capture.displays())
+            editors.prepareSpare()
+        }
     }
 
     func handleCapture(_ completion: CaptureCompletion) {
-        switch completion.purpose {
-        case .edit:
-            // Decided here, synchronously, before anything else can run on the main actor: a
-            // setting changed by a job queued after this belongs to the next capture (R-3).
+        // Decided here, synchronously, before anything else can run on the main actor: a setting
+        // changed by a job queued after this belongs to the next capture (R-3, ADR-009).
+        switch CaptureFollowUp.decide(purpose: completion.purpose, preferences: settings.preferences) {
+        case .editor(let masks):
             let plan = features.export.automaticExportPlan()
-            let masks = settings.preferences.autoRedactsSensitiveText
             // Opening orders the editor window front before it returns.
             let toEditor = LatencySignposts.begin(.captureToEditor)
             let editor = openDocument?(completion.session, masks ? .maskSensitiveText : .none, nil)
             toEditor.end()
             runAutomaticExports(plan, for: completion.session, editor: editor, masks: masks)
+        case .quickActions:
+            showQuickActions(completion.session, plan: features.export.automaticExportPlan())
         case .recognizeText:
             recognizeText?(completion.session)
+        }
+    }
+
+    /// The thumbnail shows once the capture's automatic batch has run; without an editor, every
+    /// failure of that batch is an alert.
+    private func showQuickActions(_ session: DocumentSession, plan: AutomaticExportPlan) {
+        let quickActions = features.quickActions
+        automaticExportsInFlight += 1
+        Task {
+            defer { automaticExportsInFlight -= 1 }
+            let outcomes = await quickActions.present(session, after: plan)
+            reportAutomaticExport(outcomes, from: nil)
         }
     }
 
@@ -375,21 +427,36 @@ final class AppModel: AppActions {
             } else {
                 outcomes = await export.runAutomaticExports(plan, for: session, currentSession: { session })
             }
-            let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
-            for failure in route.alerts { showMessage(.export(failure)) }
-            // The masking count keeps the editor's notice slot (T1 security 3C): a failure the
-            // editor refuses is raised as an alert, so it is never lost either.
-            for outcome in route.editorNotices where editor?.reportAutomaticExport(outcome) != true {
-                if case .failed(let failure) = outcome { showMessage(.export(failure)) }
-            }
+            reportAutomaticExport(outcomes, from: editor)
         }
     }
 
+    /// Reports an automatic batch's results as `routeAutomaticExport` routes them. A message about
+    /// an editor is a sheet on its window while the person can see it, else an app alert.
+    func reportAutomaticExport(_ outcomes: [ExportOutcome], from editor: EditorModel?) {
+        let route = Self.routeAutomaticExport(outcomes, editorOpen: editor.map { !$0.isClosed } ?? false)
+        for failure in route.messages { showMessage(.export(failure), messageTarget(for: editor)) }
+        // The masking count keeps the editor's notice slot (T1 security 3C): a failure the
+        // editor refuses is raised as a message, so it is never lost either.
+        for outcome in route.editorNotices where editor?.reportAutomaticExport(outcome) != true {
+            if case .failed(let failure) = outcome { showMessage(.export(failure), messageTarget(for: editor)) }
+        }
+    }
+
+    /// Decided when each message is shown, so an editor closed or hidden meanwhile gets an alert.
+    private func messageTarget(for editor: EditorModel?) -> MessageTarget {
+        guard let editor, let window = editorWindow(editor) else { return .app }
+        let onScreen = window.isVisible && !window.isMiniaturized && window.isOnActiveSpace
+        return MessagePlacement(editorIsOpen: !editor.isClosed, windowIsOnScreen: onScreen) == .editorSheet
+            ? .sheet(window) : .app
+    }
+
     /// Where automatic-export results are reported. The editor has one notice slot, so it shows a
-    /// failure only when that is the batch's only report; otherwise failures become alerts, so
-    /// none is hidden behind another notice, and an upload link keeps the editor slot.
+    /// failure only when that is the batch's only report; otherwise failures become messages
+    /// (sheets or alerts), so none is hidden behind another notice, and an upload link keeps the
+    /// editor slot.
     static func routeAutomaticExport(_ outcomes: [ExportOutcome], editorOpen: Bool) -> (
-        editorNotices: [ExportOutcome], alerts: [ExportFailure]
+        editorNotices: [ExportOutcome], messages: [ExportFailure]
     ) {
         var failures: [ExportFailure] = []
         for case .failed(let failure) in outcomes { failures.append(failure) }
@@ -409,7 +476,7 @@ final class AppModel: AppActions {
                 captureWindowVisibility?.restoreIfFinished()
             }
             if !(await scroll.begin()), scroll.notice == .screenPermissionDenied {
-                showMessage(.capture(.permissionDenied))
+                showMessage(.capture(.permissionDenied), .app)
             }
         }
     }

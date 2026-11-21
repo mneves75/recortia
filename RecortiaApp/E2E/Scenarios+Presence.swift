@@ -184,6 +184,37 @@
                 "a launch to open files shows only their editors, even during onboarding",
                 LaunchWindow.choose(onboardingPending: true, kind: .user, opensFiles: true) == .none
                     && LaunchWindow.choose(onboardingPending: false, kind: .user, opensFiles: true) == .none)
+            try await hiddenMenuBarIcon(harness, context)
+        }
+
+        /// With the menu-bar icon hidden, opening Recortia again (a Dock click or relaunch reaches
+        /// `handleReopen`) shows the real Settings window, and closing it keeps Recortia running.
+        private static func hiddenMenuBarIcon(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let preferences = harness.settings.preferences
+            defer {
+                harness.settings.update {
+                    $0.showsMenuBarIconChoice = preferences.showsMenuBarIconChoice
+                    $0.hasExplainedHiddenMenuBarIcon = preferences.hasExplainedHiddenMenuBarIcon
+                    $0.keepsRunningInMenuBarChoice = preferences.keepsRunningInMenuBarChoice
+                }
+            }
+            harness.settings.update {
+                $0.showsMenuBarIcon = false
+                $0.keepsRunningInMenuBar = true
+            }
+            func settingsWindow() -> NSWindow? {
+                NSApp.windows.first { $0.isVisible && $0.contentViewController is NSTabViewController }
+            }
+            try context.require("no Settings window is open before reopening", settingsWindow() == nil)
+            let terminations = harness.terminations.count
+            harness.app.handleReopen(hasVisibleWindows: false)
+            let shown = await E2EWait.until(timeout: .seconds(5)) { settingsWindow() != nil }
+            context.check("with the icon hidden, opening Recortia again shows Settings", shown)
+            settingsWindow()?.close()
+            context.check(
+                "closing Settings with the icon hidden returns Recortia to the menu bar without quitting",
+                await E2EWait.until(timeout: .seconds(3)) { NSApp.activationPolicy() == .accessory }
+                    && harness.terminations.count == terminations, policy())
         }
 
         /// Orders `window` in the way presenting code does, parked offscreen and transparent.

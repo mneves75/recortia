@@ -9,7 +9,7 @@ import SwiftUI
 /// It holds no capture logic of its own.
 final class CaptureUIController {
     private let coordinator: CaptureCoordinator
-    private let overlay = RegionOverlayController()
+    private let overlay: RegionOverlayController
     private var chooser: HostingPanel?
     private var chooserKind: SelectionKind?
     private var countdown: HostingPanel?
@@ -23,14 +23,20 @@ final class CaptureUIController {
         case displays([DisplayInfo])
     }
 
-    init(coordinator: CaptureCoordinator) {
+    init(coordinator: CaptureCoordinator, overlay: RegionOverlayController = RegionOverlayController()) {
         self.coordinator = coordinator
+        self.overlay = overlay
         overlay.onCommit = { [weak coordinator] rect, display in
             coordinator?.commitRegion(rect, on: display)
         }
         overlay.onCancel = { [weak coordinator] in coordinator?.cancel() }
         overlay.onSwitchToWindow = { [weak coordinator] in coordinator?.switchToWindowSelection() }
         loop = ObservationLoop { [weak self] in self?.render() }
+    }
+
+    /// Pre-builds the region overlays for `displays` (at launch and after a display change).
+    func prepareOverlays(_ displays: [DisplayInfo]) {
+        overlay.prepare(displays: displays)
     }
 
     private func render() {

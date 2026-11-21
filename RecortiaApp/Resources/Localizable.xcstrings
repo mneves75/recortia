@@ -343,6 +343,22 @@
         }
       }
     },
+    "After a capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After a capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depois de uma captura"
+          }
+        }
+      }
+    },
     "All three share the same sanitized image, without hidden layers or location and text metadata." : {
       "localizations" : {
         "en" : {
@@ -433,22 +449,6 @@
         }
       }
     },
-    "Annotations stay editable; exports are flattened images." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annotations stay editable; exports are flattened images."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "As anotações continuam editáveis; as exportações são imagens achatadas."
-          }
-        }
-      }
-    },
     "Another image is still being opened. Try again when it finishes." : {
       "localizations" : {
         "en" : {
@@ -481,16 +481,6 @@
         }
       }
     },
-    "Arrange images and add emphasis without leaving the editor." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Organize imagens e dê ênfase aos detalhes sem sair do editor."
-          }
-        }
-      }
-    },
     "Assign shortcuts" : {
       "localizations" : {
         "en" : {
@@ -507,28 +497,50 @@
         }
       }
     },
-    "Automatic copy and save run right after a capture, before any redaction. Turn them off before capturing sensitive content." : {
+    "Automatic" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatic copy and save run right after a capture, before any redaction. Turn them off before capturing sensitive content."
+            "value" : "Automatic"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A cópia e o salvamento automáticos acontecem logo após a captura, antes de qualquer ocultação. Desative-os antes de capturar conteúdo sensível."
+            "value" : "Automático"
           }
         }
       }
     },
-    "Automatic copy, save and upload are off on a fresh install. You decide whether to enable them in Settings." : {
+    "Automatic (PNG or JPEG)" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic (PNG or JPEG)"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cópia, salvamento e envio automáticos vêm desativados em uma instalação nova. Você decide se deseja ativá-los nos Ajustes."
+            "value" : "Automático (PNG ou JPEG)"
+          }
+        }
+      }
+    },
+    "Automatic copy, save and upload are off on a fresh install. When on, they run right after a capture, before any redaction." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic copy, save and upload are off on a fresh install. When on, they run right after a capture, before any redaction."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cópia, salvamento e envio automáticos vêm desativados em uma instalação nova. Quando ativados, acontecem logo após a captura, antes de qualquer ocultação."
           }
         }
       }
@@ -581,12 +593,18 @@
         }
       }
     },
-    "Automatic exports are optional" : {
+    "Automatic exports start off" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic exports start off"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportações automáticas são opcionais"
+            "value" : "Exportações automáticas começam desativadas"
           }
         }
       }
@@ -697,6 +715,22 @@
         }
       }
     },
+    "Background color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background color"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cor de fundo"
+          }
+        }
+      }
+    },
     "Better" : {
       "localizations" : {
         "en" : {
@@ -725,22 +759,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desfoque e pixelização são apenas estéticos. O texto pode continuar recuperável, então não os use para esconder informações sigilosas."
-          }
-        }
-      }
-    },
-    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ambos vêm desativados. A cópia e o salvamento automáticos valem para capturas estáticas: acontecem logo após a captura, antes de qualquer edição ou tarja que você fizer depois, e não podem ser desfeitos em outros apps. Capturas com rolagem abrem para revisão."
           }
         }
       }
@@ -921,34 +939,50 @@
         }
       }
     },
-    "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it." : {
+    "Capture, editing and recognition stay on this Mac." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it."
+            "value" : "Capture, editing and recognition stay on this Mac."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A captura, a edição e o reconhecimento são locais neste Mac. O envio opcional ao GitHub ocorre somente quando você o ativa."
+            "value" : "A captura, a edição e o reconhecimento ficam neste Mac."
           }
         }
       }
     },
-    "Capture, mark up, redact, and share screenshots from the menu bar." : {
+    "Captured image. Drag it to export." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Capture, mark up, redact, and share screenshots from the menu bar."
+            "value" : "Captured image. Drag it to export."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Capture, anote, oculte informações e compartilhe capturas de tela pela barra de menus."
+            "value" : "Imagem capturada. Arraste-a para exportar."
+          }
+        }
+      }
+    },
+    "Captures open in the editor while automatic masking is on." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures open in the editor while automatic masking is on."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As capturas abrem no editor enquanto o mascaramento automático estiver ativado."
           }
         }
       }
@@ -1065,16 +1099,6 @@
         }
       }
     },
-    "Choose a capture mode from the Recortia menu-bar icon." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha um modo de captura no ícone do Recortia na barra de menus."
-          }
-        }
-      }
-    },
     "Choose a display to capture" : {
       "localizations" : {
         "en" : {
@@ -1103,16 +1127,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolha uma janela para capturar"
-          }
-        }
-      }
-    },
-    "Choose what leaves the editor" : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha o que sai do editor"
           }
         }
       }
@@ -1197,32 +1211,6 @@
         }
       }
     },
-    "Complete capture." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Complete capture."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Captura completa."
-          }
-        }
-      }
-    },
-    "Compose and keep references" : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Componha e mantenha referências"
-          }
-        }
-      }
-    },
     "Continue" : {
       "localizations" : {
         "en" : {
@@ -1287,12 +1275,44 @@
         }
       }
     },
+    "Copy Link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Link"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar link"
+          }
+        }
+      }
+    },
     "Copy, Save or Drag Out" : {
       "localizations" : {
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar, Salvar ou Arrastar para fora"
+          }
+        }
+      }
+    },
+    "Could not copy the link." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not copy the link."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível copiar o link."
           }
         }
       }
@@ -1503,22 +1523,6 @@
         }
       }
     },
-    "Drag the image into another app." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drag the image into another app."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arraste a imagem para outro app."
-          }
-        }
-      }
-    },
     "Drag to Export" : {
       "localizations" : {
         "en" : {
@@ -1563,6 +1567,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arraste para selecionar uma área. Pressione Return para capturar a tela inteira ou Esc para cancelar."
+          }
+        }
+      }
+    },
+    "Each capture is uploaded before you edit or redact it, and Git history keeps every image after you turn this off." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each capture is uploaded before you edit or redact it, and Git history keeps every image after you turn this off."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada captura é enviada antes de você editar ou ocultar informações, e o histórico do Git guarda todas as imagens mesmo depois que você desativar o envio."
+          }
+        }
+      }
+    },
+    "Editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
           }
         }
       }
@@ -1675,6 +1711,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exemplo: %@"
+          }
+        }
+      }
+    },
+    "Example: %@, or .jpg when a JPEG is much smaller" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example: %@, or .jpg when a JPEG is much smaller"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exemplo: %@, ou .jpg quando um JPEG for bem menor"
           }
         }
       }
@@ -1925,6 +1977,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Os envios ao GitHub têm limite de 8 MB. Reduza a escala de exportação."
+          }
+        }
+      }
+    },
+    "Hold Option to scroll." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold Option to scroll."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantenha a tecla Option pressionada para rolar."
           }
         }
       }
@@ -2309,6 +2377,22 @@
         }
       }
     },
+    "Open in Editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Editor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir no editor"
+          }
+        }
+      }
+    },
     "Open Keyboard Settings…" : {
       "localizations" : {
         "en" : {
@@ -2357,6 +2441,22 @@
         }
       }
     },
+    "Open the editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the editor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir o editor"
+          }
+        }
+      }
+    },
     "Opening the image was canceled." : {
       "localizations" : {
         "en" : {
@@ -2379,6 +2479,33 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Compartilhamento opcional no GitHub"
+          }
+        }
+      }
+    },
+    "Page %lld of %lld" : {
+      "comment" : "Tour progress: the first placeholder is the current page; the second is the total page count.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Permission on first capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission on first capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permissão na primeira captura"
           }
         }
       }
@@ -2591,22 +2718,6 @@
         }
       }
     },
-    "Pins stay until you close them and are not restored after Recortia quits." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pins stay until you close them and are not restored after Recortia quits."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "As fixações ficam até você fechá-las e não são restauradas depois que o Recortia é encerrado."
-          }
-        }
-      }
-    },
     "Placeholders: {date}, {time}, {counter}" : {
       "localizations" : {
         "en" : {
@@ -2655,6 +2766,22 @@
         }
       }
     },
+    "Primary language" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primary language"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idioma principal"
+          }
+        }
+      }
+    },
     "Privacy" : {
       "localizations" : {
         "en" : {
@@ -2683,6 +2810,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Repositório privado"
+          }
+        }
+      }
+    },
+    "Quick Actions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Actions"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ações rápidas"
           }
         }
       }
@@ -2745,12 +2888,18 @@
         }
       }
     },
-    "Read text and inspect pixels" : {
+    "Read, pin and share" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read, pin and share"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leia texto e inspecione pixels"
+            "value" : "Leia, fixe e compartilhe"
           }
         }
       }
@@ -2783,16 +2932,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pronto. Clique em Iniciar e role a área devagar."
-          }
-        }
-      }
-    },
-    "Recognition and pixel inspection run on this Mac." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O reconhecimento e a inspeção de pixels são processados neste Mac."
           }
         }
       }
@@ -2925,22 +3064,6 @@
         }
       }
     },
-    "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os atalhos padrão do Recortia são os de captura de tela do macOS: ⇧⌘3 para a tela inteira, ⇧⌘4 para uma região e ⇧⌘5 para todos os modos de captura. Altere-os ou limpe-os aqui, ou depois nos Ajustes."
-          }
-        }
-      }
-    },
     "Redact replaces the covered pixels in every export. Blur and Pixelate are cosmetic, not secure." : {
       "localizations" : {
         "en" : {
@@ -3065,22 +3188,6 @@
         }
       }
     },
-    "Reopen this tour from Feature Tour in the menu bar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reopen this tour from Feature Tour in the menu bar."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reabra este tour em Tour de recursos na barra de menus."
-          }
-        }
-      }
-    },
     "Repeat Last Region" : {
       "localizations" : {
         "en" : {
@@ -3145,18 +3252,34 @@
         }
       }
     },
-    "Review Scrolling Capture" : {
+    "Reverse zoom direction" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Review Scrolling Capture"
+            "value" : "Reverse zoom direction"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Revisar captura com rolagem"
+            "value" : "Inverter a direção do zoom"
+          }
+        }
+      }
+    },
+    "Runs right after a capture, before you edit or redact, and cannot be taken back from other apps." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Runs right after a capture, before you edit or redact, and cannot be taken back from other apps."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acontece logo após a captura, antes de você editar ou ocultar informações, e não pode ser desfeito em outros apps."
           }
         }
       }
@@ -3417,16 +3540,6 @@
         }
       }
     },
-    "Sharing uses a flattened, freshly encoded image." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O compartilhamento usa uma imagem achatada e recém-codificada."
-          }
-        }
-      }
-    },
     "Shortcuts" : {
       "localizations" : {
         "en" : {
@@ -3455,6 +3568,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar menu de captura"
+          }
+        }
+      }
+    },
+    "Show quick actions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show quick actions"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar ações rápidas"
+          }
+        }
+      }
+    },
+    "Show the icon in the menu bar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the icon in the menu bar"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar o ícone na barra de menus"
           }
         }
       }
@@ -3503,6 +3648,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Menor"
+          }
+        }
+      }
+    },
+    "Solid color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solid color"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cor sólida"
           }
         }
       }
@@ -3565,13 +3726,18 @@
         }
       }
     },
-    "Step %lld of %lld" : {
-      "comment" : "Tour progress: the first placeholder is the current page; the second is the total page count.",
+    "Stays on this Mac" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stays on this Mac"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etapa %1$lld de %2$lld"
+            "value" : "Fica neste Mac"
           }
         }
       }
@@ -3660,22 +3826,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reconhecimento de texto"
-          }
-        }
-      }
-    },
-    "Text is recognized on this Mac and never corrected automatically." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Text is recognized on this Mac and never corrected automatically."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O texto é reconhecido neste Mac e nunca é corrigido automaticamente."
           }
         }
       }
@@ -3824,22 +3974,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A área de transferência não contém uma imagem PNG ou JPEG."
-          }
-        }
-      }
-    },
-    "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os padrões são os do app Captura de Tela do macOS: ⇧⌘3 captura a tela inteira, ⇧⌘4 uma região (pressione Espaço para uma janela) e ⇧⌘5 mostra todos os modos de captura. O Recortia avisa sobre conflitos com atalhos do macOS e de menus que consegue detectar, mas não tem como conhecer todos os atalhos usados por outros apps."
           }
         }
       }
@@ -4100,6 +4234,22 @@
         }
       }
     },
+    "The menu bar icon is hidden" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The menu bar icon is hidden"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O ícone da barra de menus está oculto"
+          }
+        }
+      }
+    },
     "The name is too long." : {
       "localizations" : {
         "en" : {
@@ -4312,6 +4462,38 @@
         }
       }
     },
+    "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para voltar ao Recortia, abra-o de novo pela pasta Aplicativos ou pelo Spotlight. Os atalhos de teclado continuam funcionando."
+          }
+        }
+      }
+    },
+    "Transparent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparent"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparente"
+          }
+        }
+      }
+    },
     "Unavailable" : {
       "localizations" : {
         "en" : {
@@ -4520,18 +4702,18 @@
         }
       }
     },
-    "When enabled, each still capture is uploaded before later edits or redaction. Uploads require a private repository and are limited to 8 MB. Git history retains earlier images; turning this off or closing Recortia does not delete remote copies." : {
+    "Window background" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When enabled, each still capture is uploaded before later edits or redaction. Uploads require a private repository and are limited to 8 MB. Git history retains earlier images; turning this off or closing Recortia does not delete remote copies."
+            "value" : "Window background"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quando ativado, cada captura estática é enviada antes de edições ou tarjas posteriores. Os envios exigem um repositório privado e têm limite de 8 MB. O histórico do Git mantém imagens anteriores; desativar o envio ou fechar o Recortia não exclui cópias remotas."
+            "value" : "Fundo da janela"
           }
         }
       }
@@ -4696,18 +4878,34 @@
         }
       }
     },
-    "Mask e-mail addresses and phone numbers in new captures" : {
+    "Mask e-mail addresses and phone numbers in new captures and opened images" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mask e-mail addresses and phone numbers in new captures"
+            "value" : "Mask e-mail addresses and phone numbers in new captures and opened images"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mascarar e-mails e números de telefone em novas capturas"
+            "value" : "Mascarar e-mails e números de telefone em novas capturas e imagens abertas"
+          }
+        }
+      }
+    },
+    "Zoom with the scroll wheel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom with the scroll wheel"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom com a roda de rolagem"
           }
         }
       }

@@ -57,7 +57,7 @@ before any waiter resumes; a later change, Undo included, makes it stale, never 
 counts only for the request identity it started from. Error, cancellation, a stale result and the
 deadline fail closed and skip the batch. Continuous-change groups cannot open while masking runs.
 Detection reads pixels only inside Imaging (`SensitiveTextScanner.sensitiveRegions(of:in:)`).
-Keep `auto-redaction` in bilingual E2E.
+Keep `auto-redaction` and `auto-redaction-sources` in bilingual E2E.
 
 Curved arrows retain the existing arrow kind with an optional control; `ArrowCurve` maps the
 visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. Keep the
@@ -89,9 +89,12 @@ cancelling input does not. Automatic scrolling acts only on the frame source's s
 window and keep `scroll-target-binding` in bilingual E2E; Stop during scroll startup stops the
 producer before `startCapture`. Mask source mapping fails closed on non-finite inverses or
 corners. Scroll append admission counts the matcher scratch. Closing an editor cancels only its
-own export work. `TextLayout.nativeFont` repeats a nil font result at most twice with the same
-inputs and reports which stage failed; do not add locks, caches or fallback fonts without new
-evidence, and treat a recurrence after the retry as an open incident (see the plan's F-1 row).
+own export work. `TextLayout.nativeFont` builds designed fonts from Core Text objects only:
+NSFont's shared cache returns nil while another thread releases fonts (F-1,
+`docs/specs/full-source-review/f1-investigation.md`; `resolutionWhileFontsAreReleased` guards
+it). It still repeats a nil result at most twice and reports the failing stage, and a substituted
+font fails as `mismatchedFont`; do not add locks, caches or fallback fonts, and treat any new nil
+as an open incident.
 
 Capture completion must exercise the real editor presentation path (`editor-presentation`),
 not only the offscreen editor host. Keep editor visibility independent of cooperative app

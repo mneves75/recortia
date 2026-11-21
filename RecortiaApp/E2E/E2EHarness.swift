@@ -28,7 +28,7 @@
         let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
         /// Scripted detection for automatic masking; never reads the screen or runs Vision.
-        let sensitiveText = SyntheticSensitiveText()
+        let sensitiveText: SyntheticSensitiveText
         let messages = RecordingMessagePresenter()
         let quit = RecordingQuitConfirmation()
         /// Termination requests from quit-after-last-window; the runner process itself never quits.
@@ -40,6 +40,8 @@
         let features: FeatureModels
         let editors: E2EEditorHost
         let environment: EditorEnvironment
+        /// The product's thumbnail controller; its panel is parked offscreen and Save never shows a panel.
+        let quickActionsUI: QuickActionsUIController
         /// The macOS shortcuts the runner treats as enabled, so shortcut states never depend on the
         /// host's System Settings. It starts like a fresh Mac: ⇧⌘3, ⇧⌘4, and ⇧⌘5 belong to macOS.
         let systemShortcuts = E2ESystemShortcuts()
@@ -66,6 +68,7 @@
                 pasteboard: NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.image.\(run)")))
             textPasteboard = NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.text.\(run)"))
             drag = SyntheticDragReceiver(dropFolder: dropFolder)
+            sensitiveText = SyntheticSensitiveText(clock: E2EClock())
 
             let live = AppServices.live(settings: settings)
             exportGate = SyntheticExportGate(exporter: live.exporter)
@@ -77,26 +80,36 @@
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
                 scrollFrames: scrollFrames,
-                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: live.clock)
+                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: sensitiveText.clock
+            )
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(
                 settings: settings, services: services,
                 shortcutRegistry: KeyboardShortcutsRegistry(
                     takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
-                showMessage: { messages.values.append($0) },
+                showMessage: { messages.present($0, on: $1) },
                 confirmQuit: { [quit] in quit.answer($0) },
                 requestTermination: { [terminations] in terminations.request() },
-                chooseSaveFolder: { [folderChooser] in folderChooser.next() })
+                chooseSaveFolder: { [folderChooser] in folderChooser.next() },
+                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard))
             let features = app.features
             self.features = features
             environment = EditorEnvironment(
                 renderer: services.renderer, export: features.export, folders: services.folders,
                 textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
                 sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
-                pins: features.pins, textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links,
+                pins: features.pins, textClipboard: features.textClipboard, links: links,
                 settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
             editors = E2EEditorHost(environment: environment)
+            quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
+            quickActionsUI.present = { panel in
+                panel.sizeToContentIfUnsized()
+                E2ESnapshot.park(panel)
+                panel.orderFrontRegardless()
+            }
+            quickActionsUI.chooseSaveDestination = { nil }
+            quickActionsUI.confirmReplacement = { _ in false }
             wire()
             // What a normal launch does (ADR-005), without registering any handler.
             ShortcutDefaults.seedIfNeeded(isNewInstall: !settings.preferences.hasCompletedOnboarding)
@@ -109,11 +122,15 @@
             features.capture.onCaptured = { [weak app] completion in
                 app?.handleCapture(completion)
             }
-            features.importer.onImported = { editors.open($0, importedFileName: $1) }
-            features.scroll.onAccepted = { editors.open($0) }
+            features.importer.onImported = {
+                editors.open($0, importedFileName: $1, initialAction: $2 ? .maskSensitiveText : .none)
+            }
+            features.scroll.onAccepted = { editors.open($0, initialAction: $1 ? .maskSensitiveText : .none) }
             app.openDocument = { editors.open($0, importedFileName: $2, initialAction: $1).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
+            features.quickActions.onOpenInEditor = { editors.open($0) }
             app.unexportedEditCount = { editors.unexportedEditCount }
+            app.editorWindow = { model in editors.controllers.first { $0.model === model }?.window }
         }
 
         /// Imports `image` as PNG through the real input, decode, and asset path; opens an editor.
@@ -136,7 +153,9 @@
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
                 $0.keepsRunningInMenuBar = true; $0.autoRedactsSensitiveText = false
+                $0.afterCapture = .openEditor
             }
+            features.quickActions.dismiss()
             folderChooser.answers = []
             editors.closeAll()
             features.pins.closeAll()
@@ -151,9 +170,33 @@
         }
     }
 
+    /// Stands in for `MessagePresenter.present(_:on:)`. An app alert is only recorded, never shown,
+    /// so no modal loop runs. A sheet is recorded with its parent and attached for real, without a
+    /// modal loop, so a scenario sees it on that window and answers it with `endSheet`; a sheet the
+    /// window's close ends is recorded again as the app alert it becomes. Never opens System Settings.
     @MainActor
     final class RecordingMessagePresenter {
-        var values: [UserMessage] = []
+        struct Request {
+            let message: UserMessage
+            let isSheet: Bool
+            /// The editor window the sheet was attached to.
+            weak var sheetParent: NSWindow?
+        }
+
+        private(set) var requests: [Request] = []
+        /// Every message, alert or sheet, in the order it was asked for.
+        var values: [UserMessage] { requests.map(\.message) }
+        var alerts: [UserMessage] { requests.filter { !$0.isSheet }.map(\.message) }
+
+        func present(_ message: UserMessage, on target: MessageTarget) {
+            switch target {
+            case .app:
+                requests.append(Request(message: message, isSheet: false))
+            case .sheet(let window):
+                requests.append(Request(message: message, isSheet: true, sheetParent: window))
+                MessagePresenter.beginSheet(message, on: window) { [weak self] in self?.present($0, on: .app) }
+            }
+        }
     }
 
     /// Stands in for the Quit confirmation alert: records each question and answers from a script

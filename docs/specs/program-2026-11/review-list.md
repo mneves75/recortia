@@ -83,14 +83,29 @@ Reviewer marked these read-verified; the coordinator has not yet read them.
    out of tracked docs and trains until you rule; the class-B five need your yes anyway.
 2. **RecortiaE2E opened from Finder runs live services** (R3-D01, DEBUG only, never shipped).
    *Recommend:* the E2E target refuses to launch without the runner argument.
+   Done in T1 (`1dcae30`, `5380201`, `757af07`): `E2ERunner.admit` validates the whole launch
+   request in `AppDelegate.init` before `AppModel` exists and exits 2 with one stderr line;
+   `test-e2e-isolation.py` launches the built binary with no arguments and 13 malformed requests
+   (decisions.md).
 3. **Discard warning after a successful pin** (R3-D17): the warning says the image was never pinned.
    *Recommend:* say what is lost ("edits that were not copied or saved") on close and quit alike.
+   Done in T1 (`5070481`): `EditorWindowController.discardOnCloseDetail` and
+   `MessagePresenter.discardOnQuitDetail` say the changes were not copied or saved, in en and pt-BR;
+   the bilingual `last-window` and `quit-confirmation` E2E scenarios check the rendered text
+   (decisions.md).
 4. **Release build in CI** (R3-D09, R3-D10). *Recommend:* add an unsigned Release build of the
    shipping target plus `check-release-binary.sh` to hosted CI, and restrict the E2E foreground
    helper to Debug.
+   Done in T1 (`22a4eab`): CI runs `scripts/check-release-build.sh` after the Debug gate with the
+   Xcode `select-xcode.sh` picks from TOOLCHAIN.json; the foreground helper compiles only in Debug
+   (`ReleaseBuildGateTests` in `test-release-binary.py`; decisions.md).
 5. **Same-epoch render failure keeps the previous preview** (R2-D12). *Recommend:* show the failure
    over the stale preview and block export until a render succeeds, so the canvas never shows
    pixels the export would not produce.
+   Done in T1 (`21f4a9d`, `72b7dc7`, `507c054`): `EditorModel.isPreviewReady` is false while the
+   render of what the canvas shows failed; the canvas veils the stale pixels with "The preview could
+   not be rendered.", and copy, save, drag and pin are refused until a render succeeds
+   (`EditorPreviewTests`; decisions.md).
 6. **Inferred imaging and scrolling rows:** R1-RCI-01 (scroll admission threshold uses the frame
    height — a heuristic or a bug, needs a fixture with a short pane), R1-RCI-03/05 (blur sampling
    differs with padding and inside magnifiers; cosmetic effects only), R1-RCI-09 (stationarity
@@ -173,7 +188,7 @@ pasteboard is read synchronously on the main actor to produce an error (`ImageIn
   space probe's `dynamic` mode and the installed-app fullscreen check, both owner-run.
 - **T1 review leftovers (2026-11-20).** R-1: T1b's presentation order (Space policy, order front, then
   activate) still needs the space probe's `dynamic` mode and the installed-app fullscreen check, both
-  owner-run. R-4: one admission point for the masking-pending guards (T2). R-5: measured and recorded in SPEC §10
+  owner-run. R-4: done in T2: `EditorModel.admitsAction` is the one admission point and `MaskingAdmissionTests` drives every public entry point while masks are pending (decisions.md). R-5: measured and recorded in SPEC §10
   (deadline kept at 8 s; decisions.md).
 - **AnnotationRendererTests flake.** One parallel package run failed "drawing twice is
   byte-identical" on the Arabic and emoji sample and passed on rerun and in two full gates; record it

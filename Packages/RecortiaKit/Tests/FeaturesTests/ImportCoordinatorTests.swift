@@ -12,15 +12,18 @@ final class ImportHarness {
     let input = FakeImageInput()
     let assets = FakeAssetService()
     let permission = FakeScreenPermission(isGranted: false)
+    let settings = SettingsStore(storage: MemoryPreferenceStorage())
     let coordinator: ImportCoordinator
     var imported: [DocumentSession] = []
     var fileNames: [String?] = []
+    var masking: [Bool] = []
 
     init() {
-        coordinator = ImportCoordinator(input: input, assets: assets)
-        coordinator.onImported = { [unowned self] session, fileName in
+        coordinator = ImportCoordinator(input: input, assets: assets, settings: settings)
+        coordinator.onImported = { [unowned self] session, fileName, masks in
             self.imported.append(session)
             self.fileNames.append(fileName)
+            self.masking.append(masks)
         }
     }
 }

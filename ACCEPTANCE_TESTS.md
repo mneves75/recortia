@@ -22,6 +22,13 @@ While selecting, capturing, recognizing text, and collecting scroll frames, inje
 
 On each supported OS, capture a region, each display, a chosen window, a delayed target, and a repeated region. Compare a synthetic fixture's numbered corners and boundaries against expected output. Window ambiguity produces a chooser. Cursor/shadow toggles change only the declared content. The app's checkerboard overlays and reference pins are absent by default.
 
+Window background: with Solid color, a window capture exports with no transparent pixel: its
+corners show the colour, its half-transparent shadow is composited over it once, the opaque body
+is unchanged, and a secure mask over a corner shows its own fill. Exporting twice gives identical
+bytes; Transparent keeps today's alpha; region, display, imported and pasted images stay
+transparent (`WindowBackgroundCompositeTests`, `CaptureCoordinatorTests`). The Capture pane
+control is checked in bilingual `settings`; a live window capture remains a physical check.
+
 ### CAP-02 — One active capture and no idle recording
 
 Invoke region capture from a different application's Space using the global shortcut and
@@ -139,6 +146,12 @@ then return and draw a rectangle: annotation creation and viewport offset stay c
 Repeat for window key loss, app deactivation, and mid-pan interruption. An unrelated window's
 notification must not interrupt the canvas; normal held/released Space remains a control.
 The synthetic `canvas-focus` scenario covers these cases; live IME/VoiceOver checks remain separate.
+
+Wheel zoom: off, a real wheel event scrolls and ⌘-wheel zooms; on, a mouse-wheel event (no
+scroll or momentum phase) zooms with the point under the pointer fixed, ⌥-wheel scrolls, a phased
+(trackpad) or momentum event still scrolls, and Reverse zoom direction inverts the same movement
+(bilingual `editor-zoom`; model rule and math in `EditorZoomPreferenceTests`). Physical mouse,
+Magic Mouse and trackpad checks remain manual.
 
 ### PIN-01 — Reference lifecycle
 
@@ -290,6 +303,13 @@ back on, or a window opened while waiting all keep Recortia running. Cancelling 
 editor's discard question keeps the editor and the process (bilingual `last-window`). Child
 processes of the runner prove real exit through `NSApp.terminate` (pin, then last window) and a
 process still running with the preference on or after a launch without a window.
+
+Menu-bar icon (Settings › General, shown by default): the switch turns it off, and only the first
+time says how to get back; turning it on or off again says nothing, and keep running stays on.
+With the icon hidden, reopening Recortia shows Settings and closing it returns to accessory
+without quitting (bilingual `settings` and `launch-presentation`; `MenuBarIconTests`). Physical
+checks: the status item leaves and returns, and opening the installed app from Finder or
+Spotlight with the icon hidden shows Settings.
 
 ### REL-01 — Independent build and CI boundary
 

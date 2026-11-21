@@ -328,7 +328,7 @@
                 "items \(items.count), visible \(visible.count), overflow \(hidden.map(\.itemIdentifier.rawValue))")
         }
 
-        private static func menuItems(_ menu: NSMenu?) -> [NSMenuItem] {
+        static func menuItems(_ menu: NSMenu?) -> [NSMenuItem] {
             (menu?.items ?? []).flatMap { [$0] + menuItems($0.submenu) }
         }
 
@@ -341,13 +341,13 @@
 
         /// Brings a menu up to date as opening it does: its delegate refreshes the items, then the
         /// menu validates them.
-        private static func prepare(_ menu: NSMenu) {
+        static func prepare(_ menu: NSMenu) {
             menu.delegate?.menuNeedsUpdate?(menu)
             menu.update()
         }
 
         /// The main menu's item titled `title`, after the menus validate their items.
-        private static func viewCommand(_ title: String) -> NSMenuItem? {
+        static func viewCommand(_ title: String) -> NSMenuItem? {
             for menu in Set(menuItems(NSApp.mainMenu).compactMap(\.menu)) { prepare(menu) }
             // The refresh may replace items, so search the updated menus.
             return menuItems(NSApp.mainMenu).first { $0.title == title }
