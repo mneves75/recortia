@@ -572,8 +572,8 @@
     "date": "2026-11-20",
     "scope": "FP-048 (program 2026-11 T1): macOS 26 deployment floor (ADR-008); optional masking of e-mail addresses and phone numbers in new captures, failing closed; Open With for PNG and JPEG; filename templates; optional capture sound; latency signposts; editor on system split containers with every toolbar item visible at 980 pt; Output Preview read-only; secure masks never moved by layer edits; file-save and GitHub-consent hardening; one window presentation order; edit values admitted once in Domain. See CHANGELOG.md.",
     "distribution_status": "Source only: not tagged, notarized, published or installed. Branch train/t1, PR #42; merging is the owner's.",
-    "evidence": [],
-    "not_verified": "Bilingual native E2E on this tree; macOS 26.0 launch (no such host); VoiceOver and Full Keyboard Access on the regrouped toolbar; physical Spaces (space probe dynamic mode) and the installed-app fullscreen check after the presentation-order change; recognition recall on real screens; the T1d deadline on an idle Mac."
+    "evidence": ["./init.sh check --unsigned passed on 3d07bfd (Xcode 27.2 27B52, clean tree; .scratch/logs/fill-click-check.log in the train worktree)", "Bilingual native E2E on 3d07bfd: en 55/55, pt-BR 55/55, 200 screenshots each; console unlocked, idle 922 s, no lock during the run (.scratch/e2e/20261120-231353-17161)", "Masking latency on 76c4000: 2560x1440 2x cold 2138 ms, warm p99 2183 ms; 1440x900 warm p99 under 1 s; 8 s deadline kept (SPEC section 10, decisions.md)", "Reviewer agent PASS on the train (no P0/P1) and a cross-model security pass; findings fixed or declined in decisions.md"],
+    "not_verified": "macOS 26.0 launch (no such host); VoiceOver and Full Keyboard Access on the regrouped toolbar and on Position and Size; physical Spaces (space probe dynamic mode) and the installed-app fullscreen check after the presentation-order change; TCC and live capture; recognition recall on real screens; the masking deadline on a strictly idle Mac (measured with the console locked at load 7.9-10.6)."
   },
   "tasks": [
     {
@@ -1837,7 +1837,7 @@
       "id": "FP-048",
       "milestone": "M7",
       "title": "Program 2026-11 T1 (0.15): macOS 26 foundation",
-      "status": "in_progress",
+      "status": "awaiting_manual_validation",
       "depends_on": ["FP-047"],
       "requirement_ids": ["FR-01", "FR-03", "FR-04", "FR-06", "FR-07", "FR-08", "FR-14"],
       "acceptance_test_ids": [],
@@ -1846,7 +1846,7 @@
       "completion_contract": "Each slice has a failing test first; './init.sh check --unsigned' and the bilingual E2E for every touched flow pass; cross-model review recorded.",
       "evidence": ["PR #42 (train/t1)", "docs/specs/program-2026-11/decisions.md"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": "All slices (T1a toolchain and review fixes, ADR-008 floor, T1b module deepening, T1c editor chrome, T1d automatic redaction, T1e Open With, filename templates, capture sound, signposts) are merged on branch train/t1, PR #42 (draft). Gate passed on bf7daf8; bilingual native E2E on the final tree, the T1d deadline measurement and the owner-run space probe and installed-app fullscreen check are outstanding. See source_candidate_0_15_0."
+      "status_note": "All slices (T1a toolchain and review fixes, ADR-008 floor, T1b module deepening, T1c editor chrome, T1d automatic redaction, T1e Open With, filename templates, capture sound, signposts) and the whole-train review fixes are merged on branch train/t1, PR #42. Gate and bilingual native E2E (55/55 per language) passed on 3d07bfd; masking deadline measured. Outstanding, owner-run: space probe dynamic mode, installed-app fullscreen check, VoiceOver pass. See source_candidate_0_15_0."
     },
     {
       "id": "FP-049",
