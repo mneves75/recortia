@@ -1,6 +1,18 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Collapsed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Collapsed" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Recolhido" } }
+      }
+    },
+    "Expanded": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Expanded" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Expandido" } }
+      }
+    },
     "No e-mail addresses or phone numbers were found to mask. Check the image before you share it.": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "No e-mail addresses or phone numbers were found to mask. Check the image before you share it." } },
