@@ -336,6 +336,13 @@ public enum EditorNotice: Hashable, Sendable {
     case maskingFailed
     /// The action waits until automatic masking finishes.
     case maskingInProgress
+    /// The action waits until a text-only redaction's lines are found (A-6).
+    case textRedactionInProgress
+    /// A text-only redaction covered this many recognized lines.
+    case textLinesCovered(Int)
+    /// A text-only redaction found no line, failed, timed out or went stale: the whole rectangle
+    /// stays covered.
+    case textRedactionKeptArea
 }
 
 /// Automatic masking of a new capture (FR-06). While `pending` the editor shows no capture pixels

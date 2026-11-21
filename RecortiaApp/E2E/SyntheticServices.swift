@@ -316,8 +316,8 @@
         }
     }
 
-    /// Scripted automatic-masking detection (FR-06): returns the regions a scenario sets, can hold
-    /// until released, or fail. It reads no pixels and never runs Vision. While it holds, `clock`
+    /// Scripted automatic-masking detection (FR-06) and text-line recognition (A-6): returns the
+    /// regions or lines a scenario sets, can hold until released, or fail. It reads no pixels and never runs Vision. While it holds, `clock`
     /// stands still, so app deadlines measure the app's time rather than the scenario's.
     @MainActor
     final class SyntheticSensitiveText: SensitiveTextService {
@@ -327,21 +327,32 @@
         init(clock: E2EClock) { self.clock = clock }
 
         var regions: [PixelRect] = []
+        var lines: [PixelRect] = []
         var fails = false
         var holds = false
         private var waiter: CheckedContinuation<Void, Never>?
         var isWaiting: Bool { waiter != nil }
         private(set) var requestCount = 0
+        private(set) var lineAreas: [PixelRect] = []
 
         func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
             requestCount += 1
+            return try await answer(regions)
+        }
+
+        func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect) async throws -> [PixelRect] {
+            lineAreas.append(area)
+            return try await answer(lines)
+        }
+
+        private func answer(_ result: [PixelRect]) async throws -> [PixelRect] {
             if holds {
                 clock.hold()
                 await withCheckedContinuation { waiter = $0 }
             }
             try Task.checkCancellation()
             if fails { throw Failure() }
-            return regions
+            return result
         }
 
         func release() {
@@ -353,6 +364,8 @@
         func reset() {
             release()
             regions = []
+            lines = []
+            lineAreas = []
             fails = false
             holds = false
         }

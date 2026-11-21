@@ -134,7 +134,7 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         _ = model.showsOutputPreview
         _ = model.isPreviewReady
         _ = model.redactionFill
-        syncMaskingIndicator(model.isMaskingPending)
+        syncMaskingIndicator(model.autoRedaction == .pending)
         let tool = model.tool
         syncTextEditing(model.textEditing)
         needsDisplay = true
@@ -217,8 +217,9 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         // Neutral, opaque ground: never a translucent window material (FR-13).
         NSColor.underPageBackgroundColor.setFill()
         bounds.fill()
-        // Automatic masking is running: no capture pixel is drawn until its masks land (FR-06).
-        if model.isMaskingPending { return drawMaskingPlaceholder() }
+        // Automatic masking is running: no capture pixel is drawn until its masks land (FR-06). A
+        // pending text-only redaction draws as usual: its cover is already an opaque mask.
+        if model.autoRedaction == .pending { return drawMaskingPlaceholder() }
 
         let viewport = model.viewport
         let document = model.document

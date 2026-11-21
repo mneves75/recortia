@@ -236,6 +236,11 @@ enum EditorStrings {
         case .maskingInProgress:
             String(
                 localized: "Masking e-mail addresses and phone numbers. Try again when it finishes.", table: "Editor")
+        case .textRedactionInProgress:
+            String(localized: "Finding the text to cover. Try again when it finishes.", table: "Editor")
+        case .textLinesCovered(let count): String(localized: "Covered \(count) lines of text.", table: "Editor")
+        case .textRedactionKeptArea:
+            String(localized: "No text lines were found, so the whole area stays covered.", table: "Editor")
         }
     }
 

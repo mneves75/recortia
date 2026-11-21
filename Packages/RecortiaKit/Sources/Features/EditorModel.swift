@@ -21,6 +21,8 @@ public final class EditorModel {
     public internal(set) var style = EditorStyle()
     /// Opaque fill for new secure redactions.
     public internal(set) var redactionFill: RGBA = .black
+    /// New redactions cover only the text lines recognized inside them (EditorModel+TextRedaction.swift).
+    public internal(set) var redactsTextOnly = false
     public internal(set) var viewport = EditorViewport()
     public internal(set) var viewportSize = Size<ViewSpace>(width: 0, height: 0)
     /// Device pixels per view point of the canvas's screen; 100 % zoom shows one document pixel per device pixel.
@@ -35,6 +37,8 @@ public final class EditorModel {
     public internal(set) var isClosed = false
     /// Automatic masking of a new capture (EditorModel+AutoRedaction.swift).
     public internal(set) var autoRedaction: AutoRedaction = .off
+    /// A text-only redaction waiting for recognition (EditorModel+TextRedaction.swift).
+    var textRedaction: PendingTextRedaction?
 
     // Preview (EditorModel+Preview.swift)
     public internal(set) var baseImage: CGImage?
@@ -129,7 +133,7 @@ public final class EditorModel {
 
     // An editor released without `close()` still stops its detection and deadline.
     isolated deinit {
-        for task in autoRedactionTasks { task.cancel() }
+        for task in autoRedactionTasks + (textRedaction?.tasks ?? []) { task.cancel() }
     }
 
     public var document: Document { session.document }

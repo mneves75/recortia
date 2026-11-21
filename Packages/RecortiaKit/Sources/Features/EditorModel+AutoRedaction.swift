@@ -7,16 +7,18 @@ import Foundation
 // A detector error, cancellation or the deadline fails closed: nothing is masked, the editor says
 // so, manual export is allowed again, and that capture's automatic batch is skipped.
 extension EditorModel {
-    public var isMaskingPending: Bool { autoRedaction == .pending }
+    /// Automatic masks, or the line masks of a text-only redaction, have not landed yet.
+    public var isMaskingPending: Bool { autoRedaction == .pending || textRedaction != nil }
 
     /// The one admission point for the person's actions while the masks are pending (R-4): every
     /// entry point that edits, selects, samples, renders, recognizes, imports or exports asks it
     /// first, and `edit` asks it for every document change. `explaining` posts
-    /// `.maskingInProgress` for a command the person gave by name; pointer, selection, history and
-    /// edit traffic is refused silently. `MaskingAdmissionTests` drives every public function.
+    /// `.maskingInProgress` (`.textRedactionInProgress` for a text-only redaction) for a command
+    /// the person gave by name; pointer, selection, history and edit traffic is refused silently.
+    /// `MaskingAdmissionTests` drives every public function.
     func admitsAction(explaining: Bool = false) -> Bool {
         guard isMaskingPending else { return true }
-        if explaining { post(.maskingInProgress) }
+        if explaining { post(textRedaction == nil ? .maskingInProgress : .textRedactionInProgress) }
         return false
     }
 
@@ -54,13 +56,13 @@ extension EditorModel {
     /// What the capture's automatic batch may export once masking is no longer pending (at once when
     /// it is not): the frozen baseline, or nil when masking failed.
     func autoRedactionSettled() async -> DocumentSession? {
-        guard isMaskingPending else { return automaticExportBaseline }
+        guard autoRedaction == .pending else { return automaticExportBaseline }
         return await withCheckedContinuation { autoRedactionWaiters.append($0) }
     }
 
     /// Closing while pending: detection is cancelled and nothing waits for it any more.
     func cancelAutoRedaction() {
-        guard isMaskingPending else { return }
+        guard autoRedaction == .pending else { return }
         settleAutoRedaction(.failed)
     }
 
@@ -68,7 +70,7 @@ extension EditorModel {
     private func finishAutoRedaction(_ result: Result<[PixelRect], any Error>, for request: RequestIdentity?) {
         // The first of detection and deadline decides; a late result, or one for a superseded
         // request, is ignored.
-        guard isMaskingPending, !isClosed, request == autoRedactionRequest else { return }
+        guard autoRedaction == .pending, !isClosed, request == autoRedactionRequest else { return }
         // A result counts only for the document state it was computed from, from a task that was
         // not cancelled; anything else fails closed, an empty result included.
         let isCurrent = !Task.isCancelled && request.map { session.accepts($0) } == true
