@@ -1,9 +1,11 @@
 # ADR-013: Recortia project files keep edits, never the pixels a secure mask hid
 
-**Status:** Proposed (2026-11-21) by the coordinator for the plan's scheduled ADR stop (the plan's
-"threat-model ADR: source pixels under masks"), under the owner's 2026-11-20 delegation
-(`docs/specs/program-2026-11/decisions.md`). Accepted only if its fresh-context review finds no
-path to a forbidden outcome; the owner may overrule it before the release that ships it.
+**Status:** Blocked (2026-11-21). Proposed by the coordinator at the plan's scheduled ADR stop (the
+plan's "threat-model ADR: source pixels under masks"), under the owner's 2026-11-20 delegation
+(`docs/specs/program-2026-11/decisions.md`). The second review found a path to F1 (pixels a secure
+mask hid recoverable from a saved project; round 2 in the ledger). The coordinator's rule was that
+any F1 path parks the design rather than another rewording. Nothing is built. The owner decides
+(Unblock).
 **Requirements:** FR-06 (secure redaction), FR-14 (import), Program 2026-11 B-8 ·
 **Verification:** `ProjectFileTests`, `ProjectSnapshotConstructionTests`, RED-family project tests,
 bilingual E2E `project-files`
@@ -131,8 +133,25 @@ A project file is also untrusted input: someone else's `.recortia` file may be m
 | 1 | A linked preview redirects the extension | Fixed (4) |
 | 1 | A replaced preview shows an unredacted image | Declined: the author of a package holds its pixels; residual (Threat model) |
 
-Round 1 used a prompt about "ordinary events" with web access off, after the provider's content
-filter refused the adversarial wording; it is not a full adversarial pass.
+| 2 | F1: a magnifier destination that only touches a mask passes the overlap test; after an output resize the mask's outward rounding covers a magnified column, whose source stays in the asset | Open (parks the ADR) |
+| 2 | A named pipe as a member blocks the open before `fstat` | Needed: `O_NONBLOCK` on member opens, as `ImageInput` does |
+| 2 | Two projects opened together exceed the request's 80 MP budget | Needed: one budget at the shared open dispatcher |
+| 2 | Hundreds of full-canvas cosmetic blurs stall the first render | Needed: a cumulative effect-work bound before the editor exists |
+| 2 | A symlinked parent directory is followed when opening the package root | Needed: `O_NOFOLLOW_ANY` for the root |
+
+Rounds 1 and 2 used a prompt about "ordinary events" with web access off, after the provider's
+content filter refused the adversarial wording; they are not full adversarial passes.
+
+## Unblock
+
+The owner chooses one:
+
+1. **Simplest safe scope:** a project save is refused whenever the document has both a secure mask
+   and any magnifier callout (no geometry test at all), plus the four "Needed" rows above; then one
+   more review and build.
+2. **Keep magnifiers with masks:** burn masks through the magnifier mapping (the deferred
+   alternative), which changes what the magnifier shows; needs its own design and review.
+3. **Drop B-8.** Exports stay flattened only, as today.
 
 ## Consequences
 
