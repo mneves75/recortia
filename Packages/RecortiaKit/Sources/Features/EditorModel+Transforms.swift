@@ -95,18 +95,20 @@ extension EditorModel {
             guard let frame = EditorGeometry.frame(of: annotation) else { throw DocumentError.invalidGeometry }
             let centre = map.apply(Point(x: frame.midX, y: frame.midY))
             return annotation.translated(dx: centre.x - frame.midX, dy: centre.y - frame.midY)
-        case .arrow(let start, let end, let control):
-            copy.kind = .arrow(start: map.apply(start), end: map.apply(end), control: control.map(map.apply))
+        case .arrow(let start, let end, let control, let head):
+            copy.kind = .arrow(
+                start: map.apply(start), end: map.apply(end), control: control.map(map.apply), head: head)
         case .line(let start, let end):
             copy.kind = .line(start: map.apply(start), end: map.apply(end))
         case .rectangle(let rect):
             copy.kind = .rectangle(map.apply(rect))
         case .ellipse(let rect):
             copy.kind = .ellipse(map.apply(rect))
-        case .freehand(let points):
-            copy.kind = .freehand(points.map(map.apply))
-        case .highlighter(let points):
-            copy.kind = .highlighter(points.map(map.apply))
+        // Quarter turns and mirrors keep distances, so a smoothed stroke's curve maps exactly.
+        case .freehand(let points, let smoothed):
+            copy.kind = .freehand(points.map(map.apply), smoothed: smoothed)
+        case .highlighter(let points, let smoothed):
+            copy.kind = .highlighter(points.map(map.apply), smoothed: smoothed)
         case .step(let center, let number):
             copy.kind = .step(center: map.apply(center), number: number)
         }

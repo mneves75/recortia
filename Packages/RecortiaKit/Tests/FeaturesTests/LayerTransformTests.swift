@@ -47,6 +47,23 @@ struct LayerTransformTests {
         #expect(turned.sourceToDocument(assetSize: size).apply(Point(x: 0, y: 0)) == Point(x: 150, y: 175))
     }
 
+    @Test("A whole-image turn keeps an arrow's head style and a stroke's smoothing")
+    func imageTurnKeepsHeadAndSmoothing() async throws {
+        let (fixture, _) = try await layered()
+        let m = fixture.harness.model
+        m.selectTool(.arrow)
+        m.setArrowHead(.double)
+        fixture.harness.drag((300, 40), (360, 90))
+        m.selectTool(.freehand)
+        m.setStrokeSmoothing(true)
+        fixture.harness.drag((40, 200), (120, 260))
+        m.selectTool(.select)
+        m.transformImage(.rotateRight)
+        let kinds = m.document.annotations.map(\.kind)
+        #expect(kinds.contains { if case .arrow(_, _, _, .double) = $0 { true } else { false } })
+        #expect(kinds.contains { if case .freehand(_, true) = $0 { true } else { false } })
+    }
+
     @Test("Four turns and two mirrors give back the same placement, for a layer and for the whole image")
     func turnsAndMirrorsReturnToIdentity() async throws {
         let (fixture, id) = try await layered()
