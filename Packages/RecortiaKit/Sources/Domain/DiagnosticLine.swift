@@ -144,6 +144,7 @@ extension DiagnosticExportSink {
         case .file: "file"
         case .drag: "drag"
         case .github: "github"
+        case .print: "print"
         }
     }
 }
@@ -153,6 +154,7 @@ extension DiagnosticImageFormat {
         switch self {
         case .png: "png"
         case .jpeg: "jpeg"
+        case .heic: "heic"
         case .automatic: "automatic"
         }
     }
@@ -176,6 +178,7 @@ extension DiagnosticExportFailure {
         case .system(let code): [("failure", "system"), ("code", "\(code)")]
         case .leftover: [("failure", "leftover")]
         case .maskingUnfinished: [("failure", "masking_unfinished")]
+        case .printFailed: [("failure", "print_failed")]
         }
     }
 }

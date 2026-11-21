@@ -211,15 +211,17 @@ public final class ExportCoordinator {
             case .save, .saveToFolder: .file
             case .drag: .drag
             case .upload: .github
+            case .print: .print
             }
         let format: DiagnosticImageFormat =
             switch exportOptions(for: action).formatChoice {
             case .fixed(.png): .png
             case .fixed(.jpeg): .jpeg
+            case .fixed(.heic): .heic
             case .automatic: .automatic
             }
         switch outcome {
-        case .copied, .saved, .dragged, .uploaded, .alreadyCompleted:
+        case .copied, .printed, .saved, .dragged, .uploaded, .alreadyCompleted:
             diagnostics.record(.exportFinished(sink: sink, format: format, duration: duration))
         case .canceled:
             diagnostics.record(.exportCancelled(sink: sink, format: format, duration: duration))

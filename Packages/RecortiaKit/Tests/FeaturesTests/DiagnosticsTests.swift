@@ -182,4 +182,25 @@ struct DiagnosticsTests {
             #expect(!lines.contains(secret), "\(secret) reached a line")
         }
     }
+
+    @Test("Print and HEIC saves are recorded with their own sink, format and failure")
+    func printAndHEICHooks() async {
+        let h = ExportHarness()
+        #expect(await h.export(.print) == .printed)
+        h.printer.error = .printFailed
+        _ = await h.export(.print)
+        let folder = URL(fileURLWithPath: "/private/tmp/Secret Project")
+        _ = await h.export(
+            .save(to: folder.appending(path: "Quarterly.heic"), format: .fixed(.heic(quality: 0.8)), replacing: nil))
+        #expect(
+            h.diagnostics.events == [
+                .exportFinished(sink: .print, format: .png, duration: .zero),
+                .exportFailed(sink: .print, format: .png, failure: .printFailed, duration: .zero),
+                .exportFinished(sink: .file, format: .heic, duration: .zero),
+            ])
+        let lines = h.diagnostics.events.map { $0.line(at: Date()) }
+        #expect(lines.allSatisfy { !$0.contains("Quarterly") && !$0.contains("Secret") })
+        #expect(lines[1].contains("sink=print") && lines[1].contains("failure=print_failed"))
+        #expect(lines[2].contains("format=heic"))
+    }
 }

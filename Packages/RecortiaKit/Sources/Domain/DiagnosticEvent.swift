@@ -79,11 +79,13 @@ public enum DiagnosticExportSink: Hashable, Sendable {
     case file
     case drag
     case github
+    case print
 }
 
 public enum DiagnosticImageFormat: Hashable, Sendable {
     case png
     case jpeg
+    case heic
     case automatic
 }
 
@@ -103,6 +105,7 @@ public enum DiagnosticExportFailure: Hashable, Sendable {
     case system(code: Int)
     case leftover
     case maskingUnfinished
+    case printFailed
 }
 
 public enum DiagnosticUploadFailure: Hashable, Sendable {

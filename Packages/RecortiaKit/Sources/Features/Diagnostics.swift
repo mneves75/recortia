@@ -161,6 +161,7 @@ extension DiagnosticExportFailure {
             case .system(let code): .system(code: code)
             case .leftover: .leftover  // the entry's name is not recorded
             case .maskingUnfinished: .maskingUnfinished
+            case .printFailed: .printFailed
             }
     }
 }
