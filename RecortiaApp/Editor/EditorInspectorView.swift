@@ -679,8 +679,8 @@ private struct BoxBackgroundRows: View {
     }
 }
 
-/// X, Y, Width and Height in a native disclosure (VoiceOver reads its expanded state) that starts
-/// collapsed and keeps its state this session.
+/// X, Y, Width and Height in a native disclosure (VoiceOver reads its expanded state) whose title
+/// is also a button, that starts collapsed and keeps its state this session.
 private struct PositionSection: View {
     let model: EditorModel
     let item: EditorListItem
@@ -693,7 +693,12 @@ private struct PositionSection: View {
                     model.setFrame($0, for: item.id)
                 }
             } label: {
-                Text(String(localized: "Position and Size", table: "Editor"))
+                // The title toggles too: the triangle alone ignores accessibility Press inside a Form.
+                Button(String(localized: "Position and Size", table: "Editor")) {
+                    state.showsPositionAndSize.toggle()
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("inspector.positionAndSize.title")
             }
             .accessibilityIdentifier("inspector.positionAndSize")
         }

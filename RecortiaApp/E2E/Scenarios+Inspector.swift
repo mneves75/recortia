@@ -99,11 +99,13 @@
                 "style.fill is in the AX tree", E2EAccessibilityControl.axElement("style.fill"))
             try context.require(
                 "style.fill performs AXPress", AXUIElementPerformAction(fill, kAXPressAction as CFString) == .success)
+            let fillChanged = await E2EWait.until { rectangleFill() != fillBefore }
             context.check(
-                "the Fill control changes the rectangle's fill",
-                await E2EWait.until { rectangleFill() != fillBefore },
-                "before \(String(describing: fillBefore)), after \(String(describing: rectangleFill()))")
-            model.undo()
+                "the Fill control changes the rectangle's fill", fillChanged,
+                "before \(String(describing: fillBefore)), after \(String(describing: rectangleFill())), "
+                    + "AX actions \(E2EAccessibilityControl.axActionNames(fill))")
+            // Undo only a change that happened: otherwise it removes the rectangle and every later check fails.
+            if fillChanged { model.undo() }
             await E2ESnapshot.settle(root)
             context.check(
                 "one Undo restores the rectangle's fill", rectangleFill() == fillBefore,

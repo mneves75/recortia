@@ -278,10 +278,10 @@
             }
         }
 
-        /// Opens or closes a native disclosure as a person does: activates the pane's window, clicks
-        /// the disclosure triangle of the header titled `title` inside the identified element when
-        /// its explicit expanded state differs from `expanded`, and requires the state to follow.
-        /// SwiftUI draws this triangle itself and offers no accessibility Press to this process.
+        /// Opens or closes a native disclosure through its title button, the way a person or an
+        /// assistive app does: opening clicks the title with the pointer, closing presses it through
+        /// accessibility. Requires the triangle's reported state and the content to follow.
+        /// SwiftUI's triangle inside a Form ignores Press, so the title (`<identifier>.title`) toggles.
         static func setDisclosure(
             _ identifier: String, titled title: String, expanded: Bool, in pane: NSView, _ context: ScenarioContext
         ) async throws {
@@ -290,21 +290,23 @@
             await E2ESnapshot.settle(pane)
             let triangle = try disclosureTriangle(identifier, titled: title, in: pane, context)
             guard try expandedState(triangle, identifier, context) != expanded else { return }
-            let axTriangle = try context.unwrap(
-                "\(identifier) disclosure is in the AX tree", axElement(identifier, triangleTitled: title))
-            let result = AXUIElementPerformAction(axTriangle, kAXPressAction as CFString)
+            if expanded {
+                try click("\(identifier).title", in: pane, context)
+            } else {
+                try pressCheckingEffect("\(identifier).title", in: pane, context)
+            }
             try context.require(
-                "\(identifier) disclosure performs AXPress", result == .success, "AX status \(result.rawValue)")
-            try context.require(
-                "\(identifier) disclosure \(expanded ? "opens" : "closes") under the pointer",
+                "\(identifier) disclosure \(expanded ? "opens by a click" : "closes by Press") on its title",
                 await E2EWait.until {
                     let current = findTriangle(titled: title, in: element(identifier, in: pane))
                     return (current.triangle?.value(forKey: "accessibilityValue") as? NSNumber)?.intValue
                         == (expanded ? 1 : 0)
                 },
-                "triangle frame \(String(describing: triangle.value(forKey: "accessibilityFrame"))), value now "
+                "value now "
                     + "\(String(describing: findTriangle(titled: title, in: element(identifier, in: pane)).triangle?.value(forKey: "accessibilityValue"))), "
-                    + "frame.x present \(isPresent("frame.x", in: pane)), pane \(window.convertToScreen(pane.convert(pane.bounds, to: nil)))"
+                    + "triangles \(findTriangle(titled: title, in: element(identifier, in: pane)).others), "
+                    + "triangle actions \(triangle.accessibilityActionNames().map(\.rawValue)), "
+                    + "frame.x present \(isPresent("frame.x", in: pane))"
             )
         }
 
@@ -338,6 +340,12 @@
             return try context.unwrap(
                 "\(identifier) has a disclosure triangle titled \(title)", found.triangle,
                 "triangles \(found.others), role \(String(describing: element.value(forKey: "accessibilityRole")))")
+        }
+
+        /// The actions an AX element lists, for failure details.
+        static func axActionNames(_ element: AXUIElement) -> [String] {
+            var names: CFArray?
+            return AXUIElementCopyActionNames(element, &names) == .success ? (names as? [String] ?? []) : []
         }
 
         /// This process's AX element with `identifier` (or, with `triangleTitled`, the disclosure

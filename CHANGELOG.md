@@ -18,7 +18,7 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 ## [0.15.0] - 2026-11-20
 
 Source candidate, build 29: not tagged or published. It requires macOS 26 or later. Not verified on
-this build: macOS 26.0 itself (the test Mac runs 27.3), VoiceOver and Full Keyboard Access on the
+this build: macOS 26.0 itself (the test Mac runs 27.3), VoiceOver (including opening Position and Size) and Full Keyboard Access on the
 regrouped toolbar, physical keyboard, Spaces and permission checks, and recognition recall on real
 screens.
 

@@ -178,3 +178,6 @@ pasteboard is read synchronously on the main actor to produce an error (`ImageIn
 - **AnnotationRendererTests flake.** One parallel package run failed "drawing twice is
   byte-identical" on the Arabic and emoji sample and passed on rerun and in two full gates; record it
   under the open text-font incident (AGENTS.md F-1) and watch for a recurrence.
+- **VoiceOver on Position and Size (2026-11-20).** Its triangle ignored accessibility Press inside the
+  inspector Form in three native runs; the title is now a button that toggles it. Owner-run: open and
+  close it with VoiceOver, and confirm VoiceOver reads the expanded state.
