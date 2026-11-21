@@ -27,12 +27,13 @@ release except by re-downloading from the releases page.
 
 ## Solution
 
-Integrate Sparkle 2.10.0 as a SwiftPM binary target and drive it from one adapter in
+Integrate Sparkle 2.10.1 as a SwiftPM binary target and drive it from one adapter in
 `MacPlatform`, with a single explicit entry point and a signed static feed.
 
-- **Dependency.** `sparkle-project/Sparkle`, version 2.10.0 (2026-09-13), macOS 12+ upstream,
-  binary target with the upstream-pinned checksum, resolved in `Package.resolved`. The app's own
-  minimum stays macOS 15.0.
+- **Dependency.** `sparkle-project/Sparkle`, version 2.10.1 (2026-10-25, the newest stable release
+  at implementation; 2.10.0 was planned), macOS 12+ upstream, binary target with the
+  upstream-pinned checksum, resolved in `Package.resolved`. The app's own minimum is its
+  deployment target.
 - **Entry point.** One "Check for Updates…" menu item in the menu-bar menu. It is the only code
   path that starts a check unless the user turns on automatic checks.
 - **Default.** Automatic checks are off. `SUEnableAutomaticChecks` is absent and
@@ -44,7 +45,8 @@ Integrate Sparkle 2.10.0 as a SwiftPM binary target and drive it from one adapte
 - **Channel.** Stable releases only. Pre-release tags (`v<version>-betaN`) are never written to
   the appcast, so a beta can never be offered to a stable install.
 - **Compatibility.** The appcast declares a minimum system version of 15.0 and arm64-only
-  hardware, matching the app. Sparkle filters incompatible items before offering them.
+  hardware, matching the app. Sparkle filters incompatible items before offering them. The 15.0
+  figures in this spec predate ADR-008: the minimum is the deployment target, macOS 26.0 since 0.15.
 - **Signing.** Each DMG is signed with an EdDSA key at release time and the signature is written
   into the appcast item. The app verifies the downloaded archive against `SUPublicEDKey` and
   refuses anything that does not match. Notarization and stapling remain required, so a valid

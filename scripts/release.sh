@@ -162,6 +162,12 @@ if ! cmp -s "$src/RecortiaApp/Resources/Fosco-LICENSE.txt" "$app/Contents/Resour
   echo "release: the bundled Fosco notice is missing or differs from the reviewed source" >&2
   exit 1
 fi
+sparkle_notice="$src/RecortiaApp/Resources/Sparkle-LICENSE.txt"
+if ! cmp -s "$sparkle_notice" "$out/spm/checkouts/Sparkle/LICENSE" \
+  || ! cmp -s "$sparkle_notice" "$app/Contents/Resources/Sparkle-LICENSE.txt"; then
+  echo "release: the bundled Sparkle notice is missing or differs from the pinned package license" >&2
+  exit 1
+fi
 
 # Notarize and staple the app itself before it goes into the image, so a copy dragged out of the DMG
 # still passes Gatekeeper offline. The DMG is notarized and stapled again below.

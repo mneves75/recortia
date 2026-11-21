@@ -30,6 +30,7 @@
 		1A98A7B62D4C8919FAF4D280 /* Scenarios+AutomaticSave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695E6CF017268288FAA2B8A3 /* Scenarios+AutomaticSave.swift */; };
 		1D174842EBCD9A51C589C61D /* EditorImageCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9E78A8FF840E180CE7CF49 /* EditorImageCommands.swift */; };
 		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
+		1F084100BC0119FE0A6EF21D /* Sparkle-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = D7FB5DD21287CEDB063E76CB /* Sparkle-LICENSE.txt */; };
 		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
 		2133948662674C38E5A43683 /* Scenarios+LayerTransforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92BB9D351D46D925D163B32 /* Scenarios+LayerTransforms.swift */; };
 		2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */; };
@@ -120,6 +121,7 @@
 		9F2020ACB10567056318B19E /* ScreenChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED2B14CE42AB62F1B1F016E /* ScreenChoice.swift */; };
 		A30DD234D2E1308C1916965D /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
 		A49AB85E4F2C60B5495F83EF /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
+		A527D69314DBF9A9C73B7DF5 /* Sparkle-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = D7FB5DD21287CEDB063E76CB /* Sparkle-LICENSE.txt */; };
 		A55745B240F288A4EE6CE160 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97C30D7091C2051638564FB /* GlobalShortcuts.swift */; };
 		A676779ABA0EA316566E2589 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBEF619B471E0C3284F9AED2 /* SettingsView.swift */; };
 		A8310D2D3CD5C642EB8F3D94 /* Scenarios+Presence.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */; };
@@ -290,6 +292,7 @@
 		CE69FEA380523086B4D11CEE /* Scenarios+Spaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Spaces.swift"; sourceTree = "<group>"; };
 		D07F8A23F06F222D5CAD4B07 /* Scenarios+Scroll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Scroll.swift"; sourceTree = "<group>"; };
 		D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticServices.swift; sourceTree = "<group>"; };
+		D7FB5DD21287CEDB063E76CB /* Sparkle-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Sparkle-LICENSE.txt"; sourceTree = "<group>"; };
 		D854D2A81E8D9726E6A23685 /* Scenarios+Editor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Editor.swift"; sourceTree = "<group>"; };
 		D97C30D7091C2051638564FB /* GlobalShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcuts.swift; sourceTree = "<group>"; };
 		DDE275E3D7EEDDEF406E8DC9 /* AutoScrollRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoScrollRegression.swift; sourceTree = "<group>"; };
@@ -452,6 +455,7 @@
 				37E3B5628385CE0D560B7AC3 /* KeyboardShortcuts-LICENSE.txt */,
 				EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */,
 				1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */,
+				D7FB5DD21287CEDB063E76CB /* Sparkle-LICENSE.txt */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -750,6 +754,7 @@
 				D46AF12425F8AA5FB4735AA2 /* KeyboardShortcuts-LICENSE.txt in Resources */,
 				182984EEB477BE03386FF93A /* Localizable.xcstrings in Resources */,
 				DEACB06F1D447813DD7A6E36 /* Recortia-LICENSE.txt in Resources */,
+				1F084100BC0119FE0A6EF21D /* Sparkle-LICENSE.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -763,6 +768,7 @@
 				124B4F00ABDE456BEA8595ED /* KeyboardShortcuts-LICENSE.txt in Resources */,
 				4A11132EA0C0DEB59B529A97 /* Localizable.xcstrings in Resources */,
 				7023DDE1D04BA851901E9DCF /* Recortia-LICENSE.txt in Resources */,
+				A527D69314DBF9A9C73B7DF5 /* Sparkle-LICENSE.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

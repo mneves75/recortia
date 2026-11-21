@@ -171,8 +171,9 @@ is kept in [docs/handoff/](docs/handoff/).
 
 ## License
 
-[MIT](LICENSE). The app bundle includes this license and the MIT notice of the pinned
-KeyboardShortcuts package.
+[MIT](LICENSE). The app bundle includes this license and the notices of the pinned
+KeyboardShortcuts and Sparkle packages; [THIRD_PARTY.txt](THIRD_PARTY.txt) lists every
+third-party component and its license.
 
 ## Acknowledgements
 
