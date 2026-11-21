@@ -115,6 +115,25 @@ struct FramingTests {
         #expect(solid == Presentation(background: .solid(RGBA(r: 1, g: 2, b: 3))))
     }
 
+    @Test("A document or framing written before presets re-encodes to the same bytes")
+    func oldBytesSurviveReencoding() throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        for old in [Self.plainBeforePresets, Self.solidBeforePresets] {
+            let framing = try JSONDecoder().decode(Presentation.self, from: Data(old.utf8))
+            #expect(String(decoding: try encoder.encode(framing), as: UTF8.self) == old)
+        }
+        let document = try JSONDecoder().decode(Document.self, from: Data(Self.documentBeforePresets.utf8))
+        #expect(String(decoding: try encoder.encode(document), as: UTF8.self) == Self.documentBeforePresets)
+        // Each default is left out on its own; the other value still round-trips.
+        for framing in [
+            Presentation(aspect: .square), Presentation(balancesContent: false),
+            Presentation(aspect: .landscape16x9, balancesContent: false),
+        ] {
+            #expect(try JSONDecoder().decode(Presentation.self, from: encoder.encode(framing)) == framing)
+        }
+    }
+
     @Test("Aspect, balance and the radial gradient survive a round trip")
     func roundTrip() throws {
         let framing = Presentation(

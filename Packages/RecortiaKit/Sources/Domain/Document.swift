@@ -253,6 +253,18 @@ public struct Presentation: Hashable, Sendable, Codable {
         aspect = try container.decodeIfPresent(FramingAspect.self, forKey: .aspect) ?? .free
         balancesContent = try container.decodeIfPresent(Bool.self, forKey: .balancesContent) ?? true
     }
+
+    /// Free and balance on are written without their keys, each on its own, so documents and
+    /// preferences from before presets keep their bytes.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(background, forKey: .background)
+        try container.encode(padding, forKey: .padding)
+        try container.encode(cornerRadius, forKey: .cornerRadius)
+        try container.encodeIfPresent(shadow, forKey: .shadow)
+        if aspect != .free { try container.encode(aspect, forKey: .aspect) }
+        if !balancesContent { try container.encode(false, forKey: .balancesContent) }
+    }
 }
 
 /// Spotlight and magnifier callouts (FR-13). A magnifier samples the sanitized raster layers,
