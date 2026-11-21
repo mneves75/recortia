@@ -198,7 +198,7 @@ Auto-copy and auto-save are off by default. If later enabled, show that copying/
 
 Run Vision locally and off the UI actor. Support a crop-to-text command and OCR on imported images. Prefer the modern Swift API where verified; Apple documents its concurrency-oriented redesign. [S07]
 
-Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
+Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. A primary language chosen in Settings from those the recognizer reports is tried first, ahead of the others in their usual order; one the recognizer no longer reports returns to Automatic. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
 
 Recognized ranges MUST have normalized bounding boxes converted through the shared geometry layer. OCR is tied to document revision and privacy epoch; outdated results cannot overwrite the clipboard after a new capture or redaction. Text mode with no detected text leaves existing clipboard content unchanged and displays a nonblocking message.
 

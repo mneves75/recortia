@@ -51,6 +51,15 @@ public final class SettingsStore {
         persist()
     }
 
+    /// Returns the primary recognition language to Automatic when this Mac's recognizer no longer
+    /// reports it (FR-08). An empty list, a recognizer that reports nothing, changes nothing.
+    public func forgetUnsupportedPrimaryRecognitionLanguage(supported: [Locale.Language]) {
+        guard let primary = preferences.primaryRecognitionLanguage, !supported.isEmpty,
+            !supported.contains(where: { $0.maximalIdentifier == primary })
+        else { return }
+        update { $0.primaryRecognitionLanguage = nil }
+    }
+
     /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
         githubUploadConsentID = UUID()
@@ -96,7 +105,8 @@ public final class SettingsStore {
     }
 
     /// Clamps capture delay, finite JPEG quality and finite pin opacity; non-finite quality or
-    /// opacity and an invalid export scale become defaults; an invalid window size is discarded.
+    /// opacity and an invalid export scale become defaults; an invalid window size and a malformed
+    /// primary recognition language are discarded.
     public static func sanitized(_ input: Preferences) -> Preferences {
         let defaults = Preferences()
         var output = input
@@ -116,8 +126,20 @@ public final class SettingsStore {
             ? min(max(input.pinDefaultOpacity, opacityRange.lowerBound), opacityRange.upperBound)
             : defaults.pinDefaultOpacity
         output.editorContentSize = input.editorContentSize.flatMap(EditorWindowSizing.rememberable)
+        output.primaryRecognitionLanguage = input.primaryRecognitionLanguage.flatMap(languageIdentifier)
         // Automatic saving writes only to a folder the person chose; without one it is off.
         if input.preferredSaveFolderBookmark == nil { output.autoSave = false }
         return output
+    }
+
+    /// The full form of a BCP 47 language identifier made of ASCII letters, digits, `-` and `_`,
+    /// at most 64 characters; nil for anything else.
+    private static func languageIdentifier(_ text: String) -> String? {
+        guard (1...64).contains(text.count),
+            text.unicodeScalars.allSatisfy({
+                $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "-_".unicodeScalars.contains($0))
+            })
+        else { return nil }
+        return Locale.Language(identifier: text).maximalIdentifier
     }
 }

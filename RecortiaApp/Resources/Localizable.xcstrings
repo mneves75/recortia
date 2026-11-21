@@ -481,6 +481,22 @@
         }
       }
     },
+    "Automatic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático"
+          }
+        }
+      }
+    },
     "Automatic (PNG or JPEG)" : {
       "localizations" : {
         "en" : {
@@ -2570,6 +2586,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preparando a pré-visualização"
+          }
+        }
+      }
+    },
+    "Primary language" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primary language"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idioma principal"
           }
         }
       }

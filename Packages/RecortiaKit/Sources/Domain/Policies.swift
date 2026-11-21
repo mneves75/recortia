@@ -260,6 +260,9 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var playsCaptureSoundChoice: Bool?
     /// Stored only once the person picks a format; read `exportFormat`.
     public var automaticExportFormatChoice: Bool?
+    /// The language text recognition tries first, as a full identifier (`pt-Latn-BR`); nil is
+    /// Automatic (FR-08).
+    public var primaryRecognitionLanguage: String?
 
     public init() {}
 

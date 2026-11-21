@@ -322,13 +322,34 @@ struct OCRSettingsTab: View {
                     Text("Join into one line").tag(OCRTextMode.normalizedWhitespace)
                     Text("Exactly as recognized").tag(OCRTextMode.raw)
                 }
+                if case .loaded(let list) = languages?.state {
+                    Picker("Primary language", selection: settings.binding(\.primaryRecognitionLanguage)) {
+                        Text("Automatic").tag(String?.none)
+                        ForEach(list, id: \.maximalIdentifier) { language in
+                            Text(Self.name(of: language)).tag(String?.some(language.maximalIdentifier))
+                        }
+                    }
+                    .accessibilityIdentifier("settings.primaryRecognitionLanguage")
+                }
             }
             Section("Available languages") {
                 languageList
             }
         }
         .formStyle(.grouped)
-        .task { await languages?.load() }
+        .task {
+            await languages?.load()
+            if case .loaded(let list) = languages?.state {
+                settings.forgetUnsupportedPrimaryRecognitionLanguage(supported: list)
+            }
+        }
+    }
+
+    static func name(of language: Locale.Language) -> String {
+        Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
+            // Vision reports some identifiers (such as "vi-VT") that name no region.
+            ?? language.languageCode.flatMap { Locale.current.localizedString(forLanguageCode: $0.identifier) }
+            ?? language.minimalIdentifier
     }
 
     @ViewBuilder
@@ -336,13 +357,7 @@ struct OCRSettingsTab: View {
         switch languages?.state {
         case .loaded(let list):
             ForEach(list, id: \.maximalIdentifier) { language in
-                Text(
-                    Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
-                        // Vision reports some identifiers (such as "vi-VT") that name no region.
-                        ?? language.languageCode.flatMap {
-                            Locale.current.localizedString(forLanguageCode: $0.identifier)
-                        }
-                        ?? language.minimalIdentifier)
+                Text(Self.name(of: language))
             }
         case .loading, .notLoaded:
             ProgressView()
