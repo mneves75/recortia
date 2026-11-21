@@ -29,16 +29,22 @@ final class CaptureWindowVisibility: NSObject {
         loop = ObservationLoop { [weak self] in self?.restoreIfFinished() }
     }
 
-    func suspend() {
+    func suspend(including panels: [NSWindow]) {
         // A replacement selection must retain the original snapshot, not the capture UI.
         guard suspended == nil else { return }
         // Hiding a parent also hides its children/sheet. Ordering a child out separately would
         // detach it from its parent, breaking sheet and auxiliary-panel ownership on restore.
         // Windows on other Spaces cannot appear in this capture; ordering them back in would move
         // windows that follow the active Space onto this one (FR-01).
-        // NSApplication.orderedWindows omits panels.
-        let ordered = NSWindow.windowNumbers(options: [])?.compactMap { NSApp.window(withWindowNumber: $0.intValue) }
-        let windows = (ordered ?? NSApp.windows).filter {
+        // Both Quick Actions panels float. Preserve their current stacking for the back-order restore.
+        let panelOrder = panels.count < 2 ? [] : (NSWindow.windowNumbers(options: [])?.map(\.intValue) ?? [])
+        let orderedPanels = panels.sorted {
+            let first = panelOrder.firstIndex(of: $0.windowNumber) ?? panelOrder.count
+            let second = panelOrder.firstIndex(of: $1.windowNumber) ?? panelOrder.count
+            return first < second
+        }
+        let appWindows = NSApp.orderedWindows.filter { window in !panels.contains { $0 === window } }
+        let windows = (orderedPanels + appWindows).filter {
             $0.isVisible && $0.isOnActiveSpace && !$0.isMiniaturized && $0.parent == nil && $0.sheetParent == nil
         }
         suspended = windows.map { SuspendedWindow(window: $0) }

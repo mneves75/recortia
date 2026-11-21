@@ -213,7 +213,8 @@ final class AppModel: AppActions {
         if AppCommand.captureModes.contains(command) {
             // A capture can start and cancel before an observation task re-evaluates the quit.
             quitDecision += 1
-            captureWindowVisibility?.suspend()
+            let quickPanels = [quickActionsUI?.previewPanel, quickActionsUI?.panel].compactMap { $0 }
+            captureWindowVisibility?.suspend(including: quickPanels)
         }
         switch command {
         case .captureRegion: features.capture.start(.region)

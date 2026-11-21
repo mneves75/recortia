@@ -331,3 +331,10 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   The existing Quick Actions scenario requires both panels to hide before testing restoration
   and reports separate foreground and key-window flags right after closing. The corrected
   unsigned E2E app compiled with Xcode 27.2 (27B52). Its native replay is pending.
+- The local unsigned gate on clean `ca5593b` passed 1,085 package tests, both Debug builds,
+  localization, and the app launch guard. Independent review found that the broader enumeration
+  could also include modal alerts. Capture suspension now adds only the owned Quick Actions
+  windows, using the window server's order for those two panels.
+- The full A-5 attempt on `2d1b6df` stopped after the login screen took the foreground.
+  That attempt is void. GitHub's exact-head checks passed for A-5. The qualification launcher
+  now checks the kernel lock field directly and rejects the login screen in its foreground check.
