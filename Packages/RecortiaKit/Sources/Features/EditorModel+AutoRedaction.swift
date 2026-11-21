@@ -11,10 +11,10 @@ extension EditorModel {
     public var isMaskingPending: Bool { autoRedaction == .pending || textRedaction != nil }
 
     /// Whether closing now may keep the document for Reopen Closed Capture: never while masks are
-    /// pending, nor after automatic masking failed until the person dismissed that notice. A notice
-    /// that replaced the failure is not a dismissal, so it fails closed.
+    /// pending, and never after automatic masking failed. Dismissing that notice (by the person or
+    /// its timeout) is not completion, and a reopened editor would not show the failure again.
     public var isKeptOnClose: Bool {
-        !isClosed && !isMaskingPending && (autoRedaction != .failed || maskingFailureAcknowledged)
+        !isClosed && !isMaskingPending && autoRedaction != .failed
     }
 
     /// The one admission point for the person's actions while the masks are pending (R-4): every

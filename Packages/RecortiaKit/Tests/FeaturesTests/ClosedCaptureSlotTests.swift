@@ -130,7 +130,7 @@ struct ClosedCaptureSlotTests {
         #expect(slot.take() == nil)
     }
 
-    @Test("Masking still pending, or failed and not dismissed, is not kept: the close releases it")
+    @Test("Masking still pending, or failed even once its notice is dismissed, is not kept: the close releases it")
     func maskingFailsClosed() async throws {
         let h = EditorHarness()
         let slot = ClosedCaptureSlot(assets: h.assets, clock: h.clock)
@@ -158,12 +158,14 @@ struct ClosedCaptureSlotTests {
         #expect(slot.isEmpty)
         #expect(h.assets.released.contains { failed.document.assets[$0] != nil })
 
-        let acknowledged = Self.editor(h, EditorFixtures.session(), autoRedacts: true)
-        await waitFor("masking failed") { acknowledged.autoRedaction == .failed }
-        acknowledged.dismissNotice()
-        #expect(acknowledged.isKeptOnClose)
-        slot.close(acknowledged)
-        #expect(slot.take()?.document == acknowledged.document)
-        #expect(!h.assets.released.contains { acknowledged.document.assets[$0] != nil })
+        // Dismissal is not completion, and a timeout dismisses the notice without the person:
+        // a reopened editor would show the unmasked capture with no failure notice.
+        let dismissed = Self.editor(h, EditorFixtures.session(), autoRedacts: true)
+        await waitFor("masking failed") { dismissed.autoRedaction == .failed }
+        dismissed.dismissNotice()
+        #expect(!dismissed.isKeptOnClose)
+        slot.close(dismissed)
+        #expect(slot.take() == nil)
+        #expect(h.assets.released.contains { dismissed.document.assets[$0] != nil })
     }
 }
