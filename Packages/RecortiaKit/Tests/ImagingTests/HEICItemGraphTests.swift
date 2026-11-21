@@ -137,4 +137,92 @@ struct HEICItemGraphTests {
         try #require(try Self.itemGraph(twoPictures).unreachableItems.count == 1)
         #expect(throws: ExportError.encodingFailed) { try ExportContainerFilter.heic(twoPictures) }
     }
+
+    /// A box of `type` with `body`, its 32-bit size first.
+    static func box(_ type: String, _ body: [UInt8]) -> [UInt8] {
+        let size = 8 + body.count
+        return [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: size >> $0) } + Array(type.utf8) + body
+    }
+
+    /// `data` with `child` appended as the last child of the box at `path` (full boxes with 32-bit
+    /// sizes, as `meta` and `iref` are), every enclosing box grown to match.
+    static func appending(_ child: [UInt8], into path: [String], of data: Data) throws -> Data {
+        var bytes = [UInt8](data)
+        func uint(_ offset: Int) -> Int { (0..<4).reduce(0) { $0 << 8 | Int(bytes[offset + $1]) } }
+        var start = 0
+        var end = bytes.count
+        var enclosing: [Int] = []
+        for name in path {
+            var offset = start
+            var found: Int?
+            while offset + 8 <= end {
+                try #require(uint(offset) >= 8, "a 64-bit or to-end box at \(offset)")
+                if String(decoding: bytes[(offset + 4)..<(offset + 8)], as: UTF8.self) == name {
+                    found = offset
+                    break
+                }
+                offset += uint(offset)
+            }
+            let at = try #require(found, "no \(name) box")
+            enclosing.append(at)
+            start = at + 12
+            end = at + uint(at)
+        }
+        bytes.insert(contentsOf: child, at: end)
+        for at in enclosing {
+            let size = uint(at) + child.count
+            bytes.replaceSubrange(at..<(at + 4), with: [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: size >> $0) })
+        }
+        return Data(bytes)
+    }
+
+    /// A tiled HEIC straight from ImageIO, with its primary grid item and one tile, as 2-byte IDs.
+    static func tiled() throws -> (data: Data, primary: Int, tile: Int) {
+        let data = try ContainerCrafting.encode(
+            [try ChartFixture.photographic(width: 5120, height: 2880)], type: "public.heic")
+        let graph = try itemGraph(data)
+        let primary = try #require(graph.primary)
+        try #require(graph.items[primary] == "grid", "items: \(graph.items)")
+        let tile = try #require(graph.items.first { $0.value == "hvc1" }?.key)
+        try #require(primary < 65_536 && tile < 65_536)
+        // Control: the unmodified file passes.
+        _ = try ExportContainerFilter.heic(data)
+        return (data, primary, tile)
+    }
+
+    static func id16(_ id: Int) -> [UInt8] { [UInt8(id >> 8), UInt8(id & 0xFF)] }
+
+    // ISOBMFF allows one `iref` per `meta`; a second one carrying a thumbnail reference must not
+    // hide behind the first.
+    @Test("The HEIC allowlist refuses a second iref box")
+    func refusesSecondItemReferenceBox() throws {
+        let (data, primary, tile) = try Self.tiled()
+        let thumbnail = Self.box("thmb", Self.id16(tile) + [0, 1] + Self.id16(primary))
+        let crafted = try Self.appending(Self.box("iref", [0, 0, 0, 0] + thumbnail), into: ["meta"], of: data)
+        #expect(throws: ExportError.encodingFailed) { try ExportContainerFilter.heic(crafted) }
+    }
+
+    // A reader composes the grid from the first `dimg` only, so any later one from the primary
+    // item names a picture of its own.
+    @Test("The HEIC allowlist refuses a second dimg reference from the primary item")
+    func refusesSecondDerivationReference() throws {
+        let (data, primary, tile) = try Self.tiled()
+        let second = Self.box("dimg", Self.id16(primary) + [0, 1] + Self.id16(tile))
+        let crafted = try Self.appending(second, into: ["meta", "iref"], of: data)
+        #expect(throws: ExportError.encodingFailed) { try ExportContainerFilter.heic(crafted) }
+    }
+
+    // A version 1 `iinf` needs 8 header bytes (version, flags, 4-byte count): a shorter body is
+    // refused, never read past.
+    @Test("The HEIC allowlist refuses a truncated version 1 iinf box")
+    func refusesTruncatedItemInfo() throws {
+        let meta = Self.box(
+            "meta",
+            [0, 0, 0, 0] + Self.box("iinf", [1, 0, 0, 0, 0, 0]) + Self.box("pitm", [0, 0, 0, 0, 0, 1])
+                + Self.box("iprp", []))
+        let file =
+            Self.box("ftyp", Array("heic".utf8) + [0, 0, 0, 0] + Array("mif1heic".utf8)) + meta
+            + Self.box("mdat", [])
+        #expect(throws: ExportError.encodingFailed) { try ExportContainerFilter.heic(Data(file)) }
+    }
 }

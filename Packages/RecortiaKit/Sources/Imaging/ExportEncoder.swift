@@ -202,7 +202,9 @@ enum ExportContainerFilter {
         else { throw ExportError.encodingFailed }
         // `meta` is a full box: a version and flags word precede its children.
         let children = try isoBoxes(reader, in: (meta.body.lowerBound + 4)..<meta.body.upperBound)
-        guard Set(children.map(\.type)).isSubset(of: heicMetaBoxes),
+        // ISOBMFF allows each of these once per `meta`; a second `iref` or `iinf` would go unread.
+        let childTypes = children.map(\.type)
+        guard Set(childTypes).isSubset(of: heicMetaBoxes), Set(childTypes).count == childTypes.count,
             let iinf = children.first(where: { $0.type == "iinf" }),
             let iprp = children.first(where: { $0.type == "iprp" }),
             let pitm = children.first(where: { $0.type == "pitm" })
@@ -226,8 +228,9 @@ enum ExportContainerFilter {
     }
 
     /// The file holds one picture: the primary item, and when it is a `grid`, the `hvc1` tiles it
-    /// names through `dimg`. A thumbnail (`thmb`), any other reference, or an item nothing reaches
-    /// from the primary one (a second picture) is refused.
+    /// names through its one `dimg` (a reader composes the grid from the first, so a later one is
+    /// a picture of its own). A thumbnail (`thmb`), any other reference, or an item nothing
+    /// reaches from the primary one (a second picture) is refused.
     private static func checkPicture(
         _ reader: DecodeByteReader, items: [Int: String], primary: Int, iref: Range<Int>?
     ) throws(ExportError) {
@@ -236,7 +239,9 @@ enum ExportContainerFilter {
         if let iref {
             guard iref.count >= 4 else { throw ExportError.encodingFailed }
             let idSize = reader.byte(iref.lowerBound) == 0 ? 2 : 4
-            for reference in try isoBoxes(reader, in: (iref.lowerBound + 4)..<iref.upperBound) {
+            let references = try isoBoxes(reader, in: (iref.lowerBound + 4)..<iref.upperBound)
+            guard references.count <= 1 else { throw ExportError.encodingFailed }
+            for reference in references {
                 guard reference.type == "dimg", primaryType == "grid", reference.body.count >= idSize + 2,
                     itemID(reader, at: reference.body.lowerBound, size: idSize) == primary
                 else { throw ExportError.encodingFailed }
@@ -268,9 +273,10 @@ enum ExportContainerFilter {
     /// Every `infe` (version 2 or 3, which name their item type) is an image item; returns each
     /// item's ID and type.
     private static func checkItems(_ reader: DecodeByteReader, iinf: Range<Int>) throws(ExportError) -> [Int: String] {
-        guard iinf.count >= 6 else { throw ExportError.encodingFailed }
+        guard iinf.count >= 4 else { throw ExportError.encodingFailed }
         let version = reader.byte(iinf.lowerBound)
         let countSize = version == 0 ? 2 : 4
+        guard iinf.count >= 4 + countSize else { throw ExportError.encodingFailed }
         let entries = try isoBoxes(reader, in: (iinf.lowerBound + 4 + countSize)..<iinf.upperBound)
         guard !entries.isEmpty else { throw ExportError.encodingFailed }
         var items: [Int: String] = [:]
