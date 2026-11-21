@@ -490,14 +490,28 @@ final class FootprintSampler: Sendable {
 /// tiles). `RECORTIA_REDACT_LATENCY_CASE=<width>x<height>@<scale>` limits a process to one case, so
 /// its first scan is the cold one after launch; `RECORTIA_REDACT_LATENCY_RUNS` sets the warm runs
 /// (default 30). Prints one Markdown row per case and asserts only that it ran.
+///
+/// The tall cases (T2) are stitched scrolling captures and large imports, scanned at the density
+/// the product passes for them: 1 pixel per point, because neither origin records a backing scale
+/// (`LiveSensitiveText`). A Retina scroll capture scanned at its real 2 is shown beside it. They run
+/// only with `RECORTIA_REDACT_LATENCY_TALL=1` or when selected as `<width>x<height>@<scale>/<density>`.
 @Suite("SensitiveTextLatency", .serialized)
 struct SensitiveTextLatencyTests {
     static let environment = ProcessInfo.processInfo.environment
     static let enabled = ConditionTrait.enabled(
         if: environment["RECORTIA_REDACT_LATENCY"] == "1", "set RECORTIA_REDACT_LATENCY=1 to measure latency")
-    static let cases: [(width: Int, height: Int, scale: Int)] = [
-        (2560, 1440, 1), (2560, 1440, 2), (1440, 900, 1), (1440, 900, 2),
+    typealias Case = (width: Int, height: Int, scale: Int, pixelsPerPoint: Int)
+    static let cases: [Case] = [
+        (2560, 1440, 1, 1), (2560, 1440, 2, 2), (1440, 900, 1, 1), (1440, 900, 2, 2),
     ]
+    static let tallCases: [Case] = [
+        (1440, 2000, 2, 1), (1440, 2000, 2, 2), (1440, 5000, 2, 1), (1440, 5000, 2, 2), (1280, 20000, 1, 1),
+    ]
+
+    static func key(_ item: Case) -> String {
+        let base = "\(item.width)x\(item.height)@\(item.scale)"
+        return item.pixelsPerPoint == item.scale ? base : "\(base)/\(item.pixelsPerPoint)"
+    }
 
     @Test("Cold and warm scan time per capture size", enabled, VisionRuntime.required, .timeLimit(.minutes(120)))
     func latency() async throws {
@@ -508,7 +522,9 @@ struct SensitiveTextLatencyTests {
         var measured = 0
         print("| capture | cold ms | warm runs | warm p50 ms | warm p95 ms | warm p99 ms | warm max ms |")
         print("|---|---|---|---|---|---|---|")
-        for item in Self.cases where selected == nil || selected == "\(item.width)x\(item.height)@\(item.scale)" {
+        let tall = Self.environment["RECORTIA_REDACT_LATENCY_TALL"] == "1"
+        let pool = selected == nil ? (tall ? Self.tallCases : Self.cases) : Self.cases + Self.tallCases
+        for item in pool where selected.map({ $0 == Self.key(item) }) ?? true {
             let store = ImageStore()
             var assets: [AssetID] = []
             // Varied content: themes, languages and layouts rotate between runs.
@@ -523,7 +539,7 @@ struct SensitiveTextLatencyTests {
             for id in assets {
                 let start = clock.now
                 _ = try await SensitiveTextScanner().sensitiveRegions(
-                    of: id, in: store, pixelsPerPoint: Double(item.scale), languages: languages)
+                    of: id, in: store, pixelsPerPoint: Double(item.pixelsPerPoint), languages: languages)
                 let elapsed = start.duration(to: clock.now)
                 times.append(Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1e15)
                 await store.remove(id)
@@ -535,7 +551,7 @@ struct SensitiveTextLatencyTests {
                 return String(format: "%.0f", warm[min(warm.count - 1, max(0, rank))])
             }
             print(
-                "| \(item.width)×\(item.height) @\(item.scale)x | \(String(format: "%.0f", cold)) | \(warm.count) | "
+                "| \(item.width)×\(item.height) @\(item.scale)x, \(item.pixelsPerPoint) px/pt | \(String(format: "%.0f", cold)) | \(warm.count) | "
                     + "\(pct(0.5)) | \(pct(0.95)) | \(pct(0.99)) | \(pct(1)) |")
             measured += 1
         }
