@@ -89,6 +89,10 @@ Reviewer marked these read-verified; the coordinator has not yet read them.
    (decisions.md).
 3. **Discard warning after a successful pin** (R3-D17): the warning says the image was never pinned.
    *Recommend:* say what is lost ("edits that were not copied or saved") on close and quit alike.
+   Done in T1 (`5070481`): `EditorWindowController.discardOnCloseDetail` and
+   `MessagePresenter.discardOnQuitDetail` say the changes were not copied or saved, in en and pt-BR;
+   the bilingual `last-window` and `quit-confirmation` E2E scenarios check the rendered text
+   (decisions.md).
 4. **Release build in CI** (R3-D09, R3-D10). *Recommend:* add an unsigned Release build of the
    shipping target plus `check-release-binary.sh` to hosted CI, and restrict the E2E foreground
    helper to Debug.
