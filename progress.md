@@ -267,3 +267,8 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   accessibility value, or bring the newly captured editor forward before clicking Reset.
   The Inspector submenu still has both tab commands disabled while another window is key.
   The preview test checks both transitions and both native checkmarks.
+- The uninterrupted focused replay `20261121-170244-80788` on `cb634be` passed five of six in
+  each language. The menu, framing reset and print corrections passed. Both formatted text
+  readouts also passed, exposing the next assertion in `colour-tools`: the four Pass/Fail marks
+  are static text and the scenario had been querying their accessible names. The next replay
+  reads their values and still checks each localized verdict exactly.

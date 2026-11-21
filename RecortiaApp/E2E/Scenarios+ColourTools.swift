@@ -112,7 +112,7 @@
             for (id, mark) in [("aa.normal", fail), ("aa.large", pass), ("aaa.normal", fail), ("aaa.large", fail)] {
                 context.check(
                     "\(id) reads \(mark)",
-                    try E2EAccessibilityControl.name(for: "color.contrast.\(id)", in: root, context) == mark)
+                    try E2EAccessibilityControl.text(.value, for: "color.contrast.\(id)", in: root, context) == mark)
             }
             await E2EActions.snapshotEditor(controller, context, shot: "colour-contrast")
             if let window = controller.window {
