@@ -61,6 +61,10 @@ final class EditorWindowManager {
     /// Editors whose edits were never copied or saved (a drag out saves; a pin does not).
     var unexportedEditCount: Int { controllers.values.filter { $0.hasUnexportedEdits() }.count }
 
+    /// The window of `model`'s editor, while it is open.
+    func window(for model: EditorModel) -> NSWindow? {
+        controllers.values.first { $0.model === model }?.window
+    }
 }
 
 /// One editor window: hosts the SwiftUI chrome around the AppKit canvas in a system split view, asks before discarding
@@ -276,6 +280,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     }
 
     func windowWillClose(_ notification: Notification) {
+        // A sheet still open or queued gets its answer: Replace and Save cancel, Discard does
+        // nothing, and an unread failure becomes an app alert (`MessagePresenter.beginSheet`).
+        if let window {
+            for sheet in window.sheets { window.endSheet(sheet, returnCode: .abort) }
+        }
         EditorCommands.shared.editorResignedKey(self)
         model.close()
         window?.contentViewController = nil

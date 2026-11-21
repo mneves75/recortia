@@ -276,6 +276,18 @@
 
             E2EActions.drag(controller.model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
             try context.require("the edit makes the document dirty", controller.model.isDirty)
+            // Quit while the close question is open still asks about the edits: the sheet keeps
+            // the editor open, and only the person's answer to it closes the editor.
+            let window = try context.unwrap("the edited editor has a window", controller.window)
+            let alerts = harness.messages.alerts.count
+            let closes = controller.windowShouldClose(window)
+            let closeSheet = try context.unwrap(
+                "closing the edited editor asks in a sheet on it",
+                await E2EWait.until { window.attachedSheet != nil } ? window.attachedSheet : nil)
+            context.check(
+                "the close question is a sheet, not an alert",
+                !closes && closeSheet.sheetParent === window && harness.messages.alerts.count == alerts
+                    && harness.quit.questions.isEmpty)
             harness.quit.answers = [false]
             context.check("declining keeps Recortia running", !app.shouldTerminate())
             context.check(
@@ -283,6 +295,11 @@
                 harness.quit.questions == [QuitDiscards(editedImages: 1, scrollingReview: false)],
                 "\(harness.quit.questions)")
             context.check("declining keeps the edits", controller.model.isDirty && !controller.model.isClosed)
+            context.check("declining Quit leaves the close question open", window.attachedSheet === closeSheet)
+            window.endSheet(closeSheet, returnCode: .alertSecondButtonReturn)
+            context.check(
+                "Cancel on the close question keeps the editor and its edits",
+                await E2EWait.until { window.sheets.isEmpty } && controller.model.isDirty && !controller.model.isClosed)
             harness.quit.answers = [true]
             context.check("confirming lets Recortia quit", app.shouldTerminate())
             // R3-D17: quitting closes pins too, so the warning names only copy and save.

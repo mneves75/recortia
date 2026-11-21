@@ -88,7 +88,7 @@
                 settings: settings, services: services,
                 shortcutRegistry: KeyboardShortcutsRegistry(
                     takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
-                showMessage: { messages.values.append($0) },
+                showMessage: { messages.present($0, on: $1) },
                 confirmQuit: { [quit] in quit.answer($0) },
                 requestTermination: { [terminations] in terminations.request() },
                 chooseSaveFolder: { [folderChooser] in folderChooser.next() })
@@ -127,6 +127,7 @@
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
             features.quickActions.onOpenInEditor = { editors.open($0) }
             app.unexportedEditCount = { editors.unexportedEditCount }
+            app.editorWindow = { model in editors.controllers.first { $0.model === model }?.window }
         }
 
         /// Imports `image` as PNG through the real input, decode, and asset path; opens an editor.
@@ -166,9 +167,33 @@
         }
     }
 
+    /// Stands in for `MessagePresenter.present(_:on:)`. An app alert is only recorded, never shown,
+    /// so no modal loop runs. A sheet is recorded with its parent and attached for real, without a
+    /// modal loop, so a scenario sees it on that window and answers it with `endSheet`; a sheet the
+    /// window's close ends is recorded again as the app alert it becomes. Never opens System Settings.
     @MainActor
     final class RecordingMessagePresenter {
-        var values: [UserMessage] = []
+        struct Request {
+            let message: UserMessage
+            let isSheet: Bool
+            /// The editor window the sheet was attached to.
+            weak var sheetParent: NSWindow?
+        }
+
+        private(set) var requests: [Request] = []
+        /// Every message, alert or sheet, in the order it was asked for.
+        var values: [UserMessage] { requests.map(\.message) }
+        var alerts: [UserMessage] { requests.filter { !$0.isSheet }.map(\.message) }
+
+        func present(_ message: UserMessage, on target: MessageTarget) {
+            switch target {
+            case .app:
+                requests.append(Request(message: message, isSheet: false))
+            case .sheet(let window):
+                requests.append(Request(message: message, isSheet: true, sheetParent: window))
+                MessagePresenter.beginSheet(message, on: window) { [weak self] in self?.present($0, on: .app) }
+            }
+        }
     }
 
     /// Stands in for the Quit confirmation alert: records each question and answers from a script

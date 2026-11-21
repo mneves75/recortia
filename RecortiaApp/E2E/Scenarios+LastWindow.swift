@@ -231,11 +231,15 @@
             E2EActions.drag(controller.model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
             try context.require("the edit makes the document dirty", controller.model.isDirty)
             for discard in [false, true] {
+                let alerts = harness.messages.alerts.count
                 window.performClose(nil)
                 let sheet = try context.unwrap(
                     "closing an edited editor asks first",
                     await E2EWait.until(timeout: .seconds(5)) { window.attachedSheet != nil }
                         ? window.attachedSheet : nil)
+                context.check(
+                    "the close question is a sheet on that editor, not an alert",
+                    sheet.sheetParent === window && harness.messages.alerts.count == alerts)
                 if !discard {
                     // R3-D17: a pin keeps no edits, so the warning names only copy and save.
                     let expected =

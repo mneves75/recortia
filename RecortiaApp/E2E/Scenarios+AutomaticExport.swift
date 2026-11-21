@@ -268,14 +268,14 @@
             let url = try context.unwrap(
                 "fixture URL", URL(string: "https://github.com/fixture/private/blob/main/a.png"))
             let uploaded = ExportOutcome.uploaded(url)
-            func shown(_ route: (editorNotices: [ExportOutcome], alerts: [ExportFailure])) -> [String] {
-                // The editor keeps only its last notice; every alert is shown.
-                (route.editorNotices.last.map { ["\($0)"] } ?? []) + route.alerts.map { "alert \($0)" }
+            func shown(_ route: (editorNotices: [ExportOutcome], messages: [ExportFailure])) -> [String] {
+                // The editor keeps only its last notice; every message is shown.
+                (route.editorNotices.last.map { ["\($0)"] } ?? []) + route.messages.map { "message \($0)" }
             }
             let single = AppModel.routeAutomaticExport([.failed(.diskFull)], editorOpen: true)
             context.check(
                 "a lone failure becomes the editor notice",
-                single.editorNotices == [.failed(.diskFull)] && single.alerts.isEmpty,
+                single.editorNotices == [.failed(.diskFull)] && single.messages.isEmpty,
                 "\(single)")
             let mixed = AppModel.routeAutomaticExport([.copied, .failed(.diskFull), uploaded], editorOpen: true)
             context.check(
@@ -291,7 +291,7 @@
                     && shown(double).contains { $0.contains("clipboardFailed") },
                 "\(shown(double))")
             let closed = AppModel.routeAutomaticExport([.failed(.diskFull)], editorOpen: false)
-            context.check("without an editor a failure is an alert", closed.alerts == [.diskFull], "\(closed)")
+            context.check("without an editor a failure is an alert", closed.messages == [.diskFull], "\(closed)")
 
             // The pipeline is the one admission point for export options: refused options reach
             // the coordinator through the live exporter as an encode failure.
@@ -364,6 +364,94 @@
             context.check(
                 "a failed manual save still says nothing was saved",
                 manual == String(localized: "Nothing was saved: the disk is full.", table: "Editor"), manual)
+            try await checkEditorSheets(harness, context)
+        }
+
+        /// Design direction "Alerts": a batch's failures about an editor the person can see are
+        /// sheets on that editor's window; a hidden or closed editor's are app alerts. Closing the
+        /// editor ends its sheets: an unanswered failure becomes an app alert and a pending
+        /// replacement question cancels the save, so no decision path is lost.
+        private static func checkEditorSheets(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let app = harness.app
+            let messages = harness.messages
+            let controller = try await harness.openImported(harness.desktop, name: "feedback-sheets.png")
+            let window = try context.unwrap("the sheet editor has a window", controller.window)
+            window.ignoresMouseEvents = true
+            let batch: [ExportOutcome] = [.failed(.diskFull), .failed(.clipboardFailed)]
+            func asked(since start: Int) -> [RecordingMessagePresenter.Request] {
+                Array(messages.requests.dropFirst(start))
+            }
+
+            var start = messages.requests.count
+            app.reportAutomaticExport(batch, from: controller.model)
+            context.check(
+                "a hidden editor's failures are app alerts",
+                asked(since: start).map(\.isSheet) == [false, false] && window.sheets.isEmpty,
+                "\(asked(since: start).map(\.isSheet)), \(window.sheets.count) sheets")
+
+            PresenceScenarios.show(window, AppPresence.shared)
+            start = messages.requests.count
+            app.reportAutomaticExport(batch, from: controller.model)
+            let shown = asked(since: start)
+            context.check(
+                "a visible editor's failures are sheets on its window, not alerts",
+                shown.map(\.message)
+                    == batch.compactMap { outcome in
+                        if case .failed(let failure) = outcome { UserMessage.export(failure) } else { nil }
+                    } && shown.allSatisfy { $0.isSheet && $0.sheetParent === window },
+                "\(shown.map { "\($0.message.detail) sheet=\($0.isSheet)" })")
+            let sheet = try context.unwrap(
+                "the first failure is attached to the editor",
+                await E2EWait.until { window.attachedSheet != nil } ? window.attachedSheet : nil)
+            context.check(
+                "the second failure waits behind the first", window.sheets.count == 2 && sheet.sheetParent === window,
+                "\(window.sheets.count) sheets")
+            let content = try context.unwrap("failure sheet content", sheet.contentView)
+            let texts = EditorWindowController.all(NSTextField.self, in: content).map(\.stringValue)
+            let first = UserMessage.export(.diskFull)
+            context.check(
+                "the sheet keeps the alert's wording", texts.contains(first.title) && texts.contains(first.detail),
+                texts.joined(separator: " | "))
+            await E2ESnapshot.settle(content)
+            context.snapshot(content, shot: "failure-sheet")
+            await context.darkCompanion(content, in: sheet, shot: "failure-sheet", surface: "failure sheet")
+
+            let alerts = messages.alerts.count
+            window.endSheet(sheet, returnCode: .alertFirstButtonReturn)
+            let second = try context.unwrap(
+                "answering the first shows the second",
+                await E2EWait.until { window.attachedSheet.map { $0 !== sheet } ?? false } ? window.attachedSheet : nil)
+            context.check("an answered sheet raises no alert", messages.alerts.count == alerts)
+
+            // A collision while the second failure is open queues the replacement question.
+            let collision = harness.output.workDirectory.appending(path: "feedback-sheets-collision.png")
+            let original = Data("existing".utf8)
+            try original.write(to: collision, options: .atomic)
+            var saved: ExportOutcome?
+            let save = Task { saved = await controller.saveImage(to: collision, format: .fixed(.png)) }
+            context.check(
+                "the replacement question waits behind the failure",
+                await E2EWait.until { window.sheets.count == 2 } && window.attachedSheet === second,
+                "\(window.sheets.count) sheets")
+            window.close()
+            context.check(
+                "closing the editor turns its unanswered failure into an app alert",
+                await E2EWait.until { messages.alerts.count == alerts + 1 }
+                    && messages.alerts.last == UserMessage.export(.clipboardFailed),
+                "\(messages.alerts.count - alerts) alerts")
+            let ended = await E2EWait.until(timeout: .seconds(5)) { saved != nil }
+            if !ended { save.cancel() }
+            context.check(
+                "closing the editor cancels its pending replacement",
+                ended && saved == .canceled && (try? Data(contentsOf: collision)) == original,
+                "\(String(describing: saved))")
+            context.check("a closed editor keeps no sheet", window.sheets.isEmpty, "\(window.sheets.count) sheets")
+
+            start = messages.requests.count
+            app.reportAutomaticExport([.failed(.diskFull)], from: controller.model)
+            context.check(
+                "a closed editor's failure is an app alert", asked(since: start).map(\.isSheet) == [false],
+                "\(asked(since: start).map(\.isSheet))")
         }
     }
 #endif
