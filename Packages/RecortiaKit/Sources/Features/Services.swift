@@ -130,6 +130,13 @@ public protocol ClipboardSinkService: AnyObject {
 }
 
 @MainActor
+public protocol PrintSinkService: AnyObject {
+    /// Shows the system print panel for the snapshot's sanitized PNG, attached to the editor of
+    /// `snapshot.documentID`, and returns once it is shown (B-9a).
+    func present(_ snapshot: ShareSnapshot) throws(SinkError)
+}
+
+@MainActor
 public protocol FileSinkService: AnyObject {
     /// Atomic save to a user-chosen URL. `overwrite` is true only after the user confirmed it.
     func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL

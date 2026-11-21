@@ -34,7 +34,7 @@ struct SavedAnnotationSettingsTests {
         #expect(store.preferences.githubUpload?.automatic == true)
         #expect(store.preferences.hasCompletedOnboarding)
         #expect(store.preferences.captureDelaySeconds == 4)
-        #expect(store.preferences.exportOptions == ExportOptions(format: .jpeg(quality: 0.7), scale: 2))
+        #expect(store.exportOptions == ExportOptions(format: .jpeg(quality: 0.7), scale: 2))
         let identity = store.githubUploadConsentID
         var expected = store.preferences
         var palette = SavedAnnotationPalette()

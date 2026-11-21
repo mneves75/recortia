@@ -39,8 +39,8 @@
             let renderer = PreviewEditorRenderer()
             let export = ExportCoordinator(
                 exporter: PreviewEditorExporter(), clipboard: PreviewEditorSink(), files: PreviewEditorSink(),
-                drag: PreviewEditorSink(), folders: PreviewEditorSink(), clock: PreviewEditorClock(), settings: settings
-            )
+                drag: PreviewEditorSink(), printer: PreviewEditorSink(), folders: PreviewEditorSink(),
+                clock: PreviewEditorClock(), settings: settings)
             return EditorEnvironment(
                 renderer: renderer, export: export, folders: PreviewEditorSink(),
                 textRecognition: PreviewTextRecognition(), qrDecoder: PreviewEditorQR(),
@@ -61,6 +61,7 @@
     final class PreviewEditorActions: EditorWindowActions {
         func copyImage() {}
         func saveImage() {}
+        func printImage() {}
         func saveToPreferredFolder() {}
         func pin() {}
         func addImageFromFile() {}
@@ -103,10 +104,11 @@
     }
 
     /// Every sink refuses: previews never write anywhere.
-    final class PreviewEditorSink: ClipboardSinkService, FileSinkService, DragSinkService, SaveFolderService,
-        TextClipboardService, ExternalLinkOpenerService
+    final class PreviewEditorSink: ClipboardSinkService, FileSinkService, DragSinkService, PrintSinkService,
+        SaveFolderService, TextClipboardService, ExternalLinkOpenerService
     {
         func write(_ snapshot: ShareSnapshot) throws(SinkError) { throw .clipboardWriteFailed }
+        func present(_ snapshot: ShareSnapshot) throws(SinkError) { throw .printFailed }
         func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL {
             throw .accessDenied
         }

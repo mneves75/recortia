@@ -156,6 +156,19 @@ final class LiveClipboard: ClipboardSinkService {
     }
 }
 
+/// Shows the print panel as a sheet on the editor whose export it is (B-9a).
+final class LivePrinter: PrintSinkService {
+    func present(_ snapshot: ShareSnapshot) throws(SinkError) {
+        let operation = try PrintSink.operation(for: snapshot)
+        guard
+            let window = NSApp.windows.first(where: {
+                ($0.windowController as? EditorWindowController)?.model.document.id == snapshot.documentID
+            }), window.attachedSheet == nil
+        else { throw .printFailed }
+        operation.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)
+    }
+}
+
 final class LiveFiles: FileSinkService {
     func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL {
         try await Self.save(snapshot, url, overwrite)

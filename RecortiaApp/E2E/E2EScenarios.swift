@@ -115,6 +115,9 @@
                 run: FramingScenarios.framingPresets),
             E2EScenario(id: "export-sinks", title: "Copy, save, and drag out", run: OutputScenarios.exportSinks),
             E2EScenario(
+                id: "heic-and-print", title: "Save as HEIC and print the sanitized image",
+                run: HEICPrintScenarios.heicAndPrint),
+            E2EScenario(
                 id: "automatic-export", title: "Automatic export cancellation, busy notice and GitHub",
                 run: AutomaticExportScenarios.regression),
             E2EScenario(

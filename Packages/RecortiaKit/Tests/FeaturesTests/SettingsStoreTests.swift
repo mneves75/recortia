@@ -221,7 +221,7 @@ struct SettingsStoreTests {
         let written = try #require(storage.values[SettingsStore.storageKey])
         let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
         #expect(object["defaultExportFormat"] as? String == "jpeg", "0.14 reads only png or jpeg")
-        #expect(store.preferences.exportOptions.formatChoice == .automatic)
+        #expect(store.exportOptions.formatChoice == .automatic)
 
         // A hand-edited or future blob naming automatic in the old key still loads as Automatic.
         var odd = try #require(
@@ -235,7 +235,47 @@ struct SettingsStoreTests {
         #expect(loaded.preferences.defaultExportFormat == .png)
 
         store.update { $0.exportFormat = .png }
-        #expect(store.preferences.exportOptions == ExportOptions())
+        #expect(store.exportOptions == ExportOptions())
+    }
+
+    // Failure mode: "heic" written into defaultExportFormat makes a 0.14 blob reader fail to decode
+    // after a rollback, resetting every setting and the sealed export consent.
+    @Test("HEIC persists beside the fixed format older Recortia reads, and older blobs load unchanged")
+    func heicExportFormat() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        store.update {
+            $0.exportFormat = .jpeg
+            $0.exportFormat = .heic
+        }
+        #expect(SettingsStore(storage: storage).preferences.exportFormat == .heic)
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        #expect(object["defaultExportFormat"] as? String == "jpeg", "0.14 reads only png or jpeg")
+        store.update { $0.exportFormat = .automatic }
+        #expect(store.preferences.exportFormat == .automatic && store.exportOptions.formatChoice == .automatic)
+
+        // A blob written before HEIC existed has neither key and loads as it was.
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old.removeValue(forKey: "heicExportFormatChoice")
+        old.removeValue(forKey: "automaticExportFormatChoice")
+        old["defaultExportFormat"] = "jpeg"
+        old["jpegQuality"] = 0.8
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.exportFormat == .jpeg)
+        #expect(loaded.exportOptions == ExportOptions(format: .jpeg(quality: 0.8)))
+
+        // A hand-edited or future blob naming heic in the old key still loads as HEIC.
+        old["defaultExportFormat"] = "heic"
+        let odd = MemoryPreferenceStorage()
+        odd.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let oddStore = SettingsStore(storage: odd)
+        #expect(oddStore.loadIssue == nil)
+        #expect(oddStore.preferences.exportFormat == .heic && oddStore.preferences.defaultExportFormat == .png)
     }
 
     @Test("Works against a real, isolated UserDefaults suite")

@@ -2029,6 +2029,38 @@
         }
       }
     },
+    "HEIC" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC"
+          }
+        }
+      }
+    },
+    "HEIC quality" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HEIC quality"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualidade do HEIC"
+          }
+        }
+      }
+    },
     "Hold Option to scroll." : {
       "localizations" : {
         "en" : {
@@ -4374,6 +4406,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A página parou de rolar. Se chegou ao fim, clique em Parar."
+          }
+        }
+      }
+    },
+    "The print panel could not be opened." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The print panel could not be opened."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir o painel de impressão."
           }
         }
       }

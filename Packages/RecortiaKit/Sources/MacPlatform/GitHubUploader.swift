@@ -240,8 +240,7 @@ public struct GitHubUploader: Sendable {
             !repository.archived
         else { throw .invalidResponse }
         guard repository.private else { throw .publicRepository }
-        let ext = snapshot.format == .png ? "png" : "jpg"
-        let path = "screenshots/\(intent.uuidString.lowercased()).\(ext)"
+        let path = "screenshots/\(intent.uuidString.lowercased()).\(snapshot.format.fileExtension)"
         let contentsURL = "\(base)/contents/\(path)"
         var lookup = try request(contentsURL, token: token)
         lookup.setValue("application/vnd.github.object+json", forHTTPHeaderField: "Accept")

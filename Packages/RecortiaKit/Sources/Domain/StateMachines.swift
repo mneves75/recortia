@@ -148,6 +148,7 @@ public enum ExportFailure: Hashable, Sendable {
     case encodeFailed
     case budgetExceeded
     case clipboardFailed
+    case printFailed
     case accessDenied
     /// A file exists where the save would write: the file the save resolved to, which a Replace
     /// question names and its consent must name back; nil when no single file was meant.

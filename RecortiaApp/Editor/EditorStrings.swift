@@ -272,6 +272,7 @@ enum EditorStrings {
     static func exportMessage(_ outcome: ExportOutcome) -> String {
         switch outcome {
         case .copied: String(localized: "Image copied.", table: "Editor")
+        case .printed: String(localized: "Image sent to the print panel.", table: "Editor")
         case .saved: String(localized: "Image saved.", table: "Editor")
         case .dragged: String(localized: "Image delivered.", table: "Editor")
         case .uploaded: String(localized: "Image uploaded to GitHub.", table: "Editor")
@@ -292,6 +293,7 @@ enum EditorStrings {
         case .budgetExceeded: String(localized: "Nothing was exported: the image is too large.", table: "Editor")
         case .clipboardFailed:
             String(localized: "The image could not be copied.", table: "Editor")
+        case .printFailed: String(localized: "The image could not be sent to the print panel.", table: "Editor")
         case .accessDenied:
             String(localized: "Nothing was saved: Recortia cannot write to that folder.", table: "Editor")
         case .destinationExists: String(localized: "Nothing was saved: a file with that name exists.", table: "Editor")

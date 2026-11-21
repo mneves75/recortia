@@ -167,7 +167,7 @@ struct EditorColorToolsTests {
         let clock = ManualClock()
         let export = ExportCoordinator(
             exporter: FakeExportService(), clipboard: FakeClipboard(), files: FakeFileSink(), drag: FakeDragSink(),
-            folders: FakeSaveFolders(), clock: clock, settings: settings, upload: nil)
+            printer: FakePrinter(), folders: FakeSaveFolders(), clock: clock, settings: settings, upload: nil)
         let environment = EditorEnvironment(
             renderer: renderer, export: export, folders: FakeSaveFolders(),
             textRecognition: EditorFakeTextRecognition(), qrDecoder: EditorFakeQRDecoder(),

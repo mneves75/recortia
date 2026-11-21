@@ -28,7 +28,8 @@ struct FeatureModels {
             elements: services.interfaceElements)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
-            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
+            printer: services.printer, folders: services.folders, clock: services.clock, settings: settings,
+            upload: services.githubUpload)
         importer = ImportCoordinator(input: services.input, assets: services.assets, settings: settings)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,

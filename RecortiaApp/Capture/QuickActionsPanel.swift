@@ -21,7 +21,7 @@ final class QuickActionsUIController {
 
     init(model: QuickActionsModel, settings: SettingsStore) {
         self.model = model
-        chooseSaveDestination = { Self.chooseDestination(options: settings.preferences.exportOptions) }
+        chooseSaveDestination = { Self.chooseDestination(options: settings.exportOptions) }
         loop = ObservationLoop { [weak self] in self?.render() }
     }
 
@@ -85,6 +85,7 @@ final class QuickActionsUIController {
             switch format {
             case .fixed(.png): [.png]
             case .fixed(.jpeg): [.jpeg]
+            case .fixed(.heic): [.heic]
             case .automatic: [.png, .jpeg]
             }
         panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)

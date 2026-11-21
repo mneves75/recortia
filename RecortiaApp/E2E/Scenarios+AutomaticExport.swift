@@ -326,7 +326,7 @@
             // title must not say that nothing was exported (copy succeeds, save fails).
             let denials: Set<String> = ["Nothing was exported", "Nada foi exportado"]
             let failures: [ExportFailure] = [
-                .busy, .renderFailed, .encodeFailed, .budgetExceeded, .clipboardFailed, .accessDenied,
+                .busy, .renderFailed, .encodeFailed, .budgetExceeded, .clipboardFailed, .printFailed, .accessDenied,
                 .destinationExists(nil), .nameTooLong, .diskFull, .volumeUnavailable, .staleDocument, .system(code: 5),
                 .upload(.missingCredential),
             ]

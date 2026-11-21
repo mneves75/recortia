@@ -28,9 +28,9 @@
             return AppServices(
                 capture: system, screenPermission: system, accessibility: system, assets: assets, input: assets,
                 renderer: PreviewEditorRenderer(), exporter: PreviewEditorExporter(), clipboard: sink, files: sink,
-                drag: sink, folders: sink, textRecognition: PreviewTextRecognition(), qrDecoder: detector,
-                sensitiveText: detector, scrollFrames: system, stitcher: LiveStitcher(), autoScroller: nil,
-                loginItem: PreviewLoginItem(), clock: PreviewEditorClock())
+                drag: sink, printer: sink, folders: sink, textRecognition: PreviewTextRecognition(),
+                qrDecoder: detector, sensitiveText: detector, scrollFrames: system, stitcher: LiveStitcher(),
+                autoScroller: nil, loginItem: PreviewLoginItem(), clock: PreviewEditorClock())
         }
 
         static func shortcutStatus(failing: Set<String> = [], held: Set<String> = []) -> ShortcutStatusModel {
