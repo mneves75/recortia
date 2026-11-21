@@ -1,5 +1,8 @@
 # 02. Save an optimized copy
 
+See the [optimized save specification](optimized-save-spec.md) for overwrite consent, dialog
+cancellation and the file sink's commit boundary.
+
 **Status** ready-for-agent
 
 **Blocked by** 01, to share the verified thumbnail lifecycle and native control surface.
