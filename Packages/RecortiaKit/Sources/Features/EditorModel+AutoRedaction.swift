@@ -9,6 +9,17 @@ import Foundation
 extension EditorModel {
     public var isMaskingPending: Bool { autoRedaction == .pending }
 
+    /// The one admission point for the person's actions while the masks are pending (R-4): every
+    /// entry point that edits, selects, samples, renders, recognizes, imports or exports asks it
+    /// first, and `edit` asks it for every document change. `explaining` posts
+    /// `.maskingInProgress` for a command the person gave by name; pointer, selection, history and
+    /// edit traffic is refused silently. `MaskingAdmissionTests` drives every public function.
+    func admitsAction(explaining: Bool = false) -> Bool {
+        guard isMaskingPending else { return true }
+        if explaining { post(.maskingInProgress) }
+        return false
+    }
+
     /// Starts detection and its deadline; whichever settles first decides (`finishAutoRedaction`).
     func startAutoRedaction() {
         guard let asset = document.layers.first.flatMap({ document.assets[$0.assetID] }) else {
