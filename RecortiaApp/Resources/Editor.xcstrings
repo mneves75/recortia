@@ -1,6 +1,24 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Print…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Print…" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imprimir…" } }
+      }
+    },
+    "Image sent to the print panel.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Image sent to the print panel." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem enviada ao painel de impressão." } }
+      }
+    },
+    "The image could not be sent to the print panel.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The image could not be sent to the print panel." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Não foi possível enviar a imagem ao painel de impressão." } }
+      }
+    },
     "Rotate Left": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Rotate Left" } },

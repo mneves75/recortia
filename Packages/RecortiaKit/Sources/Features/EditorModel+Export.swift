@@ -8,6 +8,8 @@ public enum EditorExportRequest: Hashable, Sendable {
     case save(URL, format: ExportFormatChoice, replacing: URL?)
     case saveToPreferredFolder
     case drag
+    /// File › Print… (B-9a): the sanitized PNG, admitted like Copy.
+    case print
 }
 
 // Export (FR-07) and pinning (FR-09). Every external write goes through `ExportCoordinator`
@@ -72,6 +74,8 @@ extension EditorModel {
             action = .save(to: url, format: format, replacing: replacing)
         case .drag:
             action = .drag
+        case .print:
+            action = .print
         case .saveToPreferredFolder:
             guard let bookmark = environment.settings.preferences.preferredSaveFolderBookmark,
                 let folder = environment.folders.resolveFolder(bookmark: bookmark)

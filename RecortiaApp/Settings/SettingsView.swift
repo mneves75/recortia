@@ -198,19 +198,31 @@ struct ExportSettingsTab: View {
     /// of this app's windows becomes key (the person may have moved or deleted it meanwhile).
     @State private var folderStatus: AutomaticSaveFolder?
 
+    /// The stored format, shown as PNG on a Mac that cannot encode HEIC; only a pick writes it.
+    private var format: Binding<ExportFormatKind> {
+        let stored = settings.binding(\.exportFormat)
+        let encodesHEIC = settings.encodesHEIC
+        return Binding(
+            get: { stored.wrappedValue == .heic && !encodesHEIC ? .png : stored.wrappedValue },
+            set: { stored.wrappedValue = $0 })
+    }
+
     var body: some View {
         Form {
             Section {
-                Picker("Format", selection: settings.binding(\.exportFormat)) {
+                Picker("Format", selection: format) {
                     Text("PNG").tag(ExportFormatKind.png)
                     Text("JPEG").tag(ExportFormatKind.jpeg)
+                    if settings.encodesHEIC {
+                        Text("HEIC").tag(ExportFormatKind.heic)
+                    }
                     Text("Automatic (PNG or JPEG)").tag(ExportFormatKind.automatic)
                 }
                 .help(Text("Copy Image always places a PNG on the clipboard."))
                 .accessibilityIdentifier("settings.exportFormat")
-                if settings.preferences.exportFormat == .jpeg {
+                if format.wrappedValue == .jpeg || format.wrappedValue == .heic {
                     Slider(value: settings.binding(\.jpegQuality), in: 0.1...1, step: 0.05) {
-                        Text("JPEG quality")
+                        format.wrappedValue == .heic ? Text("HEIC quality") : Text("JPEG quality")
                     } minimumValueLabel: {
                         Text("Smaller")
                     } maximumValueLabel: {
@@ -542,7 +554,7 @@ struct FilenameTemplateSection: View {
     }
 
     private var example: String {
-        let options = settings.preferences.exportOptions
+        let options = settings.exportOptions
         return options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
     }
 

@@ -414,6 +414,18 @@ final class FakeClipboard: ClipboardSinkService {
     }
 }
 
+/// Records what reaches the print panel; never shows one.
+@MainActor
+final class FakePrinter: PrintSinkService {
+    var error: SinkError?
+    private(set) var presented: [ShareSnapshot] = []
+
+    func present(_ snapshot: ShareSnapshot) throws(SinkError) {
+        if let error { throw error }
+        presented.append(snapshot)
+    }
+}
+
 @MainActor
 final class FakeFileSink: FileSinkService {
     var error: SinkError?
@@ -684,8 +696,8 @@ final class FixedKeyPreferenceIntegrity: PreferenceIntegrityService {
 }
 
 extension SettingsStore {
-    convenience init(storage: any PreferenceStorage) {
-        self.init(storage: storage, integrity: FixedKeyPreferenceIntegrity())
+    convenience init(storage: any PreferenceStorage, encodesHEIC: Bool = true) {
+        self.init(storage: storage, integrity: FixedKeyPreferenceIntegrity(), encodesHEIC: encodesHEIC)
     }
 }
 

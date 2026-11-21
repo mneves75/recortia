@@ -217,7 +217,7 @@ struct TextRedactionTests {
         #expect(model.droppedResultCount == dropped + 1)
     }
 
-    @Test("While lines are pending, copy, save, drag, pin, Output Preview, edits and Undo are refused")
+    @Test("While lines are pending, copy, save, drag, print, pin, Output Preview, edits and Undo are refused")
     func exportsRefusedWhilePending() async throws {
         let h = Self.pending()
         let model = h.model
@@ -226,7 +226,7 @@ struct TextRedactionTests {
         await Self.draw(h)
         #expect(!model.canStartExport)
         let requests: [EditorExportRequest] = [
-            .copy, .drag, .saveToPreferredFolder,
+            .copy, .drag, .print, .saveToPreferredFolder,
             .save(URL(fileURLWithPath: "/tmp/recortia-tests/text-redaction.png"), format: .fixed(.png), replacing: nil),
         ]
         for request in requests {
@@ -245,7 +245,7 @@ struct TextRedactionTests {
         h.drag((250, 150), (300, 200))
         #expect(try Self.isCover(h) && model.document.annotations.isEmpty)
         #expect(h.exporter.snapshotCount == 0 && h.clipboard.writes.isEmpty && h.files.saves.isEmpty)
-        #expect(h.drag.deliveries.isEmpty)
+        #expect(h.drag.deliveries.isEmpty && h.printer.presented.isEmpty)
 
         await Self.finish(h)
         #expect(model.session.undoCount == undoCount + 1)

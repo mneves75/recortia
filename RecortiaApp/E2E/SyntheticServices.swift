@@ -272,6 +272,19 @@
         }
     }
 
+    /// Stands in for the print panel (B-9a): builds the real print operation for each snapshot and
+    /// records it, but never runs it, so no panel, printer or PDF is touched.
+    final class RecordingPrinter: PrintSinkService {
+        private(set) var snapshots: [ShareSnapshot] = []
+        private(set) var operations: [NSPrintOperation] = []
+
+        func present(_ snapshot: ShareSnapshot) throws(SinkError) {
+            let operation = try PrintSink.operation(for: snapshot)
+            snapshots.append(snapshot)
+            operations.append(operation)
+        }
+    }
+
     /// Stands in for a receiving app: builds the real drag chip panel (never shown), then fulfils
     /// the real `DragOutProvider` file promise into a folder under the output directory.
     final class SyntheticDragReceiver: DragSinkService {

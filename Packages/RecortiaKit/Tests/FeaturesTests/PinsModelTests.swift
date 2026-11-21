@@ -17,7 +17,7 @@ final class PinsHarness {
     init() {
         let export = ExportCoordinator(
             exporter: FakeExportService(), clipboard: FakeClipboard(), files: FakeFileSink(), drag: FakeDragSink(),
-            folders: FakeSaveFolders(), clock: ManualClock(), settings: settings)
+            printer: FakePrinter(), folders: FakeSaveFolders(), clock: ManualClock(), settings: settings)
         model = PinsModel(renderer: renderer, settings: settings, export: export)
     }
 }

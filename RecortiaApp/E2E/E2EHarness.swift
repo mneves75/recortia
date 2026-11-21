@@ -25,6 +25,8 @@
         let clipboard: PrivatePasteboardClipboard
         let textPasteboard: NSPasteboard
         let drag: SyntheticDragReceiver
+        /// Records print operations; never shows a print panel.
+        let printer = RecordingPrinter()
         let github = SyntheticGitHubUpload()
         let exportGate: SyntheticExportGate
         let importInput: SyntheticImportInput
@@ -80,7 +82,7 @@
                 githubUpload: github, githubCredentials: github,
                 capture: capture, screenPermission: permission, accessibility: accessibility,
                 assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
-                clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
+                clipboard: clipboard, files: live.files, drag: drag, printer: printer, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
                 scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem,

@@ -8,6 +8,8 @@ import UniformTypeIdentifiers
 protocol EditorWindowActions: AnyObject {
     func copyImage()
     func saveImage()
+    /// File › Print… (B-9a): the sanitized PNG from the export pipeline, admitted like Copy.
+    func printImage()
     func saveToPreferredFolder()
     func pin()
     func addImageFromFile()
@@ -365,7 +367,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     func saveImage() {
         commitPendingText()
         guard let window, exportSlotIsFree() else { return }
-        let options = model.environment.settings.preferences.exportOptions
+        let options = model.environment.settings.exportOptions
         let format = options.formatChoice
         let panel = NSSavePanel()
         // Automatic offers the PNG name; the save then takes the extension of the format chosen.
@@ -373,6 +375,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             switch format {
             case .fixed(.png): [.png]
             case .fixed(.jpeg): [.jpeg]
+            case .fixed(.heic): [.heic]
             case .automatic: [.png, .jpeg]
             }
         panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
@@ -418,6 +421,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         commitPendingText()
         guard exportSlotIsFree() else { return }
         Task { await model.export(.saveToPreferredFolder) }
+    }
+
+    func printImage() {
+        commitPendingText()
+        guard exportSlotIsFree() else { return }
+        Task { await model.export(.print) }
     }
 
     func pin() {

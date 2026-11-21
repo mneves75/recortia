@@ -121,11 +121,14 @@ public enum CaptureRequest {
 public enum ExportFormat: Hashable, Sendable, Codable {
     case png
     case jpeg(quality: Double)
+    /// HEIC, flattened like JPEG; offered only where this Mac's ImageIO encodes it.
+    case heic(quality: Double)
 
     public var fileExtension: String {
         switch self {
         case .png: "png"
         case .jpeg: "jpg"
+        case .heic: "heic"
         }
     }
 
@@ -133,6 +136,7 @@ public enum ExportFormat: Hashable, Sendable, Codable {
         switch self {
         case .png: "public.png"
         case .jpeg: "public.jpeg"
+        case .heic: "public.heic"
         }
     }
 }
@@ -153,7 +157,8 @@ public enum ExportOptionsError: Error, Equatable, Sendable {
 public struct ExportOptions: Hashable, Sendable, Codable {
     public var format: ExportFormat
     public var scale: Double
-    /// JPEG has no alpha: transparency is flattened against this opaque color (FR-07).
+    /// JPEG and HEIC exports carry no alpha: transparency is flattened against this opaque color
+    /// (FR-07).
     public var jpegBackground: RGBA
     public var filenameTemplate: FilenameTemplate
     /// Automatic: the encoder picks PNG or a JPEG, and `format` names only the PNG it starts from.
@@ -190,7 +195,9 @@ public struct ExportOptions: Hashable, Sendable, Codable {
     @discardableResult
     public func validated() throws -> ExportOptions {
         guard scale.isFinite, Self.validScaleRange.contains(scale) else { throw ExportOptionsError.invalidScale }
-        if case .jpeg(let quality) = format {
+        switch format {
+        case .png: break
+        case .jpeg(let quality), .heic(let quality):
             guard quality.isFinite, (0...1).contains(quality) else { throw ExportOptionsError.invalidQuality }
             guard jpegBackground.isOpaque else { throw ExportOptionsError.translucentJPEGBackground }
         }
@@ -223,6 +230,8 @@ public enum OCRTextMode: String, Hashable, Sendable, Codable, CaseIterable {
 public enum ExportFormatKind: String, Hashable, Sendable, Codable, CaseIterable {
     case png
     case jpeg
+    /// Stored apart from `defaultExportFormat`, which Recortia 0.14 reads as PNG or JPEG only.
+    case heic
     /// PNG or JPEG by size, for saved files (FR-07). Stored apart from `defaultExportFormat`.
     case automatic
 }
@@ -296,6 +305,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var afterCaptureChoice: AfterCapture?
     /// Stored only once the person picks a format; read `exportFormat`.
     public var automaticExportFormatChoice: Bool?
+    /// Stored only once the person picks a format; read `exportFormat`.
+    public var heicExportFormatChoice: Bool?
     /// The language text recognition tries first, as a full identifier (`pt-Latn-BR`); nil is
     /// Automatic (FR-08).
     public var primaryRecognitionLanguage: String?
@@ -410,15 +421,26 @@ public struct Preferences: Hashable, Sendable, Codable {
 
     /// The format of saved, dragged and uploaded files (FR-07); Copy Image is always PNG.
     public var exportFormat: ExportFormatKind {
-        get { automaticExportFormatChoice == true ? .automatic : defaultExportFormat }
+        get {
+            if automaticExportFormatChoice == true { return .automatic }
+            return heicExportFormatChoice == true ? .heic : defaultExportFormat
+        }
         set {
             automaticExportFormatChoice = newValue == .automatic
-            if newValue != .automatic { defaultExportFormat = newValue }
+            heicExportFormatChoice = newValue == .heic
+            if newValue == .png || newValue == .jpeg { defaultExportFormat = newValue }
         }
     }
 
-    public var exportOptions: ExportOptions {
-        let format: ExportFormat = defaultExportFormat == .jpeg ? .jpeg(quality: jpegQuality) : .png
+    /// The options exports use. A HEIC choice on a Mac that cannot encode HEIC exports PNG and
+    /// stays stored, so it applies again where HEIC is available.
+    public func exportOptions(encodesHEIC: Bool) -> ExportOptions {
+        let format: ExportFormat =
+            switch exportFormat {
+            case .jpeg: .jpeg(quality: jpegQuality)
+            case .heic where encodesHEIC: .heic(quality: jpegQuality)
+            case .png, .heic, .automatic: .png
+            }
         return ExportOptions(
             format: format, scale: defaultExportScale, filenameTemplate: filenameTemplate,
             automaticFormat: exportFormat == .automatic)

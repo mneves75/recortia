@@ -16,10 +16,15 @@ public enum ExportAction: Hashable, Sendable {
     case saveToFolder(URL)
     case drag
     case upload(to: GitHubDestination, intent: UUID)
+    /// Print (B-9a): the sanitized PNG, handed to the system print panel like a Copy.
+    case print
 }
 
 public enum ExportOutcome: Hashable, Sendable {
     case copied
+    /// The print panel shows the snapshot; the person may still cancel there, so the document
+    /// still counts as unexported.
+    case printed
     case saved(URL)
     case dragged
     case uploaded(URL)
@@ -41,7 +46,7 @@ public enum ExportOutcome: Hashable, Sendable {
     public var didWrite: Bool {
         switch self {
         case .copied, .saved, .dragged, .uploaded, .alreadyCompleted: true
-        case .canceled, .failed, .rejectedBusy: false
+        case .printed, .canceled, .failed, .rejectedBusy: false
         }
     }
 }
@@ -75,7 +80,7 @@ enum AutomaticStepCheck: Hashable, Sendable {
     case failed(ExportFailure)
 }
 
-/// Drives `ExportState` for Copy, Save, Drag, and GitHub upload (FR-07, EXP-02, NET-01).
+/// Drives `ExportState` for Copy, Save, Drag, Print and GitHub upload (FR-07, EXP-02, NET-01).
 ///
 /// Order: take an immutable snapshot through the export pipeline, verify that it still matches
 /// the live document (revision and privacy epoch), then commit to exactly one sink. The pipeline
@@ -96,6 +101,7 @@ public final class ExportCoordinator {
     @ObservationIgnored private let clipboard: any ClipboardSinkService
     @ObservationIgnored private let files: any FileSinkService
     @ObservationIgnored private let drag: any DragSinkService
+    @ObservationIgnored private let printer: any PrintSinkService
     @ObservationIgnored private let folders: any SaveFolderService
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
@@ -120,7 +126,7 @@ public final class ExportCoordinator {
 
     public init(
         exporter: any ExportService, clipboard: any ClipboardSinkService, files: any FileSinkService,
-        drag: any DragSinkService,
+        drag: any DragSinkService, printer: any PrintSinkService,
         folders: any SaveFolderService, clock: any FeatureClock, settings: SettingsStore,
         upload: (any GitHubUploadService)? = nil, diagnostics: (any DiagnosticsSink)? = nil
     ) {
@@ -128,6 +134,7 @@ public final class ExportCoordinator {
         self.clipboard = clipboard
         self.files = files
         self.drag = drag
+        self.printer = printer
         self.folders = folders
         self.clock = clock
         self.settings = settings
@@ -281,6 +288,10 @@ public final class ExportCoordinator {
                 apply(.commit)
                 try clipboard.write(snapshot)
                 completed = .copied
+            case .print:
+                apply(.commit)
+                try printer.present(snapshot)
+                completed = .printed
             case .save(let url, let format, let replacing):
                 apply(.commit)
                 let destination = format == .automatic ? Self.named(url, for: snapshot.format) : url
@@ -500,9 +511,9 @@ public final class ExportCoordinator {
     }
 
     public func exportOptions(for action: ExportAction) -> ExportOptions {
-        var options = settings.preferences.exportOptions
+        var options = settings.exportOptions
         switch action {
-        case .copy: options.formatChoice = .fixed(.png)
+        case .copy, .print: options.formatChoice = .fixed(.png)
         case .save(_, let format, _): options.formatChoice = format
         case .saveToFolder, .drag, .upload: break
         }
@@ -517,6 +528,7 @@ public final class ExportCoordinator {
             switch format {
             case .png: current == "png"
             case .jpeg: current == "jpg" || current == "jpeg"
+            case .heic: current == "heic"
             }
         return matches ? url : url.deletingPathExtension().appendingPathExtension(format.fileExtension)
     }
@@ -541,6 +553,7 @@ public final class ExportCoordinator {
     static func failure(for error: SinkError) -> ExportFailure {
         switch error {
         case .clipboardWriteFailed: .clipboardFailed
+        case .printFailed: .printFailed
         case .destinationExists: .destinationExists(nil)
         case .nameTooLong: .nameTooLong
         case .accessDenied: .accessDenied

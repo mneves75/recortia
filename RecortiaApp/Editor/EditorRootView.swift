@@ -117,7 +117,7 @@ struct EditorNoticePresentation {
         switch outcome {
         case .failed, .uploaded: true
         case .alreadyCompleted(let completed): persists(completed)
-        case .copied, .saved, .dragged, .canceled, .rejectedBusy: false
+        case .copied, .printed, .saved, .dragged, .canceled, .rejectedBusy: false
         }
     }
 }

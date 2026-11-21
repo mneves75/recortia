@@ -20,6 +20,7 @@ struct AppServices {
     let clipboard: any ClipboardSinkService
     let files: any FileSinkService
     let drag: any DragSinkService
+    let printer: any PrintSinkService
     let folders: any SaveFolderService
     let textRecognition: any TextRecognitionService
     let qrDecoder: any QRDecodingService
@@ -120,7 +121,7 @@ extension AppServices {
             capture: capture, screenPermission: LiveScreenPermission(), accessibility: LiveAccessibilityPermission(),
             assets: LiveImageAssets(store: store), input: LiveImageInput(), renderer: LiveRenderer(store: store),
             exporter: LiveExporter(store: store), clipboard: LiveClipboard(), files: LiveFiles(), drag: LiveDragSink(),
-            folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
+            printer: LivePrinter(), folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
             qrDecoder: recognition, sensitiveText: LiveSensitiveText(store: store),
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
             loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound(),

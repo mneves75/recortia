@@ -245,7 +245,7 @@ struct MaskingAdmissionTests {
             // Output: export, pin, Output Preview and recognition.
             Step(name: "export", expectation: .explains) {
                 let requests: [EditorExportRequest] = [
-                    .copy, .drag, .saveToPreferredFolder,
+                    .copy, .drag, .print, .saveToPreferredFolder,
                     .save(
                         URL(fileURLWithPath: "/tmp/recortia-tests/admission.png"), format: .fixed(.png),
                         replacing: URL(fileURLWithPath: "/tmp/recortia-tests/admission.png")),

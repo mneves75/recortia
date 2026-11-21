@@ -111,6 +111,6 @@ struct FilenameTemplateTests {
         let decoded = try JSONDecoder().decode(
             Preferences.self, from: JSONSerialization.data(withJSONObject: legacy))
         #expect(decoded.filenameTemplate == .default)
-        #expect(decoded.exportOptions.filenameTemplate == .default)
+        #expect(decoded.exportOptions(encodesHEIC: true).filenameTemplate == .default)
     }
 }

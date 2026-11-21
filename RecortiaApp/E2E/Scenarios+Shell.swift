@@ -339,7 +339,7 @@
             context.check("automatic upload is off by default", preferences.githubUpload?.automatic != true)
             context.check("update checks are off by default", !preferences.updateChecksEnabled)
             context.check("automatic scrolling is off by default", !preferences.automaticScrollingEnabled)
-            context.check("export defaults to PNG at 100%", preferences.exportOptions == ExportOptions())
+            context.check("export defaults to PNG at 100%", harness.settings.exportOptions == ExportOptions())
             try await checkLoginItemRefresh(context)
 
             let window = SettingsWindowController.makeWindow(model: harness.app)
@@ -635,9 +635,9 @@
                 harness.settings.preferences.primaryRecognitionLanguage == nil)
         }
 
-        /// Settings › Export's format menu (FR-07): it offers PNG, JPEG and Automatic, choosing
-        /// Automatic stores it and the reopened menu shows it chosen, and choosing PNG returns to
-        /// the default export options.
+        /// Settings › Export's format menu (FR-07): it offers PNG, JPEG, HEIC where this Mac encodes
+        /// it, and Automatic; choosing Automatic stores it and the reopened menu shows it chosen, and
+        /// choosing PNG returns to the default export options.
         private static func exportFormatMenu(
             tabs: NSTabView, activate: () async throws -> Void, root: NSView, _ harness: E2EHarness,
             _ context: ScenarioContext
@@ -646,30 +646,31 @@
             try await activate()
             await E2ESnapshot.settle(root, for: .milliseconds(400))
             let pane = try context.unwrap("the Export pane", tabs.selectedTabViewItem?.view)
-            let titles = [
-                String(localized: "PNG"), String(localized: "JPEG"), String(localized: "Automatic (PNG or JPEG)"),
-            ]
+            let automatic = String(localized: "Automatic (PNG or JPEG)")
+            let titles =
+                [String(localized: "PNG"), String(localized: "JPEG")]
+                + (harness.settings.encodesHEIC ? [String(localized: "HEIC")] : []) + [automatic]
             let offered = try await E2EAccessibilityControl.chooseFromMenu(
-                titles[2], opening: "settings.exportFormat", in: pane, context)
+                automatic, opening: "settings.exportFormat", in: pane, context)
             context.check(
-                "the Export format menu offers PNG, JPEG and Automatic", offered.map(\.title) == titles, "\(offered)")
+                "the Export format menu offers PNG, JPEG, HEIC where it encodes, and Automatic",
+                offered.map(\.title) == titles, "\(offered)")
             await E2ESnapshot.settle(root, for: .milliseconds(400))
             context.check(
                 "choosing Automatic stores it for saved files",
                 harness.settings.preferences.exportFormat == .automatic
-                    && harness.settings.preferences.exportOptions.formatChoice == .automatic,
+                    && harness.settings.exportOptions.formatChoice == .automatic,
                 "\(harness.settings.preferences.exportFormat)")
             context.snapshot(pane, shot: "export-automatic")
             let reopened = try await E2EAccessibilityControl.chooseFromMenu(
                 titles[0], opening: "settings.exportFormat", in: pane, context)
             context.check(
                 "the reopened Export format menu shows Automatic chosen",
-                reopened.filter(\.checked).map(\.title) == [titles[2]], "\(reopened)")
+                reopened.filter(\.checked).map(\.title) == [automatic], "\(reopened)")
             await E2ESnapshot.settle(root, for: .milliseconds(400))
             context.check(
                 "choosing PNG again returns to the default export options",
-                harness.settings.preferences.exportOptions == ExportOptions(),
-                "\(harness.settings.preferences.exportOptions)")
+                harness.settings.exportOptions == ExportOptions(), "\(harness.settings.exportOptions)")
         }
 
         /// Settings › Export's file-name field (A-9), typed through its native field editor: an

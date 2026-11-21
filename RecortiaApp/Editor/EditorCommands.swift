@@ -164,7 +164,7 @@ enum EditorArrangeCommand: Hashable {
 
 // MARK: - Menu bar
 
-/// The editor's main-menu commands, for the key editor window: File (open, paste, close, save),
+/// The editor's main-menu commands, for the key editor window: File (open, paste, close, save, print),
 /// View (columns, zoom, output preview, inspector tab), Tools and Arrange. Edit's standard Undo,
 /// Redo, Copy, Delete and Select All reach the canvas through the responder chain. Each command
 /// rechecks its live target when chosen and beeps without one.
@@ -199,6 +199,12 @@ struct EditorMenuCommands: Commands {
                 onKeyEditor { $0.saveToPreferredFolder() }
             }
             .disabled(!canExport)
+        }
+        // Printing is an export: refused while Copy is (masking pending, export slot taken).
+        CommandGroup(replacing: .printItem) {
+            Button(String(localized: "Print…", table: "Editor")) { onKeyEditor { $0.printImage() } }
+                .keyboardShortcut("p")
+                .disabled(!canExport)
         }
         CommandGroup(replacing: .sidebar) {
             Button(

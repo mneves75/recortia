@@ -15,6 +15,7 @@ final class ExportHarness {
     let clipboard = FakeClipboard()
     let files = FakeFileSink()
     let drag = FakeDragSink()
+    let printer = FakePrinter()
     let folders = FakeSaveFolders()
     let clock = ManualClock()
     let settings = SettingsStore(storage: MemoryPreferenceStorage())
@@ -24,8 +25,8 @@ final class ExportHarness {
 
     init(upload: (any GitHubUploadService)? = nil) {
         coordinator = ExportCoordinator(
-            exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: settings, upload: upload, diagnostics: diagnostics)
+            exporter: exporter, clipboard: clipboard, files: files, drag: drag, printer: printer, folders: folders,
+            clock: clock, settings: settings, upload: upload, diagnostics: diagnostics)
     }
 
     func export(_ action: ExportAction) async -> ExportOutcome {

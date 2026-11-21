@@ -109,7 +109,13 @@ public enum ContainerCrafting {
 
     /// A JPEG carrying EXIF, TIFF, GPS, IPTC, and a COM segment full of canaries.
     public static func metadataRichJPEG(_ image: CGImage) throws(FixtureError) -> Data {
-        let properties: [CFString: Any] = [
+        let jpeg = try jpegData(image, quality: 0.95, properties: metadataProperties())
+        return try insertingJPEGComment("RECORTIA-CANARY-COMMENT", into: jpeg)
+    }
+
+    /// ImageIO properties carrying EXIF, TIFF, GPS and IPTC canaries.
+    public static func metadataProperties() -> [CFString: Any] {
+        [
             kCGImagePropertyExifDictionary: [
                 kCGImagePropertyExifUserComment: "RECORTIA-CANARY-EXIF",
                 kCGImagePropertyExifDateTimeOriginal: "2026:09:26 10:11:12",
@@ -125,8 +131,6 @@ public enum ContainerCrafting {
             ],
             kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCCaptionAbstract: "RECORTIA-CANARY-IPTC"],
         ]
-        let jpeg = try jpegData(image, quality: 0.95, properties: properties)
-        return try insertingJPEGComment("RECORTIA-CANARY-COMMENT", into: jpeg)
     }
 
     /// Inserts a COM segment right after SOI.
