@@ -699,22 +699,6 @@
         }
       }
     },
-    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ambos vêm desativados. A cópia e o salvamento automáticos valem para capturas estáticas: acontecem logo após a captura, antes de qualquer edição ou tarja que você fizer depois, e não podem ser desfeitos em outros apps. Capturas com rolagem abrem para revisão."
-          }
-        }
-      }
-    },
     "Bring Pins Forward" : {
       "localizations" : {
         "en" : {
@@ -1487,6 +1471,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arraste para selecionar uma área. Pressione Return para capturar a tela inteira ou Esc para cancelar."
+          }
+        }
+      }
+    },
+    "Each capture is uploaded before you edit or redact it, and Git history keeps every image after you turn this off." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each capture is uploaded before you edit or redact it, and Git history keeps every image after you turn this off."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada captura é enviada antes de você editar ou ocultar informações, e o histórico do Git guarda todas as imagens mesmo depois que você desativar o envio."
           }
         }
       }
@@ -2542,22 +2542,6 @@
         }
       }
     },
-    "Pins stay until you close them and are not restored after Recortia quits." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pins stay until you close them and are not restored after Recortia quits."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "As fixações ficam até você fechá-las e não são restauradas depois que o Recortia é encerrado."
-          }
-        }
-      }
-    },
     "Placeholders: {date}, {time}, {counter}" : {
       "localizations" : {
         "en" : {
@@ -3076,6 +3060,22 @@
         }
       }
     },
+    "Runs right after a capture, before you edit or redact, and cannot be taken back from other apps." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Runs right after a capture, before you edit or redact, and cannot be taken back from other apps."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acontece logo após a captura, antes de você editar ou ocultar informações, e não pode ser desfeito em outros apps."
+          }
+        }
+      }
+    },
     "Save a GitHub token in Settings before uploading." : {
       "localizations" : {
         "en" : {
@@ -3574,22 +3574,6 @@
         }
       }
     },
-    "Text is recognized on this Mac and never corrected automatically." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Text is recognized on this Mac and never corrected automatically."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O texto é reconhecido neste Mac e nunca é corrigido automaticamente."
-          }
-        }
-      }
-    },
     "Text recognition and QR codes" : {
       "localizations" : {
         "pt-BR" : {
@@ -3734,22 +3718,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A área de transferência não contém uma imagem PNG ou JPEG."
-          }
-        }
-      }
-    },
-    "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os padrões são os do app Captura de Tela do macOS: ⇧⌘3 captura a tela inteira, ⇧⌘4 uma região (pressione Espaço para uma janela) e ⇧⌘5 mostra todos os modos de captura. O Recortia avisa sobre conflitos com atalhos do macOS e de menus que consegue detectar, mas não tem como conhecer todos os atalhos usados por outros apps."
           }
         }
       }
@@ -4426,22 +4394,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O que fica neste Mac"
-          }
-        }
-      }
-    },
-    "When enabled, each still capture is uploaded before later edits or redaction. Uploads require a private repository and are limited to 8 MB. Git history retains earlier images; turning this off or closing Recortia does not delete remote copies." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "When enabled, each still capture is uploaded before later edits or redaction. Uploads require a private repository and are limited to 8 MB. Git history retains earlier images; turning this off or closing Recortia does not delete remote copies."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quando ativado, cada captura estática é enviada antes de edições ou tarjas posteriores. Os envios exigem um repositório privado e têm limite de 8 MB. O histórico do Git mantém imagens anteriores; desativar o envio ou fechar o Recortia não exclui cópias remotas."
           }
         }
       }
