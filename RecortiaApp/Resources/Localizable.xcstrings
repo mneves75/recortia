@@ -433,22 +433,6 @@
         }
       }
     },
-    "Annotations stay editable; exports are flattened images." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annotations stay editable; exports are flattened images."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "As anotações continuam editáveis; as exportações são imagens achatadas."
-          }
-        }
-      }
-    },
     "Another image is still being opened. Try again when it finishes." : {
       "localizations" : {
         "en" : {
@@ -481,16 +465,6 @@
         }
       }
     },
-    "Arrange images and add emphasis without leaving the editor." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Organize imagens e dê ênfase aos detalhes sem sair do editor."
-          }
-        }
-      }
-    },
     "Assign shortcuts" : {
       "localizations" : {
         "en" : {
@@ -507,28 +481,18 @@
         }
       }
     },
-    "Automatic copy and save run right after a capture, before any redaction. Turn them off before capturing sensitive content." : {
+    "Automatic copy, save and upload are off on a fresh install. When on, they run right after a capture, before any redaction." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatic copy and save run right after a capture, before any redaction. Turn them off before capturing sensitive content."
+            "value" : "Automatic copy, save and upload are off on a fresh install. When on, they run right after a capture, before any redaction."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A cópia e o salvamento automáticos acontecem logo após a captura, antes de qualquer ocultação. Desative-os antes de capturar conteúdo sensível."
-          }
-        }
-      }
-    },
-    "Automatic copy, save and upload are off on a fresh install. You decide whether to enable them in Settings." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cópia, salvamento e envio automáticos vêm desativados em uma instalação nova. Você decide se deseja ativá-los nos Ajustes."
+            "value" : "Cópia, salvamento e envio automáticos vêm desativados em uma instalação nova. Quando ativados, acontecem logo após a captura, antes de qualquer ocultação."
           }
         }
       }
@@ -581,12 +545,18 @@
         }
       }
     },
-    "Automatic exports are optional" : {
+    "Automatic exports start off" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic exports start off"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exportações automáticas são opcionais"
+            "value" : "Exportações automáticas começam desativadas"
           }
         }
       }
@@ -921,34 +891,18 @@
         }
       }
     },
-    "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it." : {
+    "Capture, editing and recognition stay on this Mac." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Capture, editing and recognition stay on this Mac. Optional GitHub upload runs only when you enable it."
+            "value" : "Capture, editing and recognition stay on this Mac."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A captura, a edição e o reconhecimento são locais neste Mac. O envio opcional ao GitHub ocorre somente quando você o ativa."
-          }
-        }
-      }
-    },
-    "Capture, mark up, redact, and share screenshots from the menu bar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Capture, mark up, redact, and share screenshots from the menu bar."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Capture, anote, oculte informações e compartilhe capturas de tela pela barra de menus."
+            "value" : "A captura, a edição e o reconhecimento ficam neste Mac."
           }
         }
       }
@@ -1065,16 +1019,6 @@
         }
       }
     },
-    "Choose a capture mode from the Recortia menu-bar icon." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha um modo de captura no ícone do Recortia na barra de menus."
-          }
-        }
-      }
-    },
     "Choose a display to capture" : {
       "localizations" : {
         "en" : {
@@ -1103,16 +1047,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolha uma janela para capturar"
-          }
-        }
-      }
-    },
-    "Choose what leaves the editor" : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escolha o que sai do editor"
           }
         }
       }
@@ -1209,16 +1143,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Captura completa."
-          }
-        }
-      }
-    },
-    "Compose and keep references" : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Componha e mantenha referências"
           }
         }
       }
@@ -2383,6 +2307,33 @@
         }
       }
     },
+    "Page %lld of %lld" : {
+      "comment" : "Tour progress: the first placeholder is the current page; the second is the total page count.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Permission on first capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission on first capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permissão na primeira captura"
+          }
+        }
+      }
+    },
     "PNG" : {
       "localizations" : {
         "en" : {
@@ -2745,12 +2696,18 @@
         }
       }
     },
-    "Read text and inspect pixels" : {
+    "Read, pin and share" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read, pin and share"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leia texto e inspecione pixels"
+            "value" : "Leia, fixe e compartilhe"
           }
         }
       }
@@ -2783,16 +2740,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pronto. Clique em Iniciar e role a área devagar."
-          }
-        }
-      }
-    },
-    "Recognition and pixel inspection run on this Mac." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O reconhecimento e a inspeção de pixels são processados neste Mac."
           }
         }
       }
@@ -2925,22 +2872,6 @@
         }
       }
     },
-    "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recortia's default shortcuts are the macOS screenshot ones: ⇧⌘3 for the display, ⇧⌘4 for a region and ⇧⌘5 for every capture mode. Change or clear them here, or later in Settings."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os atalhos padrão do Recortia são os de captura de tela do macOS: ⇧⌘3 para a tela inteira, ⇧⌘4 para uma região e ⇧⌘5 para todos os modos de captura. Altere-os ou limpe-os aqui, ou depois nos Ajustes."
-          }
-        }
-      }
-    },
     "Redact replaces the covered pixels in every export. Blur and Pixelate are cosmetic, not secure." : {
       "localizations" : {
         "en" : {
@@ -3061,22 +2992,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remover destino e token…"
-          }
-        }
-      }
-    },
-    "Reopen this tour from Feature Tour in the menu bar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reopen this tour from Feature Tour in the menu bar."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reabra este tour em Tour de recursos na barra de menus."
           }
         }
       }
@@ -3417,16 +3332,6 @@
         }
       }
     },
-    "Sharing uses a flattened, freshly encoded image." : {
-      "localizations" : {
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O compartilhamento usa uma imagem achatada e recém-codificada."
-          }
-        }
-      }
-    },
     "Shortcuts" : {
       "localizations" : {
         "en" : {
@@ -3565,13 +3470,18 @@
         }
       }
     },
-    "Step %lld of %lld" : {
-      "comment" : "Tour progress: the first placeholder is the current page; the second is the total page count.",
+    "Stays on this Mac" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stays on this Mac"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etapa %1$lld de %2$lld"
+            "value" : "Fica neste Mac"
           }
         }
       }
