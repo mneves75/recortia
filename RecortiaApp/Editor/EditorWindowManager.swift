@@ -31,9 +31,27 @@ enum EditorInitialAction {
 /// `open(_:environment:)` for every new document; closing a window releases its model and the
 /// asset pixels it held.
 final class EditorWindowManager {
-    private var controllers: [DocumentID: EditorWindowController] = [:]
+    /// The shipped default (decisions 2026-11-21, A-13 step 2): off, because a spare can only be
+    /// the window shell, and the editor's cost is its document-bound content, not the shell.
+    static let prebuildsSpareByDefault = false
 
-    init() {}
+    private enum Spare { case next }
+
+    private var controllers: [DocumentID: EditorWindowController] = [:]
+    /// With pre-building, one hidden editor window shell, without a document, for the next editor.
+    private let spares: WindowSparePool<Spare, NSWindow>
+
+    init(prebuildsSpare: Bool = EditorWindowManager.prebuildsSpareByDefault) {
+        spares = WindowSparePool(isEnabled: prebuildsSpare) { _ in EditorWindowController.makeWindow() }
+    }
+
+    /// Builds the spare shell when pre-building and none is held.
+    func prepareSpare() {
+        spares.prepare([.next])
+    }
+
+    /// The hidden shell kept for the next editor, if any.
+    var spareWindow: NSWindow? { spares.spare(for: .next) }
 
     /// Opens `session` in a new window, or brings its existing window forward.
     @discardableResult
@@ -48,9 +66,14 @@ final class EditorWindowManager {
         }
         let model = EditorModel(
             session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
-        let controller = EditorWindowController(model: model, importedFileName: importedFileName)
+        let controller = EditorWindowController(
+            model: model, importedFileName: importedFileName, window: spares.take(.next))
         controller.onClosed = { [weak self] in self?.controllers[id] = nil }
         controllers[id] = controller
+        if spares.isEnabled {
+            // The next spare is built after this editor's first frame, never in its way.
+            controller.whenFirstDrawn { [weak self] in Task { @MainActor in self?.prepareSpare() } }
+        }
         controller.present()
         if initialAction == .recognizeText {
             Task { await model.recognizeText() }
@@ -76,17 +99,31 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     private let canvas: EditorCanvasView
     private var discardConfirmed = false
 
-    init(
-        model: EditorModel, importedFileName: String? = nil,
-        noticePresentation: EditorNoticePresentation = EditorNoticePresentation()
-    ) {
-        let openedAt = Date.now
-        self.model = model
-        canvas = EditorCanvasView(model: model)
+    /// The window shell, without a document: what a spare holds (A-13 step 2) and what every
+    /// editor is built in. Its Space policy is set here, at construction (FR-01).
+    static func makeWindow() -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
+        // The capture result follows the current Space, including another app's fullscreen
+        // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
+        window.collectionBehavior = SpacePolicy.followsActiveSpace
+        window.contentMinSize = NSSize(
+            width: EditorWindowSizing.minimumContentSize.width, height: EditorWindowSizing.minimumContentSize.height)
+        window.tabbingMode = .disallowed
+        return window
+    }
+
+    /// `window` is a spare shell from `makeWindow()` that was never shown; nil builds one.
+    init(
+        model: EditorModel, importedFileName: String? = nil,
+        noticePresentation: EditorNoticePresentation = EditorNoticePresentation(), window: NSWindow? = nil
+    ) {
+        let openedAt = Date.now
+        self.model = model
+        canvas = EditorCanvasView(model: model)
+        let window = window ?? Self.makeWindow()
         let origin = model.document.layers.first.flatMap { model.document.assets[$0.assetID]?.origin }
         let time = Date.FormatStyle.dateTime.hour().minute()
         switch origin {
@@ -103,12 +140,6 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
                 window.title = String(localized: "Image \(openedAt.formatted(time))", table: "Editor")
             }
         }
-        // The capture result follows the current Space, including another app's fullscreen
-        // Space. Primary and auxiliary fullscreen behavior are mutually exclusive.
-        window.collectionBehavior = SpacePolicy.followsActiveSpace
-        window.contentMinSize = NSSize(
-            width: EditorWindowSizing.minimumContentSize.width, height: EditorWindowSizing.minimumContentSize.height)
-        window.tabbingMode = .disallowed
         super.init(window: window)
         window.delegate = self
         canvas.actions = self
@@ -164,6 +195,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         split.splitView.dividerStyle = .thin
         for item in [sidebarItem, contentItem, inspectorItem] { split.addSplitViewItem(item) }
         return split
+    }
+
+    /// Runs `body` once, after the canvas first draws the document's image.
+    func whenFirstDrawn(_ body: @escaping () -> Void) {
+        canvas.onFirstImageDraw = body
     }
 
     /// The split item that holds `pane`.

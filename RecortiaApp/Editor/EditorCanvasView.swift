@@ -24,6 +24,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     private var trackingArea: NSTrackingArea?
     /// This canvas's own "editor to first draw" interval (A-13), set when its window first shows.
     var firstDrawInterval: LatencyInterval?
+    /// Called once, after the first draw that shows the image.
+    var onFirstImageDraw: (() -> Void)?
     private var elements: [EditorItemID: EditorAccessibilityElement] = [:]
     private var lastListItems: [EditorListItem] = []
     /// Shown, over a neutral placeholder, while automatic masking runs (FR-06).
@@ -264,9 +266,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             return
         }
         if !model.showsOutputPreview { model.reportCanvasDrawSucceeded() }
-        if model.baseImage != nil, let firstDrawInterval {
-            firstDrawInterval.end()
-            self.firstDrawInterval = nil
+        if model.baseImage != nil {
+            firstDrawInterval?.end()
+            firstDrawInterval = nil
+            if let onFirstImageDraw {
+                self.onFirstImageDraw = nil
+                onFirstImageDraw()
+            }
         }
 
         NSColor.separatorColor.setStroke()
