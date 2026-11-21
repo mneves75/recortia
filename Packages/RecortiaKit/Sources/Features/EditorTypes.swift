@@ -362,3 +362,23 @@ public enum AutoRedaction: Hashable, Sendable {
     /// Detection failed, was cancelled or missed its deadline: nothing was masked.
     case failed
 }
+
+/// A crop tool preset (A-10): the width-to-height ratio the crop rectangle keeps while it is drawn.
+public enum CropAspect: CaseIterable, Hashable, Sendable {
+    case free, original, square, fourByThree, threeByTwo, sixteenByNine, nineBySixteen
+
+    /// Width and height; `original` is the canvas's own ratio. Nil constrains nothing.
+    public func ratio(canvas: Size<DocumentSpace>) -> (width: Double, height: Double)? {
+        switch self {
+        case .free: nil
+        case .original:
+            canvas.width.isFinite && canvas.height.isFinite && canvas.width > 0 && canvas.height > 0
+                ? (canvas.width, canvas.height) : nil
+        case .square: SelectionAspect.square.ratio
+        case .fourByThree: SelectionAspect.fourByThree.ratio
+        case .threeByTwo: SelectionAspect.threeByTwo.ratio
+        case .sixteenByNine: SelectionAspect.sixteenByNine.ratio
+        case .nineBySixteen: (9, 16)
+        }
+    }
+}

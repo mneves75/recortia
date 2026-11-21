@@ -178,6 +178,10 @@ struct MaskingAdmissionTests {
             Step(name: "setLayerOpacity", expectation: .refused) { model.setLayerOpacity(0.5, for: layer) },
             Step(name: "setLayerScale", expectation: .refused) { model.setLayerScale(0.5, for: layer) },
             Step(name: "toggleTransparencyComparison", expectation: .refused) { model.toggleTransparencyComparison() },
+            Step(name: "transformImage", expectation: .refused) { model.transformImage(.rotateRight) },
+            Step(name: "transformSelectedLayers", expectation: .refused) {
+                model.transformSelectedLayers(.flipVertical)
+            },
             Step(name: "arrangeSideBySide", expectation: .refused) { model.arrangeSideBySide() },
             Step(name: "fitCanvasToContent", expectation: .refused) { model.fitCanvasToContent() },
             Step(name: "expandCanvas", expectation: .refused) { model.expandCanvas(top: 20, left: 20) },
@@ -283,6 +287,7 @@ struct MaskingAdmissionTests {
             Step(name: "setRedactsTextOnly", expectation: .inert) { model.setRedactsTextOnly(true) },
             Step(name: "setColorSampleSize", expectation: .inert) { model.setColorSampleSize(.fiveByFive) },
             Step(name: "setSamplesDarkestPixel", expectation: .inert) { model.setSamplesDarkestPixel(true) },
+            Step(name: "setCropAspect", expectation: .inert) { model.setCropAspect(.sixteenByNine) },
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
             Step(name: "applySavedColor", expectation: .inert) { model.applySavedColor(model.style.stroke) },
             Step(name: "removeSavedColor", expectation: .inert) { model.removeSavedColor(model.style.stroke) },

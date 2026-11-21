@@ -1,26 +1,6 @@
 import Domain
 import Foundation
 
-/// A crop tool preset (A-10): the width-to-height ratio the crop rectangle keeps while it is drawn.
-public enum CropAspect: CaseIterable, Hashable, Sendable {
-    case free, original, square, fourByThree, threeByTwo, sixteenByNine, nineBySixteen
-
-    /// Width and height; `original` is the canvas's own ratio. Nil constrains nothing.
-    public func ratio(canvas: Size<DocumentSpace>) -> (width: Double, height: Double)? {
-        switch self {
-        case .free: nil
-        case .original:
-            canvas.width.isFinite && canvas.height.isFinite && canvas.width > 0 && canvas.height > 0
-                ? (canvas.width, canvas.height) : nil
-        case .square: SelectionAspect.square.ratio
-        case .fourByThree: SelectionAspect.fourByThree.ratio
-        case .threeByTwo: SelectionAspect.threeByTwo.ratio
-        case .sixteenByNine: SelectionAspect.sixteenByNine.ratio
-        case .nineBySixteen: (9, 16)
-        }
-    }
-}
-
 // Rotate, flip and crop presets (A-10). Every change goes through `edit`, the editor's single edit
 // path: a layer turn or mirror is a layer edit, so each mask first binds the pixels under its box
 // and keeps its box where it is (decisions 2026-11-20). A whole-image turn moves every box with
