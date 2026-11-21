@@ -1,10 +1,10 @@
 # ADR-011: Local automation, part 1: capture intents behind the system's confirmation
 
-**Status:** Proposed (2026-11-21) by the coordinator for the plan's scheduled ADR stop, under the
-owner's 2026-11-20 delegation (`docs/specs/program-2026-11/decisions.md`). Three fresh-context
-adversarial reviews rejected earlier drafts; the ledger below records what each found and what was
-done. It is accepted only if the final review finds no path to a forbidden outcome (Threat model);
-the owner may overrule it, including the deferrals, before the release that ships it.
+**Status:** Blocked (2026-11-21). Proposed by the coordinator at the plan's scheduled ADR stop,
+under the owner's 2026-11-20 delegation. The fourth fresh-context review found paths to forbidden
+outcomes (round 4 in the ledger), and the design's core safety rests on host behaviour only the owner
+can qualify (Unblock). Nothing is built. The owner decides whether to qualify and continue, change
+the scope, or drop B-2.
 **Requirements:** FR-16 (automation; writing assistance stays unapproved), SPEC §13 "Optional local
 automation" · Program 2026-11 B-2 (part 1) · **Verification:** `AutomationCaptureTests`,
 `AutomationIntentTests`, bilingual E2E `automation`
@@ -146,6 +146,25 @@ quick-action thumbnail (`AppModel.runAutomaticExports`).
 | 3 | Selection stage not bound at commit | Fixed (5) |
 | 3 | Approval survives caller cancellation or lock | Fixed: nothing reserved before confirmation returns; admission checks cancellation and session (3) |
 | 3 | Foreground and cold launch left to the builder | Fixed (2, 8); cold launch window is accepted residual |
+| 4 | Space switches a confirmed region capture to a window capture | Needed: no Space-to-window switch for automation; bind the confirmed kind at commit |
+| 4 | An automation capture replaces the remembered region, so a later manual Repeat Last Region (with automatic copy on) exports it | Needed: keep the previous repeat region when an automation capture completes |
+| 4 | The result editor takes a Copy meant for another app | Needed: an automation-origin editor asks a named question before its first transfer (copy, save, drag, pin) |
+| 4 | The capture's permission path can request Screen Recording | Needed: preflight only at admission; refuse when access is absent |
+| 4 | A click on the overlay's aspect control, or Capture Text's language cleanup, writes a preference | Needed: no preference writes from an automation request |
+| 4 | Open Recortia brings writable Settings under the pointer | Needed: Open Recortia leaves Settings non-key, or is dropped |
+| 4 | An intent cold launch seeds default shortcuts | Needed: defer first-run seeding to an ordinary launch |
+| 4 | Empty confirmation conditions and unattended runs are not documented to always ask and refuse | Blocking: owner qualification (Unblock) |
+
+## Unblock
+
+1. **Owner spike on a macOS 26 Mac** (about 15 minutes; a throwaway intent in a scratch app, not
+   Recortia): an intent whose `perform()` only awaits
+   `requestConfirmation(conditions: [], actionName: .continue, dialog:)` and then logs. Run it (a) from
+   the Shortcuts app, (b) from Spotlight, (c) as an unattended time-of-day automation with
+   "Run Immediately", with the Mac idle, and (d) locked. Pass: a prompt naming the action every time,
+   and in (c) and (d) either a prompt that waits for an answer or a thrown error, never a normal return.
+2. If it passes, fold the round-4 "Needed" rows into the Decision, run one more threat-model review,
+   and build. If it fails, B-2 part 1 cannot meet F3 with intents; keep only Open Recortia or drop B-2.
 
 ## Consequences
 
