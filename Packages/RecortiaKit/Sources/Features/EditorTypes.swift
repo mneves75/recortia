@@ -272,6 +272,12 @@ public struct EditorColorSample: Hashable, Sendable {
     public var rgbText: String { "\(color.r) \(color.g) \(color.b)" }
 }
 
+/// Which side of a contrast pair a picked colour fills (FR-11).
+public enum ContrastRole: Hashable, Sendable {
+    case text
+    case background
+}
+
 /// Ruler measurement between two anchors, in document pixels; points only when the document is a
 /// single capture with a known point-to-pixel scale (imported images never get one).
 public struct EditorMeasurement: Hashable, Sendable {

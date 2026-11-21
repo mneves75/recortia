@@ -187,6 +187,7 @@ extension EditorModel {
         let removed = before - pins.pins.count
         inspection = nil
         pickedColor = nil
+        clearContrastColors()
         // Output masks alone cannot hide every duplicate of a source-bound mask in an old base.
         baseImage = nil
         installedBaseKey = nil

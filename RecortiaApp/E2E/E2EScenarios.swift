@@ -101,6 +101,9 @@
             E2EScenario(id: "crop-resize", title: "Crop and resize", run: EditorScenarios.cropResize),
             E2EScenario(id: "ocr-qr", title: "Text recognition and QR", run: RecognitionScenarios.ocrAndQR),
             E2EScenario(id: "pixel-tools", title: "Loupe, ruler, and color picker", run: EditorScenarios.pixelTools),
+            E2EScenario(
+                id: "colour-tools", title: "Colour copy formats, darkest-pixel sampling and contrast",
+                run: ColourToolsScenarios.colourTools),
             E2EScenario(id: "composition", title: "Composition and presentation", run: EditorScenarios.composition),
             E2EScenario(id: "export-sinks", title: "Copy, save, and drag out", run: OutputScenarios.exportSinks),
             E2EScenario(

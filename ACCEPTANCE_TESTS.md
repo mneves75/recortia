@@ -231,6 +231,11 @@ Decode fixtures for ordinary text, HTTPS, unsupported schemes, payment/Wi-Fi-lik
 
 Use an sRGB chart with known encoded RGB values and exact geometry. HEX/RGB output matches the defined pixel sampling method, ruler distances remain invariant under editor zoom, and point/pixel labels are unambiguous. A nearest-neighbor loupe does not interpolate. Imported images do not acquire a fictitious Retina scale.
 
+Each copy format matches reference strings, including alpha 0 and rounding; OKLab matches Ottosson's
+published example pairs; WCAG contrast matches published pairs (#777777 on white is 4.48:1, failing AA
+for normal text). Darkest sampling over a synthetic glyph finds it, and point or darkest sampling over a
+secure mask returns the mask fill, never the hidden pixel (`colour-tools`, both languages).
+
 Oversized finite document coordinates yield no sample; extreme loupe radii clamp to the image without
 integer overflow. Rapid output-preview toggles retain one in-flight render and discard canceled results.
 

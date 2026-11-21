@@ -169,6 +169,7 @@ extension EditorModel {
         waitingNotice = nil
         environment.export.cancel(documentID: session.document.id)
         invalidateColorPick()
+        clearContrastColors()
         baseTask?.cancel()
         outputTask?.cancel()
         baseTask = nil

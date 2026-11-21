@@ -974,7 +974,11 @@ private struct PixelToolsSection: View {
                 .help(
                     String(
                         localized: "Area picks average sRGB colors and alpha. Samples stop at image edges.",
-                        table: "Editor"))
+                        table: "Editor")
+                )
+                .disabled(model.samplesDarkestPixel)
+                Toggle(String(localized: "Darkest Pixel", table: "Editor"), isOn: $model.samplesDarkestPixel)
+                    .accessibilityIdentifier("color.samplesDarkest")
             }
             let sample = model.tool == .colorPicker ? model.pickedColor : model.inspection
             if let sample {
@@ -1003,9 +1007,30 @@ private struct PixelToolsSection: View {
                 }
                 .help(units)
                 if model.tool == .colorPicker {
+                    Picker(selection: $model.colorFormat) {
+                        ForEach(ColorFormat.allCases, id: \.self) { format in
+                            Text(verbatim: EditorStrings.name(format)).tag(format)
+                        }
+                    } label: {
+                        Text("Format", tableName: "Editor")
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("color.format")
+                    if let text = model.pickedColorText {
+                        Text(verbatim: text).monospaced().textSelection(.enabled)
+                            .accessibilityIdentifier("color.formatted")
+                    }
                     ButtonRow {
-                        Button(String(localized: "Copy HEX", table: "Editor")) { model.copyPickedColor(asHex: true) }
-                        Button(String(localized: "Copy RGB", table: "Editor")) { model.copyPickedColor(asHex: false) }
+                        Button(String(localized: "Copy", table: "Editor")) { model.copyPickedColor() }
+                            .accessibilityIdentifier("color.copy")
+                        Button(String(localized: "Use as Text", table: "Editor")) { model.usePickedColor(as: .text) }
+                            .disabled(!sample.color.isOpaque)
+                            .accessibilityIdentifier("color.useAsText")
+                        Button(String(localized: "Use as Background", table: "Editor")) {
+                            model.usePickedColor(as: .background)
+                        }
+                        .disabled(!sample.color.isOpaque)
+                        .accessibilityIdentifier("color.useAsBackground")
                     }
                 }
             } else if model.tool != .ruler {
@@ -1031,6 +1056,76 @@ private struct PixelToolsSection: View {
         } header: {
             Text(String(localized: "Pixel tools", table: "Editor"))
         }
+        if model.tool == .colorPicker, model.contrastText != nil || model.contrastBackground != nil {
+            ContrastSection(model: model)
+        }
+    }
+}
+
+/// The WCAG 2 contrast of two picked colors, with AA and AAA marks for normal and large text.
+private struct ContrastSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            slot(String(localized: "Text", table: "Editor"), model.contrastText, id: "color.contrast.text")
+            slot(
+                String(localized: "Background", table: "Editor"), model.contrastBackground,
+                id: "color.contrast.background")
+            if let contrast = model.contrast {
+                LabeledContent(String(localized: "Contrast", table: "Editor")) {
+                    Text(verbatim: contrast.shownRatio.formatted(.number.precision(.fractionLength(2))) + ":1")
+                        .monospacedDigit()
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("color.contrast.ratio")
+                }
+                Grid(
+                    alignment: .leading, horizontalSpacing: DesignTokens.Space.m, verticalSpacing: DesignTokens.Space.s
+                ) {
+                    GridRow {
+                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                        Text("Normal", tableName: "Editor").foregroundStyle(.secondary)
+                        Text("Large", tableName: "Editor").foregroundStyle(.secondary)
+                    }
+                    ForEach(ContrastRatio.Level.allCases, id: \.self) { level in
+                        GridRow {
+                            Text(verbatim: level == .aa ? "AA" : "AAA")
+                            verdict(contrast, level, largeText: false)
+                            verdict(contrast, level, largeText: true)
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text(String(localized: "Contrast", table: "Editor"))
+        }
+    }
+
+    private func slot(_ title: String, _ color: RGBA?, id: String) -> some View {
+        LabeledContent(title) {
+            if let color {
+                HStack(spacing: DesignTokens.Space.s) {
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
+                        .fill(Color(cgColor: color.cgColor))
+                        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.control).stroke(.separator))
+                        .frame(width: 18, height: 14)
+                        .accessibilityHidden(true)
+                    Text(verbatim: color.hex).monospaced().accessibilityIdentifier(id)
+                }
+            } else {
+                Text(verbatim: "—").foregroundStyle(.secondary).accessibilityIdentifier(id)
+            }
+        }
+    }
+
+    /// A pass or fail mark that does not rely on color: the word and a distinct symbol.
+    private func verdict(_ contrast: ContrastRatio, _ level: ContrastRatio.Level, largeText: Bool) -> some View {
+        let passes = contrast.passes(level, largeText: largeText)
+        return Label(
+            passes ? String(localized: "Pass", table: "Editor") : String(localized: "Fail", table: "Editor"),
+            systemImage: passes ? "checkmark.circle" : "xmark.circle"
+        )
+        .accessibilityIdentifier("color.contrast.\(level == .aa ? "aa" : "aaa").\(largeText ? "large" : "normal")")
     }
 }
 
