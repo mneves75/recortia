@@ -78,3 +78,36 @@ reachability, and asked that Recortia also appear in ⌘Tab and the Dock while i
   never changes system settings), hiding during fullscreen with private window-server calls
   (no private frameworks), watching the Desktop or screenshot folder (implicit file reads),
   restoring the shelf after quit (no local screenshot archive), and system sounds (cut by the owner).
+
+## Amendment (2026-11-21): the menu-bar icon can be hidden
+
+**Context.** Some people use Recortia only through its global shortcuts and want no menu-bar
+icon. The owner approved this as a class B change behind a setting whose default keeps the icon.
+
+**Decision.**
+
+- Settings › General › "Show the icon in the menu bar" is on by default; preferences written
+  before it existed load as on. Off, the `MenuBarExtra` is not inserted (SwiftUI's `isInserted`).
+  Removing the icon from the menu bar with ⌘-drag takes the same path as the switch.
+- The way back is opening Recortia again. Finder, the Dock, Spotlight and `open -a` show Settings:
+  `LaunchWindow` already chooses Settings for every launch by the person once onboarding is
+  complete, and `handleReopen` shows it when no window is visible (a minimized one is restored
+  first, as before). `LaunchWindow` moved into Features so a unit test guards that rule on hosted
+  CI, which runs no E2E. "Open at login" stays silent. The global shortcuts keep working.
+- The first time the icon is hidden, the standard message presenter says once how to get back;
+  a preference records that it was said, so it is never repeated.
+- Presence and quitting do not change: the accessory/regular rule above stands, and with "Keep
+  running in the menu bar" on, closing the last window keeps the process running without an icon.
+
+**Alternatives rejected.**
+
+- **Become a regular app while the icon is hidden**, so the Dock icon is the way back. It replaces
+  one always-visible icon with another and breaks the accessory rule this ADR relies on for
+  overlays above other apps' fullscreen Spaces.
+- **Turn "Keep running in the menu bar" off with the icon**, so closing the last window quits. It
+  silently changes a separate preference, and the shortcuts would stop working after every close.
+- **Show Settings at every login while the icon is hidden.** It defeats the reason for hiding it.
+
+**Consequences.** The `settings` and `launch-presentation` E2E scenarios cover the switch, the
+single message and reopening with the icon hidden. Whether the status item really leaves and
+returns, and a relaunch from Finder or Spotlight, remain physical checks.

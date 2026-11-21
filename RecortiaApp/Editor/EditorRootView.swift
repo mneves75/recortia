@@ -142,10 +142,7 @@ struct EditorToolbarContent: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
-            tools([
-                .select, .hand, .crop, .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step,
-                .redact,
-            ])
+            tools(EditorTool.toolbarTools)
             ToolMenu(group: .effects, model: model, actions: actions)
             ToolMenu(group: .measure, model: model, actions: actions)
         }
@@ -218,8 +215,8 @@ private struct ToolButton: View {
     }
 }
 
-/// Tools that share one toolbar menu button.
-private enum ToolMenuGroup {
+/// Tools that share one toolbar menu button; the Tools menu gives each its own section.
+enum ToolMenuGroup: CaseIterable {
     case effects, measure
 
     var tools: [EditorTool] {

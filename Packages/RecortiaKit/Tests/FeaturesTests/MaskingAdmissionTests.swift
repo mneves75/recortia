@@ -240,7 +240,7 @@ struct MaskingAdmissionTests {
                 let requests: [EditorExportRequest] = [
                     .copy, .drag, .saveToPreferredFolder,
                     .save(
-                        URL(fileURLWithPath: "/tmp/recortia-tests/admission.png"), format: .png,
+                        URL(fileURLWithPath: "/tmp/recortia-tests/admission.png"), format: .fixed(.png),
                         overwriteConfirmed: true),
                 ]
                 for request in requests {
@@ -297,6 +297,10 @@ struct MaskingAdmissionTests {
             Step(name: "setZoom", expectation: .inert) { model.setZoom(2) },
             Step(name: "zoomToSelection", expectation: .inert) { model.zoomToSelection() },
             Step(name: "pan", expectation: .inert) { model.pan(dx: 10, dy: 10) },
+            Step(name: "scrollWheel", expectation: .inert) {
+                model.scrollWheel(
+                    EditorScrollWheel(deltaX: 3, deltaY: 5, isPrecise: true, isMouseWheel: true), at: .zero)
+            },
             // Callbacks from the canvas and the automatic batch, and the notice slot.
             Step(name: "reportCanvasDrawSucceeded", expectation: .inert) { model.reportCanvasDrawSucceeded() },
             Step(name: "reportCanvasRenderFailure", expectation: .inert) { model.reportCanvasRenderFailure() },

@@ -246,6 +246,12 @@ final class AppModel: AppActions {
         showMessage(message)
     }
 
+    /// The General switch and removing the icon from the menu bar both come here; the first time
+    /// the icon is hidden, the person is told how to get back. Presence and quitting do not change.
+    func setShowsMenuBarIcon(_ shows: Bool) {
+        if settings.setShowsMenuBarIcon(shows) { showMessage(.menuBarIconHidden) }
+    }
+
     func showSettings() {
         settingsWindow.show()
     }

@@ -118,6 +118,16 @@ enum MessagePresenter {
 }
 
 extension UserMessage {
+    /// Said once, the first time the menu-bar icon is hidden (FR-01).
+    static var menuBarIconHidden: UserMessage {
+        UserMessage(
+            title: String(localized: "The menu bar icon is hidden"),
+            detail: String(
+                localized:
+                    "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working."
+            ))
+    }
+
     static func capture(_ failure: CaptureFailure) -> UserMessage {
         switch failure {
         case .permissionDenied:

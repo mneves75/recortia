@@ -55,6 +55,9 @@
                 id: "editor-window-size", title: "Editors open at one consistent size",
                 run: EditorWindowSizeScenarios.consistentSize),
             E2EScenario(
+                id: "editor-zoom", title: "Wheel zoom acts on mouse wheels only",
+                run: EditorZoomScenarios.zoom),
+            E2EScenario(
                 id: "recapture", title: "Hide existing windows during recapture",
                 run: CaptureVisibilityScenarios.recapture),
             E2EScenario(
@@ -63,6 +66,9 @@
             E2EScenario(
                 id: "editor-toolbar", title: "Tools and actions live in the window toolbar",
                 run: EditorToolbarScenarios.toolbar),
+            E2EScenario(
+                id: "editor-menu", title: "Every editor command is in the menu bar",
+                run: EditorMenuScenarios.commands),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(

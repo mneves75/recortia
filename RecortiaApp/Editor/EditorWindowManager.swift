@@ -136,7 +136,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             rootView: EditorRootView(
                 model: model, canvas: canvas, actions: actions, panes: panes, noticePresentation: noticePresentation))
         content.sceneBridgingOptions = [.toolbars]
-        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions))
+        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions, panes: panes))
         // The split items own the column widths; the hosted views fill whatever they are given.
         sidebar.sizingOptions = []
         content.sizingOptions = []
@@ -186,6 +186,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         {
             window.makeFirstResponder(canvas)
         }
+    }
+
+    /// View › Inspector › Format or Image: shows that tab, and the inspector if it is hidden.
+    func showInspectorTab(_ tab: EditorInspectorTab) {
+        panes.chosenInspectorTab = tab
+        if splitItem(.inspector)?.isCollapsed == true { toggle(.inspector) }
     }
 
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.
@@ -300,10 +306,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         commitPendingText()
         guard let window, exportSlotIsFree() else { return }
         let options = model.environment.settings.preferences.exportOptions
-        let format = options.format
+        let format = options.formatChoice
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
-        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: format).name(attempt: 1)
+        // Automatic offers the PNG name; the save then takes the extension of the format chosen.
+        panel.allowedContentTypes =
+            switch format {
+            case .fixed(.png): [.png]
+            case .fixed(.jpeg): [.jpeg]
+            case .automatic: [.png, .jpeg]
+            }
+        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.beginSheetModal(for: window) { [weak self] response in
@@ -315,7 +327,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
     /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent.
     @discardableResult
     func saveImage(
-        to url: URL, format: ExportFormat, confirmReplacement: (() async -> Bool)? = nil
+        to url: URL, format: ExportFormatChoice, confirmReplacement: (() async -> Bool)? = nil
     ) async -> ExportOutcome {
         let outcome = await model.export(.save(url, format: format, overwriteConfirmed: false))
         guard outcome == .failed(.destinationExists) else { return outcome }

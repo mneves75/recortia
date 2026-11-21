@@ -99,6 +99,21 @@ window opens, a capture starts, or the preference is turned back on meanwhile. L
 a window, minimizing, hiding, capture suspension and closing a capture panel never quit. Quit
 stays available in both modes.
 
+Settings › Capture offers "After a capture": open the editor (default) or show quick actions
+(ADR-009). Quick actions show a nonactivating thumbnail of the sanitized capture, after the
+capture's automatic exports, with Copy, Save, drag, Pin, Open in Editor and Dismiss; every
+action goes through the export pipeline. Dismissing it, its 8 s timeout (paused under the
+pointer), a finished action or a newer capture releases the capture's pixels. With automatic
+masking on, captures always open in the editor. Capture Text and scrolling capture keep their
+own flows.
+
+Settings › General also offers "Show the icon in the menu bar", on by default (older preferences
+load as on). Off, Recortia removes its status item; opening Recortia again from Finder, the Dock,
+Spotlight or `open -a` shows Settings, and the global shortcuts keep working. The first time it is
+turned off, one message says how to get back. It changes neither when Recortia is regular or
+accessory nor when it quits: with "Keep running in the menu bar" on, the process keeps running
+without an icon (ADR-007 amendment).
+
 ### FR-02 — Capture
 
 Region selection invoked by a global shortcut must remain on the user's current desktop,
@@ -111,6 +126,14 @@ Return and Space; native menu invocation remains available.
 Provide region, individual display, user-selected window, a configurable 0–10 second delay, and repeat-last-region. Repeat geometry is session-only and bound to the source display identity/configuration, not an unchecked global rectangle. If the display disappears, rotates, or materially changes configuration, invalidate it and ask for a new selection.
 
 Region selection MUST work on every connected display, including negative desktop origins. A single region cannot cross displays in v1; clamp visibly to the starting display and explain the limitation. Do not silently resample a multi-display region. A window shortcut must use a reliable source identifier; when the foreground app has multiple ambiguous windows, present a chooser instead of guessing.
+
+Settings › Capture › "Window background" is Transparent by default: a window capture keeps
+its transparent corners and, per "Include window shadow", its shadow. Solid color opens each new
+window capture over an opaque colour the person picks, as the document's presentation background
+with no padding (FR-13), so every export of it is opaque. The colour is composited when the
+document is rendered, after secure masks have filled source pixels, never into the stored
+capture; the person can change or remove it in the editor's Image inspector. Region and display
+captures and imported images never get it. The desktop picture is not read.
 
 Use public ScreenCaptureKit APIs, exclude the app's overlay/editor/pin windows by default, and hide the cursor unless explicitly requested. Verify exclusions with a visible checkerboard test overlay. Do not use private capture frameworks, shell `screencapture`, or `CGWindowListCreateImage` as the primary implementation. One-shot capture and stream capture are separate code paths. [S06]
 
@@ -134,6 +157,14 @@ An editor document stores immutable raster assets plus editable annotation comma
 Tools MUST support consistent selection handles, hit testing, move, resize, duplicate, delete, stroke/fill/opacity, z-order, and keyboard nudging. Text editing MUST handle multiline input, Unicode, accents, emoji, bidirectional text, and input-method composition without dispatching editor shortcuts into text input. Numbered steps remain editable and have an explicit renumber command.
 
 Provide fit, actual-pixel, zoom-in/out, selection zoom, and Space-drag pan. Basic arrows precede curved arrows; decoration is not a dependency of correct capture or export. No drawn object may change position merely because the editor zoom changed.
+
+Fit, the zoom every new editor opens at, never enlarges past 100 %, so a small image opens at
+actual size. Settings › General › Editor › "Zoom with the scroll wheel" is off by default: the
+wheel scrolls and ⌘-wheel zooms, as before. On, a mouse wheel zooms around the pointer and
+⌥-wheel scrolls; "Reverse zoom direction", shown only then, turns both wheel zooms the other way.
+Only classic mouse-wheel events (no scroll phase and no momentum phase) wheel-zoom: trackpad and
+other gesture scrolling, and its momentum, keep scrolling. Wheel zoom stays inside the editor's
+zoom range. Pinch and the zoom commands do not change.
 
 The straight-line tool draws a segment without arrowheads, with the same document-space
 endpoint editing and creation-drag Shift 45-degree constraint as arrows. Shortcut D selects it only outside
@@ -188,7 +219,7 @@ Do not promise that OCR-based “find sensitive data” is exhaustive. Do not pr
 
 All save, clipboard, drag-out, and later upload operations MUST receive the same immutable ShareSnapshot produced by the approved export pipeline. The snapshot identifies document revision, privacy epoch, output format/scale/color space, and sanitized bytes. It contains no raw source references.
 
-PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
+PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Saved files may instead use Automatic: an image without transparency is also encoded as JPEG at quality 0.92, and the JPEG is kept only when the PNG is over 0.5 MB and more than four times its size, or over 2 MB and more than twice its size; the file extension follows the bytes kept. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
 
 Save uses a user-selected destination or a previously authorized preferred folder, sanitized collision-resistant filenames, a same-directory temporary file, and atomic replacement/rename where supported. Overwrite requires confirmation. Encode failure leaves the destination intact. Quota, revocation, full disk, and disconnected volumes are explicit errors. File promises for drag-out must keep sanitized bytes alive until the receiving app completes or the transfer is canceled; do not delete a promised file prematurely.
 
@@ -198,7 +229,7 @@ Auto-copy and auto-save are off by default. If later enabled, show that copying/
 
 Run Vision locally and off the UI actor. Support a crop-to-text command and OCR on imported images. Prefer the modern Swift API where verified; Apple documents its concurrency-oriented redesign. [S07]
 
-Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
+Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. A primary language chosen in Settings from those the recognizer reports is tried first, ahead of the others in their usual order; one the recognizer no longer reports returns to Automatic. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
 
 Recognized ranges MUST have normalized bounding boxes converted through the shared geometry layer. OCR is tied to document revision and privacy epoch; outdated results cannot overwrite the clipboard after a new capture or redaction. Text mode with no detected text leaves existing clipboard content unchanged and displays a nonblocking message.
 

@@ -1852,7 +1852,7 @@
       "id": "FP-049",
       "milestone": "M7",
       "title": "Program 2026-11 T2 (0.16): surfaces and flow",
-      "status": "not_started",
+      "status": "in_progress",
       "depends_on": ["FP-048"],
       "requirement_ids": ["FR-01", "FR-02", "FR-07", "FR-08", "FR-09", "FR-14"],
       "acceptance_test_ids": [],
@@ -1861,7 +1861,7 @@
       "completion_contract": "As FP-048; B-1 builds only after the owner signs off its ADR.",
       "evidence": [],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": ""
+      "status_note": "Branch train/t2 (stacked on train/t1). Merged and gated (check passed on cab01c0): R-4 masking admission point; surface refresh (onboarding, Settings, scrolling review, pins, choosers, drag chip); A-3 editor menu commands; B-1 quick-action thumbnail (ADR-009); Automatic PNG/JPEG export and primary recognition language; window capture background, wheel zoom (mouse wheels only) and hide-menu-bar-icon (ADR-007 amendment); E2E clock that stands still while scripted detection holds. Open: thumbnail layout-loop crash fix and Copy Link (feat/t2-thumbnail), auto-redaction for scroll/import, editor alerts as sheets, A-13 step 2, F-1 investigation; bilingual native E2E of the merged train (the last full run crashed in quick-actions on 3c6aa0e)."
     },
     {
       "id": "FP-050",

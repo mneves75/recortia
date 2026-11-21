@@ -127,7 +127,7 @@ public final class QuickActionsModel {
     /// Saves into the folder chosen in Settings when it resolves; otherwise asks `choose` for a
     /// destination (nil cancels). Replacing an existing file needs `confirmReplacement` (FR-07).
     public func save(
-        choosing choose: @MainActor () async -> (url: URL, format: ExportFormat)?,
+        choosing choose: @MainActor () async -> (url: URL, format: ExportFormatChoice)?,
         confirmReplacement: @MainActor () async -> Bool
     ) async -> ExportOutcome {
         guard let held = begin() else { return .rejectedBusy }

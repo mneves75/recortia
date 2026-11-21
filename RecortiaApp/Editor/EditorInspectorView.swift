@@ -10,28 +10,20 @@ import SwiftUI
 struct EditorInspectorView: View {
     let model: EditorModel
     let actions: any EditorWindowActions
+    /// Holds the person's tab choice, which View › Inspector also sets.
+    let panes: EditorPanes
     @State private var coalescer = ChangeCoalescer()
-    /// The person's own choice, cleared whenever the selection or the tool changes.
-    @State private var chosenTab: InspectorTab?
     /// The recognized-text format chosen in this editor; nil follows the preference. Kept here so
     /// switching tabs does not discard it.
     @State private var ocrTextMode: OCRTextMode?
 
-    private enum InspectorTab: Hashable { case format, image }
-
-    /// Tools whose options live in the Format tab.
-    private static let formatTools: Set<EditorTool> = [
-        .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
-        .loupe, .ruler, .colorPicker,
-    ]
-
     var body: some View {
-        let hasFormat = !model.selection.isEmpty || Self.formatTools.contains(model.tool)
-        let tab = chosenTab ?? (hasFormat ? .format : .image)
+        let hasFormat = EditorInspectorTab.hasFormat(model)
+        let tab = EditorInspectorTab.shown(chosen: panes.chosenInspectorTab, model: model)
         VStack(spacing: 0) {
-            Picker(selection: Binding(get: { tab }, set: { chosenTab = $0 })) {
-                Text("Format", tableName: "Editor").tag(InspectorTab.format)
-                Text("Image", tableName: "Editor").tag(InspectorTab.image)
+            Picker(selection: Binding(get: { tab }, set: { panes.chosenInspectorTab = $0 })) {
+                Text("Format", tableName: "Editor").tag(EditorInspectorTab.format)
+                Text("Image", tableName: "Editor").tag(EditorInspectorTab.image)
             } label: {
                 Text("Inspector", tableName: "Editor")
             }
@@ -71,8 +63,8 @@ struct EditorInspectorView: View {
         .controlSize(.small)
         // An opaque column over the window background (decisions 2026-11-20).
         .background(Color(nsColor: .windowBackgroundColor))
-        .onChange(of: model.selection) { chosenTab = nil }
-        .onChange(of: model.tool) { chosenTab = nil }
+        .onChange(of: model.selection) { panes.chosenInspectorTab = nil }
+        .onChange(of: model.tool) { panes.chosenInspectorTab = nil }
     }
 }
 

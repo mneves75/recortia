@@ -1,6 +1,7 @@
 import AppKit
 import Domain
 import Features
+import Imaging
 import SwiftUI
 
 extension SettingsStore {
@@ -17,6 +18,8 @@ extension SettingsStore {
 struct GeneralSettingsTab: View {
     let settings: SettingsStore
     let loginItem: LoginItemModel?
+    /// `AppModel.setShowsMenuBarIcon`, which explains the first hiding.
+    let setShowsMenuBarIcon: (Bool) -> Void
 
     var body: some View {
         Form {
@@ -45,7 +48,13 @@ struct GeneralSettingsTab: View {
                     isOn: settings.binding(\.keepsRunningInMenuBar)
                 )
                 .accessibilityIdentifier("settings.keepRunningInMenuBar")
+                Toggle(
+                    "Show the icon in the menu bar",
+                    isOn: Binding(get: { settings.preferences.showsMenuBarIcon }, set: setShowsMenuBarIcon)
+                )
+                .accessibilityIdentifier("settings.showsMenuBarIcon")
             }
+            EditorZoomSettingsSection(settings: settings)
             PinsSettingsSection(settings: settings)
         }
         .formStyle(.grouped)
@@ -53,6 +62,23 @@ struct GeneralSettingsTab: View {
         // Approval happens in System Settings; returning to this window shows the new state.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             loginItem?.refresh()
+        }
+    }
+}
+
+/// What a mouse wheel does over the editor canvas (FR-04).
+struct EditorZoomSettingsSection: View {
+    let settings: SettingsStore
+
+    var body: some View {
+        Section("Editor") {
+            Toggle("Zoom with the scroll wheel", isOn: settings.binding(\.zoomsWithScrollWheel))
+                .help(Text("Hold Option to scroll."))
+                .accessibilityIdentifier("settings.zoomsWithScrollWheel")
+            if settings.preferences.zoomsWithScrollWheel {
+                Toggle("Reverse zoom direction", isOn: settings.binding(\.reversesScrollWheelZoom))
+                    .accessibilityIdentifier("settings.reversesScrollWheelZoom")
+            }
         }
     }
 }
@@ -112,12 +138,51 @@ struct CaptureSettingsTab: View {
             Section {
                 Toggle("Show the pointer in captures", isOn: settings.binding(\.captureShowsCursor))
                 Toggle("Include window shadow", isOn: settings.binding(\.captureIncludesWindowShadow))
+                WindowBackgroundSettings(settings: settings)
                 Toggle("Play a sound after capture", isOn: settings.binding(\.playsCaptureSound))
                     .accessibilityIdentifier("settings.captureSound")
             }
             ScrollingSettingsSection(settings: settings, accessibility: accessibility)
         }
         .formStyle(.grouped)
+    }
+}
+
+/// What a new window capture is shown over (FR-02). The colour is composited when the image is
+/// rendered, so the captured pixels and secure masks are unchanged.
+struct WindowBackgroundSettings: View {
+    let settings: SettingsStore
+    private enum Kind: Hashable { case transparent, solid }
+
+    var body: some View {
+        let background = settings.preferences.windowCaptureBackground
+        Picker(
+            "Window background",
+            selection: Binding(
+                get: { background == .transparent ? Kind.transparent : .solid },
+                set: { kind in
+                    let isSolid = settings.preferences.windowCaptureBackground != .transparent
+                    guard (kind == .solid) != isSolid else { return }
+                    settings.update { $0.windowCaptureBackground = kind == .solid ? .solid(.white) : .transparent }
+                })
+        ) {
+            Text("Transparent").tag(Kind.transparent)
+            Text("Solid color").tag(Kind.solid)
+        }
+        .accessibilityIdentifier("settings.windowBackground")
+        if case .solid(let color) = background {
+            ColorPicker(
+                "Background color",
+                selection: Binding(
+                    get: { color.cgColor },
+                    set: { picked in
+                        guard let rgba = RGBA(cgColor: picked) else { return }
+                        settings.update { $0.windowCaptureBackground = .solid(rgba) }
+                    }),
+                supportsOpacity: false
+            )
+            .accessibilityIdentifier("settings.windowBackgroundColor")
+        }
     }
 }
 
@@ -136,12 +201,14 @@ struct ExportSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Picker("Format", selection: settings.binding(\.defaultExportFormat)) {
+                Picker("Format", selection: settings.binding(\.exportFormat)) {
                     Text("PNG").tag(ExportFormatKind.png)
                     Text("JPEG").tag(ExportFormatKind.jpeg)
+                    Text("Automatic (PNG or JPEG)").tag(ExportFormatKind.automatic)
                 }
                 .help(Text("Copy Image always places a PNG on the clipboard."))
-                if settings.preferences.defaultExportFormat == .jpeg {
+                .accessibilityIdentifier("settings.exportFormat")
+                if settings.preferences.exportFormat == .jpeg {
                     Slider(value: settings.binding(\.jpegQuality), in: 0.1...1, step: 0.05) {
                         Text("JPEG quality")
                     } minimumValueLabel: {
@@ -328,13 +395,34 @@ struct OCRSettingsTab: View {
                     Text("Join into one line").tag(OCRTextMode.normalizedWhitespace)
                     Text("Exactly as recognized").tag(OCRTextMode.raw)
                 }
+                if case .loaded(let list) = languages?.state {
+                    Picker("Primary language", selection: settings.binding(\.primaryRecognitionLanguage)) {
+                        Text("Automatic").tag(String?.none)
+                        ForEach(list, id: \.maximalIdentifier) { language in
+                            Text(Self.name(of: language)).tag(String?.some(language.maximalIdentifier))
+                        }
+                    }
+                    .accessibilityIdentifier("settings.primaryRecognitionLanguage")
+                }
             }
             Section("Available languages") {
                 languageList
             }
         }
         .formStyle(.grouped)
-        .task { await languages?.load() }
+        .task {
+            await languages?.load()
+            if case .loaded(let list) = languages?.state {
+                settings.forgetUnsupportedPrimaryRecognitionLanguage(supported: list)
+            }
+        }
+    }
+
+    static func name(of language: Locale.Language) -> String {
+        Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
+            // Vision reports some identifiers (such as "vi-VT") that name no region.
+            ?? language.languageCode.flatMap { Locale.current.localizedString(forLanguageCode: $0.identifier) }
+            ?? language.minimalIdentifier
     }
 
     @ViewBuilder
@@ -342,13 +430,7 @@ struct OCRSettingsTab: View {
         switch languages?.state {
         case .loaded(let list):
             ForEach(list, id: \.maximalIdentifier) { language in
-                Text(
-                    Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
-                        // Vision reports some identifiers (such as "vi-VT") that name no region.
-                        ?? language.languageCode.flatMap {
-                            Locale.current.localizedString(forLanguageCode: $0.identifier)
-                        }
-                        ?? language.minimalIdentifier)
+                Text(Self.name(of: language))
             }
         case .loading, .notLoaded:
             ProgressView()
@@ -515,8 +597,10 @@ struct ScrollingSettingsSection: View {
     }
 
     #Preview("General with login item") {
-        GeneralSettingsTab(settings: PreviewSupport.settings(), loginItem: PreviewSupport.loginItem())
-            .frame(width: 560)
+        GeneralSettingsTab(
+            settings: PreviewSupport.settings(), loginItem: PreviewSupport.loginItem(), setShowsMenuBarIcon: { _ in }
+        )
+        .frame(width: 560)
     }
 
     #Preview("Export") {

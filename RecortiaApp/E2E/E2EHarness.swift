@@ -28,7 +28,7 @@
         let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
         /// Scripted detection for automatic masking; never reads the screen or runs Vision.
-        let sensitiveText = SyntheticSensitiveText()
+        let sensitiveText: SyntheticSensitiveText
         let messages = RecordingMessagePresenter()
         let quit = RecordingQuitConfirmation()
         /// Termination requests from quit-after-last-window; the runner process itself never quits.
@@ -68,6 +68,7 @@
                 pasteboard: NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.image.\(run)")))
             textPasteboard = NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.text.\(run)"))
             drag = SyntheticDragReceiver(dropFolder: dropFolder)
+            sensitiveText = SyntheticSensitiveText(clock: E2EClock())
 
             let live = AppServices.live(settings: settings)
             exportGate = SyntheticExportGate(exporter: live.exporter)
@@ -79,7 +80,8 @@
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
                 scrollFrames: scrollFrames,
-                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: live.clock)
+                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: sensitiveText.clock
+            )
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(
