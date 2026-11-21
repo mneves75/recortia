@@ -300,7 +300,7 @@ private struct QuickActionsPreviewView: View {
         let horizontal = DesignTokens.Space.m * 2
         let vertical = horizontal + DesignTokens.Space.s + controlsHeight
         let scale = min(1 / backingScale, (bounds.width - horizontal) / width, (bounds.height - vertical) / height)
-        return CGSize(width: max(1, floor(width * scale)), height: max(1, floor(height * scale)))
+        return CGSize(width: width * scale, height: height * scale)
     }
 
     var body: some View {
