@@ -76,7 +76,7 @@ ADR-002 must record why a single non-sandboxed target was selected, whether a sa
 
 ## Permission policy
 
-Screen Recording is requested only for a user-initiated screen workflow. Accessibility is requested only for optional automatic scrolling and never on first launch. Manual scrolling, basic capture, and imported-image workflows stay independent of that grant. No Full Disk Access, Input Monitoring, Apple Events automation, microphone, camera, contacts, location, or notification permission is required for the core.
+Screen Recording is requested only for a user-initiated screen workflow. Accessibility is requested only for optional automatic scrolling and optional snapping to interface elements, which reads element frames only and never their text (ADR-010), and never on first launch. Manual scrolling, basic capture, and imported-image workflows stay independent of that grant. No Full Disk Access, Input Monitoring, Apple Events automation, microphone, camera, contacts, location, or notification permission is required for the core.
 
 Permission denial/revocation is a supported state. Never change operating-system permission stores, auto-run reset commands, retry intrusive prompts endlessly, or advise disabling system protections. A dedicated test user may manually approve/revoke permissions while collecting release evidence.
 
