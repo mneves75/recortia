@@ -251,6 +251,8 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   passed again. A separate model re-reviewed the changes and cleared the three findings.
 - A-5 expires a freeze after 60 seconds of monotonic time, measured from the request. The
   deadline is checked when a display read returns and before a frozen region can be committed.
+  Permission loss or a changed display still ends selection when it coincides with expiry.
+  The focused suite passed eight tests, including timer-first and callback-first permission loss.
   Bilingual native execution needs an unlocked console with a five-minute idle start and no
   input until the run finishes. The affected macOS 26 physical checks remain open.
 - The repository generates `tests.json` as its test inventory and

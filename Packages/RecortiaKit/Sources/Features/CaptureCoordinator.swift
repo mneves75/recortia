@@ -459,11 +459,12 @@ public final class CaptureCoordinator {
             else { throw .targetUnavailable }
             regionFreeze = .frozen(FrozenFrame(display: display, image: image, geometry: geometry))
         } catch {
-            guard isSelectingRegion(id), !expireFrozenRegion() else { return }
+            guard isSelectingRegion(id) else { return }
             switch error {
             case .permissionDenied, .displayChanged:
                 handle(error)
             case .targetUnavailable, .system, .canceled:
+                guard !expireFrozenRegion() else { return }
                 discardFrozenRegion()
                 notice = .freezeUnavailable
             }
@@ -665,7 +666,13 @@ public final class CaptureCoordinator {
 
     @discardableResult
     private func expireFrozenRegion() -> Bool {
-        guard let freezeDeadline, clock.uptime() >= freezeDeadline else { return false }
+        guard let freezeDeadline, clock.uptime() >= freezeDeadline, let regionFreeze else { return false }
+        do throws(CaptureError) {
+            try verifyFrozenDisplay(regionFreeze.display)
+        } catch {
+            handle(error)
+            return true
+        }
         discardFrozenRegion()
         notice = .freezeExpired
         return true

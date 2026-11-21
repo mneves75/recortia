@@ -161,6 +161,32 @@ struct RegionPrecisionCaptureTests {
         #expect(h.completions.isEmpty)
     }
 
+    @Test("Permission loss ends selection even when the frozen frame expires", arguments: [true, false])
+    func permissionLossOverridesFrozenDeadline(reportedByCapture: Bool) async throws {
+        let h = CaptureHarness()
+        let (display, _, _) = try frozenFixture()
+        h.capture.displayList = [display]
+        let read = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
+        h.capture.pendingCapture = read
+        h.coordinator.start(.region)
+        h.coordinator.toggleRegionFreeze(on: display)
+        await waitFor("display read") { read.waiterCount == 1 && h.clock.pendingSleepCount == 1 }
+
+        if reportedByCapture {
+            h.clock.stall(bySeconds: 60)
+            #expect(read.resolve(.failure(.permissionDenied)))
+        } else {
+            h.permission.isGranted = false
+            h.clock.advance(bySeconds: 60)
+            await waitFor("the expired preview leaves selection") { h.coordinator.regionFreeze == nil }
+            #expect(read.resolve(.failure(.canceled)))
+        }
+        await waitFor("freeze was removed") { h.coordinator.regionFreeze == nil }
+        #expect(h.coordinator.state == .failed(.permissionDenied))
+        #expect(h.coordinator.selectionContext == nil)
+        #expect(h.completions.isEmpty)
+    }
+
     @Test(
         "Canceling or unfreezing during the display read suppresses its late pixels without blocking the next live capture",
         arguments: [true, false])
