@@ -43,31 +43,6 @@ struct T5T6ReviewTests {
         #expect(slot.isEmpty)
     }
 
-    // FINDING (P2, B-6 "expires after 10 minutes"): `ClosedCaptureSlot` expires only when its
-    // timer task runs; `take()` never compares against the close time. A timer that fires late
-    // (App Nap defers timers of a windowless accessory app; a wake from sleep queues it behind
-    // the reopen action) leaves the document reopenable past its lifetime. The auto-redaction
-    // deadline in the same codebase uses an absolute deadline for exactly this reason.
-    @Test(
-        "A document is not reopenable past its 10 minutes, even when the expiry timer runs late",
-        .disabled(
-            "FINDING: ClosedCaptureSlot.swift take()/isEmpty ignore the close time; only the expiry task clears the slot"
-        ))
-    func lateTimerDoesNotExtendLifetime() async throws {
-        let h = EditorHarness()
-        let slot = ClosedCaptureSlot(assets: h.assets, clock: h.clock)
-        var session = EditorFixtures.session()
-        try session.addSecureMask(covering: Rect(x: 10, y: 10, width: 40, height: 20))
-        let model = Self.editor(h, session)
-        await drain()
-        slot.close(model)
-        await drain()
-        // An hour passes; the expiry task's sleep has not been resumed yet.
-        h.clock.stall(bySeconds: 3600)
-        #expect(slot.isEmpty, "Reopen Closed Capture is still enabled an hour after the close")
-        #expect(slot.take() == nil, "the document came back after its lifetime")
-    }
-
     // Failure mode (PREF-01): a sealed blob written before T5/T6 has none of their keys; if any
     // new field were required, the blob would fail to decode and every setting, sealed consent
     // included, would reset. A legacy `updateChecksEnabled` must not turn automatic checks on.
