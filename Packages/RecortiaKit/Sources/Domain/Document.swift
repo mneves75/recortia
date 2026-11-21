@@ -368,22 +368,26 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
     /// The framed output at `exportScale`: its pixel size and where the content's top-left corner
     /// sits in it, in output pixels. Free keeps the padding on every side; an aspect preset takes
     /// the smallest whole multiple of its ratio that holds the padded content and centres the
-    /// content box on whole pixels, so the ratio is exact and the padding is a minimum.
+    /// content box on whole pixels, so the ratio is exact and the padding is a minimum: the top
+    /// and left sides keep it to the whole pixel below, the bottom and right sides in full.
     public func outputFrame(exportScale: Double) -> OutputFrame {
         let empty = OutputFrame(pixelSize: PixelSize(width: 0, height: 0), contentOriginX: 0, contentOriginY: 0)
         let scale = exportScale * resizeScale
         let padding = presentation.padding
-        let width = ((contentRect.width + padding * 2) * scale).rounded()
-        let height = ((contentRect.height + padding * 2) * scale).rounded()
+        let width = (contentRect.width + padding * 2) * scale
+        let height = (contentRect.height + padding * 2) * scale
         guard width.isFinite, height.isFinite, width < Double(Int32.max), height < Double(Int32.max) else {
             return empty
         }
-        let framed = PixelSize(width: max(1, Int(width)), height: max(1, Int(height)))
+        let framed = PixelSize(width: max(1, Int(width.rounded())), height: max(1, Int(height.rounded())))
         guard let ratio = presentation.aspect.ratio else {
             return OutputFrame(pixelSize: framed, contentOriginX: padding * scale, contentOriginY: padding * scale)
         }
+        // Rounded up, not to nearest: with fractional content (a resize) a padded size rounded
+        // down leaves the floored centring a whole pixel short of the padding on one side.
+        let least = PixelSize(width: max(1, Int(width.rounded(.up))), height: max(1, Int(height.rounded(.up))))
         let multiple = max(
-            (framed.width + ratio.width - 1) / ratio.width, (framed.height + ratio.height - 1) / ratio.height)
+            (least.width + ratio.width - 1) / ratio.width, (least.height + ratio.height - 1) / ratio.height)
         let size = PixelSize(width: multiple * ratio.width, height: multiple * ratio.height)
         guard size.width < Int(Int32.max), size.height < Int(Int32.max) else { return empty }
         return OutputFrame(
