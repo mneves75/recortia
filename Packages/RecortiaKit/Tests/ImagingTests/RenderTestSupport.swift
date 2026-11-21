@@ -11,7 +11,7 @@ struct ImagingHarness {
     var renderer: PrivacyRenderer { PrivacyRenderer(store: store) }
     var pipeline: ExportPipeline { ExportPipeline(renderer: renderer) }
 
-    func add(_ image: CGImage, origin: AssetOrigin = .imported(pointPixelScale: 1)) async throws -> ImageAssetInfo {
+    func add(_ image: CGImage, origin: AssetOrigin = .imported) async throws -> ImageAssetInfo {
         let decoded = try ImageDecoder.canonicalize(image)
         return await store.insert(decoded, origin: origin)
     }

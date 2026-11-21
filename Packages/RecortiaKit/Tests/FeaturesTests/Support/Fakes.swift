@@ -99,8 +99,7 @@ enum TestFixtures {
     }
 
     static func session(width: Int = 8, height: Int = 8) -> DocumentSession {
-        let asset = ImageAssetInfo(
-            id: AssetID(), pixelSize: PixelSize(width: width, height: height), origin: .imported(pointPixelScale: 1))
+        let asset = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: width, height: height), origin: .imported)
         return DocumentSession(document: Document(asset: asset))
     }
 }
@@ -267,19 +266,13 @@ final class FakeAssetService: ImageAssetService {
     /// Without a store, report the size the file declares instead of 16 × 9, without decoding.
     var reportsDeclaredSize = false
 
-    func importImage(_ data: Data, origin: (_ pointPixelScale: Double) -> AssetOrigin) async throws(ImportError)
-        -> ImageAssetInfo
-    {
+    func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo {
         if let pendingImport { await pendingImport.wait() }
         if let importError { throw importError }
-        if let store {
-            let decoded = try ImageDecoder.decode(data)
-            imported.append((data.count, origin(decoded.pointPixelScale)))
-            return await store.insert(decoded, origin: origin(decoded.pointPixelScale))
-        }
-        imported.append((data.count, origin(1)))
+        imported.append((data.count, origin))
+        if let store { return await store.insert(try ImageDecoder.decode(data), origin: origin) }
         let size = reportsDeclaredSize ? try ImageHeader.pixelSize(data) : PixelSize(width: 16, height: 9)
-        return ImageAssetInfo(id: AssetID(), pixelSize: size, origin: origin(1))
+        return ImageAssetInfo(id: AssetID(), pixelSize: size, origin: origin)
     }
 
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {

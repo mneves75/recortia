@@ -44,10 +44,7 @@ public protocol AccessibilityPermissionService: AnyObject {
 @MainActor
 public protocol ImageAssetService: AnyObject {
     /// Bounded decode of PNG/JPEG bytes and registration in the image store (IO-01).
-    /// Decodes and registers an opened or pasted image; `origin` receives the pixels per point the
-    /// decoder read from the file (`AssetOrigin.imported` or `.pasted`).
-    func importImage(_ data: Data, origin: (_ pointPixelScale: Double) -> AssetOrigin) async throws(ImportError)
-        -> ImageAssetInfo
+    func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo
     /// Canonicalizes a captured image and registers it with its capture geometry.
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo
     /// Registers a stitched scrolling capture; `partialReason` is non-nil for an accepted partial

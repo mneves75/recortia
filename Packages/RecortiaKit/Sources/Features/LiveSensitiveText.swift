@@ -25,13 +25,14 @@ public final class LiveSensitiveText: SensitiveTextService {
         }
     }
 
-    /// The density the sweep is laid out for: the one each origin recorded. An opened or pasted
-    /// image's comes from its file and is 1 when the file declares none, the slower sweep that
-    /// upsamples more.
+    /// The density the sweep is laid out for: a capture's and a scrolling capture's own, both measured
+    /// from Recortia's capture geometry. An opened or pasted image is always 1, the slower sweep that
+    /// scales up more: a density its file declares is untrusted and must never lower it (decisions.md).
     static func pixelsPerPoint(of origin: AssetOrigin) -> Double {
         switch origin {
         case .captured(let geometry): geometry.pointPixelScale
-        case .scrollCapture(_, let scale), .imported(let scale), .pasted(let scale): scale
+        case .scrollCapture(_, let scale): scale
+        case .imported, .pasted: 1
         }
     }
 }

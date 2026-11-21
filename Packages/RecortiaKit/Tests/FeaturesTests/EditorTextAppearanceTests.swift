@@ -142,7 +142,7 @@ struct EditorTextAppearanceTests {
         let decoded = try ImageDecoder.canonicalize(
             try ChartFixture.solid(
                 width: 300, height: 280, color: ChartFixture.Color(0, 0, 0, 0)))
-        let asset = await store.insert(decoded, origin: .imported(pointPixelScale: 1))
+        let asset = await store.insert(decoded, origin: .imported)
         var document = Document(asset: asset)
         let text = Annotation(
             kind: .text(

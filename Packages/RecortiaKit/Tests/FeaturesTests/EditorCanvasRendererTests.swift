@@ -38,7 +38,7 @@ struct EditorCanvasRendererTests {
     func canvasEqualsExport() async throws {
         let store = ImageStore()
         let decoded = try ImageDecoder.canonicalize(try ChartFixture.geometryChart(width: 96, height: 64))
-        let info = await store.insert(decoded, origin: .imported(pointPixelScale: 1))
+        let info = await store.insert(decoded, origin: .imported)
         var session = DocumentSession(document: Document(asset: info))
         try session.perform("Annotate") { document in
             document.annotations = [
@@ -74,7 +74,7 @@ struct EditorCanvasRendererTests {
     func magnifierShowsBaseOnly() async throws {
         let store = ImageStore()
         let decoded = try ImageDecoder.canonicalize(try ChartFixture.geometryChart(width: 64, height: 64))
-        let info = await store.insert(decoded, origin: .imported(pointPixelScale: 1))
+        let info = await store.insert(decoded, origin: .imported)
         var session = DocumentSession(document: Document(asset: info))
         try session.perform("Magnify") { document in
             document.annotations = [
@@ -106,8 +106,7 @@ struct EditorCanvasRendererTests {
 
     @Test("Without a current base, masks still draw opaque and magnifiers draw no pixels")
     func noBase() throws {
-        let asset = ImageAssetInfo(
-            id: AssetID(), pixelSize: PixelSize(width: 16, height: 16), origin: .imported(pointPixelScale: 1))
+        let asset = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 16, height: 16), origin: .imported)
         var document = Document(asset: asset)
         document.masks = [
             SecureMask(outputRect: Rect(x: 2, y: 2, width: 4, height: 4), sourceRegions: [:], fill: .black)

@@ -130,7 +130,7 @@ struct EditorPixelToolsTests {
         #expect(!completed.model.copyPickedColor())
     }
 
-    private func chartHarness(origin: AssetOrigin = .imported(pointPixelScale: 1)) async throws -> EditorHarness {
+    private func chartHarness(origin: AssetOrigin = .imported) async throws -> EditorHarness {
         let chart = try ChartFixture.colorChart(cell: 8)
         let h = EditorHarness(session: EditorFixtures.session(width: chart.width, height: chart.height, origin: origin))
         h.renderer.baseImage = chart

@@ -12,7 +12,7 @@
     enum EditorPreviewFactory {
         static func model() -> EditorModel {
             let asset = ImageAssetInfo(
-                id: AssetID(), pixelSize: PixelSize(width: 640, height: 400), origin: .imported(pointPixelScale: 1))
+                id: AssetID(), pixelSize: PixelSize(width: 640, height: 400), origin: .imported)
             var document = Domain.Document(asset: asset)
             document.annotations = [
                 Annotation(
@@ -133,9 +133,7 @@
     }
 
     final class PreviewEditorAssets: ImageAssetService, ImageInputService {
-        func importImage(_ data: Data, origin: (_ pointPixelScale: Double) -> AssetOrigin) async throws(ImportError)
-            -> ImageAssetInfo
-        {
+        func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo {
             throw .unreadable
         }
         func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {

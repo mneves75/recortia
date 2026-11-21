@@ -51,11 +51,9 @@ final class LiveImageAssets: ImageAssetService {
         self.store = store
     }
 
-    func importImage(_ data: Data, origin: (_ pointPixelScale: Double) -> AssetOrigin) async throws(ImportError)
-        -> ImageAssetInfo
-    {
+    func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo {
         let decoded = try await Self.decode(data)
-        return await store.insert(decoded, origin: origin(decoded.pointPixelScale))
+        return await store.insert(decoded, origin: origin)
     }
 
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {

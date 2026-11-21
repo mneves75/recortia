@@ -22,7 +22,7 @@ struct EditorPartialCaptureTests {
         let complete = EditorHarness(session: session(origin: .scrollCapture(partialReason: nil, pointPixelScale: 2)))
         #expect(complete.model.partialScrollCaptureReason == nil)
 
-        let imported = EditorHarness(session: session(origin: .imported(pointPixelScale: 1)))
+        let imported = EditorHarness(session: session(origin: .imported))
         #expect(imported.model.partialScrollCaptureReason == nil)
     }
 }

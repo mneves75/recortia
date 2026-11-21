@@ -4,7 +4,7 @@ import Testing
 @testable import Domain
 
 private func makeDocument(assetSize: PixelSize = PixelSize(width: 200, height: 100)) -> (Document, AssetID) {
-    let asset = ImageAssetInfo(id: AssetID(), pixelSize: assetSize, origin: .imported(pointPixelScale: 1))
+    let asset = ImageAssetInfo(id: AssetID(), pixelSize: assetSize, origin: .imported)
     return (Document(asset: asset), asset.id)
 }
 

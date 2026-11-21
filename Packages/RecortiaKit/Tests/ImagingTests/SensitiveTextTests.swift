@@ -278,8 +278,7 @@ struct SensitiveTextSweepTests {
             widthPoints: 600, heightPoints: 160, scale: 2, pointSize: 14, theme: .light, language: .english,
             layout: .singleColumn)
         let store = ImageStore()
-        let info = await store.insert(
-            try ImageDecoder.canonicalize(screen.image), origin: .imported(pointPixelScale: 1))
+        let info = await store.insert(try ImageDecoder.canonicalize(screen.image), origin: .imported)
         let languages = [OCRRecognitionTests.english, OCRRecognitionTests.portuguese]
         let direct = try await SensitiveTextScanner().sensitiveRegions(
             in: screen.image, pixelsPerPoint: 2, languages: languages)

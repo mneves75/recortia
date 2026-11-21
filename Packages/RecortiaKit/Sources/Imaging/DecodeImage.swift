@@ -38,27 +38,18 @@ public enum ImageDecoder {
             PixelSize(width: width, height: height) == header.pixelSize
         else { throw ImportError.corrupt }
         let orientation = (properties[kCGImagePropertyOrientation] as? Int).flatMap(DecodeOrientation.init) ?? .up
-        let pointPixelScale = pointPixelScale(dpi: properties[kCGImagePropertyDPIWidth])
 
         let decodeOptions = [kCGImageSourceShouldCacheImmediately: true] as CFDictionary
         guard let image = CGImageSourceCreateImageAtIndex(source, 0, decodeOptions),
             image.width == width, image.height == height
         else { throw ImportError.corrupt }
-        return try canonical(image, orientation: orientation, pointPixelScale: pointPixelScale)
-    }
-
-    /// Pixels per point a file declares through `kCGImagePropertyDPIWidth` (a PNG's pHYs chunk, a
-    /// JPEG's density) over 72. The value is untrusted: only a finite positive number counts, it is
-    /// clamped to 1...3, and anything else reads as 1.
-    static func pointPixelScale(dpi: Any?) -> Double {
-        guard let dpi = dpi as? Double, dpi.isFinite, dpi > 0 else { return 1 }
-        return min(3, max(1, dpi / 72))
+        return try canonical(image, orientation: orientation)
     }
 
     /// Converts a capture (or any in-memory image) to the canonical format after the same limits.
     public static func canonicalize(_ image: CGImage) throws(ImportError) -> DecodedImage {
         try checkDimensions(PixelSize(width: image.width, height: image.height))
-        return try canonical(image, orientation: .up, pointPixelScale: 1)
+        return try canonical(image, orientation: .up)
     }
 
     /// The pre-decode limit check: positive sides, no overflow in the RGBA row/area arithmetic,
@@ -74,9 +65,8 @@ public enum ImageDecoder {
         }
     }
 
-    private static func canonical(
-        _ image: CGImage, orientation: DecodeOrientation, pointPixelScale: Double
-    ) throws(ImportError) -> DecodedImage {
+    private static func canonical(_ image: CGImage, orientation: DecodeOrientation) throws(ImportError) -> DecodedImage
+    {
         let w = image.width, h = image.height
         let swapsAxes = orientation.swapsAxes
         let outputWidth = swapsAxes ? h : w, outputHeight = swapsAxes ? w : h
@@ -96,7 +86,7 @@ public enum ImageDecoder {
             throw ImportError.corrupt
         }
         guard let canonicalImage = raster.makeImage() else { throw ImportError.corrupt }
-        return DecodedImage(image: canonicalImage, pointPixelScale: pointPixelScale)
+        return DecodedImage(image: canonicalImage)
     }
 }
 

@@ -9,13 +9,9 @@ import Foundation
 /// orientation already applied exactly once.
 public struct DecodedImage: Sendable {
     public let image: CGImage
-    /// Pixels per point the file declares (`ImageDecoder.pointPixelScale(dpi:)`); 1 for an
-    /// in-memory image.
-    public let pointPixelScale: Double
 
-    package init(image: CGImage, pointPixelScale: Double = 1) {
+    package init(image: CGImage) {
         self.image = image
-        self.pointPixelScale = pointPixelScale
     }
 
     public var pixelSize: PixelSize { PixelSize(width: image.width, height: image.height) }

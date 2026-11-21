@@ -79,7 +79,7 @@ struct ExportContainerTests {
 
         let harness = ImagingHarness()
         let decoded = try ImageDecoder.decode(png)
-        let asset = await harness.store.insert(decoded, origin: .imported(pointPixelScale: 1))
+        let asset = await harness.store.insert(decoded, origin: .imported)
         var document = Document(asset: asset)
         document.canvasSize = Size(width: 6, height: 3)  // transparent canvas margin as well
         let snapshot = try await harness.export(DocumentSession(document: document))
@@ -109,7 +109,7 @@ struct ExportContainerTests {
         #expect(ContainerInspector.propertyKeys(jpeg).isSuperset(of: ["{GPS}", "{TIFF}", "{Exif}"]))
 
         let harness = ImagingHarness()
-        let asset = await harness.store.insert(try ImageDecoder.decode(jpeg), origin: .imported(pointPixelScale: 1))
+        let asset = await harness.store.insert(try ImageDecoder.decode(jpeg), origin: .imported)
         let snapshot = try await harness.export(
             DocumentSession(document: Document(asset: asset)), ExportOptions(format: format))
         for canary in ContainerCrafting.metadataCanaries {
@@ -127,7 +127,7 @@ struct ExportContainerTests {
             #expect(ContainerInspector.contains(canary, in: jpeg), "fixture lacks \(canary)")
         }
         let harness = ImagingHarness()
-        let asset = await harness.store.insert(try ImageDecoder.decode(jpeg), origin: .imported(pointPixelScale: 1))
+        let asset = await harness.store.insert(try ImageDecoder.decode(jpeg), origin: .imported)
         var session = DocumentSession(document: Document(asset: asset))
         let masked = Rect<DocumentSpace>(x: 400, y: 300, width: 200, height: 200)
         let unmasked = try decoded(try await harness.export(session, ExportOptions(automaticFormat: true)))

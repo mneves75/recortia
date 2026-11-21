@@ -40,7 +40,7 @@ struct ImportCoordinatorTests {
         h.input.pasteboardData = Data(repeating: 2, count: 16)
         _ = try await h.coordinator.importImage(from: .pasteboard).get()
         #expect(h.input.pasteboardReads == 1)
-        #expect(h.assets.imported.first?.origin == .pasted(pointPixelScale: 1))
+        #expect(h.assets.imported.first?.origin == .pasted)
     }
 
     @Test("A file import names its window by the file name alone; paste and dropped data carry none")

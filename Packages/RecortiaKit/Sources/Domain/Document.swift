@@ -30,11 +30,8 @@ public struct CaptureGeometry: Hashable, Sendable, Codable {
 
 public enum AssetOrigin: Hashable, Sendable, Codable {
     case captured(CaptureGeometry)
-    /// An opened or dropped image; `pointPixelScale` is the pixels per point its file declares
-    /// (clamped to 1...3, 1 when it declares none).
-    case imported(pointPixelScale: Double)
-    /// A pasted image; `pointPixelScale` as for `imported`.
-    case pasted(pointPixelScale: Double)
+    case imported
+    case pasted
     /// A stitched scrolling capture; `partialReason` is non-nil when the user accepted a partial result.
     /// `pointPixelScale` is the stitched image's pixels per point of its target.
     case scrollCapture(partialReason: ScrollPartialReason?, pointPixelScale: Double)
