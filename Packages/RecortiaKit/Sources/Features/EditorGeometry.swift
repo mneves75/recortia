@@ -14,7 +14,7 @@ enum EditorGeometry {
         if case .text(let text) = annotation.kind {
             return try? TextLayout.metrics(for: text, style: annotation.style).frame
         }
-        if case .arrow(_, _, .some) = annotation.kind {
+        if case .arrow(_, _, .some, _) = annotation.kind {
             guard (try? ArrowLayout.make(for: annotation)) != nil else { return nil }
         }
         return annotation.bounds
@@ -98,8 +98,9 @@ enum EditorGeometry {
             guard value(rx + reach, ry + reach) <= 1 else { return false }
             if annotation.style.fill != nil { return true }
             return rx - reach <= 0 || ry - reach <= 0 || value(rx - reach, ry - reach) >= 1
-        case .arrow(let start, let end, let control):
-            if control != nil {
+        case .arrow(let start, let end, let control, let head):
+            // Curves and every head other than the original filled one hit-test their painted ink.
+            if control != nil || (head ?? .filled) != .filled {
                 return (try? ArrowLayout.make(for: annotation))?.hitTest(p, tolerance: tolerance) ?? false
             }
             let head = max(annotation.style.lineWidth * 3, 9)
@@ -107,8 +108,13 @@ enum EditorGeometry {
                 || hypot(p.x - end.x, p.y - end.y) <= head + tolerance
         case .line(let start, let end):
             return distance(from: p, toSegment: start, end) <= reach
-        case .freehand(let points), .highlighter(let points):
-            return polylineDistance(from: p, points) <= reach
+        case .freehand(let points, let smoothed), .highlighter(let points, let smoothed):
+            guard smoothed == true, points.count > 1, reach > 0 else {
+                return polylineDistance(from: p, points) <= reach
+            }
+            return StrokePath.make(points, smoothed: true)
+                .copy(strokingWithWidth: reach * 2, lineCap: .round, lineJoin: .round, miterLimit: 10)
+                .contains(CGPoint(x: p.x, y: p.y))
         }
     }
 

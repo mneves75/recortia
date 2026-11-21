@@ -78,6 +78,8 @@
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(
+                id: "arrow-styles", title: "Arrowhead styles and smoothed strokes", run: ArrowStyleScenarios.styles),
+            E2EScenario(
                 id: "saved-colors", title: "Explicit saved annotation colors", run: EditorScenarios.savedColors),
             E2EScenario(
                 id: "text-font-designs", title: "Native editable text font designs",

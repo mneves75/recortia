@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+<<<<<<< HEAD
     "Rotate Left": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Rotate Left" } },
@@ -71,6 +72,48 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Original" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Original" } }
+=======
+    "Filled Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Filled Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta cheia" } }
+      }
+    },
+    "Open Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta aberta" } }
+      }
+    },
+    "No Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Sem ponta" } }
+      }
+    },
+    "Double Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Double Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta dupla" } }
+      }
+    },
+    "Mixed arrowheads": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed arrowheads" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pontas diferentes" } }
+      }
+    },
+    "Smooth": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Smooth" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Suavizar" } }
+      }
+    },
+    "Applies to new strokes.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Applies to new strokes." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Vale para novos traços." } }
+>>>>>>> origin/feat/t4-arrows-smoothing
       }
     },
     "Contrast": {

@@ -506,7 +506,7 @@ public final class EditorModel {
         case .annotation(let id):
             guard let annotation = d.annotations.first(where: { $0.id == id }) else { return [] }
             switch annotation.kind {
-            case .arrow(let start, let end, let control):
+            case .arrow(let start, let end, let control, _):
                 let endpoints: [(EditorHandle, Point<DocumentSpace>)] = [(.start, start), (.end, end)]
                 guard let control else { return endpoints }
                 return endpoints + [(.bend, ArrowCurve.bend(start: start, end: end, control: control))]
@@ -958,7 +958,7 @@ public final class EditorModel {
         let isCurve: Bool
         if case .annotation(let id) = item,
             let annotation = document.annotations.first(where: { $0.id == id }),
-            case .arrow(_, _, .some) = annotation.kind
+            case .arrow(_, _, .some, _) = annotation.kind
         {
             isCurve = true
         } else {

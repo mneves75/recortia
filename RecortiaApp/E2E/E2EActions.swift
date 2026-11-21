@@ -131,6 +131,36 @@
             await controller.model.export(request)
         }
 
+        /// What the editing canvas draws for the document, at one document pixel per pixel, through
+        /// the canvas's own renderer.
+        static func canvasPixels(_ model: EditorModel, _ context: ScenarioContext) throws -> DecodedPixels {
+            let width = Int(model.document.canvasSize.width), height = Int(model.document.canvasSize.height)
+            let space = try context.unwrap("sRGB", CGColorSpace(name: CGColorSpace.sRGB))
+            let bitmap = try context.unwrap(
+                "canvas bitmap",
+                CGContext(
+                    data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            // Document space has a top-left origin, as on the canvas.
+            bitmap.translateBy(x: 0, y: CGFloat(height))
+            bitmap.scaleBy(x: 1, y: -1)
+            try EditorCanvasRenderer.draw(
+                model.document, base: model.baseImage, calloutBase: model.calloutBaseImage, in: bitmap)
+            let image = try context.unwrap("canvas image", bitmap.makeImage())
+            return try ContainerInspector.pixels(of: image)
+        }
+
+        /// A manual Copy Image of `editor`, decoded from the pasteboard.
+        static func copiedPixels(
+            _ editor: EditorWindowController, _ harness: E2EHarness, _ context: ScenarioContext, _ name: String
+        ) async throws -> DecodedPixels {
+            let outcome = await editor.model.export(.copy)
+            try context.require("Copy of \(name) succeeds", outcome == .copied, "\(outcome)")
+            let data = try context.unwrap(
+                "\(name) PNG on the pasteboard", harness.clipboard.pasteboard.data(forType: .png))
+            return try E2EActions.decode(data, name, context)
+        }
+
         static func decode(_ data: Data, _ name: String, _ context: ScenarioContext) throws -> DecodedPixels {
             do {
                 return try ContainerInspector.decodePixels(data)

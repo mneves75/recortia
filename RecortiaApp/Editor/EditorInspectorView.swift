@@ -92,6 +92,9 @@ private struct FormatTab: View {
         if (tool.usesStyle && tool != .select) || !selectedAnnotations.isEmpty {
             AppearanceSection(model: model, annotations: selectedAnnotations, coalescer: coalescer)
             ArrowCurveSection(model: model, annotations: selectedAnnotations)
+            if tool == .freehand || tool == .highlighter {
+                StrokeSmoothingSection(model: model)
+            }
             if tool == .text || selectedAnnotations.contains(where: { if case .text = $0.kind { true } else { false } })
             {
                 TextSection(model: model, annotations: selectedAnnotations, coalescer: coalescer)
@@ -374,7 +377,7 @@ private struct ArrowCurveSection: View {
 
     private var selectedStates: [Bool] {
         annotations.compactMap { annotation in
-            guard case .arrow(_, _, let control) = annotation.kind else { return nil }
+            guard case .arrow(_, _, let control, _) = annotation.kind else { return nil }
             return control != nil
         }
     }
@@ -395,6 +398,15 @@ private struct ArrowCurveSection: View {
                     Text("Mixed arrow shapes", tableName: "Editor")
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("arrow.mixed")
+                }
+                let head = model.arrowHeadState
+                HStack(spacing: DesignTokens.Space.s) {
+                    ForEach(Annotation.ArrowHead.allCases, id: \.self) { choice($0, state: head) }
+                }
+                if head == nil {
+                    Text("Mixed arrowheads", tableName: "Editor")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("arrow.head.mixed")
                 }
                 Group {
                     if model.style.curvedArrows {
@@ -440,6 +452,44 @@ private struct ArrowCurveSection: View {
         .accessibilityIdentifier(curved ? "arrow.curved" : "arrow.straight")
         .accessibilityLabel(Text(title))
         .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
+    }
+
+    private func choice(_ head: Annotation.ArrowHead, state: Annotation.ArrowHead?) -> some View {
+        let (title, symbol): (String, String) =
+            switch head {
+            case .filled: (String(localized: "Filled Head", table: "Editor"), "arrowtriangle.right.fill")
+            case .open: (String(localized: "Open Head", table: "Editor"), "chevron.right")
+            case .plain: (String(localized: "No Head", table: "Editor"), "minus")
+            case .double: (String(localized: "Double Head", table: "Editor"), "arrow.left.and.right")
+            }
+        let isSelected = state == head
+        return Button {
+            model.setArrowHead(head)
+        } label: {
+            Image(systemName: symbol)
+        }
+        .buttonStyle(ChoiceButtonStyle(isSelected: isSelected))
+        .help(title)
+        .accessibilityIdentifier("arrow.head.\(head.rawValue)")
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(isSelected ? String(localized: "Selected", table: "Editor") : "")
+    }
+}
+
+/// Smoothing for strokes the freehand and highlighter tools draw next; drawn strokes keep theirs.
+private struct StrokeSmoothingSection: View {
+    let model: EditorModel
+
+    var body: some View {
+        Section {
+            Toggle(
+                String(localized: "Smooth", table: "Editor"),
+                isOn: Binding(get: { model.style.smoothsStrokes }, set: { model.setStrokeSmoothing($0) })
+            )
+            .toggleStyle(.switch)
+            .help(String(localized: "Applies to new strokes.", table: "Editor"))
+            .accessibilityIdentifier("stroke.smooth")
+        }
     }
 }
 
