@@ -115,6 +115,9 @@
                 run: AutoRedactionScenarios.sources),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(
+                id: "pin-on-top", title: "Pins float and let clicks through only when asked, and unlock together",
+                run: PinLayeringScenarios.pinOnTop),
+            E2EScenario(
                 id: "quick-actions", title: "Quick actions after a capture hold it only until dismissed",
                 run: QuickActionsScenarios.quickActions),
             E2EScenario(

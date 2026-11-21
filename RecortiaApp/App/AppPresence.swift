@@ -127,11 +127,16 @@ final class AppPresence {
     }
 
     /// A top-level window at the normal or modal level that is shown or minimized: the editor,
-    /// Settings, onboarding, scrolling review, About, alerts, open panels, and pins. Capture panels,
-    /// HUDs, the drag chip, menus, and status items sit at higher levels and never count.
+    /// Settings, onboarding, scrolling review, About, alerts, open panels, and pins. A pin counts at
+    /// any level (`SwitchableAtAnyLevel`). Capture panels, HUDs, the drag chip, menus, and status
+    /// items sit at higher levels and never count.
     static func isSwitchable(_ window: NSWindow) -> Bool {
         window.parent == nil && window.sheetParent == nil
-            && (window.level == .normal || window.level == .modalPanel)
+            && (window.level == .normal || window.level == .modalPanel || window is any SwitchableAtAnyLevel)
             && (window.isVisible || window.isMiniaturized)
     }
 }
+
+/// A window that stays switchable when it floats: a pin with Keep on Top is still a window the
+/// person returns to (ADR-007 amendment).
+protocol SwitchableAtAnyLevel: NSWindow {}

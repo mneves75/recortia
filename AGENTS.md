@@ -120,8 +120,9 @@ Window presence (ADR-007): Recortia is accessory at launch and regular while a s
 exists; `AppPresence` owns that rule. An ordinary window is shown through
 `AppPresence.present(_:)` (regular, Space policy, order, activate); other presenting code (alerts,
 About, open panels, pins) activates through `AppPresence.activate()`; only capture panels and menus
-use a bare `NSApp.activate()`. Pins are normal-level windows (they
-still join all Spaces) so window switchers list them; never make them floating again. Keep the
+use a bare `NSApp.activate()`. Pins are normal-level windows by default (they
+still join all Spaces) so window switchers list them; only a pin's opt-in Keep on Top floats it
+(ADR-007 amendment), and Unlock All Pins always recovers a click-through pin; never make pins float by default. Keep the
 `window-presence` E2E scenario in the gate, and rerun the space probe's `dynamic` mode and the
 installed-app fullscreen check when changing activation or pin windows.
 Synthetic checks guard configuration only; physical Space/display qualification stays manual,
