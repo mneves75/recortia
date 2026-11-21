@@ -1115,22 +1115,6 @@
         }
       }
     },
-    "Complete capture." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Complete capture."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Captura completa."
-          }
-        }
-      }
-    },
     "Continue" : {
       "localizations" : {
         "en" : {
@@ -3040,22 +3024,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retomar"
-          }
-        }
-      }
-    },
-    "Review Scrolling Capture" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Review Scrolling Capture"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Revisar captura com rolagem"
           }
         }
       }
