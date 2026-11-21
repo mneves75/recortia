@@ -129,4 +129,25 @@ public enum ChartFixture {
         }
         return try image(width: width, height: height, premultipliedRGBA: bytes)
     }
+
+    /// An opaque photo-like image: smooth color gradients under seeded grain of ±`grain` per
+    /// channel. Grain defeats PNG's lossless filters while a lossy JPEG barely pays for it.
+    public static func photographic(width: Int, height: Int, grain: Int = 12, seed: UInt64 = 7)
+        throws(FixtureError) -> CGImage
+    {
+        guard width > 1, height > 1, (0...127).contains(grain) else { throw FixtureError.invalidArgument }
+        var random = SeededGenerator(seed: seed)
+        var bytes = [UInt8](repeating: 255, count: width * height * 4)
+        for y in 0..<height {
+            for x in 0..<width {
+                let base = [40 + 160 * x / width, 30 + 180 * y / height, 200 - 150 * (x + y) / (width + height)]
+                let i = (y * width + x) * 4
+                for channel in 0..<3 {
+                    let noise = grain == 0 ? 0 : Int(random.next() % UInt64(2 * grain + 1)) - grain
+                    bytes[i + channel] = UInt8(clamping: base[channel] + noise)
+                }
+            }
+        }
+        return try image(width: width, height: height, premultipliedRGBA: bytes)
+    }
 }

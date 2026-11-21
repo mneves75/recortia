@@ -196,7 +196,7 @@ Do not promise that OCR-based “find sensitive data” is exhaustive. Do not pr
 
 All save, clipboard, drag-out, and later upload operations MUST receive the same immutable ShareSnapshot produced by the approved export pipeline. The snapshot identifies document revision, privacy epoch, output format/scale/color space, and sanitized bytes. It contains no raw source references.
 
-PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
+PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Saved files may instead use Automatic: an image without transparency is also encoded as JPEG at quality 0.92, and the JPEG is kept only when the PNG is over 0.5 MB and more than four times its size, or over 2 MB and more than twice its size; the file extension follows the bytes kept. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
 
 Save uses a user-selected destination or a previously authorized preferred folder, sanitized collision-resistant filenames, a same-directory temporary file, and atomic replacement/rename where supported. Overwrite requires confirmation. Encode failure leaves the destination intact. Quota, revocation, full disk, and disconnected volumes are explicit errors. File promises for drag-out must keep sanitized bytes alive until the receiving app completes or the transfer is canceled; do not delete a promised file prematurely.
 
@@ -206,7 +206,7 @@ Auto-copy and auto-save are off by default. If later enabled, show that copying/
 
 Run Vision locally and off the UI actor. Support a crop-to-text command and OCR on imported images. Prefer the modern Swift API where verified; Apple documents its concurrency-oriented redesign. [S07]
 
-Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
+Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. A primary language chosen in Settings from those the recognizer reports is tried first, ahead of the others in their usual order; one the recognizer no longer reports returns to Automatic. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
 
 Recognized ranges MUST have normalized bounding boxes converted through the shared geometry layer. OCR is tied to document revision and privacy epoch; outdated results cannot overwrite the clipboard after a new capture or redaction. Text mode with no detected text leaves existing clipboard content unchanged and displays a nonblocking message.
 

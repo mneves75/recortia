@@ -396,6 +396,9 @@
                     $0.pinDefaultOpacity = preferences.pinDefaultOpacity
                     $0.automaticScrollingEnabled = preferences.automaticScrollingEnabled
                     $0.filenameTemplateChoice = preferences.filenameTemplateChoice
+                    $0.defaultExportFormat = preferences.defaultExportFormat
+                    $0.automaticExportFormatChoice = preferences.automaticExportFormatChoice
+                    $0.primaryRecognitionLanguage = preferences.primaryRecognitionLanguage
                 }
             }
             let foreground = try await E2EForegroundFixture.start(context)
@@ -462,7 +465,92 @@
                 "with Accessibility granted, nothing is requested", harness.accessibility.requestCount == requests + 1,
                 "\(harness.accessibility.requestCount - requests)")
             try await filenameTemplateField(tabs: tabs, activate: activate, root: root, harness, context)
+            try await exportFormatMenu(tabs: tabs, activate: activate, root: root, harness, context)
+            try await primaryLanguageMenu(tabs: tabs, activate: activate, root: root, harness, context)
             await foreground.stop(context)
+        }
+
+        /// Settings › Text Recognition's primary language menu (FR-08): it offers Automatic and
+        /// every language Vision reports, a chosen language is stored in full form and shown chosen
+        /// when the menu reopens, and choosing Automatic clears it.
+        private static func primaryLanguageMenu(
+            tabs: NSTabView, activate: () async throws -> Void, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async throws {
+            tabs.selectTabViewItem(at: 6)
+            try await activate()
+            let loaded = await E2EWait.until {
+                if case .loaded = harness.features.ocrLanguages.state { return true }
+                return false
+            }
+            try context.require("OCR languages load for the primary language menu", loaded)
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            guard case .loaded(let list) = harness.features.ocrLanguages.state else { return }
+            let pane = try context.unwrap("the Text Recognition pane", tabs.selectedTabViewItem?.view)
+            let names = list.map(OCRSettingsTab.name(of:))
+            let automatic = String(localized: "Automatic")
+            // A language whose name no other entry shares, so the menu item is unambiguous.
+            let language = try context.unwrap(
+                "a uniquely named recognition language",
+                list.last { candidate in names.filter { $0 == OCRSettingsTab.name(of: candidate) }.count == 1 })
+            let name = OCRSettingsTab.name(of: language)
+            let offered = try await E2EAccessibilityControl.chooseFromMenu(
+                name, opening: "settings.primaryRecognitionLanguage", in: pane, context)
+            context.check(
+                "the primary language menu offers Automatic and every supported language",
+                offered.map(\.title) == [automatic] + names, "\(offered)")
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "choosing \(name) stores it as the primary language",
+                harness.settings.preferences.primaryRecognitionLanguage == language.maximalIdentifier,
+                "\(String(describing: harness.settings.preferences.primaryRecognitionLanguage))")
+            context.snapshot(pane, shot: "text-recognition-primary")
+            let reopened = try await E2EAccessibilityControl.chooseFromMenu(
+                automatic, opening: "settings.primaryRecognitionLanguage", in: pane, context)
+            context.check(
+                "the reopened menu shows \(name) chosen", reopened.filter(\.checked).map(\.title) == [name],
+                "\(reopened)")
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "choosing Automatic clears the primary language",
+                harness.settings.preferences.primaryRecognitionLanguage == nil)
+        }
+
+        /// Settings › Export's format menu (FR-07): it offers PNG, JPEG and Automatic, choosing
+        /// Automatic stores it and the reopened menu shows it chosen, and choosing PNG returns to
+        /// the default export options.
+        private static func exportFormatMenu(
+            tabs: NSTabView, activate: () async throws -> Void, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async throws {
+            tabs.selectTabViewItem(at: 3)
+            try await activate()
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            let pane = try context.unwrap("the Export pane", tabs.selectedTabViewItem?.view)
+            let titles = [
+                String(localized: "PNG"), String(localized: "JPEG"), String(localized: "Automatic (PNG or JPEG)"),
+            ]
+            let offered = try await E2EAccessibilityControl.chooseFromMenu(
+                titles[2], opening: "settings.exportFormat", in: pane, context)
+            context.check(
+                "the Export format menu offers PNG, JPEG and Automatic", offered.map(\.title) == titles, "\(offered)")
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "choosing Automatic stores it for saved files",
+                harness.settings.preferences.exportFormat == .automatic
+                    && harness.settings.preferences.exportOptions.formatChoice == .automatic,
+                "\(harness.settings.preferences.exportFormat)")
+            context.snapshot(pane, shot: "export-automatic")
+            let reopened = try await E2EAccessibilityControl.chooseFromMenu(
+                titles[0], opening: "settings.exportFormat", in: pane, context)
+            context.check(
+                "the reopened Export format menu shows Automatic chosen",
+                reopened.filter(\.checked).map(\.title) == [titles[2]], "\(reopened)")
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "choosing PNG again returns to the default export options",
+                harness.settings.preferences.exportOptions == ExportOptions(),
+                "\(harness.settings.preferences.exportOptions)")
         }
 
         /// Settings › Export's file-name field (A-9), typed through its native field editor: an

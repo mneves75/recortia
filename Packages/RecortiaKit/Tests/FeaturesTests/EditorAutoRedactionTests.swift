@@ -153,7 +153,7 @@ struct EditorAutoRedactionTests {
         #expect(await model.export(.saveToPreferredFolder) == .failed(.maskingUnfinished))
         #expect(
             await model.export(
-                .save(MaskingCapture.folder.appending(path: "x.png"), format: .png, overwriteConfirmed: true))
+                .save(MaskingCapture.folder.appending(path: "x.png"), format: .fixed(.png), overwriteConfirmed: true))
                 == .failed(.maskingUnfinished))
         await model.pin()
         model.setShowsOutputPreview(true)

@@ -497,6 +497,38 @@
         }
       }
     },
+    "Automatic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático"
+          }
+        }
+      }
+    },
+    "Automatic (PNG or JPEG)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic (PNG or JPEG)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático (PNG ou JPEG)"
+          }
+        }
+      }
+    },
     "Automatic copy, save and upload are off on a fresh install. When on, they run right after a capture, before any redaction." : {
       "localizations" : {
         "en" : {
@@ -2634,6 +2666,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preparando a pré-visualização"
+          }
+        }
+      }
+    },
+    "Primary language" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primary language"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idioma principal"
           }
         }
       }

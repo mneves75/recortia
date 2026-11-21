@@ -158,6 +158,38 @@ struct SettingsStoreTests {
         #expect(!loaded.preferences.autoRedactsSensitiveText)
     }
 
+    // Failure mode: "automatic" written into defaultExportFormat makes a 0.14 blob reader fail to
+    // decode after a rollback, resetting every setting and the sealed export consent.
+    @Test("Automatic format persists beside the fixed format that older Recortia reads")
+    func automaticExportFormat() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(store.preferences.exportFormat == .png)
+        store.update {
+            $0.exportFormat = .jpeg
+            $0.exportFormat = .automatic
+        }
+        #expect(SettingsStore(storage: storage).preferences.exportFormat == .automatic)
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        #expect(object["defaultExportFormat"] as? String == "jpeg", "0.14 reads only png or jpeg")
+        #expect(store.preferences.exportOptions.formatChoice == .automatic)
+
+        // A hand-edited or future blob naming automatic in the old key still loads as Automatic.
+        var odd = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        odd["defaultExportFormat"] = "automatic"
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: odd), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.exportFormat == .automatic)
+        #expect(loaded.preferences.defaultExportFormat == .png)
+
+        store.update { $0.exportFormat = .png }
+        #expect(store.preferences.exportOptions == ExportOptions())
+    }
+
     @Test("Works against a real, isolated UserDefaults suite")
     func userDefaultsSuite() throws {
         let suiteName = "dev.mvneves.Recortia.tests.\(UUID().uuidString)"

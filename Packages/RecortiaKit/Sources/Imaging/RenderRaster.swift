@@ -103,6 +103,19 @@ struct RenderRaster {
         }
     }
 
+    /// Whether every pixel has alpha 255.
+    var isOpaque: Bool {
+        // Invariant: the loop condition keeps every index below `buffer.count`.
+        unsafe bytes.withUnsafeBytes { buffer in
+            var i = 3
+            while i < buffer.count {
+                if unsafe buffer[i] != 255 { return false }
+                i += 4
+            }
+            return true
+        }
+    }
+
     /// Copies the pixels of `rect` clipped to the raster bounds, row-major; empty when they do
     /// not intersect. The copy is `clipped.width × clipped.height × 4` bytes.
     func pixels(in requested: PixelRect) -> [UInt8] {
