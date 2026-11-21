@@ -95,7 +95,7 @@ Program 2026-11 invariants (T2–T6, `docs/specs/program-2026-11/decisions.md`):
   - Recortia's sealed preference admits each scheduled check.
   - `SUAllowsAutomaticUpdates` stays false.
 - **Preference enums:** a new value of a stored preference enum goes in its own optional `…Choice` key. An older build fails the whole blob on an unknown case.
-- **Bilingual E2E:** keep `quick-actions`, `editor-menu`, `text-redaction`, `colour-tools`, `layer-transforms`, `arrow-styles`, `framing-presets`, `reopen-closed`, `diagnostics`, `heic-and-print`, `scroll-horizontal` and `updater` in the bilingual E2E run.
+- **Bilingual E2E:** keep `quick-actions`, `editor-menu`, `editor-zoom`, `capture-precision`, `element-snapping`, `pin-on-top`, `latency-prebuilt`, `text-redaction`, `colour-tools`, `layer-transforms`, `arrow-styles`, `framing-presets`, `reopen-closed`, `diagnostics`, `heic-and-print`, `scroll-horizontal` and `updater` in the bilingual E2E run.
 
 Full-source review invariants (2026-10, `docs/specs/full-source-review/plan.md`): every
 independent document edit settles an active move/resize first (`settleTransformGesture`), so a

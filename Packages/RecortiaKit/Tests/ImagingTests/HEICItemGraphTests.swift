@@ -101,7 +101,10 @@ struct HEICItemGraphTests {
 
     @Test(
         "The pipeline's HEIC, small or tiled, is the primary item and its grid tiles, with no reference but dimg",
-        arguments: [(320, 240), (5120, 2880)])
+        // Odd and tile-edge sizes, and the tall and wide shapes of vertical and horizontal scrolling
+        // captures: the allowlist fails closed, so any shape ImageIO writes that it refuses is a
+        // HEIC save that fails for the person.
+        arguments: [(320, 240), (161, 121), (513, 1025), (1999, 1001), (5120, 2880), (1200, 16000), (16000, 900)])
     func pipelineItemGraph(width: Int, height: Int) async throws {
         let snapshot = try await Self.exported(width: width, height: height)
         let graph = try Self.itemGraph(snapshot.bytes)
