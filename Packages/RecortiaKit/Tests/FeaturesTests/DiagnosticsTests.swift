@@ -109,6 +109,23 @@ struct DiagnosticsTests {
             ])
     }
 
+    @Test("A permission change dropped while the writer is behind is written at the next report")
+    func droppedPermissionIsNotForgotten() async throws {
+        let context = try Context()
+        context.recorder.setOn(true)
+        // Nothing reaches the writer until this test awaits, so the queue fills.
+        for _ in 0..<DiagnosticsRecorder.maxPending {
+            context.recorder.record(.qrDecodingFailed(duration: .zero))
+        }
+        context.recorder.record(.permissionStatus(permission: .accessibility, granted: true))
+        await context.recorder.flush()
+        context.recorder.record(.permissionStatus(permission: .accessibility, granted: true))
+        await context.recorder.flush()
+        let lines = try context.lines()
+        #expect(lines.count == DiagnosticsRecorder.maxPending + 1, "the queue bound drops the overflow")
+        #expect(lines.last?.hasSuffix(" permission.status permission=accessibility granted=true") == true)
+    }
+
     @Test("A capture reports its start, its typed outcome and its duration")
     func captureHooks() async {
         let h = CaptureHarness(permissionGranted: false)

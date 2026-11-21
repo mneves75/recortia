@@ -51,12 +51,13 @@ public final class DiagnosticsRecorder: DiagnosticsSink {
     }
 
     public func record(_ event: DiagnosticEvent) {
-        guard isOn else { return }
+        // A full queue drops the event before the permission memory sees it, so a dropped change
+        // is written at its next report.
+        guard isOn, pending < Self.maxPending else { return }
         if case .permissionStatus(let permission, let granted) = event {
             guard permissions[permission] != granted else { return }
             permissions[permission] = granted
         }
-        guard pending < Self.maxPending else { return }
         pending += 1
         let date = clock.now()
         enqueue { log in
