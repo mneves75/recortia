@@ -16,7 +16,7 @@ final class QuickActionsUIController {
     /// Orders the panel in; scenarios park it offscreen instead.
     var present: @MainActor (HostingPanel) -> Void = { $0.presentInCorner() }
     /// A destination for Save when Settings names no folder; scenarios never show a panel.
-    var chooseSaveDestination: @MainActor () async -> (url: URL, format: ExportFormat)?
+    var chooseSaveDestination: @MainActor () async -> (url: URL, format: ExportFormatChoice)?
     var confirmReplacement: @MainActor () async -> Bool = { MessagePresenter.confirmReplacement() }
 
     init(model: QuickActionsModel, settings: SettingsStore) {
@@ -72,11 +72,17 @@ final class QuickActionsUIController {
     }
 
     /// The editor's Save panel, app-modal because the thumbnail has no window to attach a sheet to.
-    private static func chooseDestination(options: ExportOptions) -> (url: URL, format: ExportFormat)? {
-        let format = options.format
+    private static func chooseDestination(options: ExportOptions) -> (url: URL, format: ExportFormatChoice)? {
+        let format = options.formatChoice
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [format == .png ? UTType.png : UTType.jpeg]
-        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: format).name(attempt: 1)
+        // Automatic offers the PNG name; the save then takes the extension of the format chosen.
+        panel.allowedContentTypes =
+            switch format {
+            case .fixed(.png): [.png]
+            case .fixed(.jpeg): [.jpeg]
+            case .automatic: [.png, .jpeg]
+            }
+        panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         AppPresence.shared.activate()

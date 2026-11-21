@@ -195,7 +195,7 @@ struct QuickActionsModelTests {
         other.files.error = .destinationExists
         var confirmations = 0
         let replaced = await other.model.save(
-            choosing: { (url, .png) },
+            choosing: { (url, .fixed(.png)) },
             confirmReplacement: {
                 confirmations += 1
                 other.files.error = nil
