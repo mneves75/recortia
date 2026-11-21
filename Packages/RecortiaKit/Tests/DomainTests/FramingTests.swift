@@ -175,4 +175,26 @@ struct FramingTests {
                     pixelSize: geometry.pixelSize, capturedAt: geometry.capturedAt)))
         #expect(Document(capture: region, windowBackground: .solid(.black), defaultFraming: bare).presentation == bare)
     }
+    @Test("Fractional content (a resize): every preset still keeps at least the padding on both sides")
+    func fractionalContentKeepsPadding() {
+        for (canvas, resize, padding) in [(251.0, 0.4, 25.0), (97.0, 0.37, 13.0), (333.0, 1.15, 7.5)] {
+            for aspect in FramingAspect.allCases where aspect != .free {
+                var document = Self.document(
+                    width: canvas, height: canvas,
+                    presentation: Presentation(background: .solid(.white), padding: padding, aspect: aspect))
+                document.resizeScale = resize
+                let frame = document.outputFrame(exportScale: 1)
+                let content = canvas * resize
+                let required = padding * resize
+                let left = frame.contentOriginX
+                let right = Double(frame.pixelSize.width) - left - content
+                let top = frame.contentOriginY
+                let bottom = Double(frame.pixelSize.height) - top - content
+                // Centring floors the origin: top and left keep the padding to the whole pixel.
+                #expect(
+                    min(left, top) >= required.rounded(.down) && min(right, bottom) >= required,
+                    "\(aspect) canvas \(canvas) resize \(resize): \(left) \(right) \(top) \(bottom) < \(required)")
+            }
+        }
+    }
 }

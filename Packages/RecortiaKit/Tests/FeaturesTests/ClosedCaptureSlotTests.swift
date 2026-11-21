@@ -168,4 +168,18 @@ struct ClosedCaptureSlotTests {
         #expect(slot.take() == nil)
         #expect(h.assets.released.contains { dismissed.document.assets[$0] != nil })
     }
+    @Test("A timer that fires late does not extend the 10 minutes: the slot checks its own deadline")
+    func lateTimerDoesNotExtendLifetime() async {
+        let h = EditorHarness()
+        let slot = ClosedCaptureSlot(assets: h.assets, clock: h.clock)
+        let editor = Self.editor(h, EditorFixtures.session())
+        slot.close(editor)
+        // App Nap or a wake from sleep: time passes but the expiry task has not run yet.
+        h.clock.stall(bySeconds: 10 * 60 - 1)
+        #expect(!slot.isEmpty, "still within its lifetime")
+        h.clock.stall(bySeconds: 1)
+        #expect(slot.isEmpty)
+        #expect(slot.take() == nil)
+        #expect(Set(h.assets.released) == Set(editor.document.assets.keys), "the expired pixels are released")
+    }
 }

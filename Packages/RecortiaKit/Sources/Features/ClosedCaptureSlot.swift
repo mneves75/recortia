@@ -15,6 +15,9 @@ public final class ClosedCaptureSlot {
     public static let lifetime: Duration = .seconds(10 * 60)
 
     private var kept: DocumentSession?
+    /// `clock.uptime()` at which the kept document expires. The expiry task can run late (App
+    /// Nap, a wake from sleep), so every read checks this deadline too.
+    @ObservationIgnored private var deadline: Duration?
     @ObservationIgnored private var expiry: Task<Void, Never>?
     @ObservationIgnored private let assets: any ImageAssetService
     @ObservationIgnored private let clock: any FeatureClock
@@ -24,7 +27,9 @@ public final class ClosedCaptureSlot {
         self.clock = clock
     }
 
-    public var isEmpty: Bool { kept == nil }
+    public var isEmpty: Bool { kept == nil || isExpired }
+
+    private var isExpired: Bool { deadline.map { clock.uptime() >= $0 } ?? false }
 
     /// Closes `editor`. Its document replaces the kept one, whose pixels are released; a document
     /// that may not be kept closes as `EditorModel.close()` does and leaves the slot empty, so an
@@ -35,6 +40,7 @@ public final class ClosedCaptureSlot {
         clear()
         guard let document else { return }
         kept = document
+        deadline = clock.uptime() + Self.lifetime
         let clock = self.clock
         expiry = Task { [weak self] in
             do { try await clock.sleep(for: Self.lifetime) } catch { return }
@@ -45,17 +51,31 @@ public final class ClosedCaptureSlot {
     }
 
     /// Empties the slot and hands over the kept document: its pixels now belong to the caller,
-    /// which opens it in an editor.
+    /// which opens it in an editor. An expired document is released instead, and nil returned.
     public func take() -> DocumentSession? {
-        expiry?.cancel()
-        expiry = nil
-        defer { kept = nil }
-        return kept
+        let expired = isExpired
+        guard let session = empty() else { return nil }
+        guard !expired else {
+            release(session)
+            return nil
+        }
+        return session
     }
 
     /// Empties the slot and releases the kept document's pixels (timeout, replacement, quit).
     public func clear() {
-        guard let session = take() else { return }
+        if let session = empty() { release(session) }
+    }
+
+    private func empty() -> DocumentSession? {
+        expiry?.cancel()
+        expiry = nil
+        deadline = nil
+        defer { kept = nil }
+        return kept
+    }
+
+    private func release(_ session: DocumentSession) {
         for id in session.document.assets.keys { assets.release(id) }
     }
 }
