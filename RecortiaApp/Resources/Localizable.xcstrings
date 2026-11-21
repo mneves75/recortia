@@ -481,6 +481,22 @@
         }
       }
     },
+    "Aspect ratio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aspect ratio"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proporção"
+          }
+        }
+      }
+    },
     "Assign shortcuts" : {
       "localizations" : {
         "en" : {
@@ -1833,6 +1849,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Moldura e ênfase"
+          }
+        }
+      }
+    },
+    "Free" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Livre"
           }
         }
       }

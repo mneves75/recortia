@@ -30,6 +30,7 @@ final class CaptureUIController {
         }
         overlay.onCancel = { [weak coordinator] in coordinator?.cancel() }
         overlay.onSwitchToWindow = { [weak coordinator] in coordinator?.switchToWindowSelection() }
+        overlay.onAspectChange = { [weak coordinator] in coordinator?.setRegionAspect($0) }
         loop = ObservationLoop { [weak self] in self?.render() }
     }
 
@@ -44,7 +45,8 @@ final class CaptureUIController {
             closeCountdown()
             overlay.present(
                 displays: displays, notice: noticeText(notice),
-                allowsWindowSwitch: coordinator.mode == .region && coordinator.purpose == .edit)
+                allowsWindowSwitch: coordinator.mode == .region && coordinator.purpose == .edit,
+                aspect: coordinator.regionAspect, snapFrames: coordinator.snapFrames)
             if overlay.isPresented { coordinator.selectionDidAppear() }
         case (.selecting, .loadingWindows?):
             overlay.dismiss()
