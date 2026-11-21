@@ -71,6 +71,7 @@ public final class CaptureCoordinator {
     public enum Notice: Hashable, Sendable {
         case captureInProgress
         case freezeBusy
+        case freezeExpired
         case freezeUnavailable
         /// The remembered region's display changed or disappeared; a new selection is needed.
         case repeatRegionUnavailable
@@ -96,6 +97,7 @@ public final class CaptureCoordinator {
 
     /// Delay used by Capture with Delay when the preference is 0 seconds.
     public static let fallbackDelaySeconds = 5
+    private static let freezeLifetime: Duration = .seconds(60)
 
     public private(set) var state: CaptureState = .idle
     public private(set) var mode: CaptureMode?
@@ -131,6 +133,8 @@ public final class CaptureCoordinator {
     @ObservationIgnored private var snapTask: Task<Void, Never>?
     @ObservationIgnored private var freezeRead: Task<Void, Never>?
     @ObservationIgnored private var freezePermissionCheck: Task<Void, Never>?
+    @ObservationIgnored private var freezeExpiry: Task<Void, Never>?
+    @ObservationIgnored private var freezeDeadline: Duration?
 
     private struct ActiveCapture {
         let id: RequestID
@@ -206,7 +210,17 @@ public final class CaptureCoordinator {
         }
 
         notice = nil
+        let deadline = clock.uptime() + Self.freezeLifetime
+        freezeDeadline = deadline
         regionFreeze = .preparing(display)
+        freezeExpiry = Task { [weak self, clock] in
+            let remaining = deadline - clock.uptime()
+            if remaining > .zero {
+                do { try await clock.sleep(for: remaining) } catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            self?.expireFrozenRegion()
+        }
         freezeRead = Task { [weak self] in
             guard let self else { return }
             defer { self.freezeRead = nil }
@@ -275,7 +289,7 @@ public final class CaptureCoordinator {
 
     @discardableResult
     public func commitSelection(_ target: CaptureTarget) -> Bool {
-        guard state == .selecting, let active else { return false }
+        guard state == .selecting, let active, !expireFrozenRegion() else { return false }
         switch regionFreeze {
         case .preparing:
             return false
@@ -426,13 +440,13 @@ public final class CaptureCoordinator {
     }
 
     private func acquireFrozenFrame(on display: DisplayInfo, id: RequestID) async {
-        guard isSelectingRegion(id) else { return }
+        guard isSelectingRegion(id), !expireFrozenRegion() else { return }
         let preferences = settings.preferences
         do throws(CaptureError) {
             let (image, geometry) = try await capture.capture(
                 .display(display), showsCursor: preferences.captureShowsCursor,
                 includesShadow: preferences.captureIncludesWindowShadow)
-            guard isSelectingRegion(id) else { return }
+            guard isSelectingRegion(id), !expireFrozenRegion() else { return }
             try verifyFrozenDisplay(display)
             guard geometry.source == .display(id: display.id),
                 geometry.desktopBounds == display.frame,
@@ -445,7 +459,7 @@ public final class CaptureCoordinator {
             else { throw .targetUnavailable }
             regionFreeze = .frozen(FrozenFrame(display: display, image: image, geometry: geometry))
         } catch {
-            guard isSelectingRegion(id) else { return }
+            guard isSelectingRegion(id), !expireFrozenRegion() else { return }
             switch error {
             case .permissionDenied, .displayChanged:
                 handle(error)
@@ -649,10 +663,21 @@ public final class CaptureCoordinator {
         forgetSnapFrames()
     }
 
+    @discardableResult
+    private func expireFrozenRegion() -> Bool {
+        guard let freezeDeadline, clock.uptime() >= freezeDeadline else { return false }
+        discardFrozenRegion()
+        notice = .freezeExpired
+        return true
+    }
+
     private func discardFrozenRegion() {
         freezeRead?.cancel()
         freezePermissionCheck?.cancel()
         freezePermissionCheck = nil
+        freezeExpiry?.cancel()
+        freezeExpiry = nil
+        freezeDeadline = nil
         if regionFreeze != nil { regionFreeze = nil }
     }
 

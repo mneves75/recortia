@@ -4714,6 +4714,22 @@
         }
       }
     },
+    "The frozen frame expired. Select a live area or press F to freeze again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The frozen frame expired. Select a live area or press F to freeze again."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O quadro congelado expirou. Selecione uma área ao vivo ou pressione F para congelar novamente."
+          }
+        }
+      }
+    },
     "The previous freeze was still finishing. Press F to try again." : {
       "localizations" : {
         "en" : {

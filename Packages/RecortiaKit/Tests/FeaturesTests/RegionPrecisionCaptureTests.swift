@@ -127,6 +127,40 @@ struct RegionPrecisionCaptureTests {
         #expect(pixels.pixel(x: 6, y: 4) == ChartFixture.Color(64, 48, 0))
     }
 
+    @Test("Frozen pixels expire at 60 seconds even if the timer has not resumed", arguments: [true, false])
+    func expiredFrozenSelectionCannotCommit(timerResumes: Bool) async throws {
+        let h = CaptureHarness()
+        let (display, frame, geometry) = try frozenFixture()
+        h.capture.displayList = [display]
+        let read = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
+        h.capture.pendingCapture = read
+        h.coordinator.start(.region)
+        h.coordinator.toggleRegionFreeze(on: display)
+        await waitFor("display read") { read.waiterCount == 1 }
+        #expect(read.resolve(.success((frame, geometry))))
+        await waitFor("frozen preview") {
+            if case .frozen = h.coordinator.regionFreeze { return true }
+            return false
+        }
+
+        h.clock.jumpWallClock(bySeconds: 3600)
+        h.clock.advance(bySeconds: 59)
+        await drain()
+        #expect(h.coordinator.regionFreeze != nil)
+        if timerResumes {
+            h.clock.advance(bySeconds: 1)
+            await waitFor("preview expired") { h.coordinator.regionFreeze == nil }
+        } else {
+            h.clock.stall(bySeconds: 1)
+            let region = Rect<DesktopSpace>(x: -29, y: -15, width: 2, height: 2)
+            #expect(!h.coordinator.commitRegion(region, on: display))
+        }
+        #expect(h.coordinator.regionFreeze == nil)
+        #expect(h.coordinator.state == .selecting)
+        #expect(h.capture.captureCalls == [.display(display)])
+        #expect(h.completions.isEmpty)
+    }
+
     @Test(
         "Canceling or unfreezing during the display read suppresses its late pixels without blocking the next live capture",
         arguments: [true, false])

@@ -249,9 +249,10 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   781 extracted strings had pt-BR translations. The planted aliased-image control failed at
   the source-frame release assertion while registration was suspended. The restored suite
   passed again. A separate model re-reviewed the changes and cleared the three findings.
-- The A-5 working branch is pushed separately. The owner still needs to choose the frame
-  retention duration. Bilingual native execution needs an unlocked console with a five-minute
-  idle start and no input until the run finishes. The affected macOS 26 physical checks remain open.
+- A-5 expires a freeze after 60 seconds of monotonic time, measured from the request. The
+  deadline is checked when a display read returns and before a frozen region can be committed.
+  Bilingual native execution needs an unlocked console with a five-minute idle start and no
+  input until the run finishes. The affected macOS 26 physical checks remain open.
 - The repository generates `tests.json` as its test inventory and
   `.scratch/tests-report.json` as the run-status record via `scripts/tests-report.py`.
   New test code is limited to behavior over the requested `cccc` complexity threshold or
