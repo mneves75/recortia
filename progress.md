@@ -259,3 +259,11 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   `.scratch/tests-report.json` as the run-status record via `scripts/tests-report.py`.
   New test code is limited to behavior over the requested `cccc` complexity threshold or
   regular-expression behavior. Pruning and independent verification follow implementation.
+- The uninterrupted bilingual focused run `20261121-165623-55160` on `bf1c4a5` passed
+  `capture-precision` and `pin-on-top` in both languages. `editor-menu`, `colour-tools`,
+  `framing-presets` and `heic-and-print` failed in both languages. The console monitor
+  recorded no interruption. The native run log is `.scratch/logs/e2e-bf1c4a5-qualified-focused.log`.
+- The four scenarios now wait for the native menu state, read selectable text through its
+  accessibility value, or bring the newly captured editor forward before clicking Reset.
+  The Inspector submenu still has both tab commands disabled while another window is key.
+  The preview test checks both transitions and both native checkmarks.

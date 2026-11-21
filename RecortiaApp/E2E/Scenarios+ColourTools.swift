@@ -87,7 +87,7 @@
             await show()
             context.check(
                 "the picker shows the text it copies",
-                try E2EAccessibilityControl.name(for: "color.formatted", in: root, context) == expected.last?.1)
+                try E2EAccessibilityControl.text(.value, for: "color.formatted", in: root, context) == expected.last?.1)
             await E2EActions.snapshotEditor(controller, context, shot: "colour-formats")
             model.colorFormat = .hex
 
@@ -107,7 +107,7 @@
             context.check("the readout shows 4.47:1, truncated", ["4.47:1", "4,47:1"].contains(ratioText), ratioText)
             context.check(
                 "the readout is on screen",
-                try E2EAccessibilityControl.name(for: "color.contrast.ratio", in: root, context) == ratioText)
+                try E2EAccessibilityControl.text(.value, for: "color.contrast.ratio", in: root, context) == ratioText)
             let pass = String(localized: "Pass", table: "Editor"), fail = String(localized: "Fail", table: "Editor")
             for (id, mark) in [("aa.normal", fail), ("aa.large", pass), ("aaa.normal", fail), ("aaa.large", fail)] {
                 context.check(

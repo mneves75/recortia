@@ -195,6 +195,8 @@
             context.check("the framed document is unchanged", model.document.presentation == framing)
 
             // Reset clears the default; open documents keep their framing.
+            let capturedWindow = try context.unwrap("captured editor window", captured.window)
+            try await E2EAccessibilityControl.showAndActivate(capturedWindow, context)
             captured.model.selectTool(.select)
             captured.model.clearSelection()
             captured.panes.chosenInspectorTab = .image
@@ -202,7 +204,7 @@
             await E2ESnapshot.settle(capturedRoot)
             await E2EActions.scrollInspector(captured, to: 1)
             await E2ESnapshot.settle(capturedRoot)
-            try E2EAccessibilityControl.press("image.resetDefaultFraming", in: capturedRoot, context)
+            try E2EAccessibilityControl.click("image.resetDefaultFraming", in: capturedRoot, context)
             try context.require(
                 "Reset clears the default", await E2EWait.until { harness.settings.preferences.defaultFraming == nil })
             context.check("the open capture keeps its framing", captured.model.document.presentation == framing)

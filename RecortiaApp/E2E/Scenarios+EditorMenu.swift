@@ -44,7 +44,7 @@
             // Every command that needs a key editor; Zoom to Selection also needs a selection.
             let editorTitles =
                 [
-                    close, save, savePreferred, print, zoomIn, zoomOut, actualPixels, zoomToFit, preview, inspector,
+                    close, save, savePreferred, print, zoomIn, zoomOut, actualPixels, zoomToFit, preview,
                     EditorInspectorTab.format.title, EditorInspectorTab.image.title,
                 ] + toolTitles
             let editActions = ["undo:", "redo:", "copy:", "delete:", "selectAll:"]
@@ -136,6 +136,11 @@
             for title in editorTitles + [zoomToSelection] {
                 context.check("\(title) is disabled while another window is key", try command(title).isEnabled == false)
             }
+            let inspectorMenu = try context.unwrap("View › Inspector has a submenu", try command(inspector).submenu)
+            context.check(
+                "the Inspector submenu contains the two disabled tab commands",
+                inspectorMenu.items.map(\.title) == EditorInspectorTab.allCases.map(\.title)
+                    && inspectorMenu.items.allSatisfy { !$0.isEnabled })
             for action in editActions {
                 context.check(
                     "Edit › \(action) is disabled while another window is key", try edit(action).isEnabled == false)
@@ -174,10 +179,14 @@
                     "Tools › \(EditorStrings.name(tool)) chooses that tool", model.tool == tool, "\(model.tool)")
             }
             try choose(try command(EditorStrings.name(EditorTool.ellipse)))
+            let ellipse = EditorStrings.name(EditorTool.ellipse)
+            let rectangle = EditorStrings.name(EditorTool.rectangle)
             context.check(
                 "the active tool is checked and no other",
-                try command(EditorStrings.name(EditorTool.ellipse)).state == .on
-                    && command(EditorStrings.name(EditorTool.rectangle)).state == .off)
+                await E2EWait.until(timeout: .seconds(3)) {
+                    EditorToolbarScenarios.viewCommand(ellipse)?.state == .on
+                        && EditorToolbarScenarios.viewCommand(rectangle)?.state == .off
+                }, "active tool: \(model.tool)")
             try choose(try command(EditorStrings.name(EditorTool.select)))
 
             // Edit: the standard items act on the document through the canvas, as ⌘Z and the toolbar do.
@@ -228,6 +237,11 @@
 
             // View: the zoom commands match the canvas shortcuts; Zoom to Selection the status menu.
             model.select(.annotation(shape.id))
+            try context.require(
+                "Zoom to Selection is enabled with a selection",
+                await E2EWait.until(timeout: .seconds(3)) {
+                    EditorToolbarScenarios.viewCommand(zoomToSelection)?.isEnabled == true
+                })
             let zooms: [(String, () -> Void)] = [
                 (zoomIn, { model.zoomIn() }), (zoomOut, { model.zoomOut() }),
                 (actualPixels, { model.zoomToActualPixels() }), (zoomToFit, { model.zoomToFit() }),
@@ -246,11 +260,17 @@
             }
             model.zoomToFit()
             try choose(try command(preview))
-            let previewChecked = try command(preview).state == .on
-            context.check(
-                "View › Show Output Preview shows the output, checked", model.showsOutputPreview && previewChecked)
+            try context.require(
+                "View › Show Output Preview shows the output, checked",
+                await E2EWait.until(timeout: .seconds(3)) {
+                    model.showsOutputPreview && EditorToolbarScenarios.viewCommand(preview)?.state == .on
+                })
             try choose(try command(preview))
-            context.check("choosing it again returns to editing", !model.showsOutputPreview)
+            context.check(
+                "choosing it again returns to editing, unchecked",
+                await E2EWait.until(timeout: .seconds(3)) {
+                    !model.showsOutputPreview && EditorToolbarScenarios.viewCommand(preview)?.state == .off
+                })
 
             // View › Inspector picks a tab as the tab control does, and shows a hidden inspector.
             model.select(.annotation(shape.id))

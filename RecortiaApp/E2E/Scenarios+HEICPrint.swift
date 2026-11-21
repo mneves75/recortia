@@ -37,13 +37,17 @@
             try await E2EAccessibilityControl.showAndActivate(window, context)
             if let canvas = controller.canvasView { window.makeFirstResponder(canvas) }
             let title = String(localized: "Print…", table: "Editor")
+            try context.require(
+                "Print… is enabled for the key editor",
+                await E2EWait.until(timeout: .seconds(3)) {
+                    EditorToolbarScenarios.viewCommand(title)?.isEnabled == true
+                }, "editor key: \(window.isKeyWindow), can export: \(model.canStartExport)")
             let item = try context.unwrap("File has Print…", EditorToolbarScenarios.viewCommand(title))
             context.check(
                 "Print… is ⌘P",
                 item.keyEquivalent == "p"
                     && item.keyEquivalentModifierMask.intersection(.deviceIndependentFlagsMask) == .command,
                 "\(item.keyEquivalent.debugDescription) \(item.keyEquivalentModifierMask.rawValue)")
-            try context.require("Print… is enabled for the key editor", item.isEnabled)
             let before = harness.printer.snapshots.count
             let menu = try context.unwrap("Print… has a menu", item.menu)
             menu.performActionForItem(at: menu.index(of: item))
