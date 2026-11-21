@@ -25,7 +25,7 @@ struct ScrollHUDView: View {
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignTokens.Space.s) {
             Text("Scrolling Capture")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
@@ -43,6 +43,7 @@ struct ScrollHUDView: View {
                 }
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
+                .noticeStyle()
             }
             if let noticeText {
                 Label {
@@ -52,6 +53,7 @@ struct ScrollHUDView: View {
                 }
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
+                .noticeStyle()
             }
             Text("\(hud.acceptedFrames) frames · \(hud.outputHeight) pixels tall")
                 .font(.callout.monospacedDigit())
@@ -64,21 +66,24 @@ struct ScrollHUDView: View {
                 switch hud.state {
                 case .armed:
                     Button("Start", action: onStart)
+                        .buttonStyle(.borderedProminent)
                         .keyboardShortcut(.defaultAction)
                 case .collecting:
                     Button("Pause", action: onPause)
                     Button("Stop", action: onStop)
+                        .buttonStyle(.borderedProminent)
                         .keyboardShortcut(.defaultAction)
                 case .paused:
                     Button("Resume", action: onResume)
                     Button("Stop", action: onStop)
+                        .buttonStyle(.borderedProminent)
                         .keyboardShortcut(.defaultAction)
                 default:
                     EmptyView()
                 }
             }
         }
-        .padding(16)
+        .padding(DesignTokens.Space.m)
         .frame(width: 340)
     }
 
@@ -143,19 +148,17 @@ struct ScrollReviewView: View {
     private let previewWidth = 360.0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Review Scrolling Capture")
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
+        // The window's title says what this is; a complete result needs no status line.
+        VStack(alignment: .leading, spacing: DesignTokens.Space.m) {
             if let partialReason {
                 Label {
                     Text("Partial result. \(Self.describe(partialReason))")
                 } icon: {
                     Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
                 }
+                .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text("Complete capture.")
+                .noticeStyle()
             }
             Text("\(outputSize.width) × \(outputSize.height) pixels")
                 .font(.callout.monospacedDigit())
@@ -171,6 +174,11 @@ struct ScrollReviewView: View {
                         }
                         .accessibilityElement()
                         .accessibilityLabel(Text("Stitched preview with \(seams.count) joins"))
+                        .accessibilityHint(
+                            Text(
+                                "Dashed lines mark where frames were joined. Check them for missing or repeated content."
+                            )
+                        )
                         .accessibilityIdentifier("scroll.review.preview")
                 } else if isPreparingPreview {
                     ProgressView()
@@ -179,14 +187,15 @@ struct ScrollReviewView: View {
                 }
             }
             .frame(height: 360)
-            Text("Dashed lines mark where frames were joined. Check them for missing or repeated content.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             if assemblyFailed {
-                Text("The image is too large to assemble. Discard it and capture a shorter area.")
-                    .font(.callout)
-                    .fixedSize(horizontal: false, vertical: true)
+                Label {
+                    Text("The image is too large to assemble. Discard it and capture a shorter area.")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
+                }
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .noticeStyle()
             }
             HStack {
                 Button("Discard", role: .destructive, action: onDiscard)
@@ -198,13 +207,14 @@ struct ScrollReviewView: View {
                     partialReason == nil ? LocalizedStringKey("Accept") : LocalizedStringKey("Accept Partial Result"),
                     action: onAccept
                 )
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(!canAccept)
                 .accessibilityIdentifier("scroll.review.accept")
             }
         }
-        .padding(16)
-        .frame(width: previewWidth + 32)
+        .padding(DesignTokens.Space.l)
+        .frame(width: previewWidth + 2 * DesignTokens.Space.l)
     }
 
     private func seamMarkers(displayHeight: Double) -> some View {

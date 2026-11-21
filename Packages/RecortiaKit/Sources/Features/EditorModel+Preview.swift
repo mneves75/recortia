@@ -67,7 +67,7 @@ extension EditorModel {
 
     func scheduleBaseRender() {
         // No render of the capture exists before its automatic masks land.
-        guard !isClosed, !isMaskingPending, baseTask == nil else { return }
+        guard !isClosed, admitsAction(), baseTask == nil else { return }
         let key = currentBaseKey
         guard key != installedBaseKey, key != failedBaseKey else { return }
         let identity = session.requestIdentity()
@@ -107,10 +107,7 @@ extension EditorModel {
 
     /// Shows the full sanitized output (crop, presentation, callouts) instead of the editing surface.
     public func setShowsOutputPreview(_ shows: Bool) {
-        if shows, isMaskingPending {
-            post(.maskingInProgress)
-            return
-        }
+        if shows, !admitsAction(explaining: true) { return }
         // The preview is read-only (F-04): a drag in progress and text input are abandoned, and
         // the selection, which it would not show, is cleared.
         if shows {
@@ -135,7 +132,7 @@ extension EditorModel {
     }
 
     func scheduleOutputRender() {
-        guard !isClosed, !isMaskingPending, showsOutputPreview, outputTask == nil else { return }
+        guard !isClosed, admitsAction(), showsOutputPreview, outputTask == nil else { return }
         let key = currentOutputKey
         guard key != installedOutputKey, key != failedOutputKey else { return }
         let identity = session.requestIdentity()

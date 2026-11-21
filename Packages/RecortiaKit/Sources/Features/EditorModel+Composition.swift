@@ -18,18 +18,7 @@ extension EditorModel {
     /// A drop's bytes are requested only after the shared importer admits its lazy reader.
     @discardableResult
     public func addImageLayer(readSource: () throws(ImportFailure) -> ImportSource) async -> Bool {
-        guard !isClosed else { return false }
-        guard !isMaskingPending else {
-            post(.maskingInProgress)
-            return false
-        }
-        let admission: ImportAdmission
-        do throws(ImportFailure) {
-            admission = try environment.imageImporter.admit(readSource: readSource)
-        } catch {
-            post(.importFailed(error))
-            return false
-        }
+        guard let admission = admitDroppedImage(readSource: readSource) else { return false }
         return await addImageLayer(admitted: admission)
     }
 
@@ -37,11 +26,7 @@ extension EditorModel {
     /// after the shared importer has a free slot (IO-01). Posts the failure and returns nil when
     /// the drop is refused; otherwise pass the admission to `addImageLayer(admitted:)`.
     public func admitDroppedImage(readSource: () throws(ImportFailure) -> ImportSource) -> ImportAdmission? {
-        guard !isClosed else { return nil }
-        guard !isMaskingPending else {
-            post(.maskingInProgress)
-            return nil
-        }
+        guard !isClosed, admitsAction(explaining: true) else { return nil }
         do throws(ImportFailure) {
             return try environment.imageImporter.admit(readSource: readSource)
         } catch {
@@ -53,7 +38,7 @@ extension EditorModel {
     /// Decodes an admitted image and adds it as a layer. Always frees the importer's slot.
     @discardableResult
     public func addImageLayer(admitted admission: ImportAdmission) async -> Bool {
-        guard !isClosed, !isMaskingPending else {
+        guard !isClosed, admitsAction() else {
             environment.imageImporter.release(admission)
             return false
         }

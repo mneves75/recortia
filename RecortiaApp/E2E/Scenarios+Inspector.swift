@@ -94,16 +94,14 @@
             }
             func rectangleFill() -> RGBA? { model.document.annotations.first { $0.id == rectangle.id }?.style.fill }
             let fillBefore = rectangleFill()
-            // SwiftUI draws the switch itself; press it through the accessibility API, as VoiceOver does.
-            let fill = try context.unwrap(
-                "style.fill is in the AX tree", E2EAccessibilityControl.axElement("style.fill"))
-            try context.require(
-                "style.fill performs AXPress", AXUIElementPerformAction(fill, kAXPressAction as CFString) == .success)
+            // SwiftUI's switch inside the Form lists no accessibility actions, so click it as a person does.
+            try E2EAccessibilityControl.click("style.fill", in: root, context)
+            let fillChanged = await E2EWait.until { rectangleFill() != fillBefore }
             context.check(
-                "the Fill control changes the rectangle's fill",
-                await E2EWait.until { rectangleFill() != fillBefore },
+                "the Fill control changes the rectangle's fill", fillChanged,
                 "before \(String(describing: fillBefore)), after \(String(describing: rectangleFill()))")
-            model.undo()
+            // Undo only a change that happened: otherwise it removes the rectangle and every later check fails.
+            if fillChanged { model.undo() }
             await E2ESnapshot.settle(root)
             context.check(
                 "one Undo restores the rectangle's fill", rectangleFill() == fillBefore,

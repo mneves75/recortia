@@ -119,6 +119,13 @@ toolbar keeps the system glass, which renders in the frame-view screenshots. Flo
 a material only when an E2E screenshot proves the controls render; the implementer measures it
 and records the result here.
 
+**T2 choice (2026-11-20): no material on any floating surface.** No E2E run was available to the
+implementer, so no screenshot proves a material renders its controls, and the spike already showed
+`cacheDisplay` dropping vibrancy. The pin's floating strip therefore uses `windowBackgroundColor`
+at 92% in a `radius.container` box; the scrolling HUD, window and display choosers, countdown and
+drag chip stay titled panels on `windowBackgroundColor` with the system window corners. Revisit
+only with a real window capture that shows the controls over a material.
+
 Acceptance for each surface: light and dark screenshots in both languages judged by eye by the
 coordinator; `ChromeAppearance` passes; 980 pt toolbar check; no clipped text in pt-BR; VoiceOver
 labels on every icon-only control.

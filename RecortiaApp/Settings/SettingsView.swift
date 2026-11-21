@@ -74,17 +74,9 @@ struct ShortcutsSettingsTab: View {
                 ForEach(ShortcutBinding.all) { binding in
                     ShortcutRecorderRow(binding: binding, status: status)
                 }
-            } footer: {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(
-                        "The defaults match the macOS Screenshot app: ⇧⌘3 captures the display, ⇧⌘4 a region (press Space for a window), and ⇧⌘5 shows every capture mode. Recortia warns about conflicts with macOS and menu shortcuts it can detect, but it cannot know every shortcut other apps use."
-                    )
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Button("Restore Defaults", action: onRestoreDefaults)
-                }
+            }
+            Section {
+                Button("Restore Defaults", action: onRestoreDefaults)
             }
         }
         .formStyle(.grouped)
@@ -104,11 +96,10 @@ struct CaptureSettingsTab: View {
                 Stepper(value: settings.binding(\.captureDelaySeconds), in: 0...CaptureRequest.maxDelaySeconds) {
                     Text("Delay: \(settings.preferences.captureDelaySeconds) s")
                 }
-                Text(
-                    "Used by Capture with Delay. When set to 0, Capture with Delay waits \(CaptureCoordinator.fallbackDelaySeconds) seconds."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .help(
+                    Text(
+                        "Used by Capture with Delay. When set to 0, Capture with Delay waits \(CaptureCoordinator.fallbackDelaySeconds) seconds."
+                    ))
             }
             Section {
                 Toggle("Show the pointer in captures", isOn: settings.binding(\.captureShowsCursor))
@@ -141,6 +132,7 @@ struct ExportSettingsTab: View {
                     Text("PNG").tag(ExportFormatKind.png)
                     Text("JPEG").tag(ExportFormatKind.jpeg)
                 }
+                .help(Text("Copy Image always places a PNG on the clipboard."))
                 if settings.preferences.defaultExportFormat == .jpeg {
                     Slider(value: settings.binding(\.jpegQuality), in: 0.1...1, step: 0.05) {
                         Text("JPEG quality")
@@ -157,9 +149,6 @@ struct ExportSettingsTab: View {
                     Text(1.0, format: .percent).tag(1.0)
                     Text(2.0, format: .percent).tag(2.0)
                 }
-                Text("Copy Image always places a PNG on the clipboard.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
             }
             FilenameTemplateSection(settings: settings)
             Section {
@@ -178,7 +167,7 @@ struct ExportSettingsTab: View {
                 .disabled(folders == nil)
                 .accessibilityIdentifier("settings.autoSave")
                 LabeledContent("Save folder") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: DesignTokens.Space.s) {
                         // A folder name is user data: truncate it and keep the whole value in a
                         // tooltip, so a long or localized name cannot wrap the row and push the
                         // control off its trailing edge.
@@ -208,13 +197,12 @@ struct ExportSettingsTab: View {
             } header: {
                 Text("Automatic export")
             } footer: {
-                Text(
-                    "Both are off by default. Automatic copy and save apply to still captures: they happen right after the capture, before any edit or redaction you make later, and cannot be taken back from other apps. Scrolling captures open for review instead."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                // FR-07's mandatory disclosure, the only footer left in Settings.
+                Text("Runs right after a capture, before you edit or redact, and cannot be taken back from other apps.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .formStyle(.grouped)
@@ -332,9 +320,6 @@ struct OCRSettingsTab: View {
                     Text("Join into one line").tag(OCRTextMode.normalizedWhitespace)
                     Text("Exactly as recognized").tag(OCRTextMode.raw)
                 }
-                Text("Text is recognized on this Mac and never corrected automatically.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
             }
             Section("Available languages") {
                 languageList
@@ -383,6 +368,7 @@ struct FilenameTemplateSection: View {
                 "Name of saved files",
                 text: Binding(get: { draft ?? settings.preferences.filenameTemplate.text }, set: admit)
             )
+            .help(Text("Placeholders: {date}, {time}, {counter}"))
             .accessibilityIdentifier("settings.filenameTemplate")
             if let refusal {
                 Label {
@@ -400,11 +386,6 @@ struct FilenameTemplateSection: View {
                     .truncationMode(.middle)
                     .accessibilityIdentifier("settings.filenameTemplate.example")
             }
-        } footer: {
-            Text("Placeholders: {date}, {time}, {counter}")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -454,9 +435,6 @@ struct PinsSettingsSection: View {
                 Text(settings.preferences.pinDefaultOpacity, format: .percent.precision(.fractionLength(0)))
             )
             .accessibilityIdentifier("settings.pinOpacity")
-            Text("Pins stay until you close them and are not restored after Recortia quits.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
         }
     }
 }
@@ -483,12 +461,12 @@ struct ScrollingSettingsSection: View {
                     })
             )
             .disabled(accessibility == nil)
-            .accessibilityIdentifier("settings.automaticScrolling")
-            Text(
-                "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+            .help(
+                Text(
+                    "Automatic scrolling needs Accessibility permission so Recortia can scroll the area you chose. It sends only scroll actions to that area, never keystrokes or clicks. Manual scrolling always works without it."
+                )
             )
-            .font(.callout)
-            .foregroundStyle(.secondary)
+            .accessibilityIdentifier("settings.automaticScrolling")
         }
         // The permission can change in System Settings while the pane is closed.
         .onAppear(perform: refresh)

@@ -278,132 +278,54 @@
             }
         }
 
-        /// Opens or closes a native disclosure as a person does: activates the pane's window, clicks
-        /// the disclosure triangle of the header titled `title` inside the identified element when
-        /// its explicit expanded state differs from `expanded`, and requires the state to follow.
-        /// SwiftUI draws this triangle itself and offers no accessibility Press to this process.
+        /// Opens or closes a disclosure header (a button whose accessibility value says Expanded or
+        /// Collapsed) as people do: opening clicks it with the pointer, closing presses it through
+        /// accessibility, as VoiceOver does. Requires the reported state to follow.
         static func setDisclosure(
             _ identifier: String, titled title: String, expanded: Bool, in pane: NSView, _ context: ScenarioContext
         ) async throws {
             let window = try context.unwrap("the pane under \(identifier) has a window", pane.window)
             try await showAndActivate(window, context)
             await E2ESnapshot.settle(pane)
-            let triangle = try disclosureTriangle(identifier, titled: title, in: pane, context)
-            guard try expandedState(triangle, identifier, context) != expanded else { return }
-            let axTriangle = try context.unwrap(
-                "\(identifier) disclosure is in the AX tree", axElement(identifier, triangleTitled: title))
-            let result = AXUIElementPerformAction(axTriangle, kAXPressAction as CFString)
+            guard try disclosureIsExpanded(identifier, titled: title, in: pane, context) != expanded else { return }
+            if expanded {
+                try click(identifier, in: pane, context)
+            } else {
+                try pressCheckingEffect(identifier, in: pane, context)
+            }
             try context.require(
-                "\(identifier) disclosure performs AXPress", result == .success, "AX status \(result.rawValue)")
-            try context.require(
-                "\(identifier) disclosure \(expanded ? "opens" : "closes") under the pointer",
-                await E2EWait.until {
-                    let current = findTriangle(titled: title, in: element(identifier, in: pane))
-                    return (current.triangle?.value(forKey: "accessibilityValue") as? NSNumber)?.intValue
-                        == (expanded ? 1 : 0)
-                },
-                "triangle frame \(String(describing: triangle.value(forKey: "accessibilityFrame"))), value now "
-                    + "\(String(describing: findTriangle(titled: title, in: element(identifier, in: pane)).triangle?.value(forKey: "accessibilityValue"))), "
-                    + "frame.x present \(isPresent("frame.x", in: pane)), pane \(window.convertToScreen(pane.convert(pane.bounds, to: nil)))"
-            )
+                "\(identifier) \(expanded ? "opens by a click" : "closes by Press")",
+                await E2EWait.until { headerValue(identifier, in: pane) == stateName(expanded) },
+                "value now \(String(describing: headerValue(identifier, in: pane)))")
         }
 
-        /// The expanded state the header's triangle reports to assistive apps (0 or 1, nothing else).
+        /// Whether the disclosure header titled `title` reports itself expanded (it must report
+        /// Expanded or Collapsed, nothing else).
         static func disclosureIsExpanded(
             _ identifier: String, titled title: String, in root: NSView, _ context: ScenarioContext
         ) throws -> Bool {
-            try expandedState(try disclosureTriangle(identifier, titled: title, in: root, context), identifier, context)
-        }
-
-        private static func expandedState(_ triangle: NSObject, _ identifier: String, _ context: ScenarioContext)
-            throws -> Bool
-        {
-            let value = triangle.value(forKey: "accessibilityValue")
-            let number = try context.unwrap(
-                "\(identifier) disclosure reports an expanded value", value as? NSNumber,
-                "value \(String(describing: value))")
+            let header = try control(identifier, in: root, context)
+            let label =
+                header.responds(to: NSSelectorFromString("accessibilityLabel"))
+                ? header.value(forKey: "accessibilityLabel") as? String : nil
             try context.require(
-                "\(identifier) disclosure value is 0 or 1", number.intValue == 0 || number.intValue == 1,
-                "value \(number)")
-            return number.intValue == 1
+                "\(identifier) is titled \(title)", label == title, "label \(String(describing: label))")
+            let value = headerValue(identifier, in: root)
+            try context.require(
+                "\(identifier) reports Expanded or Collapsed",
+                value == stateName(true) || value == stateName(false), "value \(String(describing: value))")
+            return value == stateName(true)
         }
 
-        /// The disclosure triangle titled `title` within the identified element. Its own label or
-        /// title must name the header, so a triangle from any other disclosure never qualifies.
-        private static func disclosureTriangle(
-            _ identifier: String, titled title: String, in root: NSView, _ context: ScenarioContext
-        ) throws -> NSObject {
-            let element = try control(identifier, in: root, context)
-            let found = findTriangle(titled: title, in: element)
-            return try context.unwrap(
-                "\(identifier) has a disclosure triangle titled \(title)", found.triangle,
-                "triangles \(found.others), role \(String(describing: element.value(forKey: "accessibilityRole")))")
+        private static func stateName(_ expanded: Bool) -> String {
+            expanded ? String(localized: "Expanded", table: "Editor") : String(localized: "Collapsed", table: "Editor")
         }
 
-        /// This process's AX element with `identifier` (or, with `triangleTitled`, the disclosure
-        /// triangle titled so inside it), reached through the accessibility API as VoiceOver
-        /// reaches it. SwiftUI answers AXPress there for controls it draws itself.
-        static func axElement(_ identifier: String, triangleTitled title: String? = nil) -> AXUIElement? {
-            func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
-                var result: CFTypeRef?
-                return AXUIElementCopyAttributeValue(element, attribute as CFString, &result) == .success ? result : nil
-            }
-            func search(from roots: [AXUIElement], _ matches: (AXUIElement) -> Bool) -> AXUIElement? {
-                var queue = roots
-                var budget = 20_000
-                while !queue.isEmpty, budget > 0 {
-                    budget -= 1
-                    let element = queue.removeFirst()
-                    if matches(element) { return element }
-                    queue += value(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
-                }
-                return nil
-            }
-            let application = AXUIElementCreateApplication(ProcessInfo.processInfo.processIdentifier)
-            let windows = value(application, kAXWindowsAttribute) as? [AXUIElement] ?? []
-            guard
-                let element = search(from: windows, { value($0, kAXIdentifierAttribute) as? String == identifier })
+        private static func headerValue(_ identifier: String, in root: NSView) -> String? {
+            guard let header = element(identifier, in: root),
+                header.responds(to: NSSelectorFromString("accessibilityValue"))
             else { return nil }
-            guard let title else { return element }
-            return search(from: [element]) { candidate in
-                value(candidate, kAXRoleAttribute) as? String == kAXDisclosureTriangleRole
-                    && [kAXTitleAttribute, kAXDescriptionAttribute].contains {
-                        value(candidate, $0) as? String == title
-                    }
-            }
-        }
-
-        /// The disclosure triangle under `element` whose own label or title is `title`, and the
-        /// names of any other triangles seen. Records nothing, so it can be polled.
-        private static func findTriangle(titled title: String, in element: NSObject?) -> (
-            triangle: NSObject?, others: [String]
-        ) {
-            var queue: [Any] = element.map { [$0] } ?? []
-            var visited: Set<ObjectIdentifier> = []
-            var budget = 512
-            var others: [String] = []
-            while !queue.isEmpty, budget > 0 {
-                budget -= 1
-                guard let object = queue.removeFirst() as? NSObject,
-                    visited.insert(ObjectIdentifier(object)).inserted
-                else { continue }
-                if object.responds(to: NSSelectorFromString("accessibilityRole")),
-                    object.value(forKey: "accessibilityRole") as? String
-                        == NSAccessibility.Role.disclosureTriangle.rawValue
-                {
-                    let names = ["accessibilityLabel", "accessibilityTitle"].compactMap { key in
-                        object.responds(to: NSSelectorFromString(key)) ? object.value(forKey: key) as? String : nil
-                    }
-                    if names.contains(title) { return (object, others) }
-                    others.append(names.joined(separator: "/"))
-                }
-                if object.responds(to: NSSelectorFromString("accessibilityChildren")),
-                    let children = object.value(forKey: "accessibilityChildren") as? [Any]
-                {
-                    queue += children
-                }
-            }
-            return (nil, others)
+            return header.value(forKey: "accessibilityValue") as? String
         }
 
         /// The element with `identifier` under `root`, recording nothing.

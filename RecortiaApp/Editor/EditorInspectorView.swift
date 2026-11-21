@@ -671,8 +671,9 @@ private struct BoxBackgroundRows: View {
     }
 }
 
-/// X, Y, Width and Height in a native disclosure (VoiceOver reads its expanded state) that starts
-/// collapsed and keeps its state this session.
+/// X, Y, Width and Height under a header button that shows or hides them. It starts collapsed and
+/// keeps its state this session. The header reports Expanded or Collapsed as its accessibility value:
+/// SwiftUI's disclosure triangle ignored accessibility Press inside this Form.
 private struct PositionSection: View {
     let model: EditorModel
     let item: EditorListItem
@@ -680,14 +681,34 @@ private struct PositionSection: View {
 
     var body: some View {
         Section {
-            DisclosureGroup(isExpanded: $state.showsPositionAndSize) {
+            let title = String(localized: "Position and Size", table: "Editor")
+            Button {
+                state.showsPositionAndSize.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(state.showsPositionAndSize ? 90 : 0))
+                    Text(title)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(title))
+            .accessibilityValue(
+                Text(
+                    state.showsPositionAndSize
+                        ? String(localized: "Expanded", table: "Editor")
+                        : String(localized: "Collapsed", table: "Editor"))
+            )
+            .accessibilityIdentifier("inspector.positionAndSize")
+            if state.showsPositionAndSize {
                 FrameFields(frame: item.frame, identifier: "frame", preservesAspectRatio: item.kind == .image) {
                     model.setFrame($0, for: item.id)
                 }
-            } label: {
-                Text(String(localized: "Position and Size", table: "Editor"))
             }
-            .accessibilityIdentifier("inspector.positionAndSize")
         }
     }
 }

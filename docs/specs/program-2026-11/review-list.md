@@ -173,8 +173,11 @@ pasteboard is read synchronously on the main actor to produce an error (`ImageIn
   space probe's `dynamic` mode and the installed-app fullscreen check, both owner-run.
 - **T1 review leftovers (2026-11-20).** R-1: T1b's presentation order (Space policy, order front, then
   activate) still needs the space probe's `dynamic` mode and the installed-app fullscreen check, both
-  owner-run. R-4: one admission point for the masking-pending guards (T2). R-5: measured and recorded in SPEC §10
+  owner-run. R-4: done in T2: `EditorModel.admitsAction` is the one admission point and `MaskingAdmissionTests` drives every public entry point while masks are pending (decisions.md). R-5: measured and recorded in SPEC §10
   (deadline kept at 8 s; decisions.md).
 - **AnnotationRendererTests flake.** One parallel package run failed "drawing twice is
   byte-identical" on the Arabic and emoji sample and passed on rerun and in two full gates; record it
   under the open text-font incident (AGENTS.md F-1) and watch for a recurrence.
+- **VoiceOver on Position and Size (2026-11-21).** The native disclosure triangle ignored accessibility
+  Press inside the inspector Form, so the section now has a plain header button that reports Expanded or
+  Collapsed. Owner-run: open and close it with VoiceOver and reach the four fields.

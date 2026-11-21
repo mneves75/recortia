@@ -13,7 +13,7 @@ struct WindowChooserView: View {
     @FocusState private var listFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignTokens.Space.m) {
             Text("Choose a window to capture")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
@@ -53,11 +53,12 @@ struct WindowChooserView: View {
                 Button("Capture") {
                     if let window = windows?.first(where: { $0.id == selection }) { onChoose(window) }
                 }
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(selection == nil)
             }
         }
-        .padding(16)
+        .padding(DesignTokens.Space.m)
         .frame(width: 420)
     }
 
@@ -89,7 +90,7 @@ struct DisplayChooserView: View {
     @FocusState private var listFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignTokens.Space.m) {
             Text("Choose a display to capture")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
@@ -114,11 +115,12 @@ struct DisplayChooserView: View {
                 Button("Capture") {
                     if let display = displays.first(where: { $0.id == selection }) { onChoose(display) }
                 }
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(selection == nil)
             }
         }
-        .padding(16)
+        .padding(DesignTokens.Space.m)
         .frame(width: 380, height: 300)
     }
 }
@@ -131,7 +133,7 @@ struct CountdownView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: DesignTokens.Space.l) {
             // The panel is sized once to its fitting size: reserve the widest value (delays are
             // clamped to 0…10 s) and never truncate the text as the number changes.
             ZStack(alignment: .leading) {
@@ -145,8 +147,8 @@ struct CountdownView: View {
             Button("Cancel", action: onCancel)
                 .keyboardShortcut(.cancelAction)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.horizontal, DesignTokens.Space.l)
+        .padding(.vertical, DesignTokens.Space.m)
     }
 }
 

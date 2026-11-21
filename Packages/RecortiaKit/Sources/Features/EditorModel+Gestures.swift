@@ -9,7 +9,7 @@ extension EditorModel {
     static let clickSlop = 3.0
 
     public func pointerDown(at p: Point<DocumentSpace>, modifiers: EditorModifiers = []) {
-        guard !isClosed, !isMaskingPending, textEditing == nil, p.isFinite else { return }
+        guard !isClosed, admitsAction(), textEditing == nil, p.isFinite else { return }
         // Beginning text input keeps an open adjustment; committing the text closes it.
         if tool != .select && tool != .text && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
         cancelGesture()
@@ -166,7 +166,7 @@ extension EditorModel {
 
     /// Hover (no button): drives the loupe.
     public func pointerMoved(to p: Point<DocumentSpace>) {
-        guard !isClosed, !isMaskingPending, p.isFinite, tool == .loupe, case .idle = gesture else { return }
+        guard !isClosed, p.isFinite, tool == .loupe, case .idle = gesture else { return }
         inspect(at: p)
     }
 
@@ -444,7 +444,7 @@ extension EditorModel {
 
     /// Starts editing an existing text annotation (double-click, Return on a selected text).
     public func beginEditingText(_ id: AnnotationID) {
-        guard !isClosed, !isMaskingPending, !showsOutputPreview,
+        guard !isClosed, admitsAction(), !showsOutputPreview,
             let annotation = document.annotations.first(where: { $0.id == id }),
             case .text(let text) = annotation.kind
         else { return }
