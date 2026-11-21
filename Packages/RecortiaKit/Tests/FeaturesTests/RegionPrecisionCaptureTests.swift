@@ -1,6 +1,9 @@
+import CoreGraphics
 import Domain
 import Foundation
+import Imaging
 import MacPlatform
+import RecortiaFixtures
 import Testing
 
 @testable import Features
@@ -73,5 +76,99 @@ struct RegionPrecisionCaptureTests {
             Rect<DesktopSpace>(x: -1915, y: -195, width: 50, height: 40), .left, keys: SelectionKeys(shift: true),
             aspect: .free, within: left.frame, minimumSide: RegionSelection.minimumSide)
         #expect(moved == Rect(x: -1920, y: -195, width: 50, height: 40))
+    }
+
+    @Test("Frozen selection commits the same display pixels, aligned outward at its negative origin (FR-02, A-5)")
+    func frozenCommitUsesOriginalFrame() async throws {
+        let h = CaptureHarness()
+        let store = ImageStore()
+        h.assets.store = store
+        let (display, frame, geometry) = try frozenFixture()
+        h.capture.displayList = [display]
+        let read = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
+        h.capture.pendingCapture = read
+        h.coordinator.start(.region)
+        #expect(h.capture.captureCalls.isEmpty)
+        h.coordinator.toggleRegionFreeze(on: display)
+        await waitFor("display read") { read.waiterCount == 1 }
+        #expect(read.resolve(.success((frame, geometry))))
+        await waitFor("frozen preview") {
+            if case .frozen = h.coordinator.regionFreeze { return true }
+            return false
+        }
+        #expect(h.coordinator.commitRegion(Rect(x: -28.75, y: -14.75, width: 3, height: 2), on: display))
+        await waitFor("one committed crop") { h.completions.count == 1 }
+        #expect(h.capture.captureCalls == [.display(display)])
+        #expect(h.coordinator.regionFreeze == nil)
+        let asset = try #require(h.assets.registeredCaptures.first)
+        #expect(
+            asset.origin
+                == .captured(
+                    CaptureGeometry(
+                        source: .region(displayID: display.id),
+                        desktopBounds: Rect(x: -29, y: -15, width: 3.5, height: 2.5), pointPixelScale: 2,
+                        pixelSize: PixelSize(width: 7, height: 5), capturedAt: geometry.capturedAt)))
+        let stored = await store.images(for: [asset.id])
+        let pixels = try ContainerInspector.pixels(of: #require(stored[asset.id]))
+        #expect(pixels.width == 7 && pixels.height == 5)
+        #expect(pixels.pixel(x: 0, y: 0) == ChartFixture.Color(16, 16, 0))
+        #expect(pixels.pixel(x: 6, y: 4) == ChartFixture.Color(64, 48, 0))
+    }
+
+    @Test(
+        "Canceling or unfreezing during the display read suppresses its late pixels without blocking the next live capture",
+        arguments: [true, false])
+    func staleFrozenReadNeverPublishes(cancel: Bool) async throws {
+        let h = CaptureHarness()
+        let store = ImageStore()
+        h.assets.store = store
+        let (display, frame, geometry) = try frozenFixture()
+        h.capture.displayList = [display]
+        let read = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
+        h.capture.pendingCapture = read
+        h.coordinator.start(.region)
+        h.coordinator.toggleRegionFreeze(on: display)
+        await waitFor("display read is suspended") { read.waiterCount == 1 }
+
+        if cancel {
+            h.coordinator.cancel()
+            #expect(h.coordinator.state == .canceled)
+            #expect(h.coordinator.start(.region) == .started)
+        } else {
+            h.coordinator.toggleRegionFreeze(on: display)
+            #expect(h.coordinator.state == .selecting)
+        }
+        h.capture.pendingCapture = nil
+        let region = Rect<DesktopSpace>(x: -29, y: -15, width: 2, height: 2)
+        #expect(h.coordinator.commitRegion(region, on: display))
+        await drain()
+        #expect(h.capture.captureCalls == [.display(display)])
+        #expect(h.coordinator.regionFreeze == nil)
+        #expect(h.completions.isEmpty && h.assets.registeredCaptures.isEmpty)
+        #expect(await store.count == 0)
+
+        #expect(read.resolve(.success((frame, geometry))))
+        await waitFor("next live capture completes") { h.completions.count == 1 }
+        #expect(h.capture.captureCalls == [.display(display), .region(region, display: display)])
+        #expect(h.capture.maxConcurrentCaptures == 1)
+        #expect(h.coordinator.regionFreeze == nil)
+        #expect(h.assets.registeredCaptures.count == 1)
+        #expect(await store.count == 1)
+    }
+
+    private func frozenFixture() throws -> (DisplayInfo, CGImage, CaptureGeometry) {
+        let display = DisplayInfo(
+            id: 9, frame: Rect(x: -30, y: -16, width: 8, height: 6), pointPixelScale: 2, fingerprint: "negative")
+        var rgba: [UInt8] = []
+        for y in 0..<12 {
+            for x in 0..<16 {
+                rgba.append(contentsOf: [UInt8(x * 8), UInt8(y * 8), 0, 255])
+            }
+        }
+        let image = try ChartFixture.image(width: 16, height: 12, straightRGBA: rgba)
+        let geometry = CaptureGeometry(
+            source: .display(id: display.id), desktopBounds: display.frame, pointPixelScale: 2,
+            pixelSize: PixelSize(width: 16, height: 12), capturedAt: Date(timeIntervalSince1970: 123))
+        return (display, image, geometry)
     }
 }

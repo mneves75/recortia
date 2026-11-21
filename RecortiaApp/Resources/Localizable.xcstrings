@@ -1397,6 +1397,22 @@
         }
       }
     },
+    "Could not freeze this display. You can still select an area." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not freeze this display. You can still select an area."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível congelar esta tela. Você ainda pode selecionar uma área."
+          }
+        }
+      }
+    },
     "Crop to the relevant area and resize the output. Hold Space and drag to pan." : {
       "localizations" : {
         "en" : {
@@ -1599,6 +1615,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tela %u"
+          }
+        }
+      }
+    },
+    "Display frozen. Press F to return to live selection." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display frozen. Press F to return to live selection."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tela congelada. Pressione F para voltar à seleção ao vivo."
           }
         }
       }
@@ -1961,6 +1993,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Livre"
+          }
+        }
+      }
+    },
+    "Freezing the display… Press F to return to live selection." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freezing the display… Press F to return to live selection."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Congelando a tela… Pressione F para voltar à seleção ao vivo."
           }
         }
       }
@@ -2762,6 +2810,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Colar imagem"
+          }
+        }
+      }
+    },
+    "Press F to freeze this display and use the magnifier." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press F to freeze this display and use the magnifier."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pressione F para congelar esta tela e usar a lupa."
           }
         }
       }

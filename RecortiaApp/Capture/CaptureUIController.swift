@@ -32,6 +32,7 @@ final class CaptureUIController {
         overlay.onCancel = { [weak coordinator] in coordinator?.cancel() }
         overlay.onSwitchToWindow = { [weak coordinator] in coordinator?.switchToWindowSelection() }
         overlay.onAspectChange = { [weak coordinator] in coordinator?.setRegionAspect($0) }
+        overlay.onFreezeToggle = { [weak coordinator] display in coordinator?.toggleRegionFreeze(on: display) }
         loop = ObservationLoop { [weak self] in self?.render() }
     }
 
@@ -49,10 +50,12 @@ final class CaptureUIController {
         case (.selecting, .region(let displays)?):
             closeChooser()
             closeCountdown()
+            let freeze = coordinator.regionFreeze
             overlay.present(
-                displays: displays, notice: noticeText(notice),
+                displays: freeze.map { [$0.display] } ?? displays, notice: noticeText(notice),
                 allowsWindowSwitch: coordinator.mode == .region && coordinator.purpose == .edit,
-                aspect: coordinator.regionAspect, snapFrames: coordinator.snapFrames)
+                aspect: coordinator.regionAspect, snapFrames: coordinator.snapFrames,
+                allowsFreeze: coordinator.canFreezeRegion, freeze: freeze)
             if overlay.isPresented { coordinator.selectionDidAppear() }
         case (.selecting, .loadingWindows?):
             overlay.dismiss()
@@ -83,6 +86,8 @@ final class CaptureUIController {
         switch notice {
         case .repeatRegionUnavailable:
             String(localized: "The display of your last region changed. Select an area again.")
+        case .freezeUnavailable:
+            String(localized: "Could not freeze this display. You can still select an area.")
         case .captureInProgress, nil:
             nil
         }

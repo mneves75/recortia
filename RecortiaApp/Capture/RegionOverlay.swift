@@ -32,6 +32,7 @@ final class RegionOverlayController {
     /// Space, as in the macOS Screenshot app: continue as a window selection.
     var onSwitchToWindow: (() -> Void)?
     var onAspectChange: ((SelectionAspect) -> Void)?
+    var onFreezeToggle: ((DisplayInfo?) -> Void)?
 
     private var windows: [CGDirectDisplayID: OverlayWindow] = [:]
     private let pool: WindowSparePool<DisplayInfo, OverlayWindow>
@@ -60,7 +61,7 @@ final class RegionOverlayController {
 
     func present(
         displays: [DisplayInfo], notice: String?, allowsWindowSwitch: Bool, aspect: SelectionAspect?,
-        snapFrames: [Rect<DesktopSpace>]
+        snapFrames: [Rect<DesktopSpace>], allowsFreeze: Bool = false, freeze: CaptureCoordinator.RegionFreeze? = nil
     ) {
         let wanted = Set(displays.map(\.id))
         for (id, window) in windows where !wanted.contains(id) {
@@ -69,18 +70,24 @@ final class RegionOverlayController {
         }
         for display in displays {
             if let existing = windows[display.id] {
-                configure(existing.selectionView, notice, allowsWindowSwitch, aspect, snapFrames)
+                configure(existing.selectionView, notice, allowsWindowSwitch, aspect, snapFrames, allowsFreeze, freeze)
                 continue
             }
             guard let screen = display.screen else { continue }
             let reused = pool.spare(for: display) != nil
             guard let window = pool.take(display) else { continue }
             let view = window.selectionView
-            configure(view, notice, allowsWindowSwitch, aspect, snapFrames)
+            configure(view, notice, allowsWindowSwitch, aspect, snapFrames, allowsFreeze, freeze)
             view.onSwitchToWindow = { [weak self] in self?.onSwitchToWindow?() }
             view.onCommit = { [weak self] rect, display in self?.onCommit?(rect, display) }
             view.onCancel = { [weak self] in self?.onCancel?() }
             view.onAspectChange = { [weak self] in self?.onAspectChange?($0) }
+            view.onFreezeToggle = { [weak self] in
+                guard let self else { return }
+                let pointer = NSEvent.mouseLocation
+                let target = self.windows.values.first { $0.frame.contains(pointer) }
+                self.onFreezeToggle?(target?.display ?? (self.windows.count == 1 ? display : nil))
+            }
             view.onSelectionBegan = { [weak self, weak view] in
                 guard let self else { return }
                 for other in self.windows.values where other.selectionView !== view {
@@ -107,18 +114,24 @@ final class RegionOverlayController {
     private func hide(_ window: OverlayWindow) {
         window.orderOut(nil)
         window.selectionView.resetSelection()
-        pool.giveBack(window, for: window.display)
+        // A panel that drew screen pixels is discarded with its backing store.
+        if window.selectionView.hasShownFrozenFrame {
+            window.close()
+        } else {
+            pool.giveBack(window, for: window.display)
+        }
     }
 
     private func configure(
         _ view: RegionSelectionView, _ notice: String?, _ allowsWindowSwitch: Bool, _ aspect: SelectionAspect?,
-        _ snapFrames: [Rect<DesktopSpace>]
+        _ snapFrames: [Rect<DesktopSpace>], _ allowsFreeze: Bool, _ freeze: CaptureCoordinator.RegionFreeze?
     ) {
         view.notice = notice
         view.allowsWindowSwitch = allowsWindowSwitch
         view.offersAspect = aspect != nil
         view.aspect = aspect ?? .free
         view.snapFrames = snapFrames
+        view.configureFreeze(allowed: allowsFreeze, freeze)
     }
 
     private func focusWindowUnderPointer() {
@@ -165,6 +178,7 @@ final class RegionSelectionView: NSView {
     var onCancel: (() -> Void)?
     var onSwitchToWindow: (() -> Void)?
     var onAspectChange: ((SelectionAspect) -> Void)?
+    var onFreezeToggle: (() -> Void)?
     /// A drag began here, so the other displays' overlays drop their selections.
     var onSelectionBegan: (() -> Void)?
     var notice: String? {
@@ -173,7 +187,7 @@ final class RegionSelectionView: NSView {
     /// Whether Space switches to a window selection (a plain region capture, not Capture Text).
     var allowsWindowSwitch = false {
         didSet {
-            setAccessibilityHelp(instructions)
+            setAccessibilityHelp(accessibilityInstructions)
             needsDisplay = true
         }
     }
@@ -212,6 +226,12 @@ final class RegionSelectionView: NSView {
     private var isDragging = false
     private var keys = SelectionKeys()
     private var pointerLeftDisplay = false
+    private var allowsFreeze = false
+    private var isFreezing = false
+    private var frozenImage: CGImage?
+    private var magnifierPointer: CGPoint?
+    private var magnifierTracking: NSTrackingArea?
+    private(set) var hasShownFrozenFrame = false
 
     init(display: DisplayInfo) {
         self.display = display
@@ -246,6 +266,39 @@ final class RegionSelectionView: NSView {
         clearSelection()
         keys = SelectionKeys()
         snapFrames = []
+        configureFreeze(allowed: false, nil)
+    }
+
+    func configureFreeze(allowed: Bool, _ freeze: CaptureCoordinator.RegionFreeze?) {
+        let image: CGImage?
+        let preparing: Bool
+        switch freeze {
+        case .frozen(let frame):
+            image = frame.image
+            preparing = false
+        case .preparing:
+            image = nil
+            preparing = true
+        case nil:
+            image = nil
+            preparing = false
+        }
+        guard allowsFreeze != allowed || isFreezing != preparing || frozenImage !== image else { return }
+        if frozenImage !== image {
+            frozenImage = image
+            window?.acceptsMouseMovedEvents = image != nil
+            if image != nil {
+                hasShownFrozenFrame = true
+                magnifierPointer = window.map { convert($0.mouseLocationOutsideOfEventStream, from: nil) }
+            } else {
+                magnifierPointer = nil
+            }
+            updateTrackingAreas()
+        }
+        allowsFreeze = allowed
+        isFreezing = preparing
+        setAccessibilityHelp(accessibilityInstructions)
+        needsDisplay = true
     }
 
     override var isFlipped: Bool { true }
@@ -254,6 +307,18 @@ final class RegionSelectionView: NSView {
 
     override func resetCursorRects() {
         addCursorRect(bounds, cursor: .crosshair)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let magnifierTracking { removeTrackingArea(magnifierTracking) }
+        magnifierTracking = nil
+        guard frozenImage != nil else { return }
+        let tracking = NSTrackingArea(
+            rect: .zero, options: [.activeAlways, .inVisibleRect, .mouseMoved, .mouseEnteredAndExited],
+            owner: self, userInfo: nil)
+        addTrackingArea(tracking)
+        magnifierTracking = tracking
     }
 
     override func layout() {
@@ -302,10 +367,23 @@ final class RegionSelectionView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard isDragging, held == nil, anchor != nil else { return }
         let raw = convert(event.locationInWindow, from: nil)
+        if frozenImage != nil { magnifierPointer = raw }
         pointerLeftDisplay = !bounds.contains(raw)
         pointer = localPoint(raw)
         keys = Self.keys(event.modifierFlags)
         resolveDrag()
+    }
+
+    override func mouseEntered(with event: NSEvent) { mouseMoved(with: event) }
+
+    override func mouseMoved(with event: NSEvent) {
+        magnifierPointer = convert(event.locationInWindow, from: nil)
+        needsDisplay = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        magnifierPointer = nil
+        needsDisplay = true
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -314,6 +392,11 @@ final class RegionSelectionView: NSView {
         pointerLeftDisplay = false
         guard held == nil else { return selectionDidChange() }
         let rect = committable
+        if isFreezing, let rect {
+            held = rect
+            selectionDidChange()
+            return
+        }
         clearSelection()
         guard let rect else { return }
         onCommit?(desktopRect(for: rect), display)
@@ -325,10 +408,17 @@ final class RegionSelectionView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if allowsFreeze, event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
+            event.charactersIgnoringModifiers?.lowercased() == "f"
+        {
+            if !event.isARepeat { onFreezeToggle?() }
+            return
+        }
         switch event.keyCode {
         case 53:  // Escape
             onCancel?()
         case 36, 76:  // Return, keypad Enter: the selection, or the whole display without one
+            guard !isFreezing else { return }
             if let rect = committable {
                 clearSelection()
                 onCommit?(desktopRect(for: rect), display)
@@ -409,13 +499,26 @@ final class RegionSelectionView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let reduceTransparency = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
         let highContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        if let frozenImage {
+            drawImage(frozenImage, in: bounds)
+        } else if hasShownFrozenFrame {
+            NSColor.clear.setFill()
+            bounds.fill(using: .copy)
+        }
         NSColor.black.withAlphaComponent(reduceTransparency ? 0.5 : 0.3).setFill()
         bounds.fill()
 
         let lineWidth: CGFloat = highContrast ? 2 : 1
         if let rect = selection.map(Self.cgRect) {
-            NSColor.clear.setFill()
-            rect.fill(using: .copy)
+            if let frozenImage {
+                NSGraphicsContext.saveGraphicsState()
+                NSBezierPath(rect: rect).addClip()
+                drawImage(frozenImage, in: bounds)
+                NSGraphicsContext.restoreGraphicsState()
+            } else {
+                NSColor.clear.setFill()
+                rect.fill(using: .copy)
+            }
             NSColor.black.setStroke()
             let outer = NSBezierPath(rect: rect.insetBy(dx: -lineWidth, dy: -lineWidth))
             outer.lineWidth = lineWidth
@@ -427,14 +530,61 @@ final class RegionSelectionView: NSView {
         }
         for guide in visibleGuides { drawGuide(guide, lineWidth: lineWidth) }
         drawChip()
+        if let frozenImage { drawMagnifier(frozenImage) }
 
         var lines = [instructions]
+        if let freezeInstruction { lines.append(freezeInstruction) }
         if let notice { lines.insert(notice, at: 0) }
         if pointerLeftDisplay {
             lines.append(String(localized: "A selection stays on the display where it started."))
         }
         drawLabel(
             lines.joined(separator: "\n"), anchoredAt: CGPoint(x: bounds.midX, y: bounds.minY + 48), centered: true)
+    }
+
+    private func drawImage(_ image: CGImage, in destination: CGRect) {
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        // Transparent source pixels must never reveal the live desktop behind a frozen panel.
+        context.setBlendMode(.copy)
+        context.setFillColor(CGColor(gray: 0, alpha: 1))
+        context.fill(destination)
+        context.setBlendMode(.normal)
+        context.translateBy(x: destination.minX, y: destination.maxY)
+        context.scaleBy(x: 1, y: -1)
+        context.interpolationQuality = .none
+        context.draw(image, in: CGRect(origin: .zero, size: destination.size))
+        context.restoreGState()
+    }
+
+    private func drawMagnifier(_ image: CGImage) {
+        guard let pointer = magnifierPointer, bounds.contains(pointer) else { return }
+        let side = min(15, image.width, image.height)
+        let sourceX = min(image.width - 1, Int((pointer.x - bounds.minX) * Double(image.width) / bounds.width))
+        let sourceY = min(image.height - 1, Int((pointer.y - bounds.minY) * Double(image.height) / bounds.height))
+        let left = max(0, min(sourceX - side / 2, image.width - side))
+        let top = max(0, min(sourceY - side / 2, image.height - side))
+        guard let patch = image.cropping(to: CGRect(x: left, y: top, width: side, height: side)) else { return }
+
+        let zoom: CGFloat = 6
+        let size = CGFloat(side) * zoom
+        let margin: CGFloat = 5
+        let offset: CGFloat = 20
+        let candidate = pointer.x + offset + size <= bounds.maxX ? pointer.x + offset : pointer.x - offset - size
+        let destination = CGRect(
+            x: max(bounds.minX + margin, min(candidate, bounds.maxX - size - margin)),
+            y: max(bounds.minY + margin, min(pointer.y + offset, bounds.maxY - size - margin)),
+            width: size, height: size)
+        drawImage(patch, in: destination)
+        let sample = CGRect(
+            x: destination.minX + CGFloat(sourceX - left) * zoom, y: destination.minY + CGFloat(sourceY - top) * zoom,
+            width: zoom, height: zoom)
+        NSColor.black.setStroke()
+        NSBezierPath(rect: destination.insetBy(dx: -2, dy: -2)).stroke()
+        NSBezierPath(rect: sample.insetBy(dx: -1, dy: -1)).stroke()
+        NSColor.white.setStroke()
+        NSBezierPath(rect: destination.insetBy(dx: -1, dy: -1)).stroke()
+        NSBezierPath(rect: sample).stroke()
     }
 
     /// A white line on a black keyline across the display, like the selection's own border.
@@ -575,6 +725,17 @@ final class RegionSelectionView: NSView {
             : String(
                 localized:
                     "Drag to select an area. Press Return to capture the whole display or Escape to cancel.")
+    }
+
+    private var accessibilityInstructions: String {
+        [instructions, freezeInstruction].compactMap { $0 }.joined(separator: "\n")
+    }
+
+    private var freezeInstruction: String? {
+        guard allowsFreeze else { return nil }
+        if isFreezing { return String(localized: "Freezing the display… Press F to return to live selection.") }
+        if frozenImage != nil { return String(localized: "Display frozen. Press F to return to live selection.") }
+        return String(localized: "Press F to freeze this display and use the magnifier.")
     }
 }
 

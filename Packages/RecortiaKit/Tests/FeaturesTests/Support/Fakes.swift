@@ -291,8 +291,14 @@ final class FakeAssetService: ImageAssetService {
     }
 
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
-        let info = ImageAssetInfo(
-            id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height), origin: .captured(geometry))
+        let origin = AssetOrigin.captured(geometry)
+        let info: ImageAssetInfo
+        if let store {
+            info = await store.insert(try ImageDecoder.canonicalize(image), origin: origin)
+        } else {
+            info = ImageAssetInfo(
+                id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height), origin: origin)
+        }
         registeredCaptures.append(info)
         return info
     }

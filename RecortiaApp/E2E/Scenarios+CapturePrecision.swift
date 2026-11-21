@@ -235,6 +235,61 @@
                 "reuse: the next capture starts without a selection or guide",
                 view.selection == nil && view.visibleGuides.isEmpty, "\(String(describing: view.selection))")
             try await hide("next")
+
+            coordinator.setRegionAspect(.free)
+            let reads = harness.capture.captures.count
+            let editors = harness.editors.controllers.count
+            try await show("freeze")
+            let liveInstruction = String(localized: "Press F to freeze this display and use the magnifier.")
+            let frozenInstruction = String(localized: "Display frozen. Press F to return to live selection.")
+            try context.require(
+                "freeze is offered without reading the display",
+                view.accessibilityHelp()?.contains(liveInstruction) == true && harness.capture.captures.count == reads)
+            func toggle(_ instruction: String) async throws {
+                view.keyDown(with: try keyEvent(3, [], in: view))
+                try context.require(
+                    "the freeze key updates the overlay: \(instruction)",
+                    await E2EWait.until { view.accessibilityHelp()?.contains(instruction) == true })
+            }
+            try await toggle(frozenInstruction)
+            view.mouseMoved(with: try mouse(.mouseMoved, 110, 130))
+            let magnified = try E2ESnapshot.png(of: view, over: harness.desktop)
+            view.mouseMoved(with: try mouse(.mouseMoved, 240, 210))
+            let moved = context.snapshot(view, shot: "frozen-magnifier", over: harness.desktop)
+            context.check("the frozen magnifier follows the pointer", moved.map { $0 != magnified } == true)
+            await context.darkOverlay(view, in: spare, shot: "frozen-magnifier", over: harness.desktop, light: moved)
+            try await toggle(liveInstruction)
+            try context.require("unfreezing releases the original preview", coordinator.regionFreeze == nil)
+            try await toggle(frozenInstruction)
+
+            let start = CGPoint(x: 60, y: 100)
+            let end = CGPoint(x: 260, y: 220)
+            view.mouseDown(with: try mouse(.leftMouseDown, start.x, start.y))
+            view.mouseDragged(with: try mouse(.leftMouseDragged, end.x, end.y))
+            view.mouseUp(with: try mouse(.leftMouseUp, end.x, end.y))
+            let editor = try await E2EActions.waitForNewEditor(harness, after: editors, context)
+            try context.require(
+                "freeze and refreeze read the display once each and commit does not read it again",
+                Array(harness.capture.captures.dropFirst(reads)) == [.display(display), .display(display)])
+            try context.require("the frozen panel was retired", await E2EWait.until { !overlay.isPresented })
+            context.check(
+                "a panel that showed a frozen frame is not kept as a spare", overlay.spare(for: display) == nil)
+            let geometry = try context.unwrap(
+                "the crop carries geometry", CaptureScenarios.capturedGeometry(editor.model))
+            let copied = try await E2EActions.copiedPixels(editor, harness, context, "frozen crop")
+            let desktop = try E2EActions.pixels(of: harness.desktop, "synthetic frozen display", context)
+            let left = Int(((geometry.desktopBounds.minX - display.frame.minX) * geometry.pointPixelScale).rounded())
+            let top = Int(((geometry.desktopBounds.minY - display.frame.minY) * geometry.pointPixelScale).rounded())
+            try context.require(
+                "the copied crop is the selected bounds within the display",
+                copied.width == geometry.pixelSize.width && copied.height == geometry.pixelSize.height
+                    && left >= 0 && top >= 0 && left + copied.width <= desktop.width
+                    && top + copied.height <= desktop.height)
+            for (x, y) in [(0, 0), (copied.width / 2, copied.height / 2), (copied.width - 1, copied.height - 1)] {
+                context.check(
+                    "the frozen crop keeps source pixel \(x), \(y)",
+                    copied.pixel(x: x, y: y) == desktop.pixel(x: left + x, y: top + y))
+            }
         }
 
         private static func keyEvent(_ code: UInt16, _ modifiers: NSEvent.ModifierFlags, in view: NSView) throws
@@ -244,7 +299,9 @@
                 123: NSLeftArrowFunctionKey, 124: NSRightArrowFunctionKey, 125: NSDownArrowFunctionKey,
                 126: NSUpArrowFunctionKey,
             ]
-            let characters = arrows[code].flatMap { UnicodeScalar($0) }.map { String(Character($0)) } ?? "\r"
+            let characters =
+                arrows[code].flatMap { UnicodeScalar($0) }.map { String(Character($0)) }
+                ?? (code == 3 ? "f" : "\r")
             let flags = arrows[code] == nil ? modifiers : modifiers.union([.numericPad, .function])
             guard let window = view.window,
                 let event = NSEvent.keyEvent(
