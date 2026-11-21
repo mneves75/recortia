@@ -57,6 +57,19 @@ public struct ScrollPageBuffer: Sendable, Equatable {
     public func rows(_ range: Range<Int>) -> ArraySlice<UInt8> {
         pixels[(range.lowerBound * width * 4)..<(range.upperBound * width * 4)]
     }
+
+    /// The buffer with its axes swapped: pixel (x, y) moves to (y, x), so rows become columns.
+    public func transposed() -> ScrollPageBuffer {
+        var swapped = [UInt8](repeating: 0, count: pixels.count)
+        for y in 0..<height {
+            for x in 0..<width {
+                let source = (y * width + x) * 4
+                let target = (x * height + y) * 4
+                for c in 0..<4 { swapped[target + c] = pixels[source + c] }
+            }
+        }
+        return ScrollPageBuffer(width: height, height: width, pixels: swapped)
+    }
 }
 
 /// A synthetic long page seen through a viewport with a fixed header and footer (SCR-01/02/04).
@@ -198,6 +211,12 @@ public struct ScrollPageFixture: Sendable {
             decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
 
+    /// The same viewport for a page that scrolls to the right: the vertical frame transposed, so the
+    /// header and footer are fixed columns at the left and right and `offset` counts columns.
+    public func horizontalFrame(offset: Int, index: Int, page source: ScrollPageBuffer? = nil) -> CGImage? {
+        Self.image(from: frameBuffer(offset: offset, index: index, page: source).transposed())
+    }
+
     /// The ideal stitched output after the viewport reached `lastOffset`, with the header from
     /// frame 0: `header + page[0 ..< lastOffset + contentHeight] + footer`.
     public func expectedOutput(lastOffset: Int, page source: ScrollPageBuffer? = nil) -> ScrollPageBuffer {
@@ -205,6 +224,11 @@ public struct ScrollPageFixture: Sendable {
         let pixels = header.pixels + content.rows(0..<(lastOffset + contentHeight)) + footer.pixels
         return ScrollPageBuffer(
             width: width, height: headerHeight + lastOffset + contentHeight + footerHeight, pixels: pixels)
+    }
+
+    /// `expectedOutput` for `horizontalFrame`s: as wide as that output is tall.
+    public func expectedHorizontalOutput(lastOffset: Int, page source: ScrollPageBuffer? = nil) -> ScrollPageBuffer {
+        expectedOutput(lastOffset: lastOffset, page: source).transposed()
     }
 
     /// True for output pixels whose value legitimately depends on the frame they came from.

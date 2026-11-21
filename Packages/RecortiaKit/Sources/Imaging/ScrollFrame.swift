@@ -23,9 +23,10 @@ package struct ScrollFrame: Sendable {
         return (blockWidth, max(1, width / blockWidth))
     }
 
-    /// Bytes `init(image:)` holds at its peak for a frame of this size: the RGBA pixels, the luma
-    /// plane and both signatures. The conversion's transient copy of the pixels is no larger than
-    /// the pixels plus luma it precedes. `nil` when the arithmetic overflows.
+    /// Bytes `init(image:transposed:)` holds at its peak for a frame of this size: the RGBA pixels,
+    /// the luma plane and both signatures. The conversion's transient copy of the pixels (and,
+    /// transposed, the decoded copy the transposition reads) is no larger than the pixels plus
+    /// luma it precedes. `nil` when the arithmetic overflows.
     package static func plannedByteCount(width: Int, height: Int) -> Int? {
         guard width > 0, height > 0 else { return nil }
         let (area, areaOverflow) = width.multipliedReportingOverflow(by: height)
@@ -40,9 +41,15 @@ package struct ScrollFrame: Sendable {
         return totalOverflow ? nil : total
     }
 
-    package init?(image: CGImage) {
-        let width = image.width, height = image.height
-        guard width > 0, height > 0, let pixels = Self.rgba(image) else { return nil }
+    /// `transposed` swaps the frame's axes (row y becomes column y), so a page that scrolls to the
+    /// right is matched and stitched as one that scrolls down; `width` and `height` are then the
+    /// image's height and width.
+    package init?(image: CGImage, transposed: Bool = false) {
+        let width = transposed ? image.height : image.width
+        let height = transposed ? image.width : image.height
+        guard width > 0, height > 0,
+            let pixels = transposed ? Self.transposedRGBA(image) : Self.rgba(image)
+        else { return nil }
         self.width = width
         self.height = height
         self.pixels = pixels
@@ -120,6 +127,36 @@ package struct ScrollFrame: Sendable {
 
     package func signatureRows(_ rows: Range<Int>) -> ArraySlice<Float> {
         signature[(rows.lowerBound * blockCount)..<(rows.upperBound * blockCount)]
+    }
+
+    /// Copies `height` rows of `width` RGBA8 pixels from `source` into `destination` with the axes
+    /// swapped: source pixel (x, y) lands at row x, column `columnOffset + y` of a destination
+    /// `destinationWidth` pixels wide. Pixels are moved whole, never blended.
+    package static func transpose(
+        _ source: ArraySlice<UInt8>, width: Int, height: Int, into destination: inout [UInt8],
+        destinationWidth: Int, columnOffset: Int = 0
+    ) {
+        var index = source.startIndex
+        for y in 0..<height {
+            let column = columnOffset + y
+            for x in 0..<width {
+                let target = (x * destinationWidth + column) * 4
+                destination[target] = source[index]
+                destination[target + 1] = source[index + 1]
+                destination[target + 2] = source[index + 2]
+                destination[target + 3] = source[index + 3]
+                index += 4
+            }
+        }
+    }
+
+    /// The canonical pixels with the axes swapped. The decoded copy is released when this returns,
+    /// before the luma plane is allocated.
+    private static func transposedRGBA(_ image: CGImage) -> [UInt8]? {
+        guard let source = rgba(image) else { return nil }
+        var pixels = [UInt8](repeating: 0, count: source.count)
+        transpose(source[...], width: image.width, height: image.height, into: &pixels, destinationWidth: image.height)
+        return pixels
     }
 
     /// Draws into a context of the canonical format, which copies sRGB RGBA8 sources exactly.

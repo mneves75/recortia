@@ -54,7 +54,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-07 | Flattened PNG/JPEG save, PNG clipboard copy, safe drag-out | 0.1 | EXP / RED |
 | FR-08 | On-device OCR and QR decoding, EN and PT-BR workflows | 0.1 | OCR |
 | FR-09 | Reference pins with opacity, zoom, copy, drag-out, and explicit close | 0.1 | PIN / PRIV |
-| FR-10 | Manual and automatic vertical scrolling capture with confidence checks | 1.0 | SCR / PERM |
+| FR-10 | Manual and automatic vertical or horizontal scrolling capture with confidence checks | 1.0 | SCR / PERM |
 | FR-11 | Pixel loupe, ruler, dimensions, sRGB color inspection | 1.0 | PIX / GEO |
 | FR-12 | Multiple-image canvas, transparency overlays, side-by-side comparison | 1.0 | COMP / RED |
 | FR-13 | Background, padding, corner radius, shadow, spotlight, magnifier callout | 1.0 | COMP / RED |
@@ -251,7 +251,7 @@ Pipeline: capture stable viewport frames; normalize orientation/scale; mask know
 
 Handle stationary frames, smooth scrolling, repeated text, lazy-loaded assets, fixed headers/footers, animated cursors, and a page ending. Low texture or repetitive patterns may be inherently ambiguous: pause, offer manual overlap adjustment, retain a clearly labeled partial result, or stop. Do not stretch missing content or fabricate pixels with generative AI.
 
-Choose an initial vertical direction. Unexpected reversal pauses rather than duplicating content. Limit duration to 120 seconds, input to 200 accepted frames, output to 40 megapixels, any side to 32,768 pixels, and default output height to 20,000 pixels; the first reached limit wins. Output limits include final encoding buffers, not just matching thumbnails.
+Before Start the person chooses Vertical (the default, remembered once changed) or Horizontal for a page that scrolls to the right; a horizontal session runs the same pipeline on transposed frames, scrolls sideways in automatic mode, and draws its seams as vertical bands. Unexpected reversal pauses rather than duplicating content. Limit duration to 120 seconds, input to 200 accepted frames, output to 40 megapixels, any side to 32,768 pixels, and default output length along the scroll direction (height, or width) to 20,000 pixels; the first reached limit wins. Output limits include final encoding buffers, not just matching thumbnails.
 
 Keep at most two full-resolution viewport buffers plus bounded working tiles and previews. Do not assume ImageIO can encode an arbitrarily large output without materializing it. Refuse operations that exceed the declared allocation plan. A user-confirmed partial result may be exported, but must never be labeled complete. Stop immediately on target/focus/display change, lock, permission revocation, or canceled control. Focus may move between the bound target and Recortia's own UI; another app taking focus ends the session.
 

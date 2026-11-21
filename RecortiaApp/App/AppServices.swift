@@ -60,28 +60,28 @@ final class SystemClock: FeatureClock {
 
 /// Holds the value-type stitcher in an actor so frame matching runs off the main actor.
 private actor StitchEngine {
-    private var stitcher = ScrollStitcher()
+    private var stitcher: ScrollStitcher
 
-    func reset() { stitcher = ScrollStitcher() }
+    init(direction: ScrollCaptureDirection) { stitcher = ScrollStitcher(direction: direction) }
 
     func append(_ frame: CGImage, elapsed: Duration) -> (ScrollAppendResult, Int, PixelSize, Bool) {
         let result = stitcher.append(frame, elapsed: elapsed)
         return (result, stitcher.acceptedFrameCount, stitcher.outputSize, stitcher.endOfPageDetected)
     }
 
-    func preview(maxHeight: Int) -> CGImage? { stitcher.preview(maxHeight: maxHeight) }
+    func preview(maxLength: Int) -> CGImage? { stitcher.preview(maxLength: maxLength) }
 
     func assemble() throws -> CGImage { try stitcher.assemble() }
 }
 
 final class LiveStitcher: ScrollStitchService {
-    private var engine = StitchEngine()
+    private var engine = StitchEngine(direction: .vertical)
     private(set) var acceptedFrameCount = 0
     private(set) var outputSize = PixelSize(width: 0, height: 0)
     private(set) var endOfPageDetected = false
 
-    func reset() {
-        engine = StitchEngine()
+    func reset(direction: ScrollCaptureDirection) {
+        engine = StitchEngine(direction: direction)
         acceptedFrameCount = 0
         outputSize = PixelSize(width: 0, height: 0)
         endOfPageDetected = false
@@ -98,8 +98,8 @@ final class LiveStitcher: ScrollStitchService {
         return result
     }
 
-    func preview(maxHeight: Int) async -> CGImage? {
-        await engine.preview(maxHeight: maxHeight)
+    func preview(maxLength: Int) async -> CGImage? {
+        await engine.preview(maxLength: maxLength)
     }
 
     func assemble() async throws -> CGImage {

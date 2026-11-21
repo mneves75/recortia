@@ -36,7 +36,8 @@ final class FakeScrollEnvironment: AutoScrollEnvironment {
 @MainActor
 final class FakeScrollPoster: ScrollEventPosting {
     struct Post: Equatable {
-        var pixels: Int32
+        var vertical: Int32
+        var horizontal: Int32 = 0
         var location: CGPoint
         var pid: pid_t
     }
@@ -44,8 +45,8 @@ final class FakeScrollPoster: ScrollEventPosting {
     var posts: [Post] = []
     var succeeds = true
 
-    func postScroll(pixels: Int32, at location: CGPoint, toProcess pid: pid_t) -> Bool {
-        posts.append(Post(pixels: pixels, location: location, pid: pid))
+    func postScroll(vertical: Int32, horizontal: Int32, at location: CGPoint, toProcess pid: pid_t) -> Bool {
+        posts.append(Post(vertical: vertical, horizontal: horizontal, location: location, pid: pid))
         return succeeds
     }
 }
@@ -102,7 +103,7 @@ struct AutoScrollerTests {
     func requiresAccessibility() throws {
         let (scroller, _, poster) = try make(observation(trusted: false))
         #expect(throws: AutoScrollError.accessibilityNotTrusted) { try scroller.start() }
-        #expect(scroller.scrollDown(byPixels: 40) == .notRunning)
+        #expect(scroller.scroll(byPixels: 40, direction: .vertical) == .notRunning)
         #expect(poster.posts.isEmpty)
     }
 
@@ -119,20 +120,32 @@ struct AutoScrollerTests {
     func postsTargetedEvent() throws {
         let (scroller, environment, poster) = try make()
         try scroller.start()
-        #expect(scroller.scrollDown(byPixels: 40) == .scrolled)
-        #expect(poster.posts == [FakeScrollPoster.Post(pixels: -40, location: CGPoint(x: 500, y: 400), pid: targetPID)])
+        #expect(scroller.scroll(byPixels: 40, direction: .vertical) == .scrolled)
+        #expect(
+            poster.posts == [FakeScrollPoster.Post(vertical: -40, location: CGPoint(x: 500, y: 400), pid: targetPID)])
         #expect(environment.observedWindowIDs.allSatisfy { $0 == 42 })
+    }
+
+    @Test("A horizontal session posts its step on the horizontal axis only, revealing content to the right")
+    func horizontalStep() throws {
+        let (scroller, _, poster) = try make()
+        try scroller.start()
+        #expect(scroller.scroll(byPixels: 40, direction: .horizontal) == .scrolled)
+        #expect(
+            poster.posts == [
+                FakeScrollPoster.Post(vertical: 0, horizontal: -40, location: CGPoint(x: 500, y: 400), pid: targetPID)
+            ])
     }
 
     @Test("A frontmost-app change stops before the next event and stays stopped")
     func frontmostChangeLatches() throws {
         let (scroller, environment, poster) = try make()
         try scroller.start()
-        #expect(scroller.scrollDown(byPixels: 10) == .scrolled)
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .scrolled)
         environment.current = observation(frontmost: 1)
-        #expect(scroller.scrollDown(byPixels: 10) == .stopped(.frontmostAppChanged))
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .stopped(.frontmostAppChanged))
         environment.current = observation()
-        #expect(scroller.scrollDown(byPixels: 10) == .stopped(.frontmostAppChanged))
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .stopped(.frontmostAppChanged))
         #expect(poster.posts.count == 1)
         #expect(scroller.state == .stopped(.frontmostAppChanged))
     }
@@ -148,7 +161,7 @@ struct AutoScrollerTests {
         let (scroller, environment, poster) = try make()
         try scroller.start()
         environment.current = changed
-        #expect(scroller.scrollDown(byPixels: 10) == .stopped(expected))
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .stopped(expected))
         #expect(poster.posts.isEmpty)
     }
 
@@ -156,7 +169,7 @@ struct AutoScrollerTests {
     func frontmostMustOwnTargetAtStart() throws {
         let (scroller, _, poster) = try make(observation(frontmost: 555))
         #expect(throws: AutoScrollError.targetUnavailable) { try scroller.start() }
-        #expect(scroller.scrollDown(byPixels: 10) == .notRunning)
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .notRunning)
         #expect(poster.posts.isEmpty)
     }
 
@@ -165,11 +178,11 @@ struct AutoScrollerTests {
         let (scroller, environment, poster) = try make(
             observation(frontmost: ProcessInfo.processInfo.processIdentifier))
         try scroller.start()
-        #expect(scroller.scrollDown(byPixels: 10) == .scrolled)
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .scrolled)
         environment.current = observation(frontmost: targetPID)
-        #expect(scroller.scrollDown(byPixels: 10) == .scrolled)
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .scrolled)
         environment.current = observation(frontmost: 555)
-        #expect(scroller.scrollDown(byPixels: 10) == .stopped(.frontmostAppChanged))
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .stopped(.frontmostAppChanged))
         #expect(poster.posts.count == 2)
     }
 
@@ -178,8 +191,8 @@ struct AutoScrollerTests {
         let (scroller, _, poster) = try make()
         poster.succeeds = false
         try scroller.start()
-        #expect(scroller.scrollDown(byPixels: 10) == .stopped(.eventPostFailed))
-        #expect(scroller.scrollDown(byPixels: 10) == .stopped(.eventPostFailed))
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .stopped(.eventPostFailed))
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .stopped(.eventPostFailed))
         #expect(poster.posts.count == 1)
     }
 
@@ -187,7 +200,7 @@ struct AutoScrollerTests {
     func startChecksPolicy() throws {
         let (scroller, _, poster) = try make(observation(onScreen: false))
         #expect(throws: AutoScrollError.targetUnavailable) { try scroller.start() }
-        #expect(scroller.scrollDown(byPixels: 10) == .notRunning)
+        #expect(scroller.scroll(byPixels: 10, direction: .vertical) == .notRunning)
         #expect(poster.posts.isEmpty)
     }
 }

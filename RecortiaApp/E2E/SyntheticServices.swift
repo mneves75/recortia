@@ -16,17 +16,19 @@
     @MainActor
     final class SyntheticAutoScroll: AutoScrollService {
         private(set) var steppedTargets: [CaptureTarget] = []
+        private(set) var stepDirections: [ScrollCaptureDirection] = []
         private(set) var stopCount = 0
         var atEnd: Bool?
 
-        func step(_ target: CaptureTarget) async -> AutoScrollStep {
+        func step(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> AutoScrollStep {
             steppedTargets.append(target)
+            stepDirections.append(direction)
             return .scrolled
         }
 
         func stop() { stopCount += 1 }
 
-        func isAtEnd(_ target: CaptureTarget) async -> Bool? { atEnd }
+        func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool? { atEnd }
     }
 
     /// Returns crops of the generated synthetic desktop with a correct `CaptureGeometry`.

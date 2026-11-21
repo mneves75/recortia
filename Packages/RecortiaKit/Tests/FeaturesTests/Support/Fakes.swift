@@ -542,6 +542,8 @@ final class FakeStitcher: ScrollStitchService {
     private(set) var appendCount = 0
     private(set) var lastElapsed: Duration?
     private(set) var resetCount = 0
+    /// The direction of the latest `reset`; a horizontal stitch grows in width.
+    private(set) var direction = ScrollCaptureDirection.vertical
     private(set) var acceptedFrameCount = 0
     private(set) var outputSize = PixelSize(width: 0, height: 0)
     /// Mirrors `ScrollStitcher`'s stationarity threshold; the model still needs the target's
@@ -551,8 +553,9 @@ final class FakeStitcher: ScrollStitchService {
 
     var endOfPageDetected: Bool { acceptedFrameCount > 0 && consecutiveStationary >= stationaryFramesForEnd }
 
-    func reset() {
+    func reset(direction: ScrollCaptureDirection) {
         resetCount += 1
+        self.direction = direction
         acceptedFrameCount = 0
         consecutiveStationary = 0
         outputSize = PixelSize(width: 0, height: 0)
@@ -571,8 +574,13 @@ final class FakeStitcher: ScrollStitchService {
         case .accepted(let offset):
             acceptedFrameCount += 1
             consecutiveStationary = 0
-            let added = outputSize.height == 0 ? frameHeight : offset
-            outputSize = PixelSize(width: frame.width, height: outputSize.height + added)
+            if direction == .horizontal {
+                let added = outputSize.width == 0 ? frame.width : offset
+                outputSize = PixelSize(width: outputSize.width + added, height: frame.height)
+            } else {
+                let added = outputSize.height == 0 ? frameHeight : offset
+                outputSize = PixelSize(width: frame.width, height: outputSize.height + added)
+            }
         case .stationary:
             consecutiveStationary += 1
         case .ambiguous:
@@ -587,7 +595,7 @@ final class FakeStitcher: ScrollStitchService {
     /// When set, `preview` suspends until `previews.resolve(())`, like a slow downscale.
     var holdPreview = false
     let previews = Pending<Void>()
-    func preview(maxHeight: Int) async -> CGImage? {
+    func preview(maxLength: Int) async -> CGImage? {
         if holdPreview { await previews.wait() }
         return acceptedFrameCount > 0 && !previewFails ? makeImage(width: 4, height: 8) : nil
     }
@@ -620,9 +628,13 @@ final class FakeAutoScroller: AutoScrollService {
     let pendingSteps = Pending<Void>()
     private(set) var stepCount = 0
     private(set) var stopCount = 0
+    /// The direction of every step and end-of-page question, in order.
+    private(set) var stepDirections: [ScrollCaptureDirection] = []
+    private(set) var endQueryDirections: [ScrollCaptureDirection] = []
 
-    func step(_ target: CaptureTarget) async -> AutoScrollStep {
+    func step(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> AutoScrollStep {
         stepCount += 1
+        stepDirections.append(direction)
         if holdSteps { await pendingSteps.wait() }
         return steps.isEmpty ? .scrolled : steps.removeFirst()
     }
@@ -631,7 +643,10 @@ final class FakeAutoScroller: AutoScrollService {
 
     /// What the target reports about its scroll position; nil when it cannot tell.
     var atEnd: Bool?
-    func isAtEnd(_ target: CaptureTarget) async -> Bool? { atEnd }
+    func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool? {
+        endQueryDirections.append(direction)
+        return atEnd
+    }
 }
 
 // MARK: - System

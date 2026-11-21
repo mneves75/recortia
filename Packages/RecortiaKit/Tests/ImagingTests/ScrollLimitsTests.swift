@@ -127,7 +127,7 @@ struct ScrollLimitsTests {
         case .side: limits.maxSide = 330
         case .height: limits.defaultMaxHeight = 330
         case .frames: limits.maxAcceptedFrames = 4
-        case .duration, .memory: break  // time and working memory have their own tests
+        case .duration, .memory, .width: break  // time, working memory and width have their own tests
         }
         var stitcher = ScrollStitcher(limits: limits)
         var results: [ScrollAppendResult] = []

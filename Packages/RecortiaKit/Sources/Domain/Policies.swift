@@ -33,8 +33,17 @@ public enum ScrollLimit: Hashable, Sendable, Codable {
     case area
     case side
     case height
+    /// A horizontal capture's width reached `ScrollLimits.defaultMaxHeight`, which bounds the
+    /// length along the scroll direction.
+    case width
     /// The peak working memory of one append (`ScrollLimits.maxWorkingBytes`).
     case memory
+}
+
+/// The way a scrolling capture's page moves (FR-10): down, the default, or to the right.
+public enum ScrollCaptureDirection: String, CaseIterable, Hashable, Sendable, Codable {
+    case vertical
+    case horizontal
 }
 
 /// Why an accepted scrolling capture is partial (SCR-02/04). A partial result is never labeled complete.
@@ -298,6 +307,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var colorFormatChoice: ColorFormat?
     /// Stored only once the person changes it; read `writesDiagnosticsFile` (B-10).
     public var writesDiagnosticsFileChoice: Bool?
+    /// Stored only once the person picks one in the scrolling HUD; read `scrollCaptureDirection` (B-9b).
+    public var scrollCaptureDirectionChoice: ScrollCaptureDirection?
     /// The framing new captures open with (FR-13); nil until the person saves one in the editor.
     /// Documents already open never change with it.
     public var defaultFraming: Presentation?
@@ -315,6 +326,12 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var colorFormat: ColorFormat {
         get { colorFormatChoice ?? .hex }
         set { colorFormatChoice = newValue }
+    }
+
+    /// The way a new scrolling capture stitches (FR-10). Vertical by default.
+    public var scrollCaptureDirection: ScrollCaptureDirection {
+        get { scrollCaptureDirectionChoice ?? .vertical }
+        set { scrollCaptureDirectionChoice = newValue }
     }
 
     /// Whether a completed capture plays a short sound (FR-01). Off by default.

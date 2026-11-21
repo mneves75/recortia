@@ -12,6 +12,9 @@ public enum ScrollMode: Hashable, Sendable {
 
 /// Drives `ScrollState` over a frame source, a stitcher, and an optional auto scroller (FR-10).
 ///
+/// The session stitches along `direction`, read from Settings when the area is chosen and
+/// changeable only until Start: down by default, or to the right for a wide page.
+///
 /// Manual scrolling always works. Automatic scrolling runs only when the user enabled it and the
 /// process is trusted for Accessibility; otherwise the session explains why and stays manual.
 /// Ambiguous matches pause instead of appending, a reached limit ends collection into review
@@ -37,15 +40,18 @@ public final class ScrollSessionModel {
         case assemblyFailed
     }
 
-    static let previewMaxHeight = 2_000
+    /// Longest side of the review's preview, along the scroll direction.
+    static let previewMaxLength = 2_000
 
     public private(set) var state: ScrollState = .idle
     public private(set) var mode: ScrollMode = .manual
+    public private(set) var direction: ScrollCaptureDirection = .vertical
     public private(set) var notice: Notice?
     public private(set) var target: CaptureTarget?
     public private(set) var acceptedFrames = 0
     public private(set) var outputSize = PixelSize(width: 0, height: 0)
-    /// Output rows where one accepted frame joins the next, for the review's seam markers.
+    /// Output rows (columns, horizontally) where one accepted frame joins the next, for the
+    /// review's seam markers.
     public private(set) var seams: [Int] = []
     public private(set) var partialReason: ScrollPartialReason?
     public private(set) var preview: CGImage?
@@ -161,6 +167,7 @@ public final class ScrollSessionModel {
         guard state == .selecting else { return }
         self.target = target
         mode = .manual
+        direction = settings.preferences.scrollCaptureDirection
         if settings.preferences.automaticScrollingEnabled {
             let isTrusted = accessibility.isTrusted
             diagnostics?.record(.permissionStatus(permission: .accessibility, granted: isTrusted))
@@ -171,6 +178,13 @@ public final class ScrollSessionModel {
             }
         }
         apply(.targetChosen)
+    }
+
+    /// Picks the scroll direction before Start and remembers it for the next session.
+    public func chooseDirection(_ direction: ScrollCaptureDirection) {
+        guard state == .armed else { return }
+        self.direction = direction
+        settings.update { $0.scrollCaptureDirection = direction }
     }
 
     public func start() {
@@ -267,7 +281,8 @@ public final class ScrollSessionModel {
             image = try await stitcher.assemble()
             guard sessionID == id, state == .reviewing else { return }
             info = try await assets.registerStitched(
-                image, partialReason: reason, pointPixelScale: Self.pointPixelScale(of: image, on: target))
+                image, partialReason: reason,
+                pointPixelScale: Self.pointPixelScale(of: image, on: target, direction: direction))
         } catch {
             guard sessionID == id else { return }
             notice = .assemblyFailed
@@ -278,7 +293,7 @@ public final class ScrollSessionModel {
             return
         }
         apply(.accept)
-        stitcher.reset()
+        stitcher.reset(direction: direction)
         preview = nil
         sessionID = nil
         let preferences = settings.preferences
@@ -290,19 +305,25 @@ public final class ScrollSessionModel {
 
     func clearNotice() { notice = nil }
 
-    /// Pixels per point of the stitched image, measured from its width: every frame spans the
-    /// target at its display's scale. A target the display clips measures lower, which only makes
-    /// automatic masking's sweep slower (it upsamples more, FR-06); 1 when it cannot be measured.
-    static func pointPixelScale(of image: CGImage, on target: CaptureTarget?) -> Double {
-        let points: Double? =
+    /// Pixels per point of the stitched image, measured across the scroll direction (its width, or
+    /// its height when it scrolled sideways): every frame spans the target at its display's scale.
+    /// A target the display clips measures lower, which only makes automatic masking's sweep slower
+    /// (it upsamples more, FR-06); 1 when it cannot be measured.
+    static func pointPixelScale(
+        of image: CGImage, on target: CaptureTarget?, direction: ScrollCaptureDirection
+    ) -> Double {
+        let frame: Rect<DesktopSpace>? =
             switch target {
-            case .region(let rect, _): rect.width
-            case .display(let display): display.frame.width
-            case .window(let window): window.frame.width
+            case .region(let rect, _): rect
+            case .display(let display): display.frame
+            case .window(let window): window.frame
             case nil: nil
             }
-        guard let points, points > 0 else { return 1 }
-        let scale = Double(image.width) / points
+        let horizontal = direction == .horizontal
+        guard let frame else { return 1 }
+        let points = horizontal ? frame.height : frame.width
+        guard points > 0 else { return 1 }
+        let scale = Double(horizontal ? image.height : image.width) / points
         return scale.isFinite ? max(1, scale) : 1
     }
 
@@ -313,7 +334,7 @@ public final class ScrollSessionModel {
         // for a session that already ended, and stop one whose session ended while it started.
         guard isCurrent(id) else { return }
         do throws(CaptureError) {
-            stitcher.reset()
+            stitcher.reset(direction: direction)
             streamOwner = id
             try await frames.start(target)
             guard isCurrent(id) else {
@@ -345,14 +366,14 @@ public final class ScrollSessionModel {
             settleTask?.cancel()  // a frame answered the last scroll step
 
             let elapsed = elapsedSinceStart()
-            let heightBefore = stitcher.outputSize.height
+            let lengthBefore = stitchedLength
             appendInFlight = true
             let result = await stitcher.append(frame, elapsed: elapsed)
             if sessionID == id { appendInFlight = false }  // a replacement session owns the flag now
             guard isCurrent(id) else { return }
 
             if case .accepted = result {
-                if heightBefore > 0 { seams.append(heightBefore) }
+                if lengthBefore > 0 { seams.append(lengthBefore) }
                 acceptedFrames = stitcher.acceptedFrameCount
                 outputSize = stitcher.outputSize
             }
@@ -391,7 +412,7 @@ public final class ScrollSessionModel {
                 if mode == .automatic {
                     // Stationary frames are also what a stalled, lazy-loading page produces:
                     // complete only when the target confirms its scroll area is at its end.
-                    let atEnd = await autoScroller?.isAtEnd(target)
+                    let atEnd = await autoScroller?.isAtEnd(target, direction: direction)
                     guard isCurrent(id), state == .collecting else { return }
                     finishCollecting(partial: atEnd == true ? nil : .stoppedMoving)
                     return
@@ -415,7 +436,7 @@ public final class ScrollSessionModel {
             return
         }
         autoStepOwner = id
-        let step = await autoScroller.step(target)
+        let step = await autoScroller.step(target, direction: direction)
         if autoStepOwner == id { autoStepOwner = nil }
         guard sessionID == id, state == .collecting, pendingFinish == nil else { return }
         switch step {
@@ -439,7 +460,7 @@ public final class ScrollSessionModel {
         if unansweredSteps >= ScrollStitcher.endOfPageStationaryFrames, stitcher.acceptedFrameCount > 0 {
             // No frame is also what a stalled, lazy-loading page looks like: complete only when
             // the target confirms its scroll area is at its end.
-            let atEnd = await autoScroller?.isAtEnd(target)
+            let atEnd = await autoScroller?.isAtEnd(target, direction: direction)
             guard sessionID == id, state == .collecting else { return }
             finishCollecting(partial: atEnd == true ? nil : .stoppedMoving)
             return
@@ -480,7 +501,7 @@ public final class ScrollSessionModel {
         apply(event)
         guard stitcher.acceptedFrameCount > 0 else {
             partialReason = nil
-            stitcher.reset()
+            stitcher.reset(direction: direction)
             apply(.fail(.noFrames))
             diagnostics?.record(.scrollCaptureFailed(failure: .noFrames, frames: 0))
             sessionID = nil
@@ -495,7 +516,7 @@ public final class ScrollSessionModel {
         guard let id = sessionID else { return }
         task = Task { [weak self] in
             guard let self else { return }
-            let image = await self.stitcher.preview(maxHeight: Self.previewMaxHeight)
+            let image = await self.stitcher.preview(maxLength: Self.previewMaxLength)
             guard self.sessionID == id, self.state == .reviewing else { return }
             // No preview means the stitch cannot be drawn within its budget: say so, rather than
             // leave the review waiting with Accept unavailable.
@@ -539,7 +560,7 @@ public final class ScrollSessionModel {
         task?.cancel()
         task = nil
         stopStream()
-        stitcher.reset()
+        stitcher.reset(direction: direction)
         resetProgress()
         sessionID = nil
     }
@@ -576,6 +597,11 @@ public final class ScrollSessionModel {
         preview = nil
         pageEndLikely = false
         startedAt = nil
+    }
+
+    /// The stitch's length along the scroll direction.
+    private var stitchedLength: Int {
+        direction == .horizontal ? stitcher.outputSize.width : stitcher.outputSize.height
     }
 
     private func elapsedSinceStart() -> Duration {
