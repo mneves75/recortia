@@ -169,6 +169,72 @@
             context.check(
                 "the capture ends at the window's right edge", snappedCapture.desktopBounds.maxX == notes.frame.maxX,
                 "\(snappedCapture.desktopBounds)")
+
+            try await checkReusedPanel(harness, context)
+        }
+
+        /// A pre-built panel that a capture hides and the next one reuses (A-13 step 2) never
+        /// carries the previous capture's snap drag, guide, held nudge, ratio drag or window frames.
+        /// The panels are invisible and ignore the pointer, as in `prebuilt-windows`.
+        private static func checkReusedPanel(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let coordinator = harness.features.capture
+            let display = harness.capture.display
+            try context.require("reuse: the synthetic display maps to a connected screen", display.screen != nil)
+            let overlay = RegionOverlayController(prebuilds: true) { display, screen in
+                let window = OverlayWindow(display: display, screen: screen)
+                window.alphaValue = 0
+                window.ignoresMouseEvents = true
+                return window
+            }
+            let ui = CaptureUIController(coordinator: coordinator, overlay: overlay)
+            defer { withExtendedLifetime(ui) {} }
+            ui.prepareOverlays([display])
+            let spare = try context.unwrap("reuse: the display has a pre-built panel", overlay.spare(for: display))
+            let view = spare.selectionView
+            func mouse(_ type: NSEvent.EventType, _ x: Double, _ y: Double) throws -> NSEvent {
+                try CaptureScenarios.mouseEvent(type, at: CGPoint(x: x, y: y), in: view)
+            }
+            func show(_ label: String) async throws {
+                harness.app.perform(.captureRegion)
+                try context.require(
+                    "reuse, \(label): the capture shows the pre-built panel with the listed windows",
+                    await E2EWait.until { overlay.presentedWindows.first === spare && !view.snapFrames.isEmpty })
+            }
+            func hide(_ label: String) async throws {
+                coordinator.cancel()
+                try context.require(
+                    "reuse, \(label): the panel hides", await E2EWait.until { !overlay.isPresented })
+                context.check(
+                    "reuse, \(label): the kept panel forgets the selection, its guides and the window frames",
+                    overlay.spare(for: display) === spare && !view.hasSelection && view.visibleGuides.isEmpty
+                        && view.snapFrames.isEmpty,
+                    "selection=\(String(describing: view.selection)), guides=\(view.visibleGuides.count), "
+                        + "frames=\(view.snapFrames.count)")
+            }
+
+            // A drag that snaps to the display's right edge, cancelled mid-drag.
+            try await show("snap")
+            view.mouseDown(with: try mouse(.leftMouseDown, 40, 40))
+            view.mouseDragged(with: try mouse(.leftMouseDragged, view.bounds.maxX - 3, 160))
+            try context.require("reuse: the drag snaps with a guide", !view.visibleGuides.isEmpty)
+            try await hide("snap")
+
+            // A 16:9 drag held by a nudge after release.
+            coordinator.setRegionAspect(.sixteenByNine)
+            try await show("nudge")
+            context.check("reuse: the panel shows the remembered ratio", view.aspect == .sixteenByNine)
+            view.mouseDown(with: try mouse(.leftMouseDown, 40, 40))
+            view.mouseDragged(with: try mouse(.leftMouseDragged, 200, 100))
+            view.keyDown(with: try keyEvent(124, [], in: view))
+            view.mouseUp(with: try mouse(.leftMouseUp, 200, 100))
+            try context.require("reuse: the nudge holds the selection after release", view.hasSelection)
+            try await hide("nudge")
+
+            try await show("next")
+            context.check(
+                "reuse: the next capture starts without a selection or guide",
+                view.selection == nil && view.visibleGuides.isEmpty, "\(String(describing: view.selection))")
+            try await hide("next")
         }
 
         private static func keyEvent(_ code: UInt16, _ modifiers: NSEvent.ModifierFlags, in view: NSView) throws
