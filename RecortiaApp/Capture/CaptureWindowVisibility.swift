@@ -36,7 +36,9 @@ final class CaptureWindowVisibility: NSObject {
         // detach it from its parent, breaking sheet and auxiliary-panel ownership on restore.
         // Windows on other Spaces cannot appear in this capture; ordering them back in would move
         // windows that follow the active Space onto this one (FR-01).
-        let windows = NSApp.orderedWindows.filter {
+        // NSApplication.orderedWindows omits panels.
+        let ordered = NSWindow.windowNumbers(options: [])?.compactMap { NSApp.window(withWindowNumber: $0.intValue) }
+        let windows = (ordered ?? NSApp.windows).filter {
             $0.isVisible && $0.isOnActiveSpace && !$0.isMiniaturized && $0.parent == nil && $0.sheetParent == nil
         }
         suspended = windows.map { SuspendedWindow(window: $0) }

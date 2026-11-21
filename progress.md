@@ -309,3 +309,14 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   translations passed.
 - The first release preflight expired. The next native run of `5cc56ce` started after five idle
   minutes. The independently scoped preview still needs full, native and physical qualification.
+- The full local unsigned gate on `4662cc6` passed all 1,085 package tests and built both Debug
+  targets. GitHub Actions run 44956086618 passed the unsigned and Release isolation checks.
+- The uninterrupted native Quick Actions replay `20261121-201311-48883` reproduced an image
+  cropped to the preview frame and both panels remaining visible at selection start in EN and
+  pt-BR. The screenshot chrome check sampled no pixels. Focus assertions after Escape also
+  failed without identifying whether the frontmost app or the key panel changed.
+- The native image view now reports its display size explicitly. Capture suspension looks up
+  Recortia's visible windows on the active Space in window-server order, including panels.
+  The existing Quick Actions scenario requires both panels to hide before testing restoration
+  and reports separate foreground and key-window flags right after closing. The corrected
+  unsigned E2E app compiled with Xcode 27.2 (27B52). Its native replay is pending.

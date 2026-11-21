@@ -305,8 +305,7 @@ private struct QuickActionsPreviewView: View {
 
     var body: some View {
         VStack(spacing: DesignTokens.Space.s) {
-            QuickActionsExpandedImage(image: image)
-                .frame(width: imageSize.width, height: imageSize.height)
+            QuickActionsExpandedImage(image: image, displaySize: imageSize)
             Button(String(localized: "Close", table: "Editor"), action: actions.closePreview)
                 .controlSize(.small)
                 .frame(height: controlsHeight)
@@ -320,6 +319,11 @@ private struct QuickActionsPreviewView: View {
 
 private struct QuickActionsExpandedImage: NSViewRepresentable {
     let image: CGImage
+    let displaySize: CGSize
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSImageView, context: Context) -> CGSize? {
+        displaySize
+    }
 
     func makeNSView(context: Context) -> NSImageView {
         let view = NSImageView()
@@ -330,7 +334,7 @@ private struct QuickActionsExpandedImage: NSViewRepresentable {
     }
 
     func updateNSView(_ view: NSImageView, context: Context) {
-        view.image = NSImage(cgImage: image, size: .zero)
+        view.image = NSImage(cgImage: image, size: displaySize)
     }
 }
 
