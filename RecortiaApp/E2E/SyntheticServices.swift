@@ -280,11 +280,51 @@
         func setPreferenceData(_ data: Data?, forKey key: String) { values[key] = data }
     }
 
+    /// The runner's clock: system time, except that it stands still while a scripted service holds.
+    /// A held detection lasts as long as the scenario's screenshots, so without this a loaded Mac
+    /// can run past the app's masking deadline before the scenario releases it.
+    @MainActor
+    final class E2EClock: FeatureClock {
+        private let system = SystemClock()
+        private var heldSince: ContinuousClock.Instant?
+        private var heldTotal = Duration.zero
+
+        func now() -> Date { Date() }
+
+        func uptime() -> Duration {
+            let held = heldTotal + (heldSince.map { .now - $0 } ?? .zero)
+            return system.uptime() - held
+        }
+
+        func sleep(for duration: Duration) async throws {
+            let end = uptime() + duration
+            while true {
+                let remaining = end - uptime()
+                if remaining <= .zero { return }
+                try await Task.sleep(for: heldSince == nil ? remaining : .milliseconds(20))
+            }
+        }
+
+        func hold() {
+            if heldSince == nil { heldSince = .now }
+        }
+
+        func resume() {
+            guard let heldSince else { return }
+            heldTotal += .now - heldSince
+            self.heldSince = nil
+        }
+    }
+
     /// Scripted automatic-masking detection (FR-06): returns the regions a scenario sets, can hold
-    /// until released, or fail. It reads no pixels and never runs Vision.
+    /// until released, or fail. It reads no pixels and never runs Vision. While it holds, `clock`
+    /// stands still, so app deadlines measure the app's time rather than the scenario's.
     @MainActor
     final class SyntheticSensitiveText: SensitiveTextService {
         struct Failure: Error {}
+
+        let clock: E2EClock
+        init(clock: E2EClock) { self.clock = clock }
 
         var regions: [PixelRect] = []
         var fails = false
@@ -295,13 +335,17 @@
 
         func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
             requestCount += 1
-            if holds { await withCheckedContinuation { waiter = $0 } }
+            if holds {
+                clock.hold()
+                await withCheckedContinuation { waiter = $0 }
+            }
             try Task.checkCancellation()
             if fails { throw Failure() }
             return regions
         }
 
         func release() {
+            clock.resume()
             waiter?.resume()
             waiter = nil
         }
