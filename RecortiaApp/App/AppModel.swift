@@ -12,6 +12,7 @@ struct FeatureModels {
     let importer: ImportCoordinator
     let scroll: ScrollSessionModel
     let pins: PinsModel
+    let quickActions: QuickActionsModel
     let ocrLanguages: OCRLanguagesModel
     let loginItem: LoginItemModel
 
@@ -29,6 +30,9 @@ struct FeatureModels {
             accessibility: services.accessibility, screenPermission: services.screenPermission,
             assets: services.assets, clock: services.clock, settings: settings)
         pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
+        quickActions = QuickActionsModel(
+            export: export, pins: pins, renderer: services.renderer, assets: services.assets,
+            folders: services.folders, settings: settings, clock: services.clock)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
     }
@@ -56,6 +60,7 @@ final class AppModel: AppActions {
     @ObservationIgnored private var captureUI: CaptureUIController?
     @ObservationIgnored private var scrollUI: ScrollUIController?
     @ObservationIgnored private var pinsUI: PinsUIController?
+    @ObservationIgnored private var quickActionsUI: QuickActionsUIController?
     @ObservationIgnored private var captureWindowVisibility: CaptureWindowVisibility?
     @ObservationIgnored private let onboardingWindow = OnboardingWindowController()
     /// Open requests the system made before launch wired the editors, each kept apart: a cold
@@ -306,6 +311,10 @@ final class AppModel: AppActions {
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
         pinsUI = PinsUIController(model: features.pins)
+        quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
+        features.quickActions.onOpenInEditor = { [weak self] session in
+            _ = self?.openDocument?(session, .none, nil)
+        }
 
         let services = features.services
         let environment = EditorEnvironment(
@@ -336,19 +345,34 @@ final class AppModel: AppActions {
     }
 
     func handleCapture(_ completion: CaptureCompletion) {
-        switch completion.purpose {
-        case .edit:
-            // Decided here, synchronously, before anything else can run on the main actor: a
-            // setting changed by a job queued after this belongs to the next capture (R-3).
+        // Decided here, synchronously, before anything else can run on the main actor: a setting
+        // changed by a job queued after this belongs to the next capture (R-3, ADR-009).
+        switch CaptureFollowUp.decide(purpose: completion.purpose, preferences: settings.preferences) {
+        case .editor(let masks):
             let plan = features.export.automaticExportPlan()
-            let masks = settings.preferences.autoRedactsSensitiveText
             // Opening orders the editor window front before it returns.
             let toEditor = LatencySignposts.begin(.captureToEditor)
             let editor = openDocument?(completion.session, masks ? .maskSensitiveText : .none, nil)
             toEditor.end()
             runAutomaticExports(plan, for: completion.session, editor: editor, masks: masks)
+        case .quickActions:
+            showQuickActions(completion.session, plan: features.export.automaticExportPlan())
         case .recognizeText:
             recognizeText?(completion.session)
+        }
+    }
+
+    /// The thumbnail shows once the capture's automatic batch has run; without an editor, every
+    /// failure of that batch is an alert.
+    private func showQuickActions(_ session: DocumentSession, plan: AutomaticExportPlan) {
+        let quickActions = features.quickActions
+        automaticExportsInFlight += 1
+        Task {
+            defer { automaticExportsInFlight -= 1 }
+            let outcomes = await quickActions.present(session, after: plan)
+            for failure in Self.routeAutomaticExport(outcomes, editorOpen: false).alerts {
+                showMessage(.export(failure))
+            }
         }
     }
 

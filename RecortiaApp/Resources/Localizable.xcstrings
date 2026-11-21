@@ -343,6 +343,22 @@
         }
       }
     },
+    "After a capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "After a capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depois de uma captura"
+          }
+        }
+      }
+    },
     "All three share the same sanitized image, without hidden layers or location and text metadata." : {
       "localizations" : {
         "en" : {
@@ -887,6 +903,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A captura, a edição e o reconhecimento ficam neste Mac."
+          }
+        }
+      }
+    },
+    "Captured image. Drag it to export." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captured image. Drag it to export."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagem capturada. Arraste-a para exportar."
+          }
+        }
+      }
+    },
+    "Captures open in the editor while automatic masking is on." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures open in the editor while automatic masking is on."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As capturas abrem no editor enquanto o mascaramento automático estiver ativado."
           }
         }
       }
@@ -2201,6 +2249,22 @@
         }
       }
     },
+    "Open in Editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Editor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir no editor"
+          }
+        }
+      }
+    },
     "Open Keyboard Settings…" : {
       "localizations" : {
         "en" : {
@@ -2245,6 +2309,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abrir Ajustes do Sistema"
+          }
+        }
+      }
+    },
+    "Open the editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the editor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir o editor"
           }
         }
       }
@@ -2586,6 +2666,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Repositório privado"
+          }
+        }
+      }
+    },
+    "Quick Actions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Actions"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ações rápidas"
           }
         }
       }
@@ -3312,6 +3408,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar menu de captura"
+          }
+        }
+      }
+    },
+    "Show quick actions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show quick actions"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar ações rápidas"
           }
         }
       }

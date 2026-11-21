@@ -362,6 +362,10 @@
                         "Capture holds the capture sound switch, off by default",
                         E2EAccessibilityControl.isPresent("settings.captureSound", in: pane)
                             && !harness.settings.preferences.playsCaptureSound)
+                    context.check(
+                        "Capture holds After a capture, on the editor by default",
+                        E2EAccessibilityControl.isPresent("settings.afterCapture", in: pane)
+                            && harness.settings.preferences.afterCapture == .openEditor)
                     for identifier in ["settings.automaticScrolling", "settings.accessibilityStatus"] {
                         context.check(
                             "Capture holds the Scrolling Capture control \(identifier)",
