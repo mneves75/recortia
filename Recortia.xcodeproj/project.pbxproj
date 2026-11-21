@@ -11,6 +11,7 @@
 		01DD6F970229DB8FA2B2DA21 /* Scenarios+Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */; };
 		047BE41C254E51245516E371 /* RecortiaFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = 252C5CAB42D41B5EC1759BE7 /* RecortiaFixtures */; };
 		06650EB2D93E1F2271D9AF96 /* AppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8122F2A3706BEFC20DE3331B /* AppServices.swift */; };
+		08711520EFC5693E6C071CB4 /* Scenarios+ReopenClosed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BAA0F29EBC69DAF2524D55F /* Scenarios+ReopenClosed.swift */; };
 		09F8AA7FCD99E9FB0EB48D00 /* EditorCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15116A7454558F3FA0807632 /* EditorCanvasView.swift */; };
 		0E0419D54894668574BBA599 /* Scenarios+Shortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */; };
 		0EAF61DA2A9566FBFC619339 /* AppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8122F2A3706BEFC20DE3331B /* AppServices.swift */; };
@@ -242,6 +243,7 @@
 		4EA685B6DEAA67735A12A3D2 /* Scenarios+PinsOnTop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+PinsOnTop.swift"; sourceTree = "<group>"; };
 		4F9E78A8FF840E180CE7CF49 /* EditorImageCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorImageCommands.swift; sourceTree = "<group>"; };
 		4FFD019156948487FC6E68C8 /* CaptureWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWindowVisibility.swift; sourceTree = "<group>"; };
+		5BAA0F29EBC69DAF2524D55F /* Scenarios+ReopenClosed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+ReopenClosed.swift"; sourceTree = "<group>"; };
 		5E4F6B9E7DA4239CD17642B8 /* Recortia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Recortia.entitlements; sourceTree = "<group>"; };
 		61D5324EB9E2AA47D945093A /* EditorRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorRootView.swift; sourceTree = "<group>"; };
 		637E0FA939F9ED3C715F7FD3 /* ObservationLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationLoop.swift; sourceTree = "<group>"; };
@@ -512,6 +514,7 @@
 				BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */,
 				BB9343DD04DF024A4E7B8C01 /* Scenarios+QuickActions.swift */,
 				2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */,
+				5BAA0F29EBC69DAF2524D55F /* Scenarios+ReopenClosed.swift */,
 				D07F8A23F06F222D5CAD4B07 /* Scenarios+Scroll.swift */,
 				414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */,
 				12D61624C8631802B787D4E3 /* Scenarios+Shortcuts.swift */,
@@ -859,6 +862,7 @@
 				A8310D2D3CD5C642EB8F3D94 /* Scenarios+Presence.swift in Sources */,
 				C977D2292086CA85AD8BB38A /* Scenarios+QuickActions.swift in Sources */,
 				EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */,
+				08711520EFC5693E6C071CB4 /* Scenarios+ReopenClosed.swift in Sources */,
 				35207593563862BE445A53FE /* Scenarios+Scroll.swift in Sources */,
 				01DD6F970229DB8FA2B2DA21 /* Scenarios+Shell.swift in Sources */,
 				0E0419D54894668574BBA599 /* Scenarios+Shortcuts.swift in Sources */,
