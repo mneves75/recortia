@@ -288,3 +288,8 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   settings store independently of the coordinator, so a ratio cached only in the coordinator
   cannot satisfy it. `editor-menu` still checks the Inspector submenu is reachable when an editor
   is key, in addition to checking both tab commands are disabled without a key editor.
+- Clean `5cc56ce` passed 1,085 package tests and both Debug targets on Xcode 27.2 (27B52).
+  Its qualified onboarding replay reproduced the same preference change in both languages.
+  Diagnostic commit `a338d64` isolated the change to `showsMenuBarIconChoice`, while the separate
+  upload consent identity and side-effect checks passed. The menu-bar visibility setter now
+  ignores requests that match the effective visibility, preserving the default choice on replay.
