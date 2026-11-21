@@ -4714,18 +4714,18 @@
         }
       }
     },
-    "The previous freeze is still stopping. Press F again in a moment." : {
+    "The previous freeze was still finishing. Press F to try again." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The previous freeze is still stopping. Press F again in a moment."
+            "value" : "The previous freeze was still finishing. Press F to try again."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O congelamento anterior ainda está sendo encerrado. Pressione F novamente em instantes."
+            "value" : "O congelamento anterior ainda estava sendo encerrado. Pressione F para tentar novamente."
           }
         }
       }

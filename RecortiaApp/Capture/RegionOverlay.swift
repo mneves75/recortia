@@ -182,7 +182,10 @@ final class RegionSelectionView: NSView {
     /// A drag began here, so the other displays' overlays drop their selections.
     var onSelectionBegan: (() -> Void)?
     var notice: String? {
-        didSet { needsDisplay = true }
+        didSet {
+            setAccessibilityHelp(accessibilityInstructions)
+            needsDisplay = true
+        }
     }
     /// Whether Space switches to a window selection (a plain region capture, not Capture Text).
     var allowsWindowSwitch = false {
@@ -738,7 +741,7 @@ final class RegionSelectionView: NSView {
     }
 
     private var accessibilityInstructions: String {
-        [instructions, freezeInstruction].compactMap { $0 }.joined(separator: "\n")
+        [notice, instructions, freezeInstruction].compactMap { $0 }.joined(separator: "\n")
     }
 
     private var freezeInstruction: String? {

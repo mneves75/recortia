@@ -209,10 +209,7 @@ public final class CaptureCoordinator {
         regionFreeze = .preparing(display)
         freezeRead = Task { [weak self] in
             guard let self else { return }
-            defer {
-                self.freezeRead = nil
-                if self.notice == .freezeBusy { self.notice = nil }
-            }
+            defer { self.freezeRead = nil }
             await self.acquireFrozenFrame(on: display, id: active.id)
         }
         freezePermissionCheck = Task { [weak self] in

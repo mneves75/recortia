@@ -97,7 +97,7 @@ final class CaptureUIController {
         case .freezeUnavailable:
             String(localized: "Could not freeze this display. You can still select an area.")
         case .freezeBusy:
-            String(localized: "The previous freeze is still stopping. Press F again in a moment.")
+            String(localized: "The previous freeze was still finishing. Press F to try again.")
         case .captureInProgress, nil:
             nil
         }

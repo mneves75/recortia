@@ -65,6 +65,9 @@
         var windowsDelay: Duration = .milliseconds(400)
         var fixedCaptureDate: Date?
         var displayFrameOverride: CGImage?
+        var holdDisplayRead = false
+        private var heldDisplayRead: CheckedContinuation<Void, Never>?
+        var isHoldingDisplayRead: Bool { heldDisplayRead != nil }
         private(set) var captures: [CaptureTarget] = []
 
         init(desktop: CGImage) {
@@ -98,6 +101,13 @@
             return windowList
         }
 
+        func resumeDisplayRead() {
+            holdDisplayRead = false
+            let held = heldDisplayRead
+            heldDisplayRead = nil
+            held?.resume()
+        }
+
         func capture(_ target: CaptureTarget, showsCursor: Bool, includesShadow: Bool) async throws(CaptureError)
             -> (CGImage, CaptureGeometry)
         {
@@ -111,6 +121,10 @@
                 source = .region(displayID: display.id)
             case .display(let display):
                 guard display.id == self.display.id else { throw .targetUnavailable }
+                if holdDisplayRead {
+                    guard heldDisplayRead == nil else { throw .canceled }
+                    await withCheckedContinuation { heldDisplayRead = $0 }
+                }
                 bounds = display.frame
                 source = .display(id: display.id)
             case .window(let window):

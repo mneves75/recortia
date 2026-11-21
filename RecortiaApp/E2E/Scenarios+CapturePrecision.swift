@@ -307,7 +307,30 @@
             }
             try await toggle(liveInstruction)
             try context.require("unfreezing releases the original preview", coordinator.regionFreeze == nil)
+
+            // ScreenCaptureKit can return after a canceled read; keep the message visible after
+            // that callback so the operator knows to press F again.
+            harness.capture.holdDisplayRead = true
+            defer { harness.capture.resumeDisplayRead() }
+            let freezeKey = try keyEvent(3, [], in: view)
+            view.keyDown(with: freezeKey)
+            try context.require(
+                "the synthetic display read is held",
+                await E2EWait.until { harness.capture.isHoldingDisplayRead })
+            try await toggle(liveInstruction)
+            view.keyDown(with: freezeKey)
+            let busy = String(localized: "The previous freeze was still finishing. Press F to try again.")
+            try context.require(
+                "a rejected F reports that the previous display read was still finishing",
+                await E2EWait.until { view.accessibilityHelp()?.contains(busy) == true })
+            harness.capture.resumeDisplayRead()
+            await E2ESnapshot.settle(view)
+            context.check(
+                "the retry instruction survives the late display callback",
+                view.accessibilityHelp()?.contains(busy) == true && coordinator.regionFreeze == nil)
             try await toggle(frozenInstruction)
+            context.check(
+                "the next deliberate F clears the retry notice", view.accessibilityHelp()?.contains(busy) == false)
 
             let start = CGPoint(x: view.bounds.width * 0.14, y: view.bounds.height * 0.14)
             let end = CGPoint(x: view.bounds.width * 0.39, y: view.bounds.height * 0.41)
@@ -318,8 +341,8 @@
             view.mouseUp(with: try mouse(.leftMouseUp, end.x, end.y))
             let editor = try await E2EActions.waitForNewEditor(harness, after: editors, context)
             try context.require(
-                "freeze and refreeze read the display once each and commit does not read it again",
-                Array(harness.capture.captures.dropFirst(reads)) == [.display(display), .display(display)])
+                "the preview, canceled read, and final freeze read the display once each; commit reads nothing",
+                Array(harness.capture.captures.dropFirst(reads)) == Array(repeating: .display(display), count: 3))
             try context.require("the frozen panel was retired", await E2EWait.until { !overlay.isPresented })
             context.check(
                 "a panel that showed a frozen frame is not kept as a spare", overlay.spare(for: display) == nil)
