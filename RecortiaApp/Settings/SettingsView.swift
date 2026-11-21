@@ -167,7 +167,7 @@ struct ExportSettingsTab: View {
                 .disabled(folders == nil)
                 .accessibilityIdentifier("settings.autoSave")
                 LabeledContent("Save folder") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: DesignTokens.Space.s) {
                         // A folder name is user data: truncate it and keep the whole value in a
                         // tooltip, so a long or localized name cannot wrap the row and push the
                         // control off its trailing edge.
