@@ -237,6 +237,12 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   An uninterrupted native rerun is pending. Opus cross-model review hit its usage limit.
 - A-5 proceeds in an isolated worktree with live region selection as the default and an explicit
   freeze action for one display during selection. Its crop and magnifier use the same frame.
+- A-5 commit `74b64b7` passed all six `RegionPrecisionCaptureTests` cases, including the
+  negative-origin crop and late acquisition after cancel or unfreeze. It is superseded by the
+  pending review fixes. Independent review found that the crop could retain the full frame
+  during registration, a freeze command could be dropped while a canceled read drained, and
+  the native magnifier assertion needed a source-pixel comparison. The older plan's pixel
+  coordinates and sleep/timeout cleanup also remain required.
 - The repository generates `tests.json` as its test inventory and
   `.scratch/tests-report.json` as the run-status record via `scripts/tests-report.py`.
   New test code is limited to behavior over the requested `cccc` complexity threshold or
