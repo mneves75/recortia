@@ -1,6 +1,7 @@
 import CoreGraphics
 import Domain
 import Foundation
+import Imaging
 import Observation
 
 /// Where a completed capture goes (FR-01, ADR-009), decided synchronously when it completes.
@@ -44,13 +45,20 @@ public final class QuickActionsModel {
     public static let timeout: Duration = .seconds(8)
     /// The preview's longest side in pixels; the thumbnail shows it at most 240 pt wide on 2× displays.
     static let previewMaxPixels = 640.0
+    private static let expandedPreviewMaxPixels = 1600
 
     public private(set) var capture: QuickCapture?
+    public private(set) var expandedPreview: CGImage?
+    public var canOpenPreview: Bool { isShown && !isActing && previewTask == nil && expandedPreview == nil }
     /// False while the capture's automatic exports run: the thumbnail is not shown yet.
     public private(set) var isShown = false
     /// An action (copy, save, drag offer, pin) is running; the others wait for it.
     public private(set) var isActing = false
     public private(set) var isPointerInside = false
+    private var isPointerInsidePreview = false
+    private var isPreviewKey = false
+    private var previewRequest: UUID?
+    private var previewTask: Task<CGImage, any Error>?
 
     /// Receives the session for Open in Editor; the editor then owns its pixels.
     @ObservationIgnored public var onOpenInEditor: ((DocumentSession) -> Void)?
@@ -112,6 +120,66 @@ public final class QuickActionsModel {
         guard isPointerInside != inside, capture != nil else { return }
         isPointerInside = inside
         armTimer()
+    }
+
+    public func setPointerInsidePreview(_ inside: Bool) {
+        guard isPointerInsidePreview != inside, expandedPreview != nil else { return }
+        isPointerInsidePreview = inside
+        armTimer()
+    }
+
+    public func setPreviewKey(_ key: Bool) {
+        guard isPreviewKey != key, expandedPreview != nil else { return }
+        isPreviewKey = key
+        armTimer()
+    }
+
+    public func openPreview() async throws {
+        guard canOpenPreview, let capture else { return }
+        let document = capture.session.document
+        let scale = try Self.expandedPreviewScale(for: document)
+        let request = UUID()
+        previewRequest = request
+        armTimer()
+        let task = Task { [renderer] in try await renderer.render(document, scale: scale) }
+        previewTask = task
+        let result = await task.result
+        previewTask = nil
+        guard previewRequest == request, self.capture?.id == capture.id else { return }
+        previewRequest = nil
+        armTimer()
+        expandedPreview = try result.get()
+    }
+
+    private static func expandedPreviewScale(for document: Document) throws(RenderError) -> Double {
+        let size = document.outputPixelSize(exportScale: 1)
+        guard !size.isEmpty else { throw .invalidGeometry }
+        let side = max(size.width, size.height)
+        guard side > expandedPreviewMaxPixels else { return 1 }
+        // Aspect presets round up by a whole ratio multiple. Leave room for that final step.
+        let ratio = document.presentation.aspect.ratio
+        let rounding = max(ratio?.width ?? 1, ratio?.height ?? 1)
+        let scale = Double(expandedPreviewMaxPixels - rounding) / Double(side)
+        let scaled = document.outputPixelSize(exportScale: scale)
+        guard !scaled.isEmpty, max(scaled.width, scaled.height) <= expandedPreviewMaxPixels else {
+            throw .invalidGeometry
+        }
+        return scale
+    }
+
+    @discardableResult
+    public func closePreview() -> Bool {
+        guard previewRequest != nil || expandedPreview != nil else { return false }
+        clearPreview()
+        armTimer()
+        return true
+    }
+
+    public func suspendPreview(keepingVisiblePreview: Bool) {
+        if !keepingVisiblePreview { closePreview() }
+        setPointerInside(false)
+        setPointerInsidePreview(false)
+        setPreviewKey(false)
     }
 
     public func copy() async -> ExportOutcome {
@@ -227,6 +295,7 @@ public final class QuickActionsModel {
     private func clear() {
         timer?.cancel()
         timer = nil
+        clearPreview()
         capture = nil
         isShown = false
         isActing = false
@@ -234,15 +303,27 @@ public final class QuickActionsModel {
         resumeExportSlotWaiters()
     }
 
-    /// Runs only while shown, idle and without the pointer over the thumbnail.
+    private func clearPreview() {
+        // Release the slot only when the task unwinds. A render may be in synchronous imaging code.
+        previewTask?.cancel()
+        previewRequest = nil
+        expandedPreview = nil
+        isPointerInsidePreview = false
+        isPreviewKey = false
+    }
+
+    private var canExpire: Bool {
+        isShown && !isActing && !isPointerInside && !isPointerInsidePreview && !isPreviewKey && previewRequest == nil
+    }
+
     private func armTimer() {
         timer?.cancel()
         timer = nil
-        guard isShown, !isActing, !isPointerInside, let id = capture?.id else { return }
+        guard canExpire, let id = capture?.id else { return }
         let clock = self.clock
         timer = Task { [weak self] in
             do { try await clock.sleep(for: Self.timeout) } catch { return }
-            guard let self, self.capture?.id == id, !self.isActing, !self.isPointerInside else { return }
+            guard !Task.isCancelled, let self, self.capture?.id == id, self.canExpire else { return }
             self.discard()
         }
     }

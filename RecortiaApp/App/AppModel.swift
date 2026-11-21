@@ -268,9 +268,10 @@ final class AppModel: AppActions {
         return discards.isEmpty || confirmQuit(discards)
     }
 
-    /// `applicationWillTerminate`: the kept closed document never outlives the process's quit.
+    /// `applicationWillTerminate`: discard in-memory captures and cancel any preview work.
     func willTerminate() {
         features.closedCapture.clear()
+        quickActionsUI?.dismiss()
     }
 
     /// The person closed Recortia's last window (FR-01). With "keep running in the menu bar" off
@@ -370,6 +371,16 @@ final class AppModel: AppActions {
 
     // MARK: Wiring
 
+    func makeQuickActionsUI() -> QuickActionsUIController {
+        if let quickActionsUI { return quickActionsUI }
+        let controller = QuickActionsUIController(model: features.quickActions, settings: settings)
+        captureWindowVisibility?.onSuspensionChange = { [weak controller] suspended in
+            controller?.captureVisibilityChanged(suspended: suspended)
+        }
+        quickActionsUI = controller
+        return controller
+    }
+
     private func wire(_ features: FeatureModels) {
         features.capture.onCaptured = { [weak self] completion in
             self?.handleCapture(completion)
@@ -385,7 +396,7 @@ final class AppModel: AppActions {
         captureUI = CaptureUIController(coordinator: features.capture)
         scrollUI = ScrollUIController(model: features.scroll, displays: { features.services.capture.displays() })
         pinsUI = PinsUIController(model: features.pins)
-        quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
+        _ = makeQuickActionsUI()
         features.quickActions.onOpenInEditor = { [weak self] session in
             _ = self?.openDocument?(session, .none, nil)
         }
@@ -438,7 +449,10 @@ final class AppModel: AppActions {
     func handleCapture(_ completion: CaptureCompletion) {
         // Decided here, synchronously, before anything else can run on the main actor: a setting
         // changed by a job queued after this belongs to the next capture (R-3, ADR-009).
-        switch CaptureFollowUp.decide(purpose: completion.purpose, preferences: settings.preferences) {
+        let followUp = CaptureFollowUp.decide(purpose: completion.purpose, preferences: settings.preferences)
+        // Retire the old capture before the visibility observer can restore its suspended panels.
+        quickActionsUI?.dismiss()
+        switch followUp {
         case .editor(let masks):
             let plan = features.export.automaticExportPlan()
             // Opening orders the editor window front before it returns.

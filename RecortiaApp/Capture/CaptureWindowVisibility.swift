@@ -14,6 +14,7 @@ final class CaptureWindowVisibility: NSObject {
     private let isStartingScroll: @MainActor @Sendable () -> Bool
     private var suspended: [SuspendedWindow]?
     private var loop: ObservationLoop?
+    var onSuspensionChange: ((Bool) -> Void)?
 
     init(
         capture: CaptureCoordinator, scroll: ScrollSessionModel,
@@ -39,6 +40,7 @@ final class CaptureWindowVisibility: NSObject {
             $0.isVisible && $0.isOnActiveSpace && !$0.isMiniaturized && $0.parent == nil && $0.sheetParent == nil
         }
         suspended = windows.map { SuspendedWindow(window: $0) }
+        onSuspensionChange?(true)
         // The hidden windows still exist for the user: Recortia stays in ⌘Tab and the Dock.
         AppPresence.shared.beginHold()
         for window in windows { window.orderOut(nil) }
@@ -62,6 +64,7 @@ final class CaptureWindowVisibility: NSObject {
             guard let window = entry.window, !window.isVisible, !window.isMiniaturized else { continue }
             window.orderBack(nil)
         }
+        onSuspensionChange?(false)
     }
 
     @objc private func windowWillClose(_ notification: Notification) {

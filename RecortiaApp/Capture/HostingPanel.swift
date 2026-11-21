@@ -4,6 +4,7 @@ import SwiftUI
 /// A small AppKit panel hosting SwiftUI content, sized to that content.
 final class HostingPanel: NSPanel {
     private let allowsKey: Bool
+    var handleEscape: (() -> Bool)?
     /// The title bar is transparent and hidden; by default SwiftUI still insets the content by its
     /// height. A panel whose window buttons are absent (the scrolling HUD) sets this to false
     /// before `setContent`, so the content and the panel's size start at the top edge.
@@ -31,6 +32,16 @@ final class HostingPanel: NSPanel {
     }
 
     override var canBecomeKey: Bool { allowsKey }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, event.charactersIgnoringModifiers == "\u{1b}",
+            event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
+            handleEscape?() == true
+        {
+            return
+        }
+        super.sendEvent(event)
+    }
 
     /// - Parameter fixedToFittingSize: sizes the panel once to the content's fitting size instead
     ///   of tracking it. Content without a fixed width (the countdown) makes size tracking loop

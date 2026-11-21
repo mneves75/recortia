@@ -8,10 +8,12 @@ import UniformTypeIdentifiers
 /// Space (`SpacePolicy`), above the normal level so it never counts as a switchable window
 /// (`AppPresence`). It shows the sanitizing renderer's preview, never stored pixels, and every
 /// action goes through `QuickActionsModel` to the export pipeline or the pins model.
-final class QuickActionsUIController {
+final class QuickActionsUIController: NSObject, NSWindowDelegate {
     private let model: QuickActionsModel
     private(set) var panel: HostingPanel?
+    private(set) var previewPanel: HostingPanel?
     private var shownID: UUID?
+    private var captureSuspended = false
     private var loop: ObservationLoop?
     /// Orders the panel in; scenarios park it offscreen instead.
     var present: @MainActor (HostingPanel) -> Void = { $0.presentInCorner() }
@@ -22,17 +24,24 @@ final class QuickActionsUIController {
     init(model: QuickActionsModel, settings: SettingsStore) {
         self.model = model
         chooseSaveDestination = { Self.chooseDestination(options: settings.exportOptions) }
-        loop = ObservationLoop { [weak self] in self?.render() }
+        super.init()
+        loop = ObservationLoop { [weak self] in
+            self?.renderThumbnail()
+            self?.renderPreview()
+        }
     }
 
-    private func render() {
+    private func renderThumbnail() {
         let shown = model.isShown ? model.capture : nil
         guard shown?.id != shownID else { return }
+        closePreviewPanel()
         panel?.close()
         panel = nil
-        shownID = shown?.id
-        guard let shown else { return }
+        shownID = nil
+        guard !captureSuspended, let shown else { return }
+        shownID = shown.id
         let panel = Self.makePanel()
+        panel.handleEscape = { [weak self] in self?.model.closePreview() == true }
         // One owner of the size: fixed once from the content, which never changes size (a status
         // overlays the preview). Tracked sizing looped through constraint passes until AppKit threw.
         panel.setContent(QuickActionsView(capture: shown, model: model, actions: self), fixedToFittingSize: true)
@@ -40,17 +49,89 @@ final class QuickActionsUIController {
         present(panel)
     }
 
-    static func makePanel() -> HostingPanel {
-        let panel = HostingPanel(title: String(localized: "Quick Actions"), activating: false, keyOnClick: true)
+    static func makePanel(title: String = String(localized: "Quick Actions")) -> HostingPanel {
+        let panel = HostingPanel(title: title, activating: false, keyOnClick: true)
         panel.reservesTitleBarArea = false
         for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             panel.standardWindowButton(button)?.isHidden = true
         }
-        panel.setAccessibilityLabel(String(localized: "Quick Actions"))
+        panel.setAccessibilityLabel(title)
         return panel
     }
 
+    private func renderPreview() {
+        guard let image = model.expandedPreview else {
+            closePreviewPanel()
+            return
+        }
+        guard previewPanel == nil, !captureSuspended, panel?.isVisible == true,
+            let screen = panel?.screen ?? ScreenChoice.screen()
+        else { return }
+        let bounds = screen.visibleFrame.insetBy(dx: DesignTokens.Space.m, dy: DesignTokens.Space.m)
+        let panel = Self.makePanel(title: String(localized: "Capture Preview"))
+        panel.handleEscape = { [weak self] in self?.model.closePreview() == true }
+        panel.delegate = self
+        panel.setContent(
+            QuickActionsPreviewView(
+                image: image, bounds: bounds.size, backingScale: screen.backingScaleFactor, actions: self),
+            fixedToFittingSize: true)
+        panel.center(on: screen)
+        previewPanel = panel
+        panel.orderFrontRegardless()
+    }
+
+    private func closePreviewPanel() {
+        previewPanel?.close()
+        previewPanel = nil
+    }
+
+    func captureVisibilityChanged(suspended: Bool) {
+        captureSuspended = suspended
+        if suspended {
+            model.suspendPreview(keepingVisiblePreview: previewPanel?.isVisible == true)
+        } else {
+            renderThumbnail()
+            // Back ordering restores the existing panels without their former keyboard focus.
+            let pointer = NSEvent.mouseLocation
+            model.setPointerInside(panel?.isVisible == true && panel?.frame.contains(pointer) == true)
+            model.setPointerInsidePreview(
+                previewPanel?.isVisible == true && previewPanel?.frame.contains(pointer) == true)
+        }
+    }
+
+    func hoverThumbnail(_ inside: Bool, for captureID: UUID) {
+        guard !captureSuspended, model.capture?.id == captureID else { return }
+        model.setPointerInside(inside)
+    }
+
+    func hoverPreview(_ inside: Bool) {
+        guard !captureSuspended else { return }
+        model.setPointerInsidePreview(inside)
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        guard !captureSuspended, notification.object as? NSWindow === previewPanel else { return }
+        model.setPreviewKey(true)
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        guard notification.object as? NSWindow === previewPanel else { return }
+        model.setPreviewKey(false)
+    }
+
     // MARK: Actions (each returns the text to show when it did not complete)
+
+    func openPreview() async -> String? {
+        guard !captureSuspended, panel?.isVisible == true else { return nil }
+        do {
+            try await model.openPreview()
+            return nil
+        } catch {
+            return EditorStrings.message(.previewFailed)
+        }
+    }
+
+    func closePreview() { model.closePreview() }
 
     func copy() async -> String? { Self.failure(await model.copy()) }
 
@@ -67,7 +148,10 @@ final class QuickActionsUIController {
 
     func openInEditor() { model.openInEditor() }
 
-    func dismiss() { model.dismiss() }
+    func dismiss() {
+        model.dismiss()
+        renderThumbnail()
+    }
 
     private static func failure(_ outcome: ExportOutcome) -> String? {
         switch outcome {
@@ -153,6 +237,10 @@ struct QuickActionsView: View {
                     actions.openInEditor()
                 }
                 button(String(localized: "Pin", table: "Editor"), "pin", id: "pin") { perform(actions.pin) }
+                button(String(localized: "Preview"), "eye", id: "preview") {
+                    perform(actions.openPreview)
+                }
+                .disabled(!model.canOpenPreview)
                 // Only when this capture's own automatic upload returned a link.
                 if capture.uploadedURL != nil {
                     button(String(localized: "Copy Link"), "link", id: "copyLink", whileActing: true) {
@@ -169,7 +257,7 @@ struct QuickActionsView: View {
         }
         .padding(DesignTokens.Space.m)
         .background(Color(nsColor: .windowBackgroundColor))
-        .background(QuickActionsHoverTracker { model.setPointerInside($0) })
+        .background(QuickActionsHoverTracker { actions.hoverThumbnail($0, for: capture.id) })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("quickActions")
     }
@@ -196,6 +284,53 @@ struct QuickActionsView: View {
                 AccessibilityNotification.Announcement(text).post()
             }
         }
+    }
+}
+
+private struct QuickActionsPreviewView: View {
+    let image: CGImage
+    let bounds: CGSize
+    let backingScale: CGFloat
+    let actions: QuickActionsUIController
+    private let controlsHeight: CGFloat = 28
+
+    private var imageSize: CGSize {
+        let width = CGFloat(image.width)
+        let height = CGFloat(image.height)
+        let horizontal = DesignTokens.Space.m * 2
+        let vertical = horizontal + DesignTokens.Space.s + controlsHeight
+        let scale = min(1 / backingScale, (bounds.width - horizontal) / width, (bounds.height - vertical) / height)
+        return CGSize(width: max(1, floor(width * scale)), height: max(1, floor(height * scale)))
+    }
+
+    var body: some View {
+        VStack(spacing: DesignTokens.Space.s) {
+            QuickActionsExpandedImage(image: image)
+                .frame(width: imageSize.width, height: imageSize.height)
+            Button(String(localized: "Close", table: "Editor"), action: actions.closePreview)
+                .controlSize(.small)
+                .frame(height: controlsHeight)
+                .accessibilityIdentifier("quickActions.closePreview")
+        }
+        .padding(DesignTokens.Space.m)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .background(QuickActionsHoverTracker(onChange: actions.hoverPreview))
+    }
+}
+
+private struct QuickActionsExpandedImage: NSViewRepresentable {
+    let image: CGImage
+
+    func makeNSView(context: Context) -> NSImageView {
+        let view = NSImageView()
+        view.imageScaling = .scaleProportionallyDown
+        view.setAccessibilityLabel(String(localized: "Capture Preview"))
+        updateNSView(view, context: context)
+        return view
+    }
+
+    func updateNSView(_ view: NSImageView, context: Context) {
+        view.image = NSImage(cgImage: image, size: .zero)
     }
 }
 

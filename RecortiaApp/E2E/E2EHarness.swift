@@ -114,7 +114,7 @@
                 settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter,
                 diagnostics: features.diagnostics)
             editors = E2EEditorHost(environment: environment, closedCapture: features.closedCapture)
-            quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
+            quickActionsUI = app.makeQuickActionsUI()
             quickActionsUI.present = { panel in
                 panel.sizeToContentIfUnsized()
                 E2ESnapshot.park(panel)

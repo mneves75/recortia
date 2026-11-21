@@ -1,6 +1,6 @@
 # 01. Preview the current capture
 
-**Status** ready-for-agent
+**Status** implemented, awaiting full and native qualification
 
 **Blocked by** Nothing for implementation. Integrate after the current capture and editor stack qualifies.
 
@@ -11,3 +11,6 @@
 - [ ] Input and focus behavior preserve the foreground app.
 - [ ] The preview follows capture replacement, suspension, cancellation and the existing timeout.
 - [ ] The full unsigned gate and bilingual native checks record actual outcomes, including light and dark screenshots.
+
+The unsigned E2E app build, 17 focused Quick Actions and pin privacy tests, and source review
+passed. Native input, pixel reproduction, visual and physical criteria remain unchecked.

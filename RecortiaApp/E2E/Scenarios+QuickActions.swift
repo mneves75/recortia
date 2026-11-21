@@ -4,6 +4,7 @@
     import Features
     import Imaging
     import MacPlatform
+    import RecortiaFixtures
 
     /// The quick-action thumbnail (B-1, ADR-009) through the real capture path, `AppModel`'s
     /// synchronous follow-up decision, the product's thumbnail controller and its SwiftUI buttons.
@@ -61,6 +62,7 @@
                 ("save", String(localized: "Save", table: "Editor")),
                 ("edit", String(localized: "Open in Editor")),
                 ("pin", String(localized: "Pin", table: "Editor")),
+                ("preview", String(localized: "Preview")),
                 ("dismiss", String(localized: "Dismiss", table: "Editor")),
             ]
             for (id, name) in names {
@@ -75,6 +77,7 @@
             context.snapshot(root, shot: "thumbnail")
             await context.darkCompanion(
                 root, in: panel, shot: "thumbnail", surface: "quick-action thumbnail", excluding: [thumbnail])
+            try await checkPreview(harness, panel, root, context)
 
             // Copy: through the export pipeline to the harness clipboard, then the capture goes.
             try E2EAccessibilityControl.pressCheckingEffect("quickActions.copy", in: root, context)
@@ -162,6 +165,225 @@
             harness.editors.closeAll()
             context.check("closing the editor releases them", await waitForCount(store, baseline))
             try await checkReplacement(harness, context)
+            try await checkPreviewReplacement(harness, context)
+            try await checkMaskedPreview(harness, store, context)
+        }
+
+        private static func checkPreview(
+            _ harness: E2EHarness, _ thumbnail: HostingPanel, _ root: NSView, _ context: ScenarioContext
+        ) async throws {
+            let screen = try context.unwrap("a display for the thumbnail", ScreenChoice.screen())
+            let originalFrame = thumbnail.frame
+            thumbnail.ignoresMouseEvents = true
+            defer {
+                thumbnail.setFrame(originalFrame, display: false)
+                thumbnail.ignoresMouseEvents = false
+            }
+            thumbnail.center(on: screen)
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
+
+            let model = harness.features.quickActions
+            let ui = harness.quickActionsUI
+            let capture = try context.unwrap("the current capture", model.capture)
+            try await model.openPreview()
+            try context.require(
+                "the expanded raster is ready before its native window opens",
+                model.expandedPreview != nil && ui.previewPanel == nil)
+            harness.app.perform(.captureRegion)
+            try context.require("selection starts before presentation", harness.features.capture.state == .selecting)
+            harness.features.capture.cancel()
+            try context.require(
+                "a preview that had not opened stays closed after canceling selection",
+                await E2EWait.until { model.canOpenPreview && thumbnail.isVisible && ui.previewPanel == nil })
+            await E2ESnapshot.settle(root)
+
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.preview", in: root, context)
+            try context.require(
+                "Preview opens a visible panel", await E2EWait.until { ui.previewPanel?.isVisible == true })
+            let panel = try context.unwrap("the expanded preview panel", ui.previewPanel)
+            panel.ignoresMouseEvents = true
+            panel.appearance = NSAppearance(named: .aqua)
+            let previewRoot = try context.unwrap("expanded preview content", panel.contentView)
+            await E2ESnapshot.settle(previewRoot)
+            let (image, raster) = try previewRaster(in: previewRoot, context)
+            let small = try context.unwrap("the thumbnail raster for comparison", capture.preview)
+            context.check(
+                "the expanded raster is larger without upsampling",
+                raster.width > small.width && raster.height > small.height
+                    && raster.width == Int(SyntheticDesktop.notesWindow.width * 2)
+                    && raster.height == Int(SyntheticDesktop.notesWindow.height * 2)
+                    && max(raster.width, raster.height) <= 1600)
+            context.check(
+                "the panel fits the thumbnail display and keeps its window policy",
+                panel.screen == thumbnail.screen && screen.visibleFrame.contains(panel.frame)
+                    && panel.styleMask.contains(.nonactivatingPanel)
+                    && panel.collectionBehavior == thumbnail.collectionBehavior && panel.level == thumbnail.level)
+            checkPreviewForeground(panel, thumbnail, foreground, context)
+
+            let closeName = try E2EAccessibilityControl.name(for: "quickActions.closePreview", in: previewRoot, context)
+            context.check(
+                "the preview has a labelled Close action", closeName == String(localized: "Close", table: "Editor"))
+            context.snapshot(previewRoot, shot: "expanded-preview")
+            await context.darkCompanion(
+                previewRoot, in: panel, shot: "expanded-preview", surface: "expanded capture preview",
+                excluding: [image])
+
+            harness.app.perform(.captureRegion)
+            context.check(
+                "starting a capture hides both surfaces",
+                harness.features.capture.state == .selecting && !panel.isVisible && !thumbnail.isVisible)
+            harness.features.capture.cancel()
+            try context.require(
+                "cancel restores the same preview and thumbnail",
+                await E2EWait.until { panel.isVisible && thumbnail.isVisible && ui.previewPanel === panel })
+            checkPreviewForeground(panel, thumbnail, foreground, context)
+
+            try await pressEscape(in: panel, context)
+            try context.require(
+                "Escape from the preview closes only the expanded panel",
+                await E2EWait.until { ui.previewPanel == nil && thumbnail.isVisible && model.capture?.id == capture.id }
+            )
+            checkPreviewForeground(panel, thumbnail, foreground, context)
+
+            thumbnail.makeKey()
+            try context.require("the thumbnail can be focused", await E2EWait.until { thumbnail.isKeyWindow })
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.preview", in: root, context)
+            try context.require(
+                "the same capture can be previewed again", await E2EWait.until { ui.previewPanel != nil })
+            context.check(
+                "opening the preview leaves key focus in the thumbnail",
+                thumbnail.isKeyWindow && ui.previewPanel?.isKeyWindow == false)
+            try await pressEscape(in: thumbnail, context)
+            try context.require(
+                "Escape from the thumbnail closes only the expanded panel",
+                await E2EWait.until { ui.previewPanel == nil && thumbnail.isVisible && model.capture?.id == capture.id }
+            )
+            context.check(
+                "Escape keeps the thumbnail key and the other app foreground",
+                thumbnail.isKeyWindow && !NSApp.isActive
+                    && NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier)
+            await foreground.stop(context)
+        }
+
+        private static func previewRaster(in root: NSView, _ context: ScenarioContext) throws -> (NSImageView, CGImage)
+        {
+            let image = try context.unwrap(
+                "expanded preview image view", EditorWindowController.first(NSImageView.self, in: root))
+            let raster = try context.unwrap(
+                "the expanded preview raster", image.image?.cgImage(forProposedRect: nil, context: nil, hints: nil))
+            return (image, raster)
+        }
+
+        private static func checkMaskedPreview(
+            _ harness: E2EHarness, _ store: ImageStore, _ context: ScenarioContext
+        ) async throws {
+            let secret = FixtureRect(x: 160, y: 140, width: 720, height: 100)
+            let pair = try SecretPairFixture.make(width: 1200, height: 500, secret: secret, seed: 17)
+            let mask = Rect<DocumentSpace>(
+                x: Double(secret.x), y: Double(secret.y), width: Double(secret.width), height: Double(secret.height))
+            let model = harness.features.quickActions
+            let ui = harness.quickActionsUI
+            let plan = harness.features.export.automaticExportPlan()
+            defer {
+                harness.features.capture.cancel()
+                ui.dismiss()
+            }
+
+            func preview(_ image: CGImage, masked: Bool, duringSelection: Bool = false) async throws -> DecodedPixels {
+                let input = try ImageDecoder.decode(E2EDrawing.png(image))
+                let asset = await store.insert(input, origin: .pasted)
+                var document = Document(asset: asset)
+                document.presentation = Presentation(padding: 280, aspect: .landscape16x9)
+                var session = DocumentSession(document: document)
+                if masked { try session.addSecureMask(covering: mask) }
+                if duringSelection {
+                    harness.app.perform(.captureRegion)
+                    try context.require("a new region selection starts", harness.features.capture.state == .selecting)
+                }
+                _ = await model.present(session, after: plan)
+                if duringSelection {
+                    await E2ESnapshot.settle(nil)
+                    context.check(
+                        "a thumbnail completed during selection stays hidden", model.isShown && ui.panel == nil)
+                    harness.features.capture.cancel()
+                }
+                try context.require(
+                    "a framed fixture shows its thumbnail outside selection",
+                    await E2EWait.until { ui.panel?.isVisible == true })
+                let root = try context.unwrap("framed thumbnail content", ui.panel?.contentView)
+                await E2ESnapshot.settle(root)
+                try E2EAccessibilityControl.pressCheckingEffect("quickActions.preview", in: root, context)
+                try context.require(
+                    "the framed preview opens", await E2EWait.until { ui.previewPanel?.isVisible == true })
+                let panel = try context.unwrap("the framed preview panel", ui.previewPanel)
+                panel.ignoresMouseEvents = true
+                let content = try context.unwrap("framed preview content", panel.contentView)
+                await E2ESnapshot.settle(content)
+                let (_, raster) = try previewRaster(in: content, context)
+                let pixels = try E2EActions.decode(E2EDrawing.png(raster), "expanded framed preview", context)
+                try E2EAccessibilityControl.pressCheckingEffect("quickActions.closePreview", in: content, context)
+                try context.require(
+                    "the Close control preserves the thumbnail",
+                    await E2EWait.until { ui.previewPanel == nil && ui.panel?.isVisible == true })
+                ui.dismiss()
+                return pixels
+            }
+
+            let maskedA = try await preview(pair.a, masked: true, duringSelection: true)
+            let maskedB = try await preview(pair.b, masked: true)
+            let unmaskedA = try await preview(pair.a, masked: false)
+            let unmaskedB = try await preview(pair.b, masked: false)
+            context.check("RED-01 control: the unmasked preview rasters differ", unmaskedA != unmaskedB)
+            context.check("RED-01: both masked preview rasters have identical pixels", maskedA == maskedB)
+            context.check(
+                "framing triggers the longest-side budget and keeps its ratio",
+                maskedA.width >= 1500 && maskedA.width <= 1600 && maskedA.width * 9 == maskedA.height * 16,
+                "\(maskedA.width)×\(maskedA.height)")
+        }
+
+        private static func pressEscape(in panel: HostingPanel, _ context: ScenarioContext) async throws {
+            panel.makeKey()
+            try context.require("explicit focus makes the panel key", await E2EWait.until { panel.isKeyWindow })
+            NSApp.sendEvent(
+                try CaptureVisibilityScenarios.keyEvent(53, characters: "\u{1b}", windowNumber: panel.windowNumber))
+        }
+
+        private static func checkPreviewForeground(
+            _ panel: HostingPanel, _ thumbnail: HostingPanel, _ foreground: E2EForegroundFixture,
+            _ context: ScenarioContext
+        ) {
+            context.check(
+                "the owned foreground app retains activation and Recortia does not take key",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier
+                    && !NSApp.isActive && !panel.isKeyWindow && !thumbnail.isKeyWindow)
+        }
+
+        private static func checkPreviewReplacement(
+            _ harness: E2EHarness, _ context: ScenarioContext
+        ) async throws {
+            let model = harness.features.quickActions
+            let ui = harness.quickActionsUI
+            defer { ui.dismiss() }
+            let root = try await showThumbnail(harness, context)
+            let held = try context.unwrap("the capture to replace", model.capture?.id)
+            let thumbnail = try context.unwrap("the thumbnail to replace", ui.panel)
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.preview", in: root, context)
+            try context.require(
+                "the preview to replace is visible", await E2EWait.until { ui.previewPanel?.isVisible == true })
+            let preview = try context.unwrap("the preview to replace", ui.previewPanel)
+            preview.ignoresMouseEvents = true
+            // A successful capture also retires the prior preview when it routes to an editor.
+            harness.settings.update { $0.afterCapture = .openEditor }
+            defer {
+                harness.settings.update { $0.afterCapture = .showQuickActions }
+                harness.editors.closeAll()
+            }
+            _ = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+            context.check(
+                "a successful replacement never restores the old panels",
+                !thumbnail.isVisible && !preview.isVisible && ui.panel == nil && ui.previewPanel == nil
+                    && model.capture?.id != held && model.expandedPreview == nil)
         }
 
         /// The thumbnail's Save under Automatic with report.png and report.jpg both present: the

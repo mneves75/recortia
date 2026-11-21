@@ -843,6 +843,22 @@
         }
       }
     },
+    "Capture Preview" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture Preview"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prévia da captura"
+          }
+        }
+      }
+    },
     "Capture Region" : {
       "localizations" : {
         "en" : {
@@ -3066,6 +3082,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Idioma principal"
+          }
+        }
+      }
+    },
+    "Preview" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prévia"
           }
         }
       }

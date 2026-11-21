@@ -288,3 +288,24 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   settings store independently of the coordinator, so a ratio cached only in the coordinator
   cannot satisfy it. `editor-menu` still checks the Inspector submenu is reachable when an editor
   is key, in addition to checking both tab commands are disabled without a key editor.
+
+## 2026-11-21 — Expand the current quick capture preview
+
+- Created `feat/quick-capture-preview` from `5cc56ce`. The approved roadmap, preview spec and
+  first three tickets are committed separately as `08b23a1`. The release draft remains on
+  `5cc56ce`, whose local unsigned gate ran 1,085 package tests and whose hosted checks passed.
+- Preview uses the existing masked renderer, with a bounded output and one in-memory render slot.
+  The native scenario is extended instead of adding small isolated unit tests. It exercises
+  nonactivating presentation, Escape, suspension, replacement and light/dark rendering.
+- The initial unsigned Debug E2E app compiled with Xcode 27.2 (27B52). An independent source
+  review found presentation ordering races around capture suspension and a masked-pixel control
+  that could pass on a blank image. Both findings require correction before final verification.
+- Corrected those races. A thumbnail that finishes during selection waits for cancellation or
+  replacement, and an expanded render without a visible panel is cleared on suspension.
+  RED-01 now verifies that the same native path displays different unmasked pixels. A second
+  source review approved the fixes. The rebuilt unsigned E2E app and the warm focused command
+  `xcrun swift test --jobs 2 --package-path Packages/RecortiaKit --filter 'QuickActionsModelTests|PinnedExportTests'`
+  passed 17 tests. Swift formatting, diff validation and the 13 extracted panel string
+  translations passed.
+- The first release preflight expired. The next native run of `5cc56ce` started after five idle
+  minutes. The independently scoped preview still needs full, native and physical qualification.
