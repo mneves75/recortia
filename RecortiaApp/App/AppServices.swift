@@ -3,6 +3,7 @@ import Domain
 import Features
 import Foundation
 import Imaging
+import MacPlatform
 
 /// The services the feature models use. `live(settings:)` builds the production set from the
 /// Imaging and MacPlatform modules; E2E and previews substitute their own.
@@ -33,6 +34,20 @@ struct AppServices {
     var captureSound: (any CaptureSoundService)? = nil
     /// Element frames for region snapping (ADR-010); synthetic in the E2E runner, nil in previews.
     var interfaceElements: (any InterfaceElementFrameService)? = nil
+    /// The optional diagnostics file (B-10); a run folder in the E2E runner, nil in previews.
+    var diagnosticsLog: DiagnosticsLog? = nil
+}
+
+extension DiagnosticVersions {
+    /// This build's version and build numbers and the running macOS version.
+    static var current: DiagnosticVersions {
+        let info = Bundle.main.infoDictionary
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        return DiagnosticVersions(
+            app: DiagnosticVersion(parsing: info?["CFBundleShortVersionString"] as? String ?? ""),
+            build: Int(info?["CFBundleVersion"] as? String ?? "") ?? 0,
+            macOS: DiagnosticVersion(major: os.majorVersion, minor: os.minorVersion, patch: os.patchVersion))
+    }
 }
 
 final class SystemClock: FeatureClock {
@@ -109,6 +124,7 @@ extension AppServices {
             qrDecoder: recognition, sensitiveText: LiveSensitiveText(store: store),
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
             loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound(),
-            interfaceElements: LiveInterfaceElements())
+            interfaceElements: LiveInterfaceElements(),
+            diagnosticsLog: DiagnosticsLog.standardDirectory().map { DiagnosticsLog(directory: $0) })
     }
 }

@@ -85,7 +85,9 @@
                 scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem,
                 clock: sensitiveText.clock,
-                interfaceElements: interfaceElements)
+                interfaceElements: interfaceElements,
+                diagnosticsLog: DiagnosticsLog(
+                    directory: work.appending(path: "diagnostics", directoryHint: .isDirectory)))
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(
@@ -104,7 +106,8 @@
                 textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
                 sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
                 pins: features.pins, textClipboard: features.textClipboard, links: links,
-                settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
+                settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter,
+                diagnostics: features.diagnostics)
             editors = E2EEditorHost(environment: environment)
             quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
             quickActionsUI.present = { panel in

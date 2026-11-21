@@ -65,7 +65,9 @@ final class SettingsWindowController {
         add(
             String(localized: "GitHub"), "icloud.and.arrow.up",
             GitHubUploadSettings(settings: model.settings, credentials: model.features.services.githubCredentials))
-        add(String(localized: "Privacy"), "hand.raised", PrivacySettingsTab(settings: model.settings))
+        add(
+            String(localized: "Privacy"), "hand.raised",
+            PrivacySettingsTab(settings: model.settings, diagnostics: model.features.diagnostics))
         add(
             String(localized: "Text Recognition"), "text.viewfinder",
             OCRSettingsTab(settings: model.settings, languages: model.features.ocrLanguages))

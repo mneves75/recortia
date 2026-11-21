@@ -344,6 +344,8 @@ enum SaveFolderPanel {
 
 struct PrivacySettingsTab: View {
     let settings: SettingsStore
+    /// Nil in previews, which have no diagnostics file.
+    let diagnostics: DiagnosticsRecorder?
 
     var body: some View {
         Form {
@@ -376,8 +378,61 @@ struct PrivacySettingsTab: View {
                     "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on snapping to interface elements or automatic scrolling."
                 )
             }
+            if let diagnostics {
+                DiagnosticsSettingsSection(settings: settings, diagnostics: diagnostics)
+            }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The optional diagnostics file (B-10). Show in Finder and Delete need the file; whether it
+/// exists is read from the writer on appearance, after each action here and whenever a window of
+/// this app becomes key.
+struct DiagnosticsSettingsSection: View {
+    let settings: SettingsStore
+    let diagnostics: DiagnosticsRecorder
+    @State private var fileExists = false
+
+    var body: some View {
+        Section("Diagnostics") {
+            Toggle(
+                "Write a diagnostics file",
+                isOn: Binding(
+                    get: { settings.preferences.writesDiagnosticsFile },
+                    set: { on in
+                        diagnostics.setOn(on)
+                        refresh()
+                    })
+            )
+            .accessibilityIdentifier("settings.diagnostics")
+            Text(
+                "Only event names, counts and durations, never images, text or file names. Recortia never sends it; attach it to a report yourself."
+            )
+            HStack {
+                Button("Show in Finder") {
+                    Task {
+                        let files = await diagnostics.existingFiles()
+                        if !files.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(files) }
+                    }
+                }
+                .accessibilityIdentifier("settings.diagnostics.show")
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await diagnostics.delete()
+                        fileExists = await diagnostics.fileExists()
+                    }
+                }
+                .accessibilityIdentifier("settings.diagnostics.delete")
+            }
+            .disabled(!fileExists)
+        }
+        .task { fileExists = await diagnostics.fileExists() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in refresh() }
+    }
+
+    private func refresh() {
+        Task { fileExists = await diagnostics.fileExists() }
     }
 }
 
@@ -637,7 +692,7 @@ struct AccessibilitySettingsSections: View {
     }
 
     #Preview("Privacy") {
-        PrivacySettingsTab(settings: PreviewSupport.settings())
+        PrivacySettingsTab(settings: PreviewSupport.settings(), diagnostics: nil)
             .frame(width: 560, height: 520)
     }
 
