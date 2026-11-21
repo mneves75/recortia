@@ -259,7 +259,9 @@ Keep at most two full-resolution viewport buffers plus bounded working tiles and
 
 Provide a nearest-neighbor loupe and distinguish document pixels from logical display points and editor zoom. An imported image without screen geometry has pixels but no inferred screen-point scale. Report width, height, positions, and manually anchored horizontal/vertical distances. Any automatic edge detection is an estimate that can be adjusted.
 
-Canonical v1 editing/export is SDR sRGB. The picker reports sampled values in that space as HEX and RGB; it is not a measurement of physical display light. Label the space explicitly and keep rulers independent of zoom. HDR preservation, wide-gamut numeric formats, and contrast standards are deferred until separately specified and tested.
+Canonical v1 editing/export is SDR sRGB. The picker reports sampled values in that space as HEX and RGB; it is not a measurement of physical display light. Label the space explicitly and keep rulers independent of zoom. HDR preservation and wide-gamut numeric formats are deferred until separately specified and tested.
+
+The picker copies, on an explicit action only, in the remembered format: HEX, CSS `rgb()`, normalized RGB, SwiftUI, UIKit, Android `0xAARRGGBB` or CSS `oklch()` (Ottosson's Oklab). A darkest-pixel mode picks the lowest relative luminance in a 20 × 20 pt box for text colours. Two opaque picks, text and background, show their WCAG 2.x contrast ratio with AA and AAA marks for normal and large text; APCA is not offered. Every sample reads the sanitized base, so a secure mask yields its fill.
 
 ### FR-12 / FR-13 — Composition and presentation
 

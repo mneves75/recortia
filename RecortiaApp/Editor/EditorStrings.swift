@@ -6,6 +6,19 @@ import Imaging
 /// User-visible names for editor values. Every string lives in the "Editor" table
 /// (Editor.xcstrings) with English and pt-BR translations.
 enum EditorStrings {
+    /// Names of copy formats: code and CSS identifiers, the same in every language.
+    static func name(_ format: ColorFormat) -> String {
+        switch format {
+        case .hex: "HEX"
+        case .cssRGB: "CSS rgb()"
+        case .normalizedRGB: "RGB 0–1"
+        case .swiftUI: "SwiftUI"
+        case .uiKit: "UIKit"
+        case .android: "Android"
+        case .oklch: "OKLCH"
+        }
+    }
+
     static func name(_ appearance: TextAppearance) -> String {
         switch appearance {
         case .standard: String(localized: "Standard", table: "Editor")

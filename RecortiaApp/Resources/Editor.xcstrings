@@ -1,6 +1,54 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Contrast": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Contrast" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Contraste" } }
+      }
+    },
+    "Darkest Pixel": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Darkest Pixel" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pixel mais escuro" } }
+      }
+    },
+    "Fail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fail" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Falha" } }
+      }
+    },
+    "Large": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Large" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Grande" } }
+      }
+    },
+    "Normal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Normal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Normal" } }
+      }
+    },
+    "Pass": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pass" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Passa" } }
+      }
+    },
+    "Use as Background": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use as Background" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Usar como fundo" } }
+      }
+    },
+    "Use as Text": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use as Text" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Usar como texto" } }
+      }
+    },
     "Collapsed": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Collapsed" } },
@@ -1247,38 +1295,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Copiar"
-          }
-        }
-      }
-    },
-    "Copy HEX": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy HEX"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copiar HEX"
-          }
-        }
-      }
-    },
-    "Copy RGB": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy RGB"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copiar RGB"
           }
         }
       }

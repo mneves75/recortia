@@ -183,11 +183,7 @@ public enum AnnotationRenderer {
         context.fillEllipse(
             in: CGRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius))
         // WCAG 2 relative luminance of the sRGB fill; the numeral takes the higher-contrast extreme.
-        func linear(_ channel: UInt8) -> Double {
-            let v = Double(channel) / 255
-            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
-        }
-        let luminance = 0.2126 * linear(fill.r) + 0.7152 * linear(fill.g) + 0.0722 * linear(fill.b)
+        let luminance = fill.relativeLuminance
         let textColor: RGBA = (luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? .black : .white
         let font =
             CTFontCreateUIFontForLanguage(.emphasizedSystem, radius * 1.1, nil)

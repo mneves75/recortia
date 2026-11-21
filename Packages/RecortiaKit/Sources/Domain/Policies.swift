@@ -292,8 +292,16 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var primaryRecognitionLanguage: String?
     /// Stored only once the person picks one in the region overlay; read `regionAspect` (A-4).
     public var regionAspectChoice: SelectionAspect?
+    /// Stored only once the person picks one in the colour picker; read `colorFormat` (A-7).
+    public var colorFormatChoice: ColorFormat?
 
     public init() {}
+
+    /// How the colour picker copies a colour (FR-11). HEX by default.
+    public var colorFormat: ColorFormat {
+        get { colorFormatChoice ?? .hex }
+        set { colorFormatChoice = newValue }
+    }
 
     /// Whether a completed capture plays a short sound (FR-01). Off by default.
     public var playsCaptureSound: Bool {

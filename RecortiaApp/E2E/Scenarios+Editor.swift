@@ -647,7 +647,7 @@
             let picked = try context.unwrap("the color picker samples", model.pickedColor)
             context.check("picker reads cell 4 as #1A2B3C", picked.hex == "#1A2B3C", picked.hex)
             context.check("RGB text is decimal sRGB", picked.rgbText == "26 43 60", picked.rgbText)
-            context.check("Copy HEX succeeds", model.copyPickedColor(asHex: true))
+            context.check("Copy in the default HEX format succeeds", model.copyPickedColor())
             context.check(
                 "the private text pasteboard holds the HEX",
                 harness.textPasteboard.string(forType: .string) == "#1A2B3C",

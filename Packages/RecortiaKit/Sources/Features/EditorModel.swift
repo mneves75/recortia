@@ -55,6 +55,15 @@ public final class EditorModel {
         get { storedColorSampleSize }
         set { setColorSampleSize(newValue) }
     }
+    var storedSamplesDarkestPixel = false
+    /// Picks take the darkest pixel of a 20-point box instead of the sample area (text colour).
+    public var samplesDarkestPixel: Bool {
+        get { storedSamplesDarkestPixel }
+        set { setSamplesDarkestPixel(newValue) }
+    }
+    /// The two opaque colours whose WCAG contrast the picker shows; cleared with the privacy epoch.
+    public internal(set) var contrastText: RGBA?
+    public internal(set) var contrastBackground: RGBA?
     public internal(set) var ruler: EditorMeasurement?
 
     @ObservationIgnored public let environment: EditorEnvironment
