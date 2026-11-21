@@ -47,17 +47,17 @@ enum MessagePresenter {
         }
     }
 
-    /// Asks before a scrolling capture is thrown away. Close, Escape, and Discard all route here,
-    /// so the review window can be closed without silently destroying an assembled result.
-    static func confirmDiscardScrollingCapture() -> Bool {
+    /// The question before a scrolling capture is thrown away. Close, Escape, and Discard all ask
+    /// it, as a sheet on the review window, so closing the review never silently destroys an
+    /// assembled result.
+    static func makeDiscardScrollingCapture() -> NSAlert {
         // No count here: a counted sentence needs plural variants in two languages, which waits
         // until the localization gate covers the plural branch.
-        let alert = makeConfirmation(
+        makeConfirmation(
             title: String(localized: "Discard this scrolling capture?"),
             detail: String(
                 localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image."),
             action: String(localized: "Discard"))
-        return runModal(alert) == .alertFirstButtonReturn
     }
 
     /// What Quit discards. Only a copy or save keeps edits: a pin is closed by quitting too.

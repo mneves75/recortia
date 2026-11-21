@@ -14,8 +14,6 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     private var review: NSWindow?
     private var lastState: ScrollState = .idle
     private var loop: ObservationLoop?
-    /// Injected so the E2E runner can prove the discard gate without presenting a modal alert.
-    var confirmDiscard: @MainActor () -> Bool = MessagePresenter.confirmDiscardScrollingCapture
 
     init(model: ScrollSessionModel, displays: @escaping () -> [DisplayInfo]) {
         self.model = model
@@ -95,25 +93,29 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
         AppPresence.shared.present(window)
     }
 
-    /// The one destructive path out of the review: close, Escape, and Discard all ask here first.
-    /// Refused while an Accept assembles; asked again after the prompt, since the prompt's modal
-    /// loop still runs main-actor work.
+    /// The one destructive path out of the review: close, Escape, and Discard all ask here first,
+    /// in a sheet on the review window, without a modal loop. Refused while an Accept assembles
+    /// or a question is already open; checked again at the answer, since main-actor work runs
+    /// while the sheet is up. Quit asks about the review itself (`AppModel.shouldTerminate`).
     func requestDiscard() {
-        guard model.canDiscard, confirmDiscard(), model.canDiscard else { return }
-        model.discard()
-        // A discard is the person closing the review, as the close button does: `close()` (not the
-        // order-out that Accept's replacement uses) lets `AppPresence` see a real close.
-        // `close()` does not ask `windowShouldClose` again.
-        review?.close()
-        review = nil
+        guard let window = review, model.canDiscard, window.attachedSheet == nil else { return }
+        MessagePresenter.makeDiscardScrollingCapture().beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn, let self, self.review === window, self.model.canDiscard
+            else { return }
+            self.model.discard()
+            // A discard is the person closing the review, as the close button does: `close()` (not
+            // the order-out that Accept's replacement uses) lets `AppPresence` see a real close.
+            // `close()` does not ask `windowShouldClose` again.
+            window.close()
+            self.review = nil
+        }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         // Nothing left to discard (accepted or ended): close without asking.
         guard sender === review, model.state == .reviewing else { return true }
-        guard model.canDiscard, confirmDiscard(), model.canDiscard else { return false }
-        model.discard()
-        return true
+        requestDiscard()
+        return false
     }
 
     /// Builds the review window, takes its delegate, and becomes the one place a discard can be
@@ -134,6 +136,10 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     }
 
     private func closeReview() {
+        // The review ended another way (Accept, cancel): an open discard question has no answer.
+        if let review {
+            for sheet in review.sheets { review.endSheet(sheet, returnCode: .abort) }
+        }
         review?.orderOut(nil)
         AppPresence.shared.setNeedsRefresh()
         review = nil

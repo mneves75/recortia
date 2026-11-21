@@ -11,6 +11,34 @@
     /// (FR-10, SCR-01).
     @MainActor
     enum ScrollScenarios {
+        /// Waits for the discard question on `window` and answers it: a sheet on that review window,
+        /// never an app alert, with the existing wording; `shot` also records it in light and dark.
+        static func answerDiscardSheet(
+            on window: NSWindow, discard: Bool, _ harness: E2EHarness, _ context: ScenarioContext,
+            shot: String? = nil
+        ) async throws {
+            let alerts = harness.messages.alerts.count
+            let questions = harness.quit.questions.count
+            let sheet = try context.unwrap(
+                "the discard question is a sheet on the review window",
+                await E2EWait.until(timeout: .seconds(5)) { window.attachedSheet != nil } ? window.attachedSheet : nil)
+            let content = try context.unwrap("the discard sheet has content", sheet.contentView)
+            let texts = EditorWindowController.all(NSTextField.self, in: content).map(\.stringValue)
+            context.check(
+                "the discard sheet is attached to its review window and is not an alert",
+                sheet.sheetParent === window && harness.messages.alerts.count == alerts
+                    && harness.quit.questions.count == questions)
+            context.check(
+                "the discard sheet keeps its wording",
+                texts.contains(String(localized: "Discard this scrolling capture?")), texts.joined(separator: " | "))
+            if let shot {
+                await E2ESnapshot.settle(content)
+                context.snapshot(content, shot: "\(shot)-sheet")
+                await context.darkCompanion(content, in: sheet, shot: "\(shot)-sheet", surface: "discard sheet")
+            }
+            window.endSheet(sheet, returnCode: discard ? .alertFirstButtonReturn : .alertSecondButtonReturn)
+        }
+
         static func automaticTarget(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             // Accessibility is granted synthetically here, so the live scroller would post events to
             // whatever window the target names, including one of the host Mac's own.
@@ -105,8 +133,13 @@
             // A declined discard must leave the assembled stitch where it is: this is the only
             // place the model is really in `.reviewing`, so the survival claim is proved here.
             let discardGate = ScrollUIController(model: model, displays: { [] })
-            discardGate.confirmDiscard = { false }
+            let gateWindow = try context.unwrap(
+                "the discard gate shows its review window",
+                await E2EWait.until { NSApp.windows.contains { $0.delegate === discardGate } }
+                    ? NSApp.windows.first { $0.delegate === discardGate } : nil)
+            gateWindow.ignoresMouseEvents = true
             discardGate.requestDiscard()
+            try await answerDiscardSheet(on: gateWindow, discard: false, harness, context)
             context.check(
                 "a declined discard leaves the stitched capture in review", model.state == .reviewing,
                 "\(model.state)")

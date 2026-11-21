@@ -70,14 +70,10 @@
                 window.delegate === controller, "\(String(describing: window.delegate))")
             // With nothing in review there is nothing to discard, so close does not ask. Asking
             // while a capture waits in review is checked with a real review in `last-window`.
-            var asked = 0
-            controller.confirmDiscard = {
-                asked += 1
-                return false
-            }
             context.check(
                 "with nothing in review, the window closes without asking",
-                controller.windowShouldClose(window) == true && asked == 0, "asked=\(asked)")
+                controller.windowShouldClose(window) == true && window.sheets.isEmpty,
+                "\(window.sheets.count) sheets")
 
             try await plantedChrome(context)
             try await checkerboardStaysOnScreen(harness, context)
