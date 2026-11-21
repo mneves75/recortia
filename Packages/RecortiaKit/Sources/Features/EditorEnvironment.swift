@@ -37,13 +37,16 @@ public struct EditorEnvironment {
     public let settings: SettingsStore
     /// Times the automatic-masking deadline.
     public let clock: any FeatureClock
+    /// Recognition and automatic-masking outcomes for the optional diagnostics file (B-10).
+    public let diagnostics: (any DiagnosticsSink)?
 
     public init(
         renderer: any RenderService, export: ExportCoordinator, folders: any SaveFolderService,
         textRecognition: any TextRecognitionService, qrDecoder: any QRDecodingService,
         sensitiveText: any SensitiveTextService, assets: any ImageAssetService, input: any ImageInputService,
         pins: PinsModel, textClipboard: any TextClipboardService, links: any ExternalLinkOpenerService,
-        settings: SettingsStore, clock: any FeatureClock, imageImporter: ImageImporter? = nil
+        settings: SettingsStore, clock: any FeatureClock, imageImporter: ImageImporter? = nil,
+        diagnostics: (any DiagnosticsSink)? = nil
     ) {
         self.renderer = renderer
         self.export = export
@@ -58,5 +61,6 @@ public struct EditorEnvironment {
         self.links = links
         self.settings = settings
         self.clock = clock
+        self.diagnostics = diagnostics
     }
 }

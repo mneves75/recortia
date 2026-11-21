@@ -127,6 +127,9 @@
                 id: "automatic-save-settings", title: "Automatic save writes only to the folder chosen in Settings",
                 run: AutomaticSaveScenarios.settings),
             E2EScenario(
+                id: "diagnostics", title: "The diagnostics file holds only typed events, and only while it is on",
+                run: DiagnosticsScenarios.file),
+            E2EScenario(
                 id: "auto-redaction", title: "New captures are masked before they are shown or exported",
                 run: AutoRedactionScenarios.autoRedaction),
             E2EScenario(

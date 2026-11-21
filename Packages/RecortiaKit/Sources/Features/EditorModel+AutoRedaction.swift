@@ -32,14 +32,16 @@ extension EditorModel {
     /// Starts detection and its deadline; whichever settles first decides (`finishAutoRedaction`).
     func startAutoRedaction() {
         guard let asset = document.layers.first.flatMap({ document.assets[$0.assetID] }) else {
-            return finishAutoRedaction(.failure(SensitiveTextUnavailable()), for: nil)
+            return finishAutoRedaction(
+                .failure(SensitiveTextUnavailable()), for: nil, startedAt: environment.clock.uptime())
         }
         let request = session.requestIdentity()
         autoRedactionRequest = request
         let service = environment.sensitiveText
         let clock = environment.clock
         // Absolute and monotonic, taken now: a timer that starts or resumes late does not extend it.
-        let deadline = clock.uptime() + Self.autoRedactionDeadline
+        let started = clock.uptime()
+        let deadline = started + Self.autoRedactionDeadline
         let detection = Task { [weak self] in
             let result: Result<[PixelRect], any Error>
             do {
@@ -49,13 +51,13 @@ extension EditorModel {
             }
             // An overdue result fails closed exactly like the timeout, whether or not the timer ran.
             let onTime = clock.uptime() < deadline
-            self?.finishAutoRedaction(onTime ? result : .failure(CancellationError()), for: request)
+            self?.finishAutoRedaction(onTime ? result : .failure(CancellationError()), for: request, startedAt: started)
         }
         let timer = Task { [weak self] in
             do { try await clock.sleep(for: max(.zero, deadline - clock.uptime())) } catch { return }
             // Stops the sweep even when no editor is left to settle.
             detection.cancel()
-            self?.finishAutoRedaction(.failure(CancellationError()), for: request)
+            self?.finishAutoRedaction(.failure(CancellationError()), for: request, startedAt: started)
         }
         autoRedactionTasks = [detection, timer]
     }
@@ -74,19 +76,29 @@ extension EditorModel {
     }
 
     /// `request` is the identity detection started with; nil only when there was nothing to scan.
-    private func finishAutoRedaction(_ result: Result<[PixelRect], any Error>, for request: RequestIdentity?) {
+    private func finishAutoRedaction(
+        _ result: Result<[PixelRect], any Error>, for request: RequestIdentity?, startedAt: Duration
+    ) {
         // The first of detection and deadline decides; a late result, or one for a superseded
         // request, is ignored.
         guard autoRedaction == .pending, !isClosed, request == autoRedactionRequest else { return }
         // A result counts only for the document state it was computed from, from a task that was
         // not cancelled; anything else fails closed, an empty result included.
         let isCurrent = !Task.isCancelled && request.map { session.accepts($0) } == true
+        let duration = environment.clock.uptime() - startedAt
         if isCurrent, case .success(let regions) = result, landAutoMasks(regions) {
             settleAutoRedaction(.done)
+            environment.diagnostics?.record(
+                .autoMaskingFinished(regions: regions.count, outcome: .masked, duration: duration))
             // Zero included: with masking on, the person always learns what it found.
             post(.sensitiveTextMasked(regions.count))
         } else {
             settleAutoRedaction(.failed)
+            // The deadline, an overdue result and cancellation all arrive as CancellationError.
+            var timedOut = false
+            if case .failure(let error) = result { timedOut = error is CancellationError }
+            environment.diagnostics?.record(
+                .autoMaskingFinished(regions: 0, outcome: timedOut ? .timedOut : .failed, duration: duration))
             post(.maskingFailed)
         }
     }

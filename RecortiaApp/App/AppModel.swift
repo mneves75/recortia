@@ -17,6 +17,8 @@ struct FeatureModels {
     let loginItem: LoginItemModel
     /// Reopen Closed Capture: filled only by closing an editor window.
     let closedCapture: ClosedCaptureSlot
+    /// Nil only without a diagnostics log (previews).
+    let diagnostics: DiagnosticsRecorder?
 
     /// The plain-text clipboard for explicit Copy actions on text (recognized text, an upload link).
     let textClipboard: any TextClipboardService
@@ -24,18 +26,23 @@ struct FeatureModels {
     init(services: AppServices, settings: SettingsStore, textClipboard: any TextClipboardService) {
         self.services = services
         self.textClipboard = textClipboard
+        let diagnostics = services.diagnosticsLog.map {
+            DiagnosticsRecorder(log: $0, settings: settings, clock: services.clock, versions: .current)
+        }
+        self.diagnostics = diagnostics
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
             clock: services.clock, settings: settings, sound: services.captureSound,
-            elements: services.interfaceElements)
+            elements: services.interfaceElements, diagnostics: diagnostics)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
-            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
+            folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload,
+            diagnostics: diagnostics)
         importer = ImportCoordinator(input: services.input, assets: services.assets, settings: settings)
         scroll = ScrollSessionModel(
             frames: services.scrollFrames, stitcher: services.stitcher, autoScroller: services.autoScroller,
             accessibility: services.accessibility, screenPermission: services.screenPermission,
-            assets: services.assets, clock: services.clock, settings: settings)
+            assets: services.assets, clock: services.clock, settings: settings, diagnostics: diagnostics)
         pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
         quickActions = QuickActionsModel(
             export: export, pins: pins, renderer: services.renderer, assets: services.assets,
@@ -146,6 +153,7 @@ final class AppModel: AppActions {
     func launch(kind: LaunchKind) {
         guard !didLaunch else { return }
         didLaunch = true
+        features.diagnostics?.recordLaunch()
         wire(features)
         registerShortcutHandlers()
         switch LaunchWindow.choose(
@@ -362,7 +370,8 @@ final class AppModel: AppActions {
             textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
             sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
             pins: features.pins, textClipboard: features.textClipboard, links: WorkspaceLinkOpener(),
-            settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
+            settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter,
+            diagnostics: features.diagnostics)
         openDocument = { [editors] session, action, fileName in
             editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)
         }

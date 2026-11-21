@@ -27,6 +27,7 @@ final class CaptureHarness {
     let storage = MemoryPreferenceStorage()
     let sound = FakeCaptureSound()
     let elements = FakeInterfaceElements()
+    let diagnostics = FakeDiagnostics()
     let settings: SettingsStore
     let coordinator: CaptureCoordinator
     var completions: [CaptureCompletion] = []
@@ -36,7 +37,7 @@ final class CaptureHarness {
         settings = SettingsStore(storage: storage)
         coordinator = CaptureCoordinator(
             capture: capture, permission: permission, assets: assets, clock: clock, settings: settings, sound: sound,
-            elements: elements)
+            elements: elements, diagnostics: diagnostics)
         coordinator.onCaptured = { [unowned self] in self.completions.append($0) }
     }
 
