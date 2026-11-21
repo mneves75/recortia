@@ -375,7 +375,7 @@ extension EditorModel {
             setCrop(rect)
         case .redact:
             guard !isClick, let area = rect.intersection(document.canvasRect) else { return }
-            created = addRedaction(covering: area)
+            created = redactsTextOnly ? addTextRedaction(covering: area) : addRedaction(covering: area)
         case .blur, .pixelate:
             guard !isClick, let area = rect.intersection(document.canvasRect) else { return }
             let effect = CosmeticObfuscation(

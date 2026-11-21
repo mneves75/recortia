@@ -119,6 +119,9 @@
                 id: "auto-redaction-sources",
                 title: "Scrolling captures and opened images are masked before they are shown",
                 run: AutoRedactionScenarios.sources),
+            E2EScenario(
+                id: "text-redaction", title: "Text-only redaction covers each recognized line, never less",
+                run: TextRedactionScenarios.textRedaction),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(
                 id: "pin-on-top", title: "Pins float and let clicks through only when asked, and unlock together",

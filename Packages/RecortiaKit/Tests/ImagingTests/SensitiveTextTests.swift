@@ -351,7 +351,7 @@ struct SensitiveTextSweepTests {
                 // The first tiles run until cancelled and then return without throwing, as a
                 // recognizer that ignores cancellation would.
                 while job < concurrency, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(1)) }
-                return []
+                return [SensitiveTextScanner.BoxedMatch]()
             }
         }
         let clock = ContinuousClock()

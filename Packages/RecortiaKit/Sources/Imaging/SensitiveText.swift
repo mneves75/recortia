@@ -559,7 +559,7 @@ public struct SensitiveRegion: Sendable, Equatable {
 
 /// Locates e-mail addresses and phone numbers in a capture by reading it tile by tile.
 public struct SensitiveTextScanner: Sendable {
-    private let recognizer = TextRecognizer()
+    let recognizer = TextRecognizer()
     /// Vision parallelizes inside one request, so more tiles at once buys little and costs memory.
     static let concurrentTiles = 3
     /// Each side of a found box grows by this fraction of its height (at least one pixel), because
@@ -618,15 +618,15 @@ public struct SensitiveTextScanner: Sendable {
         return try Self.finalRegions(found, within: bounds)
     }
 
-    /// Runs `scan` over `jobs`, at most `concurrency` at a time, and collects the matches. Once the
-    /// sweep is cancelled no further job starts, even when the running ones return normally; the
-    /// caller's `finalRegions` then throws `CancellationError`.
-    static func scanTiles<Job: Sendable>(
-        _ jobs: [Job], concurrency: Int, scan: @escaping @Sendable (Job) async throws -> [BoxedMatch]
-    ) async throws -> [BoxedMatch] {
-        try await withThrowingTaskGroup(of: [BoxedMatch].self) { group in
+    /// Runs `scan` over `jobs`, at most `concurrency` at a time, and collects the matches (or, for
+    /// the text-line sweep, the line boxes). Once the sweep is cancelled no further job starts, even
+    /// when the running ones return normally; the caller's final step then throws `CancellationError`.
+    static func scanTiles<Job: Sendable, Item: Sendable>(
+        _ jobs: [Job], concurrency: Int, scan: @escaping @Sendable (Job) async throws -> [Item]
+    ) async throws -> [Item] {
+        try await withThrowingTaskGroup(of: [Item].self) { group in
             var next = 0
-            var collected: [BoxedMatch] = []
+            var collected: [Item] = []
             func enqueue() {
                 guard next < jobs.count else { return }
                 let job = jobs[next]
@@ -652,10 +652,10 @@ public struct SensitiveTextScanner: Sendable {
     static let maximumMatches = 4096
 
     static func tileJobs(
-        for size: CGSize, pixelsPerPoint: Double, fineTileSide: CGFloat
+        for size: CGSize, pixelsPerPoint: Double, fineTileSide: CGFloat, layouts: [TileLayout]? = nil
     ) throws(SensitiveTextError) -> [(rect: CGRect, layout: TileLayout)] {
         let bounds = CGRect(origin: .zero, size: size)
-        let layouts = TileLayout.standard(pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide)
+        let layouts = layouts ?? TileLayout.standard(pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide)
         // Counted before any job exists, so an oversized capture costs nothing to refuse.
         let count = layouts.reduce(0) { total, layout in total + tileCount(for: size, layout: layout) }
         guard count <= maximumTiles else { throw .tooManyTiles }
@@ -725,13 +725,16 @@ public struct SensitiveTextScanner: Sendable {
             // A box Vision cannot place on the tile fails the sweep (R05); no height filter drops
             // a match after it was found (R03).
             guard isMappable(box, within: unit) else { throw .regionOutsideImage }
-            // Vision's unit square has a bottom-left origin; the source rect is top-left.
-            let rect = CGRect(
-                x: sourceRect.minX + box.minX * sourceRect.width,
-                y: sourceRect.minY + (1 - box.maxY) * sourceRect.height,
-                width: box.width * sourceRect.width, height: box.height * sourceRect.height)
-            return (kind, rect)
+            return (kind, sourceBox(box, in: sourceRect))
         }
+    }
+
+    /// `box`, in a tile's unit square (Vision's bottom-left origin), in the source pixels the tile
+    /// was cut from (top-left origin).
+    static func sourceBox(_ box: CGRect, in sourceRect: CGRect) -> CGRect {
+        CGRect(
+            x: sourceRect.minX + box.minX * sourceRect.width, y: sourceRect.minY + (1 - box.maxY) * sourceRect.height,
+            width: box.width * sourceRect.width, height: box.height * sourceRect.height)
     }
 
     /// A tile's matches in its unit square, refused past `maximumMatchesPerTile` as they arrive.
@@ -873,7 +876,7 @@ public struct SensitiveTextScanner: Sendable {
     // MARK: Tiles and regions
 
     /// Crops and resamples one tile onto an opaque white sRGB bitmap, whatever the source format.
-    private static func renderTile(of image: CGImage, sourceRect: CGRect, scale: CGFloat) throws -> CGImage {
+    static func renderTile(of image: CGImage, sourceRect: CGRect, scale: CGFloat) throws -> CGImage {
         let width = Int((sourceRect.width * scale).rounded())
         let height = Int((sourceRect.height * scale).rounded())
         guard width > 0, height > 0, let crop = image.cropping(to: sourceRect),
@@ -914,15 +917,13 @@ public struct SensitiveTextScanner: Sendable {
         return merged.sorted { ($0.rect.minY, $0.rect.minX) < ($1.rect.minY, $1.rect.minX) }
     }
 
-    private static func overlapsSubstantially(_ a: CGRect, _ b: CGRect) -> Bool {
+    static func overlapsSubstantially(_ a: CGRect, _ b: CGRect) -> Bool {
         let overlap = a.intersection(b)
         guard !overlap.isNull else { return false }
         let smallerArea = min(a.width * a.height, b.width * b.height)
         return smallerArea > 0 && overlap.width * overlap.height >= 0.25 * smallerArea
     }
 
-    /// Grows a box by `outsetFraction` of its height, rounds outward to whole pixels and clamps it
-    /// to the image. Throws when nothing of it lies inside the image: a match must never vanish.
     /// A finite box with positive area that shares a positive area with `bounds`.
     static func isMappable(_ rect: CGRect, within bounds: CGRect) -> Bool {
         guard !rect.isNull, rect.minX.isFinite, rect.minY.isFinite, rect.width.isFinite, rect.height.isFinite,
@@ -933,13 +934,21 @@ public struct SensitiveTextScanner: Sendable {
     }
 
     static func outset(_ match: BoxedMatch, within bounds: CGRect) throws(SensitiveTextError) -> SensitiveRegion {
-        let pad = max(1, (match.rect.height * outsetFraction).rounded(.up))
-        let grown = match.rect.insetBy(dx: -pad, dy: -pad)
+        let rect = try outset(match.rect, within: bounds)
+        return SensitiveRegion(
+            kind: match.kind, rect: Rect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height))
+    }
+
+    /// Grows a box by `outsetFraction` of its height, rounds outward to whole pixels and clamps it
+    /// to `bounds`. Throws when nothing of it lies inside: a match must never vanish. The one
+    /// padding rule for every recognized box, matches and text lines alike.
+    static func outset(_ box: CGRect, within bounds: CGRect) throws(SensitiveTextError) -> CGRect {
+        let pad = max(1, (box.height * outsetFraction).rounded(.up))
+        let grown = box.insetBy(dx: -pad, dy: -pad)
         let minX = max(bounds.minX, grown.minX.rounded(.down)), minY = max(bounds.minY, grown.minY.rounded(.down))
         let maxX = min(bounds.maxX, grown.maxX.rounded(.up)), maxY = min(bounds.maxY, grown.maxY.rounded(.up))
         guard maxX > minX, maxY > minY else { throw .regionOutsideImage }
-        return SensitiveRegion(
-            kind: match.kind, rect: Rect(x: minX, y: minY, width: maxX - minX, height: maxY - minY))
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 }
 

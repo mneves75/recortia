@@ -93,6 +93,7 @@ struct EditorNoticePresentation {
             .pinFailed, .noPreferredFolder, .arrowGeometryRefused, .automaticExportFailed, .sensitiveTextMasked,
             .maskingFailed:
             true
+        case .textRedactionInProgress, .textLinesCovered, .textRedactionKeptArea: false
         case .exported(let outcome): persists(outcome)
         case .noTextFound, .recognitionLanguagesUnavailable, .textCopied, .recognitionDiscarded,
             .recognitionInvalidated, .noQRCodeFound, .payloadCopied, .colorCopied, .previewNotReady, .pinned,

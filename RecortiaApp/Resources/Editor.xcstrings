@@ -105,6 +105,94 @@
         }
       }
     },
+    "Covered %lld lines of text.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Covered %lld line of text."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Covered %lld lines of text."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld linha de texto coberta."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld linhas de texto cobertas."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Finding the text to cover. Try again when it finishes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding the text to cover. Try again when it finishes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procurando o texto a cobrir. Tente de novo quando terminar."
+          }
+        }
+      }
+    },
+    "No text lines were found, so the whole area stays covered.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No text lines were found, so the whole area stays covered."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma linha de texto foi encontrada, então toda a área continua coberta."
+          }
+        }
+      }
+    },
+    "Text Only": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text Only"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Somente texto"
+          }
+        }
+      }
+    },
     "Masking e-mail addresses and phone numbers. Try again when it finishes.": {
       "localizations": {
         "en": {

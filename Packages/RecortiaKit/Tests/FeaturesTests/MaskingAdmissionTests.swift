@@ -279,6 +279,7 @@ struct MaskingAdmissionTests {
             Step(name: "item", expectation: .inert) { _ = model.item(at: point) },
             // Tools, future-object defaults, preferences and the viewport.
             Step(name: "selectTool", expectation: .inert) { model.selectTool(.rectangle) },
+            Step(name: "setRedactsTextOnly", expectation: .inert) { model.setRedactsTextOnly(true) },
             Step(name: "setColorSampleSize", expectation: .inert) { model.setColorSampleSize(.fiveByFive) },
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
             Step(name: "applySavedColor", expectation: .inert) { model.applySavedColor(model.style.stroke) },

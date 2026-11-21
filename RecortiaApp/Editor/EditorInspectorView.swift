@@ -728,6 +728,13 @@ private struct RedactionSection: View {
                 supportsOpacity: false
             )
             .accessibilityIdentifier("redaction.color")
+            if model.tool == .redact {
+                Toggle(
+                    String(localized: "Text Only", table: "Editor"),
+                    isOn: Binding(get: { model.redactsTextOnly }, set: { model.setRedactsTextOnly($0) })
+                )
+                .accessibilityIdentifier("redaction.textOnly")
+            }
             // A required disclosure (ACCEPTANCE_TESTS RED): what redaction changes, and what it does not.
             EditorNoticeLabel(
                 text: String(
