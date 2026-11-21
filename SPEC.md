@@ -99,6 +99,13 @@ window opens, a capture starts, or the preference is turned back on meanwhile. L
 a window, minimizing, hiding, capture suspension and closing a capture panel never quit. Quit
 stays available in both modes.
 
+Settings › General also offers "Show the icon in the menu bar", on by default (older preferences
+load as on). Off, Recortia removes its status item; opening Recortia again from Finder, the Dock,
+Spotlight or `open -a` shows Settings, and the global shortcuts keep working. The first time it is
+turned off, one message says how to get back. It changes neither when Recortia is regular or
+accessory nor when it quits: with "Keep running in the menu bar" on, the process keeps running
+without an icon (ADR-007 amendment).
+
 ### FR-02 — Capture
 
 Region selection invoked by a global shortcut must remain on the user's current desktop,

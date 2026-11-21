@@ -51,6 +51,18 @@ public final class SettingsStore {
         persist()
     }
 
+    /// Shows or hides the menu-bar icon. Returns true only when this hides it for the first time,
+    /// so the caller tells the person how to get back (open Recortia again).
+    @discardableResult
+    public func setShowsMenuBarIcon(_ shows: Bool) -> Bool {
+        let explains = !shows && preferences.showsMenuBarIcon && preferences.hasExplainedHiddenMenuBarIcon != true
+        update {
+            $0.showsMenuBarIcon = shows
+            if explains { $0.hasExplainedHiddenMenuBarIcon = true }
+        }
+        return explains
+    }
+
     /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
         githubUploadConsentID = UUID()

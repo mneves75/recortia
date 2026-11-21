@@ -451,6 +451,8 @@
                     $0.pinDefaultOpacity = preferences.pinDefaultOpacity
                     $0.automaticScrollingEnabled = preferences.automaticScrollingEnabled
                     $0.filenameTemplateChoice = preferences.filenameTemplateChoice
+                    $0.showsMenuBarIconChoice = preferences.showsMenuBarIconChoice
+                    $0.hasExplainedHiddenMenuBarIcon = preferences.hasExplainedHiddenMenuBarIcon
                 }
             }
             let foreground = try await E2EForegroundFixture.start(context)
@@ -484,6 +486,28 @@
                 "the General Pins slider changes the default pin opacity",
                 changed != opacity && SettingsStore.opacityRange.contains(changed), "\(opacity) -> \(changed)")
             if let pane = tabs.selectedTabViewItem?.view { context.snapshot(pane, shot: "general-pins") }
+
+            // The menu-bar icon switch, on by default: the first time it is turned off, one message
+            // says how to get back; turning it on, or off again, says nothing.
+            context.check("the menu-bar icon shows by default", harness.settings.preferences.showsMenuBarIcon)
+            let messages = harness.messages.values.count
+            try await click("settings.showsMenuBarIcon", tab: 0)
+            context.check(
+                "the General switch hides the menu-bar icon", !harness.settings.preferences.showsMenuBarIcon)
+            context.check(
+                "hiding the icon the first time says how to get back",
+                Array(harness.messages.values.dropFirst(messages)) == [.menuBarIconHidden],
+                "\(harness.messages.values.dropFirst(messages).map(\.title))")
+            context.check(
+                "hiding the icon leaves keep running in the menu bar on",
+                harness.settings.preferences.keepsRunningInMenuBar)
+            try await click("settings.showsMenuBarIcon", tab: 0)
+            context.check("the switch shows the icon again", harness.settings.preferences.showsMenuBarIcon)
+            try await click("settings.showsMenuBarIcon", tab: 0)
+            context.check(
+                "hiding it again says nothing more",
+                !harness.settings.preferences.showsMenuBarIcon && harness.messages.values.count == messages + 1,
+                "\(harness.messages.values.count - messages) messages")
 
             harness.accessibility.isTrusted = false
             let requests = harness.accessibility.requestCount
@@ -598,7 +622,7 @@
             let loginItem = LoginItemModel(service: service)
             let host = E2ESnapshot.host(
                 GeneralSettingsTab(
-                    settings: .e2eInMemory(), loginItem: loginItem))
+                    settings: .e2eInMemory(), loginItem: loginItem, setShowsMenuBarIcon: { _ in }))
             defer { host.close() }
             let root = try context.unwrap("General pane hosted", host.contentView)
             loginItem.setEnabled(true)
@@ -618,7 +642,11 @@
         private static func settingsContent(_ index: Int, _ model: AppModel) -> NSView? {
             func host(_ view: some View) -> NSView { NSHostingView(rootView: view.frame(width: 560)) }
             return switch index {
-            case 0: host(GeneralSettingsTab(settings: model.settings, loginItem: model.features.loginItem))
+            case 0:
+                host(
+                    GeneralSettingsTab(
+                        settings: model.settings, loginItem: model.features.loginItem,
+                        setShowsMenuBarIcon: model.setShowsMenuBarIcon))
             case 1:
                 host(
                     ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)

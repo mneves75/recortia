@@ -244,6 +244,10 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
     /// 0.13 have no such key, and synthesized Codable cannot default a missing non-optional one.
     public var keepsRunningInMenuBarChoice: Bool?
+    /// Stored only once the person changes it; read `showsMenuBarIcon`.
+    public var showsMenuBarIconChoice: Bool?
+    /// True once Recortia has said how to get back with the icon hidden; never said again.
+    public var hasExplainedHiddenMenuBarIcon: Bool?
     /// Stored only once the person changes it; read `autoRedactsSensitiveText`. Optional for the
     /// same reason as `keepsRunningInMenuBarChoice`: blobs written before 0.15 have no such key.
     public var autoRedactsSensitiveTextChoice: Bool?
@@ -297,6 +301,14 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var keepsRunningInMenuBar: Bool {
         get { keepsRunningInMenuBarChoice ?? true }
         set { keepsRunningInMenuBarChoice = newValue }
+    }
+
+    /// Whether Recortia shows its icon in the menu bar (FR-01, ADR-007). On by default. Hidden,
+    /// opening Recortia again shows Settings and the global shortcuts keep working; it does not
+    /// change when Recortia quits.
+    public var showsMenuBarIcon: Bool {
+        get { showsMenuBarIconChoice ?? true }
+        set { showsMenuBarIconChoice = newValue }
     }
 
     /// Whether a new capture opens with secure masks over the e-mail addresses and phone numbers

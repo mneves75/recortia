@@ -3428,6 +3428,22 @@
         }
       }
     },
+    "Show the icon in the menu bar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the icon in the menu bar"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar o ícone na barra de menus"
+          }
+        }
+      }
+    },
     "Show the pointer in captures" : {
       "localizations" : {
         "en" : {
@@ -4058,6 +4074,22 @@
         }
       }
     },
+    "The menu bar icon is hidden" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The menu bar icon is hidden"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O ícone da barra de menus está oculto"
+          }
+        }
+      }
+    },
     "The name is too long." : {
       "localizations" : {
         "en" : {
@@ -4266,6 +4298,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A janela ou tela escolhida não está mais disponível."
+          }
+        }
+      }
+    },
+    "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para voltar ao Recortia, abra-o de novo pela pasta Aplicativos ou pelo Spotlight. Os atalhos de teclado continuam funcionando."
           }
         }
       }

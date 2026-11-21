@@ -305,6 +305,13 @@ editor's discard question keeps the editor and the process (bilingual `last-wind
 processes of the runner prove real exit through `NSApp.terminate` (pin, then last window) and a
 process still running with the preference on or after a launch without a window.
 
+Menu-bar icon (Settings › General, shown by default): the switch turns it off, and only the first
+time says how to get back; turning it on or off again says nothing, and keep running stays on.
+With the icon hidden, reopening Recortia shows Settings and closing it returns to accessory
+without quitting (bilingual `settings` and `launch-presentation`; `MenuBarIconTests`). Physical
+checks: the status item leaves and returns, and opening the installed app from Finder or
+Spotlight with the icon hidden shows Settings.
+
 ### REL-01 — Independent build and CI boundary
 
 A clean checkout builds with documented, locked inputs and no maintainer account required for unsigned checks. PR workflows contain no release credentials or privileged untrusted checkout. Verify dependency/license inventory and declared toolchain against the produced artifact. Untrusted fork jobs never run on the live-capture test Mac.

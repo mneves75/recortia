@@ -18,6 +18,8 @@ extension SettingsStore {
 struct GeneralSettingsTab: View {
     let settings: SettingsStore
     let loginItem: LoginItemModel?
+    /// `AppModel.setShowsMenuBarIcon`, which explains the first hiding.
+    let setShowsMenuBarIcon: (Bool) -> Void
 
     var body: some View {
         Form {
@@ -46,6 +48,11 @@ struct GeneralSettingsTab: View {
                     isOn: settings.binding(\.keepsRunningInMenuBar)
                 )
                 .accessibilityIdentifier("settings.keepRunningInMenuBar")
+                Toggle(
+                    "Show the icon in the menu bar",
+                    isOn: Binding(get: { settings.preferences.showsMenuBarIcon }, set: setShowsMenuBarIcon)
+                )
+                .accessibilityIdentifier("settings.showsMenuBarIcon")
             }
             EditorZoomSettingsSection(settings: settings)
             PinsSettingsSection(settings: settings)
@@ -570,8 +577,10 @@ struct ScrollingSettingsSection: View {
     }
 
     #Preview("General with login item") {
-        GeneralSettingsTab(settings: PreviewSupport.settings(), loginItem: PreviewSupport.loginItem())
-            .frame(width: 560)
+        GeneralSettingsTab(
+            settings: PreviewSupport.settings(), loginItem: PreviewSupport.loginItem(), setShowsMenuBarIcon: { _ in }
+        )
+        .frame(width: 560)
     }
 
     #Preview("Export") {
