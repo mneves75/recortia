@@ -88,8 +88,9 @@ The Homebrew cask (`brew install --cask mneves75/tap/recortia`) still installs t
   ([ADR-002](docs/adr/0002-permission-and-sandbox-profile.md)).
 
 Optional automatic masking (Settings › Privacy, off by default) covers e-mail addresses and phone
-numbers that on-device text recognition finds in a new capture before the editor shows it or any
-automatic export sends it. It can miss text, so check the image before sharing it.
+numbers that on-device text recognition finds in a new capture, a scrolling capture or an opened or
+pasted image before the editor shows it or any automatic export sends it. It can miss text, so check
+the image before sharing it.
 
 Redaction protects the image you export. It cannot recall copies you exported earlier, including
 automatic exports made before you redacted, or other apps' clipboard histories. Turn off
