@@ -102,6 +102,10 @@ Reviewer marked these read-verified; the coordinator has not yet read them.
 5. **Same-epoch render failure keeps the previous preview** (R2-D12). *Recommend:* show the failure
    over the stale preview and block export until a render succeeds, so the canvas never shows
    pixels the export would not produce.
+   Done in T1 (`21f4a9d`, `72b7dc7`, `507c054`): `EditorModel.isPreviewReady` is false while the
+   render of what the canvas shows failed; the canvas veils the stale pixels with "The preview could
+   not be rendered.", and copy, save, drag and pin are refused until a render succeeds
+   (`EditorPreviewTests`; decisions.md).
 6. **Inferred imaging and scrolling rows:** R1-RCI-01 (scroll admission threshold uses the frame
    height — a heuristic or a bug, needs a fixture with a short pane), R1-RCI-03/05 (blur sampling
    differs with padding and inside magnifiers; cosmetic effects only), R1-RCI-09 (stationarity
