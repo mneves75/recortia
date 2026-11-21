@@ -58,7 +58,11 @@ final class LiveImageAssets: ImageAssetService {
 
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
         let decoded = try await Self.canonicalize(image)
-        return await store.insert(decoded, origin: .captured(geometry))
+        return await registerCapture(decoded, geometry: geometry)
+    }
+
+    func registerCapture(_ image: DecodedImage, geometry: CaptureGeometry) async -> ImageAssetInfo {
+        await store.insert(image, origin: .captured(geometry))
     }
 
     func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)

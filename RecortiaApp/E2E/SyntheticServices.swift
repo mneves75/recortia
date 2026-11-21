@@ -64,6 +64,7 @@
         /// Delay before `windows()` returns, so the chooser's loading state is observable.
         var windowsDelay: Duration = .milliseconds(400)
         var fixedCaptureDate: Date?
+        var displayFrameOverride: CGImage?
         private(set) var captures: [CaptureTarget] = []
 
         init(desktop: CGImage) {
@@ -122,7 +123,8 @@
             let pixels = CGRect(
                 x: (clipped.minX * scale).rounded(.down), y: (clipped.minY * scale).rounded(.down),
                 width: (clipped.width * scale).rounded(.up), height: (clipped.height * scale).rounded(.up))
-            guard let image = desktop.cropping(to: pixels) else { throw .system(code: -1) }
+            let input = if case .display = target { displayFrameOverride ?? desktop } else { desktop }
+            guard let image = input.cropping(to: pixels) else { throw .system(code: -1) }
             let geometry = CaptureGeometry(
                 source: source, desktopBounds: clipped, pointPixelScale: scale,
                 pixelSize: PixelSize(width: image.width, height: image.height), capturedAt: fixedCaptureDate ?? Date())

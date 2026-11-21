@@ -83,7 +83,14 @@ struct RegionPrecisionCaptureTests {
         let h = CaptureHarness()
         let store = ImageStore()
         h.assets.store = store
-        let (display, frame, geometry) = try frozenFixture()
+        let registration = Pending<Void>()
+        h.assets.pendingCanonicalRegistration = registration
+        var fixture: (DisplayInfo, CGImage, CaptureGeometry)? = try frozenFixture()
+        let display = try #require(fixture?.0)
+        let geometry = try #require(fixture?.2)
+        weak var wholeFrame = fixture?.1
+        weak var wholeBacking = fixture?.1.dataProvider
+        #expect(wholeFrame != nil && wholeBacking != nil)
         h.capture.displayList = [display]
         let read = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
         h.capture.pendingCapture = read
@@ -91,12 +98,18 @@ struct RegionPrecisionCaptureTests {
         #expect(h.capture.captureCalls.isEmpty)
         h.coordinator.toggleRegionFreeze(on: display)
         await waitFor("display read") { read.waiterCount == 1 }
-        #expect(read.resolve(.success((frame, geometry))))
+        let resolved = read.resolve(.success((try #require(fixture?.1), geometry)))
+        #expect(resolved)
+        fixture = nil
         await waitFor("frozen preview") {
             if case .frozen = h.coordinator.regionFreeze { return true }
             return false
         }
         #expect(h.coordinator.commitRegion(Rect(x: -28.75, y: -14.75, width: 3, height: 2), on: display))
+        await waitFor("canonical crop reached registration") { registration.waiterCount == 1 }
+        #expect(wholeFrame == nil && wholeBacking == nil)
+        #expect(h.completions.isEmpty)
+        #expect(registration.resolve(()))
         await waitFor("one committed crop") { h.completions.count == 1 }
         #expect(h.capture.captureCalls == [.display(display)])
         #expect(h.coordinator.regionFreeze == nil)

@@ -259,6 +259,7 @@ final class RegionSelectionView: NSView {
 
     /// Whether a drag is in progress or a nudged selection is held.
     var hasSelection: Bool { selection != nil }
+    var showsFrozenFrame: Bool { frozenImage != nil }
 
     /// Forgets the selection, the held modifiers and the window frames, so a reused overlay starts
     /// without the previous capture's selection, ratio drag, snap guide or snap targets.
@@ -284,6 +285,9 @@ final class RegionSelectionView: NSView {
             preparing = false
         }
         guard allowsFreeze != allowed || isFreezing != preparing || frozenImage !== image else { return }
+        if !preparing, image == nil, isFreezing || showsFrozenFrame {
+            clearSelection()
+        }
         if frozenImage !== image {
             frozenImage = image
             window?.acceptsMouseMovedEvents = image != nil
@@ -585,6 +589,12 @@ final class RegionSelectionView: NSView {
         NSColor.white.setStroke()
         NSBezierPath(rect: destination.insetBy(dx: -1, dy: -1)).stroke()
         NSBezierPath(rect: sample).stroke()
+
+        let below = destination.maxY + 9
+        let labelY = below + 22 <= bounds.maxY ? below : destination.minY - 25
+        drawLabel(
+            String(localized: "x: \(sourceX) px, y: \(sourceY) px"),
+            anchoredAt: CGPoint(x: destination.midX, y: labelY), centered: true)
     }
 
     /// A white line on a black keyline across the display, like the selection's own border.

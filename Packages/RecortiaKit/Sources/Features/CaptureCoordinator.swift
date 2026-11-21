@@ -1,6 +1,7 @@
 import CoreGraphics
 import Domain
 import Foundation
+import Imaging
 import MacPlatform
 import Observation
 
@@ -69,6 +70,7 @@ public final class CaptureCoordinator {
 
     public enum Notice: Hashable, Sendable {
         case captureInProgress
+        case freezeBusy
         case freezeUnavailable
         /// The remembered region's display changed or disappeared; a new selection is needed.
         case repeatRegionUnavailable
@@ -134,6 +136,12 @@ public final class CaptureCoordinator {
         let id: RequestID
         let delaySeconds: Int
         let startingMode: CaptureMode
+        var committedFrozenFrame: FrozenFrame? = nil
+    }
+
+    private enum CapturePixels {
+        case raw(CGImage)
+        case canonical(DecodedImage)
     }
 
     /// Session-only memory for Repeat Last Region, bound to the display's identity and configuration.
@@ -185,7 +193,11 @@ public final class CaptureCoordinator {
             discardFrozenRegion()
             return
         }
-        guard freezeRead == nil, let display, case .region(let displays) = selectionContext,
+        guard freezeRead == nil else {
+            notice = .freezeBusy
+            return
+        }
+        guard let display, case .region(let displays) = selectionContext,
             displays.contains(display)
         else { return }
         guard permission.isGranted else {
@@ -197,7 +209,10 @@ public final class CaptureCoordinator {
         regionFreeze = .preparing(display)
         freezeRead = Task { [weak self] in
             guard let self else { return }
-            defer { self.freezeRead = nil }
+            defer {
+                self.freezeRead = nil
+                if self.notice == .freezeBusy { self.notice = nil }
+            }
             await self.acquireFrozenFrame(on: display, id: active.id)
         }
         freezePermissionCheck = Task { [weak self] in
@@ -264,7 +279,6 @@ public final class CaptureCoordinator {
     @discardableResult
     public func commitSelection(_ target: CaptureTarget) -> Bool {
         guard state == .selecting, let active else { return false }
-        let frozen: FrozenFrame?
         switch regionFreeze {
         case .preparing:
             return false
@@ -276,9 +290,8 @@ public final class CaptureCoordinator {
                 handle(error)
                 return false
             }
-            frozen = frame
-        case nil:
-            frozen = nil
+            self.active?.committedFrozenFrame = frame
+        case nil: break
         }
         let drainingRead = freezeRead
         discardFrozenRegion()
@@ -291,7 +304,7 @@ public final class CaptureCoordinator {
             // ScreenCaptureKit can complete a canceled read later. The next capture waits for it
             // to return before starting a new one.
             await drainingRead?.value
-            await self?.run(target, id: id, frozen: frozen)
+            await self?.run(target, id: id)
         }
         return true
     }
@@ -451,8 +464,15 @@ public final class CaptureCoordinator {
         guard capture.displays().contains(display) else { throw .displayChanged }
     }
 
+    private func takeFrozenCrop(for target: CaptureTarget) async throws(CaptureError) -> (DecodedImage, CaptureGeometry)
+    {
+        guard let frame = active?.committedFrozenFrame else { throw .canceled }
+        active?.committedFrozenFrame = nil
+        return try await Self.cropFrozenRegion(frame, target: target)
+    }
+
     @concurrent private static func cropFrozenRegion(_ frame: FrozenFrame, target: CaptureTarget)
-        async throws(CaptureError) -> (CGImage, CaptureGeometry)
+        async throws(CaptureError) -> (DecodedImage, CaptureGeometry)
     {
         guard case .region(let rect, let display) = target, display == frame.display else { throw .targetUnavailable }
         let scale = frame.geometry.pointPixelScale
@@ -467,9 +487,11 @@ public final class CaptureCoordinator {
         guard let cropped = frame.image.cropping(to: pixels),
             Double(cropped.width) == pixels.width, Double(cropped.height) == pixels.height
         else { throw .targetUnavailable }
-        // The capture asset service canonicalizes the crop into a raster with independent backing.
+        // CGImage.cropping retains the full source. Canonicalization allocates the same independent,
+        // color-managed raster as an ordinary capture before the asset service receives the crop.
+        guard let independent = try? ImageDecoder.canonicalize(cropped) else { throw .system(code: -1) }
         return (
-            cropped,
+            independent,
             CaptureGeometry(
                 source: .region(displayID: display.id),
                 desktopBounds: Rect(
@@ -480,7 +502,7 @@ public final class CaptureCoordinator {
         )
     }
 
-    private func run(_ target: CaptureTarget, id: RequestID, frozen: FrozenFrame?) async {
+    private func run(_ target: CaptureTarget, id: RequestID) async {
         while case .countdown = state {
             do {
                 try await clock.sleep(for: .seconds(1))
@@ -493,17 +515,20 @@ public final class CaptureCoordinator {
         guard isCurrent(id), state == .capturing else { return }
 
         let preferences = settings.preferences
-        let captured: (CGImage, CaptureGeometry)
+        let frozenDisplay = active?.committedFrozenFrame?.display
+        let captured: (CapturePixels, CaptureGeometry)
         captureIntervals[id] = LatencySignposts.begin(.selectionToCapture)
         do throws(CaptureError) {
-            if let frozen {
-                captured = try await Self.cropFrozenRegion(frozen, target: target)
+            if let frozenDisplay {
+                let (image, geometry) = try await takeFrozenCrop(for: target)
+                captured = (.canonical(image), geometry)
                 guard isCurrent(id) else { throw .canceled }
-                try verifyFrozenDisplay(frozen.display)
+                try verifyFrozenDisplay(frozenDisplay)
             } else {
-                captured = try await capture.capture(
+                let (image, geometry) = try await capture.capture(
                     target, showsCursor: preferences.captureShowsCursor,
                     includesShadow: preferences.captureIncludesWindowShadow)
+                captured = (.raw(image), geometry)
             }
             captureIntervals.removeValue(forKey: id)?.end()
         } catch {
@@ -516,7 +541,12 @@ public final class CaptureCoordinator {
 
         let info: ImageAssetInfo
         do {
-            info = try await assets.registerCapture(captured.0, geometry: captured.1)
+            switch captured.0 {
+            case .raw(let image):
+                info = try await assets.registerCapture(image, geometry: captured.1)
+            case .canonical(let image):
+                info = try await assets.registerCapture(image, geometry: captured.1)
+            }
         } catch {
             guard isCurrent(id) else { return }
             // Canonicalization failed; report a system failure without inventing an image.
@@ -528,9 +558,9 @@ public final class CaptureCoordinator {
             assets.release(info.id)
             return
         }
-        if let frozen {
+        if let frozenDisplay {
             do throws(CaptureError) {
-                try verifyFrozenDisplay(frozen.display)
+                try verifyFrozenDisplay(frozenDisplay)
             } catch {
                 assets.release(info.id)
                 handle(error)

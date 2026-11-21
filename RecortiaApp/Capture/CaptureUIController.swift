@@ -26,8 +26,16 @@ final class CaptureUIController {
     init(coordinator: CaptureCoordinator, overlay: RegionOverlayController = RegionOverlayController()) {
         self.coordinator = coordinator
         self.overlay = overlay
-        overlay.onCommit = { [weak coordinator] rect, display in
-            coordinator?.commitRegion(rect, on: display)
+        overlay.onCommit = { [weak coordinator, weak overlay] rect, display in
+            guard let coordinator else { return }
+            let visibleFrozenFrame =
+                overlay?.presentedWindows.first { $0.display.id == display.id }?
+                .selectionView.showsFrozenFrame == true
+            let readyFrozenFrame = if case .frozen = coordinator.regionFreeze { true } else { false }
+            guard visibleFrozenFrame == readyFrozenFrame else { return }
+            if coordinator.commitRegion(rect, on: display), readyFrozenFrame {
+                overlay?.dismiss()
+            }
         }
         overlay.onCancel = { [weak coordinator] in coordinator?.cancel() }
         overlay.onSwitchToWindow = { [weak coordinator] in coordinator?.switchToWindowSelection() }
@@ -88,6 +96,8 @@ final class CaptureUIController {
             String(localized: "The display of your last region changed. Select an area again.")
         case .freezeUnavailable:
             String(localized: "Could not freeze this display. You can still select an area.")
+        case .freezeBusy:
+            String(localized: "The previous freeze is still stopping. Press F again in a moment.")
         case .captureInProgress, nil:
             nil
         }

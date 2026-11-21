@@ -413,6 +413,8 @@ final class AppModel: AppActions {
             case .screenLocked:
                 features.capture.interrupt(because: .screenLocked)
                 features.scroll.interrupt(because: .screenLocked)
+            case .sleeping:
+                features.capture.cancel()
             }
         }
         monitor.start()

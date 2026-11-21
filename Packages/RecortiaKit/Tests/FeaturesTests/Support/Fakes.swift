@@ -276,6 +276,7 @@ final class FakeAssetService: ImageAssetService {
     private(set) var registeredCaptures: [ImageAssetInfo] = []
     private(set) var registeredStitched: [ImageAssetInfo] = []
     private(set) var released: [AssetID] = []
+    var pendingCanonicalRegistration: Pending<Void>?
     /// When set, imports decode for real into this store, so exports can render them.
     var store: ImageStore?
     /// Without a store, report the size the file declares instead of 16 × 9, without decoding.
@@ -291,14 +292,23 @@ final class FakeAssetService: ImageAssetService {
     }
 
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
-        let origin = AssetOrigin.captured(geometry)
-        let info: ImageAssetInfo
-        if let store {
-            info = await store.insert(try ImageDecoder.canonicalize(image), origin: origin)
-        } else {
-            info = ImageAssetInfo(
-                id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height), origin: origin)
+        if store != nil {
+            return await registerCapture(try ImageDecoder.canonicalize(image), geometry: geometry)
         }
+        return recordCapture(
+            ImageAssetInfo(
+                id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height),
+                origin: .captured(geometry)))
+    }
+
+    func registerCapture(_ image: DecodedImage, geometry: CaptureGeometry) async -> ImageAssetInfo {
+        if let pendingCanonicalRegistration { await pendingCanonicalRegistration.wait() }
+        let origin = AssetOrigin.captured(geometry)
+        if let store { return recordCapture(await store.insert(image, origin: origin)) }
+        return recordCapture(ImageAssetInfo(id: AssetID(), pixelSize: image.pixelSize, origin: origin))
+    }
+
+    private func recordCapture(_ info: ImageAssetInfo) -> ImageAssetInfo {
         registeredCaptures.append(info)
         return info
     }

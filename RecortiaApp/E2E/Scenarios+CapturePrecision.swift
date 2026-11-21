@@ -3,6 +3,7 @@
     import Domain
     import Features
     import MacPlatform
+    import RecortiaFixtures
 
     /// Precise region selection (FR-02, A-4) in the overlay's real selection view over the
     /// synthetic desktop: keyboard nudges, the aspect control and Shift, and snapping to a frame from
@@ -239,6 +240,25 @@
             coordinator.setRegionAspect(.free)
             let reads = harness.capture.captures.count
             let editors = harness.editors.controllers.count
+            let width = SyntheticDesktop.pixelSize.width, height = SyntheticDesktop.pixelSize.height
+            var rgba = [UInt8](repeating: 0, count: width * height * 4)
+            for y in 0..<height {
+                for x in 0..<width {
+                    if (665..<769).contains(x), (432..<528).contains(y) { continue }
+                    let offset = (y * width + x) * 4
+                    rgba[offset] = (x % 7 < 3) != (y >= height / 2) ? 255 : 0
+                    rgba[offset + 1] = y % 11 < 5 ? 255 : 0
+                    rgba[offset + 2] = x % 13 < 6 ? 255 : 0
+                    rgba[offset + 3] = 255
+                }
+            }
+            let frozenInput = try ChartFixture.image(width: width, height: height, premultipliedRGBA: rgba)
+            let source = try E2EActions.pixels(of: frozenInput, "synthetic frozen display", context)
+            let backdrop = try ChartFixture.solid(width: 1, height: 1, color: .init(255, 0, 255))
+            let oldOverride = harness.capture.displayFrameOverride
+            harness.capture.displayFrameOverride = frozenInput
+            defer { harness.capture.displayFrameOverride = oldOverride }
+
             try await show("freeze")
             let liveInstruction = String(localized: "Press F to freeze this display and use the magnifier.")
             let frozenInstruction = String(localized: "Display frozen. Press F to return to live selection.")
@@ -252,20 +272,49 @@
                     await E2EWait.until { view.accessibilityHelp()?.contains(instruction) == true })
             }
             try await toggle(frozenInstruction)
-            view.mouseMoved(with: try mouse(.mouseMoved, 110, 130))
-            let magnified = try E2ESnapshot.png(of: view, over: harness.desktop)
-            view.mouseMoved(with: try mouse(.mouseMoved, 240, 210))
-            let moved = context.snapshot(view, shot: "frozen-magnifier", over: harness.desktop)
-            context.check("the frozen magnifier follows the pointer", moved.map { $0 != magnified } == true)
-            await context.darkOverlay(view, in: spare, shot: "frozen-magnifier", over: harness.desktop, light: moved)
+            let probes: [(xFraction: Double, yFraction: Double, dx: Int, dy: Int)] = [
+                (0.1937, 0.4739, -4, 3), (0.6473, 0.6637, 2, -5),
+            ]
+            for (index, probe) in probes.enumerated() {
+                let x = view.bounds.width * probe.xFraction, y = view.bounds.height * probe.yFraction
+                view.mouseMoved(with: try mouse(.mouseMoved, x, y))
+                let shot = "frozen-magnifier-\(index + 1)"
+                let png = try context.unwrap(
+                    "frozen magnifier rendered", context.snapshot(view, shot: shot, over: backdrop))
+                let screenshot = try E2EActions.decode(png, shot, context)
+
+                // Each probe reads an off-center cell in the 15 × 15 loupe, far from its
+                // reticle, border and coordinate label.
+                let sampleX = Int((x + 20 + CGFloat(7 + probe.dx) * 6 + 3) * E2ESnapshot.scale)
+                let sampleY = Int((y + 20 + CGFloat(7 + probe.dy) * 6 + 3) * E2ESnapshot.scale)
+                try context.require(
+                    "the loupe sample is inside the rendered display",
+                    (0..<screenshot.width).contains(sampleX) && (0..<screenshot.height).contains(sampleY))
+                let sourceX = Int(Double(width) * probe.xFraction) + probe.dx
+                let sourceY = Int(Double(height) * probe.yFraction) + probe.dy
+                let expected = source.pixel(x: sourceX, y: sourceY)
+                try context.require(
+                    "the loupe shows the exact off-center source pixel",
+                    screenshot.pixel(x: sampleX, y: sampleY) == expected, "wanted \(expected.hex)")
+                let holeX = Int(view.bounds.width * 0.28 * E2ESnapshot.scale)
+                let holeY = Int(view.bounds.height * 0.30 * E2ESnapshot.scale)
+                context.check(
+                    "the live desktop cannot show through transparent frozen pixels",
+                    screenshot.pixel(x: holeX, y: holeY) == ChartFixture.Color(0, 0, 0))
+                if index == probes.indices.last {
+                    await context.darkOverlay(view, in: spare, shot: shot, over: backdrop, light: png)
+                }
+            }
             try await toggle(liveInstruction)
             try context.require("unfreezing releases the original preview", coordinator.regionFreeze == nil)
             try await toggle(frozenInstruction)
 
-            let start = CGPoint(x: 60, y: 100)
-            let end = CGPoint(x: 260, y: 220)
-            view.mouseDown(with: try mouse(.leftMouseDown, start.x, start.y))
-            view.mouseDragged(with: try mouse(.leftMouseDragged, end.x, end.y))
+            let start = CGPoint(x: view.bounds.width * 0.14, y: view.bounds.height * 0.14)
+            let end = CGPoint(x: view.bounds.width * 0.39, y: view.bounds.height * 0.41)
+            view.mouseDown(
+                with: try CaptureScenarios.mouseEvent(.leftMouseDown, at: start, in: view, modifiers: .command))
+            view.mouseDragged(
+                with: try CaptureScenarios.mouseEvent(.leftMouseDragged, at: end, in: view, modifiers: .command))
             view.mouseUp(with: try mouse(.leftMouseUp, end.x, end.y))
             let editor = try await E2EActions.waitForNewEditor(harness, after: editors, context)
             try context.require(
@@ -277,19 +326,25 @@
             let geometry = try context.unwrap(
                 "the crop carries geometry", CaptureScenarios.capturedGeometry(editor.model))
             let copied = try await E2EActions.copiedPixels(editor, harness, context, "frozen crop")
-            let desktop = try E2EActions.pixels(of: harness.desktop, "synthetic frozen display", context)
             let left = Int(((geometry.desktopBounds.minX - display.frame.minX) * geometry.pointPixelScale).rounded())
             let top = Int(((geometry.desktopBounds.minY - display.frame.minY) * geometry.pointPixelScale).rounded())
             try context.require(
                 "the copied crop is the selected bounds within the display",
                 copied.width == geometry.pixelSize.width && copied.height == geometry.pixelSize.height
-                    && left >= 0 && top >= 0 && left + copied.width <= desktop.width
-                    && top + copied.height <= desktop.height)
-            for (x, y) in [(0, 0), (copied.width / 2, copied.height / 2), (copied.width - 1, copied.height - 1)] {
+                    && left >= 0 && top >= 0 && left + copied.width <= source.width
+                    && top + copied.height <= source.height)
+            let holeInCrop = (x: Int(Double(width) * 0.28) - left, y: Int(Double(height) * 0.30) - top)
+            try context.require(
+                "the copied crop includes the transparent part of the frame",
+                (0..<copied.width).contains(holeInCrop.x) && (0..<copied.height).contains(holeInCrop.y))
+            for (x, y) in [(0, 0), (holeInCrop.x, holeInCrop.y), (copied.width - 1, copied.height - 1)] {
                 context.check(
                     "the frozen crop keeps source pixel \(x), \(y)",
-                    copied.pixel(x: x, y: y) == desktop.pixel(x: left + x, y: top + y))
+                    copied.pixel(x: x, y: y) == source.pixel(x: left + x, y: top + y))
             }
+            context.check(
+                "opaque preview backing never changes exported alpha",
+                copied.pixel(x: holeInCrop.x, y: holeInCrop.y).a == 0)
         }
 
         private static func keyEvent(_ code: UInt16, _ modifiers: NSEvent.ModifierFlags, in view: NSView) throws

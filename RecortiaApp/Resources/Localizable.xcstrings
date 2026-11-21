@@ -4714,6 +4714,22 @@
         }
       }
     },
+    "The previous freeze is still stopping. Press F again in a moment." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The previous freeze is still stopping. Press F again in a moment."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O congelamento anterior ainda está sendo encerrado. Pressione F novamente em instantes."
+          }
+        }
+      }
+    },
     "The print panel could not be opened." : {
       "localizations" : {
         "en" : {
@@ -5194,6 +5210,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gravar um arquivo de diagnóstico"
+          }
+        }
+      }
+    },
+    "x: %lld px, y: %lld px" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "x: %lld px, y: %lld px"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "x: %lld px, y: %lld px"
           }
         }
       }
