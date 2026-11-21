@@ -177,10 +177,14 @@ public struct EditorStyle: Hashable, Sendable {
     /// Local future boxed-text fill; nil means automatic white. Shape/plain-text fill is separate.
     public var textBackgroundColor: RGBA?
     public var curvedArrows: Bool
+    public var arrowHead: Annotation.ArrowHead
+    /// New freehand and highlighter strokes are simplified and drawn as curves when they end.
+    public var smoothsStrokes: Bool
 
     public init(
         stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24,
-        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false
+        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false,
+        arrowHead: Annotation.ArrowHead = .filled, smoothsStrokes: Bool = true
     ) {
         self.stroke = stroke
         self.fill = fill
@@ -190,6 +194,8 @@ public struct EditorStyle: Hashable, Sendable {
         self.textAppearance = textAppearance
         self.textBackgroundColor = textBackgroundColor
         self.curvedArrows = curvedArrows
+        self.arrowHead = arrowHead
+        self.smoothsStrokes = smoothsStrokes
     }
 
     public static let lineWidthRange: ClosedRange<Double> = 1...40

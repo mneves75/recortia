@@ -14,7 +14,7 @@ struct EditorCurvedArrowTests {
         m.selectTool(.arrow)
         h.drag((10, 10), (60, 60))
         let id = try #require(m.document.annotations.first).id
-        guard case .arrow(_, _, nil) = try #require(m.document.annotations.first).kind else {
+        guard case .arrow(_, _, nil, _) = try #require(m.document.annotations.first).kind else {
             Issue.record("expected a straight arrow")
             return
         }

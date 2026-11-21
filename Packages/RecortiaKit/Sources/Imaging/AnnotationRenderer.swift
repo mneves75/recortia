@@ -54,7 +54,7 @@ public enum AnnotationRenderer {
                 return false
             }
             points = [text.origin]
-        case .arrow(let start, let end, let control):
+        case .arrow(let start, let end, let control, _):
             points = [start, end] + (control.map { [$0] } ?? [])
         case .line(let start, let end):
             points = [start, end]
@@ -63,7 +63,7 @@ public enum AnnotationRenderer {
                 return false
             }
             points = [rect.origin]
-        case .freehand(let list), .highlighter(let list):
+        case .freehand(let list, _), .highlighter(let list, _):
             points = list
         case .step(let center, _):
             points = [center]
@@ -127,8 +127,8 @@ public enum AnnotationRenderer {
             let path = CGMutablePath()
             path.addEllipse(in: rect.cg)
             drawShape(path, style: style, in: context)
-        case .freehand(let points), .highlighter(let points):
-            drawStroke(points.map(\.cg), lineWidth: style.lineWidth, in: context)
+        case .freehand(let points, let smoothed), .highlighter(let points, let smoothed):
+            drawStroke(points, smoothed: smoothed == true, lineWidth: style.lineWidth, in: context)
         case .step(let center, let number):
             drawStep(center: center.cg, number: number, radius: annotation.stepRadius, style: style, in: context)
         }
@@ -164,14 +164,16 @@ public enum AnnotationRenderer {
         context.strokePath()
     }
 
-    private static func drawStroke(_ points: [CGPoint], lineWidth: Double, in context: CGContext) {
+    private static func drawStroke(
+        _ points: [Point<DocumentSpace>], smoothed: Bool, lineWidth: Double, in context: CGContext
+    ) {
         guard let first = points.first else { return }
         if points.count == 1 {
             let r = max(lineWidth, 1) / 2
             context.fillEllipse(in: CGRect(x: first.x - r, y: first.y - r, width: 2 * r, height: 2 * r))
             return
         }
-        context.addLines(between: points)
+        context.addPath(StrokePath.make(points, smoothed: smoothed))
         context.strokePath()
     }
 

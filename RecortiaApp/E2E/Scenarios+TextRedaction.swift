@@ -30,7 +30,7 @@
             try E2EAccessibilityControl.pressCheckingEffect("redaction.textOnly", in: root, context)
             try context.require(
                 "the native Text Only control turns it on", await E2EWait.until { model.redactsTextOnly })
-            let before = try canvasPixels(model, context)
+            let before = try E2EActions.canvasPixels(model, context)
             context.check(
                 "positive control: the canvas shows the line before it is redacted", uncovered(line, in: before) > 0)
 
@@ -49,7 +49,7 @@
                 model.document.masks.count == 1 && model.document.masks[0].sourceRegions == [asset: [drawn]]
                     && model.document.masks[0].fill.isOpaque,
                 "\(model.document.masks)")
-            let pending = try canvasPixels(model, context)
+            let pending = try E2EActions.canvasPixels(model, context)
             context.check(
                 "pending: the canvas covers every pixel of the rectangle", uncovered(drawn, in: pending) == 0,
                 "\(uncovered(drawn, in: pending)) uncovered pixels")
@@ -77,7 +77,7 @@
                 "\(String(describing: model.notice))")
             context.check("the cover and the lines are one undo step", model.session.undoCount == undoCount + 1)
             try await harness.editors.waitForBase(model)
-            let copied = try await copiedPixels(controller, harness, context, "the text-only redaction")
+            let copied = try await E2EActions.copiedPixels(controller, harness, context, "the text-only redaction")
             context.check(
                 "the exported copy covers every pixel of the line", uncovered(line, in: copied) == 0,
                 "\(uncovered(line, in: copied)) uncovered pixels of the planted line")
@@ -88,7 +88,7 @@
             model.undo()
             context.check("one Undo removes the line masks", model.document.masks.isEmpty)
             try await harness.editors.waitForBase(model)
-            let undone = try await copiedPixels(controller, harness, context, "the image after Undo")
+            let undone = try await E2EActions.copiedPixels(controller, harness, context, "the image after Undo")
             context.check(
                 "positive control: after Undo the line is exported", uncovered(line, in: undone) > 0,
                 "\(uncovered(line, in: undone)) visible pixels")
@@ -107,7 +107,7 @@
                     "\(name): the editor says the area stays covered", model.notice == .textRedactionKeptArea,
                     "\(String(describing: model.notice))")
                 try await harness.editors.waitForBase(model)
-                let kept = try await copiedPixels(controller, harness, context, name)
+                let kept = try await E2EActions.copiedPixels(controller, harness, context, name)
                 context.check(
                     "\(name): the exported copy covers the whole rectangle", uncovered(drawn, in: kept) == 0,
                     "\(uncovered(drawn, in: kept)) uncovered pixels")
@@ -119,36 +119,6 @@
             E2EActions.drag(
                 model, .redact, from: E2EActions.point(Double(rect.x), Double(rect.y)),
                 to: E2EActions.point(Double(rect.maxX), Double(rect.maxY)))
-        }
-
-        /// What the editing canvas draws for the document, at one document pixel per pixel, through
-        /// the canvas's own renderer.
-        private static func canvasPixels(_ model: EditorModel, _ context: ScenarioContext) throws -> DecodedPixels {
-            let width = Int(model.document.canvasSize.width), height = Int(model.document.canvasSize.height)
-            let space = try context.unwrap("sRGB", CGColorSpace(name: CGColorSpace.sRGB))
-            let bitmap = try context.unwrap(
-                "canvas bitmap",
-                CGContext(
-                    data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            // Document space has a top-left origin, as on the canvas.
-            bitmap.translateBy(x: 0, y: CGFloat(height))
-            bitmap.scaleBy(x: 1, y: -1)
-            try EditorCanvasRenderer.draw(
-                model.document, base: model.baseImage, calloutBase: model.calloutBaseImage, in: bitmap)
-            let image = try context.unwrap("canvas image", bitmap.makeImage())
-            return try ContainerInspector.pixels(of: image)
-        }
-
-        /// A manual Copy Image of `editor`, decoded from the pasteboard.
-        private static func copiedPixels(
-            _ editor: EditorWindowController, _ harness: E2EHarness, _ context: ScenarioContext, _ name: String
-        ) async throws -> DecodedPixels {
-            let outcome = await editor.model.export(.copy)
-            try context.require("Copy of \(name) succeeds", outcome == .copied, "\(outcome)")
-            let data = try context.unwrap(
-                "\(name) PNG on the pasteboard", harness.clipboard.pasteboard.data(forType: .png))
-            return try E2EActions.decode(data, name, context)
         }
 
         /// Pixels in `rect` that are not the black mask fill.

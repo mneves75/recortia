@@ -70,6 +70,49 @@ struct EditorCanvasRendererTests {
         #expect(try Self.maxChannelDifference(canvas, exported) <= 1)
     }
 
+    @Test(
+        "Every arrowhead style and a smoothed stroke draw the same pixels on the canvas and in the export",
+        arguments: Annotation.ArrowHead.allCases)
+    func headStylesMatchExport(head: Annotation.ArrowHead) async throws {
+        let store = ImageStore()
+        let decoded = try ImageDecoder.canonicalize(try ChartFixture.geometryChart(width: 160, height: 96))
+        let info = await store.insert(decoded, origin: .imported)
+        var session = DocumentSession(document: Document(asset: info))
+        let stroke = StrokeSmoothing.simplify(
+            (0...60).map { i in Point(x: 10 + Double(i) * 2, y: 80 - sin(Double(i) / 9) * 20) },
+            tolerance: StrokeSmoothing.tolerance)
+        let style = Annotation.Style(stroke: .yellow, lineWidth: 3, opacity: 0.8)
+        try session.perform("Annotate") { document in
+            document.annotations = [
+                Annotation(
+                    kind: .arrow(start: Point(x: 12, y: 12), end: Point(x: 70, y: 40), head: head), style: style),
+                Annotation(
+                    kind: .arrow(
+                        start: Point(x: 90, y: 50), end: Point(x: 150, y: 50), control: Point(x: 120, y: 5), head: head),
+                    style: style),
+                Annotation(
+                    kind: .freehand(stroke, smoothed: true), style: Annotation.Style(stroke: .red, lineWidth: 4)),
+            ]
+        }
+        let renderer = PrivacyRenderer(store: store)
+        let exported = try await renderer.render(session.document, scale: 1)
+        let base = try await renderer.renderBase(session.document, scale: 1)
+        let context = try Self.context(width: 160, height: 96)
+        try EditorCanvasRenderer.draw(session.document, base: base, calloutBase: base, in: context)
+        let canvas = try #require(context.makeImage())
+        #expect(try Self.maxChannelDifference(canvas, exported) <= 1)
+        // Not vacuous: each style paints its own pixels in the export.
+        if head != .filled {
+            var filled = session.document
+            for index in 0..<2 {
+                guard case .arrow(let start, let end, let control, _) = filled.annotations[index].kind else { continue }
+                filled.annotations[index].kind = .arrow(start: start, end: end, control: control, head: nil)
+            }
+            let reference = try await renderer.render(filled, scale: 1)
+            #expect(try Self.maxChannelDifference(reference, exported) > 64)
+        }
+    }
+
     @Test("A magnifier preview enlarges the sanitized base only, never annotations")
     func magnifierShowsBaseOnly() async throws {
         let store = ImageStore()
