@@ -204,9 +204,13 @@ enum ExportContainerFilter {
         let children = try isoBoxes(reader, in: (meta.body.lowerBound + 4)..<meta.body.upperBound)
         guard Set(children.map(\.type)).isSubset(of: heicMetaBoxes),
             let iinf = children.first(where: { $0.type == "iinf" }),
-            let iprp = children.first(where: { $0.type == "iprp" })
+            let iprp = children.first(where: { $0.type == "iprp" }),
+            let pitm = children.first(where: { $0.type == "pitm" })
         else { throw ExportError.encodingFailed }
-        try checkItems(reader, iinf: iinf.body)
+        let items = try checkItems(reader, iinf: iinf.body)
+        try checkPicture(
+            reader, items: items, primary: try primaryItem(reader, pitm: pitm.body),
+            iref: children.first(where: { $0.type == "iref" })?.body)
         for container in try isoBoxes(reader, in: iprp.body) {
             switch container.type {
             case "ipco":
@@ -221,23 +225,70 @@ enum ExportContainerFilter {
         return data
     }
 
-    /// Every `infe` (version 2 or 3, which name their item type) is an image item.
-    private static func checkItems(_ reader: DecodeByteReader, iinf: Range<Int>) throws(ExportError) {
+    /// The file holds one picture: the primary item, and when it is a `grid`, the `hvc1` tiles it
+    /// names through `dimg`. A thumbnail (`thmb`), any other reference, or an item nothing reaches
+    /// from the primary one (a second picture) is refused.
+    private static func checkPicture(
+        _ reader: DecodeByteReader, items: [Int: String], primary: Int, iref: Range<Int>?
+    ) throws(ExportError) {
+        guard let primaryType = items[primary] else { throw ExportError.encodingFailed }
+        var picture: Set<Int> = [primary]
+        if let iref {
+            guard iref.count >= 4 else { throw ExportError.encodingFailed }
+            let idSize = reader.byte(iref.lowerBound) == 0 ? 2 : 4
+            for reference in try isoBoxes(reader, in: (iref.lowerBound + 4)..<iref.upperBound) {
+                guard reference.type == "dimg", primaryType == "grid", reference.body.count >= idSize + 2,
+                    itemID(reader, at: reference.body.lowerBound, size: idSize) == primary
+                else { throw ExportError.encodingFailed }
+                let count = reader.uint16(reference.body.lowerBound + idSize)
+                let first = reference.body.lowerBound + idSize + 2
+                guard first + count * idSize == reference.body.upperBound else { throw ExportError.encodingFailed }
+                for index in 0..<count {
+                    let tile = itemID(reader, at: first + index * idSize, size: idSize)
+                    guard items[tile] == "hvc1" else { throw ExportError.encodingFailed }
+                    picture.insert(tile)
+                }
+            }
+        }
+        guard Set(items.keys) == picture else { throw ExportError.encodingFailed }
+    }
+
+    /// `pitm` is a full box: version 0 names the item in 2 bytes, later versions in 4.
+    private static func primaryItem(_ reader: DecodeByteReader, pitm: Range<Int>) throws(ExportError) -> Int {
+        guard pitm.count >= 6 else { throw ExportError.encodingFailed }
+        let size = reader.byte(pitm.lowerBound) == 0 ? 2 : 4
+        guard pitm.count == 4 + size else { throw ExportError.encodingFailed }
+        return itemID(reader, at: pitm.lowerBound + 4, size: size)
+    }
+
+    private static func itemID(_ reader: DecodeByteReader, at offset: Int, size: Int) -> Int {
+        size == 2 ? reader.uint16(offset) : Int(reader.uint32(offset))
+    }
+
+    /// Every `infe` (version 2 or 3, which name their item type) is an image item; returns each
+    /// item's ID and type.
+    private static func checkItems(_ reader: DecodeByteReader, iinf: Range<Int>) throws(ExportError) -> [Int: String] {
         guard iinf.count >= 6 else { throw ExportError.encodingFailed }
         let version = reader.byte(iinf.lowerBound)
         let countSize = version == 0 ? 2 : 4
         let entries = try isoBoxes(reader, in: (iinf.lowerBound + 4 + countSize)..<iinf.upperBound)
         guard !entries.isEmpty else { throw ExportError.encodingFailed }
+        var items: [Int: String] = [:]
         for entry in entries {
             guard entry.type == "infe", entry.body.count >= 12 else { throw ExportError.encodingFailed }
             let entryVersion = reader.byte(entry.body.lowerBound)
             guard entryVersion == 2 || entryVersion == 3 else { throw ExportError.encodingFailed }
             // version, flags, item ID (2 or 4 bytes), protection index (2), item type (4).
-            let typeOffset = entry.body.lowerBound + 4 + (entryVersion == 2 ? 2 : 4) + 2
-            guard typeOffset + 4 <= entry.body.upperBound,
-                heicItemTypes.contains(String(decoding: reader.slice(typeOffset..<(typeOffset + 4)), as: UTF8.self))
-            else { throw ExportError.encodingFailed }
+            let idSize = entryVersion == 2 ? 2 : 4
+            let typeOffset = entry.body.lowerBound + 4 + idSize + 2
+            guard typeOffset + 4 <= entry.body.upperBound else { throw ExportError.encodingFailed }
+            let type = String(decoding: reader.slice(typeOffset..<(typeOffset + 4)), as: UTF8.self)
+            let id = itemID(reader, at: entry.body.lowerBound + 4, size: idSize)
+            guard heicItemTypes.contains(type), items.updateValue(type, forKey: id) == nil else {
+                throw ExportError.encodingFailed
+            }
         }
+        return items
     }
 
     /// The boxes that exactly tile `range`: each one's type and body (after its header).
