@@ -161,6 +161,56 @@
             context.check("the editor keeps the capture's pixels", kept == baseline + 1, "\(kept) of \(baseline)")
             harness.editors.closeAll()
             context.check("closing the editor releases them", await waitForCount(store, baseline))
+            try await checkReplacement(harness, context)
+        }
+
+        /// The thumbnail's Save under Automatic with report.png and report.jpg both present: the
+        /// question names the file Automatic resolved to (its name only), Cancel keeps both, and
+        /// Replace replaces exactly that file.
+        private static func checkReplacement(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let ui = harness.quickActionsUI
+            let folder = harness.output.workDirectory.appending(path: "thumbnail-replace", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let reportPNG = folder.appending(path: "report.png")
+            let reportJPEG = folder.appending(path: "report.jpg")
+            let originals = [reportPNG: Data("existing png".utf8), reportJPEG: Data("existing jpg".utf8)]
+            for (url, bytes) in originals { try bytes.write(to: url) }
+            let bookmark = harness.settings.preferences.preferredSaveFolderBookmark
+            harness.settings.update { $0.preferredSaveFolderBookmark = nil }
+            defer {
+                harness.settings.update { $0.preferredSaveFolderBookmark = bookmark }
+                ui.chooseSaveDestination = { nil }
+                ui.confirmReplacement = { _ in false }
+            }
+            ui.chooseSaveDestination = { (reportPNG, .automatic) }
+            var asked: [URL] = []
+            var answer = false
+            ui.confirmReplacement = {
+                asked.append($0)
+                return answer
+            }
+            _ = try await showThumbnail(harness, context)
+            _ = await ui.save()
+            let named = try context.unwrap("the thumbnail's Save asked about one file", asked.first)
+            let question = MessagePresenter.makeReplacement(of: named).messageText
+            context.check(
+                "the thumbnail's question names the resolved file and no folder",
+                asked.count == 1 && [reportPNG, reportJPEG].contains(named)
+                    && question.contains("“\(named.lastPathComponent)”") && !question.contains(folder.path),
+                question)
+            context.check(
+                "Cancel keeps both report files",
+                originals.allSatisfy { (try? Data(contentsOf: $0.key)) == $0.value })
+            answer = true
+            asked = []
+            _ = await ui.save()
+            let kept = named == reportPNG ? reportJPEG : reportPNG
+            context.check(
+                "Replace replaces exactly the named file",
+                asked == [named] && (try? Data(contentsOf: named)) != originals[named]
+                    && (try? Data(contentsOf: kept)) == originals[kept],
+                "\(asked.map(\.lastPathComponent))")
+            harness.features.quickActions.dismiss()
         }
 
         /// Captures the notes window and waits for its thumbnail; returns the panel's content.

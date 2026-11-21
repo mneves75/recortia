@@ -148,17 +148,20 @@
             let original = Data("existing owner file".utf8)
             try original.write(to: collision)
             var confirmations = 0
+            var named: [String] = []
             let declined = await controller.saveImage(to: collision, format: .fixed(.png)) {
                 confirmations += 1
+                named.append($0.lastPathComponent)
                 return false
             }
             context.check("replacement decline cancels the save", declined == .canceled)
             context.check("a collision asks before overwriting", confirmations == 1)
+            context.check("the question names the existing file", named == ["consent.png"], "\(named)")
             context.check("declining preserves the existing bytes", try Data(contentsOf: collision) == original)
             // R3-D05: the format changes while the replacement question is open. The retry still
             // writes the format the save panel named, so a .png name receives PNG bytes.
             let formatBefore = harness.settings.preferences.defaultExportFormat
-            let replaced = await controller.saveImage(to: collision, format: .fixed(.png)) {
+            let replaced = await controller.saveImage(to: collision, format: .fixed(.png)) { _ in
                 confirmations += 1
                 harness.settings.update { $0.defaultExportFormat = .jpeg }
                 return true
@@ -173,18 +176,50 @@
                 "replacement uses sanitized export pixels",
                 try E2EActions.decode(Data(contentsOf: collision), "replacement", context) == savedPixels)
             let fresh = folder.appending(path: "no-collision.png")
-            let created = await controller.saveImage(to: fresh, format: .fixed(.png)) {
+            let created = await controller.saveImage(to: fresh, format: .fixed(.png)) { _ in
                 confirmations += 1
                 return false
             }
             context.check(
                 "exclusive new save needs no replacement consent", created == .saved(fresh) && confirmations == 2)
+            // Automatic with report.png and report.jpg both present: the question names the file
+            // Automatic resolved to, and only that file is replaced; the other keeps its bytes.
+            let reportPNG = folder.appending(path: "report.png")
+            let reportJPEG = folder.appending(path: "report.jpg")
+            let pngBytes = Data("existing png".utf8)
+            let jpegBytes = Data("existing jpg".utf8)
+            try pngBytes.write(to: reportPNG)
+            try jpegBytes.write(to: reportJPEG)
+            var asked: [URL] = []
+            let automatic = await controller.saveImage(to: reportPNG, format: .automatic) {
+                asked.append($0)
+                return true
+            }
+            let replacedName = try context.unwrap("Automatic asked about one file", asked.first)
+            let kept = replacedName.lastPathComponent == "report.png" ? reportJPEG : reportPNG
+            context.check(
+                "Automatic asks once, naming the resolved report file",
+                asked.count == 1 && [reportPNG, reportJPEG].contains(replacedName), "\(asked.map(\.lastPathComponent))")
+            context.check(
+                "Automatic replaces exactly the named file", automatic == .saved(replacedName),
+                "\(automatic)")
+            context.check(
+                "the report file it did not name keeps its bytes",
+                (try? Data(contentsOf: kept)) == (kept == reportPNG ? pngBytes : jpegBytes),
+                kept.lastPathComponent)
             let beforeNative = try Data(contentsOf: collision)
             let nativeSave = Task { await controller.saveImage(to: collision, format: .fixed(.png)) }
             let sheetAppeared = await E2EWait.until { controller.window?.attachedSheet != nil }
             try context.require("collision presents the native replacement sheet", sheetAppeared)
             let sheet = try context.unwrap("replacement sheet", controller.window?.attachedSheet)
             let content = try context.unwrap("replacement sheet content", sheet.contentView)
+            let sheetTexts = EditorWindowController.all(NSTextField.self, in: content).map(\.stringValue)
+            let question = MessagePresenter.makeReplacement(of: collision).messageText
+            context.check(
+                "the replacement sheet names the file",
+                sheetTexts.contains(question) && question.contains("“consent.png”")
+                    && !sheetTexts.contains { $0.contains(folder.path) },
+                sheetTexts.joined(separator: " | "))
             await E2ESnapshot.settle(content)
             context.snapshot(content, shot: "replacement-consent")
             await context.darkCompanion(content, in: sheet, shot: "replacement-consent", surface: "replacement sheet")

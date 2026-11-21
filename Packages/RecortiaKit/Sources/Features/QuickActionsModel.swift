@@ -125,22 +125,25 @@ public final class QuickActionsModel {
     }
 
     /// Saves into the folder chosen in Settings when it resolves; otherwise asks `choose` for a
-    /// destination (nil cancels). Replacing an existing file needs `confirmReplacement` (FR-07).
+    /// destination (nil cancels). Replacing an existing file needs `confirmReplacement` for that
+    /// exact file; a retry that resolves to another existing file asks again about it (FR-07).
     public func save(
         choosing choose: @MainActor () async -> (url: URL, format: ExportFormatChoice)?,
-        confirmReplacement: @MainActor () async -> Bool
+        confirmReplacement: @MainActor (_ existing: URL) async -> Bool
     ) async -> ExportOutcome {
         guard let held = begin() else { return .rejectedBusy }
         if let folder = settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder) {
             return finish(held, await exportHeld(.saveToFolder(folder), held))
         }
         guard let destination = await choose(), capture?.id == held.id else { return finish(held, .canceled) }
-        var outcome = await exportHeld(
-            .save(to: destination.url, format: destination.format, overwriteConfirmed: false), held)
-        if outcome == .failed(.destinationExists), capture?.id == held.id {
-            guard await confirmReplacement(), capture?.id == held.id else { return finish(held, .canceled) }
+        var outcome = await exportHeld(.save(to: destination.url, format: destination.format, replacing: nil), held)
+        var asked: Set<URL> = []
+        while case .failed(.destinationExists(let existing?)) = outcome, asked.insert(existing).inserted,
+            capture?.id == held.id
+        {
+            guard await confirmReplacement(existing), capture?.id == held.id else { return finish(held, .canceled) }
             outcome = await exportHeld(
-                .save(to: destination.url, format: destination.format, overwriteConfirmed: true), held)
+                .save(to: destination.url, format: destination.format, replacing: existing), held)
         }
         return finish(held, outcome)
     }

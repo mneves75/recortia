@@ -288,7 +288,7 @@ struct SourceAutoRedactionTests {
         #expect(await model.export(.copy) == .copied)
         let saveURL = MaskingSource.folder.appending(path: "\(source.rawValue).png")
         #expect(
-            await model.export(.save(saveURL, format: .fixed(.png), overwriteConfirmed: true)) == .saved(saveURL))
+            await model.export(.save(saveURL, format: .fixed(.png), replacing: saveURL)) == .saved(saveURL))
         #expect(await model.export(.drag) == .dragged)
         await model.pin()
         let pin = try #require(new.pins.pins.first)

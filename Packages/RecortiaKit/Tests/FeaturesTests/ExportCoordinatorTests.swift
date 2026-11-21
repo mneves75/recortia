@@ -86,7 +86,7 @@ struct ExportCoordinatorTests {
         "Sink errors map to typed export failures without a success report",
         arguments: [
             (SinkError.accessDenied, ExportFailure.accessDenied),
-            (.destinationExists, .destinationExists),
+            (.destinationExists, .destinationExists(URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png"))),
             (.diskFull, .diskFull),
             (.volumeUnavailable, .volumeUnavailable),
             (.writeFailed(code: 5), .system(code: 5)),
@@ -96,7 +96,7 @@ struct ExportCoordinatorTests {
         let h = ExportHarness()
         h.files.error = error
         #expect(
-            await h.export(.save(to: destination, format: .fixed(.png), overwriteConfirmed: false)) == .failed(expected)
+            await h.export(.save(to: destination, format: .fixed(.png), replacing: nil)) == .failed(expected)
         )
         #expect(h.coordinator.state == .failed(expected))
     }

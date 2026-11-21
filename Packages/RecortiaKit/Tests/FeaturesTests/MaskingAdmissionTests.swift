@@ -241,7 +241,7 @@ struct MaskingAdmissionTests {
                     .copy, .drag, .saveToPreferredFolder,
                     .save(
                         URL(fileURLWithPath: "/tmp/recortia-tests/admission.png"), format: .fixed(.png),
-                        overwriteConfirmed: true),
+                        replacing: URL(fileURLWithPath: "/tmp/recortia-tests/admission.png")),
                 ]
                 for request in requests {
                     model.dismissNotice()

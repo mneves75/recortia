@@ -333,30 +333,31 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         }
     }
 
-    /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent.
+    /// Exclusive creation closes the save-panel race. A collision requires fresh, explicit consent
+    /// for the file it names; a retry that resolves to another existing file asks about that one.
     @discardableResult
     func saveImage(
-        to url: URL, format: ExportFormatChoice, confirmReplacement: (() async -> Bool)? = nil
+        to url: URL, format: ExportFormatChoice, confirmReplacement: ((_ existing: URL) async -> Bool)? = nil
     ) async -> ExportOutcome {
-        let outcome = await model.export(.save(url, format: format, overwriteConfirmed: false))
-        guard outcome == .failed(.destinationExists) else { return outcome }
-        model.dismissNotice()
-        let confirmed: Bool
-        if let confirmReplacement {
-            confirmed = await confirmReplacement()
-        } else {
-            confirmed = await self.confirmReplacement()
+        var outcome = await model.export(.save(url, format: format, replacing: nil))
+        var asked: Set<URL> = []
+        while case .failed(.destinationExists(let existing?)) = outcome, asked.insert(existing).inserted {
+            model.dismissNotice()
+            let confirmed: Bool
+            if let confirmReplacement {
+                confirmed = await confirmReplacement(existing)
+            } else {
+                confirmed = await self.confirmReplacement(of: existing)
+            }
+            guard confirmed else { return .canceled }
+            outcome = await model.export(.save(url, format: format, replacing: existing))
         }
-        guard confirmed else { return .canceled }
-        return await model.export(.save(url, format: format, overwriteConfirmed: true))
+        return outcome
     }
 
-    private func confirmReplacement() async -> Bool {
+    private func confirmReplacement(of existing: URL) async -> Bool {
         guard let window else { return false }
-        let alert = MessagePresenter.makeConfirmation(
-            title: String(localized: "Replace Existing File?", table: "Editor"),
-            detail: String(localized: "A file exists at this destination. Replace it?", table: "Editor"),
-            action: String(localized: "Replace", table: "Editor"), cancel: String(localized: "Cancel", table: "Editor"))
+        let alert = MessagePresenter.makeReplacement(of: existing)
         return await withCheckedContinuation { continuation in
             alert.beginSheetModal(for: window) { continuation.resume(returning: $0 == .alertFirstButtonReturn) }
         }

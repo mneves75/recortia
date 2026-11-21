@@ -402,6 +402,8 @@ final class FakeClipboard: ClipboardSinkService {
 @MainActor
 final class FakeFileSink: FileSinkService {
     var error: SinkError?
+    /// Files that exist: exclusive creation of one of them fails as the real sink does.
+    var existing: Set<URL> = []
     var pending: Pending<Void>?
     private(set) var saves: [(snapshot: ShareSnapshot, url: URL, overwrite: Bool)] = []
     private(set) var uniqueSaves: [(snapshot: ShareSnapshot, folder: URL)] = []
@@ -409,6 +411,8 @@ final class FakeFileSink: FileSinkService {
     func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL {
         if let pending { await pending.wait() }
         if let error { throw error }
+        if !overwrite, existing.contains(url) { throw .destinationExists }
+        existing.insert(url)
         saves.append((snapshot, url, overwrite))
         return url
     }
