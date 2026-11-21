@@ -345,11 +345,12 @@ final class AppModel: AppActions {
         }
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
         editorWindow = { [editors] in editors.window(for: $0) }
-        let monitor = SystemEventMonitor { event in
+        let monitor = SystemEventMonitor { [weak self] event in
             switch event {
             case .displaysChanged:
                 features.capture.displayConfigurationChanged()
                 features.scroll.interrupt(because: .displayChanged)
+                self?.prepareCaptureWindows()
             case .screenLocked:
                 features.capture.interrupt(because: .screenLocked)
                 features.scroll.interrupt(because: .screenLocked)
@@ -359,6 +360,17 @@ final class AppModel: AppActions {
         systemEvents = monitor
         recognizeText = { [editors] session in
             editors.open(session, environment: environment, initialAction: .recognizeText)
+        }
+        prepareCaptureWindows()
+    }
+
+    /// Pre-builds the windows a capture shows (A-13 step 2) on a later main-actor turn, so launch
+    /// and a display change finish first.
+    private func prepareCaptureWindows() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            captureUI?.prepareOverlays(features.services.capture.displays())
+            editors.prepareSpare()
         }
     }
 

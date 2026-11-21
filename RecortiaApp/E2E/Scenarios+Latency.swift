@@ -110,7 +110,7 @@
         }
 
         /// Imports `harness.desktop` through the real input and decode path without opening an editor.
-        private static func importedSession(_ harness: E2EHarness, name: String) async throws -> DocumentSession {
+        static func importedSession(_ harness: E2EHarness, name: String) async throws -> DocumentSession {
             let url = harness.output.workDirectory.appending(path: name)
             try E2EDrawing.png(harness.desktop).write(to: url, options: .atomic)
             let importer = harness.features.importer

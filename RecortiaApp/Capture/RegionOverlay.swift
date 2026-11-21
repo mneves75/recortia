@@ -19,7 +19,14 @@ extension DisplayInfo {
 
 /// One borderless overlay window per display for region selection (FR-02). A selection starts
 /// on one display and is clamped to it, with a visible explanation when the pointer leaves it.
+///
+/// With pre-building (A-13 step 2) every display keeps a hidden, policy-applied panel that a
+/// capture orders in instead of constructing one; dismissal hides it again for the next capture.
 final class RegionOverlayController {
+    /// The shipped default (decisions 2026-11-21, A-13 step 2): showing an overlay is mostly
+    /// constructing its full-screen panel, so it is pre-built. Unproven until a native run.
+    static let prebuildsByDefault = true
+
     var onCommit: ((Rect<DesktopSpace>, DisplayInfo) -> Void)?
     var onCancel: (() -> Void)?
     /// Space, as in the macOS Screenshot app: continue as a window selection.
@@ -27,13 +34,29 @@ final class RegionOverlayController {
     var onAspectChange: ((SelectionAspect) -> Void)?
 
     private var windows: [CGDirectDisplayID: OverlayWindow] = [:]
-    private let makeWindow: (DisplayInfo, NSScreen) -> OverlayWindow
+    private let pool: WindowSparePool<DisplayInfo, OverlayWindow>
 
-    init(makeWindow: @escaping (DisplayInfo, NSScreen) -> OverlayWindow = { OverlayWindow(display: $0, screen: $1) }) {
-        self.makeWindow = makeWindow
+    init(
+        prebuilds: Bool = RegionOverlayController.prebuildsByDefault,
+        makeWindow: @escaping (DisplayInfo, NSScreen) -> OverlayWindow = { OverlayWindow(display: $0, screen: $1) }
+    ) {
+        pool = WindowSparePool(isEnabled: prebuilds) { display in display.screen.map { makeWindow(display, $0) } }
     }
 
     var isPresented: Bool { !windows.isEmpty }
+
+    /// The panels on screen now, for measurement.
+    var presentedWindows: [OverlayWindow] { Array(windows.values) }
+
+    /// The hidden panel kept for `display`, if any.
+    func spare(for display: DisplayInfo) -> OverlayWindow? { pool.spare(for: display) }
+
+    /// Builds and draws a hidden panel for each display, replacing those of displays that changed
+    /// or went away. Does nothing without pre-building.
+    func prepare(displays: [DisplayInfo]) {
+        pool.prepare(displays)
+        for display in displays { pool.spare(for: display)?.displayIfNeeded() }
+    }
 
     func present(
         displays: [DisplayInfo], notice: String?, allowsWindowSwitch: Bool, aspect: SelectionAspect?,
@@ -41,7 +64,7 @@ final class RegionOverlayController {
     ) {
         let wanted = Set(displays.map(\.id))
         for (id, window) in windows where !wanted.contains(id) {
-            window.orderOut(nil)
+            hide(window)
             windows[id] = nil
         }
         for display in displays {
@@ -50,7 +73,8 @@ final class RegionOverlayController {
                 continue
             }
             guard let screen = display.screen else { continue }
-            let window = makeWindow(display, screen)
+            let reused = pool.spare(for: display) != nil
+            guard let window = pool.take(display) else { continue }
             let view = window.selectionView
             configure(view, notice, allowsWindowSwitch, aspect, snapFrames)
             view.onSwitchToWindow = { [weak self] in self?.onSwitchToWindow?() }
@@ -64,14 +88,26 @@ final class RegionOverlayController {
                 }
             }
             windows[display.id] = window
+            if reused {
+                if window.frame != screen.frame { window.setFrame(screen.frame, display: false) }
+                // Drawn while hidden, so ordering in never shows the previous capture's frame.
+                window.displayIfNeeded()
+            }
             window.orderFrontRegardless()
         }
         focusWindowUnderPointer()
     }
 
     func dismiss() {
-        for window in windows.values { window.orderOut(nil) }
+        for window in windows.values { hide(window) }
         windows.removeAll()
+    }
+
+    /// Orders `window` out and keeps it for the next capture when pre-building wants it.
+    private func hide(_ window: OverlayWindow) {
+        window.orderOut(nil)
+        window.selectionView.resetSelection()
+        pool.giveBack(window, for: window.display)
     }
 
     private func configure(
@@ -95,9 +131,11 @@ final class RegionOverlayController {
 }
 
 final class OverlayWindow: NSPanel {
+    let display: DisplayInfo
     let selectionView: RegionSelectionView
 
     init(display: DisplayInfo, screen: NSScreen) {
+        self.display = display
         selectionView = RegionSelectionView(display: display)
         super.init(
             contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -198,6 +236,17 @@ final class RegionSelectionView: NSView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
+
+    /// Whether a drag is in progress or a nudged selection is held.
+    var hasSelection: Bool { selection != nil }
+
+    /// Forgets the selection, the held modifiers and the window frames, so a reused overlay starts
+    /// without the previous capture's selection, ratio drag, snap guide or snap targets.
+    func resetSelection() {
+        clearSelection()
+        keys = SelectionKeys()
+        snapFrames = []
+    }
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }

@@ -70,6 +70,7 @@
 		60647A0CC1731D110C1B38C3 /* Scenarios+CapturePrecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C59423A6DA2A4DDE9C01F6 /* Scenarios+CapturePrecision.swift */; };
 		6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
 		61AAC7F70EA6E61FC071A9C0 /* EditorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48537C0299ADF945358D808 /* EditorCommands.swift */; };
+		634BB4EC84974E27511E1B4D /* Scenarios+PrebuiltWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B32C7A4F3E1EE9466F2B262 /* Scenarios+PrebuiltWindows.swift */; };
 		6470C535C3CBC2B70DF471A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
 		652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */; };
 		65345782C7EBA8CF8EE27F85 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
@@ -213,6 +214,7 @@
 		37E3B5628385CE0D560B7AC3 /* KeyboardShortcuts-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "KeyboardShortcuts-LICENSE.txt"; sourceTree = "<group>"; };
 		38AB1BC9C7BD09C89EF72F3D /* MessagePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagePresenter.swift; sourceTree = "<group>"; };
 		3AFB0E6E116548AC1526E63F /* RecortiaE2E.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2E.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3B32C7A4F3E1EE9466F2B262 /* Scenarios+PrebuiltWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+PrebuiltWindows.swift"; sourceTree = "<group>"; };
 		3DCF5452C8392723EB823CFA /* E2EForegroundFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EForegroundFixture.swift; sourceTree = "<group>"; };
 		3F28E2BD01C5C58B01ED7275 /* Recortia-Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Recortia-Release.entitlements"; sourceTree = "<group>"; };
 		414F0482B18ABC99932B5236 /* Scenarios+Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Shell.swift"; sourceTree = "<group>"; };
@@ -479,6 +481,7 @@
 				0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */,
 				E7A3379CF69132E9EDEDD10D /* Scenarios+Latency.swift */,
 				AA78E46BB5E950F1B7908DD8 /* Scenarios+Output.swift */,
+				3B32C7A4F3E1EE9466F2B262 /* Scenarios+PrebuiltWindows.swift */,
 				BF93FD19A777188FFB7AE1F6 /* Scenarios+Presence.swift */,
 				BB9343DD04DF024A4E7B8C01 /* Scenarios+QuickActions.swift */,
 				2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */,
@@ -815,6 +818,7 @@
 				3BB7356881116137AE7EAF5E /* Scenarios+LastWindow.swift in Sources */,
 				B77914BD58B9BEB0376A3883 /* Scenarios+Latency.swift in Sources */,
 				F109848DE51E902A419DBBF2 /* Scenarios+Output.swift in Sources */,
+				634BB4EC84974E27511E1B4D /* Scenarios+PrebuiltWindows.swift in Sources */,
 				A8310D2D3CD5C642EB8F3D94 /* Scenarios+Presence.swift in Sources */,
 				C977D2292086CA85AD8BB38A /* Scenarios+QuickActions.swift in Sources */,
 				EC217458B85729AD67396CF6 /* Scenarios+Recognition.swift in Sources */,
