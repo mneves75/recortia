@@ -51,7 +51,7 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-04 | Crop, zoom, pan, resize; select, move, delete, duplicate; undo/redo | 0.1 | EDIT / GEO |
 | FR-05 | Text, straight/curved arrows, straight line, rectangle, ellipse, freehand, highlighter, numbered steps | 0.1 | EDIT |
 | FR-06 | Solid secure redaction; cosmetic blur/pixelation clearly distinguished | 0.1 | RED |
-| FR-07 | Flattened PNG/JPEG save, PNG clipboard copy, safe drag-out | 0.1 | EXP / RED |
+| FR-07 | Flattened PNG/JPEG/HEIC save, PNG clipboard copy and print, safe drag-out | 0.1 | EXP / RED |
 | FR-08 | On-device OCR and QR decoding, EN and PT-BR workflows | 0.1 | OCR |
 | FR-09 | Reference pins with opacity, zoom, copy, drag-out, and explicit close | 0.1 | PIN / PRIV |
 | FR-10 | Manual and automatic vertical scrolling capture with confidence checks | 1.0 | SCR / PERM |
@@ -219,7 +219,7 @@ Do not promise that OCR-based “find sensitive data” is exhaustive. Do not pr
 
 All save, clipboard, drag-out, and later upload operations MUST receive the same immutable ShareSnapshot produced by the approved export pipeline. The snapshot identifies document revision, privacy epoch, output format/scale/color space, and sanitized bytes. It contains no raw source references.
 
-PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Saved files may instead use Automatic: an image without transparency is also encoded as JPEG at quality 0.92, and the JPEG is kept only when the PNG is over 0.5 MB and more than four times its size, or over 2 MB and more than twice its size; the file extension follows the bytes kept. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
+PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Saved files may instead use Automatic: an image without transparency is also encoded as JPEG at quality 0.92, and the JPEG is kept only when the PNG is over 0.5 MB and more than four times its size, or over 2 MB and more than twice its size; the file extension follows the bytes kept. HEIC is offered where the Mac's ImageIO encodes it, flattened like JPEG at the same quality setting and holding image items only; elsewhere a stored HEIC choice saves PNG, and Automatic never picks HEIC. Print hands the same sanitized PNG as Copy Image to the system print panel and is refused whenever Copy is. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
 
 Save uses a user-selected destination or a previously authorized preferred folder, sanitized collision-resistant filenames, a same-directory temporary file, and atomic replacement/rename where supported. Overwrite requires confirmation. Encode failure leaves the destination intact. Quota, revocation, full disk, and disconnected volumes are explicit errors. File promises for drag-out must keep sanitized bytes alive until the receiving app completes or the transfer is canceled; do not delete a promised file prematurely.
 
