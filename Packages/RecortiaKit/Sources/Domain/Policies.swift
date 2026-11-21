@@ -190,6 +190,13 @@ public enum ExportFormatKind: String, Hashable, Sendable, Codable, CaseIterable 
     case jpeg
 }
 
+/// What a completed capture opens (FR-01, ADR-009).
+public enum AfterCapture: String, Hashable, Sendable, Codable, CaseIterable {
+    case openEditor
+    /// A small thumbnail with Copy, Save, Open in Editor, Pin and Dismiss.
+    case showQuickActions
+}
+
 /// User preferences. No screenshots, OCR text, or other content is ever stored here (SPEC.md §7).
 /// Every side-effect toggle defaults to off.
 public struct Preferences: Hashable, Sendable, Codable {
@@ -228,6 +235,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var filenameTemplateChoice: FilenameTemplate?
     /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
     public var playsCaptureSoundChoice: Bool?
+    /// Stored only once the person changes it; read `afterCapture` (B-1).
+    public var afterCaptureChoice: AfterCapture?
 
     public init() {}
 
@@ -235,6 +244,12 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var playsCaptureSound: Bool {
         get { playsCaptureSoundChoice ?? false }
         set { playsCaptureSoundChoice = newValue }
+    }
+
+    /// What a completed capture opens; the editor by default (ADR-009).
+    public var afterCapture: AfterCapture {
+        get { afterCaptureChoice ?? .openEditor }
+        set { afterCaptureChoice = newValue }
     }
 
     /// How saved and dragged files are named (FR-07). GitHub uploads keep their per-intent path

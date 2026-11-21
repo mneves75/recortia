@@ -40,6 +40,8 @@
         let features: FeatureModels
         let editors: E2EEditorHost
         let environment: EditorEnvironment
+        /// The product's thumbnail controller; its panel is parked offscreen and Save never shows a panel.
+        let quickActionsUI: QuickActionsUIController
         /// The macOS shortcuts the runner treats as enabled, so shortcut states never depend on the
         /// host's System Settings. It starts like a fresh Mac: ⇧⌘3, ⇧⌘4, and ⇧⌘5 belong to macOS.
         let systemShortcuts = E2ESystemShortcuts()
@@ -99,6 +101,14 @@
                 pins: features.pins, textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links,
                 settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter)
             editors = E2EEditorHost(environment: environment)
+            quickActionsUI = QuickActionsUIController(model: features.quickActions, settings: settings)
+            quickActionsUI.present = { panel in
+                panel.sizeToContentIfUnsized()
+                E2ESnapshot.park(panel)
+                panel.orderFrontRegardless()
+            }
+            quickActionsUI.chooseSaveDestination = { nil }
+            quickActionsUI.confirmReplacement = { false }
             wire()
             // What a normal launch does (ADR-005), without registering any handler.
             ShortcutDefaults.seedIfNeeded(isNewInstall: !settings.preferences.hasCompletedOnboarding)
@@ -115,6 +125,7 @@
             features.scroll.onAccepted = { editors.open($0) }
             app.openDocument = { editors.open($0, importedFileName: $2, initialAction: $1).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
+            features.quickActions.onOpenInEditor = { editors.open($0) }
             app.unexportedEditCount = { editors.unexportedEditCount }
         }
 
@@ -138,7 +149,9 @@
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
                 $0.keepsRunningInMenuBar = true; $0.autoRedactsSensitiveText = false
+                $0.afterCapture = .openEditor
             }
+            features.quickActions.dismiss()
             folderChooser.answers = []
             editors.closeAll()
             features.pins.closeAll()

@@ -93,6 +93,14 @@ struct CaptureSettingsTab: View {
     var body: some View {
         Form {
             Section {
+                Picker("After a capture", selection: settings.binding(\.afterCapture)) {
+                    Text("Open the editor").tag(AfterCapture.openEditor)
+                    Text("Show quick actions").tag(AfterCapture.showQuickActions)
+                }
+                .help(Text("Captures open in the editor while automatic masking is on."))
+                .accessibilityIdentifier("settings.afterCapture")
+            }
+            Section {
                 Stepper(value: settings.binding(\.captureDelaySeconds), in: 0...CaptureRequest.maxDelaySeconds) {
                     Text("Delay: \(settings.preferences.captureDelaySeconds) s")
                 }

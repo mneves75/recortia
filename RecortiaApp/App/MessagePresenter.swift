@@ -66,6 +66,16 @@ enum MessagePresenter {
         return runModal(alert) == .alertFirstButtonReturn
     }
 
+    /// Asks before Save replaces an existing file from a window without a sheet parent (the
+    /// quick-action thumbnail); the editor asks the same in a sheet.
+    static func confirmReplacement() -> Bool {
+        let alert = makeConfirmation(
+            title: String(localized: "Replace Existing File?", table: "Editor"),
+            detail: String(localized: "A file exists at this destination. Replace it?", table: "Editor"),
+            action: String(localized: "Replace", table: "Editor"), cancel: String(localized: "Cancel", table: "Editor"))
+        return runModal(alert) == .alertFirstButtonReturn
+    }
+
     /// A warning that asks before something is thrown away: the destructive action first, then
     /// Cancel. App-modal confirmations run it through `runModal`; editor sheets attach it.
     static func makeConfirmation(
