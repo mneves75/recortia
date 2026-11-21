@@ -16,8 +16,8 @@ struct EditorExportTests {
     func saveOverwriteFollowsConfirmation() async {
         let h = EditorHarness()
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
-        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: false))
-        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: true))
+        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: false))
+        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: true))
         #expect(h.files.saves.map(\.overwrite) == [false, true])
     }
 
@@ -26,8 +26,8 @@ struct EditorExportTests {
         let h = EditorHarness()
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
         h.settings.update { $0.defaultExportFormat = .jpeg }
-        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: false))
-        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: true))
+        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: false))
+        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: true))
         #expect(h.files.saves.map(\.snapshot.format) == [.png, .png], "a .png name receives PNG bytes")
     }
 

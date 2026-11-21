@@ -128,6 +128,13 @@ public enum ExportFormat: Hashable, Sendable, Codable {
     }
 }
 
+/// The format one export asks for (FR-07): a fixed format, or Automatic, which encodes both and
+/// keeps the PNG unless a JPEG is much smaller (`ExportOptions.automaticFormat`).
+public enum ExportFormatChoice: Hashable, Sendable {
+    case fixed(ExportFormat)
+    case automatic
+}
+
 public enum ExportOptionsError: Error, Equatable, Sendable {
     case invalidScale
     case invalidQuality
@@ -140,15 +147,33 @@ public struct ExportOptions: Hashable, Sendable, Codable {
     /// JPEG has no alpha: transparency is flattened against this opaque color (FR-07).
     public var jpegBackground: RGBA
     public var filenameTemplate: FilenameTemplate
+    /// Automatic: the encoder picks PNG or a JPEG, and `format` names only the PNG it starts from.
+    /// The snapshot records the format its bytes are in.
+    public var automaticFormat: Bool
 
     public init(
         format: ExportFormat = .png, scale: Double = 1, jpegBackground: RGBA = .white,
-        filenameTemplate: FilenameTemplate = .default
+        filenameTemplate: FilenameTemplate = .default, automaticFormat: Bool = false
     ) {
-        self.format = format
+        self.format = automaticFormat ? .png : format
         self.scale = scale
         self.jpegBackground = jpegBackground
         self.filenameTemplate = filenameTemplate
+        self.automaticFormat = automaticFormat
+    }
+
+    public var formatChoice: ExportFormatChoice {
+        get { automaticFormat ? .automatic : .fixed(format) }
+        set {
+            switch newValue {
+            case .fixed(let fixed):
+                format = fixed
+                automaticFormat = false
+            case .automatic:
+                format = .png
+                automaticFormat = true
+            }
+        }
     }
 
     public static let validScaleRange: ClosedRange<Double> = 0.1...8
@@ -160,6 +185,7 @@ public struct ExportOptions: Hashable, Sendable, Codable {
             guard quality.isFinite, (0...1).contains(quality) else { throw ExportOptionsError.invalidQuality }
             guard jpegBackground.isOpaque else { throw ExportOptionsError.translucentJPEGBackground }
         }
+        if automaticFormat, !jpegBackground.isOpaque { throw ExportOptionsError.translucentJPEGBackground }
         return self
     }
 }
@@ -188,6 +214,8 @@ public enum OCRTextMode: String, Hashable, Sendable, Codable, CaseIterable {
 public enum ExportFormatKind: String, Hashable, Sendable, Codable, CaseIterable {
     case png
     case jpeg
+    /// PNG or JPEG by size, for saved files (FR-07). Stored apart from `defaultExportFormat`.
+    case automatic
 }
 
 /// User preferences. No screenshots, OCR text, or other content is ever stored here (SPEC.md §7).
@@ -208,6 +236,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     package var launchAtLogin: Bool? = false
     public var updateChecksEnabled = false
     public var automaticScrollingEnabled = false
+    /// The fixed format, PNG or JPEG; read `exportFormat`. 0.14 and earlier decode only those two,
+    /// so `SettingsStore.sanitized` moves `.automatic` to `automaticExportFormatChoice`.
     public var defaultExportFormat = ExportFormatKind.png
     public var jpegQuality = 0.9
     public var defaultExportScale = 1.0
@@ -228,6 +258,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var filenameTemplateChoice: FilenameTemplate?
     /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
     public var playsCaptureSoundChoice: Bool?
+    /// Stored only once the person picks a format; read `exportFormat`.
+    public var automaticExportFormatChoice: Bool?
 
     public init() {}
 
@@ -258,9 +290,20 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { autoRedactsSensitiveTextChoice = newValue }
     }
 
+    /// The format of saved, dragged and uploaded files (FR-07); Copy Image is always PNG.
+    public var exportFormat: ExportFormatKind {
+        get { automaticExportFormatChoice == true ? .automatic : defaultExportFormat }
+        set {
+            automaticExportFormatChoice = newValue == .automatic
+            if newValue != .automatic { defaultExportFormat = newValue }
+        }
+    }
+
     public var exportOptions: ExportOptions {
-        let format: ExportFormat = defaultExportFormat == .png ? .png : .jpeg(quality: jpegQuality)
-        return ExportOptions(format: format, scale: defaultExportScale, filenameTemplate: filenameTemplate)
+        let format: ExportFormat = defaultExportFormat == .jpeg ? .jpeg(quality: jpegQuality) : .png
+        return ExportOptions(
+            format: format, scale: defaultExportScale, filenameTemplate: filenameTemplate,
+            automaticFormat: exportFormat == .automatic)
     }
 }
 

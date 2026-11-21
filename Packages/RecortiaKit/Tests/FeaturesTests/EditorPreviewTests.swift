@@ -105,7 +105,8 @@ struct EditorPreviewTests {
         h.settings.update { $0.preferredSaveFolderBookmark = Data([1]) }
         h.folders.folder = URL(fileURLWithPath: "/tmp/recortia-tests/synthetic-folder", isDirectory: true)
         let save = EditorExportRequest.save(
-            URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png"), format: .png, overwriteConfirmed: false)
+            URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png"), format: .fixed(.png),
+            overwriteConfirmed: false)
         for request in [EditorExportRequest.copy, .drag, save, .saveToPreferredFolder] {
             #expect(await h.model.export(request) == .failed(.renderFailed), "\(request)")
         }

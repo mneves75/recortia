@@ -240,7 +240,7 @@ struct MaskingAdmissionTests {
                 let requests: [EditorExportRequest] = [
                     .copy, .drag, .saveToPreferredFolder,
                     .save(
-                        URL(fileURLWithPath: "/tmp/recortia-tests/admission.png"), format: .png,
+                        URL(fileURLWithPath: "/tmp/recortia-tests/admission.png"), format: .fixed(.png),
                         overwriteConfirmed: true),
                 ]
                 for request in requests {

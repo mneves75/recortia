@@ -104,6 +104,10 @@ public final class SettingsStore {
         output.launchAtLogin = false
         output.captureDelaySeconds = CaptureRequest.clampedDelay(input.captureDelaySeconds)
         output.jpegQuality = input.jpegQuality.isFinite ? min(max(input.jpegQuality, 0), 1) : defaults.jpegQuality
+        if input.defaultExportFormat == .automatic {
+            output.defaultExportFormat = defaults.defaultExportFormat
+            output.automaticExportFormatChoice = true
+        }
         output.defaultExportScale =
             input.defaultExportScale.isFinite && ExportOptions.validScaleRange.contains(input.defaultExportScale)
             ? input.defaultExportScale : defaults.defaultExportScale

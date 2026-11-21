@@ -148,7 +148,7 @@
             let original = Data("existing owner file".utf8)
             try original.write(to: collision)
             var confirmations = 0
-            let declined = await controller.saveImage(to: collision, format: .png) {
+            let declined = await controller.saveImage(to: collision, format: .fixed(.png)) {
                 confirmations += 1
                 return false
             }
@@ -158,7 +158,7 @@
             // R3-D05: the format changes while the replacement question is open. The retry still
             // writes the format the save panel named, so a .png name receives PNG bytes.
             let formatBefore = harness.settings.preferences.defaultExportFormat
-            let replaced = await controller.saveImage(to: collision, format: .png) {
+            let replaced = await controller.saveImage(to: collision, format: .fixed(.png)) {
                 confirmations += 1
                 harness.settings.update { $0.defaultExportFormat = .jpeg }
                 return true
@@ -173,14 +173,14 @@
                 "replacement uses sanitized export pixels",
                 try E2EActions.decode(Data(contentsOf: collision), "replacement", context) == savedPixels)
             let fresh = folder.appending(path: "no-collision.png")
-            let created = await controller.saveImage(to: fresh, format: .png) {
+            let created = await controller.saveImage(to: fresh, format: .fixed(.png)) {
                 confirmations += 1
                 return false
             }
             context.check(
                 "exclusive new save needs no replacement consent", created == .saved(fresh) && confirmations == 2)
             let beforeNative = try Data(contentsOf: collision)
-            let nativeSave = Task { await controller.saveImage(to: collision, format: .png) }
+            let nativeSave = Task { await controller.saveImage(to: collision, format: .fixed(.png)) }
             let sheetAppeared = await E2EWait.until { controller.window?.attachedSheet != nil }
             try context.require("collision presents the native replacement sheet", sheetAppeared)
             let sheet = try context.unwrap("replacement sheet", controller.window?.attachedSheet)

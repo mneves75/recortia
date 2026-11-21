@@ -128,12 +128,14 @@ struct ExportSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Picker("Format", selection: settings.binding(\.defaultExportFormat)) {
+                Picker("Format", selection: settings.binding(\.exportFormat)) {
                     Text("PNG").tag(ExportFormatKind.png)
                     Text("JPEG").tag(ExportFormatKind.jpeg)
+                    Text("Automatic (PNG or JPEG)").tag(ExportFormatKind.automatic)
                 }
                 .help(Text("Copy Image always places a PNG on the clipboard."))
-                if settings.preferences.defaultExportFormat == .jpeg {
+                .accessibilityIdentifier("settings.exportFormat")
+                if settings.preferences.exportFormat == .jpeg {
                     Slider(value: settings.binding(\.jpegQuality), in: 0.1...1, step: 0.05) {
                         Text("JPEG quality")
                     } minimumValueLabel: {

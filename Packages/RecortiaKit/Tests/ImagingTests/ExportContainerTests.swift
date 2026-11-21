@@ -119,4 +119,37 @@ struct ExportContainerTests {
         #expect(!ContainerInspector.contains("Exif", in: snapshot.bytes))
         #expect(!snapshot.suggestedFilename.contains("RECORTIA"))
     }
+
+    @Test("An Automatic JPEG keeps secure masks and carries none of the imported metadata")
+    func automaticJPEGIsSanitized() async throws {
+        let jpeg = try ContainerCrafting.metadataRichJPEG(try ChartFixture.photographic(width: 1200, height: 900))
+        for canary in ContainerCrafting.metadataCanaries {
+            #expect(ContainerInspector.contains(canary, in: jpeg), "fixture lacks \(canary)")
+        }
+        let harness = ImagingHarness()
+        let asset = await harness.store.insert(try ImageDecoder.decode(jpeg), origin: .imported)
+        var session = DocumentSession(document: Document(asset: asset))
+        let masked = Rect<DocumentSpace>(x: 400, y: 300, width: 200, height: 200)
+        let unmasked = try decoded(try await harness.export(session, ExportOptions(automaticFormat: true)))
+        try session.addSecureMask(covering: masked)
+
+        let snapshot = try await harness.export(session, ExportOptions(automaticFormat: true))
+        // Control: the size rule chose JPEG, so this exercises the lossy path.
+        try #require(snapshot.format == .jpeg(quality: 0.92))
+        let (segments, endsWithEOI) = try ContainerInspector.jpegSegments(snapshot.bytes)
+        #expect(Set(segments.map(\.marker)).isSubset(of: Self.allowedJPEGMarkers), "unexpected markers: \(segments)")
+        #expect(endsWithEOI)
+        for canary in ContainerCrafting.metadataCanaries {
+            #expect(!ContainerInspector.contains(canary, in: snapshot.bytes), "\(canary) survived export")
+        }
+        #expect(ContainerInspector.propertyKeys(snapshot.bytes).isDisjoint(with: Self.forbiddenPropertyKeys))
+        let pixels = try decoded(snapshot)
+        for y in stride(from: 310, to: 490, by: 15) {
+            for x in stride(from: 410, to: 590, by: 15) {
+                // Control: the source is far from black there.
+                #expect(unmasked.pixel(x: x, y: y).distance(to: color(0, 0, 0)) > 60)
+                #expect(pixels.pixel(x: x, y: y).distance(to: color(0, 0, 0)) <= 12, "(\(x), \(y))")
+            }
+        }
+    }
 }
