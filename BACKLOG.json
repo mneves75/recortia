@@ -1861,13 +1861,13 @@
       "completion_contract": "As FP-048; B-1 builds only after the owner signs off its ADR.",
       "evidence": ["PR #43 (train/t2)", "gate passed on c7a186e", "docs/specs/program-2026-11/decisions.md"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": "Merged on train/t2, PR #43 (draft, stacked on #42): R-4 admission point, surface refresh, A-3 menu commands, B-1 quick-action thumbnail with Copy Link (ADR-009), Automatic PNG/JPEG export, primary recognition language, window-capture background, wheel zoom, hide-menu-bar-icon, editor sheets, automatic masking of scrolling captures and imports, F-1 Core Text fonts, A-13 step 2 pre-built overlay. Gate passed on c7a186e. Independent acceptance review: PASS, no P0/P1; its tests are merged. Bilingual native E2E of the train not yet run (the console stayed locked through 2026-11-21); physical Spaces, TCC and VoiceOver remain owner-run."
+      "status_note": "Merged on train/t2, PR #43 (draft, stacked on #42): R-4 admission point, surface refresh, A-3 menu commands, B-1 quick-action thumbnail with Copy Link (ADR-009), Automatic PNG/JPEG export, primary recognition language, window-capture background, wheel zoom, hide-menu-bar-icon, editor sheets, automatic masking of scrolling captures and imports, F-1 Core Text fonts, A-13 step 2 pre-built overlay. Gate passed on c7a186e. Independent acceptance review: PASS, no P0/P1; its tests are merged. Cumulative T6 native E2E on c5bd784: quick-actions, editor-zoom, auto-redaction-sources and latency-prebuilt passed in both languages. Editor-menu failed foreground readiness. Complete cumulative suite: 68/73 per language. Physical Spaces, TCC and VoiceOver remain owner-run."
     },
     {
       "id": "FP-050",
       "milestone": "M7",
       "title": "Program 2026-11 T3 (0.17): precise capture",
-      "status": "implemented",
+      "status": "in_progress",
       "depends_on": ["FP-049"],
       "requirement_ids": ["FR-02", "FR-09"],
       "acceptance_test_ids": [],
@@ -1876,7 +1876,7 @@
       "completion_contract": "As FP-048; B-7 and B-3 build only after the owner signs off their ADRs.",
       "evidence": ["PR #44 (train/t3)", "gate passed on fca70ee"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": "Merged on train/t3, PR #44: B-7 interface-element snapping (ADR-010), nudge, aspect lock and edge snapping, pin Keep on Top, click-through and Unlock All Pins. Gate passed on fca70ee. Independent acceptance review: PASS, no P0/P1 (with T4); its tests are merged. The latency-prebuilt E2E numbers still decide the A-5 overlay pre-build default. Bilingual native E2E of the train not yet run (the console stayed locked through 2026-11-21); physical Spaces, TCC and VoiceOver remain owner-run."
+      "status_note": "Merged on train/t3, PR #44: B-7 interface-element snapping (ADR-010), nudge, aspect lock and edge snapping, pin Keep on Top, click-through and Unlock All Pins. Gate passed on fca70ee. Independent acceptance review: PASS, no P0/P1 (with T4); its tests are merged. Cumulative T6 native E2E on c5bd784: capture-precision and element-snapping passed in both languages; pin-on-top failed Window menu enablement in both. A-5 frozen-frame selection and magnifier remain unimplemented. The prebuilt-overlay benchmark covers A-13. Physical Spaces, TCC and VoiceOver remain owner-run."
     },
     {
       "id": "FP-051",
@@ -1891,7 +1891,7 @@
       "completion_contract": "As FP-048.",
       "evidence": ["PR #45 (train/t4)", "gate passed on 0659afc"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": "Merged on train/t4, PR #45: A-6 Text Only redaction, A-7 colour tools, A-8 framing presets, A-10 rotate, flip and crop presets, A-11 arrowhead styles and smoothing; two cross-model P1s fixed in c638bb8. Gate passed on 0659afc. Independent acceptance review: PASS, no P0/P1; one P2 (a preset lost a padding pixel with fractional content) fixed test-first in c7a984e. Bilingual native E2E of the train not yet run (the console stayed locked through 2026-11-21); physical Spaces, TCC and VoiceOver remain owner-run."
+      "status_note": "Merged on train/t4, PR #45: A-6 Text Only redaction, A-7 colour tools, A-8 framing presets, A-10 rotate, flip and crop presets, A-11 arrowhead styles and smoothing; two cross-model P1s fixed in c638bb8. Gate passed on 0659afc; hosted CI passed on an unchanged-head retry after the FIFO read timed out. Independent acceptance review: PASS, no P0/P1; one P2 (a preset lost a padding pixel with fractional content) fixed test-first in c7a984e. Cumulative T6 native E2E on c5bd784: text-redaction, layer-transforms and arrow-styles passed in both languages; colour-tools and framing-presets failed in both. Physical Spaces, TCC and VoiceOver remain owner-run."
     },
     {
       "id": "FP-052",
@@ -1906,7 +1906,7 @@
       "completion_contract": "As FP-048; B-2 builds only after the owner signs off its ADR.",
       "evidence": ["PR #46 (train/t5)", "gate passed on c57fed6", "docs/adr/0011-local-automation.md", "docs/adr/0012-share-extension.md", "docs/adr/0013-project-files.md"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": "Partly built, the rest blocked on owner decisions. Merged on train/t5, PR #46: B-6 Reopen Closed Capture and B-10 local diagnostics file; the cross-model P1 (a failed-masking capture kept after its notice was dismissed) fixed test-first in 9f33680. Parked Blocked after their review loops, nothing built: ADR-011 automation (B-2), ADR-012 Share extension (B-4), ADR-013 project files (B-8); each lists the owner's unblock options. Gate passed on c57fed6. Independent acceptance review: PASS, no P0/P1 (with T6); one P2 (a late expiry timer extended the Reopen slot) fixed test-first in 0eb8e7f, and a late-starting expiry task in c57fed6. Bilingual native E2E of the train not yet run (the console stayed locked through 2026-11-21); physical Spaces, TCC and VoiceOver remain owner-run."
+      "status_note": "Partly built, the rest blocked on owner decisions. Merged on train/t5, PR #46: B-6 Reopen Closed Capture and B-10 local diagnostics file; the cross-model P1 (a failed-masking capture kept after its notice was dismissed) fixed test-first in 9f33680. Parked Blocked after their review loops, nothing built: ADR-011 automation (B-2), ADR-012 Share extension (B-4), ADR-013 project files (B-8); each lists the owner's unblock options. Gate passed on c57fed6. Independent acceptance review: PASS, no P0/P1 (with T6); one P2 (a late expiry timer extended the Reopen slot) fixed test-first in 0eb8e7f, and a late-starting expiry task in c57fed6. Reopen-closed and diagnostics passed in both languages on the cumulative T6 native E2E head c5bd784. Physical Spaces, TCC and VoiceOver remain owner-run."
     },
     {
       "id": "FP-053",
@@ -1921,7 +1921,7 @@
       "completion_contract": "As FP-048; B-8 and S3 build only after the owner signs off their threat models.",
       "evidence": ["PR #47 (train/t6)", "gate passed on 7bd7a2d", "docs/adr/0014-s3-upload.md"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": "Partly built, the rest blocked on owner decisions. Merged on train/t6, PR #47: B-9a HEIC export and printing, B-9b horizontal scrolling capture, B-5 signed updater T1-T2 (FP-024; Sparkle 2.10.1, two cross-model rounds, three P1s fixed in b6be3be). B-8 is parked (ADR-013) and the S3 provider awaits the owner's signature on ADR-014; nothing is built for either. Gate passed on 7bd7a2d. Independent acceptance review: PASS, no P0/P1; one P2 (the HEIC allowlist admitted a thumbnail or a second picture) fixed test-first in 3c30c9d, and repeated meta boxes, a second dimg and a truncated iinf in 968b850. Bilingual native E2E of the train not yet run (the console stayed locked through 2026-11-21); physical Spaces, TCC and VoiceOver remain owner-run."
+      "status_note": "Partly built, the rest blocked on owner decisions. Merged on train/t6, PR #47: B-9a HEIC export and printing, B-9b horizontal scrolling capture, B-5 signed updater T1-T2 (FP-024; Sparkle 2.10.1, two cross-model rounds, three P1s fixed in b6be3be). B-8 is parked (ADR-013) and the S3 provider awaits the owner's signature on ADR-014; nothing is built for either. Gate passed on 7bd7a2d. Independent acceptance review: PASS, no P0/P1; one P2 (the HEIC allowlist admitted a thumbnail or a second picture) fixed test-first in 3c30c9d, and repeated meta boxes, a second dimg and a truncated iinf in 968b850. Cumulative native E2E on c5bd784 reported 68/73 per language. Scroll-horizontal, appearance-contrast and updater passed in both languages. HEIC-and-print reached the synthetic foreground control and failed that control in both languages. Physical Spaces, TCC, VoiceOver, print, horizontal scrolling and real Sparkle remain to qualify."
     }
   ],
   "deferred_scope": [
