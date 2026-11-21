@@ -44,6 +44,10 @@ shows.
    - Pin: `PinsModel`'s sanitized render.
    - Open in Editor: hands the session to an ordinary editor (SpacePolicy, AppPresence).
    - Dismiss: also Escape.
+   - Copy Link, only when this capture's own automatic upload returned a link (its batch ran
+     under the consent identity fixed at capture): writes the link as plain text through the
+     editor's text clipboard. It exports nothing of the capture, so it does not end the
+     thumbnail.
 
    A copy, save, delivered drag or pin ends the thumbnail. One that wrote nothing keeps it,
    shows the editor's wording for the failure and restarts the timer.
@@ -60,8 +64,8 @@ shows.
 
 - Nothing is kept until quit. Quitting with a thumbnail shown discards it without asking: it
   holds no edits.
-- Automatic GitHub upload still runs, but the uploaded link is shown only in the editor's
-  notice; with quick actions the link is not shown (failures are). Open for the owner.
+- Automatic GitHub upload runs before the thumbnail shows; its link is offered as Copy Link on
+  that capture's thumbnail only, and its failures are alerts.
 - Dragging is two motions, press-drag on the preview then drag the chip, because AppKit starts a
   drag only inside a mouse event and the snapshot is rendered first (ADR-004).
 - A thumbnail on screen is ordered out with the app's other windows during the next capture
