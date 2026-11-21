@@ -293,3 +293,9 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   Diagnostic commit `a338d64` isolated the change to `showsMenuBarIconChoice`, while the separate
   upload consent identity and side-effect checks passed. The menu-bar visibility setter now
   ignores requests that match the effective visibility, preserving the default choice on replay.
+- `fc540b1` passed all nine focused native scenarios in both languages. Its uninterrupted full
+  run `20261121-194710-31503` passed 72 of 73 per language, with only the diagnostics directory
+  assertion failing. Foundation resolved the existing test parent from `/private/tmp` to `/tmp`
+  while preserving the spelling of its missing child. The assertion now verifies the exact
+  child of the resolved parent and rejects a symlink. Temporary controls accepted the intended
+  missing child and rejected a similarly prefixed sibling and two kinds of symlink.

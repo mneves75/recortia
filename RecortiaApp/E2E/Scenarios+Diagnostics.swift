@@ -17,10 +17,17 @@
         static func file(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let diagnostics = try context.unwrap("the harness has a diagnostics recorder", harness.features.diagnostics)
             let log = diagnostics.log
+            let logDirectory = log.directory
+            // Resolve existing parents first. An absent diagnostics directory can keep the
+            // /private/tmp spelling even when Foundation resolves its existing parent to /tmp.
+            let runWork = harness.output.workDirectory.resolvingSymlinksInPath()
+            let logParent = logDirectory.deletingLastPathComponent().resolvingSymlinksInPath()
+            let isLink = (try? FileManager.default.destinationOfSymbolicLink(atPath: logDirectory.path)) != nil
             try context.require(
                 "the diagnostics file is in this run's folder, not ~/Library/Logs",
-                log.directory.standardizedFileURL.path.hasPrefix(harness.output.workDirectory.standardizedFileURL.path),
-                log.directory.path)
+                logParent.pathComponents == runWork.pathComponents
+                    && logDirectory.lastPathComponent == "diagnostics" && !isLink,
+                logDirectory.path)
             diagnostics.setOn(false)
             await diagnostics.delete()
             defer { diagnostics.setOn(false) }
