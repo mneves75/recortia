@@ -57,7 +57,7 @@ before any waiter resumes; a later change, Undo included, makes it stale, never 
 counts only for the request identity it started from. Error, cancellation, a stale result and the
 deadline fail closed and skip the batch. Continuous-change groups cannot open while masking runs.
 Detection reads pixels only inside Imaging (`SensitiveTextScanner.sensitiveRegions(of:in:)`).
-Keep `auto-redaction` in bilingual E2E.
+Keep `auto-redaction` and `auto-redaction-sources` in bilingual E2E.
 
 Curved arrows retain the existing arrow kind with an optional control; `ArrowCurve` maps the
 visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. Keep the
