@@ -22,6 +22,13 @@ While selecting, capturing, recognizing text, and collecting scroll frames, inje
 
 On each supported OS, capture a region, each display, a chosen window, a delayed target, and a repeated region. Compare a synthetic fixture's numbered corners and boundaries against expected output. Window ambiguity produces a chooser. Cursor/shadow toggles change only the declared content. The app's checkerboard overlays and reference pins are absent by default.
 
+Window background: with Solid color, a window capture exports with no transparent pixel: its
+corners show the colour, its half-transparent shadow is composited over it once, the opaque body
+is unchanged, and a secure mask over a corner shows its own fill. Exporting twice gives identical
+bytes; Transparent keeps today's alpha; region, display, imported and pasted images stay
+transparent (`WindowBackgroundCompositeTests`, `CaptureCoordinatorTests`). The Capture pane
+control is checked in bilingual `settings`; a live window capture remains a physical check.
+
 ### CAP-02 — One active capture and no idle recording
 
 Invoke region capture from a different application's Space using the global shortcut and

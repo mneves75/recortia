@@ -122,6 +122,29 @@ struct SettingsStoreTests {
         #expect(!loaded.preferences.zoomsWithScrollWheel && !loaded.preferences.reversesScrollWheelZoom)
     }
 
+    // Failure modes: a translucent background colour (a hand-edited blob) would leave alpha in an
+    // export that promises none; a required key would reset every older blob.
+    @Test("The window background defaults to transparent, is always opaque, persists, and older blobs load")
+    func windowCaptureBackground() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(store.preferences.windowCaptureBackground == .transparent)
+        store.update { $0.windowCaptureBackground = .solid(RGBA(r: 1, g: 2, b: 3, a: 40)) }
+        #expect(store.preferences.windowCaptureBackground == .solid(RGBA(r: 1, g: 2, b: 3)))
+        #expect(SettingsStore(storage: storage).preferences.windowCaptureBackground == .solid(RGBA(r: 1, g: 2, b: 3)))
+
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        var old = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("background") }
+        old["captureDelaySeconds"] = 6
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 6)
+        #expect(loaded.preferences.windowCaptureBackground == .transparent)
+    }
+
     // Failure mode (PREF-01): a blob written while the legacy launchAtLogin key was dropped loaded as
     // defaults, and a blob without the key cannot be read by 0.14.0 after a rollback.
     @Test("A blob without launchAtLogin loads, and the next write restores the key for 0.14")

@@ -112,6 +112,14 @@ Provide region, individual display, user-selected window, a configurable 0–10 
 
 Region selection MUST work on every connected display, including negative desktop origins. A single region cannot cross displays in v1; clamp visibly to the starting display and explain the limitation. Do not silently resample a multi-display region. A window shortcut must use a reliable source identifier; when the foreground app has multiple ambiguous windows, present a chooser instead of guessing.
 
+Settings › Capture › "Window background" is Transparent by default: a window capture keeps
+its transparent corners and, per "Include window shadow", its shadow. Solid color opens each new
+window capture over an opaque colour the person picks, as the document's presentation background
+with no padding (FR-13), so every export of it is opaque. The colour is composited when the
+document is rendered, after secure masks have filled source pixels, never into the stored
+capture; the person can change or remove it in the editor's Image inspector. Region and display
+captures and imported images never get it. The desktop picture is not read.
+
 Use public ScreenCaptureKit APIs, exclude the app's overlay/editor/pin windows by default, and hide the cursor unless explicitly requested. Verify exclusions with a visible checkerboard test overlay. Do not use private capture frameworks, shell `screencapture`, or `CGWindowListCreateImage` as the primary implementation. One-shot capture and stream capture are separate code paths. [S06]
 
 Before a new capture selection, temporarily hide existing visible Recortia windows without closing

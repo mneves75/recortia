@@ -96,7 +96,8 @@ public final class SettingsStore {
     }
 
     /// Clamps capture delay, finite JPEG quality and finite pin opacity; non-finite quality or
-    /// opacity and an invalid export scale become defaults; an invalid window size is discarded.
+    /// opacity and an invalid export scale become defaults; an invalid window size is discarded;
+    /// a window background colour is made opaque.
     public static func sanitized(_ input: Preferences) -> Preferences {
         let defaults = Preferences()
         var output = input
@@ -112,6 +113,9 @@ public final class SettingsStore {
             ? min(max(input.pinDefaultOpacity, opacityRange.lowerBound), opacityRange.upperBound)
             : defaults.pinDefaultOpacity
         output.editorContentSize = input.editorContentSize.flatMap(EditorWindowSizing.rememberable)
+        if case .solid(let color) = input.windowCaptureBackground {
+            output.windowCaptureBackground = .solid(color.withAlpha(255))
+        }
         // Automatic saving writes only to a folder the person chose; without one it is off.
         if input.preferredSaveFolderBookmark == nil { output.autoSave = false }
         return output

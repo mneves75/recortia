@@ -683,6 +683,22 @@
         }
       }
     },
+    "Background color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Background color"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cor de fundo"
+          }
+        }
+      }
+    },
     "Better" : {
       "localizations" : {
         "en" : {
@@ -3460,6 +3476,22 @@
         }
       }
     },
+    "Solid color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solid color"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cor sólida"
+          }
+        }
+      }
+    },
     "Solid redaction replaces the covered pixels with an opaque color in the exported image. It is the secure tool." : {
       "localizations" : {
         "en" : {
@@ -4238,6 +4270,22 @@
         }
       }
     },
+    "Transparent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparent"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transparente"
+          }
+        }
+      }
+    },
     "Unavailable" : {
       "localizations" : {
         "en" : {
@@ -4442,6 +4490,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O que fica neste Mac"
+          }
+        }
+      }
+    },
+    "Window background" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Window background"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fundo da janela"
           }
         }
       }

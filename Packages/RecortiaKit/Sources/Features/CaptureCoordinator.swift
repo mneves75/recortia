@@ -328,7 +328,10 @@ public final class CaptureCoordinator {
             repeatRegion = RepeatRegion(rect: rect, displayID: display.id, fingerprint: display.fingerprint)
         }
         let completion = CaptureCompletion(
-            requestID: id, session: DocumentSession(document: Document(asset: info)), purpose: purpose)
+            requestID: id,
+            session: DocumentSession(
+                document: Document(capture: info, windowBackground: preferences.windowCaptureBackground)),
+            purpose: purpose)
         apply(.captureSucceeded)
         finish()
         // A capture to edit, not Capture Text: its result is copied text, not a screenshot.

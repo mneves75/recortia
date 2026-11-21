@@ -368,6 +368,7 @@
                             "Capture holds the Scrolling Capture control \(identifier)",
                             E2EAccessibilityControl.isPresent(identifier, in: pane))
                     }
+                    await checkWindowBackground(index: index, pane: pane, in: window, root: root, harness, context)
                 case "export":
                     // A pane whose content grows after it is shown still fits it.
                     harness.settings.update { $0.defaultExportFormat = .jpeg }
@@ -410,6 +411,32 @@
             context.snapshot(pane, shot: "general-wheel-zoom")
             await context.darkCompanion(
                 pane, in: window, shot: "general-wheel-zoom", surface: "Settings general with wheel zoom",
+                settle: .milliseconds(400))
+        }
+
+        /// Capture's window background: Transparent by default with no colour well; Solid color
+        /// shows the well, and the pane still fits its content.
+        private static func checkWindowBackground(
+            index: Int, pane: NSView, in window: NSWindow, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async {
+            let choice = harness.settings.preferences.windowCaptureBackgroundChoice
+            context.check(
+                "Capture holds the window background control, Transparent by default",
+                E2EAccessibilityControl.isPresent("settings.windowBackground", in: pane)
+                    && harness.settings.preferences.windowCaptureBackground == .transparent
+                    && !E2EAccessibilityControl.isPresent("settings.windowBackgroundColor", in: pane))
+            harness.settings.update { $0.windowCaptureBackground = .solid(RGBA(r: 30, g: 120, b: 220)) }
+            defer { harness.settings.update { $0.windowCaptureBackgroundChoice = choice } }
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "Solid color shows the background colour well",
+                E2EAccessibilityControl.isPresent("settings.windowBackgroundColor", in: pane))
+            await checkPaneFits("capture with a window background", index: index, pane: pane, harness.app, context)
+            context.snapshot(pane, shot: "capture-window-background")
+            await context.darkCompanion(
+                pane, in: window, shot: "capture-window-background",
+                surface: "Settings capture with a window background",
                 settle: .milliseconds(400))
         }
 
