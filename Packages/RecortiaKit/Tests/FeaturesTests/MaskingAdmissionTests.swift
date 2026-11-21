@@ -159,6 +159,7 @@ struct MaskingAdmissionTests {
             Step(name: "setTextBackgroundColor", expectation: .refused) { model.setTextBackgroundColor(.white) },
             Step(name: "setTextAppearance", expectation: .refused) { #expect(!model.setTextAppearance(.boxed)) },
             Step(name: "setArrowCurved", expectation: .refused) { #expect(!model.setArrowCurved(false)) },
+            Step(name: "setArrowHead", expectation: .refused) { #expect(!model.setArrowHead(.double)) },
             Step(name: "setArrowBend", expectation: .refused) {
                 model.selection = [.annotation(arrow)]
                 defer { model.selection = all }
@@ -282,6 +283,7 @@ struct MaskingAdmissionTests {
             Step(name: "selectTool", expectation: .inert) { model.selectTool(.rectangle) },
             Step(name: "setRedactsTextOnly", expectation: .inert) { model.setRedactsTextOnly(true) },
             Step(name: "setColorSampleSize", expectation: .inert) { model.setColorSampleSize(.fiveByFive) },
+            Step(name: "setStrokeSmoothing", expectation: .inert) { model.setStrokeSmoothing(false) },
             Step(name: "setSamplesDarkestPixel", expectation: .inert) { model.setSamplesDarkestPixel(true) },
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
             Step(name: "applySavedColor", expectation: .inert) { model.applySavedColor(model.style.stroke) },
