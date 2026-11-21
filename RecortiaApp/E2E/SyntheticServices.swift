@@ -353,21 +353,30 @@
         private let system = SystemClock()
         private var heldSince: ContinuousClock.Instant?
         private var heldTotal = Duration.zero
+        /// Time a scenario skipped with `advance(by:)`.
+        private var skipped = Duration.zero
 
         func now() -> Date { Date() }
 
         func uptime() -> Duration {
             let held = heldTotal + (heldSince.map { .now - $0 } ?? .zero)
-            return system.uptime() - held
+            return system.uptime() - held + skipped
         }
 
+        /// Sleeps in slices of at most 100 ms, so a skip ends a long sleep within one slice.
         func sleep(for duration: Duration) async throws {
             let end = uptime() + duration
             while true {
                 let remaining = end - uptime()
                 if remaining <= .zero { return }
-                try await Task.sleep(for: heldSince == nil ? remaining : .milliseconds(20))
+                try await Task.sleep(for: heldSince == nil ? min(remaining, .milliseconds(100)) : .milliseconds(20))
             }
+        }
+
+        /// Moves app time forward without waiting, for deadlines too long to wait out (the
+        /// 10-minute Reopen Closed Capture lifetime). Time never goes back.
+        func advance(by duration: Duration) {
+            skipped += max(.zero, duration)
         }
 
         func hold() {

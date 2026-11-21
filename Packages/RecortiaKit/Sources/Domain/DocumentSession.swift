@@ -118,6 +118,19 @@ public struct DocumentSession: Sendable {
         savedDocument = document
     }
 
+    /// The same document, revision, privacy epoch and saved state, without undo or redo history
+    /// (Reopen Closed Capture). The epoch carries over because the document keeps its ID: pins and
+    /// caches keyed by an older epoch must stay invalid (RED-03).
+    public func withoutHistory() -> DocumentSession {
+        var session = self
+        session.undoStack = []
+        session.redoStack = []
+        session.openGroup = nil
+        session.evictedUndoCount = 0
+        session.retainedUndoByteCost = 0
+        return session
+    }
+
     public func requestIdentity() -> RequestIdentity {
         RequestIdentity(documentID: document.id, revision: revision, privacyEpoch: privacyEpoch)
     }

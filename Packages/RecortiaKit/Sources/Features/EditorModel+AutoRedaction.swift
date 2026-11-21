@@ -10,6 +10,13 @@ extension EditorModel {
     /// Automatic masks, or the line masks of a text-only redaction, have not landed yet.
     public var isMaskingPending: Bool { autoRedaction == .pending || textRedaction != nil }
 
+    /// Whether closing now may keep the document for Reopen Closed Capture: never while masks are
+    /// pending, nor after automatic masking failed until the person dismissed that notice. A notice
+    /// that replaced the failure is not a dismissal, so it fails closed.
+    public var isKeptOnClose: Bool {
+        !isClosed && !isMaskingPending && (autoRedaction != .failed || maskingFailureAcknowledged)
+    }
+
     /// The one admission point for the person's actions while the masks are pending (R-4): every
     /// entry point that edits, selects, samples, renders, recognizes, imports or exports asks it
     /// first, and `edit` asks it for every document change. `explaining` posts

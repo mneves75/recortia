@@ -15,6 +15,8 @@ struct FeatureModels {
     let quickActions: QuickActionsModel
     let ocrLanguages: OCRLanguagesModel
     let loginItem: LoginItemModel
+    /// Reopen Closed Capture: filled only by closing an editor window.
+    let closedCapture: ClosedCaptureSlot
 
     /// The plain-text clipboard for explicit Copy actions on text (recognized text, an upload link).
     let textClipboard: any TextClipboardService
@@ -40,6 +42,7 @@ struct FeatureModels {
             folders: services.folders, settings: settings, clock: services.clock, textClipboard: textClipboard)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
+        closedCapture = ClosedCaptureSlot(assets: services.assets, clock: services.clock)
     }
 }
 
@@ -58,6 +61,8 @@ final class AppModel: AppActions {
     let features: FeatureModels
     /// Window › Unlock All Pins in the app's menu bar.
     @ObservationIgnored let pinMenu: PinMenuState
+    /// File › Reopen Closed Capture in the app's menu bar.
+    @ObservationIgnored let reopenMenu: ReopenMenuState
     private var isStartingScrollingCapture = false
 
     var openDocument: ((DocumentSession, EditorInitialAction, _ importedFileName: String?) -> EditorModel?)?
@@ -123,6 +128,7 @@ final class AppModel: AppActions {
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = FeatureModels(services: services, settings: settings, textClipboard: textClipboard)
         pinMenu = PinMenuState(pins: features.pins)
+        reopenMenu = ReopenMenuState(slot: features.closedCapture)
         captureWindowVisibility = CaptureWindowVisibility(capture: features.capture, scroll: features.scroll) {
             [weak self] in self?.isStartingScrollingCapture == true
         }
@@ -167,6 +173,8 @@ final class AppModel: AppActions {
             return openDocument != nil && !features.capture.state.isActive
         case .openImage, .pasteImage:
             return openDocument != nil && !features.importer.isImporting
+        case .reopenClosedCapture:
+            return openDocument != nil && !features.closedCapture.isEmpty
         case .repeatLastRegion:
             return features.capture.hasRepeatRegion && openDocument != nil && !features.scroll.state.isActive
         case .captureText:
@@ -200,6 +208,9 @@ final class AppModel: AppActions {
         case .captureMenu: captureMenu.present()
         case .openImage: chooseImageFile()
         case .pasteImage: importImage(from: .pasteboard)
+        case .reopenClosedCapture:
+            // A new editor through the normal open path; masking already settled before the close.
+            if let session = features.closedCapture.take() { _ = openDocument?(session, .none, nil) }
         case .bringPinsForward: features.pins.bringForward()
         case .closeAllPins: features.pins.closeAll()
         case .unlockAllPins: features.pins.unlockAll()
@@ -221,6 +232,11 @@ final class AppModel: AppActions {
         let discards = QuitDiscards(
             editedImages: unexportedEditCount(), scrollingReview: features.scroll.state == .reviewing)
         return discards.isEmpty || confirmQuit(discards)
+    }
+
+    /// `applicationWillTerminate`: the kept closed document never outlives the process's quit.
+    func willTerminate() {
+        features.closedCapture.clear()
     }
 
     /// The person closed Recortia's last window (FR-01). With "keep running in the menu bar" off
@@ -350,6 +366,7 @@ final class AppModel: AppActions {
         openDocument = { [editors] session, action, fileName in
             editors.open(session, environment: environment, importedFileName: fileName, initialAction: action)
         }
+        editors.closedCapture = features.closedCapture
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
         editorWindow = { [editors] in editors.window(for: $0) }
         let monitor = SystemEventMonitor { [weak self] event in

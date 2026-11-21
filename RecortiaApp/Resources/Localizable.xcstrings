@@ -2622,6 +2622,22 @@
         }
       }
     },
+    "Reopen Closed Capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen Closed Capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reabrir captura fechada"
+          }
+        }
+      }
+    },
     "Pause" : {
       "localizations" : {
         "en" : {

@@ -241,14 +241,15 @@
                     "the close question is a sheet on that editor, not an alert",
                     sheet.sheetParent === window && harness.messages.alerts.count == alerts)
                 if !discard {
-                    // R3-D17: a pin keeps no edits, so the warning names only copy and save.
+                    // R3-D17: a pin keeps no edits, so the warning names only copy and save. The
+                    // image can still be reopened after the close (B-6), and the warning says so.
                     let expected =
                         context.output.language.hasPrefix("pt")
-                        ? "Esta imagem tem alterações que não foram copiadas nem salvas. Fechar descarta essas alterações."
-                        : "This image has changes that were not copied or saved. Closing discards them."
+                        ? "Esta imagem tem alterações que não foram copiadas nem salvas; depois de fechá-la, você pode reabri-la por 10 minutos, até encerrar o Recortia."
+                        : "This image has changes that were not copied or saved; after closing, you can reopen it for 10 minutes, until you quit."
                     let texts = sheet.contentView.map { EditorWindowController.all(NSTextField.self, in: $0) } ?? []
                     context.check(
-                        "the close warning says the edits were not copied or saved",
+                        "the close warning says the edits were not copied or saved and can be reopened",
                         texts.contains { $0.stringValue == expected }, texts.map(\.stringValue).joined(separator: " | ")
                     )
                 }

@@ -3669,6 +3669,22 @@
         }
       }
     },
+    "This image has changes that were not copied or saved; after closing, you can reopen it for 10 minutes, until you quit.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This image has changes that were not copied or saved; after closing, you can reopen it for 10 minutes, until you quit."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta imagem tem alterações que não foram copiadas nem salvas; depois de fechá-la, você pode reabri-la por 10 minutos, até encerrar o Recortia."
+          }
+        }
+      }
+    },
     "This redaction cannot be mapped onto the image safely, so it was not added.": {
       "localizations": {
         "en": {
