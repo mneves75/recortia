@@ -675,6 +675,18 @@
             context.check(
                 "the example shows the template's name", example.contains("Captura 1.png"), example)
             context.snapshot(pane, shot: "export-filename")
+            // Automatic decides after encoding, so the example names both extensions.
+            let format = harness.settings.preferences.exportFormat
+            harness.settings.update { $0.exportFormat = .automatic }
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            let automatic = try E2EAccessibilityControl.text(
+                .value, for: "settings.filenameTemplate.example", in: pane, context)
+            context.check(
+                "under Automatic the example names .png and .jpg",
+                automatic.contains("Captura 1.png") && automatic.contains(".jpg"), automatic)
+            context.snapshot(pane, shot: "export-filename-automatic")
+            harness.settings.update { $0.exportFormat = format }
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
             try await activate()
             try await E2EAccessibilityControl.enterNumber(
                 "settings.filenameTemplate", text: "../x", in: pane, context)

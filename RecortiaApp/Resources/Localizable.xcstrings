@@ -1715,6 +1715,22 @@
         }
       }
     },
+    "Example: %@, or .jpg when a JPEG is much smaller" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example: %@, or .jpg when a JPEG is much smaller"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exemplo: %@, ou .jpg quando um JPEG for bem menor"
+          }
+        }
+      }
+    },
     "Export" : {
       "localizations" : {
         "en" : {

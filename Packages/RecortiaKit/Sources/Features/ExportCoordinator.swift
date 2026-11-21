@@ -91,6 +91,9 @@ public final class ExportCoordinator {
     public private(set) var state: ExportState?
     private var operation: Operation?
     private var automaticBatch: Operation?
+    /// Under Automatic, the file a save to each panel name found existing: consent to replace it
+    /// covers that file only, since the retry renders again and may name another (FR-07).
+    @ObservationIgnored private var automaticCollisions: [URL: URL] = [:]
 
     @ObservationIgnored private let exporter: any ExportService
     @ObservationIgnored private let clipboard: any ClipboardSinkService
@@ -238,7 +241,14 @@ public final class ExportCoordinator {
             case .save(let url, let format, let overwrite):
                 apply(.commit)
                 let destination = format == .automatic ? Self.named(url, for: snapshot.format) : url
-                completed = .saved(try await files.save(snapshot, to: destination, overwrite: overwrite))
+                let collided = automaticCollisions.removeValue(forKey: url)
+                let replaces = overwrite && (format != .automatic || collided == destination)
+                do throws(SinkError) {
+                    completed = .saved(try await files.save(snapshot, to: destination, overwrite: replaces))
+                } catch {
+                    if error == .destinationExists, format == .automatic { automaticCollisions[url] = destination }
+                    throw error
+                }
             case .saveToFolder(let folder):
                 apply(.commit)
                 completed = .saved(try await files.saveUnique(snapshot, in: folder))

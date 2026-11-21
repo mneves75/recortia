@@ -34,6 +34,39 @@ struct AutomaticFormatExportTests {
         #expect(saved.url.lastPathComponent == "Shot.jpg")
     }
 
+    // Failure mode (data loss): the Replace question confirmed the file that collided, but the
+    // retry renders again and Automatic may name another file, which it then overwrote unasked.
+    @Test("Replacing under Automatic overwrites only the file whose collision was confirmed")
+    func replacementCoversTheCollidedName() async throws {
+        let h = try await photographicHarness()
+        let chosen = URL(fileURLWithPath: "/tmp/recortia-tests/Shot.png")
+        h.files.error = .destinationExists
+        let first = await h.export(.save(to: chosen, format: .automatic, overwriteConfirmed: false))
+        #expect(first == .failed(.destinationExists), "Shot.jpg exists")
+        h.files.error = nil
+
+        // The person confirms; meanwhile Automatic now keeps the PNG (a Settings change while the
+        // question was open). The fake renderer's PNG stands in for that new choice.
+        h.exporter.pipeline = nil
+        let retry = await h.export(.save(to: chosen, format: .automatic, overwriteConfirmed: true))
+        #expect(retry == .saved(chosen))
+        let saved = try #require(h.files.saves.last)
+        #expect(saved.url.lastPathComponent == "Shot.png")
+        #expect(!saved.overwrite, "Shot.png was never confirmed, so it is created exclusively")
+    }
+
+    @Test("Replacing under Automatic overwrites the confirmed file when the choice holds")
+    func replacementOfTheCollidedName() async throws {
+        let h = try await photographicHarness()
+        let chosen = URL(fileURLWithPath: "/tmp/recortia-tests/Shot.png")
+        h.files.error = .destinationExists
+        #expect(await h.export(.save(to: chosen, format: .automatic, overwriteConfirmed: false)) != .rejectedBusy)
+        h.files.error = nil
+        let retry = await h.export(.save(to: chosen, format: .automatic, overwriteConfirmed: true))
+        #expect(retry == .saved(URL(fileURLWithPath: "/tmp/recortia-tests/Shot.jpg")))
+        #expect(h.files.saves.last?.overwrite == true)
+    }
+
     @Test("A fixed-format save keeps the name its panel chose")
     func fixedSaveKeepsName() async throws {
         let h = try await photographicHarness()

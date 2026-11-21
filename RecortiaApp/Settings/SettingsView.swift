@@ -469,12 +469,19 @@ struct FilenameTemplateSection: View {
                 .font(.callout)
                 .accessibilityIdentifier("settings.filenameTemplate.message")
             } else {
-                Text("Example: \(example)")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .accessibilityIdentifier("settings.filenameTemplate.example")
+                Group {
+                    // Automatic decides after encoding: a JPEG only when it is much smaller (FR-07).
+                    if settings.preferences.exportFormat == .automatic {
+                        Text("Example: \(example), or .jpg when a JPEG is much smaller")
+                    } else {
+                        Text("Example: \(example)")
+                    }
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .accessibilityIdentifier("settings.filenameTemplate.example")
             }
         }
     }
