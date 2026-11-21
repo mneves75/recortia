@@ -120,6 +120,14 @@ enum RedactionFixtures {
                         style: .default)
                 ]
             }),
+        RedactionRecipe(
+            name: "9:16 preset, balance, radial gradient", options: ExportOptions(scale: 1.5),
+            build: single { document in
+                document.presentation = Presentation(
+                    background: .radialGradient(center: .white, edge: RGBA(r: 10, g: 20, b: 200)), padding: 9,
+                    cornerRadius: 6, shadow: Presentation.Shadow(radius: 4, offsetY: 2, opacity: 0.5),
+                    aspect: .portrait9x16)
+            }),
         RedactionRecipe(name: "JPEG 1x", options: ExportOptions(format: .jpeg(quality: 0.9)), build: single { _ in }),
         RedactionRecipe(
             name: "JPEG fractional with blur", options: ExportOptions(format: .jpeg(quality: 0.8), scale: 1.25),

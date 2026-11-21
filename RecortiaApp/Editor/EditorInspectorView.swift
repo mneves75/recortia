@@ -1234,7 +1234,7 @@ private struct BackgroundSection: View {
     let model: EditorModel
     let coalescer: ChangeCoalescer
 
-    private enum BackgroundKind: Hashable { case plain, solid, gradient }
+    private enum BackgroundKind: Hashable { case plain, solid, gradient, radial }
 
     var body: some View {
         let presentation = model.document.presentation
@@ -1246,8 +1246,10 @@ private struct BackgroundSection: View {
                 Text(String(localized: "None", table: "Editor")).tag(BackgroundKind.plain)
                 Text(String(localized: "Color", table: "Editor")).tag(BackgroundKind.solid)
                 Text(String(localized: "Gradient", table: "Editor")).tag(BackgroundKind.gradient)
+                Text(String(localized: "Radial Gradient", table: "Editor")).tag(BackgroundKind.radial)
             }
             .accessibilityIdentifier("image.background")
+            BackgroundSwatches(model: model, current: presentation.background)
             switch presentation.background {
             case .none:
                 EmptyView()
@@ -1278,6 +1280,41 @@ private struct BackgroundSection: View {
                             }
                         }),
                     supportsOpacity: false)
+            case .radialGradient(let center, let edge):
+                ColorPicker(
+                    String(localized: "Center color", table: "Editor"),
+                    selection: colorBinding(
+                        { center },
+                        { c in coalescer.run(model) { model.setBackground(.radialGradient(center: c, edge: edge)) } }
+                    ),
+                    supportsOpacity: false)
+                ColorPicker(
+                    String(localized: "Edge color", table: "Editor"),
+                    selection: colorBinding(
+                        { edge },
+                        { c in coalescer.run(model) { model.setBackground(.radialGradient(center: center, edge: c)) } }
+                    ),
+                    supportsOpacity: false)
+            }
+            Picker(
+                String(localized: "Aspect Ratio", table: "Editor"),
+                selection: Binding(get: { presentation.aspect }, set: { model.setAspect($0) })
+            ) {
+                ForEach(FramingAspect.allCases, id: \.self) { aspect in
+                    if let ratio = aspect.ratio {
+                        Text(verbatim: "\(ratio.width):\(ratio.height)").tag(aspect)
+                    } else {
+                        Text(String(localized: "Free", table: "Editor")).tag(aspect)
+                    }
+                }
+            }
+            .accessibilityIdentifier("image.aspect")
+            if presentation.aspect != .free {
+                Toggle(
+                    String(localized: "Balance", table: "Editor"),
+                    isOn: Binding(get: { presentation.balancesContent }, set: { model.setBalancesContent($0) })
+                )
+                .accessibilityIdentifier("image.balance")
             }
             UndoableSlider(
                 title: String(localized: "Padding", table: "Editor"), value: presentation.padding, range: 0...256,
@@ -1297,6 +1334,14 @@ private struct BackgroundSection: View {
                 isOn: Binding(get: { model.showsOutputPreview }, set: { model.setShowsOutputPreview($0) })
             )
             .help(String(localized: "Show exactly what Copy and Save produce, including framing", table: "Editor"))
+            ButtonRow {
+                Button(String(localized: "Save as Default Framing", table: "Editor")) { model.saveDefaultFraming() }
+                    .disabled(model.defaultFraming == presentation)
+                    .accessibilityIdentifier("image.saveDefaultFraming")
+                Button(String(localized: "Reset Default Framing", table: "Editor")) { model.resetDefaultFraming() }
+                    .disabled(model.defaultFraming == nil)
+                    .accessibilityIdentifier("image.resetDefaultFraming")
+            }
         } header: {
             Text(String(localized: "Framing", table: "Editor"))
         }
@@ -1307,6 +1352,7 @@ private struct BackgroundSection: View {
         case .none: .plain
         case .solid: .solid
         case .linearGradient: .gradient
+        case .radialGradient: .radial
         }
     }
 
@@ -1318,6 +1364,77 @@ private struct BackgroundSection: View {
         case .gradient:
             model.setBackground(
                 .linearGradient(from: RGBA(r: 99, g: 99, b: 102), to: RGBA(r: 44, g: 44, b: 46), angleDegrees: 135))
+        case .radial:
+            model.setBackground(.radialGradient(center: RGBA(r: 99, g: 99, b: 102), edge: RGBA(r: 44, g: 44, b: 46)))
+        }
+    }
+}
+
+/// The built-in backgrounds as one row of swatches; pressing one applies it.
+private struct BackgroundSwatches: View {
+    let model: EditorModel
+    let current: Presentation.Background
+
+    private static let names = [
+        String(localized: "White", table: "Editor"), String(localized: "Silver", table: "Editor"),
+        String(localized: "Graphite", table: "Editor"), String(localized: "Black", table: "Editor"),
+        String(localized: "Blue", table: "Editor"), String(localized: "Green", table: "Editor"),
+        String(localized: "Graphite Gradient", table: "Editor"), String(localized: "Sky Gradient", table: "Editor"),
+        String(localized: "Sunset Gradient", table: "Editor"),
+        String(localized: "Silver Radial Gradient", table: "Editor"),
+    ]
+
+    var body: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 20, maximum: 20), spacing: DesignTokens.Space.xs)],
+            alignment: .leading, spacing: DesignTokens.Space.xs
+        ) {
+            ForEach(Array(Presentation.backgroundSwatches.enumerated()), id: \.offset) { index, background in
+                let name = Self.names[index]
+                let selected = background == current
+                Button {
+                    model.setBackground(background)
+                } label: {
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.control)
+                        .fill(Self.fill(background))
+                        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.control).strokeBorder(.separator))
+                        .frame(width: 16, height: 16)
+                        .padding(2)
+                        .overlay {
+                            if selected {
+                                RoundedRectangle(cornerRadius: DesignTokens.Radius.control).strokeBorder(
+                                    .primary, lineWidth: 2)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("image.swatch.\(index)")
+                .accessibilityLabel(name)
+                .accessibilityValue(selected ? String(localized: "Selected", table: "Editor") : "")
+                .help(name)
+            }
+        }
+    }
+
+    private static func color(_ rgba: RGBA) -> Color { Color(cgColor: rgba.cgColor) }
+
+    private static func fill(_ background: Presentation.Background) -> AnyShapeStyle {
+        switch background {
+        case .none:
+            return AnyShapeStyle(Color.clear)
+        case .solid(let rgba):
+            return AnyShapeStyle(color(rgba))
+        case .linearGradient(let from, let to, let angle):
+            // The renderer's direction: angle in degrees, y down, through the middle.
+            let dx = cos(angle * .pi / 180) / 2, dy = sin(angle * .pi / 180) / 2
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [color(from), color(to)], startPoint: UnitPoint(x: 0.5 - dx, y: 0.5 - dy),
+                    endPoint: UnitPoint(x: 0.5 + dx, y: 0.5 + dy)))
+        case .radialGradient(let center, let edge):
+            return AnyShapeStyle(
+                RadialGradient(colors: [color(center), color(edge)], center: .center, startRadius: 0, endRadius: 11))
         }
     }
 }

@@ -26,10 +26,11 @@ enum RenderEngine {
         let content = document.contentRect
         guard !content.isEmpty else { throw RenderError.invalidGeometry }
 
-        let size = document.outputPixelSize(exportScale: scale)
-        let padding = document.presentation.padding
+        let frame = document.outputFrame(exportScale: scale)
+        let size = frame.pixelSize
         let map = CGAffineTransform(
-            a: s, b: 0, c: 0, d: s, tx: (padding - content.minX) * s, ty: (padding - content.minY) * s)
+            a: s, b: 0, c: 0, d: s, tx: frame.contentOriginX - content.minX * s,
+            ty: frame.contentOriginY - content.minY * s)
         let presented = !document.presentation.isPlain
         try checkBudget(
             document, sources: sources, outputSize: size, map: map, presented: presented, drawsCallouts: true)
@@ -52,9 +53,11 @@ enum RenderEngine {
         // destination) must hide what the callout draws there.
         applyOutputMasks(&raster, document, map: map, pixelClip: contentBounds)
 
+        // Balance moves the finished, sanitized content as a whole, so it cannot uncover anything.
+        let shift = document.presentation.centresOpaqueContent ? balanceShift(raster, content: contentBounds) : (0, 0)
         var final =
             presented
-            ? try present(raster, document.presentation, contentRect: contentPixels, scale: s)
+            ? try present(raster, document.presentation, contentRect: contentPixels, scale: s, shift: shift)
             : raster
         final.normalizeTransparentPixels()
         guard let image = final.makeImage() else { throw RenderError.allocationFailed }
@@ -393,13 +396,30 @@ enum RenderEngine {
         }
     }
 
-    /// Background, card shadow, and the content clipped to a rounded card.
+    /// The whole-pixel move that centres the content's fully opaque pixels in the output instead of
+    /// its box (FR-13 balance), limited so the content box stays inside the output. A window
+    /// capture's translucent shadow margin is not opaque, so the window itself ends up centred.
+    /// Content with no opaque pixel does not move.
+    static func balanceShift(_ raster: RenderRaster, content: PixelRect) -> (dx: Int, dy: Int) {
+        guard let opaque = raster.opaqueBounds(in: content) else { return (0, 0) }
+        let dx = (raster.width - opaque.width) / 2 - opaque.x
+        let dy = (raster.height - opaque.height) / 2 - opaque.y
+        return (
+            min(max(dx, -content.x), raster.width - content.maxX),
+            min(max(dy, -content.y), raster.height - content.maxY)
+        )
+    }
+
+    /// Background, card shadow, and the content clipped to a rounded card, the content moved by
+    /// `shift` whole pixels.
     static func present(
-        _ content: RenderRaster, _ presentation: Presentation, contentRect: CGRect, scale: Double
+        _ content: RenderRaster, _ presentation: Presentation, contentRect unshifted: CGRect, scale: Double,
+        shift: (dx: Int, dy: Int) = (0, 0)
     ) throws(RenderError) -> RenderRaster {
         guard let contentImage = content.makeImage() else { throw RenderError.allocationFailed }
         var output = try RenderRaster(width: content.width, height: content.height)
         let full = CGRect(x: 0, y: 0, width: output.width, height: output.height)
+        let contentRect = unshifted.offsetBy(dx: CGFloat(shift.dx), dy: CGFloat(shift.dy))
         let radius = min(presentation.cornerRadius * scale, min(contentRect.width, contentRect.height) / 2)
         let card = CGMutablePath()
         card.addRoundedRect(in: contentRect, cornerWidth: radius, cornerHeight: radius)
@@ -430,7 +450,8 @@ enum RenderEngine {
             context.addPath(card)
             context.clip()
             context.interpolationQuality = .none
-            DrawingPrimitives.drawUpright(contentImage, in: full, context)
+            DrawingPrimitives.drawUpright(
+                contentImage, in: full.offsetBy(dx: CGFloat(shift.dx), dy: CGFloat(shift.dy)), context)
             context.restoreGState()
         }
         return output
@@ -459,6 +480,18 @@ enum RenderEngine {
                 gradient, start: CGPoint(x: center.x - dx * half, y: center.y - dy * half),
                 end: CGPoint(x: center.x + dx * half, y: center.y + dy * half),
                 options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+        case .radialGradient(let center, let edge):
+            // The locations array is valid for the call and has one entry per color.
+            guard let space = RenderRaster.colorSpace,
+                let gradient = unsafe CGGradient(
+                    colorsSpace: space,
+                    colors: [center.cgColor, edge.cgColor] as CFArray,
+                    locations: [0, 1])
+            else { return }
+            let middle = CGPoint(x: rect.midX, y: rect.midY)
+            context.drawRadialGradient(
+                gradient, startCenter: middle, startRadius: 0, endCenter: middle,
+                endRadius: hypot(rect.width, rect.height) / 2, options: [.drawsAfterEndLocation])
         }
     }
 }

@@ -61,10 +61,106 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Proporção" } }
       }
     },
+    "Balance": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Balance" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Equilibrar" } }
+      }
+    },
+    "Black": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Black" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Preto" } }
+      }
+    },
+    "Blue": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Blue" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Azul" } }
+      }
+    },
+    "Center color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Center color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor do centro" } }
+      }
+    },
+    "Edge color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edge color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor da borda" } }
+      }
+    },
     "Free": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Free" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Livre" } }
+      }
+    },
+    "Graphite": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Graphite" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Grafite" } }
+      }
+    },
+    "Graphite Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Graphite Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê grafite" } }
+      }
+    },
+    "Green": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Green" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Verde" } }
+      }
+    },
+    "Radial Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Radial Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê radial" } }
+      }
+    },
+    "Reset Default Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset Default Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Redefinir moldura padrão" } }
+      }
+    },
+    "Save as Default Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save as Default Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar como moldura padrão" } }
+      }
+    },
+    "Silver": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Silver" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Prata" } }
+      }
+    },
+    "Silver Radial Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Silver Radial Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê radial prata" } }
+      }
+    },
+    "Sky Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sky Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê céu" } }
+      }
+    },
+    "Sunset Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sunset Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê pôr do sol" } }
+      }
+    },
+    "White": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "White" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Branco" } }
       }
     },
     "Original": {
