@@ -49,6 +49,8 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Recortia contributors</string>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
 	<key>SUAutomaticallyUpdate</key>
 	<false/>
 	<key>SUFeedURL</key>

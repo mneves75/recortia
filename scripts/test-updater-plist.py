@@ -65,8 +65,12 @@ class UpdaterPlistTests(unittest.TestCase):
                 lambda i: i.__setitem__("SUEnableAutomaticChecks", False), "SUEnableAutomaticChecks"),
             "system profiling": (lambda i: i.__setitem__("SUEnableSystemProfiling", True), "SUEnableSystemProfiling"),
             "profile info": (lambda i: i.__setitem__("SUSendProfileInfo", True), "SUSendProfileInfo"),
-            "automatic-update permission": (
+            "automatic-update option allowed": (
                 lambda i: i.__setitem__("SUAllowsAutomaticUpdates", True), "SUAllowsAutomaticUpdates"),
+            # Without the developer disallow, a stored SUAutomaticallyUpdate wins over the plist.
+            "automatic-update option unset": (lambda i: i.pop("SUAllowsAutomaticUpdates"), "SUAllowsAutomaticUpdates"),
+            "automatic-update option as a string": (
+                lambda i: i.__setitem__("SUAllowsAutomaticUpdates", "NO"), "SUAllowsAutomaticUpdates"),
             "a malformed key": (lambda i: i.__setitem__("SUPublicEDKey", "not base64!"), "SUPublicEDKey"),
             "a short key": (
                 lambda i: i.__setitem__("SUPublicEDKey", base64.b64encode(b"short").decode()), "SUPublicEDKey"),

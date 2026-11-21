@@ -20,12 +20,28 @@ public enum UpdateCheckResult: Hashable, Sendable {
     case inProgress
 }
 
+/// What Sparkle will use, as it reports it. Values an earlier run stored in the app's user
+/// defaults outrank the Info.plist, so the service reads these back before it starts Sparkle.
+struct SparkleSettings: Hashable {
+    var feedURL: URL?
+    var sendsSystemProfile: Bool
+    /// False only with the Info.plist's `SUAllowsAutomaticUpdates` disallow, which also hides the
+    /// update window's "automatically download and install" option.
+    var allowsAutomaticUpdates: Bool
+    var automaticallyDownloadsUpdates: Bool
+}
+
 /// The part of Sparkle `SparkleUpdateService` drives, so tests use a fake and never start a real
 /// updater or touch the network.
 @MainActor
 protocol UpdaterEngine: AnyObject {
     /// Sparkle's stored schedule switch; `start` reads it to plan the first cycle.
     var automaticallyChecksForUpdates: Bool { get set }
+    /// Replaces what the user defaults can hold: the feed becomes `feed`, and neither the system
+    /// profile nor automatic downloads stay on. Called before `start`.
+    func overrideStoredSettings(feed: URL)
+    /// Read back from Sparkle after `overrideStoredSettings`.
+    var settings: SparkleSettings { get }
     /// Starts Sparkle without a check. `mayCheckInBackground` answers every scheduled check.
     func start(mayCheckInBackground: @escaping @MainActor () -> Bool) throws
     /// Reads the feed without showing Sparkle's windows.
@@ -43,7 +59,8 @@ public final class SparkleUpdateService {
     public static let publicKeyKey = "SUPublicEDKey"
     public static let feedURLKey = "SUFeedURL"
 
-    private let isConfigured: Bool
+    /// The validated `SUFeedURL`; nil when this build cannot verify updates.
+    private let feed: URL?
     private let makeEngine: @MainActor () -> any UpdaterEngine
     private var engine: (any UpdaterEngine)?
     private var started: UpdaterStart?
@@ -55,16 +72,20 @@ public final class SparkleUpdateService {
     }
 
     init(info: [String: Any]?, makeEngine: @escaping @MainActor () -> any UpdaterEngine) {
-        isConfigured = Self.isConfigured(info)
+        feed = Self.feed(info)
         self.makeEngine = makeEngine
     }
 
     /// Whether `info` lets Sparkle verify an update: a non-empty `SUPublicEDKey` and an https
     /// `SUFeedURL`. A malformed key passes here and fails Sparkle's own start.
-    public static func isConfigured(_ info: [String: Any]?) -> Bool {
+    public static func isConfigured(_ info: [String: Any]?) -> Bool { feed(info) != nil }
+
+    private static func feed(_ info: [String: Any]?) -> URL? {
         let key = (info?[publicKeyKey] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let feed = (info?[feedURLKey] as? String).flatMap { URL(string: $0) }
-        return !key.isEmpty && feed?.scheme == "https" && feed?.host() != nil
+        guard !key.isEmpty, let feed = (info?[feedURLKey] as? String).flatMap({ URL(string: $0) }),
+            feed.scheme == "https", feed.host() != nil
+        else { return nil }
+        return feed
     }
 
     /// Starts Sparkle once; later calls return the first result. Never throws and never checks.
@@ -76,10 +97,17 @@ public final class SparkleUpdateService {
     }
 
     private func startEngine(checksAutomatically: Bool) -> UpdaterStart {
-        guard isConfigured else { return .unavailable }
+        guard let feed else { return .unavailable }
         self.checksAutomatically = checksAutomatically
         let engine = makeEngine()
         engine.automaticallyChecksForUpdates = checksAutomatically
+        engine.overrideStoredSettings(feed: feed)
+        // Fail closed: a value Sparkle still takes from storage would ask another server, send the
+        // system profile or install without the person choosing it (PRIV-01).
+        let expected = SparkleSettings(
+            feedURL: feed, sendsSystemProfile: false, allowsAutomaticUpdates: false,
+            automaticallyDownloadsUpdates: false)
+        guard engine.settings == expected else { return .failed }
         do {
             try engine.start { [weak self] in self?.checksAutomatically == true }
         } catch {
@@ -111,6 +139,8 @@ final class SparkleEngine: NSObject, UpdaterEngine, SPUUpdaterDelegate {
     private lazy var controller = SPUStandardUpdaterController(
         startingUpdater: false, updaterDelegate: self, userDriverDelegate: nil)
     private var mayCheckInBackground: @MainActor () -> Bool = { false }
+    /// Answered to `feedURLString(for:)`, which outranks a feed stored in the user defaults.
+    private var feed: URL?
     private var probe: CheckedContinuation<UpdateCheckResult, Never>?
     private var foundVersion: String?
 
@@ -122,6 +152,22 @@ final class SparkleEngine: NSObject, UpdaterEngine, SPUUpdaterDelegate {
                 controller.updater.automaticallyChecksForUpdates = newValue
             }
         }
+    }
+
+    func overrideStoredSettings(feed: URL) {
+        self.feed = feed
+        let updater = controller.updater
+        _ = updater.clearFeedURLFromUserDefaults()
+        if updater.sendsSystemProfile { updater.sendsSystemProfile = false }
+        if updater.automaticallyDownloadsUpdates { updater.automaticallyDownloadsUpdates = false }
+    }
+
+    var settings: SparkleSettings {
+        let updater = controller.updater
+        return SparkleSettings(
+            feedURL: updater.feedURL, sendsSystemProfile: updater.sendsSystemProfile,
+            allowsAutomaticUpdates: updater.allowsAutomaticUpdates,
+            automaticallyDownloadsUpdates: updater.automaticallyDownloadsUpdates)
     }
 
     func start(mayCheckInBackground: @escaping @MainActor () -> Bool) throws {
@@ -158,6 +204,15 @@ final class SparkleEngine: NSObject, UpdaterEngine, SPUUpdaterDelegate {
 
     /// Recortia's Settings toggle is the only way to turn on automatic checks: no second-launch prompt.
     func updaterShouldPromptForPermissionToCheck(forUpdates updater: SPUUpdater) -> Bool { false }
+
+    func feedURLString(for updater: SPUUpdater) -> String? { feed?.absoluteString }
+
+    /// No system profile and no extra query parameters, whatever the user defaults say.
+    func allowedSystemProfileKeys(for updater: SPUUpdater) -> [String]? { [] }
+
+    func feedParameters(for updater: SPUUpdater, sendingSystemProfile sendingProfile: Bool) -> [[String: String]] {
+        []
+    }
 
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
         guard updateCheck == .updatesInBackground, !mayCheckInBackground() else { return }

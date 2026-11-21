@@ -21,9 +21,17 @@ struct SparkleUpdateServiceTests {
         var made: [FakeEngine] = []
         var startError: (any Error)?
         var result = UpdateCheckResult.noUpdate
+        /// What Sparkle would read from the app's user defaults and Info.plist before Recortia
+        /// writes anything: by default a clean install of the shipping plist.
+        var stored = SparkleSettings(
+            feedURL: nil, sendsSystemProfile: false, allowsAutomaticUpdates: false,
+            automaticallyDownloadsUpdates: false)
+        /// A Sparkle that keeps its stored values whatever Recortia writes.
+        var ignoresOverrides = false
 
         func make() -> any UpdaterEngine {
-            let engine = FakeEngine(startError: startError, result: result)
+            let engine = FakeEngine(startError: startError, result: result, stored: stored)
+            engine.ignoresOverrides = ignoresOverrides
             made.append(engine)
             return engine
         }
@@ -36,12 +44,28 @@ struct SparkleUpdateServiceTests {
         private(set) var updateWindows = 0
         private(set) var mayCheckInBackground: (@MainActor () -> Bool)?
         private(set) var automaticAtStart: Bool?
+        private(set) var overriddenFeed: URL?
+        private(set) var overridesBeforeStart = false
+        var ignoresOverrides = false
+        private(set) var settings: SparkleSettings
         let startError: (any Error)?
         let result: UpdateCheckResult
 
-        init(startError: (any Error)?, result: UpdateCheckResult) {
+        init(startError: (any Error)?, result: UpdateCheckResult, stored: SparkleSettings) {
             self.startError = startError
             self.result = result
+            settings = stored
+        }
+
+        /// Like the real engine: the delegate feed and written profile and download switches replace
+        /// stored values; `allowsAutomaticUpdates` follows the plist only.
+        func overrideStoredSettings(feed: URL) {
+            overriddenFeed = feed
+            overridesBeforeStart = starts == 0
+            guard !ignoresOverrides else { return }
+            settings.feedURL = feed
+            settings.sendsSystemProfile = false
+            settings.automaticallyDownloadsUpdates = false
         }
 
         func start(mayCheckInBackground: @escaping @MainActor () -> Bool) throws {
@@ -148,6 +172,65 @@ struct SparkleUpdateServiceTests {
             updates.installUpdate()
             let engine = try #require(engines.made.first)
             #expect(engine.probes == 1 && engine.updateWindows == 1)
+        }
+    }
+
+    // Failure modes (review P1s): values an earlier run left in the app's user defaults outrank the
+    // Info.plist in Sparkle. A stored SUFeedURL sends checks to a server Recortia never validated,
+    // a stored SUSendProfileInfo appends the system profile even to a manual check, and a stored
+    // SUAutomaticallyUpdate downloads and installs without the person choosing it.
+    @Test("Stored feed and profile values are overridden before Sparkle starts")
+    func storedValuesOverridden() throws {
+        let engines = Engines()
+        engines.stored = SparkleSettings(
+            feedURL: URL(string: "https://updates.example.com/appcast.xml"), sendsSystemProfile: true,
+            allowsAutomaticUpdates: false, automaticallyDownloadsUpdates: false)
+        let updates = service(Self.configured, engines)
+        #expect(updates.start(checksAutomatically: false) == .started)
+        let engine = try #require(engines.made.first)
+        #expect(engine.overriddenFeed == URL(string: Self.feed), "the validated plist feed, exactly")
+        #expect(engine.overridesBeforeStart)
+        #expect(engine.settings.feedURL == URL(string: Self.feed) && !engine.settings.sendsSystemProfile)
+    }
+
+    @Test("A stored value Sparkle keeps fails the start, and Sparkle never starts")
+    func storedValuesThatStick() async throws {
+        let foreign = URL(string: "https://updates.example.com/appcast.xml")
+        let cases: [(String, SparkleSettings, Bool)] = [
+            (
+                "foreign feed",
+                SparkleSettings(
+                    feedURL: foreign, sendsSystemProfile: false, allowsAutomaticUpdates: false,
+                    automaticallyDownloadsUpdates: false), true
+            ),
+            (
+                "system profile",
+                SparkleSettings(
+                    feedURL: nil, sendsSystemProfile: true, allowsAutomaticUpdates: false,
+                    automaticallyDownloadsUpdates: false), true
+            ),
+            (
+                "automatic-update option",
+                SparkleSettings(
+                    feedURL: nil, sendsSystemProfile: false, allowsAutomaticUpdates: true,
+                    automaticallyDownloadsUpdates: false), false
+            ),
+            (
+                "automatic downloads",
+                SparkleSettings(
+                    feedURL: nil, sendsSystemProfile: false, allowsAutomaticUpdates: false,
+                    automaticallyDownloadsUpdates: true), true
+            ),
+        ]
+        for (name, stored, ignoresOverrides) in cases {
+            let engines = Engines()
+            engines.stored = stored
+            engines.ignoresOverrides = ignoresOverrides
+            let updates = service(Self.configured, engines)
+            #expect(updates.start(checksAutomatically: true) == .failed, "\(name)")
+            #expect(await updates.checkForUpdates() == .failed, "\(name)")
+            let engine = try #require(engines.made.first)
+            #expect(engine.starts == 0 && engine.probes == 0, "\(name): Sparkle started anyway")
         }
     }
 

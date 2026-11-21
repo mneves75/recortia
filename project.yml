@@ -69,6 +69,9 @@ targets:
         # (T3); until then the updater reports itself unavailable. scripts/check-updater-plist.py.
         SUFeedURL: https://mneves75.github.io/recortia/appcast.xml
         SUAutomaticallyUpdate: false
+        # The developer disallow: Sparkle then reads automatic downloads as off whatever an earlier
+        # run stored, and its update window hides the automatic-install option.
+        SUAllowsAutomaticUpdates: false
     settings:
       configs:
         # Release: the data-protection keychain holds the preferences seal secret, which needs an

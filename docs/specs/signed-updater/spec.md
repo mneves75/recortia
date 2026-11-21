@@ -90,6 +90,11 @@ second-launch permission prompt is suppressed and its `mayPerformUpdateCheck` de
 every scheduled check while the preference is off. Check for Updates… runs Sparkle's probing check
 (`checkForUpdateInformation`) and reports "no update" and "check failed" in Recortia's alert; an
 update found asks first, then opens Sparkle's own window, which downloads, verifies and installs.
+Values an earlier run left in the app's user defaults outrank the Info.plist in Sparkle, so before
+starting it the adapter clears a stored feed and answers the validated plist feed from
+`feedURLString(for:)`, turns the system profile and automatic downloads off, allows no profile
+keys and no feed parameters, and ships `SUAllowsAutomaticUpdates` false. It then reads the four
+values back; if any is not as written, `start` reports `.failed` and Sparkle never starts.
 
 ### Info.plist
 
