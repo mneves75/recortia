@@ -23,8 +23,9 @@ struct RecortiaApp: App {
                 Button(AppCommand.settings.title) { appDelegate.model.showSettings() }
                     .keyboardShortcut(",")
             }
-            // The editor's columns and Arrange commands act on the key editor window only.
-            EditorMenuCommands(commands: .shared)
+            // The editor's commands act on the key editor window only; Open Image… and Paste Image
+            // open a new one.
+            EditorMenuCommands(commands: .shared, app: appDelegate.model)
             CommandGroup(replacing: .help) {}
         }
         // Settings is an AppKit window (SettingsWindowController) so it follows the active Space.

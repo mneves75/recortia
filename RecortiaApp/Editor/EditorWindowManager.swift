@@ -136,7 +136,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
             rootView: EditorRootView(
                 model: model, canvas: canvas, actions: actions, panes: panes, noticePresentation: noticePresentation))
         content.sceneBridgingOptions = [.toolbars]
-        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions))
+        let inspector = NSHostingController(rootView: EditorInspectorView(model: model, actions: actions, panes: panes))
         // The split items own the column widths; the hosted views fill whatever they are given.
         sidebar.sizingOptions = []
         content.sizingOptions = []
@@ -186,6 +186,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, Editor
         {
             window.makeFirstResponder(canvas)
         }
+    }
+
+    /// View › Inspector › Format or Image: shows that tab, and the inspector if it is hidden.
+    func showInspectorTab(_ tab: EditorInspectorTab) {
+        panes.chosenInspectorTab = tab
+        if splitItem(.inspector)?.isCollapsed == true { toggle(.inspector) }
     }
 
     /// Shows the window on the capture's display (or the one with the pointer) and focuses it once.

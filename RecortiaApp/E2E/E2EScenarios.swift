@@ -63,6 +63,9 @@
             E2EScenario(
                 id: "editor-toolbar", title: "Tools and actions live in the window toolbar",
                 run: EditorToolbarScenarios.toolbar),
+            E2EScenario(
+                id: "editor-menu", title: "Every editor command is in the menu bar",
+                run: EditorMenuScenarios.commands),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
             E2EScenario(

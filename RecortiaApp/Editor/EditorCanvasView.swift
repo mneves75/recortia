@@ -603,9 +603,32 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         return EditorArrangeCommand.contextMenu(for: model)
     }
 
+    // The standard Edit items reach the canvas through the responder chain. Their ⌘ shortcuts never
+    // get here: `performKeyEquivalent` takes them first, so one key press acts once.
+
     /// Edit › Delete removes the selection, like the Delete key.
     @objc func delete(_ sender: Any?) {
         model.deleteSelection()
+    }
+
+    /// Edit › Undo, like ⌘Z: while text is being edited it undoes the typing.
+    @objc func undo(_ sender: Any?) {
+        if let textView { textView.undoManager?.undo() } else { model.undo() }
+    }
+
+    /// Edit › Redo, like ⇧⌘Z.
+    @objc func redo(_ sender: Any?) {
+        if let textView { textView.undoManager?.redo() } else { model.redo() }
+    }
+
+    /// Edit › Select All, like ⌘A. Text being edited handles its own Select All first.
+    override func selectAll(_ sender: Any?) {
+        model.selectAll()
+    }
+
+    /// Edit › Copy copies the image, like ⌘C and the toolbar's Copy.
+    @objc func copy(_ sender: Any?) {
+        actions?.copyImage()
     }
 
     // MARK: - Cursor
@@ -967,14 +990,21 @@ final class EditorTextView: NSTextView {
     }
 }
 
-/// Builds a menu item that runs a closure. The item keeps its target alive through
-/// `representedObject` (the `target` reference itself is weak).
+/// The Edit items the canvas handles are enabled as their toolbar buttons and keys would act.
 extension EditorCanvasView: NSMenuItemValidation {
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
-        item.action == #selector(delete(_:)) ? !model.selection.isEmpty && model.textEditing == nil : true
+        switch item.action {
+        case #selector(delete(_:)): !model.selection.isEmpty && model.textEditing == nil
+        case #selector(undo(_:)): textView.map { $0.undoManager?.canUndo == true } ?? model.canUndo
+        case #selector(redo(_:)): textView.map { $0.undoManager?.canRedo == true } ?? model.canRedo
+        case #selector(copy(_:)): model.canStartExport
+        default: true
+        }
     }
 }
 
+/// Builds a menu item that runs a closure. The item keeps its target alive through
+/// `representedObject` (the `target` reference itself is weak).
 enum ClosureMenuItem {
     private final class Target: NSObject {
         let handler: () -> Void

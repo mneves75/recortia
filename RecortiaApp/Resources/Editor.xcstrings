@@ -3717,6 +3717,48 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Ocultar Barra Lateral" } }
       }
     },
+    "Close": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Fechar" } }
+      }
+    },
+    "Zoom In": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom In" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ampliar" } }
+      }
+    },
+    "Zoom Out": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom Out" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Reduzir" } }
+      }
+    },
+    "Actual Pixels": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Actual Pixels" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pixels reais" } }
+      }
+    },
+    "Zoom to Fit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom to Fit" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ajustar à janela" } }
+      }
+    },
+    "Show Output Preview": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show Output Preview" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Mostrar resultado final" } }
+      }
+    },
+    "Tools": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Tools" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ferramentas" } }
+      }
+    },
     "Outline": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Outline" } },
