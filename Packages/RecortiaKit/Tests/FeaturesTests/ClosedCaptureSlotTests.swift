@@ -182,4 +182,20 @@ struct ClosedCaptureSlotTests {
         #expect(slot.take() == nil)
         #expect(Set(h.assets.released) == Set(editor.document.assets.keys), "the expired pixels are released")
     }
+
+    // An expiry task that starts late (the main actor was busy, App Nap) must still release the
+    // pixels at the close's deadline, not a full lifetime after the task began; nothing needs to
+    // call `take()` for that to happen.
+    @Test("A late-starting expiry task releases the pixels at the original deadline")
+    func lateStartReleasesAtDeadline() async {
+        let h = EditorHarness()
+        let slot = ClosedCaptureSlot(assets: h.assets, clock: h.clock)
+        let editor = Self.editor(h, EditorFixtures.session())
+        slot.close(editor)
+        h.clock.stall(bySeconds: 9 * 60)
+        await drain()
+        h.clock.advance(bySeconds: 60)
+        await drain()
+        #expect(Set(h.assets.released) == Set(editor.document.assets.keys), "pixels kept past the deadline")
+    }
 }
