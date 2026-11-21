@@ -12,24 +12,29 @@ extension SensitiveTextScanner {
 
     /// Whole-pixel rectangles of the stored asset `id`, one per text line recognized inside `area`
     /// (source pixels, top-left origin), each padded like automatic masking's matches and clamped
-    /// to `area`. The pixels are read here, inside Imaging, and never leave it. Throws
-    /// `assetUnavailable` when the store no longer holds the asset, and otherwise as
-    /// `textLineRegions(in:within:pixelsPerPoint:languages:)` does.
+    /// to `area`. The source pixels in `hidden` (those under existing secure masks) are filled
+    /// opaquely before anything is read, so the answer never depends on what a mask hides. The
+    /// pixels are read here, inside Imaging, and never leave it. Throws `assetUnavailable` when the
+    /// store no longer holds the asset, and otherwise as
+    /// `textLineRegions(in:within:hiding:pixelsPerPoint:languages:)` does.
     @concurrent
     public func textLineRegions(
-        of id: AssetID, in store: ImageStore, within area: PixelRect, pixelsPerPoint: Double,
-        languages: [Locale.Language]
+        of id: AssetID, in store: ImageStore, within area: PixelRect, hiding hidden: [PixelRect],
+        pixelsPerPoint: Double, languages: [Locale.Language]
     ) async throws -> [PixelRect] {
         guard let image = await store.images(for: [id])[id] else { throw SensitiveTextError.assetUnavailable }
-        return try await textLineRegions(in: image, within: area, pixelsPerPoint: pixelsPerPoint, languages: languages)
+        return try await textLineRegions(
+            in: image, within: area, hiding: hidden, pixelsPerPoint: pixelsPerPoint, languages: languages)
     }
 
-    /// Lines of `image` inside `area`. Throws `regionOutsideImage` when `area` is empty or not wholly
-    /// inside the image, `CancellationError` when cancelled, and a recognition or budget error when
-    /// any tile cannot be read, so a caller never takes a partial sweep for a complete one.
+    /// Lines of `image` inside `area`, read with `hidden` filled. Throws `regionOutsideImage` when
+    /// `area` is empty or not wholly inside the image, `CancellationError` when cancelled, and a
+    /// recognition or budget error when any tile cannot be read, so a caller never takes a partial
+    /// sweep for a complete one.
     @concurrent
     func textLineRegions(
-        in image: CGImage, within area: PixelRect, pixelsPerPoint: Double, languages: [Locale.Language]
+        in image: CGImage, within area: PixelRect, hiding hidden: [PixelRect], pixelsPerPoint: Double,
+        languages: [Locale.Language]
     ) async throws -> [PixelRect] {
         try Task.checkCancellation()
         let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
@@ -37,7 +42,8 @@ extension SensitiveTextScanner {
         guard !area.isEmpty, bounds.contains(target) else { throw SensitiveTextError.regionOutsideImage }
         let margin = (Self.lineContextPoints * max(pixelsPerPoint, 1)).rounded(.up)
         let read = target.insetBy(dx: -margin, dy: -margin).intersection(bounds)
-        guard let crop = image.cropping(to: read) else { throw SensitiveTextError.tileUnavailable }
+        guard let cropped = image.cropping(to: read) else { throw SensitiveTextError.tileUnavailable }
+        let crop = try Self.filling(hidden, in: cropped, readFrom: read)
         let size = CGSize(width: crop.width, height: crop.height)
         let jobs = try Self.tileJobs(
             for: size, pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide,
@@ -50,6 +56,24 @@ extension SensitiveTextScanner {
         }
         let offset = found.map { $0.offsetBy(dx: read.minX, dy: read.minY) }
         return try Self.finalLineRegions(offset, read: read, target: target)
+    }
+
+    /// A copy of `crop`, the source pixels `read` (whole pixels), with every part of `regions`
+    /// (source pixels) that falls on it filled opaque black, as a secure mask fills source pixels
+    /// before anything resamples them. `crop` itself when no region touches it.
+    static func filling(_ regions: [PixelRect], in crop: CGImage, readFrom read: CGRect) throws(SensitiveTextError)
+        -> CGImage
+    {
+        let bounds = PixelRect(x: 0, y: 0, width: crop.width, height: crop.height)
+        let (x, y) = (Int(read.minX), Int(read.minY))
+        let local = regions.compactMap {
+            PixelRect(x: $0.x - x, y: $0.y - y, width: $0.width, height: $0.height).clipped(to: bounds)
+        }
+        guard !local.isEmpty else { return crop }
+        guard var raster = try? RenderRaster(image: crop) else { throw .tileUnavailable }
+        for region in local { raster.fill(region, with: .black) }
+        guard let filled = raster.makeImage() else { throw .tileUnavailable }
+        return filled
     }
 
     /// The standard sweeps, less every coarser one that a finer sweep already covers in a single

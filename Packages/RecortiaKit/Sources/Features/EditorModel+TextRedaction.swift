@@ -3,10 +3,11 @@ import Foundation
 
 // Text-only redaction (A-6, decisions.md 2026-11-21). With Text Only on, a drawn redaction lands at
 // once as an ordinary secure mask over the whole rectangle, and the automatic-masking sweep reads
-// the source pixels under it. One secure mask per recognized line then replaces that cover inside
-// the same undo step. Until then the masking admission point (R-4) refuses every export, pin, edit
-// and selection. No line, a recognizer error, the deadline, closing the editor or a stale result
-// keep the whole rectangle covered: the cover is never removed for want of an answer.
+// the source pixels under it, with those under earlier secure masks filled. One secure mask per
+// recognized line then replaces that cover inside the same undo step. Until then the masking
+// admission point (R-4) refuses every export, pin, edit and selection. No line, a recognizer
+// error, the deadline, closing the editor or a stale result keep the whole rectangle covered: the
+// cover is never removed for want of an answer.
 
 /// A drawn text-only redaction waiting for its lines.
 struct PendingTextRedaction {
@@ -49,6 +50,22 @@ extension EditorModel {
             post(.textRedactionKeptArea)
             return created
         }
+        // Recognition reads this asset with every pixel an existing secure mask fills already
+        // filled, the same regions the secure renderer fills: otherwise whether a line is found
+        // under an earlier mask would show what that mask hides. Unmappable geometry keeps the area.
+        var hidden: [PixelRect] = []
+        do {
+            for mask in document.masks where mask.id != cover.id {
+                let under = try document.sourceRegions(for: mask.outputRect)[assetID] ?? []
+                for region in (mask.sourceRegions[assetID] ?? []) + under where !hidden.contains(region) {
+                    hidden.append(region)
+                }
+            }
+        } catch {
+            closeTextRedactionStep()
+            post(.textRedactionKeptArea)
+            return created
+        }
         let request = session.requestIdentity()
         let sourceArea = regions[0]
         textRedaction = PendingTextRedaction(request: request, cover: cover, assetID: assetID, sourceArea: sourceArea)
@@ -59,7 +76,7 @@ extension EditorModel {
         let recognition = Task { [weak self] in
             let result: Result<[PixelRect], any Error>
             do {
-                result = .success(try await service.textLineRegions(in: asset, within: sourceArea))
+                result = .success(try await service.textLineRegions(in: asset, within: sourceArea, hiding: hidden))
             } catch {
                 result = .failure(error)
             }

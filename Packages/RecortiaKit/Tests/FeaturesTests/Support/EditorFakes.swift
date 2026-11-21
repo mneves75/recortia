@@ -93,6 +93,8 @@ final class FakeSensitiveText: SensitiveTextService {
     var error: (any Error)?
     private(set) var requests: [ImageAssetInfo] = []
     private(set) var lineRequests: [PixelRect] = []
+    /// The hidden source pixels passed with each line request.
+    private(set) var hiddenRequests: [[PixelRect]] = []
     private(set) var observedCancellation = false
 
     func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
@@ -100,8 +102,11 @@ final class FakeSensitiveText: SensitiveTextService {
         return try await answer(regions)
     }
 
-    func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect) async throws -> [PixelRect] {
+    func textLineRegions(
+        in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]
+    ) async throws -> [PixelRect] {
         lineRequests.append(area)
+        hiddenRequests.append(hidden)
         return try await answer(lines)
     }
 

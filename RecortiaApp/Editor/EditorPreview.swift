@@ -130,7 +130,9 @@
     final class PreviewEditorQR: QRDecodingService, SensitiveTextService {
         func decode(_ image: CGImage) async throws -> [QRPayload] { [] }
         func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] { [] }
-        func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect) async throws -> [PixelRect] { [] }
+        func textLineRegions(
+            in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]
+        ) async throws -> [PixelRect] { [] }
     }
 
     final class PreviewEditorAssets: ImageAssetService, ImageInputService {

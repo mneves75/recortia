@@ -44,7 +44,7 @@ struct TextLineRegionsTests {
             ])
         let area = Self.whole(sample.image)
         let regions = try await SensitiveTextScanner().textLineRegions(
-            in: sample.image, within: area, pixelsPerPoint: 2, languages: Self.languages)
+            in: sample.image, within: area, hiding: [], pixelsPerPoint: 2, languages: Self.languages)
         #expect(regions.count == sample.lines.count, "\(regions)")
         // Each region lies on its own line (typographic rectangles include empty ascent above the ink).
         for (region, line) in zip(regions, sample.lineRects) {
@@ -72,7 +72,7 @@ struct TextLineRegionsTests {
             x: Int(first.midX), y: Int(first.midY), width: Int(second.maxX - first.midX) + 4,
             height: Int(second.midY - first.midY))
         let regions = try await SensitiveTextScanner().textLineRegions(
-            in: sample.image, within: area, pixelsPerPoint: 2, languages: Self.languages)
+            in: sample.image, within: area, hiding: [], pixelsPerPoint: 2, languages: Self.languages)
         #expect(!regions.isEmpty)
         for region in regions {
             #expect(
@@ -83,11 +83,62 @@ struct TextLineRegionsTests {
         #expect(missed.isEmpty, "\(missed.count) painted pixels uncovered, first \(missed.prefix(5))")
     }
 
+    @Test(
+        "A line under an existing secure mask is not read; without the mask the same pixels read as a line",
+        VisionRuntime.required)
+    func hiddenLineIsNotRead() async throws {
+        let sample = try TextCorpus.render(
+            id: "hidden", language: .english, category: .prose, theme: .light, pointSize: 15, scale: 2,
+            lines: ["Account number for the payroll transfer"])
+        let area = Self.whole(sample.image)
+        let line = sample.lineRects[0].insetBy(dx: -8, dy: -8).integral
+        let mask = try #require(
+            PixelRect(x: Int(line.minX), y: Int(line.minY), width: Int(line.width), height: Int(line.height))
+                .clipped(to: area))
+        // Planted control: the fixture's only line is read when nothing hides it.
+        let shown = try await SensitiveTextScanner().textLineRegions(
+            in: sample.image, within: area, hiding: [], pixelsPerPoint: 2, languages: Self.languages)
+        #expect(shown.count == 1, "\(shown)")
+        let hidden = try await SensitiveTextScanner().textLineRegions(
+            in: sample.image, within: area, hiding: [mask], pixelsPerPoint: 2, languages: Self.languages)
+        #expect(hidden.isEmpty, "a line was read under the mask: \(hidden)")
+    }
+
+    @Test("Hidden source pixels are filled where they lie on the pixels read, and nowhere else")
+    func hiddenPixelsFilledInPlace() throws {
+        let image = try TextCorpus.blankImage(width: 100, height: 50)
+        let read = CGRect(x: 20, y: 10, width: 60, height: 30)
+        let crop = try #require(image.cropping(to: read))
+        // One region inside the pixels read, one across their right edge, one wholly outside them.
+        let filled = try SensitiveTextScanner.filling(
+            [
+                PixelRect(x: 30, y: 15, width: 10, height: 5), PixelRect(x: 75, y: 30, width: 20, height: 20),
+                PixelRect(x: 0, y: 0, width: 5, height: 5),
+            ], in: crop, readFrom: read)
+        let original = try ContainerInspector.pixels(of: crop)
+        let pixels = try ContainerInspector.pixels(of: filled)
+        // Crop pixels: the first region lands at (10, 5), the second keeps only its part on the crop.
+        let hidden = [PixelRect(x: 10, y: 5, width: 10, height: 5), PixelRect(x: 55, y: 20, width: 5, height: 10)]
+        var wrong: [(x: Int, y: Int)] = []
+        for y in 0..<crop.height {
+            for x in 0..<crop.width {
+                let expected =
+                    hidden.contains { $0.contains(x: x, y: y) } ? .init(0, 0, 0, 255) : original.pixel(x: x, y: y)
+                if pixels.pixel(x: x, y: y) != expected { wrong.append((x, y)) }
+            }
+        }
+        #expect(filled.width == crop.width && filled.height == crop.height)
+        #expect(wrong.isEmpty, "\(wrong.count) wrong pixels, first \(wrong.prefix(5))")
+        #expect(
+            try SensitiveTextScanner.filling([PixelRect(x: 0, y: 0, width: 5, height: 5)], in: crop, readFrom: read)
+                === crop)
+    }
+
     @Test("A rectangle without text finds no line", VisionRuntime.required)
     func blankFindsNothing() async throws {
         let image = try TextCorpus.blankImage()
         let regions = try await SensitiveTextScanner().textLineRegions(
-            in: image, within: Self.whole(image), pixelsPerPoint: 1, languages: Self.languages)
+            in: image, within: Self.whole(image), hiding: [], pixelsPerPoint: 1, languages: Self.languages)
         #expect(regions.isEmpty)
     }
 
@@ -100,12 +151,12 @@ struct TextLineRegionsTests {
         let info = await store.insert(try ImageDecoder.canonicalize(sample.image), origin: .imported)
         let area = Self.whole(sample.image)
         let stored = try await SensitiveTextScanner().textLineRegions(
-            of: info.id, in: store, within: area, pixelsPerPoint: 2, languages: Self.languages)
+            of: info.id, in: store, within: area, hiding: [], pixelsPerPoint: 2, languages: Self.languages)
         #expect(stored.count == 1)
         await store.remove(info.id)
         await #expect(throws: SensitiveTextError.assetUnavailable) {
             _ = try await SensitiveTextScanner().textLineRegions(
-                of: info.id, in: store, within: area, pixelsPerPoint: 2, languages: Self.languages)
+                of: info.id, in: store, within: area, hiding: [], pixelsPerPoint: 2, languages: Self.languages)
         }
     }
 
@@ -118,7 +169,7 @@ struct TextLineRegionsTests {
         ] {
             await #expect(throws: SensitiveTextError.regionOutsideImage, "\(area)") {
                 _ = try await SensitiveTextScanner().textLineRegions(
-                    in: image, within: area, pixelsPerPoint: 1, languages: Self.languages)
+                    in: image, within: area, hiding: [], pixelsPerPoint: 1, languages: Self.languages)
             }
         }
     }

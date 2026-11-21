@@ -405,7 +405,9 @@
             return try await answer(regions)
         }
 
-        func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect) async throws -> [PixelRect] {
+        func textLineRegions(
+            in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]
+        ) async throws -> [PixelRect] {
             lineAreas.append(area)
             return try await answer(lines)
         }

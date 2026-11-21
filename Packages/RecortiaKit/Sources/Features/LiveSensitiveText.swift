@@ -26,10 +26,12 @@ public final class LiveSensitiveText: SensitiveTextService {
         }
     }
 
-    public func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect) async throws -> [PixelRect] {
+    public func textLineRegions(
+        in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]
+    ) async throws -> [PixelRect] {
         try await scanner.textLineRegions(
-            of: asset.id, in: store, within: area, pixelsPerPoint: Self.pixelsPerPoint(of: asset.origin),
-            languages: Self.languages)
+            of: asset.id, in: store, within: area, hiding: hidden,
+            pixelsPerPoint: Self.pixelsPerPoint(of: asset.origin), languages: Self.languages)
     }
 
     /// The density the sweep is laid out for: a capture's and a scrolling capture's own, both measured

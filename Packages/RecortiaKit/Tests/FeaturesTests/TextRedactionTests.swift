@@ -92,6 +92,46 @@ struct TextRedactionTests {
         #expect(model.document.masks.count == 2)
     }
 
+    @Test("Recognition is told every source pixel of the image that an existing secure mask fills, never the cover's")
+    func existingMasksHidden() async throws {
+        // Image A fills the left 400 × 300; image B, 100 × 100, sits beside it.
+        let a = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 400, height: 300), origin: .imported)
+        let b = ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 100, height: 100), origin: .imported)
+        let onA = Rect<DocumentSpace>(x: 30, y: 60, width: 100, height: 20)
+        let masks = [
+            // A line already redacted inside the new rectangle.
+            SecureMask(
+                outputRect: onA, sourceRegions: [a.id: [PixelRect(x: 30, y: 60, width: 100, height: 20)]], fill: .black),
+            // Bound to B only and lying over B: it hides none of A's pixels.
+            SecureMask(
+                outputRect: Rect(x: 420, y: 20, width: 50, height: 50),
+                sourceRegions: [b.id: [PixelRect(x: 20, y: 20, width: 50, height: 50)]], fill: .black),
+            // Drawn over B, which then moved away: the renderer fills the A pixels now under it too.
+            SecureMask(
+                outputRect: Rect(x: 300, y: 200, width: 30, height: 30),
+                sourceRegions: [b.id: [PixelRect(x: 0, y: 0, width: 30, height: 30)]], fill: .black),
+        ]
+        let document = Document(
+            assets: [a.id: a, b.id: b], canvasSize: Size(width: 500, height: 300),
+            layers: [
+                ImageLayer(assetID: a.id),
+                ImageLayer(assetID: b.id, placement: LayerPlacement(translation: Point(x: 400, y: 0))),
+            ], masks: masks)
+        let h = EditorHarness(session: DocumentSession(document: document))
+        h.sensitiveText.lines = []
+        h.sensitiveText.pending = Pending<Void>()
+        h.model.setRedactsTextOnly(true)
+        await Self.draw(h)
+        #expect(h.sensitiveText.lineRequests == [PixelRect(x: 20, y: 20, width: 200, height: 100)])
+        #expect(
+            h.sensitiveText.hiddenRequests
+                == [
+                    [PixelRect(x: 30, y: 60, width: 100, height: 20), PixelRect(x: 300, y: 200, width: 30, height: 30)]
+                ])
+        await Self.finish(h)
+        #expect(h.model.document.masks.count == 4 && h.model.notice == .textRedactionKeptArea)
+    }
+
     @Test("No line found keeps the whole rectangle covered, as one undo step")
     func zeroLinesKeepCover() async throws {
         let h = Self.pending(lines: [])

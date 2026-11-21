@@ -185,8 +185,11 @@ public protocol SensitiveTextService: AnyObject {
     func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect]
 
     /// Whole-pixel rectangles of `asset`'s source pixels, one per text line recognized inside
-    /// `area`, padded like `sensitiveRegions` and inside `area`. Throws as `sensitiveRegions` does.
-    func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect) async throws -> [PixelRect]
+    /// `area`, padded like `sensitiveRegions` and inside `area`. The source pixels in `hidden`, those
+    /// under existing secure masks, are filled before recognition reads anything, so the answer
+    /// cannot reveal what they hide. Throws as `sensitiveRegions` does.
+    func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]) async throws
+        -> [PixelRect]
 }
 
 // MARK: - Scrolling capture
