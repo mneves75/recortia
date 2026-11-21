@@ -33,10 +33,11 @@ public struct TextLayoutMetrics: Hashable, Sendable {
 /// Stateless public-system-font resolution shared by native editing, selection and export.
 public enum TextLayout {
     /// Designed fonts are built from Core Text objects only; `withDesign` just edits the
-    /// descriptor's attributes. AppKit's font cache (`NSFont.systemFont(ofSize:)`'s descriptor and
-    /// `NSFont(descriptor:size:)`) returns nil or an incomplete descriptor while another thread
-    /// releases fonts (F-1, docs/specs/full-source-review/f1-investigation.md). Each nullable stage
-    /// repeats the same call at most twice after a nil, then reports a failure at that stage.
+    /// descriptor's attributes. NSFont's shared cache (`NSFont(descriptor:size:)` and the
+    /// descriptor of `NSFont.systemFont(ofSize:)`) returns nil or an incomplete descriptor while
+    /// another thread releases fonts (F-1, docs/specs/full-source-review/f1-investigation.md).
+    /// Each nullable stage repeats the same call at most twice after a nil, then reports a failure
+    /// at that stage.
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont {
         try nativeFont(
             for: appearance, size: size,
