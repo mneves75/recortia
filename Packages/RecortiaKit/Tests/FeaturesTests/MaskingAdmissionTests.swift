@@ -270,6 +270,7 @@ struct MaskingAdmissionTests {
             Step(name: "copyQRPayload", expectation: .inert) { #expect(!model.copyQRPayload(at: 0)) },
             Step(name: "openQRPayload", expectation: .inert) { #expect(!model.openQRPayload(payload, at: 0)) },
             Step(name: "copyPickedColor", expectation: .inert) { #expect(!model.copyPickedColor()) },
+            Step(name: "usePickedColor", expectation: .inert) { #expect(!model.usePickedColor(as: .text)) },
             Step(name: "loupe", expectation: .inert) { #expect(model.loupe() == nil) },
             Step(name: "clearRecognition", expectation: .inert) { model.clearRecognition() },
             Step(name: "clearQR", expectation: .inert) { model.clearQR() },
@@ -280,6 +281,7 @@ struct MaskingAdmissionTests {
             // Tools, future-object defaults, preferences and the viewport.
             Step(name: "selectTool", expectation: .inert) { model.selectTool(.rectangle) },
             Step(name: "setColorSampleSize", expectation: .inert) { model.setColorSampleSize(.fiveByFive) },
+            Step(name: "setSamplesDarkestPixel", expectation: .inert) { model.setSamplesDarkestPixel(true) },
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
             Step(name: "applySavedColor", expectation: .inert) { model.applySavedColor(model.style.stroke) },
             Step(name: "removeSavedColor", expectation: .inert) { model.removeSavedColor(model.style.stroke) },
