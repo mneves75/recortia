@@ -13,10 +13,9 @@ struct RecortiaApp: App {
 
     var body: some Scene {
         let model = appDelegate.model
-        MenuBarExtra(
-            isInserted: Binding(
-                get: { model.settings.preferences.showsMenuBarIcon }, set: { model.setShowsMenuBarIcon($0) })
-        ) {
+        // Read here, not only in the binding, so the scene observes the preference.
+        let showsIcon = model.settings.preferences.showsMenuBarIcon
+        MenuBarExtra(isInserted: Binding(get: { showsIcon }, set: { model.setShowsMenuBarIcon($0) })) {
             MenuContent(model: appDelegate.model)
         } label: {
             Label(String(localized: "Recortia"), systemImage: "viewfinder")
