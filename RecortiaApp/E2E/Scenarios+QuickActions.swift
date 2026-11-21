@@ -152,7 +152,11 @@
             context.check(
                 "the editor is an ordinary window that follows the active Space",
                 editor.window?.collectionBehavior == SpacePolicy.followsActiveSpace && editor.window?.level == .normal)
-            context.check("the thumbnail closed", model.capture == nil && ui.panel == nil)
+            // The model lets go synchronously; the controller closes the panel on its next observation
+            // pass, as after Copy and Dismiss.
+            context.check(
+                "the thumbnail closed", await E2EWait.until { model.capture == nil && ui.panel == nil },
+                "capture \(model.capture == nil ? "released" : "held"), panel \(ui.panel == nil ? "closed" : "open")")
             let kept = await settledCount(store)
             context.check("the editor keeps the capture's pixels", kept == baseline + 1, "\(kept) of \(baseline)")
             harness.editors.closeAll()
