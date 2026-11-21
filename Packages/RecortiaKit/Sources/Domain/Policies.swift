@@ -190,6 +190,14 @@ public enum ExportFormatKind: String, Hashable, Sendable, Codable, CaseIterable 
     case jpeg
 }
 
+/// How a new editor first frames its image (FR-04).
+public enum EditorOpenZoom: String, Hashable, Sendable, Codable, CaseIterable {
+    /// The whole image inside the canvas with a margin, never above 100 %.
+    case fit
+    /// 100 % when the image fits the canvas at that size; otherwise as `fit`.
+    case actualSizeWhenFits
+}
+
 /// User preferences. No screenshots, OCR text, or other content is ever stored here (SPEC.md §7).
 /// Every side-effect toggle defaults to off.
 public struct Preferences: Hashable, Sendable, Codable {
@@ -218,6 +226,11 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var annotationPalette: SavedAnnotationPalette?
     /// The editor window content size the user last chose; nil until they resize an editor.
     public var editorContentSize: Size<DesktopSpace>?
+    /// Stored only once the person changes them; read `editorOpenZoom`, `zoomsWithScrollWheel`
+    /// and `reversesScrollWheelZoom`.
+    public var editorOpenZoomChoice: EditorOpenZoom?
+    public var zoomsWithScrollWheelChoice: Bool?
+    public var reversesScrollWheelZoomChoice: Bool?
     /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
     /// 0.13 have no such key, and synthesized Codable cannot default a missing non-optional one.
     public var keepsRunningInMenuBarChoice: Bool?
@@ -242,6 +255,25 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var filenameTemplate: FilenameTemplate {
         get { filenameTemplateChoice ?? .default }
         set { filenameTemplateChoice = newValue }
+    }
+
+    /// How a new editor first frames its image (FR-04). Fit by default.
+    public var editorOpenZoom: EditorOpenZoom {
+        get { editorOpenZoomChoice ?? .fit }
+        set { editorOpenZoomChoice = newValue }
+    }
+
+    /// Whether the scroll wheel zooms the editor canvas around the pointer, with Option to scroll
+    /// (FR-04). Off by default: the wheel scrolls and Command-wheel zooms.
+    public var zoomsWithScrollWheel: Bool {
+        get { zoomsWithScrollWheelChoice ?? false }
+        set { zoomsWithScrollWheelChoice = newValue }
+    }
+
+    /// Whether wheel zoom runs the other way. Has an effect only while `zoomsWithScrollWheel` is on.
+    public var reversesScrollWheelZoom: Bool {
+        get { reversesScrollWheelZoomChoice ?? false }
+        set { reversesScrollWheelZoomChoice = newValue }
     }
 
     /// Whether Recortia stays in the menu bar after its last window closes (FR-01). On by default;

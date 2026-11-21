@@ -582,13 +582,12 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
 
     override func scrollWheel(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
-        let scale: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 10
-        if event.modifierFlags.contains(.command) {
-            let factor = exp(Double(event.scrollingDeltaY * scale) * 0.01)
-            model.setZoom(model.viewport.zoom * factor, anchor: Point(x: p.x, y: p.y))
-        } else {
-            model.pan(dx: event.scrollingDeltaX * scale, dy: event.scrollingDeltaY * scale)
-        }
+        model.scrollWheel(
+            EditorScrollWheel(
+                deltaX: event.scrollingDeltaX, deltaY: event.scrollingDeltaY,
+                isPrecise: event.hasPreciseScrollingDeltas, command: event.modifierFlags.contains(.command),
+                option: event.modifierFlags.contains(.option)),
+            at: Point(x: p.x, y: p.y))
     }
 
     override func magnify(with event: NSEvent) {

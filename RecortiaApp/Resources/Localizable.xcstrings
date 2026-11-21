@@ -295,6 +295,22 @@
         }
       }
     },
+    "Actual size when it fits" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actual size when it fits"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamanho real quando couber"
+          }
+        }
+      }
+    },
     "Add a background, padding, rounded corners and a shadow. Spotlight and Magnifier draw attention to a detail." : {
       "localizations" : {
         "en" : {
@@ -1459,6 +1475,22 @@
         }
       }
     },
+    "Editor" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editor"
+          }
+        }
+      }
+    },
     "Enable automatic upload" : {
       "localizations" : {
         "en" : {
@@ -1645,6 +1677,22 @@
         }
       }
     },
+    "Fit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fit"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustar à janela"
+          }
+        }
+      }
+    },
     "Format" : {
       "localizations" : {
         "en" : {
@@ -1817,6 +1865,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Os envios ao GitHub têm limite de 8 MB. Reduza a escala de exportação."
+          }
+        }
+      }
+    },
+    "Hold Option to scroll." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold Option to scroll."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantenha a tecla Option pressionada para rolar."
           }
         }
       }
@@ -2181,6 +2245,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opacidade"
+          }
+        }
+      }
+    },
+    "Open images at" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open images at"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir imagens em"
           }
         }
       }
@@ -3008,6 +3088,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retomar"
+          }
+        }
+      }
+    },
+    "Reverse zoom direction" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reverse zoom direction"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inverter a direção do zoom"
           }
         }
       }
@@ -4522,6 +4618,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mascarar e-mails e números de telefone em novas capturas"
+          }
+        }
+      }
+    },
+    "Zoom with the scroll wheel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom with the scroll wheel"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom com a roda de rolagem"
           }
         }
       }

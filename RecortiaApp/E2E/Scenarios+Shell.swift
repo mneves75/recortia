@@ -357,6 +357,7 @@
                     context.check(
                         "General holds the Pins section",
                         E2EAccessibilityControl.isPresent("settings.pinOpacity", in: pane))
+                    await checkZoomControls(index: index, pane: pane, in: window, root: root, harness, context)
                 case "capture":
                     context.check(
                         "Capture holds the capture sound switch, off by default",
@@ -379,6 +380,37 @@
                 }
             }
             try await settingsMergedControls(harness, context)
+        }
+
+        /// General's editor zoom controls: Fit and a wheel that scrolls by default; Reverse zoom
+        /// direction appears only while wheel zoom is on, and the pane still fits its content.
+        private static func checkZoomControls(
+            index: Int, pane: NSView, in window: NSWindow, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async {
+            let preferences = harness.settings.preferences
+            context.check(
+                "General holds the opening zoom and wheel zoom controls, Fit and off by default",
+                E2EAccessibilityControl.isPresent("settings.editorOpenZoom", in: pane)
+                    && E2EAccessibilityControl.isPresent("settings.zoomsWithScrollWheel", in: pane)
+                    && preferences.editorOpenZoom == .fit && !preferences.zoomsWithScrollWheel)
+            context.check(
+                "Reverse zoom direction is hidden while wheel zoom is off",
+                !E2EAccessibilityControl.isPresent("settings.reversesScrollWheelZoom", in: pane))
+            harness.settings.update { $0.zoomsWithScrollWheel = true }
+            defer {
+                harness.settings.update { $0.zoomsWithScrollWheelChoice = preferences.zoomsWithScrollWheelChoice }
+            }
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "Reverse zoom direction appears, off, once wheel zoom is on",
+                E2EAccessibilityControl.isPresent("settings.reversesScrollWheelZoom", in: pane)
+                    && !harness.settings.preferences.reversesScrollWheelZoom)
+            await checkPaneFits("general with wheel zoom", index: index, pane: pane, harness.app, context)
+            context.snapshot(pane, shot: "general-wheel-zoom")
+            await context.darkCompanion(
+                pane, in: window, shot: "general-wheel-zoom", surface: "Settings general with wheel zoom",
+                settle: .milliseconds(400))
         }
 
         /// The Pins and Scrolling Capture controls, sections of General and Capture, change the

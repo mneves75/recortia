@@ -55,6 +55,9 @@
                 id: "editor-window-size", title: "Editors open at one consistent size",
                 run: EditorWindowSizeScenarios.consistentSize),
             E2EScenario(
+                id: "editor-zoom", title: "Zoom preferences frame new editors and steer the scroll wheel",
+                run: EditorZoomScenarios.zoom),
+            E2EScenario(
                 id: "recapture", title: "Hide existing windows during recapture",
                 run: CaptureVisibilityScenarios.recapture),
             E2EScenario(

@@ -46,6 +46,7 @@ struct GeneralSettingsTab: View {
                 )
                 .accessibilityIdentifier("settings.keepRunningInMenuBar")
             }
+            EditorZoomSettingsSection(settings: settings)
             PinsSettingsSection(settings: settings)
         }
         .formStyle(.grouped)
@@ -53,6 +54,28 @@ struct GeneralSettingsTab: View {
         // Approval happens in System Settings; returning to this window shows the new state.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             loginItem?.refresh()
+        }
+    }
+}
+
+/// How a new editor frames its image and what the scroll wheel does over the canvas (FR-04).
+struct EditorZoomSettingsSection: View {
+    let settings: SettingsStore
+
+    var body: some View {
+        Section("Editor") {
+            Picker("Open images at", selection: settings.binding(\.editorOpenZoom)) {
+                Text("Fit").tag(EditorOpenZoom.fit)
+                Text("Actual size when it fits").tag(EditorOpenZoom.actualSizeWhenFits)
+            }
+            .accessibilityIdentifier("settings.editorOpenZoom")
+            Toggle("Zoom with the scroll wheel", isOn: settings.binding(\.zoomsWithScrollWheel))
+                .help(Text("Hold Option to scroll."))
+                .accessibilityIdentifier("settings.zoomsWithScrollWheel")
+            if settings.preferences.zoomsWithScrollWheel {
+                Toggle("Reverse zoom direction", isOn: settings.binding(\.reversesScrollWheelZoom))
+                    .accessibilityIdentifier("settings.reversesScrollWheelZoom")
+            }
         }
     }
 }

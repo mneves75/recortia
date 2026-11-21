@@ -94,6 +94,34 @@ struct SettingsStoreTests {
         #expect(loaded.preferences.editorContentSize == nil)
     }
 
+    // Failure mode: a required zoom key would make every older blob fail to decode and reset all
+    // settings; a choice that does not persist reopens every editor at Fit.
+    @Test("Editor zoom preferences default to Fit and no wheel zoom, persist, and older blobs still load")
+    func editorZoomPreferences() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        store.update {
+            $0.editorOpenZoom = .actualSizeWhenFits
+            $0.zoomsWithScrollWheel = true
+            $0.reversesScrollWheelZoom = true
+        }
+        let reloaded = SettingsStore(storage: storage).preferences
+        #expect(reloaded.editorOpenZoom == .actualSizeWhenFits)
+        #expect(reloaded.zoomsWithScrollWheel && reloaded.reversesScrollWheelZoom)
+
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        var old = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("zoom") }
+        old["captureDelaySeconds"] = 2
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 2)
+        #expect(loaded.preferences.editorOpenZoom == .fit)
+        #expect(!loaded.preferences.zoomsWithScrollWheel && !loaded.preferences.reversesScrollWheelZoom)
+    }
+
     // Failure mode (PREF-01): a blob written while the legacy launchAtLogin key was dropped loaded as
     // defaults, and a blob without the key cannot be read by 0.14.0 after a rollback.
     @Test("A blob without launchAtLogin loads, and the next write restores the key for 0.14")
