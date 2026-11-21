@@ -328,35 +328,6 @@
             return header.value(forKey: "accessibilityValue") as? String
         }
 
-        /// The actions an AX element lists, for failure details.
-        static func axActionNames(_ element: AXUIElement) -> [String] {
-            var names: CFArray?
-            return AXUIElementCopyActionNames(element, &names) == .success ? (names as? [String] ?? []) : []
-        }
-
-        /// This process's AX element with `identifier`, reached through the accessibility API as
-        /// VoiceOver reaches it. SwiftUI answers AXPress there for controls it draws itself.
-        static func axElement(_ identifier: String) -> AXUIElement? {
-            func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
-                var result: CFTypeRef?
-                return AXUIElementCopyAttributeValue(element, attribute as CFString, &result) == .success ? result : nil
-            }
-            func search(from roots: [AXUIElement], _ matches: (AXUIElement) -> Bool) -> AXUIElement? {
-                var queue = roots
-                var budget = 20_000
-                while !queue.isEmpty, budget > 0 {
-                    budget -= 1
-                    let element = queue.removeFirst()
-                    if matches(element) { return element }
-                    queue += value(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
-                }
-                return nil
-            }
-            let application = AXUIElementCreateApplication(ProcessInfo.processInfo.processIdentifier)
-            let windows = value(application, kAXWindowsAttribute) as? [AXUIElement] ?? []
-            return search(from: windows) { value($0, kAXIdentifierAttribute) as? String == identifier }
-        }
-
         /// The element with `identifier` under `root`, recording nothing.
         private static func element(_ identifier: String, in root: NSView) -> NSObject? {
             var visited: Set<ObjectIdentifier> = []
