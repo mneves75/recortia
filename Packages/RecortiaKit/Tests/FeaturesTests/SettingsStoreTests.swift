@@ -70,6 +70,7 @@ struct SettingsStoreTests {
             "captureIncludesWindowShadow", "autoCopy", "autoSave", "launchAtLogin", "updateChecksEnabled",
             "automaticScrollingEnabled", "defaultExportFormat", "jpegQuality", "defaultExportScale", "ocrTextMode",
             "pinDefaultOpacity", "preferredSaveFolderBookmark", "editorContentSize", "keepsRunningInMenuBarChoice",
+            "autoRedactsSensitiveTextChoice",
         ]
         #expect(Set(object.keys).isSubset(of: allowed))
     }
@@ -93,6 +94,25 @@ struct SettingsStoreTests {
         #expect(loaded.preferences.editorContentSize == nil)
     }
 
+    // Failure mode (PREF-01): a blob written while the legacy launchAtLogin key was dropped loaded as
+    // defaults, and a blob without the key cannot be read by 0.14.0 after a rollback.
+    @Test("A blob without launchAtLogin loads, and the next write restores the key for 0.14")
+    func keylessLaunchAtLoginBlob() throws {
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old.removeValue(forKey: "launchAtLogin")
+        old["captureDelaySeconds"] = 4
+        let storage = MemoryPreferenceStorage()
+        storage.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let store = SettingsStore(storage: storage)
+        #expect(store.loadIssue == nil)
+        #expect(store.preferences.captureDelaySeconds == 4)
+        store.update { $0.autoCopy = true }
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        #expect(object["launchAtLogin"] as? Bool == false, "0.14.0 requires the key")
+    }
+
     // Failure mode: a required Bool added to the synthesized Codable makes every older blob fail
     // to decode, which resets all settings and drops the sealed export consent.
     @Test("Keeping Recortia in the menu bar defaults on, persists off, and older blobs still load")
@@ -114,6 +134,28 @@ struct SettingsStoreTests {
         #expect(loaded.loadIssue == nil)
         #expect(loaded.preferences.captureDelaySeconds == 5)
         #expect(loaded.preferences.keepsRunningInMenuBar)
+    }
+
+    // Failure mode: the masking choice as a required key would make every 0.14 blob fail to
+    // decode, resetting all settings and the sealed export consent.
+    @Test("Automatic masking defaults off, persists on, and blobs written before it existed still load")
+    func autoRedactsSensitiveText() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(!store.preferences.autoRedactsSensitiveText)
+        store.update { $0.autoRedactsSensitiveText = true }
+        #expect(SettingsStore(storage: storage).preferences.autoRedactsSensitiveText)
+
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("autoRedacts") }
+        old["captureDelaySeconds"] = 2
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 2)
+        #expect(!loaded.preferences.autoRedactsSensitiveText)
     }
 
     @Test("Works against a real, isolated UserDefaults suite")

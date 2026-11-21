@@ -12,6 +12,13 @@ utilities) produced the proposal in `docs/specs/enhancement-plan-2026-11/plan.md
 each gap below as fitting an approved requirement, needing a fresh decision, or excluded. This
 inventory remains the per-capability status record.
 
+A third pass on 2026-11-20, authorized by the owner on 2026-11-19, decompiled one installed reference
+utility's executable to learn how six capabilities behave (automatic scrolling, background-matched
+erase, subject lift, edge snapping, automatic PNG/JPEG choice, upward scrolling). The app was not
+launched, its preferences and containers were not read, and its bundle was not modified. The output
+stays outside this repository; only capability descriptions in Recortia's own words enter the specs,
+and no code, decompiled text, asset or wording is copied.
+
 Entry wording was updated on 2026-11-11 for the editor redesign (inspector tabs, toolbar menus,
 seven Settings tabs). An existing capability below is code/contract evidence, not a newly passed
 physical acceptance test. The full repository gate must recheck it; manual qualification remains in BACKLOG.json.

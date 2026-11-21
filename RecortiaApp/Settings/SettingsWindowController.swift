@@ -14,17 +14,13 @@ final class SettingsWindowController {
         self.model = model
     }
 
-    /// Orders the window onto the current Space, then activates: the window moves to the user
-    /// instead of macOS switching to the Space where it was last shown.
     func show() {
         if window == nil {
             let created = Self.makeWindow(model: model)
             created.center(on: ScreenChoice.screen())
             window = created
         }
-        AppPresence.shared.windowWillAppear()
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        if let window { AppPresence.shared.present(window) }
     }
 
     static func makeWindow(model: AppModel) -> NSWindow {
@@ -52,25 +48,25 @@ final class SettingsWindowController {
         }
         add(
             String(localized: "General"), "gearshape",
-            GeneralSettingsTab(settings: model.settings, loginItem: model.features?.loginItem))
+            GeneralSettingsTab(settings: model.settings, loginItem: model.features.loginItem))
         add(
             String(localized: "Shortcuts"), "keyboard",
             ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts))
         add(
             String(localized: "Capture"), "camera.viewfinder",
-            CaptureSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility))
+            CaptureSettingsTab(settings: model.settings, accessibility: model.features.services.accessibility))
         add(
             String(localized: "Export"), "square.and.arrow.up",
             ExportSettingsTab(
-                settings: model.settings, folders: model.features?.services.folders,
+                settings: model.settings, folders: model.features.services.folders,
                 chooseFolder: model.chooseSaveFolder, report: model.report))
         add(
             String(localized: "GitHub"), "icloud.and.arrow.up",
-            GitHubUploadSettings(settings: model.settings, credentials: model.features?.services.githubCredentials))
-        add(String(localized: "Privacy"), "hand.raised", PrivacySettingsTab())
+            GitHubUploadSettings(settings: model.settings, credentials: model.features.services.githubCredentials))
+        add(String(localized: "Privacy"), "hand.raised", PrivacySettingsTab(settings: model.settings))
         add(
             String(localized: "Text Recognition"), "text.viewfinder",
-            OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages))
+            OCRSettingsTab(settings: model.settings, languages: model.features.ocrLanguages))
         return tabs
     }
 }

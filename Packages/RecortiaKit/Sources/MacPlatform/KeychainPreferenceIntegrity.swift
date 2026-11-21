@@ -66,12 +66,13 @@ public final class PreferenceSeal {
                 for: message(secret.generation, data), using: SymmetricKey(data: secret.key)))
     }
 
+    // The `withUnsafeBytes` buffers below are copied into `Data` before their closures return.
     private static func message(_ generation: UInt64, _ data: Data) -> Data {
-        withUnsafeBytes(of: generation.bigEndian) { Data($0) } + data
+        withUnsafeBytes(of: generation.bigEndian) { unsafe Data($0) } + data
     }
 
     private static func newKey() -> Data {
-        SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
+        unsafe SymmetricKey(size: .bits256).withUnsafeBytes { unsafe Data($0) }
     }
 }
 
@@ -101,7 +102,8 @@ final class DataProtectionSealStore: SealSecretStore {
         query[kSecReturnData] = true
         query[kSecMatchLimit] = kSecMatchLimitOne
         var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let bytes = result as? Data,
+        // `&result` is valid for the call, which stores one retained reference into it.
+        guard unsafe SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let bytes = result as? Data,
             bytes.count == Self.storedByteCount
         else { return nil }
         let generation = bytes.suffix(8).reduce(UInt64(0)) { $0 << 8 | UInt64($1) }
@@ -110,7 +112,7 @@ final class DataProtectionSealStore: SealSecretStore {
 
     public func save(_ secret: SealSecret) -> Bool {
         guard secret.key.count == Self.keyByteCount else { return false }
-        let bytes = secret.key + withUnsafeBytes(of: secret.generation.bigEndian) { Data($0) }
+        let bytes = secret.key + withUnsafeBytes(of: secret.generation.bigEndian) { unsafe Data($0) }
         let update = SecItemUpdate(base as CFDictionary, [kSecValueData: bytes] as CFDictionary)
         if update == errSecSuccess { return true }
         guard update == errSecItemNotFound else {

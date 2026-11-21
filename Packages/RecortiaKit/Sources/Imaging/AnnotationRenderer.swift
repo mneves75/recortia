@@ -27,17 +27,24 @@ public enum AnnotationRenderer {
 
     public static func draw(_ annotations: [Annotation], in context: CGContext) throws(RenderError) {
         for annotation in annotations {
-            guard isDrawable(annotation) else {
+            guard hasFiniteValues(annotation) else {
                 if case .text = annotation.kind { throw .textLayoutFailed(.invalidGeometry) }
-                if case .arrow(_, _, .some) = annotation.kind { throw .invalidGeometry }
+                if case .arrow = annotation.kind { throw .invalidGeometry }
                 continue
             }
             try draw(annotation, in: context)
         }
     }
 
-    /// Whether every coordinate and style value is finite and sensible; others are skipped.
+    /// Whether every coordinate and style value is finite and sensible, and an arrow has a layout.
+    /// `draw` rejects invalid text and arrows and skips other invalid annotations.
     static func isDrawable(_ annotation: Annotation) -> Bool {
+        guard hasFiniteValues(annotation) else { return false }
+        if case .arrow = annotation.kind { return (try? ArrowLayout.make(for: annotation)) != nil }
+        return true
+    }
+
+    private static func hasFiniteValues(_ annotation: Annotation) -> Bool {
         let style = annotation.style
         guard style.lineWidth.isFinite, style.lineWidth >= 0, style.opacity.isFinite else { return false }
         let points: [Point<DocumentSpace>]
@@ -48,7 +55,6 @@ public enum AnnotationRenderer {
             }
             points = [text.origin]
         case .arrow(let start, let end, let control):
-            if control != nil, (try? ArrowLayout.make(for: annotation)) == nil { return false }
             points = [start, end] + (control.map { [$0] } ?? [])
         case .line(let start, let end):
             points = [start, end]
@@ -74,6 +80,9 @@ public enum AnnotationRenderer {
         } else {
             textLayout = nil
         }
+        // An arrow that cannot be laid out fails the render: an export never drops it silently.
+        let arrowLayout: ArrowLayout? =
+            if case .arrow = annotation.kind { try ArrowLayout.make(for: annotation) } else { nil }
         let style = annotation.style
         let opacity = min(max(style.opacity, 0), 1)
         guard opacity > 0 else { return }
@@ -101,21 +110,23 @@ public enum AnnotationRenderer {
                 drawTextBackground(text, style: style, metrics: textLayout.metrics, in: context)
                 textLayout.draw(in: context)
             }
-        case .arrow(let start, let end, let control):
-            if control != nil {
-                let layout = try ArrowLayout.make(for: annotation)
-                context.addPath(layout.inkPath)
+        case .arrow:
+            // One filled union, so a translucent color covers the shaft/head overlap once.
+            if let arrowLayout {
+                context.addPath(arrowLayout.inkPath)
                 context.fillPath()
-            } else {
-                drawArrow(from: start.cg, to: end.cg, lineWidth: style.lineWidth, in: context)
             }
         case .line(let start, let end):
             context.addLines(between: [start.cg, end.cg])
             context.strokePath()
         case .rectangle(let rect):
-            drawShape(CGPath(rect: rect.cg, transform: nil), style: style, in: context)
+            let path = CGMutablePath()
+            path.addRect(rect.cg)
+            drawShape(path, style: style, in: context)
         case .ellipse(let rect):
-            drawShape(CGPath(ellipseIn: rect.cg, transform: nil), style: style, in: context)
+            let path = CGMutablePath()
+            path.addEllipse(in: rect.cg)
+            drawShape(path, style: style, in: context)
         case .freehand(let points), .highlighter(let points):
             drawStroke(points.map(\.cg), lineWidth: style.lineWidth, in: context)
         case .step(let center, let number):
@@ -132,10 +143,10 @@ public enum AnnotationRenderer {
         else { return }
         context.setFillColor(fill.cgColor)
         if metrics.cornerRadius > 0 {
-            context.addPath(
-                CGPath(
-                    roundedRect: background.cg, cornerWidth: metrics.cornerRadius,
-                    cornerHeight: metrics.cornerRadius, transform: nil))
+            let path = CGMutablePath()
+            path.addRoundedRect(
+                in: background.cg, cornerWidth: metrics.cornerRadius, cornerHeight: metrics.cornerRadius)
+            context.addPath(path)
             context.fillPath()
         } else {
             context.fill(background.cg)
@@ -164,29 +175,6 @@ public enum AnnotationRenderer {
         context.strokePath()
     }
 
-    private static func drawArrow(from start: CGPoint, to end: CGPoint, lineWidth: Double, in context: CGContext) {
-        let dx = end.x - start.x, dy = end.y - start.y
-        let length = (dx * dx + dy * dy).squareRoot()
-        guard length > 0 else { return }
-        let w = max(lineWidth, 1)
-        let headLength = min(length, max(w * 4.5, 14))
-        let headHalfWidth = max(w * 3, 9)
-        let ux = dx / length, uy = dy / length
-        let base = CGPoint(x: end.x - ux * headLength, y: end.y - uy * headLength)
-        // The shaft stops inside the head so its round cap never pokes past the tip.
-        let shaftEnd = CGPoint(x: end.x - ux * headLength * 0.8, y: end.y - uy * headLength * 0.8)
-        context.setLineCap(.butt)
-        context.addLines(between: [start, shaftEnd])
-        context.strokePath()
-        context.addLines(between: [
-            end,
-            CGPoint(x: base.x - uy * headHalfWidth, y: base.y + ux * headHalfWidth),
-            CGPoint(x: base.x + uy * headHalfWidth, y: base.y - ux * headHalfWidth),
-        ])
-        context.closePath()
-        context.fillPath()
-    }
-
     private static func drawStep(
         center: CGPoint, number: Int, radius: Double, style: Annotation.Style, in context: CGContext
     ) {
@@ -194,25 +182,46 @@ public enum AnnotationRenderer {
         context.setFillColor(fill.cgColor)
         context.fillEllipse(
             in: CGRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius))
-        let luminance = 0.2126 * Double(fill.r) + 0.7152 * Double(fill.g) + 0.0722 * Double(fill.b)
-        let textColor: RGBA = luminance > 150 ? .black : .white
+        // WCAG 2 relative luminance of the sRGB fill; the numeral takes the higher-contrast extreme.
+        func linear(_ channel: UInt8) -> Double {
+            let v = Double(channel) / 255
+            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear(fill.r) + 0.7152 * linear(fill.g) + 0.0722 * linear(fill.b)
+        let textColor: RGBA = (luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? .black : .white
         let font =
             CTFontCreateUIFontForLanguage(.emphasizedSystem, radius * 1.1, nil)
             ?? CTFontCreateWithName("Helvetica-Bold" as CFString, radius * 1.1, nil)
-        guard let line = makeLine(String(number), font: font, color: textColor) else { return }
+        guard let line = makeLine(String(number), font: font, color: textColor, outline: nil) else { return }
+        // A translucent fill shows an unknown background, so the numeral sits on an opposite-color
+        // outline, stroked first so the fill on top keeps the glyph's full width.
+        let halo =
+            fill.a < 255
+            ? makeLine(String(number), font: font, color: textColor, outline: textColor == .black ? .white : .black)
+            : nil
         var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
-        let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+        // The inout pointers are valid for the call only, and Core Text writes one value through each.
+        let width = unsafe CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
         context.saveGState()
         context.translateBy(x: center.x - width / 2, y: center.y + (ascent - descent) / 2)
         context.scaleBy(x: 1, y: -1)
         context.textMatrix = .identity
         context.textPosition = .zero
+        if let halo {
+            CTLineDraw(halo, context)
+            context.textPosition = .zero
+        }
         CTLineDraw(line, context)
         context.restoreGState()
     }
 
-    private static func makeLine(_ string: String, font: CTFont, color: RGBA) -> CTLine? {
-        let attributes: [CFString: Any] = [kCTFontAttributeName: font, kCTForegroundColorAttributeName: color.cgColor]
+    private static func makeLine(_ string: String, font: CTFont, color: RGBA, outline: RGBA?) -> CTLine? {
+        var attributes: [CFString: Any] = [kCTFontAttributeName: font, kCTForegroundColorAttributeName: color.cgColor]
+        if let outline {
+            // A positive width strokes without filling; the width is a percentage of the font size.
+            attributes[kCTStrokeWidthAttributeName] = 24.0
+            attributes[kCTStrokeColorAttributeName] = outline.cgColor
+        }
         guard let attributed = CFAttributedStringCreate(nil, string as CFString, attributes as CFDictionary) else {
             return nil
         }

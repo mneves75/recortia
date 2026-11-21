@@ -35,6 +35,7 @@ moved to 27B52 through the same doctor policy; the decision below is otherwise u
 3. **Deployment target:** macOS 15.0, arm64 only. The installed SDK supports every capture and OCR
    primitive the 0.1 scope needs at that target (table below). Newer APIs are availability-gated,
    never a reason to raise the target.
+   Superseded from 0.15 by [ADR-008](0008-macos-26-floor.md): macOS 26.0.
 4. **Toolchain:** stable Xcode 27.0 (27A266a), recorded separately as `stable_xcode_baseline` in
    `TOOLCHAIN.json` and selected per command with `DEVELOPER_DIR`. The global `xcode-select`
    setting is left unchanged because other projects on this Mac use it. FP-004's

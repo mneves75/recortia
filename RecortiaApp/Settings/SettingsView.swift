@@ -31,6 +31,7 @@ struct GeneralSettingsTab: View {
                         )
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.loginItem.warning")
                     }
                 } else {
                     Toggle("Open Recortia at login", isOn: .constant(false))
@@ -49,6 +50,10 @@ struct GeneralSettingsTab: View {
         }
         .formStyle(.grouped)
         .onAppear { loginItem?.refresh() }
+        // Approval happens in System Settings; returning to this window shows the new state.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            loginItem?.refresh()
+        }
     }
 }
 
@@ -108,6 +113,8 @@ struct CaptureSettingsTab: View {
             Section {
                 Toggle("Show the pointer in captures", isOn: settings.binding(\.captureShowsCursor))
                 Toggle("Include window shadow", isOn: settings.binding(\.captureIncludesWindowShadow))
+                Toggle("Play a sound after capture", isOn: settings.binding(\.playsCaptureSound))
+                    .accessibilityIdentifier("settings.captureSound")
             }
             ScrollingSettingsSection(settings: settings, accessibility: accessibility)
         }
@@ -154,6 +161,7 @@ struct ExportSettingsTab: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            FilenameTemplateSection(settings: settings)
             Section {
                 if settings.loadIssue == .unverifiedConsent {
                     Label(
@@ -255,7 +263,6 @@ struct ExportSettingsTab: View {
     }
 }
 
-/// The folder panel behind Settings › Export › Save folder.
 @MainActor
 enum SaveFolderPanel {
     static func choose() -> URL? {
@@ -273,6 +280,8 @@ enum SaveFolderPanel {
 // MARK: - Privacy
 
 struct PrivacySettingsTab: View {
+    let settings: SettingsStore
+
     var body: some View {
         Form {
             Section("What stays on this Mac") {
@@ -284,6 +293,11 @@ struct PrivacySettingsTab: View {
                 )
             }
             Section("Redaction") {
+                Toggle(
+                    "Mask e-mail addresses and phone numbers in new captures",
+                    isOn: settings.binding(\.autoRedactsSensitiveText)
+                )
+                .accessibilityIdentifier("settings.autoRedactsSensitiveText")
                 Text(
                     "Solid redaction replaces the covered pixels with an opaque color in the exported image. It is the secure tool."
                 )
@@ -354,6 +368,75 @@ struct OCRSettingsTab: View {
 }
 
 // MARK: - Pins (a section of General)
+
+/// How saved files are named (FR-07, A-9). Each edit is admitted once by
+/// `FilenameTemplate(validating:)`: an accepted template is stored, a refused one stores nothing
+/// and files keep the default name while the field says why.
+struct FilenameTemplateSection: View {
+    let settings: SettingsStore
+    @State private var draft: String?
+    @State private var refusal: FilenameTemplateError?
+
+    var body: some View {
+        Section {
+            TextField(
+                "Name of saved files",
+                text: Binding(get: { draft ?? settings.preferences.filenameTemplate.text }, set: admit)
+            )
+            .accessibilityIdentifier("settings.filenameTemplate")
+            if let refusal {
+                Label {
+                    Text("\(Self.reason(refusal)) Saved files keep the default name.")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
+                .font(.callout)
+                .accessibilityIdentifier("settings.filenameTemplate.message")
+            } else {
+                Text("Example: \(example)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .accessibilityIdentifier("settings.filenameTemplate.example")
+            }
+        } footer: {
+            Text("Placeholders: {date}, {time}, {counter}")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var example: String {
+        let options = settings.preferences.exportOptions
+        return options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
+    }
+
+    private func admit(_ text: String) {
+        draft = text
+        do throws(FilenameTemplateError) {
+            let template = try FilenameTemplate(validating: text)
+            refusal = nil
+            settings.update { $0.filenameTemplate = template }
+        } catch {
+            refusal = error
+            settings.update { $0.filenameTemplateChoice = nil }
+        }
+    }
+
+    static func reason(_ refusal: FilenameTemplateError) -> String {
+        switch refusal {
+        case .empty: String(localized: "Enter a file name.")
+        case .tooLong: String(localized: "The name is too long.")
+        case .misplacedPeriod:
+            String(localized: "A file name cannot start or end with a period, or have two periods in a row.")
+        case .unsupportedCharacter:
+            String(localized: "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses.")
+        case .unknownPlaceholder: String(localized: "Use only the placeholders {date}, {time} and {counter}.")
+        }
+    }
+}
 
 struct PinsSettingsSection: View {
     let settings: SettingsStore
@@ -463,7 +546,7 @@ struct ScrollingSettingsSection: View {
     }
 
     #Preview("Privacy") {
-        PrivacySettingsTab()
+        PrivacySettingsTab(settings: PreviewSupport.settings())
             .frame(width: 560, height: 520)
     }
 

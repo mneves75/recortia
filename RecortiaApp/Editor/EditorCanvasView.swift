@@ -22,8 +22,12 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     private var isSpaceDown = false
     private var panAnchor: NSPoint?
     private var trackingArea: NSTrackingArea?
+    /// This canvas's own "editor to first draw" interval (A-13), set when its window first shows.
+    var firstDrawInterval: LatencyInterval?
     private var elements: [EditorItemID: EditorAccessibilityElement] = [:]
     private var lastListItems: [EditorListItem] = []
+    /// Shown, over a neutral placeholder, while automatic masking runs (FR-06).
+    private var maskingIndicator: NSProgressIndicator?
 
     init(model: EditorModel) {
         self.model = model
@@ -104,6 +108,14 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override var acceptsFirstResponder: Bool { true }
     override var isOpaque: Bool { true }
 
+    /// The system focus ring shows while the canvas owns the keyboard. It is drawn just inside
+    /// the canvas, so the column edges and the split dividers never clip it.
+    override var focusRingMaskBounds: NSRect { bounds }
+
+    override func drawFocusRingMask() {
+        bounds.insetBy(dx: 4, dy: 4).fill()
+    }
+
     // MARK: - Model observation
 
     private func modelChanged() {
@@ -118,7 +130,9 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         _ = model.recognition
         _ = model.outputPreview
         _ = model.showsOutputPreview
+        _ = model.isPreviewReady
         _ = model.redactionFill
+        syncMaskingIndicator(model.isMaskingPending)
         let tool = model.tool
         syncTextEditing(model.textEditing)
         needsDisplay = true
@@ -136,6 +150,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override func layout() {
         super.layout()
         reportViewport()
+        noteFocusRingMaskChanged()
+        maskingIndicator?.frame.origin = NSPoint(x: bounds.midX - 16, y: bounds.midY - 40)
     }
 
     override func viewDidChangeBackingProperties() {
@@ -199,6 +215,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         // Neutral, opaque ground: never a translucent window material (FR-13).
         NSColor.underPageBackgroundColor.setFill()
         bounds.fill()
+        // Automatic masking is running: no capture pixel is drawn until its masks land (FR-06).
+        if model.isMaskingPending { return drawMaskingPlaceholder() }
 
         let viewport = model.viewport
         let document = model.document
@@ -245,9 +263,19 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             model.reportCanvasRenderFailure()
             return
         }
+        if !model.showsOutputPreview { model.reportCanvasDrawSucceeded() }
+        if model.baseImage != nil, let firstDrawInterval {
+            firstDrawInterval.end()
+            self.firstDrawInterval = nil
+        }
 
         NSColor.separatorColor.setStroke()
         NSBezierPath(rect: canvas.insetBy(dx: -0.5, dy: -0.5)).stroke()
+
+        if !model.isPreviewReady {
+            drawPreviewFailure(over: canvas)
+            return
+        }
 
         if !model.showsOutputPreview {
             drawCropShade(document, viewport, context)
@@ -257,6 +285,50 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             drawRuler(viewport)
             drawLoupe(viewport)
         }
+    }
+
+    private func drawMaskingPlaceholder() {
+        let text = NSAttributedString(
+            string: EditorStrings.maskingPlaceholder,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ])
+        let size = text.size()
+        text.draw(at: CGPoint(x: bounds.midX - size.width / 2, y: bounds.midY + 4))
+    }
+
+    private func syncMaskingIndicator(_ pending: Bool) {
+        if pending, maskingIndicator == nil {
+            let indicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 32, height: 32))
+            indicator.style = .spinning
+            indicator.isIndeterminate = true
+            indicator.setAccessibilityLabel(EditorStrings.maskingPlaceholder)
+            addSubview(indicator)
+            indicator.startAnimation(nil)
+            maskingIndicator = indicator
+            needsLayout = true
+        } else if !pending, let indicator = maskingIndicator {
+            indicator.stopAnimation(nil)
+            indicator.removeFromSuperview()
+            maskingIndicator = nil
+        }
+    }
+
+    /// The last render failed, so the pixels below may be stale (R2-D12): veil them and say so.
+    private func drawPreviewFailure(over canvas: CGRect) {
+        let visible = canvas.intersection(bounds)
+        guard !visible.isNull else { return }
+        NSColor.windowBackgroundColor.withAlphaComponent(0.85).setFill()
+        visible.fill()
+        let text = NSAttributedString(
+            string: EditorStrings.message(.previewFailed),
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
+                .foregroundColor: NSColor.labelColor,
+            ])
+        let size = text.size()
+        text.draw(at: CGPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2))
     }
 
     private func drawCheckerboard(in rect: CGRect, _ context: CGContext) {
@@ -318,15 +390,16 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
             NSColor.controlAccentColor.setStroke()
             path.stroke()
         }
+        model.handlesDrawnWithIncreasedContrast = increaseContrast
+        let size = CGFloat(EditorModel.handleSquareSide(increasedContrast: increaseContrast))
         for handle in model.selectionHandles {
             let center = viewport.viewPoint(handle.point)
-            let size: CGFloat = increaseContrast ? 10 : 8
             let rect = CGRect(x: center.x - size / 2, y: center.y - size / 2, width: size, height: size)
             let path =
                 handle.handle == .start || handle.handle == .end ? NSBezierPath(ovalIn: rect) : NSBezierPath(rect: rect)
             NSColor.white.setFill()
             path.fill()
-            path.lineWidth = width
+            path.lineWidth = CGFloat(EditorModel.handleLineWidth(increasedContrast: increaseContrast))
             (increaseContrast ? NSColor.black : NSColor.controlAccentColor).setStroke()
             path.stroke()
         }
@@ -526,26 +599,13 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
     override func menu(for event: NSEvent) -> NSMenu? {
         let point = documentPoint(event)
         if let item = model.item(at: point), !model.selection.contains(item) { model.select(item) }
-        guard !model.selection.isEmpty else { return nil }
-        let menu = NSMenu()
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Duplicate", table: "Editor")) { [weak self] in
-                self?.model.duplicateSelection()
-            })
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Delete", table: "Editor")) { [weak self] in
-                self?.model.deleteSelection()
-            })
-        menu.addItem(.separator())
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Bring to Front", table: "Editor")) { [weak self] in
-                self?.model.reorderSelection(.front)
-            })
-        menu.addItem(
-            ClosureMenuItem.make(String(localized: "Send to Back", table: "Editor")) { [weak self] in
-                self?.model.reorderSelection(.back)
-            })
-        return menu
+        guard !model.selection.isEmpty, model.textEditing == nil else { return nil }
+        return EditorArrangeCommand.contextMenu(for: model)
+    }
+
+    /// Edit › Delete removes the selection, like the Delete key.
+    @objc func delete(_ sender: Any?) {
+        model.deleteSelection()
     }
 
     // MARK: - Cursor
@@ -909,6 +969,12 @@ final class EditorTextView: NSTextView {
 
 /// Builds a menu item that runs a closure. The item keeps its target alive through
 /// `representedObject` (the `target` reference itself is weak).
+extension EditorCanvasView: NSMenuItemValidation {
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        item.action == #selector(delete(_:)) ? !model.selection.isEmpty && model.textEditing == nil : true
+    }
+}
+
 enum ClosureMenuItem {
     private final class Target: NSObject {
         let handler: () -> Void

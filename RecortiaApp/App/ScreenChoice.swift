@@ -12,7 +12,7 @@ enum ScreenChoice {
         return screens.first { frame($0).contains(pointer) } ?? screens.first
     }
 
-    /// The live screen for `displayID`, or the pointer's screen.
+    /// The live screen for `displayID`, else the pointer's screen, else the first screen.
     static func screen(displayID: CGDirectDisplayID? = nil) -> NSScreen? {
         pick(NSScreen.screens, displayID: displayID, pointer: NSEvent.mouseLocation, id: \.displayID, frame: \.frame)
     }
@@ -27,7 +27,6 @@ extension NSWindow {
 }
 
 extension NSScreen {
-    /// The Core Graphics display this screen shows.
     var displayID: CGDirectDisplayID? {
         (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }

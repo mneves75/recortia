@@ -111,6 +111,8 @@
                 "a declined discard leaves the stitched capture in review", model.state == .reviewing,
                 "\(model.state)")
 
+            try await checkCountWording(context)
+
             let before = harness.editors.controllers.count
             await model.accept()
             let controller = try await E2EActions.waitForNewEditor(harness, after: before, context)
@@ -170,6 +172,59 @@
             "panel content \(content) pt, HUD alone \(bare) pt; window buttons \(buttons)")
     }
 
+    extension ScrollScenarios {
+        /// Review R3-D19: the HUD's progress line and the preview's accessibility label, as rendered,
+        /// for one and two in the run's language ("1 frames" and "1 junções" read wrong).
+        private static func checkCountWording(_ context: ScenarioContext) async throws {
+            let portuguese = context.output.language.hasPrefix("pt")
+            let preview = try E2EDrawing.image(size: CGSize(width: 40, height: 80), scale: 1) { rect in
+                NSColor.gray.setFill()
+                rect.fill()
+            }
+            for count in [1, 2] {
+                let hud = E2ESnapshot.host(
+                    ScrollHUDView(
+                        hud: ScrollHUDState(
+                            source: "", state: .collecting, mode: .manual, notice: nil, acceptedFrames: count,
+                            outputHeight: 480),
+                        onStart: {}, onPause: {}, onResume: {}, onStop: {}, onCancel: {}))
+                defer { hud.close() }
+                let hudRoot = try context.unwrap("HUD hosted", hud.contentView)
+                await E2ESnapshot.settle(hudRoot)
+                // The hosted SwiftUI text exposes no accessible value here, so the wording is checked
+                // through the same catalog key the view's Text resolves.
+                let progress = String(localized: "\(count) frames · \(480) pixels tall")
+                let expectedProgress =
+                    switch (portuguese, count) {
+                    case (false, 1): "1 frame · 480 pixels tall"
+                    case (false, _): "2 frames · 480 pixels tall"
+                    case (true, 1): "1 quadro · 480 pixels de altura"
+                    case (true, _): "2 quadros · 480 pixels de altura"
+                    }
+                context.check("the HUD reads \(count) frame(s) correctly", progress == expectedProgress, progress)
+
+                let review = E2ESnapshot.host(
+                    ScrollReviewView(
+                        preview: preview, outputSize: PixelSize(width: 40, height: 80),
+                        seams: Array(stride(from: 20, through: 20 * count, by: 20)), partialReason: nil,
+                        assemblyFailed: false, isPreparingPreview: false, canAccept: true, canDiscard: true,
+                        onAccept: {}, onDiscard: {}))
+                defer { review.close() }
+                let reviewRoot = try context.unwrap("review hosted", review.contentView)
+                await E2ESnapshot.settle(reviewRoot)
+                let label = try E2EAccessibilityControl.name(for: "scroll.review.preview", in: reviewRoot, context)
+                let expectedLabel =
+                    switch (portuguese, count) {
+                    case (false, 1): "Stitched preview with 1 join"
+                    case (false, _): "Stitched preview with 2 joins"
+                    case (true, 1): "Pré-visualização unida com 1 junção"
+                    case (true, _): "Pré-visualização unida com 2 junções"
+                    }
+                context.check("the preview label reads \(count) join(s) correctly", label == expectedLabel, label)
+            }
+        }
+    }
+
     private struct HUDFollower: View {
         let model: ScrollSessionModel
 
@@ -197,7 +252,8 @@
             ScrollReviewView(
                 preview: model.preview, outputSize: model.outputSize, seams: model.seams,
                 partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
-                onAccept: {}, onDiscard: {})
+                isPreparingPreview: model.isPreparingPreview, canAccept: model.canAccept,
+                canDiscard: model.canDiscard, onAccept: {}, onDiscard: {})
         }
     }
 #endif

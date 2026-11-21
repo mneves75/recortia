@@ -19,7 +19,8 @@ struct RedactionRecipe: Sendable, CustomTestStringConvertible {
 enum RedactionFixtures {
     static let width = 96
     static let height = 72
-    /// Odd coordinates, so every non-integer scale maps mask edges to fractional output pixels.
+    /// Odd x and y origins, so the tested fractional scales map the leading mask edges to
+    /// fractional output pixels.
     static let secret = FixtureRect(x: 31, y: 21, width: 26, height: 15)
     static let seeds: [UInt64] = [1, 2, 3, 7, 42, 1337]
 
@@ -246,7 +247,6 @@ struct RenderRedactionControlTests {
         return try ContainerInspector.decodePixels(data)
     }
 
-    /// Runs `pipeline` on both images of several pairs and reports whether any pair differs.
     private func anyPairDiffers(_ pipeline: (CGImage) throws -> CGImage) throws -> Bool {
         var differs = false
         for seed in RedactionFixtures.seeds {
@@ -311,7 +311,7 @@ struct RenderRedactionControlTests {
         #expect(differs, "C3 control compared equal: the RED-01 comparison is vacuous")
     }
 
-    // The renderer now also masks, in source pixels, any layer under a mask's output rectangle, so
+    // The renderer also masks, in source pixels, any layer under a mask's output rectangle, so
     // a second reference to the same asset is protected too; the leak planted here is a second
     // asset that carries the same secret outside the mask, which no mask covers.
     @Test("C4: a mask over one layer does not hide the same secret in another asset's layer")

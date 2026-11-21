@@ -7,9 +7,8 @@
     import MacPlatform
     import RecortiaFixtures
 
-    /// Regressions for the editor review fixes: notices (r4 P2), GitHub destination credentials
-    /// (r3 F11), stale save-folder bookmarks (r3 F12), and drops that outlive the drag
-    /// pasteboard (r4 P3).
+    /// Regressions for notice lifetime and announcement, GitHub destination credentials, stale
+    /// save-folder bookmarks, and drops that outlive the drag pasteboard.
     @MainActor
     enum EditorFixScenarios {
         // MARK: Notices
@@ -26,7 +25,6 @@
             let linkURL = try context.unwrap(
                 "fixture URL", URL(string: "https://github.com/fixture/private-captures/blob/main/screenshots/a.png"))
 
-            // A success-only notice is announced and still dismisses itself.
             model.reportAutomaticExport(.copied)
             let copied = EditorStrings.message(.exported(.copied))
             context.check(
@@ -35,7 +33,6 @@
             context.check(
                 "a success notice dismisses itself after the delay", await E2EWait.until { model.notice == nil })
 
-            // Failures stay until the person dismisses them, and say so to VoiceOver.
             let failures: [(String, ExportFailure)] = [
                 ("failed export", .diskFull),
                 ("upload completion unknown", .upload(.completionUnknown)),
@@ -90,7 +87,6 @@
             await E2EActions.darkEditor(
                 controller, context, shot: "uploaded-link", surface: "editor uploaded-link notice")
 
-            // A newer notice replaces a sticky one and is announced in turn.
             announcements.removeAll()
             model.reportAutomaticExport(.copied)
             context.check(
@@ -105,12 +101,12 @@
         /// Records every Keychain call a Settings save makes, in order, without a real Keychain.
         @MainActor
         final class RecordingCredentials: GitHubCredentialService {
-            private(set) var tokens: [String: String] = [:]
+            private(set) var tokens: [String: GitHubToken] = [:]
             private(set) var calls: [String] = []
             var failNextStore = false
             var failNextRemove = false
 
-            func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+            func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
                 let account = GitHubTokenStore.account(for: destination)
                 calls.append("store \(account)")
                 if failNextStore {
@@ -136,6 +132,7 @@
             let credentials = RecordingCredentials()
             let first = GitHubDestination(owner: "fixture", repository: "private-one")
             let second = GitHubDestination(owner: "fixture", repository: "private-two")
+            func admitted(_ token: String) -> GitHubToken? { try? GitHubTokenStore.validatedToken(token) }
             func save(_ token: String, _ destination: GitHubDestination) -> GitHubDestinationSaver.Result {
                 GitHubDestinationSaver.save(
                     token: token, destination: destination, settings: settings, credentials: credentials)
@@ -145,7 +142,7 @@
                 "the first save succeeds, trimming a pasted token", save("  ghp_one\n", first) == .saved)
             context.check(
                 "the stored token has no surrounding whitespace",
-                credentials.tokens[GitHubTokenStore.account(for: first)] == "ghp_one",
+                credentials.tokens[GitHubTokenStore.account(for: first)] == admitted("ghp_one"),
                 "stored: \(credentials.tokens)")
             context.check(
                 "the first destination is saved", settings.preferences.githubUpload?.destination == first)
@@ -161,7 +158,8 @@
                 "calls: \(credentials.calls)")
             context.check(
                 "only the new destination keeps a token",
-                credentials.tokens == [GitHubTokenStore.account(for: second): "ghp_two"],
+                credentials.tokens.count == 1
+                    && credentials.tokens[GitHubTokenStore.account(for: second)] == admitted("ghp_two"),
                 "stored: \(credentials.tokens)")
 
             // The same Keychain item under another spelling is not a change: removing it would
@@ -175,9 +173,22 @@
                 "calls: \(credentials.calls)")
             context.check(
                 "the token for the respelled destination survives",
-                credentials.tokens[GitHubTokenStore.account(for: second)] == "ghp_three")
+                credentials.tokens[GitHubTokenStore.account(for: second)] == admitted("ghp_three"))
 
-            // A failed store leaves the saved destination and its token alone.
+            let callsBeforeRefusal = credentials.calls.count
+            context.check(
+                "a token without a personal-token prefix is refused",
+                save("synthetic-token", first) == .failed(.invalidCredential))
+            context.check(
+                "a refused token has its own message, not the missing-token one",
+                GitHubUploadStrings.message(.invalidCredential)
+                    != GitHubUploadStrings.message(.missingCredential))
+            context.check(
+                "a refused token reaches no Keychain call and changes no destination",
+                credentials.calls.count == callsBeforeRefusal
+                    && settings.preferences.githubUpload?.destination == respelled,
+                "calls: \(credentials.calls)")
+
             credentials.failNextStore = true
             let before = credentials.calls.count
             let failed = save("ghp_four", first)
@@ -189,7 +200,6 @@
                 "a failed store removes nothing",
                 !credentials.calls.dropFirst(before).contains { $0.hasPrefix("remove") })
 
-            // A failed removal still saves the destination and says the old token remains.
             credentials.failNextRemove = true
             let stale = save("ghp_five", first)
             context.check(
@@ -197,7 +207,6 @@
             context.check(
                 "a failed removal still saves the destination", settings.preferences.githubUpload?.destination == first)
 
-            // A token that is only whitespace never reaches the Keychain.
             let calls = credentials.calls.count
             context.check(
                 "a whitespace-only token is a missing credential", save(" \n\t", second) == .failed(.missingCredential))
@@ -259,7 +268,6 @@
                 "the app resolver renews the stored bookmark",
                 await E2EWait.until { harness.settings.preferences.preferredSaveFolderBookmark != bookmark })
 
-            // Saving to the preferred folder works through the stale bookmark.
             harness.settings.update { $0.preferredSaveFolderBookmark = bookmark }
             let controller = try await harness.openImported(harness.desktop, name: "stale-folder.png")
             let outcome = await controller.model.export(.saveToPreferredFolder)
@@ -273,7 +281,6 @@
                 context.check("Save to Preferred Folder succeeds through a stale bookmark", false, "\(outcome)")
             }
 
-            // A folder that is gone is still unavailable and is never renewed.
             let gone = harness.output.workDirectory.appending(path: "folder-\(run)-gone", directoryHint: .isDirectory)
             try fileManager.createDirectory(at: gone, withIntermediateDirectories: true)
             let goneBookmark = try gone.bookmarkData()

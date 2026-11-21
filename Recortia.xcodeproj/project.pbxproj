@@ -22,6 +22,7 @@
 		147B112BD770EFE925854414 /* SyntheticServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F3733BEB4228FA216AEF0D /* SyntheticServices.swift */; };
 		16D05BE522E6D46802FC2C34 /* LaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2991DDE3A9E798D014496FC6 /* LaunchTests.swift */; };
 		1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977B7B2D3F02E7F78030DFEE /* DragChip.swift */; };
+		1747D52DBBAF6CC32809C0BB /* Scenarios+AutoRedaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE70A3F1D86B53E9296F402 /* Scenarios+AutoRedaction.swift */; };
 		182984EEB477BE03386FF93A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */; };
 		18A45AB75723F8BFA3916DBD /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
 		199147154E8C329F645B43D5 /* RegionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2EA2150D65021ED01B91C0 /* RegionOverlay.swift */; };
@@ -29,6 +30,7 @@
 		1DC922DA995AA5D7779D0859 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3AA51A37D8658D03B1F675 /* KeyboardShortcuts */; };
 		1F0E8DE884CC005296AD7EB0 /* EditorSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451B10A3F6F57E282EA0B1B5 /* EditorSidebarView.swift */; };
 		2185F4518EA6D1CC9153005D /* Scenarios+CurvedArrows.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */; };
+		264C7CB58873A517AFF4FF88 /* Fosco-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00D5C84AF5B28414C2FA8C5C /* Fosco-LICENSE.txt */; };
 		2D8C368CE36FD821F3E7C2DC /* EscapeHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */; };
 		2DD16A3919445D7FAA908F82 /* E2ERunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */; };
 		302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */; };
@@ -63,7 +65,9 @@
 		5194C735565D7B3674113F06 /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1B5ACC431A7AEEB895725E /* PreviewSupport.swift */; };
 		55BAD47DF14454678FB1B355 /* AppPresence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE004CDB83EE7107E4A5B806 /* AppPresence.swift */; };
 		56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAA916D5D458FADC7481398 /* RecortiaApp.swift */; };
+		5C28BD37596715D88F7CEDD6 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C105D1B70AD241C287604A0 /* DesignTokens.swift */; };
 		6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64983A912E3CFA1502563B16 /* EditorInspectorView.swift */; };
+		61AAC7F70EA6E61FC071A9C0 /* EditorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48537C0299ADF945358D808 /* EditorCommands.swift */; };
 		6470C535C3CBC2B70DF471A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E8D31CC0BCFF030833F67F96 /* Assets.xcassets */; };
 		652A4EC8ED77A477889B1328 /* ScrollUIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D4675FB030ABEF23104F4F1 /* ScrollUIController.swift */; };
 		65345782C7EBA8CF8EE27F85 /* MenuContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B60026CF0E1A7A617061C9 /* MenuContent.swift */; };
@@ -73,6 +77,7 @@
 		6A18E15D4470F4A6A216A0D5 /* EditorTextDecorationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E15812A71A550789FBC15D /* EditorTextDecorationView.swift */; };
 		6A80F91BFD6A48E08DA8DBB8 /* E2ESnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293033569B29300AB2B89925 /* E2ESnapshot.swift */; };
 		6B1BD24BE65C437E070D1839 /* EditorWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6462E69A342D6EFAC6F7507B /* EditorWindowManager.swift */; };
+		6CFFB0875C5AE1B1F5F3FC11 /* Fosco-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 00D5C84AF5B28414C2FA8C5C /* Fosco-LICENSE.txt */; };
 		6EBBCD64B42B976D604BCA47 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F902EF52885BED5F7982DA2C /* OnboardingView.swift */; };
 		701F0314C45185A00CC56645 /* GlobalShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97C30D7091C2051638564FB /* GlobalShortcuts.swift */; };
 		7023DDE1D04BA851901E9DCF /* Recortia-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */; };
@@ -83,6 +88,7 @@
 		735069F09C1DEBDBB2449990 /* Features in Frameworks */ = {isa = PBXBuildFile; productRef = 2B3B384261E6DD8F0B8F0303 /* Features */; };
 		739432D25946A1A2AF701CEB /* GitHubUploadSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E42652874A3A93FCB17228 /* GitHubUploadSettings.swift */; };
 		747BEF5FD53C4B739E049209 /* Scenarios+EditorWindowSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39817EE5D149AB669AEE652 /* Scenarios+EditorWindowSize.swift */; };
+		75DAB48C82B17F161440D16D /* EditorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48537C0299ADF945358D808 /* EditorCommands.swift */; };
 		778801BF8774508093BCD36C /* HostingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */; };
 		78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E084E166124DB22614616F5 /* ChooserViews.swift */; };
 		7D5886F6DCD7F13C23CB8707 /* EditorSystemServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8939BAC5F9D123BCC832EACA /* EditorSystemServices.swift */; };
@@ -114,6 +120,7 @@
 		B98350ECD19829B350F52DFD /* ShortcutRecorderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988CA5F1516F3563ACA97451 /* ShortcutRecorderRow.swift */; };
 		BDA05289D433A05B199B7881 /* ScrollViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A87968B857C53E0F4335F82 /* ScrollViews.swift */; };
 		BE76CF85696B2F1702597E5C /* Imaging in Frameworks */ = {isa = PBXBuildFile; productRef = CB78FDBEC0994FB58607CBEA /* Imaging */; };
+		BEC9B49F4546674FC58290C6 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C105D1B70AD241C287604A0 /* DesignTokens.swift */; };
 		BFDFF7362CE5EC24BCDFBF6C /* Scenarios+EditorToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EBB8A0BC002235126E837B /* Scenarios+EditorToolbar.swift */; };
 		C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */; };
 		C18E4C204D233AC24C4CB33B /* E2EAccessibilityControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */; };
@@ -178,6 +185,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		00D5C84AF5B28414C2FA8C5C /* Fosco-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Fosco-LICENSE.txt"; sourceTree = "<group>"; };
 		06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Appearance.swift"; sourceTree = "<group>"; };
 		0B10382FE93CC129EE6BD463 /* Scenarios+LastWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+LastWindow.swift"; sourceTree = "<group>"; };
 		1054033F6519FF4F5EECEDA7 /* Scenarios+TextAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+TextAppearance.swift"; sourceTree = "<group>"; };
@@ -191,6 +199,7 @@
 		293033569B29300AB2B89925 /* E2ESnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ESnapshot.swift; sourceTree = "<group>"; };
 		2991DDE3A9E798D014496FC6 /* LaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchTests.swift; sourceTree = "<group>"; };
 		2B50ACF63F407E65634E6A9C /* Scenarios+Recognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+Recognition.swift"; sourceTree = "<group>"; };
+		2C105D1B70AD241C287604A0 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		2EBFF3EE6474526FD92C67CD /* HostingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostingPanel.swift; sourceTree = "<group>"; };
 		30259CC2530DFC8E1D539757 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		32B60026CF0E1A7A617061C9 /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
@@ -253,6 +262,7 @@
 		DDE275E3D7EEDDEF406E8DC9 /* AutoScrollRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoScrollRegression.swift; sourceTree = "<group>"; };
 		DED2B14CE42AB62F1B1F016E /* ScreenChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenChoice.swift; sourceTree = "<group>"; };
 		DFCE525587D4EDB1319159B1 /* Scenarios+EditorFixes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+EditorFixes.swift"; sourceTree = "<group>"; };
+		DFE70A3F1D86B53E9296F402 /* Scenarios+AutoRedaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scenarios+AutoRedaction.swift"; sourceTree = "<group>"; };
 		E16838E8A8D9E2AB0BF745D1 /* EscapeHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscapeHotKey.swift; sourceTree = "<group>"; };
 		E19D5CCF6317257AD50E778A /* SystemEventMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEventMonitor.swift; sourceTree = "<group>"; };
 		E2A3BC94BD76293FE30084D8 /* E2EAccessibilityControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EAccessibilityControl.swift; sourceTree = "<group>"; };
@@ -266,6 +276,7 @@
 		EA2F7298595658EBCA75FF77 /* AppActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActions.swift; sourceTree = "<group>"; };
 		EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		F0DF83ABF11B31DAAABA963C /* E2EReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EReport.swift; sourceTree = "<group>"; };
+		F48537C0299ADF945358D808 /* EditorCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCommands.swift; sourceTree = "<group>"; };
 		F672B4E60868ACD78AFC6A05 /* LiveRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRecognition.swift; sourceTree = "<group>"; };
 		F6D97398A9A719AFB3F227B7 /* E2ERunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ERunner.swift; sourceTree = "<group>"; };
 		F6F75F17F28F9F2CBD1E4D14 /* RecortiaE2EForegroundHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecortiaE2EForegroundHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -333,6 +344,7 @@
 				AE004CDB83EE7107E4A5B806 /* AppPresence.swift */,
 				8122F2A3706BEFC20DE3331B /* AppServices.swift */,
 				4BFDA744DCCBC815EFC2BAF9 /* CaptureMenu.swift */,
+				2C105D1B70AD241C287604A0 /* DesignTokens.swift */,
 				977B7B2D3F02E7F78030DFEE /* DragChip.swift */,
 				D97C30D7091C2051638564FB /* GlobalShortcuts.swift */,
 				78EFCCD7BD083D7C5CED9310 /* LaunchKind.swift */,
@@ -397,6 +409,7 @@
 			children = (
 				E8D31CC0BCFF030833F67F96 /* Assets.xcassets */,
 				FCAB7EF3FA5FDB0D49479754 /* Editor.xcstrings */,
+				00D5C84AF5B28414C2FA8C5C /* Fosco-LICENSE.txt */,
 				37E3B5628385CE0D560B7AC3 /* KeyboardShortcuts-LICENSE.txt */,
 				EC4A67FDA7839A7B6E1F36B6 /* Localizable.xcstrings */,
 				1149D9B79BC9FE04C25AAA92 /* Recortia-LICENSE.txt */,
@@ -438,6 +451,7 @@
 				06F8DB2553F5E84FA2A3FFC3 /* Scenarios+Appearance.swift */,
 				143F496FBE6E19B6879C6161 /* Scenarios+AutomaticExport.swift */,
 				695E6CF017268288FAA2B8A3 /* Scenarios+AutomaticSave.swift */,
+				DFE70A3F1D86B53E9296F402 /* Scenarios+AutoRedaction.swift */,
 				7B72F27D287E9DCACCD24661 /* Scenarios+Capture.swift */,
 				4696779AFAE7B462D6A1218D /* Scenarios+CaptureVisibility.swift */,
 				F98A132D54EA8B060BEBA0EF /* Scenarios+CurvedArrows.swift */,
@@ -512,6 +526,7 @@
 			isa = PBXGroup;
 			children = (
 				15116A7454558F3FA0807632 /* EditorCanvasView.swift */,
+				F48537C0299ADF945358D808 /* EditorCommands.swift */,
 				962D782EE18BA3DEEDF4FC26 /* EditorFormat.swift */,
 				64983A912E3CFA1502563B16 /* EditorInspectorView.swift */,
 				1FCF94E91512C394BD839071 /* EditorPreview.swift */,
@@ -677,6 +692,7 @@
 			files = (
 				6470C535C3CBC2B70DF471A2 /* Assets.xcassets in Resources */,
 				18A45AB75723F8BFA3916DBD /* Editor.xcstrings in Resources */,
+				6CFFB0875C5AE1B1F5F3FC11 /* Fosco-LICENSE.txt in Resources */,
 				D46AF12425F8AA5FB4735AA2 /* KeyboardShortcuts-LICENSE.txt in Resources */,
 				182984EEB477BE03386FF93A /* Localizable.xcstrings in Resources */,
 				DEACB06F1D447813DD7A6E36 /* Recortia-LICENSE.txt in Resources */,
@@ -689,6 +705,7 @@
 			files = (
 				F59A68B8DB8BC381B7A2E988 /* Assets.xcassets in Resources */,
 				302AB4DB28E60782F3DCC0E8 /* Editor.xcstrings in Resources */,
+				264C7CB58873A517AFF4FF88 /* Fosco-LICENSE.txt in Resources */,
 				124B4F00ABDE456BEA8595ED /* KeyboardShortcuts-LICENSE.txt in Resources */,
 				4A11132EA0C0DEB59B529A97 /* Localizable.xcstrings in Resources */,
 				7023DDE1D04BA851901E9DCF /* Recortia-LICENSE.txt in Resources */,
@@ -722,6 +739,7 @@
 				F54C69AE574623D0E81BCF97 /* CaptureUIController.swift in Sources */,
 				DC503AD5774349C919DCEB51 /* CaptureWindowVisibility.swift in Sources */,
 				78B923930F56C1D741E5F066 /* ChooserViews.swift in Sources */,
+				5C28BD37596715D88F7CEDD6 /* DesignTokens.swift in Sources */,
 				1727DDFDA9746CD4F738E229 /* DragChip.swift in Sources */,
 				C18E4C204D233AC24C4CB33B /* E2EAccessibilityControl.swift in Sources */,
 				0F90D2EFEC42BB978F9DF91A /* E2EActions.swift in Sources */,
@@ -734,6 +752,7 @@
 				31466BF58D7D74EC4FE5A57F /* E2EScenarios.swift in Sources */,
 				6A80F91BFD6A48E08DA8DBB8 /* E2ESnapshot.swift in Sources */,
 				09F8AA7FCD99E9FB0EB48D00 /* EditorCanvasView.swift in Sources */,
+				75DAB48C82B17F161440D16D /* EditorCommands.swift in Sources */,
 				AC4AFBDA384BF5B9EAE8BAC8 /* EditorFormat.swift in Sources */,
 				6147861E70AA3F19FA7D1B2B /* EditorInspectorView.swift in Sources */,
 				8AA6EB196CBF1628ED3A8961 /* EditorPreview.swift in Sources */,
@@ -761,6 +780,7 @@
 				56046F347ED5B011B790080C /* RecortiaApp.swift in Sources */,
 				F53D20A93C26DCE7222647CA /* RegionOverlay.swift in Sources */,
 				9574817EAC04B1ED3B058F71 /* Scenarios+Appearance.swift in Sources */,
+				1747D52DBBAF6CC32809C0BB /* Scenarios+AutoRedaction.swift in Sources */,
 				662B5EEB1979FE8CB55404C3 /* Scenarios+AutomaticExport.swift in Sources */,
 				1A98A7B62D4C8919FAF4D280 /* Scenarios+AutomaticSave.swift in Sources */,
 				C0D959258567FF35F9DE5E90 /* Scenarios+Capture.swift in Sources */,
@@ -816,8 +836,10 @@
 				EF42C85CA2B2F28B5FF32B70 /* CaptureUIController.swift in Sources */,
 				431E9CB9AF92D4539FFE3FBF /* CaptureWindowVisibility.swift in Sources */,
 				D408D378FC84F3206AF010AC /* ChooserViews.swift in Sources */,
+				BEC9B49F4546674FC58290C6 /* DesignTokens.swift in Sources */,
 				A30DD234D2E1308C1916965D /* DragChip.swift in Sources */,
 				31616A310F80D90B96D06DF0 /* EditorCanvasView.swift in Sources */,
+				61AAC7F70EA6E61FC071A9C0 /* EditorCommands.swift in Sources */,
 				3D46F06D221C82238FEB2985 /* EditorFormat.swift in Sources */,
 				694844C8F5F30CF5CBFF78CD /* EditorInspectorView.swift in Sources */,
 				356E67D7EF867A549346181D /* EditorPreview.swift in Sources */,
@@ -876,6 +898,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
+				EXCLUDED_SOURCE_FILE_NAMES = "*";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_LSUIElement = NO;
@@ -886,7 +909,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.mvneves.Recortia.E2E.ForegroundHost;
 				PRODUCT_NAME = RecortiaE2EForegroundHost;
 				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) RECORTIA_FOREGROUND_HOST";
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 			};
 			name = Release;
@@ -1003,7 +1025,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -1021,8 +1043,8 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1074,7 +1096,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = Q96FUTC5G8;
@@ -1098,8 +1120,8 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

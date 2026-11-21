@@ -2,7 +2,7 @@
 
 The public surface each RecortiaKit target exposes to the app. Workers implement these shapes;
 the app composition root (`RecortiaApp/App/LiveServices.swift`, `LiveScrolling.swift`,
-`LiveRecognition.swift`, `AppServices.live()`) adapts them to the service protocols in
+`LiveRecognition.swift`, `AppServices.live()` in `AppServices.swift`) adapts them to the service protocols in
 `Packages/RecortiaKit/Sources/Features/Services.swift`. Names below are binding; parameter details may grow, but a
 change to a listed signature needs the integrator's agreement.
 

@@ -45,6 +45,10 @@ try:
         if not isinstance(value, str) or not value or any(character.isspace() for character in value):
             raise ValueError(f"invalid toolchain {field}")
         print(value)
+    swift = record["expected_bundled_swift_compiler_major_minor"]
+    if not isinstance(swift, str) or not swift.replace(".", "", 1).isdigit() or swift.count(".") != 1:
+        raise ValueError("invalid expected_bundled_swift_compiler_major_minor")
+    print(swift)
 except (OSError, KeyError, TypeError, ValueError) as error:
     sys.exit(f"doctor: toolchain policy error: {error}")
 PY
@@ -53,6 +57,7 @@ expected_fields=("${(@f)expected_output}")
 expected_version="${expected_fields[1]}"
 expected_build="${expected_fields[2]}"
 expected_channel="${expected_fields[3]}"
+expected_swift="${expected_fields[4]}"
 baseline_label="stable baseline"
 [[ "$toolchain_mode" == "development" ]] && baseline_label="recorded development toolchain"
 xcode_output=$(xcodebuild -version)
@@ -72,11 +77,15 @@ else
   fi
 fi
 
-if ! command -v xcodegen >/dev/null; then
-  echo "doctor: xcodegen missing (brew install xcodegen); needed only to regenerate the project" >&2
-fi
-
 swift_output=$(xcrun swift --version 2>&1)
 swift_line="${swift_output%%$'\n'*}"
 echo "doctor: $swift_line"
+actual_swift=""
+if [[ "$swift_output" =~ 'Swift version ([0-9]+)\.([0-9]+)' ]]; then
+  actual_swift="${match[1]}.${match[2]}"
+fi
+if [[ "$actual_swift" != "$expected_swift" ]]; then
+  echo "doctor: Swift compiler ${actual_swift:-unknown} != expected $expected_swift from TOOLCHAIN.json" >&2
+  rc=1
+fi
 exit $rc

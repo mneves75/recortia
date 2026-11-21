@@ -22,12 +22,6 @@ extension EditorModel {
         EditorMeasurement(start: start, end: end, pointPixelScale: measurementPointScale)
     }
 
-    /// Places ruler anchors directly (keyboard alternative to dragging), snapped to pixel edges.
-    func setRuler(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) {
-        guard start.isFinite, end.isFinite else { return }
-        ruler = measurement(from: Self.snapped(start), to: Self.snapped(end))
-    }
-
     public func clearRuler() { ruler = nil }
 
     /// The document pixel containing `p`, when it lies on the canvas.
@@ -61,7 +55,6 @@ extension EditorModel {
         return (px, py)
     }
 
-    /// Loupe hover: records the pixel and color under `p`.
     public func inspect(at p: Point<DocumentSpace>) {
         guard let pixel = pixel(at: p) else {
             inspection = nil
@@ -119,8 +112,9 @@ extension EditorModel {
         return copyText(asHex ? picked.hex : picked.rgbText, success: .colorCopied)
     }
 
-    /// An exact (2·radius+1)² crop of the current sanitized base around the inspected pixel, for
-    /// drawing without interpolation. Nil when no pixel is inspected or the base is not current.
+    /// A crop of up to (2·radius+1) pixels per axis around the inspected pixel, clipped to the
+    /// current sanitized base, for drawing without interpolation. Nil when no pixel is inspected
+    /// or the base is not current.
     public func loupe(radius: Int = 7) -> EditorLoupe? {
         guard let inspection, isBaseCurrent, let base = baseImage, radius >= 0 else { return nil }
         let canvas = session.document.canvasSize

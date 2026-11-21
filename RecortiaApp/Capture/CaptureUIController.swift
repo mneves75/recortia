@@ -45,6 +45,7 @@ final class CaptureUIController {
             overlay.present(
                 displays: displays, notice: noticeText(notice),
                 allowsWindowSwitch: coordinator.mode == .region && coordinator.purpose == .edit)
+            if overlay.isPresented { coordinator.selectionDidAppear() }
         case (.selecting, .loadingWindows?):
             overlay.dismiss()
             showChooser(.loadingWindows)
@@ -54,10 +55,10 @@ final class CaptureUIController {
         case (.selecting, .display(let displays)?):
             overlay.dismiss()
             showChooser(.displays(displays))
-        case (.countdown(let remaining), _):
+        case (.countdown, _):
             overlay.dismiss()
             closeChooser()
-            showCountdown(remaining)
+            showCountdown()
         default:
             overlay.dismiss()
             closeChooser()
@@ -100,6 +101,7 @@ final class CaptureUIController {
                     onChoose: { [weak coordinator] in coordinator?.commitSelection(.display($0)) }, onCancel: cancel))
         }
         panel.present(activate: true)
+        coordinator.selectionDidAppear()
     }
 
     private func closeChooser() {
@@ -108,13 +110,13 @@ final class CaptureUIController {
         chooserKind = nil
     }
 
-    private func showCountdown(_ remaining: Int) {
+    private func showCountdown() {
         guard countdown == nil else { return }  // the hosted view follows the coordinator itself
         let panel = Self.makeCountdownPanel()
         countdown = panel
         panel.setContent(LiveCountdownView(coordinator: coordinator), fixedToFittingSize: true)
         panel.present(activate: false)
-        // The panel never takes focus from the app being captured, so Escape is a temporary
+        // The panel does not take focus from the app being captured, so Escape is a temporary
         // system-wide hot key for as long as the countdown shows.
         escape = EscapeHotKey { [coordinator] in coordinator.cancel() }
         // Without the hot key (another app owns Escape), give the countdown the keyboard so a
@@ -122,8 +124,8 @@ final class CaptureUIController {
         if escape == nil { panel.makeKey() }
     }
 
-    /// Shown without taking focus from the app being captured. A click makes it key, so Escape
-    /// cancels even when the temporary Escape hot key could not be registered.
+    /// Shown without taking focus from the app being captured. It becomes key on a click, or at
+    /// once when the temporary Escape hot key could not be registered, so Escape still cancels.
     static func makeCountdownPanel() -> HostingPanel {
         HostingPanel(title: String(localized: "Delayed Capture"), activating: false, keyOnClick: true)
     }
@@ -136,7 +138,6 @@ final class CaptureUIController {
     }
 }
 
-/// Follows the coordinator so the number updates in place.
 private struct LiveCountdownView: View {
     let coordinator: CaptureCoordinator
 

@@ -25,6 +25,10 @@ public final class SettingsStore {
     public private(set) var loadIssue: LoadIssue?
     /// Session-only identity: restoring the same settings cannot revive a revoked upload.
     public private(set) var githubUploadConsentID = UUID()
+    /// Session-only count of the person's save-folder choices (choose, clear, or the folder asked
+    /// for when turning automatic save on). A renewed bookmark for the same folder does not count,
+    /// so an automatic save can tell a new choice from a moved or unreachable planned folder.
+    @ObservationIgnored var saveFolderSelection = 0
 
     @ObservationIgnored private let storage: any PreferenceStorage
     @ObservationIgnored private let integrity: any PreferenceIntegrityService
@@ -37,7 +41,6 @@ public final class SettingsStore {
         loadIssue = issue
     }
 
-    /// Applies `change`, clamps the result to valid ranges, and persists it.
     public func update(_ change: (inout Preferences) -> Void) {
         var updated = preferences
         change(&updated)
@@ -51,6 +54,7 @@ public final class SettingsStore {
     /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
         githubUploadConsentID = UUID()
+        saveFolderSelection += 1
         preferences = Preferences()
         loadIssue = nil
         persist()
@@ -91,11 +95,13 @@ public final class SettingsStore {
         let schemaVersion: Int
     }
 
-    /// Clamps every numeric preference into its documented range; invalid values become defaults.
+    /// Clamps capture delay, finite JPEG quality and finite pin opacity; non-finite quality or
+    /// opacity and an invalid export scale become defaults; an invalid window size is discarded.
     public static func sanitized(_ input: Preferences) -> Preferences {
         let defaults = Preferences()
         var output = input
         output.schemaVersion = Preferences.currentSchemaVersion
+        output.launchAtLogin = false
         output.captureDelaySeconds = CaptureRequest.clampedDelay(input.captureDelaySeconds)
         output.jpegQuality = input.jpegQuality.isFinite ? min(max(input.jpegQuality, 0), 1) : defaults.jpegQuality
         output.defaultExportScale =

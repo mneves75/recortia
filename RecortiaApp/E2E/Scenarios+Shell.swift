@@ -23,8 +23,8 @@
             harness.accessibility.isTrusted = false
             KeyboardShortcuts.setShortcut(.init(.f12, modifiers: [.control, .option]), for: .captureText)
             let shortcuts = ShortcutBinding.all.map { KeyboardShortcuts.getShortcut(for: $0.name) }
-            // Opening the tour shows its first page; only showing the shortcuts page counts as the
-            // person looking at shortcuts (it restarts the held-shortcut watch).
+            // Opening the tour shows its first page; only showing the shortcuts content counts as
+            // the person looking at shortcuts (it restarts the held-shortcut watch).
             let attentionHandler = harness.app.shortcutStatus.onAttention
             var attentionCount = 0
             harness.app.shortcutStatus.onAttention = {
@@ -263,6 +263,7 @@
         static func quitConfirmation(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let app = harness.app
             harness.quit.answers = []
+            harness.quit.questions = []  // earlier scenarios share the recorder
             context.check("with no editor, Quit proceeds", app.shouldTerminate())
             context.check("with no editor, Quit asks nothing", harness.quit.questions.isEmpty)
 
@@ -275,10 +276,32 @@
             harness.quit.answers = [false]
             context.check("declining keeps Recortia running", !app.shouldTerminate())
             context.check(
-                "Quit asks once about one edited image", harness.quit.questions == [1], "\(harness.quit.questions)")
+                "Quit asks once about one edited image",
+                harness.quit.questions == [QuitDiscards(editedImages: 1, scrollingReview: false)],
+                "\(harness.quit.questions)")
             context.check("declining keeps the edits", controller.model.isDirty && !controller.model.isClosed)
             harness.quit.answers = [true]
             context.check("confirming lets Recortia quit", app.shouldTerminate())
+            // R3-D17: quitting closes pins too, so the warning names only copy and save.
+            let portuguese = context.output.language.hasPrefix("pt")
+            for (count, expected) in [
+                (
+                    1,
+                    portuguese
+                        ? "Uma imagem aberta tem alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
+                        : "An open image has changes that were not copied or saved. Quitting discards them."
+                ),
+                (
+                    2,
+                    portuguese
+                        ? "2 imagens abertas têm alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
+                        : "2 open images have changes that were not copied or saved. Quitting discards them."
+                ),
+            ] {
+                let detail = MessagePresenter.discardOnQuitDetail(
+                    QuitDiscards(editedImages: count, scrollingReview: false))
+                context.check("the quit warning for \(count) says what is lost", detail == expected, detail)
+            }
 
             harness.quit.questions = []
             let copied = await E2EActions.export(controller, .copy)
@@ -295,6 +318,7 @@
             context.check("update checks are off by default", !preferences.updateChecksEnabled)
             context.check("automatic scrolling is off by default", !preferences.automaticScrollingEnabled)
             context.check("export defaults to PNG at 100%", preferences.exportOptions == ExportOptions())
+            try await checkLoginItemRefresh(context)
 
             let window = SettingsWindowController.makeWindow(model: harness.app)
             window.appearance = NSAppearance(named: .aqua)
@@ -331,6 +355,10 @@
                         "General holds the Pins section",
                         E2EAccessibilityControl.isPresent("settings.pinOpacity", in: pane))
                 case "capture":
+                    context.check(
+                        "Capture holds the capture sound switch, off by default",
+                        E2EAccessibilityControl.isPresent("settings.captureSound", in: pane)
+                            && !harness.settings.preferences.playsCaptureSound)
                     for identifier in ["settings.automaticScrolling", "settings.accessibilityStatus"] {
                         context.check(
                             "Capture holds the Scrolling Capture control \(identifier)",
@@ -350,7 +378,7 @@
             try await settingsMergedControls(harness, context)
         }
 
-        /// The Pins and Scrolling Capture controls, now sections of General and Capture, change the
+        /// The Pins and Scrolling Capture controls, sections of General and Capture, change the
         /// same preferences through pointer input on a visible, key, foreground Settings window.
         private static func settingsMergedControls(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let preferences = harness.settings.preferences
@@ -360,6 +388,7 @@
                 harness.settings.update {
                     $0.pinDefaultOpacity = preferences.pinDefaultOpacity
                     $0.automaticScrollingEnabled = preferences.automaticScrollingEnabled
+                    $0.filenameTemplateChoice = preferences.filenameTemplateChoice
                 }
             }
             let foreground = try await E2EForegroundFixture.start(context)
@@ -425,7 +454,45 @@
             context.check(
                 "with Accessibility granted, nothing is requested", harness.accessibility.requestCount == requests + 1,
                 "\(harness.accessibility.requestCount - requests)")
+            try await filenameTemplateField(tabs: tabs, activate: activate, root: root, harness, context)
             await foreground.stop(context)
+        }
+
+        /// Settings › Export's file-name field (A-9), typed through its native field editor: an
+        /// accepted template is stored and shown as an example; a refused one stores nothing and
+        /// says why.
+        private static func filenameTemplateField(
+            tabs: NSTabView, activate: () async throws -> Void, root: NSView, _ harness: E2EHarness,
+            _ context: ScenarioContext
+        ) async throws {
+            tabs.selectTabViewItem(at: 3)
+            try await activate()
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            let pane = try context.unwrap("the Export pane", tabs.selectedTabViewItem?.view)
+            try await E2EAccessibilityControl.enterNumber(
+                "settings.filenameTemplate", text: "Captura {counter}", in: pane, context)
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "the file-name field stores an accepted template",
+                harness.settings.preferences.filenameTemplateChoice?.text == "Captura {counter}",
+                String(describing: harness.settings.preferences.filenameTemplateChoice?.text))
+            let example = try E2EAccessibilityControl.text(
+                .value, for: "settings.filenameTemplate.example", in: pane, context)
+            context.check(
+                "the example shows the template's name", example.contains("Captura 1.png"), example)
+            context.snapshot(pane, shot: "export-filename")
+            try await activate()
+            try await E2EAccessibilityControl.enterNumber(
+                "settings.filenameTemplate", text: "../x", in: pane, context)
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "a refused template stores nothing, so files keep the default name",
+                harness.settings.preferences.filenameTemplateChoice == nil
+                    && harness.settings.preferences.filenameTemplate == .default)
+            context.check(
+                "the field says why the template was refused",
+                E2EAccessibilityControl.isPresent("settings.filenameTemplate.message", in: pane))
+            context.snapshot(pane, shot: "export-filename-refused")
         }
 
         /// A pane is as tall as its own content hosted alone at the pane width, and its form does
@@ -454,25 +521,56 @@
             }
         }
 
+        /// Stands in for the system's login item: a registration that needs approval throws until
+        /// the scenario approves it. Never touches the real login items.
+        @MainActor
+        private final class PendingApprovalLoginItem: LoginItemService {
+            var isEnabled = false
+            func setEnabled(_ enabled: Bool) throws { throw CocoaError(.featureUnsupported) }
+        }
+
+        /// Review R2-D18: after approval in System Settings, returning to the still-open General
+        /// pane must show the item enabled without the old warning.
+        private static func checkLoginItemRefresh(_ context: ScenarioContext) async throws {
+            let service = PendingApprovalLoginItem()
+            let loginItem = LoginItemModel(service: service)
+            let host = E2ESnapshot.host(
+                GeneralSettingsTab(
+                    settings: .e2eInMemory(), loginItem: loginItem))
+            defer { host.close() }
+            let root = try context.unwrap("General pane hosted", host.contentView)
+            loginItem.setEnabled(true)
+            await E2ESnapshot.settle(root)
+            try context.require(
+                "a registration awaiting approval shows the warning",
+                E2EAccessibilityControl.isPresent("settings.loginItem.warning", in: root))
+            service.isEnabled = true  // approved in System Settings
+            NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: host)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "returning to the open pane shows the approved item without the old warning",
+                loginItem.isEnabled && !E2EAccessibilityControl.isPresent("settings.loginItem.warning", in: root))
+        }
+
         /// Each pane's content as `SettingsWindowController` builds it, without the pane wrapper.
         private static func settingsContent(_ index: Int, _ model: AppModel) -> NSView? {
             func host(_ view: some View) -> NSView { NSHostingView(rootView: view.frame(width: 560)) }
             return switch index {
-            case 0: host(GeneralSettingsTab(settings: model.settings, loginItem: model.features?.loginItem))
+            case 0: host(GeneralSettingsTab(settings: model.settings, loginItem: model.features.loginItem))
             case 1:
                 host(
                     ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)
                 )
             case 2:
                 host(
-                    CaptureSettingsTab(settings: model.settings, accessibility: model.features?.services.accessibility))
-            case 3: host(ExportSettingsTab(settings: model.settings, folders: model.features?.services.folders))
+                    CaptureSettingsTab(settings: model.settings, accessibility: model.features.services.accessibility))
+            case 3: host(ExportSettingsTab(settings: model.settings, folders: model.features.services.folders))
             case 4:
                 host(
                     GitHubUploadSettings(
-                        settings: model.settings, credentials: model.features?.services.githubCredentials))
-            case 5: host(PrivacySettingsTab())
-            case 6: host(OCRSettingsTab(settings: model.settings, languages: model.features?.ocrLanguages))
+                        settings: model.settings, credentials: model.features.services.githubCredentials))
+            case 5: host(PrivacySettingsTab(settings: model.settings))
+            case 6: host(OCRSettingsTab(settings: model.settings, languages: model.features.ocrLanguages))
             default: nil
             }
         }

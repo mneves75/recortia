@@ -53,8 +53,10 @@
 
         func release() { waiter?.resume(); waiter = nil }
 
-        func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure) {
-            guard token == "synthetic-token", destination.isValid else { throw .missingCredential }
+        func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
+            guard token == (try GitHubTokenStore.validatedToken("ghp_synthetic")), destination.isValid else {
+                throw .missingCredential
+            }
             hasCredential = true
         }
 
@@ -62,6 +64,7 @@
 
         func upload(
             _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+            isLive: @escaping @MainActor @Sendable () -> Bool,
             isCurrent: @escaping @MainActor @Sendable () -> Bool
         ) async throws(GitHubUploadFailure) -> URL {
             guard hasCredential else { throw .missingCredential }
@@ -112,20 +115,43 @@
             let running = Task { await controller.model.export(.copy) }
             try context.require("manual export is busy", await E2EWait.until { harness.exportGate.isWaiting })
             let messagesBefore = harness.messages.values.count
+            let clipboardBefore = harness.clipboard.writeCount
             let busyEditor = try await E2EActions.captureRegion(harness, SyntheticDesktop.notesWindow, context)
+            // T1 review R-2: the new capture's automatic batch waits for the shared slot instead of
+            // failing busy, so its editor shows no failure and nothing is written yet.
+            try? await Task.sleep(for: .milliseconds(300))
             context.check(
-                "busy automatic export shows a failure in the new capture's editor",
-                await E2EWait.until { busyEditor.model.notice == .automaticExportFailed(.busy) },
-                "\(String(describing: busyEditor.model.notice))")
+                "busy automatic export waits without a failure in the new capture's editor",
+                busyEditor.model.notice == nil && harness.clipboard.writeCount == clipboardBefore,
+                "\(String(describing: busyEditor.model.notice)), \(harness.clipboard.writeCount - clipboardBefore) writes"
+            )
             context.check(
-                "an automatic-export failure with an editor open raises no modal alert",
+                "a waiting automatic export with an editor open raises no modal alert",
                 harness.messages.values.count == messagesBefore, "\(harness.messages.values)")
+            // R3-D04a: Copy (⌘C) in another editor while the shared slot is taken submits nothing,
+            // so no busy rejection replaces the editor's notice and the clipboard stays untouched.
+            busyEditor.copyImage()
+            try? await Task.sleep(for: .milliseconds(300))
+            context.check(
+                "Copy while another editor exports submits nothing",
+                busyEditor.model.notice == nil && harness.clipboard.writeCount == clipboardBefore,
+                "\(String(describing: busyEditor.model.notice))")
             harness.exportGate.release()
             _ = await running.value
+            // Automatic copy stays on until the waiting batch has run: each step rechecks it.
+            context.check(
+                "once the other export finishes, the waiting automatic copy runs",
+                await E2EWait.until {
+                    harness.clipboard.writeCount == clipboardBefore + 2 && !harness.features.export.isBusy
+                },
+                "\(harness.clipboard.writeCount - clipboardBefore) writes")
+            context.check(
+                "the waited automatic copy reports no failure", busyEditor.model.notice == nil,
+                "\(String(describing: busyEditor.model.notice))")
             harness.settings.update { $0.autoCopy = false }
 
             let destination = GitHubDestination(owner: "fixture", repository: "private-captures")
-            try harness.github.store("synthetic-token", for: destination)
+            try harness.github.store(GitHubTokenStore.validatedToken("ghp_synthetic"), for: destination)
             harness.settings.update {
                 $0.githubUpload = GitHubUploadPreferences(destination: destination, automatic: true)
             }
@@ -268,7 +294,7 @@
             context.check("without an editor a failure is an alert", closed.alerts == [.diskFull], "\(closed)")
 
             // The pipeline is the one admission point for export options: refused options reach
-            // the coordinator through the live exporter as the encode failure it always reported.
+            // the coordinator through the live exporter as an encode failure.
             let exporter = LiveExporter(store: ImageStore())
             let pixel = try E2EDrawing.image(size: CGSize(width: 4, height: 4), scale: 1) { rect in
                 NSColor.gray.setFill()
@@ -301,7 +327,7 @@
             let denials: Set<String> = ["Nothing was exported", "Nada foi exportado"]
             let failures: [ExportFailure] = [
                 .busy, .renderFailed, .encodeFailed, .budgetExceeded, .clipboardFailed, .accessDenied,
-                .destinationExists, .diskFull, .volumeUnavailable, .staleDocument, .system(code: 5),
+                .destinationExists, .nameTooLong, .diskFull, .volumeUnavailable, .staleDocument, .system(code: 5),
                 .upload(.missingCredential),
             ]
             let titles = failures.map { "\($0): \(UserMessage.export($0).title)" }

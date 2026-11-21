@@ -4,8 +4,10 @@ import Imaging
 enum ArrowGeometryFailure: Error { case invalid }
 
 extension EditorModel {
-    static func validateArrowCurve(_ annotation: Annotation) throws(ArrowGeometryFailure) {
-        guard case .arrow(_, _, .some) = annotation.kind else { return }
+    /// Admission for every arrow, straight or curved: one the renderer cannot lay out is refused
+    /// here rather than failing or vanishing at export.
+    static func validateArrow(_ annotation: Annotation) throws(ArrowGeometryFailure) {
+        guard case .arrow = annotation.kind else { return }
         do { _ = try ArrowLayout.make(for: annotation) } catch { throw .invalid }
     }
 
@@ -32,7 +34,7 @@ extension EditorModel {
         }
         var changed = annotation
         changed.kind = .arrow(start: start, end: end, control: ArrowCurve.control(start: start, end: end, bend: point))
-        do { try Self.validateArrowCurve(changed) } catch {
+        do { try Self.validateArrow(changed) } catch {
             post(.arrowGeometryRefused)
             return false
         }
@@ -54,7 +56,7 @@ extension EditorModel {
                 let proposed = curved ? control ?? ArrowCurve.defaultControl(start: start, end: end) : nil
                 var changed = annotation
                 changed.kind = .arrow(start: start, end: end, control: proposed)
-                try Self.validateArrowCurve(changed)
+                try Self.validateArrow(changed)
                 if changed.kind != annotation.kind { changes[annotation.id] = changed.kind }
             }
         } catch {

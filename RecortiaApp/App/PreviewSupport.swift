@@ -1,8 +1,10 @@
 #if DEBUG
     import CoreGraphics
+    import Domain
     import Features
     import Foundation
     import Imaging
+    import MacPlatform
 
     /// Debug-only stand-ins for Xcode previews. They never touch the screen, clipboard, TCC, or
     /// UserDefaults, and they are compiled out of Release builds.
@@ -11,8 +13,24 @@
             SettingsStore(storage: PreviewPreferenceStorage(), integrity: PreviewPreferenceIntegrity())
         }
 
+        /// Settings' folder controls get a chooser that cancels: no open panel, no bookmark.
         static func appModel() -> AppModel {
-            AppModel(settings: settings(), services: nil, shortcutRegistry: PreviewShortcutRegistry())
+            AppModel(
+                settings: settings(), services: services(), shortcutRegistry: PreviewShortcutRegistry(),
+                chooseSaveFolder: { nil })
+        }
+
+        /// Inert services for previews and the E2E last-window probe: nothing reaches the screen,
+        /// clipboard, files, keychain, network or TCC.
+        static func services() -> AppServices {
+            let system = PreviewSystem(), assets = PreviewEditorAssets(), sink = PreviewEditorSink()
+            let detector = PreviewEditorQR()
+            return AppServices(
+                capture: system, screenPermission: system, accessibility: system, assets: assets, input: assets,
+                renderer: PreviewEditorRenderer(), exporter: PreviewEditorExporter(), clipboard: sink, files: sink,
+                drag: sink, folders: sink, textRecognition: PreviewTextRecognition(), qrDecoder: detector,
+                sensitiveText: detector, scrollFrames: system, stitcher: LiveStitcher(), autoScroller: nil,
+                loginItem: PreviewLoginItem(), clock: PreviewEditorClock())
         }
 
         static func shortcutStatus(failing: Set<String> = [], held: Set<String> = []) -> ShortcutStatusModel {
@@ -68,6 +86,26 @@
         func isTakenBySystem(shortcutNamed name: String) -> Bool { held.contains(name) }
         func canRegister(shortcutNamed name: String) -> Bool { !failing.contains(name) }
         func setRegistered(_ registered: Bool, shortcutNamed name: String) {}
+    }
+
+    /// No display, window or permission: every capture and frame stream is refused.
+    final class PreviewSystem: CaptureService, ScreenPermissionService, AccessibilityPermissionService,
+        ScrollFrameSourceService
+    {
+        var isGranted: Bool { false }
+        var isTrusted: Bool { false }
+        func displays() -> [DisplayInfo] { [] }
+        func windows() async throws(CaptureError) -> [WindowInfo] { [] }
+        func capture(_ target: CaptureTarget, showsCursor: Bool, includesShadow: Bool) async throws(CaptureError)
+            -> (CGImage, CaptureGeometry)
+        {
+            throw .permissionDenied
+        }
+        func request() async -> Bool { false }
+        func requestWithPrompt() {}
+        func start(_ target: CaptureTarget) async throws(CaptureError) { throw .permissionDenied }
+        func nextFrame() async throws(CaptureError) -> CGImage { throw .canceled }
+        func stop() {}
     }
 
     final class PreviewLoginItem: LoginItemService {

@@ -61,22 +61,8 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
         return allCases.first { $0.shortcutKey == lowered }
     }
 
-    /// True only for the tool that performs secure source-pixel replacement.
-    var isSecureRedaction: Bool { self == .redact }
-
     /// Blur and pixelation: obfuscation that must always be labeled as not secure.
     public var isCosmeticObfuscation: Bool { self == .blur || self == .pixelate }
-
-    /// Tools whose drag creates a new object in the document.
-    var createsObject: Bool {
-        switch self {
-        case .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
-            .spotlight, .magnifier:
-            true
-        case .select, .hand, .crop, .loupe, .ruler, .colorPicker:
-            false
-        }
-    }
 
     /// Whether the tool uses stroke/fill/width/opacity style controls.
     public var usesStyle: Bool {
@@ -119,6 +105,14 @@ public enum EditorItemKind: String, Hashable, Sendable, CaseIterable {
     public var isSecure: Bool { self == .redaction }
     public var isCosmetic: Bool { self == .blur || self == .pixelate }
 
+    init(_ style: CosmeticObfuscation.Style) {
+        if case .blur = style { self = .blur } else { self = .pixelate }
+    }
+
+    init(_ kind: Callout.Kind) {
+        if case .spotlight = kind { self = .spotlight } else { self = .magnifier }
+    }
+
     init(_ kind: Annotation.Kind) {
         switch kind {
         case .text: self = .text
@@ -141,7 +135,6 @@ public struct EditorListItem: Hashable, Sendable, Identifiable {
     /// 1-based index among items of the same kind, bottom to top ("Arrow 2").
     public let ordinal: Int
     public let frame: Rect<DocumentSpace>
-    /// Step number for numbered steps.
     public let stepNumber: Int?
 }
 
@@ -213,7 +206,6 @@ public struct EditorStyle: Hashable, Sendable {
         return result
     }
 
-    /// Highlighter strokes are wide and translucent, derived from the same color.
     var highlighterStyle: Annotation.Style {
         Annotation.Style(stroke: stroke, fill: nil, lineWidth: max(lineWidth * 4, 12), opacity: min(opacity, 0.5))
     }
@@ -225,7 +217,6 @@ public struct EditorStyle: Hashable, Sendable {
 /// until the gesture ends.
 public enum EditorDraft: Hashable, Sendable {
     case annotation(Annotation)
-    /// A rectangle for crop, redaction, blur, pixelate, spotlight, magnifier, or marquee selection.
     case region(EditorTool, Rect<DocumentSpace>)
     case marquee(Rect<DocumentSpace>)
 }
@@ -293,7 +284,6 @@ public struct EditorMeasurement: Hashable, Sendable {
     public var distancePixels: Double { (dxPixels * dxPixels + dyPixels * dyPixels).squareRoot() }
     public var dxPoints: Double? { pointPixelScale.map { dxPixels / $0 } }
     public var dyPoints: Double? { pointPixelScale.map { dyPixels / $0 } }
-    var distancePoints: Double? { pointPixelScale.map { distancePixels / $0 } }
 }
 
 /// Nearest-neighbor loupe pixels: an exact crop of the sanitized base, never interpolated.
@@ -340,4 +330,22 @@ public enum EditorNotice: Hashable, Sendable {
     case noPreferredFolder
     /// The oldest undo steps were discarded to stay within the undo budget (FR-04).
     case undoHistoryTrimmed
+    /// Automatic masking covered this many e-mail addresses or phone numbers, possibly none (FR-06).
+    case sensitiveTextMasked(Int)
+    /// Automatic masking did not finish; nothing was masked.
+    case maskingFailed
+    /// The action waits until automatic masking finishes.
+    case maskingInProgress
+}
+
+/// Automatic masking of a new capture (FR-06). While `pending` the editor shows no capture pixels
+/// and refuses every edit, selection, export, pin and Output Preview.
+public enum AutoRedaction: Hashable, Sendable {
+    /// Not requested for this document.
+    case off
+    case pending
+    /// The masks landed as one undo step, or nothing was found.
+    case done
+    /// Detection failed, was cancelled or missed its deadline: nothing was masked.
+    case failed
 }

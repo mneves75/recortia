@@ -2,8 +2,8 @@ import Synchronization
 
 /// Permission for one pending export to still commit. A drag-out waits for the user for an
 /// unbounded time and its real commit (the receiver's file-promise write) happens later, on
-/// another thread; the lease lets the document revoke it the moment the document changes, the
-/// user cancels, or the editor closes, so a snapshot older than a new redaction is never written.
+/// another thread; a document change, cancel, or editor close revokes the lease before the
+/// receiver claims the write. A write that already claimed the lease may finish.
 public final class ExportLease: Sendable {
     private enum State: Equatable {
         case active
@@ -34,11 +34,10 @@ public final class ExportLease: Sendable {
         }
     }
 
-    /// Runs `commit` once, only if the lease is still active, and marks the lease committed when
-    /// it returns. The lock is held only to claim and settle the commit, never during it, so a
-    /// revoke from the main actor never waits for disk I/O. Returns nil when the lease was
-    /// revoked or already used; a throwing commit leaves the lease active (or revoked, if a
-    /// revoke arrived meanwhile).
+    /// Claims an active lease, runs `commit` outside the lock, and marks the lease committed when
+    /// it returns, so a revoke from the main actor never waits for disk I/O. Returns nil when no
+    /// claim is available (revoked, committed, or another commit in flight). A throwing commit
+    /// restores the active lease, unless a revoke arrived during the attempt.
     public func whileValid<T>(_ commit: () throws -> T) rethrows -> T? {
         let claimed = state.withLock { current -> Bool in
             guard current == .active else { return false }

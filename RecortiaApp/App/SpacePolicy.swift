@@ -21,8 +21,8 @@ enum SpacePolicy {
         window.collectionBehavior = behavior
     }
 
-    /// A titled, top-level, normal or modal window without a Space policy: what AppKit and SwiftUI
-    /// make for Recortia (Settings, About, alerts). Panels, menus and status items are excluded.
+    /// A titled, top-level, normal or modal window without an explicit Space behavior, such as
+    /// About or an alert. Sheets, panels, menus, status items and windows with a policy are excluded.
     static func needsAdoption(_ window: NSWindow) -> Bool {
         window.styleMask.contains(.titled) && window.parent == nil && window.sheetParent == nil
             && (window.level == .normal || window.level == .modalPanel)

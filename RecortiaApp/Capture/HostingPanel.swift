@@ -66,7 +66,6 @@ final class HostingPanel: NSPanel {
         setFrameOrigin(CGPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - visible.height * 0.18))
     }
 
-    /// Shows the panel near the top center of the screen with the pointer.
     func present(activate: Bool) {
         placeNearTop()
         if activate {

@@ -20,11 +20,6 @@ enum TextRecognitionError: Error, Equatable, Sendable {
     case recognitionFailed
 }
 
-struct LanguageAvailability: Sendable, Equatable {
-    public let available: [Locale.Language]
-    public let unavailable: [Locale.Language]
-}
-
 /// On-device text recognition with Vision (FR-08). Accurate level, no language correction, no
 /// automatic language detection: the text is reported as seen, never repaired.
 public struct TextRecognizer: Sendable {
@@ -35,19 +30,31 @@ public struct TextRecognizer: Sendable {
         Self.makeRequest().supportedRecognitionLanguages
     }
 
-    @concurrent
-    func availability(of languages: [Locale.Language]) async -> LanguageAvailability {
-        let supported = Self.makeRequest().supportedRecognitionLanguages
-        let resolved = languages.map { Self.match($0, in: supported) }
-        return LanguageAvailability(
-            available: resolved.compactMap { $0 },
-            unavailable: zip(languages, resolved).filter { $0.1 == nil }.map(\.0))
-    }
-
     /// Recognizes text lines in `image`, in Vision's reading order, with boxes in the image's
     /// top-left pixel space. Throws `CancellationError` when the calling task is canceled.
     @concurrent
     public func recognize(_ image: CGImage, languages: [Locale.Language]) async throws -> OCRResult {
+        let (observations, request) = try await recognizedObservations(image, languages: languages)
+        let toPixels = AffineMap<VisionNormalizedSpace, SourcePixelSpace>.visionToPixels(
+            width: image.width, height: image.height)
+        let lines = observations.compactMap { observation -> OCRResult.Line? in
+            guard let candidate = observation.topCandidates(1).first else { return nil }
+            let corners = [observation.topLeft, observation.topRight, observation.bottomRight, observation.bottomLeft]
+                .map { toPixels.apply(Point<VisionNormalizedSpace>(x: Double($0.x), y: Double($0.y))) }
+            guard let box = Rect.bounding(corners) else { return nil }
+            return OCRResult.Line(text: candidate.string, confidence: candidate.confidence, box: box)
+        }
+        return OCRResult(
+            lines: lines, revision: Self.revisionNumber(request.revision),
+            languages: request.recognitionLanguages.map(\.maximalIdentifier))
+    }
+
+    /// Vision's own observations, so callers inside Imaging can box sub-line ranges and read
+    /// alternate candidates. Same request, language checks, retry and cancellation as `recognize`.
+    @concurrent
+    func recognizedObservations(_ image: CGImage, languages: [Locale.Language]) async throws
+        -> (observations: [RecognizedTextObservation], request: RecognizeTextRequest)
+    {
         try Task.checkCancellation()
         guard !languages.isEmpty else { throw TextRecognitionError.noLanguages }
         var request = Self.makeRequest()
@@ -70,19 +77,7 @@ public struct TextRecognizer: Sendable {
             observations = retried
         }
         try Task.checkCancellation()
-
-        let toPixels = AffineMap<VisionNormalizedSpace, SourcePixelSpace>.visionToPixels(
-            width: image.width, height: image.height)
-        let lines = observations.compactMap { observation -> OCRResult.Line? in
-            guard let candidate = observation.topCandidates(1).first else { return nil }
-            let corners = [observation.topLeft, observation.topRight, observation.bottomRight, observation.bottomLeft]
-                .map { toPixels.apply(Point<VisionNormalizedSpace>(x: Double($0.x), y: Double($0.y))) }
-            guard let box = Rect.bounding(corners) else { return nil }
-            return OCRResult.Line(text: candidate.string, confidence: candidate.confidence, box: box)
-        }
-        return OCRResult(
-            lines: lines, revision: Self.revisionNumber(request.revision),
-            languages: request.recognitionLanguages.map(\.maximalIdentifier))
+        return (observations, request)
     }
 
     /// The request's observations, or nil when Vision failed; cancellation always propagates.

@@ -66,15 +66,19 @@ public protocol ImageInputService: AnyObject {
 
 @MainActor
 public protocol GitHubUploadService: AnyObject {
+    /// `isLive` is true while the consent and document that authorized this upload still hold;
+    /// it is checked before every authenticated request, lookups included. `isCurrent` repeats
+    /// that check immediately before the image is sent and marks the export committed.
     func upload(
         _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL
 }
 
 @MainActor
 public protocol GitHubCredentialService: AnyObject {
-    func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure)
+    func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure)
     func remove(for destination: GitHubDestination) throws(GitHubUploadFailure)
 }
 
@@ -157,6 +161,16 @@ public protocol QRDecodingService: AnyObject {
     func decode(_ image: CGImage) async throws -> [QRPayload]
 }
 
+/// Finds e-mail addresses and phone numbers in a new capture for automatic masking (FR-06). The
+/// live service reads the asset's pixels inside Imaging; Features receives only rectangles.
+@MainActor
+public protocol SensitiveTextService: AnyObject {
+    /// Whole-pixel rectangles of `asset`'s source pixels that show an e-mail address or a phone
+    /// number. Throws when any part of the image could not be read, and on cancellation, so a
+    /// partial result is never returned as complete.
+    func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect]
+}
+
 // MARK: - Scrolling capture
 
 @MainActor
@@ -209,11 +223,28 @@ public protocol LoginItemService: AnyObject {
     func setEnabled(_ enabled: Bool) throws
 }
 
+/// One short sound for a completed capture (FR-01, A-12): a system sound, silent when the system's
+/// interface sound effects are off. Never records anything.
+@MainActor
+public protocol CaptureSoundService: AnyObject {
+    func playCaptureSound()
+}
+
 @MainActor
 public protocol FeatureClock: AnyObject {
     func now() -> Date
+    /// Monotonic time since an arbitrary origin, for measuring durations: unlike `now()`, a
+    /// wall-clock correction does not move it.
+    func uptime() -> Duration
     /// Suspends for `duration`; throws `CancellationError` when the calling task is canceled.
     func sleep(for duration: Duration) async throws
+}
+
+private let uptimeOrigin = ContinuousClock.now
+
+extension FeatureClock {
+    /// The continuous clock `Task.sleep(for:)` uses, so measured time and sleeps agree.
+    public func uptime() -> Duration { ContinuousClock.now - uptimeOrigin }
 }
 
 /// Key–value storage for the single preferences blob. `UserDefaults` conforms in production.

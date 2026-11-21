@@ -109,6 +109,60 @@ struct RenderBudgetTests {
         #expect(RenderLimits.maxWorkingBytes <= 512 * 1024 * 1024)
     }
 
+    @Test("A base render does not count magnifier scratch it never draws")
+    func baseBudgetIgnoresCallouts() async throws {
+        let harness = ImagingHarness()
+        let asset = try await harness.add(try ChartFixture.solid(width: 10, height: 10, color: color(1, 2, 3)))
+        var document = Document(asset: asset)
+        // 36 M pixels: the base fits the 384 MiB budget, base plus a canvas-sized magnifier does not.
+        document.canvasSize = Size(width: 6_000, height: 6_000)
+        document.callouts = [
+            Callout(
+                kind: .magnifier(
+                    source: Rect(x: 0, y: 0, width: 10, height: 10),
+                    destination: Rect(x: 0, y: 0, width: 6_000, height: 6_000)))
+        ]
+        let base = try await harness.renderer.renderBase(document, scale: 1)
+        #expect(base.width == 6_000 && base.height == 6_000)
+        do {
+            _ = try await harness.renderer.render(document, scale: 1)
+            Issue.record("the full render draws the magnifier and must refuse its scratch")
+        } catch {
+            guard case .budgetExceeded(let estimated, let limit) = error else {
+                Issue.record("expected budgetExceeded, got \(error)")
+                return
+            }
+            #expect(estimated > limit)
+        }
+    }
+
+    @Test("The budget counts the widest row a mask fill writes")
+    func budgetCountsFillRow() throws {
+        // Two distinct 32,768 × 1,024 sources plus an output of that size are exactly 384 MiB, so the
+        // temporary fill row is what tips the estimate over the limit.
+        let width = 32_768, height = 1_024
+        let a = AssetID(), b = AssetID()
+        let gray = try #require(CGColorSpace(name: CGColorSpace.linearGray))
+        let provider = try #require(CGDataProvider(data: Data(count: width / 8 * height) as CFData))
+        // checkBudget reads only the dimensions, so a 1-bit image stands in for each source.
+        let image = try #require(
+            CGImage(
+                width: width, height: height, bitsPerComponent: 1, bitsPerPixel: 1, bytesPerRow: width / 8,
+                space: gray, bitmapInfo: CGBitmapInfo(rawValue: 0), provider: provider, decode: nil,
+                shouldInterpolate: false, intent: .defaultIntent))
+        let size = PixelSize(width: width, height: height)
+        func check(_ layers: [AssetID]) throws(RenderError) {
+            let document = Document(
+                assets: [:], canvasSize: Size(width: Double(width), height: Double(height)),
+                layers: layers.map { ImageLayer(assetID: $0) })
+            try RenderEngine.checkBudget(
+                document, sources: [a: image, b: image], outputSize: size, map: .identity, presented: false,
+                drawsCallouts: false)
+        }
+        #expect(throws: Never.self) { try check([a]) }
+        #expect(throws: RenderError.self) { try check([a, b]) }
+    }
+
     @Test("Assets missing from the store are an error, not a blank render")
     func missingAsset() async throws {
         let harness = ImagingHarness()

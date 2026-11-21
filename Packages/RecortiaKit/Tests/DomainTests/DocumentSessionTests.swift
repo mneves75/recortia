@@ -31,6 +31,34 @@ struct DocumentSessionTests {
         #expect(!session.canUndo)
     }
 
+    @Test("An open group offers Undo only once it changed, and a changed group retires Redo")
+    func openGroupAvailability() throws {
+        var session = DocumentSession(document: makeDocument().0)
+        session.beginGroup("Drag")
+        #expect(!session.canUndo, "an untouched group with no history has nothing to undo")
+        session.cancelGroup()
+
+        try session.perform("Add") { $0.annotations.append(arrow(1)) }
+        session.undo()
+        session.beginGroup("Drag")
+        #expect(session.canRedo, "an untouched group does not clear redo")
+        try session.perform("Drag") { $0.annotations.append(arrow(2)) }
+        #expect(session.canUndo)
+        #expect(!session.canRedo, "redo() would commit this group and clear the redo stack")
+        session.redo()
+        #expect(session.document.annotations.map(\.kind) == [arrow(2).kind])
+    }
+
+    @Test("An open group that committing would evict does not offer Undo")
+    func openGroupOverBudget() throws {
+        var session = DocumentSession(document: makeDocument().0, undoByteBudget: 0)
+        session.beginGroup("Drag")
+        try session.perform("Drag") { $0.annotations.append(arrow(1)) }
+        #expect(!session.canUndo)
+        session.undo()
+        #expect(session.document.annotations.count == 1, "the group was committed and evicted, nothing undone")
+    }
+
     @Test("The undo budget evicts the oldest complete groups and reports it")
     func undoBudgetEvictsOldest() throws {
         var session = DocumentSession(document: makeDocument().0, undoLimit: 3)
@@ -164,17 +192,18 @@ struct SecureMaskTests {
 
         var session = DocumentSession(document: doc)
         try session.perform("Seed") { $0.annotations.append(arrow(1)) }
+        let seeded = session.document
         session.undo()
         let before = session.document
         let identity = session.requestIdentity()
-        let redo = session.redoLabel
         #expect(throws: DocumentError.unmappableTransform) { try session.addSecureMask(covering: rect) }
         #expect(session.document == before)
         #expect(session.revision == identity.revision)
         #expect(session.privacyEpoch == identity.privacyEpoch)
         #expect(session.document.id == identity.documentID)
         #expect(session.undoCount == 0)
-        #expect(session.redoLabel == redo && session.canRedo)
+        session.redo()
+        #expect(session.document == seeded, "the refused mask keeps the redo path")
 
         // A finite inverse alone does not require refusal when this layer misses the mask.
         #expect(try doc.sourceRegions(for: Rect(x: 1e303, y: 0, width: 1e304, height: 20)).isEmpty)

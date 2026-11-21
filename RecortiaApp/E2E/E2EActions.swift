@@ -68,7 +68,8 @@
             }
         }
 
-        /// Renders the editor window's content after the preview and SwiftUI have settled.
+        /// Renders the editor window's frame view, toolbar included, after the preview and SwiftUI
+        /// have settled.
         static func snapshotEditor(
             _ controller: EditorWindowController, _ context: ScenarioContext, shot: String? = nil
         ) async {
@@ -125,7 +126,6 @@
             inspector.reflectScrolledClipView(inspector.contentView)
         }
 
-        /// Exports through the editor's own export command and returns the outcome.
         static func export(_ controller: EditorWindowController, _ request: EditorExportRequest) async -> ExportOutcome
         {
             await controller.model.export(request)

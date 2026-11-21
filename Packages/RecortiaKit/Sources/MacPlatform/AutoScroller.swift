@@ -94,7 +94,7 @@ public final class AutoScroller {
         case stopped(AutoScrollStopReason)
     }
 
-    /// Upper bound for one step, in points; larger requests are clamped.
+    /// Upper bound for one pixel-unit wheel event; larger requests are clamped before posting.
     static let maxStepPixels = 1_000
 
     public let target: WindowInfo

@@ -6,7 +6,6 @@ import Features
 struct UserMessage: Equatable {
     var title: String
     var detail: String
-    /// Offers a button that opens the Screen Recording pane of System Settings.
     var offersScreenRecordingSettings = false
 }
 
@@ -14,11 +13,7 @@ struct UserMessage: Equatable {
 /// window titles, or paths (PRIV-01).
 enum MessagePresenter {
     static func present(_ message: UserMessage) {
-        AppPresence.shared.activate()
-        let alert = makeAlert(message)
-        let response = alert.runModal()
-        // A finished alert is ordered out, not closed: re-evaluate the Dock presence.
-        AppPresence.shared.setNeedsRefresh()
+        let response = runModal(makeAlert(message))
         if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
             let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
         {
@@ -29,46 +24,70 @@ enum MessagePresenter {
     /// Asks before a scrolling capture is thrown away. Close, Escape, and Discard all route here,
     /// so the review window can be closed without silently destroying an assembled result.
     static func confirmDiscardScrollingCapture() -> Bool {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(localized: "Discard this scrolling capture?")
-        // No count here: a counted sentence needs plural variants in two languages, which this
-        // release deliberately defers until the localization gate covers the plural branch.
-        alert.informativeText = String(
-            localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image.")
-        let discard = alert.addButton(withTitle: String(localized: "Discard"))
-        discard.hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        SpacePolicy.follow(alert.window)
-        AppPresence.shared.activate()
-        defer { AppPresence.shared.setNeedsRefresh() }
-        return alert.runModal() == .alertFirstButtonReturn
+        // No count here: a counted sentence needs plural variants in two languages, which waits
+        // until the localization gate covers the plural branch.
+        let alert = makeConfirmation(
+            title: String(localized: "Discard this scrolling capture?"),
+            detail: String(
+                localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image."),
+            action: String(localized: "Discard"))
+        return runModal(alert) == .alertFirstButtonReturn
     }
 
-    /// Asks before Quit discards edits in `count` open editors. True means quit.
-    static func confirmDiscardOnQuit(count: Int) -> Bool {
+    /// What Quit discards. Only a copy or save keeps edits: a pin is closed by quitting too.
+    static func discardOnQuitDetail(_ discards: QuitDiscards) -> String {
+        let count = discards.editedImages
+        var lines: [String] = []
+        if count == 1 {
+            lines.append(
+                String(localized: "An open image has changes that were not copied or saved. Quitting discards them."))
+        } else if count > 1 {
+            lines.append(
+                String(
+                    localized:
+                        "\(count) open images have changes that were not copied or saved. Quitting discards them."))
+        }
+        if discards.scrollingReview {
+            lines.append(
+                count == 0
+                    ? String(localized: "A scrolling capture is waiting for review. Quitting discards it.")
+                    : String(localized: "The scrolling capture waiting for review is discarded too."))
+        }
+        return lines.joined(separator: " ")
+    }
+
+    /// Asks before Quit discards what `discards` describes. True means quit.
+    static func confirmDiscardOnQuit(_ discards: QuitDiscards) -> Bool {
+        let alert = makeConfirmation(
+            title: discards.editedImages == 0
+                ? String(localized: "Quit and discard the scrolling capture?")
+                : String(localized: "Quit and discard your edits?"),
+            detail: discardOnQuitDetail(discards), action: String(localized: "Quit"))
+        return runModal(alert) == .alertFirstButtonReturn
+    }
+
+    /// A warning that asks before something is thrown away: the destructive action first, then
+    /// Cancel. App-modal confirmations run it through `runModal`; editor sheets attach it.
+    static func makeConfirmation(
+        title: String, detail: String, action: String, cancel: String = String(localized: "Cancel")
+    ) -> NSAlert {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = String(localized: "Quit and discard your edits?")
-        alert.informativeText =
-            count == 1
-            ? String(
-                localized: """
-                    An open image has changes that were not copied, saved, dragged, or pinned. \
-                    Quitting discards them.
-                    """)
-            : String(
-                localized: """
-                    \(count) open images have changes that were not copied, saved, dragged, or pinned. \
-                    Quitting discards them.
-                    """)
-        let quit = alert.addButton(withTitle: String(localized: "Quit"))
-        quit.hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.messageText = title
+        alert.informativeText = detail
+        alert.addButton(withTitle: action).hasDestructiveAction = true
+        alert.addButton(withTitle: cancel)
+        return alert
+    }
+
+    /// Runs `alert` app-modally on the current Space: its Space policy comes before activation, so
+    /// activating cannot switch the person to another Space (FR-01).
+    private static func runModal(_ alert: NSAlert) -> NSApplication.ModalResponse {
         SpacePolicy.follow(alert.window)
         AppPresence.shared.activate()
+        // A finished alert is ordered out, not closed: re-evaluate the Dock presence.
         defer { AppPresence.shared.setNeedsRefresh() }
-        return alert.runModal() == .alertFirstButtonReturn
+        return alert.runModal()
     }
 
     static func makeAlert(_ message: UserMessage) -> NSAlert {
@@ -138,8 +157,27 @@ extension UserMessage {
             case .multipleFrames: String(localized: "Animated or multi-page images are not supported.")
             case .corrupt: String(localized: "The image data is damaged.")
             case .unreadable: String(localized: "The file could not be read.")
+            case .tooManyFiles:
+                String(
+                    localized:
+                        "Recortia opens at most \(ImportCoordinator.maximumOpenedFiles) images, and \(ImportLimits.maxOpenedPixelArea / 1_000_000) megapixels in all, at a time."
+                )
             }
         return UserMessage(title: title, detail: detail)
+    }
+
+    /// One report for the files of one open request that were refused, each reason once;
+    /// content-free: no file names (PRIV-01).
+    static func openFailures(_ failures: [ImportFailure]) -> UserMessage? {
+        guard let first = failures.first else { return nil }
+        guard failures.count > 1 else { return importFailure(first) }
+        var reasons: [String] = []
+        for failure in failures {
+            let reason = importFailure(failure).detail
+            if !reasons.contains(reason) { reasons.append(reason) }
+        }
+        return UserMessage(
+            title: String(localized: "Some images could not be opened"), detail: reasons.joined(separator: "\n"))
     }
 
     static func export(_ failure: ExportFailure) -> UserMessage {
@@ -154,10 +192,23 @@ extension UserMessage {
             case .accessDenied:
                 String(localized: "Recortia cannot write to that folder. Choose a folder in Settings › Export.")
             case .destinationExists: String(localized: "A file with that name already exists.")
+            case .nameTooLong:
+                String(
+                    localized: "The file name is too long for that folder. Choose a shorter name in Settings › Export.")
             case .diskFull: String(localized: "The disk is full.")
             case .volumeUnavailable: String(localized: "The destination volume is not available.")
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")
             case .system(let code): String(localized: "The system reported an error (\(code)).")
+            case .leftover(let name):
+                String(
+                    localized:
+                        "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it."
+                )
+            case .maskingUnfinished:
+                String(
+                    localized:
+                        "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically."
+                )
             }
         // One step of an automatic batch failed; another may already have copied or saved, so the
         // title never says that nothing was exported.

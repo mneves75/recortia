@@ -105,6 +105,45 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.partialReason == nil)
     }
 
+    // Failure mode (review R2-D06): Stop during an append that the matcher then rejected froze the
+    // review as complete, although the rejected viewport is missing from it.
+    @Test(
+        "Stop while the last frame is rejected keeps the rejection as the partial reason",
+        .timeLimit(.minutes(1)),
+        arguments: [
+            (ScrollAppendResult.ambiguous(.lowConfidence), ScrollPartialReason.ambiguous(.lowConfidence)),
+            (.limitReached(.side), .limit(.side)),
+        ])
+    func stopDuringRejectedAppendIsPartial(result: ScrollAppendResult, expected: ScrollPartialReason) async {
+        let h = ScrollHarness()
+        h.stitcher.script = [.accepted(offset: 0), result]
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        h.stitcher.holdAppends = true
+        h.frames.deliver()
+        await waitFor("append in progress") { h.stitcher.appends.waiterCount == 1 }
+        h.model.stop()
+        h.stitcher.appends.resolve(())
+        await waitFor("review settled") { h.model.state == .reviewing }
+        #expect(h.model.partialReason == expected)
+        #expect(h.model.acceptedFrames == 1)
+    }
+
+    // Failure mode (review R2-D16): the duration handed to the matcher was wall-clock time, so a
+    // clock correction two minutes forward reached the duration limit at the next frame.
+    @Test("A wall-clock correction does not count toward the capture's duration")
+    func wallClockJumpIsNotElapsedTime() async {
+        let h = ScrollHarness()
+        await h.startCollecting()
+        h.clock.jumpWallClock(bySeconds: Self.maxSeconds + 1)
+        await Self.deliverFrames(h, 1)
+        #expect(h.stitcher.lastElapsed == .zero)
+        h.clock.advance(bySeconds: 2)
+        await Self.deliverFrames(h, 1)
+        #expect(h.stitcher.lastElapsed == .seconds(2))
+        #expect(h.model.state == .collecting)
+    }
+
     @Test("Cancel while a stopped session is settling its last frame leaves no review", .timeLimit(.minutes(1)))
     func cancelWhileSettlingStop() async {
         let h = ScrollHarness()
@@ -139,12 +178,12 @@ struct ScrollSessionModelEndingTests {
         #expect(h.scroller.stopCount >= 1)
         #expect(h.frames.stopCount >= 1)
 
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .accepted)
         #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil))
     }
 
-    /// Runs automatic scrolling until the page stops answering scroll steps.
     static func runUntilStepsGoUnanswered(_ h: ScrollHarness) async {
         await h.startCollecting()
         h.frames.deliver()
@@ -206,7 +245,6 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.pageEndLikely)
         #expect(h.model.state == .collecting)
 
-        // A reader pausing mid-page: no frames, time passes, nothing stops.
         h.clock.advance(bySeconds: 30)
         await drain()
         #expect(h.model.state == .collecting)
@@ -398,6 +436,7 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.state == .reviewing)
         h.model.interrupt(because: .screenLocked)
         #expect(h.model.state == .reviewing)
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .accepted)
         #expect(h.accepted.count == 1)

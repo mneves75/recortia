@@ -22,7 +22,7 @@ Only public behavior and documentation were inspected. No binary was executed, d
 | Area | Decision | Reason / boundary |
 |---|---|---|
 | Platform | Native macOS, Apple Silicon only for v1 | Focus effort on Mac integration and measurable responsiveness. Intel and other operating systems are not promised. |
-| Deployment target | macOS 15.0+ | Deliberate compatibility baseline, independent of the build SDK. Test on 15, 26, and 27 before declaring support. |
+| Deployment target | macOS 15.0+ through 0.14; macOS 26.0+ from 0.15 (owner, 2026-11-19; ADR-008) | Deliberate compatibility baseline, independent of the build SDK. Test on every supported major version before declaring support. |
 | Toolchain | Stable Xcode 27, its Swift 6.4 compiler, Swift 6 language mode | Apple's current support table lists this combination. Freeze the exact locally verified build in M0; exclude beta toolchains from releases. [S05] |
 | Build host | A Mac satisfying Xcode's host requirements | Apple currently lists macOS 26.6 or later for Xcode 27. A deployment target of 15 does not mean Xcode 27 can run on 15. [S05] |
 | UI | SwiftUI for settings and chrome; AppKit for capture overlays, editor canvas, panels, focus, and window lifecycle | Choose the simplest appropriate native API for each surface. |
@@ -59,8 +59,8 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-12 | Multiple-image canvas, transparency overlays, side-by-side comparison | 1.0 | COMP / RED |
 | FR-13 | Background, padding, corner radius, shadow, spotlight, magnifier callout | 1.0 | COMP / RED |
 | FR-14 | Native settings, accessibility, EN/PT-BR localization, release/update flow | Foundation in 0.1; complete in 1.0 | UX / REL |
-| FR-15 | Optional upload to user-controlled GitHub repository; S3 deferred | GitHub approved 2026-10-01, ADR-006 | NET |
-| FR-16 | Approved local automation and optional on-device writing assistance | Post-1.0, separate approval | AUTO / AI |
+| FR-15 | Optional upload to user-controlled GitHub repository; S3 deferred | GitHub approved 2026-10-01, ADR-006; further providers approved 2026-11-19, each after an owner-signed threat model (§13) | NET |
+| FR-16 | Approved local automation and optional on-device writing assistance | Automation approved 2026-11-19 behind an owner-signed ADR; writing assistance not approved | AUTO / AI |
 
 Deferred rather than silently omitted: horizontal scrolling; cross-display selections; arbitrary nested-scroll reliability; text-only object removal/inpainting; intelligent object snapping; hand-drawn styling; contrast analyzers; before/after animation; editable project files; persistent history/search; CLI/App Intents/URL integrations; HDR-preserving export; Intel/Windows/Linux support; cloud hosting.
 
@@ -174,11 +174,15 @@ clipped to the viewport at high zoom. Qualification is tracked in the text-appea
 
 The default privacy tool MUST replace selected source pixels with a fully opaque solid color. Masks MUST cover pixel boundaries conservatively, be applied before resampling or neighborhood effects, and invalidate dependent render/OCR/magnifier caches. When the same image asset is used in multiple places, source-bound masks must apply to all render references to that asset. Independently reimported copies and secrets elsewhere are not automatically discovered; make this limitation clear.
 
-Adding a mask to a composite maps intersected raster-layer regions into each asset's coordinate system and also maintains an output-space mask for vector/text coverage. If a transform cannot be safely mapped, reject the operation or require an explicit flatten-and-redact workflow; never fall back to a translucent overlay.
+Adding a mask to a composite maps intersected raster-layer regions into each asset's coordinate system and also maintains an output-space mask for vector/text coverage. If a transform cannot be safely mapped, reject the operation or require an explicit flatten-and-redact workflow; never fall back to a translucent overlay. The output-space mask hides annotations, text and callouts only where the box is: moving or growing one the person drew out from under a box reveals it, by design.
+Source-pixel protection fails closed: a box moved off a scaled or rotated image can leave a filled patch
+where it was, because the rounded source footprint does not fit inside its old box.
 
 Secure export MUST create a fresh, flattened raster with no original layer, undo record, alternate unredacted representation, textual OCR metadata, hidden thumbnail, or transparent RGB leak. Ordinary project/document models must never go directly to an export sink. OCR and magnifiers operate on the privacy-sanitized view of the document. A project-file format is deliberately outside v1.
 
 Do not promise that OCR-based “find sensitive data” is exhaustive. Do not promise secure erasure of memory, SSD blocks, backups, other apps' clipboard histories, or files the user exported earlier.
+
+**Automatic redaction at capture (owner amendment, 2026-11-19; timing revised 2026-11-20).** An opt-in setting, off by default, adds opaque secure masks over e-mail addresses and phone numbers in a new capture. Detection runs on this Mac: fixed patterns over the system's text recognition, with no AI and no network. It is a review aid that can miss text, such as small or stylised text and formats the patterns do not know: the UI states how many items it masked and never claims that nothing sensitive remains. The editor window opens at once. Until the masks land (as one undo step; the person can undo it or delete any mask), the canvas shows a neutral placeholder instead of the capture, and the editor accepts no edit, selection, export, pin, Output Preview or recognition; the capture's automatic exports wait and then run on the masked document. It fails closed: when recognition fails, is cancelled or exceeds its deadline, nothing is masked, the editor shows the capture with a notice, manual export is allowed again, and that capture's automatic exports do not run. Closing the editor while masking cancels the masking and the automatic exports. The masking choice and the automatic export plan are both fixed when the capture completes, so a Settings change during recognition applies to the next capture. Capture Text skips it. The §10 region-commit target covers the window, not the masked pixels. The pattern design is adapted from Fosco by Gabriel Buzzi (MIT), whose notice ships in the app bundle.
 
 ### FR-07 — Export and explicit side effects
 
@@ -354,7 +358,7 @@ Benchmark on a physical Apple Silicon Mac with at least 16 GB RAM, a 4K 60 Hz di
 | Measure | Proposed gate | Measurement |
 |---|---|---|
 | Warm capture overlay presentation | p95 <= 100 ms | Shortcut handler entry to first overlay frame, 100 runs |
-| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs |
+| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs. With automatic redaction on, the editor window meets this target and the capture's pixels follow once its masks land (FR-06): measured warm p95 2.2 s and cold 2.1 s at 2560×1440 2×, 0.7 s at 1440×900, with an 8 s fail-closed deadline |
 | Cold launch to ready menu bar | p95 <= 1.5 s | 30 process launches; report caching conditions |
 | Common drawing gestures | 60 Hz target without sustained main-thread stalls | Frame pacing plus Instruments traces, not FPS claims alone |
 | Local OCR | p95 <= 1.5 s on the defined 1080p text fixture subset | 100 runs; report languages, revision, and corpus |
@@ -388,7 +392,9 @@ Document reproducible build **inputs**; do not claim byte-for-byte reproducible 
 ## 13. Optional extensions
 
 GitHub auto-upload (FR-15) was authorized on 2026-10-01. ADR-006 owns its provider, consent,
-token, retry and privacy contract. Other providers and FR-16 remain deferred.
+token, retry and privacy contract. On 2026-11-19 the owner approved further providers and FR-16
+automation, each built only after its threat model or ADR is signed off
+(`docs/specs/program-2026-11/plan.md`). On-device writing assistance remains unapproved.
 
 ### Optional S3-compatible sharing
 
@@ -402,7 +408,7 @@ An integration may open the app or initiate a user-visible workflow; an untruste
 
 Optional writing assistance may suggest alt text, summarize user-selected OCR text, or draft a bug report locally. Availability, supported languages, and model access are runtime capabilities. It must remain off the capture critical path, work without any cloud fallback, and show editable output before a side effect. Recheck the then-current SDK/model documentation before selecting an implementation. Do not assume an earlier year's model/API capability set is still current.
 
-Screenshot content is data, not instructions. AI has no authority to capture additional screens, access files, invoke tools, apply “secure redaction,” or transmit data. Automatic sensitive-data suggestions remain review aids, not a guarantee that no secrets remain.
+Screenshot content is data, not instructions. AI has no authority to capture additional screens, access files, invoke tools, apply “secure redaction,” or transmit data. Automatic masking and sensitive-data suggestions remain review aids, not a guarantee that no secrets remain.
 
 ## 14. Completion and first handoff
 

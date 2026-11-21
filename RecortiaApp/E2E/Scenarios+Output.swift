@@ -59,6 +59,9 @@
     final class SyntheticImportInput: ImageInputService {
         private let input: any ImageInputService
         var holdNextRead = false
+        /// Holds the read whose running count (`fileReads`) reaches this number.
+        var holdRead: Int?
+        var pastedImage: Data?
         private var waiter: CheckedContinuation<Void, Never>?
         var isWaiting: Bool { waiter != nil }
         private(set) var fileReads = 0
@@ -68,8 +71,9 @@
 
         func readFile(at url: URL) async throws(ImportError) -> Data {
             fileReads += 1
-            if holdNextRead {
+            if holdNextRead || holdRead == fileReads {
                 holdNextRead = false
+                holdRead = nil
                 await withCheckedContinuation { waiter = $0 }
             }
             return try await input.readFile(at: url)
@@ -77,7 +81,7 @@
 
         func readPasteboardImage() -> Data? {
             pasteboardReads += 1
-            return nil
+            return pastedImage
         }
 
         func release() {
@@ -99,7 +103,6 @@
             E2EActions.drag(model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
             context.check("an edited document is dirty", model.isDirty)
 
-            // Copy: the private pasteboard receives exactly one PNG representation.
             let copied = await E2EActions.export(controller, .copy)
             try context.require("Copy succeeds", copied == .copied, "\(copied)")
             let pasteboard = harness.clipboard.pasteboard
@@ -112,7 +115,6 @@
             let copyPixels = try E2EActions.decode(copyData, "clipboard PNG", context)
             context.check("the export clears the dirty flag", !model.isDirty)
 
-            // Save to the preferred folder under the output directory.
             let folder = harness.output.workDirectory.appending(path: "saves", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let bookmark = try folder.bookmarkData()
@@ -146,30 +148,39 @@
             let original = Data("existing owner file".utf8)
             try original.write(to: collision)
             var confirmations = 0
-            let declined = await controller.saveImage(to: collision) {
+            let declined = await controller.saveImage(to: collision, format: .png) {
                 confirmations += 1
                 return false
             }
             context.check("replacement decline cancels the save", declined == .canceled)
             context.check("a collision asks before overwriting", confirmations == 1)
             context.check("declining preserves the existing bytes", try Data(contentsOf: collision) == original)
-            let replaced = await controller.saveImage(to: collision) {
+            // R3-D05: the format changes while the replacement question is open. The retry still
+            // writes the format the save panel named, so a .png name receives PNG bytes.
+            let formatBefore = harness.settings.preferences.defaultExportFormat
+            let replaced = await controller.saveImage(to: collision, format: .png) {
                 confirmations += 1
+                harness.settings.update { $0.defaultExportFormat = .jpeg }
                 return true
             }
+            harness.settings.update { $0.defaultExportFormat = formatBefore }
             context.check("explicit replacement saves", replaced == .saved(collision) && confirmations == 2)
+            let pngSignature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+            context.check(
+                "a format change during confirmation still writes PNG bytes to the .png name",
+                (try? Data(contentsOf: collision))?.prefix(8) == pngSignature)
             context.check(
                 "replacement uses sanitized export pixels",
                 try E2EActions.decode(Data(contentsOf: collision), "replacement", context) == savedPixels)
             let fresh = folder.appending(path: "no-collision.png")
-            let created = await controller.saveImage(to: fresh) {
+            let created = await controller.saveImage(to: fresh, format: .png) {
                 confirmations += 1
                 return false
             }
             context.check(
                 "exclusive new save needs no replacement consent", created == .saved(fresh) && confirmations == 2)
             let beforeNative = try Data(contentsOf: collision)
-            let nativeSave = Task { await controller.saveImage(to: collision) }
+            let nativeSave = Task { await controller.saveImage(to: collision, format: .png) }
             let sheetAppeared = await E2EWait.until { controller.window?.attachedSheet != nil }
             try context.require("collision presents the native replacement sheet", sheetAppeared)
             let sheet = try context.unwrap("replacement sheet", controller.window?.attachedSheet)
@@ -261,6 +272,7 @@
             await E2ESnapshot.settle(root)
             context.snapshot(root)
             await darkPin(pin, pins, light: root, context)
+            try await checkRepeatedPinNotice(pin, pins, context)
             await E2EPanelProbe.check(.pin, context)
 
             // A redaction changes the privacy epoch: pins of the old epoch are removed.
@@ -278,6 +290,48 @@
             let pixels = try E2EActions.pixels(of: repinned.image, "new pin", context)
             let center = pixels.pixel(x: Int(secret.midX * 2), y: Int(secret.midY * 2))
             context.check("the new pin shows the redaction", center == ChartFixture.Color(0, 0, 0), center.hex)
+        }
+
+        /// Success-notice timers the scenario ends itself, oldest first; nothing waits on the clock.
+        @MainActor
+        private final class NoticeTimers {
+            private var waiting: [CheckedContinuation<Void, Never>] = []
+            var count: Int { waiting.count }
+            func wait() async { await withCheckedContinuation { waiting.append($0) } }
+            func expireOldest() { if !waiting.isEmpty { waiting.removeFirst().resume() } }
+        }
+
+        /// Failure mode (review R3-D16): two Copies show the same text, and the first success timer
+        /// cleared the second notice early.
+        private static func checkRepeatedPinNotice(_ pin: Pin, _ pins: PinsModel, _ context: ScenarioContext)
+            async throws
+        {
+            let timers = NoticeTimers()
+            let host = E2ESnapshot.host(
+                PinContentView(
+                    pinID: pin.id, model: pins, fitScale: 1, successNoticeTimer: { await timers.wait() }))
+            defer {
+                while timers.count > 0 { timers.expireOldest() }
+                host.close()
+            }
+            let root = try context.unwrap("pin notice content hosted", host.contentView)
+            await E2ESnapshot.settle(root)
+            func noticeShown() -> Bool { E2EAccessibilityControl.isPresent("pin.status", in: root) }
+            // A notice's timer starts right after the notice is shown, so a timer count is proof.
+            try E2EAccessibilityControl.pressCheckingEffect("pin.copy", in: root, context)
+            try context.require(
+                "the pin's first Copy shows its notice",
+                await E2EWait.until(timeout: .seconds(5)) { timers.count == 1 && noticeShown() })
+            try E2EAccessibilityControl.pressCheckingEffect("pin.copy", in: root, context)
+            try context.require(
+                "the pin's second Copy shows its own notice",
+                await E2EWait.until(timeout: .seconds(5)) { timers.count == 2 && noticeShown() })
+            timers.expireOldest()
+            await E2ESnapshot.settle(root)
+            context.check("the first notice's timer leaves the second Copy's notice", noticeShown())
+            timers.expireOldest()
+            context.check(
+                "the second notice's timer clears it", await E2EWait.until(timeout: .seconds(3)) { !noticeShown() })
         }
 
         /// The pin in dark appearance. Its image is user content: the chrome is the control strip
@@ -298,6 +352,7 @@
             let input = harness.importInput
             let initialEditors = harness.editors.controllers.count
             let initialReads = input.fileReads
+            let initialPasteboardReads = input.pasteboardReads
             let initialMessages = harness.messages.values.count
             input.holdNextRead = true
             defer { input.release() }
@@ -308,7 +363,7 @@
             context.check("Paste Image is disabled during import", !harness.app.isEnabled(.pasteImage))
             let rejected = await model.addImageLayer(from: .pasteboard)
             context.check("layer import shares the app's busy slot", !rejected && model.notice == .importFailed(.busy))
-            context.check("busy Paste never reads the clipboard", input.pasteboardReads == 0)
+            context.check("busy Paste never reads the clipboard", input.pasteboardReads == initialPasteboardReads)
             let canvas = try context.unwrap("real editor canvas", controller.canvasView)
             let droppedPNG = try E2EDrawing.png(harness.desktop)
             let busyProvider = SyntheticDropDataProvider(png: droppedPNG)
@@ -393,6 +448,143 @@
             }
         }
 
+        /// Open With, a drop on the Dock icon and `open -a` (FR-03, A-2): a real Open Documents
+        /// Apple event sent to this process reaches the app delegate, which opens one editor per
+        /// image through the shared admission and reports the refused files once.
+        /// Counts the open requests the app delegate hands to the runner (`AppDelegate` →
+        /// `E2ERunner.openFiles`), so a delegate that is never called fails as itself.
+        private final class DelegateOpens {
+            var count = 0
+        }
+
+        /// A real Open Documents Apple event, as Finder or `open -a` sends one, handed to the
+        /// handler AppKit registered for it, which calls the app delegate's `application(_:open:)`.
+        /// Sending it to this process with AESend instead would wait on the main thread that has
+        /// to handle it, and time out (errAETimeout).
+        private static func sendOpenDocuments(_ urls: [URL], _ context: ScenarioContext) throws {
+            let event = NSAppleEventDescriptor(
+                eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEOpenDocuments),
+                targetDescriptor: .currentProcess(), returnID: AEReturnID(kAutoGenerateReturnID),
+                transactionID: AETransactionID(kAnyTransactionID))
+            let list = NSAppleEventDescriptor.list()
+            for (index, url) in urls.enumerated() { list.insert(NSAppleEventDescriptor(fileURL: url), at: index + 1) }
+            event.setParam(list, forKeyword: keyDirectObject)
+            let descriptor = try context.unwrap("open-documents event descriptor", event.aeDesc)
+            var reply = AEDesc(descriptorType: typeNull, dataHandle: nil)
+            defer { AEDisposeDesc(&reply) }
+            // The reference constant is unused by AppKit's handler; it only has to be a valid pointer.
+            var unusedReference = 0
+            let status = withUnsafeMutablePointer(to: &unusedReference) {
+                NSAppleEventManager.shared().dispatchRawAppleEvent(
+                    descriptor, withRawReply: &reply, handlerRefCon: UnsafeMutableRawPointer($0))
+            }
+            try context.require("AppKit handles the open-documents event", status == noErr, "OSErr \(status)")
+        }
+
+        /// Runs `body` while counting the open requests that reach the app delegate.
+        private static func countingDelegateOpens(_ body: () async throws -> Void) async rethrows -> Int {
+            let opens = DelegateOpens()
+            let forward = E2ERunner.openFiles
+            E2ERunner.openFiles = { urls in
+                opens.count += 1
+                forward?(urls)
+            }
+            defer { E2ERunner.openFiles = forward }
+            try await body()
+            return opens.count
+        }
+
+        /// A cold launch (A-2): two open requests of six images arrive before the editors are wired.
+        /// Nothing is read until launch replays them, and each keeps its own ten-file limit, so all
+        /// twelve open and nothing is refused.
+        private static func coldLaunchOpenEvents(_ harness: E2EHarness, chart: CGImage, _ context: ScenarioContext)
+            async throws
+        {
+            let work = harness.output.workDirectory
+            let png = try E2EDrawing.png(chart)
+            let requests = try (0..<2).map { request in
+                try (0..<6).map { index in
+                    let url = work.appending(path: "cold-\(request)-\(index).png")
+                    try png.write(to: url, options: .atomic)
+                    return url
+                }
+            }
+            let wired = harness.app.openDocument
+            harness.app.openDocument = nil
+            defer { harness.app.openDocument = wired }
+            let before = harness.editors.controllers.count
+            let messages = harness.messages.values.count
+            let reads = harness.importInput.fileReads
+            let delegateOpens = try await countingDelegateOpens {
+                for urls in requests { try sendOpenDocuments(urls, context) }
+            }
+            context.check(
+                "the app delegate receives each open request before launch", delegateOpens == 2, "\(delegateOpens)")
+            await E2ESnapshot.settle(nil, for: .milliseconds(300))
+            context.check(
+                "before launch, opened files wait unread",
+                harness.importInput.fileReads == reads && harness.editors.controllers.count == before)
+            harness.app.openDocument = wired
+            harness.app.openFilesRequestedBeforeLaunch()
+            let opened = await E2EWait.until(timeout: .seconds(20)) {
+                harness.editors.controllers.count == before + 12
+            }
+            context.check(
+                "launch opens both waiting requests, each within its own limit", opened,
+                "editors: \(harness.editors.controllers.count - before)")
+            context.check(
+                "the waiting requests are read once each, in order", harness.importInput.fileReads == reads + 12,
+                "\(harness.importInput.fileReads - reads)")
+            context.check("nothing is refused", harness.messages.values.count == messages)
+        }
+
+        private static func openEvent(
+            _ harness: E2EHarness, chart: CGImage, oversized: Data, _ context: ScenarioContext
+        ) async throws {
+            let work = harness.output.workDirectory
+            let files: [(name: String, data: Data)] = [
+                ("open-first.png", try E2EDrawing.png(chart)),
+                ("open-oversized.png", oversized),
+                ("open-notes.png", Data("not an image".utf8)),
+                ("open-last.jpg", try E2EDrawing.jpeg(chart)),
+            ]
+            for file in files { try file.data.write(to: work.appending(path: file.name), options: .atomic) }
+            let urls = files.map { work.appending(path: $0.name) }
+            let before = harness.editors.controllers.count
+            let messages = harness.messages.values.count
+            let reads = harness.importInput.fileReads
+            let delegateOpens = try await countingDelegateOpens { try sendOpenDocuments(urls, context) }
+            context.check(
+                "the open-documents event reaches the app delegate's application(_:open:)", delegateOpens == 1,
+                "\(delegateOpens)")
+            let reported = await E2EWait.until(timeout: .seconds(10)) {
+                harness.messages.values.count == messages + 1
+            }
+            context.check(
+                "the open event's refusals are reported once", reported, "\(harness.messages.values.count - messages)")
+            context.check(
+                "the open event opens one editor per image", harness.editors.controllers.count == before + 2,
+                "editors: \(harness.editors.controllers.count - before)")
+            let titles = harness.editors.controllers.dropFirst(before).compactMap { $0.window?.title }
+            context.check(
+                "the opened editors are named after their files", titles == ["open-first.png", "open-last.jpg"],
+                titles.joined(separator: ", "))
+            context.check(
+                "every opened file is admitted and read once, in order",
+                harness.importInput.fileReads == reads + urls.count, "\(harness.importInput.fileReads - reads)")
+            if let message = harness.messages.values.last {
+                let expected = UserMessage.openFailures([.tooManyPixels, .unsupportedFormat])
+                context.check("the report names both reasons", message == expected, message.detail)
+            }
+            for (file, url) in zip(files, urls) {
+                context.check("\(file.name) is left untouched", (try? Data(contentsOf: url)) == file.data)
+            }
+            if let last = harness.editors.controllers.last {
+                try await harness.editors.waitForBase(last.model)
+                await E2EActions.snapshotEditor(last, context, shot: "open-event")
+            }
+        }
+
         static func importFiles(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let importer = harness.features.importer
             let chart: CGImage
@@ -453,11 +645,14 @@
                 alert.window.close()
             }
 
+            try await openEvent(harness, chart: chart, oversized: oversized, context)
+            try await coldLaunchOpenEvents(harness, chart: chart, context)
+
             // The alert and the editor notice say the same thing about an import failure: one
-            // mapping, so the two can no longer drift apart (they differed in pt-BR).
+            // mapping, so the two cannot drift apart in either language.
             let failures: [ImportFailure] = [
                 .busy, .cancelled, .nothingToPaste, .tooLarge, .tooManyPixels, .invalidDimensions, .unsupportedFormat,
-                .multipleFrames, .corrupt, .unreadable,
+                .multipleFrames, .corrupt, .unreadable, .tooManyFiles,
             ]
             let differing = failures.filter {
                 EditorStrings.message(.importFailed($0)) != UserMessage.importFailure($0).detail

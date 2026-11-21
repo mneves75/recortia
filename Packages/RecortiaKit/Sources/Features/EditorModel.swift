@@ -33,6 +33,8 @@ public final class EditorModel {
     /// Preferred OCR languages (English, Portuguese) the system does not offer; reported, never assumed (FR-08).
     public internal(set) var unavailableRecognitionLanguages: [String] = []
     public internal(set) var isClosed = false
+    /// Automatic masking of a new capture (EditorModel+AutoRedaction.swift).
+    public internal(set) var autoRedaction: AutoRedaction = .off
 
     // Preview (EditorModel+Preview.swift)
     public internal(set) var baseImage: CGImage?
@@ -61,7 +63,6 @@ public final class EditorModel {
     @ObservationIgnored var hasFittedViewport = false
     @ObservationIgnored private var reportedEvictedUndoCount = 0
     @ObservationIgnored var continuousChangeID: UUID?
-    /// `listItems` memoised against the document revision that produced it.
     @ObservationIgnored private var listItemsMemo: (revision: UInt64, items: [EditorListItem])?
     /// Geometry resolutions performed while building `listItems`. Resolving a text frame is a full
     /// Core Text layout, so the memo is a performance invariant and tests assert this count instead
@@ -70,31 +71,65 @@ public final class EditorModel {
 
     @ObservationIgnored var baseTask: Task<Void, Never>?
     @ObservationIgnored var installedBaseKey: BaseKey?
-    @ObservationIgnored var failedBaseKey: BaseKey?
+    /// Observed: the canvas veil and export readiness follow it (`isPreviewReady`).
+    var failedBaseKey: BaseKey?
     @ObservationIgnored var outputTask: Task<Void, Never>?
     @ObservationIgnored var installedOutputKey: OutputKey?
-    @ObservationIgnored var failedOutputKey: OutputKey?
+    var failedOutputKey: OutputKey?
+    /// The document state the native canvas last failed to draw; nil once it draws (NEW-01).
+    var failedCanvasDraw: OutputKey?
     @ObservationIgnored var recognitionRequest: UUID?
     @ObservationIgnored var recognizedResult: OCRResult?
     @ObservationIgnored var qrRequest: UUID?
     @ObservationIgnored var colorPickTask: Task<Void, Never>?
     @ObservationIgnored var colorPickRequest: UUID?
+    @ObservationIgnored var autoRedactionTasks: [Task<Void, Never>] = []
+    /// The document state detection started from; a result for any other state is stale.
+    @ObservationIgnored var autoRedactionRequest: RequestIdentity?
+    /// What the capture's automatic batch exports, frozen when masking settles: the capture itself
+    /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
+    @ObservationIgnored var automaticExportBaseline: DocumentSession?
+    @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
+    /// An automatic upload's notice that waits until the masking count is dismissed (3C).
+    @ObservationIgnored var waitingNotice: EditorNotice?
+    /// The deferred automatic batch waiting for the shared export slot (`waitForExportSlot`).
+    @ObservationIgnored var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
 
     enum Gesture {
         case idle
         case create(tool: EditorTool, start: Point<DocumentSpace>, points: [Point<DocumentSpace>])
         case move(items: [EditorItemID], start: Point<DocumentSpace>, original: Document)
-        case resize(item: EditorItemID, handle: EditorHandle, frame: Rect<DocumentSpace>, original: Document)
+        /// `start` is the pointer-down point and `anchor` the grabbed handle's position: the handle
+        /// follows the pointer's delta from `start`.
+        case resize(
+            item: EditorItemID, handle: EditorHandle, frame: Rect<DocumentSpace>, original: Document,
+            start: Point<DocumentSpace>, anchor: Point<DocumentSpace>)
         case marquee(start: Point<DocumentSpace>, initial: Set<EditorItemID>)
         case ruler(start: Point<DocumentSpace>)
         case sample
     }
 
-    public init(session: DocumentSession, environment: EditorEnvironment) {
+    /// How long automatic masking may take before it fails closed (provisional, see
+    /// docs/specs/program-2026-11/spike-auto-redaction.md).
+    public static let autoRedactionDeadline: Duration = .seconds(8)
+
+    /// `autoRedacts`: a new capture whose e-mail addresses and phone numbers are masked before the
+    /// editor shows or exports its pixels (FR-06).
+    public init(session: DocumentSession, environment: EditorEnvironment, autoRedacts: Bool = false) {
         self.session = session
         self.environment = environment
         knownAssets = Set(session.document.assets.keys)
+        automaticExportBaseline = session
+        if autoRedacts {
+            autoRedaction = .pending
+            startAutoRedaction()
+        }
         scheduleBaseRender()
+    }
+
+    // An editor released without `close()` still stops its detection and deadline.
+    isolated deinit {
+        for task in autoRedactionTasks { task.cancel() }
     }
 
     public var document: Document { session.document }
@@ -110,7 +145,14 @@ public final class EditorModel {
         noticeSerial += 1
     }
 
-    public func dismissNotice() { notice = nil }
+    /// Dismissal, the person's or the timeout's, frees the slot for a notice waiting behind it.
+    public func dismissNotice() {
+        notice = nil
+        if let waiting = waitingNotice {
+            waitingNotice = nil
+            post(waiting)
+        }
+    }
 
     // MARK: - Tools and style
 
@@ -133,13 +175,12 @@ public final class EditorModel {
     }
 
     public func setLineWidth(_ width: Double) {
-        guard width.isFinite else { return }
-        let value = min(max(width, EditorStyle.lineWidthRange.lowerBound), EditorStyle.lineWidthRange.upperBound)
+        guard let value = EditorStyle.lineWidthRange.admit(width) else { return }
         do {
             for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
                 var proposed = annotation
                 proposed.style.lineWidth = value
-                try Self.validateArrowCurve(proposed)
+                try Self.validateArrow(proposed)
             }
         } catch {
             post(.arrowGeometryRefused)
@@ -150,15 +191,13 @@ public final class EditorModel {
     }
 
     public func setOpacity(_ opacity: Double) {
-        guard opacity.isFinite else { return }
-        let value = min(max(opacity, EditorStyle.opacityRange.lowerBound), EditorStyle.opacityRange.upperBound)
+        guard let value = EditorStyle.opacityRange.admit(opacity) else { return }
         style.opacity = value
         restyleSelection("Opacity") { $0.opacity = value }
     }
 
     public func setFontSize(_ size: Double) {
-        guard size.isFinite else { return }
-        let value = min(max(size, EditorStyle.fontSizeRange.lowerBound), EditorStyle.fontSizeRange.upperBound)
+        guard let value = EditorStyle.fontSizeRange.admit(size) else { return }
         style.fontSize = value
         let ids = selectedAnnotationIDs
         guard !ids.isEmpty else { return }
@@ -187,6 +226,9 @@ public final class EditorModel {
     /// Groups a run of changes (a slider drag, a color well session) into one undo step.
     @discardableResult
     public func beginContinuousChange() -> UUID {
+        // Refused while masking runs, so no group can hold the masks' undo step (the returned ID
+        // then ends nothing).
+        guard !isMaskingPending else { return UUID() }
         if let continuousChangeID { return continuousChangeID }
         let id = UUID()
         continuousChangeID = id
@@ -225,15 +267,26 @@ public final class EditorModel {
 
     /// Applies one change to the document. Returns false when the change threw (for example a
     /// mask over an unmappable layer); the document is then unchanged.
+    ///
+    /// Every edit first makes each mask's coverage durable (`preserveCoverage`), so no edit can
+    /// uncover what a box hides by moving, scaling, cropping, adding or removing a layer (R2).
+    /// `inPreview` marks a whole-image presentation setting, which selects nothing.
     @discardableResult
-    func edit(_ label: String, _ change: (inout Document) throws -> Void) -> Bool {
-        guard !isClosed else { return false }
+    func edit(_ label: String, inPreview: Bool = false, _ change: (inout Document) throws -> Void) -> Bool {
+        // Output Preview is read-only for selection and objects (F-04); whole-image presentation
+        // settings stay available there, where their effect is seen. Nothing changes while
+        // automatic masking is pending.
+        guard !isClosed, !isMaskingPending, !showsOutputPreview || inPreview else { return false }
+        return performEdit(label, change)
+    }
+
+    /// `edit` without its guards; automatic masks land through it while masking is still pending.
+    func performEdit(_ label: String, _ change: (inout Document) throws -> Void) -> Bool {
         let before = session.document
         let epoch = session.privacyEpoch
         do {
-            var updated = before
-            try change(&updated)
-            guard updated != before else { return true }
+            let (preserved, updated) = try Self.applying(change, to: before)
+            guard updated != preserved else { return true }
             settleTransformGesture()
             try session.perform(label) { $0 = updated }
         } catch {
@@ -293,8 +346,10 @@ public final class EditorModel {
     }
 
     public func undo() {
-        guard !isClosed, textEditing == nil else { return }
-        cancelGesture()
+        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
+        // During a drag, Undo cancels only that drag and never reaches the history past it.
+        if case .idle = gesture {} else { return cancelGesture() }
+        guard canUndo else { return }
         endContinuousChange()
         let before = session.document, epoch = session.privacyEpoch
         session.undo()
@@ -302,8 +357,10 @@ public final class EditorModel {
     }
 
     public func redo() {
-        guard !isClosed, textEditing == nil else { return }
-        cancelGesture()
+        guard !isClosed, !isMaskingPending, !showsOutputPreview, textEditing == nil else { return }
+        // During a drag, Redo cancels only that drag and never reaches the history past it.
+        if case .idle = gesture {} else { return cancelGesture() }
+        guard canRedo else { return }
         endContinuousChange()
         let before = session.document, epoch = session.privacyEpoch
         session.redo()
@@ -329,14 +386,8 @@ public final class EditorModel {
         case .annotation(let id): return d.annotations.first { $0.id == id }.map { EditorItemKind($0.kind) }
         case .layer(let id): return d.layers.contains { $0.id == id } ? .image : nil
         case .mask(let id): return d.masks.contains { $0.id == id } ? .redaction : nil
-        case .obfuscation(let id):
-            guard let effect = d.obfuscations.first(where: { $0.id == id }) else { return nil }
-            if case .blur = effect.style { return .blur }
-            return .pixelate
-        case .callout(let id):
-            guard let callout = d.callouts.first(where: { $0.id == id }) else { return nil }
-            if case .spotlight = callout.kind { return .spotlight }
-            return .magnifier
+        case .obfuscation(let id): return d.obfuscations.first { $0.id == id }.map { EditorItemKind($0.style) }
+        case .callout(let id): return d.callouts.first { $0.id == id }.map { EditorItemKind($0.kind) }
         }
     }
 
@@ -366,13 +417,11 @@ public final class EditorModel {
             bottomUp.append(
                 EditorListItem(id: id, kind: kind, ordinal: counters[kind] ?? 1, frame: frame, stepNumber: step))
         }
-        // Output order: layers, cosmetic effects, annotations, redactions, callouts.
         for layer in d.layers {
             append(.layer(layer.id), .image, EditorGeometry.frame(of: layer, in: d))
         }
         for effect in d.obfuscations {
-            let kind: EditorItemKind = if case .blur = effect.style { .blur } else { .pixelate }
-            append(.obfuscation(effect.id), kind, effect.rect)
+            append(.obfuscation(effect.id), EditorItemKind(effect.style), effect.rect)
         }
         for annotation in d.annotations {
             var step: Int?
@@ -385,8 +434,7 @@ public final class EditorModel {
             append(.mask(mask.id), .redaction, mask.outputRect)
         }
         for callout in d.callouts {
-            let kind: EditorItemKind = if case .spotlight = callout.kind { .spotlight } else { .magnifier }
-            append(.callout(callout.id), kind, EditorGeometry.frame(of: callout))
+            append(.callout(callout.id), EditorItemKind(callout.kind), EditorGeometry.frame(of: callout))
         }
         return bottomUp.reversed()
     }
@@ -396,16 +444,18 @@ public final class EditorModel {
         guard p.isFinite else { return nil }
         let tolerance = viewport.documentLength(4)
         let d = session.document
+        // Masks draw over everything, so a mask's own pixels win. Its tolerance band loses to every
+        // other object's visible pixels, images included (and only selects, see
+        // beginSelectGesture), or a drag on a visible object would move the mask off its secret.
+        for mask in d.masks.reversed() where EditorGeometry.containsInclusive(mask.outputRect, p) {
+            return .mask(mask.id)
+        }
         for callout in d.callouts.reversed() {
             if let frame = frame(of: .callout(callout.id)),
                 EditorGeometry.containsInclusive(EditorGeometry.expanded(frame, by: tolerance), p)
             {
                 return .callout(callout.id)
             }
-        }
-        for mask in d.masks.reversed()
-        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
-            return .mask(mask.id)
         }
         for annotation in d.annotations.reversed() where EditorGeometry.hits(annotation, at: p, tolerance: tolerance) {
             return .annotation(annotation.id)
@@ -419,12 +469,18 @@ public final class EditorModel {
                 return .layer(layer.id)
             }
         }
+        // The band applies only where nothing else is hit, image layers included (R4-07).
+        for mask in d.masks.reversed()
+        where EditorGeometry.containsInclusive(EditorGeometry.expanded(mask.outputRect, by: tolerance), p) {
+            return .mask(mask.id)
+        }
         return nil
     }
 
-    /// Handles of the single selected item, for drawing and hit testing.
+    /// Handles of the single selected item, for drawing and hit testing. Output Preview hides them,
+    /// so none can be grabbed there either.
     public var selectionHandles: [(handle: EditorHandle, point: Point<DocumentSpace>)] {
-        guard selection.count == 1, let item = selection.first else { return [] }
+        guard !showsOutputPreview, selection.count == 1, let item = selection.first else { return [] }
         return handles(for: item).map { (handle: $0.0, point: $0.1) }
     }
 
@@ -452,15 +508,34 @@ public final class EditorModel {
         }
     }
 
-    func handle(at p: Point<DocumentSpace>) -> EditorHandle? {
+    /// Side of the handle square the canvas fills, in view points.
+    public static func handleSquareSide(increasedContrast: Bool) -> Double { increasedContrast ? 10 : 8 }
+
+    /// Width of the stroke the canvas draws centered on a handle square's edge, in view points. A
+    /// handle's hit area is the painted square: its side plus this width.
+    public static func handleLineWidth(increasedContrast: Bool) -> Double { increasedContrast ? 2 : 1 }
+
+    /// The contrast mode the canvas last drew handles in, so a handle's hit area is the drawn square.
+    @ObservationIgnored public var handlesDrawnWithIncreasedContrast = false
+
+    func handle(at p: Point<DocumentSpace>) -> (handle: EditorHandle, point: Point<DocumentSpace>)? {
+        // A mask's handle grabs only on its drawn square: the wider hit radius around it could
+        // start a resize from another object's visible pixels and uncover the secret.
+        if case .mask = selection.first {
+            let contrast = handlesDrawnWithIncreasedContrast
+            let half = viewport.documentLength(
+                (Self.handleSquareSide(increasedContrast: contrast) + Self.handleLineWidth(increasedContrast: contrast))
+                    / 2)
+            return selectionHandles.first { abs($0.point.x - p.x) <= half && abs($0.point.y - p.y) <= half }
+        }
         let tolerance = viewport.documentLength(6)
-        return selectionHandles.first { hypot($0.point.x - p.x, $0.point.y - p.y) <= tolerance }?.handle
+        return selectionHandles.first { hypot($0.point.x - p.x, $0.point.y - p.y) <= tolerance }
     }
 
     // MARK: - Selection
 
     public func select(_ item: EditorItemID, extending: Bool = false) {
-        guard allItemIDs.contains(item) else { return }
+        guard !isMaskingPending, !showsOutputPreview, allItemIDs.contains(item) else { return }
         if extending {
             if selection.contains(item) { selection.remove(item) } else { selection.insert(item) }
         } else {
@@ -471,6 +546,7 @@ public final class EditorModel {
 
     /// Replaces the selection (object list); unknown items are ignored.
     public func setSelection(_ items: Set<EditorItemID>) {
+        guard !isMaskingPending, !showsOutputPreview else { return }
         let existing = Set(allItemIDs)
         selection = items.filter(existing.contains)
         loadSelectedTextAppearance()
@@ -497,47 +573,65 @@ public final class EditorModel {
 
     static let duplicateOffset = 10.0
 
+    /// Arrange commands (z-order, align, duplicate) act on a selection only while no text input
+    /// owns the keyboard, automatic masking is settled and the document is editable.
+    public var canArrangeSelection: Bool {
+        !selection.isEmpty && textEditing == nil && !isMaskingPending && !isClosed && !showsOutputPreview
+    }
+
     public func duplicateSelection() {
         let items = selection
-        guard !items.isEmpty else { return }
-        var created: Set<EditorItemID> = []
+        guard !items.isEmpty, textEditing == nil else { return }
+        // IDs are allocated here, not in the edit closure, which must build the same document on
+        // each of its passes.
+        var fresh: [EditorItemID: EditorItemID] = [:]
+        for item in items {
+            switch item {
+            case .layer: fresh[item] = .layer(LayerID())
+            case .obfuscation: fresh[item] = .obfuscation(MaskID())
+            case .annotation: fresh[item] = .annotation(AnnotationID())
+            case .mask: fresh[item] = .mask(MaskID())
+            case .callout: fresh[item] = .callout(CalloutID())
+            }
+        }
         let offset = Self.duplicateOffset
         endContinuousChange()
         let ok = edit("Duplicate") { document in
-            created = []
-            for index in document.layers.indices where items.contains(.layer(document.layers[index].id)) {
+            for index in document.layers.indices {
+                guard case .layer(let id)? = fresh[.layer(document.layers[index].id)] else { continue }
                 var copy = document.layers[index]
-                copy.id = LayerID()
+                copy.id = id
                 copy.placement.translation = copy.placement.translation.offset(dx: offset, dy: offset)
                 document.layers.append(copy)
-                created.insert(.layer(copy.id))
             }
-            for effect in document.obfuscations where items.contains(.obfuscation(effect.id)) {
-                let copy = CosmeticObfuscation(rect: effect.rect.offsetBy(dx: offset, dy: offset), style: effect.style)
-                document.obfuscations.append(copy)
-                created.insert(.obfuscation(copy.id))
+            for effect in document.obfuscations {
+                guard case .obfuscation(let id)? = fresh[.obfuscation(effect.id)] else { continue }
+                document.obfuscations.append(
+                    CosmeticObfuscation(id: id, rect: effect.rect.offsetBy(dx: offset, dy: offset), style: effect.style)
+                )
             }
-            for annotation in document.annotations where items.contains(.annotation(annotation.id)) {
+            for annotation in document.annotations {
+                guard case .annotation(let id)? = fresh[.annotation(annotation.id)] else { continue }
                 var copy = annotation.translated(dx: offset, dy: offset)
-                try Self.validateArrowCurve(copy)
-                copy.id = AnnotationID()
+                try Self.validateArrow(copy)
+                copy.id = id
                 document.annotations.append(copy)
-                created.insert(.annotation(copy.id))
             }
-            for mask in document.masks where items.contains(.mask(mask.id)) {
+            for mask in document.masks {
+                guard case .mask(let id)? = fresh[.mask(mask.id)] else { continue }
                 let rect = mask.outputRect.offsetBy(dx: offset, dy: offset)
-                let copy = SecureMask(
-                    outputRect: rect, sourceRegions: try document.sourceRegions(for: rect), fill: mask.fill)
-                document.masks.append(copy)
-                created.insert(.mask(copy.id))
+                document.masks.append(
+                    SecureMask(
+                        id: id, outputRect: rect, sourceRegions: try document.sourceRegions(for: rect), fill: mask.fill)
+                )
             }
-            for callout in document.callouts where items.contains(.callout(callout.id)) {
-                let copy = Callout(kind: Self.translated(callout.kind, dx: offset, dy: offset, movesSource: true))
-                document.callouts.append(copy)
-                created.insert(.callout(copy.id))
+            for callout in document.callouts {
+                guard case .callout(let id)? = fresh[.callout(callout.id)] else { continue }
+                document.callouts.append(
+                    Callout(id: id, kind: Self.translated(callout.kind, dx: offset, dy: offset, movesSource: true)))
             }
         }
-        if ok { selection = created }
+        if ok { selection = Set(fresh.values).intersection(allItemIDs) }
     }
 
     /// Moves the selection by whole document pixels (arrow keys: 1, with Shift: 10).
@@ -545,12 +639,14 @@ public final class EditorModel {
         let items = orderedSelection
         guard !items.isEmpty, dx.isFinite, dy.isFinite, dx != 0 || dy != 0 else { return }
         endContinuousChange()
-        edit("Nudge") { document in try Self.translate(&document, items: items, dx: dx, dy: dy) }
+        edit("Nudge") { document in
+            try Self.translate(&document, items: items, dx: dx, dy: dy)
+        }
     }
 
     public func reorderSelection(_ order: EditorZOrder) {
         let items = selection
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty, textEditing == nil else { return }
         endContinuousChange()
         edit("Arrange") { document in
             Self.reorder(&document.layers, order) { items.contains(.layer($0.id)) }
@@ -559,6 +655,29 @@ public final class EditorModel {
             Self.reorder(&document.masks, order) { items.contains(.mask($0.id)) }
             Self.reorder(&document.callouts, order) { items.contains(.callout($0.id)) }
         }
+    }
+
+    /// Moves one object `steps` places toward the front (positive) or the back (negative) within
+    /// its own stack, clamped at either end, as one undo step (the object list's drag to reorder).
+    public func moveItem(_ item: EditorItemID, by steps: Int) {
+        guard steps != 0 else { return }
+        endContinuousChange()
+        edit("Arrange") { document in
+            switch item {
+            case .layer(let id): Self.move(&document.layers, by: steps) { $0.id == id }
+            case .obfuscation(let id): Self.move(&document.obfuscations, by: steps) { $0.id == id }
+            case .annotation(let id): Self.move(&document.annotations, by: steps) { $0.id == id }
+            case .mask(let id): Self.move(&document.masks, by: steps) { $0.id == id }
+            case .callout(let id): Self.move(&document.callouts, by: steps) { $0.id == id }
+            }
+        }
+    }
+
+    static func move<Element>(_ array: inout [Element], by steps: Int, where matches: (Element) -> Bool) {
+        guard let from = array.firstIndex(where: matches) else { return }
+        let to = min(max(from + steps, 0), array.count - 1)
+        guard to != from else { return }
+        array.insert(array.remove(at: from), at: to)
     }
 
     /// Renumbers numbered steps 1…n in z-order (explicit command, FR-05).
@@ -605,45 +724,164 @@ public final class EditorModel {
         }
     }
 
-    /// Translates `items` in `document`. Layers move first so moved masks map onto their new
-    /// positions; masks move by whole pixels and re-derive their source regions (FR-06).
+    /// Translates `items` in `document`; see `move(_:by:)`.
     static func translate(_ document: inout Document, items: [EditorItemID], dx: Double, dy: Double) throws {
-        let set = Set(items)
-        for index in document.layers.indices where set.contains(.layer(document.layers[index].id)) {
+        try move(&document, by: Dictionary(items.map { ($0, (dx, dy)) }, uniquingKeysWith: { first, _ in first }))
+    }
+
+    /// Moves each item by its own delta, all resolved against the same starting document, in one
+    /// pass. A box never moves with a layer (the caller's edit made its coverage durable first).
+    /// A mask in `deltas` is an explicit mask move and moves by whole pixels (`setMaskRect`)
+    /// after the layers it may be selected with (FR-06).
+    static func move(_ document: inout Document, by deltas: [EditorItemID: (dx: Double, dy: Double)]) throws {
+        for index in document.layers.indices {
+            guard let (dx, dy) = deltas[.layer(document.layers[index].id)] else { continue }
             document.layers[index].placement.translation =
                 document.layers[index].placement.translation.offset(dx: dx, dy: dy)
         }
-        for index in document.obfuscations.indices where set.contains(.obfuscation(document.obfuscations[index].id)) {
+        for index in document.obfuscations.indices {
+            guard let (dx, dy) = deltas[.obfuscation(document.obfuscations[index].id)] else { continue }
             document.obfuscations[index].rect = document.obfuscations[index].rect.offsetBy(dx: dx, dy: dy)
         }
-        for index in document.annotations.indices where set.contains(.annotation(document.annotations[index].id)) {
+        for index in document.annotations.indices {
+            guard let (dx, dy) = deltas[.annotation(document.annotations[index].id)] else { continue }
             let moved = document.annotations[index].translated(dx: dx, dy: dy)
-            try validateArrowCurve(moved)
+            try validateArrow(moved)
             document.annotations[index] = moved
         }
-        for index in document.callouts.indices where set.contains(.callout(document.callouts[index].id)) {
+        for index in document.callouts.indices {
+            guard let (dx, dy) = deltas[.callout(document.callouts[index].id)] else { continue }
             document.callouts[index].kind = translated(
                 document.callouts[index].kind, dx: dx, dy: dy, movesSource: false)
         }
-        let mdx = dx.rounded(), mdy = dy.rounded()
-        if mdx != 0 || mdy != 0 {
-            for index in document.masks.indices where set.contains(.mask(document.masks[index].id)) {
-                try setMaskRect(&document, index: index, document.masks[index].outputRect.offsetBy(dx: mdx, dy: mdy))
+        for index in document.masks.indices {
+            guard let (dx, dy) = deltas[.mask(document.masks[index].id)] else { continue }
+            let mdx = dx.rounded(), mdy = dy.rounded()
+            guard mdx != 0 || mdy != 0 else { continue }
+            try setMaskRect(&document, index: index, document.masks[index].outputRect.offsetBy(dx: mdx, dy: mdy))
+        }
+    }
+
+    /// The one path every edit and drag takes: coverage first becomes durable, then `change`
+    /// runs. Returns the document after each stage, so a caller can tell a no-op from a change.
+    ///
+    /// An edit is an explicit mask edit only when it changes no image layer and moves or resizes
+    /// masks: those masks re-bind (`setMaskRect`) and every other mask's coverage is preserved.
+    /// Any edit that changes a layer (a move, resize, reorder, align or nudge, even with masks
+    /// selected) preserves every mask's coverage at its pre-edit rectangle and releases nothing.
+    /// `change` runs once on a copy to tell which case applies, so it must have no side effects
+    /// beyond the document. A mask whose box cannot be mapped refuses only an edit that changes
+    /// layers; other edits cannot uncover anything, so they still apply.
+    static func applying(_ change: (inout Document) throws -> Void, to document: Document) throws
+        -> (preserved: Document, updated: Document)
+    {
+        var trial = document
+        try change(&trial)
+        let changesLayers = trial.layers != document.layers
+        var explicit: Set<MaskID> = []
+        if !changesLayers {
+            let old = Dictionary(uniqueKeysWithValues: document.masks.map { ($0.id, $0.outputRect) })
+            explicit = Set(
+                trial.masks.compactMap { mask in
+                    old[mask.id].flatMap { $0 != mask.outputRect ? mask.id : nil }
+                })
+        }
+        var preserved = document
+        var refusal: (any Error)?
+        do { try preserveCoverage(&preserved, except: explicit) } catch {
+            preserved = document
+            refusal = error
+        }
+        var updated = preserved
+        try change(&updated)
+        // `change` runs twice, so it must build the same document each time and touch nothing
+        // else: allocate IDs before `edit`. Only the source bindings may differ, by design.
+        assert(
+            Self.withoutBindings(trial) == Self.withoutBindings(updated),
+            "an edit closure built different documents on its trial and real passes")
+        if changesLayers {
+            if let refusal { throw refusal }
+            let kept = Dictionary(uniqueKeysWithValues: preserved.masks.map { ($0.id, $0.sourceRegions) })
+            for index in updated.masks.indices {
+                for (asset, regions) in kept[updated.masks[index].id] ?? [:] {
+                    let bound = updated.masks[index].sourceRegions[asset] ?? []
+                    let missing = regions.filter { !bound.contains($0) }
+                    if !missing.isEmpty { updated.masks[index].sourceRegions[asset] = bound + missing }
+                }
+            }
+        }
+        return (preserved, updated)
+    }
+
+    private static func withoutBindings(_ document: Document) -> Document {
+        var copy = document
+        for index in copy.masks.indices { copy.masks[index].sourceRegions = [:] }
+        return copy
+    }
+
+    /// Before any edit: every mask other than `explicit` also binds the source pixels now under
+    /// its box, including those of layers added after it, whose protection the renderer otherwise
+    /// derives from the box at render time. A later edit then never uncovers what a box hides,
+    /// wherever the pixels go or whichever layer showing them is removed.
+    static func preserveCoverage(_ document: inout Document, except explicit: Set<MaskID> = []) throws {
+        for index in document.masks.indices where !explicit.contains(document.masks[index].id) {
+            for (asset, regions) in try document.sourceRegions(for: document.masks[index].outputRect) {
+                let bound = document.masks[index].sourceRegions[asset] ?? []
+                let added = regions.filter { !bound.contains($0) }
+                if !added.isEmpty { document.masks[index].sourceRegions[asset] = bound + added }
             }
         }
     }
 
+    /// An explicit move or resize of a mask. Its box now hides what is under the new rectangle,
+    /// and it keeps the bound pixels a layer edit carried wholly or partly out of its old box in
+    /// any layer: those are still hidden where they are, and only deleting the mask releases them.
     static func setMaskRect(_ document: inout Document, index: Int, _ rect: Rect<DocumentSpace>) throws {
         let snapped = EditorGeometry.outwardIntegral(rect)
-        guard EditorGeometry.isFinite(snapped), !snapped.isEmpty else { throw DocumentError.invalidGeometry }
+        guard snapped.isValid, !snapped.isEmpty else { throw DocumentError.invalidGeometry }
+        let old = document.masks[index]
+        // An unchanged rectangle keeps its binding (a click within the slop changes nothing).
+        guard snapped != old.outputRect else { return }
+        var regions = try document.sourceRegions(for: snapped)
+        // The box as rendered is clipped to the canvas; a binding under its off-canvas part was
+        // never visibly covered there, so it is judged against the visible part alone (R6-01).
+        let visible = old.outputRect.intersection(document.canvasRect)
+        for (asset, bound) in old.sourceRegions {
+            // A binding hides the asset in every layer that shows it, so it is released only when
+            // the old box wholly contains its exact document footprint in every one of them; any
+            // displacement, even by a fraction of a source pixel, keeps it.
+            let footprints = document.layers.compactMap { layer -> AffineMap<SourcePixelSpace, DocumentSpace>? in
+                guard layer.assetID == asset, let size = document.assets[asset]?.pixelSize else { return nil }
+                return layer.sourceToDocument(assetSize: size)
+            }
+            for region in bound
+            where !(visible.map { box in footprints.allSatisfy { Self.contains(box, region, under: $0) } } ?? false) {
+                if !(regions[asset]?.contains(region) ?? false) { regions[asset, default: []].append(region) }
+            }
+        }
         document.masks[index].outputRect = snapped
-        document.masks[index].sourceRegions = try document.sourceRegions(for: snapped)
+        document.masks[index].sourceRegions = regions
+    }
+
+    /// Whether `box` holds the footprint of `region` beyond doubt (T1 security 3A). An integral map
+    /// is evaluated exactly on integral pixels, so an edge on the box counts as inside. Any other
+    /// map has rounding error, so the footprint must clear the box's edges by a margin far above
+    /// it: an ambiguous footprint counts as outside and its binding is kept.
+    private static func contains(
+        _ box: Rect<DocumentSpace>, _ region: PixelRect, under map: AffineMap<SourcePixelSpace, DocumentSpace>
+    ) -> Bool {
+        let footprint = map.apply(region.asRect)
+        let isExact = [map.a, map.b, map.c, map.d, map.tx, map.ty].allSatisfy { $0.rounded() == $0 && abs($0) < 0x1p26 }
+        let magnitude = [footprint.minX, footprint.minY, footprint.maxX, footprint.maxY].map(abs).max() ?? 0
+        let margin = isExact ? 0 : 1e-9 * max(1, magnitude)
+        return box.minX <= footprint.minX - margin && box.minY <= footprint.minY - margin
+            && box.maxX >= footprint.maxX + margin && box.maxY >= footprint.maxY + margin
     }
 
     /// Places `item` into `rect` (resize handles and the inspector's x/y/width/height fields).
     /// Image layers keep their aspect ratio: the width decides the uniform scale.
     static func setFrame(_ document: inout Document, item: EditorItemID, to rect: Rect<DocumentSpace>) throws {
-        guard EditorGeometry.isFinite(rect), rect.width >= 0, rect.height >= 0 else {
+        guard rect.isValid else {
             throw DocumentError.invalidGeometry
         }
         if rect.width == 0 || rect.height == 0 {
@@ -662,8 +900,9 @@ public final class EditorModel {
             guard let original = EditorGeometry.frame(of: annotation) else { throw DocumentError.invalidGeometry }
             let resized = annotation.resized(from: original, to: rect)
             guard EditorGeometry.frame(of: resized) != nil else { throw DocumentError.invalidGeometry }
+            try validateArrow(resized)
             if case .line(let start, let end) = resized.kind {
-                guard start.isFinite, end.isFinite, EditorGeometry.isFinite(resized.bounds) else {
+                guard start.isFinite, end.isFinite, resized.bounds.isValid else {
                     throw DocumentError.invalidGeometry
                 }
             }
@@ -717,7 +956,7 @@ public final class EditorModel {
 
     /// Moves a magnifier's source rectangle (what it magnifies) without moving the callout.
     public func setMagnifierSource(_ rect: Rect<DocumentSpace>, for id: CalloutID) {
-        guard EditorGeometry.isFinite(rect), rect.width > 0, rect.height > 0 else { return }
+        guard rect.isValid, !rect.isEmpty else { return }
         edit("Magnifier Source") { document in
             guard let index = document.callouts.firstIndex(where: { $0.id == id }),
                 case .magnifier(_, let destination) = document.callouts[index].kind
@@ -735,7 +974,7 @@ public final class EditorModel {
             edit("Reset Crop") { $0.crop = nil }
             return
         }
-        guard EditorGeometry.isFinite(rect) else { return }
+        guard rect.isValid else { return }
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard let clipped = snapped.intersection(session.document.canvasRect), clipped.width >= 1, clipped.height >= 1
         else { return }
@@ -747,8 +986,7 @@ public final class EditorModel {
 
     /// Reversible output resize (FR-04), on top of the export scale.
     public func setResizeScale(_ scale: Double) {
-        guard scale.isFinite else { return }
-        let value = min(max(scale, Self.resizeRange.lowerBound), Self.resizeRange.upperBound)
+        guard let value = Self.resizeRange.admit(scale) else { return }
         edit("Resize") { $0.resizeScale = value }
     }
 }

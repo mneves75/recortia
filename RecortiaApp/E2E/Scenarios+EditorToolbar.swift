@@ -193,6 +193,107 @@
                 await E2EWait.until { model.tool == .ellipse } && window.firstResponder === canvas,
                 "tool \(model.tool.rawValue), responder \(String(describing: window.firstResponder.map { type(of: $0) }))"
             )
+
+            // View › Hide/Show Sidebar (⌃⌘S) and Hide/Show Inspector (⌃⌘I) collapse the opaque
+            // columns of the key editor. Each toggle is driven once through its menu item and once
+            // through its shortcut, at the minimum width, and the toolbar keeps every item.
+            window.setContentSize(NSSize(width: 980, height: 720))
+            await E2ESnapshot.settle(frameView)
+            let toggles: [(EditorPane, String, String, String, UInt16)] = [
+                (
+                    .sidebar, String(localized: "Hide Sidebar", table: "Editor"),
+                    String(localized: "Show Sidebar", table: "Editor"), "s", 1
+                ),
+                (
+                    .inspector, String(localized: "Hide Inspector", table: "Editor"),
+                    String(localized: "Show Inspector", table: "Editor"), "i", 34
+                ),
+            ]
+            for (pane, hide, show, key, keyCode) in toggles {
+                let item = try context.unwrap("the \(hide) split item", controller.splitItem(pane))
+                context.check("\(hide): the column starts expanded", !item.isCollapsed)
+                let command = try context.unwrap(
+                    "the View menu has \(hide)", viewCommand(hide),
+                    menuItems(NSApp.mainMenu).map(\.title).joined(separator: ", "))
+                context.check(
+                    "\(hide) uses ⌃⌘\(key.uppercased())",
+                    command.keyEquivalent == key && command.keyEquivalentModifierMask == [.control, .command])
+                context.check(
+                    "\(hide) is enabled for the key editor", command.isEnabled, menuState(command, window))
+                let menu = try context.unwrap("\(hide) has a menu", command.menu)
+                menu.performActionForItem(at: menu.index(of: command))
+                await E2ESnapshot.settle(frameView, for: .milliseconds(600))
+                context.check("the \(hide) menu item collapses the column", item.isCollapsed)
+                checkAllVisible(toolbar, width: window.contentLayoutRect.width, context)
+                context.check("the View menu then offers \(show)", viewCommand(show) != nil)
+                for type in [NSEvent.EventType.keyDown, .keyUp] {
+                    let event = try context.unwrap(
+                        "\(show) shortcut event",
+                        NSEvent.keyEvent(
+                            with: type, location: .zero, modifierFlags: [.control, .command],
+                            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                            context: nil, characters: key, charactersIgnoringModifiers: key, isARepeat: false,
+                            keyCode: keyCode))
+                    NSApp.postEvent(event, atStart: false)
+                }
+                await E2ESnapshot.settle(frameView, for: .milliseconds(600))
+                context.check("⌃⌘\(key.uppercased()) restores the column", !item.isCollapsed)
+            }
+            context.check("the canvas keeps the keyboard after the toggles", window.firstResponder === canvas)
+
+            // The commands act on a key editor only: with another window key they are disabled.
+            let other = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 200, height: 120), styleMask: [.titled], backing: .buffered,
+                defer: false)
+            other.isReleasedWhenClosed = false
+            other.collectionBehavior = SpacePolicy.followsActiveSpace
+            other.makeKeyAndOrderFront(nil)
+            await E2ESnapshot.settle(frameView, for: .milliseconds(300))
+            for (_, hide, _, _, _) in toggles {
+                context.check(
+                    "\(hide) is disabled while another window is key", viewCommand(hide)?.isEnabled == false,
+                    "key window is other: \(other.isKeyWindow)")
+            }
+            other.close()
+            try await E2EAccessibilityControl.showAndActivate(window, context)
+            await E2ESnapshot.settle(frameView, for: .milliseconds(300))
+            context.check(
+                "the commands return when the editor is key again",
+                toggles.allSatisfy { viewCommand($0.1)?.isEnabled == true })
+            window.makeFirstResponder(canvas)
+
+            // Arrange holds the object commands the inspector no longer shows, for the key editor.
+            let arrange = try context.unwrap(
+                "the main menu has Arrange",
+                NSApp.mainMenu?.items.first { $0.title == String(localized: "Arrange", table: "Editor") }?.submenu)
+            let shape = try context.unwrap("a drawn rectangle", model.document.annotations.last)
+            model.select(.annotation(shape.id))
+            await E2ESnapshot.settle(frameView, for: .milliseconds(300))
+            prepare(arrange)
+            let expected =
+                [
+                    EditorArrangeCommand.order(.forward), .order(.backward), .order(.front), .order(.back),
+                ].map(\.title) + [EditorArrangeCommand.alignTitle, EditorArrangeCommand.duplicate.title]
+            let shown = arrange.items.filter { !$0.isSeparatorItem }
+            context.check(
+                "Arrange lists the z-order commands, Align and Duplicate", shown.map(\.title) == expected,
+                "\(shown.map(\.title))")
+            context.check(
+                "Align lists its six alignments",
+                shown.first { $0.title == EditorArrangeCommand.alignTitle }?.submenu?.items.map(\.title)
+                    == EditorAlignment.allCases.map { EditorArrangeCommand.align($0).title })
+            let duplicate = try context.unwrap(
+                "Arrange has Duplicate", shown.first { $0.title == EditorArrangeCommand.duplicate.title })
+            context.check(
+                "Duplicate keeps ⌘D",
+                duplicate.keyEquivalent == "d" && duplicate.keyEquivalentModifierMask == [.command])
+            context.check("Duplicate is enabled with a selection in the key editor", duplicate.isEnabled)
+            let count = model.document.annotations.count
+            arrange.performActionForItem(at: arrange.index(of: duplicate))
+            try context.require(
+                "Arrange › Duplicate duplicates the selection",
+                await E2EWait.until { model.document.annotations.count == count + 1 })
+            model.undo()
             E2ESnapshot.park(window)
 
             // The remembered editor size is the content size, without the toolbar above it.
@@ -225,6 +326,31 @@
             context.check(
                 "at \(Int(width)) pt every toolbar item is visible", !items.isEmpty && hidden.isEmpty,
                 "items \(items.count), visible \(visible.count), overflow \(hidden.map(\.itemIdentifier.rawValue))")
+        }
+
+        private static func menuItems(_ menu: NSMenu?) -> [NSMenuItem] {
+            (menu?.items ?? []).flatMap { [$0] + menuItems($0.submenu) }
+        }
+
+        /// What decides a main-menu command's state, for a failing check's detail.
+        private static func menuState(_ item: NSMenuItem, _ window: NSWindow) -> String {
+            "active \(NSApp.isActive), editor key \(window.isKeyWindow), keyWindow \(String(describing: NSApp.keyWindow.map { type(of: $0) })), "
+                + "tracked editor \(EditorCommands.shared.keyEditor != nil), target \(String(describing: item.target.map { type(of: $0) })), "
+                + "action \(String(describing: item.action)), menu delegate \(String(describing: item.menu?.delegate.map { type(of: $0) }))"
+        }
+
+        /// Brings a menu up to date as opening it does: its delegate refreshes the items, then the
+        /// menu validates them.
+        private static func prepare(_ menu: NSMenu) {
+            menu.delegate?.menuNeedsUpdate?(menu)
+            menu.update()
+        }
+
+        /// The main menu's item titled `title`, after the menus validate their items.
+        private static func viewCommand(_ title: String) -> NSMenuItem? {
+            for menu in Set(menuItems(NSApp.mainMenu).compactMap(\.menu)) { prepare(menu) }
+            // The refresh may replace items, so search the updated menus.
+            return menuItems(NSApp.mainMenu).first { $0.title == title }
         }
 
         private static func choose(

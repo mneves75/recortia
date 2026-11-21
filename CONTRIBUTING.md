@@ -8,7 +8,7 @@ Thanks for helping. Recortia is a native, local-first macOS screenshot utility; 
 - macOS 26.6 or later with stable Xcode 27.2 (27B52, see `TOOLCHAIN.json`). If `xcode-select`
   points to another Xcode, prefix commands with `DEVELOPER_DIR=<stable Xcode.app>/Contents/Developer`.
 - XcodeGen; the project freshness check fails without it.
-- After changing `project.yml` or adding/moving source files, run `xcodegen generate` and commit
+- After changing `project.yml` or adding/moving source files, run `scripts/xcodegen.sh generate` and commit
   the regenerated project.
 
 ## Gate
@@ -22,7 +22,7 @@ Run one package test: `swift test --package-path Packages/RecortiaKit --filter <
 
 ## Version and distribution
 
-Update version/build metadata in `project.yml`, regenerate with `xcodegen generate`, and keep
+Update version/build metadata in `project.yml`, regenerate with `scripts/xcodegen.sh generate`, and keep
 the candidate label in CHANGELOG and BACKLOG consistent; README's version table changes only when a
 release is published. Record test and installation evidence in BACKLOG, with the version it
 applies to. Generated app `Info.plist` values must match the

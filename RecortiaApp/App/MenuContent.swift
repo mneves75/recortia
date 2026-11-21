@@ -44,7 +44,6 @@ struct MenuContent: View {
 }
 
 extension View {
-    /// Shows an active global shortcut as the menu item's key equivalent hint.
     @ViewBuilder
     fileprivate func globalShortcut(_ name: KeyboardShortcuts.Name?) -> some View {
         if let name, let shortcut = KeyboardShortcuts.getShortcut(for: name)?.toSwiftUI {

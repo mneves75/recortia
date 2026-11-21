@@ -3,8 +3,8 @@ import Foundation
 /// An editing session over one document: revision tracking, grouped command undo, and the
 /// monotonic privacy epoch.
 ///
-/// Undo stores whole `Document` values. Documents hold no pixels (assets are referenced by ID),
-/// so a snapshot costs about as much as an inverse command while being impossible to get wrong.
+/// Undo restores a prior `Document` value directly. Documents reference assets by ID, so keeping
+/// undo history does not copy raster pixels.
 public struct DocumentSession: Sendable {
     private struct Entry: Sendable {
         let label: String
@@ -39,8 +39,15 @@ public struct DocumentSession: Sendable {
         self.savedDocument = document
     }
 
-    public var canUndo: Bool { !undoStack.isEmpty || openGroup != nil }
-    public var canRedo: Bool { !redoStack.isEmpty }
+    /// Undo and redo commit an open group first, so only a group that changed the document counts.
+    /// Committing a group evicts older entries, and the group itself when it alone exceeds the
+    /// byte budget.
+    public var canUndo: Bool {
+        guard let group = openGroup, group.before != document else { return !undoStack.isEmpty }
+        return Self.cost(from: group.before, to: document) <= undoByteBudget
+    }
+    public var canRedo: Bool { !redoStack.isEmpty && !openGroupChanged }
+    private var openGroupChanged: Bool { openGroup.map { $0.before != document } ?? false }
 
     /// Assets the current document or any retained undo or redo step still references; anything
     /// else can no longer come back and its pixels can be released.
@@ -52,7 +59,6 @@ public struct DocumentSession: Sendable {
         return ids
     }
     public var undoCount: Int { undoStack.count }
-    public var redoLabel: String? { redoStack.last?.label }
     public var isDirty: Bool { document != savedDocument }
     public var isGrouping: Bool { openGroup != nil }
 
@@ -112,12 +118,12 @@ public struct DocumentSession: Sendable {
         savedDocument = document
     }
 
-    /// Identity for a new asynchronous request against the current state.
     public func requestIdentity() -> RequestIdentity {
         RequestIdentity(documentID: document.id, revision: revision, privacyEpoch: privacyEpoch)
     }
 
-    /// Whether a result computed for `identity` may still be applied.
+    /// Whether the document state `identity` came from still matches. The caller owns
+    /// cancellation and request-supersession checks.
     public func accepts(_ identity: RequestIdentity) -> Bool {
         identity.documentID == document.id && identity.revision == revision && identity.privacyEpoch == privacyEpoch
     }
@@ -137,7 +143,6 @@ public struct DocumentSession: Sendable {
     private mutating func push(_ entry: Entry) {
         undoStack.append(entry)
         retainedUndoByteCost += entry.cost
-        // Evict the oldest complete entries until both the step and memory budgets hold.
         while !undoStack.isEmpty, undoStack.count > undoLimit || retainedUndoByteCost > undoByteBudget {
             retainedUndoByteCost -= undoStack.removeFirst().cost
             evictedUndoCount += 1

@@ -1,8 +1,8 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Escape as a temporary system-wide hot key, for the delayed-capture countdown: its panel never
-/// becomes key (the app being captured keeps focus), so a normal key handler would never see the
+/// Escape as a temporary system-wide hot key, for the delayed-capture countdown: its panel does
+/// not take focus (the app being captured keeps it), so a normal key handler would not see the
 /// key. Carbon hot keys need no Input Monitoring or Accessibility permission. Registered only
 /// while the countdown shows; other hot keys (the user's global shortcuts) pass through.
 final class EscapeHotKey {

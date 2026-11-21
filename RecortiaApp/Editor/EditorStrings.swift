@@ -196,7 +196,8 @@ enum EditorStrings {
             String(
                 localized: "This redaction cannot be mapped onto the image safely, so it was not added.",
                 table: "Editor")
-        case .importFailed(let failure): importMessage(failure)
+        // The alert's wording, shown inline: one mapping for both.
+        case .importFailed(let failure): UserMessage.importFailure(failure).detail
         case .pinned: String(localized: "Pinned.", table: "Editor")
         case .pinFailed(let error):
             switch error {
@@ -209,12 +210,38 @@ enum EditorStrings {
         case .pinsInvalidated(let count):
             String(localized: "Redactions changed, so \(count) older pins were closed.", table: "Editor")
         case .exported(let outcome): exportMessage(outcome)
-        case .automaticExportFailed(let failure): automaticExportFailure(failure)
+        case .automaticExportFailed(let failure):
+            // The alert's title and detail: one step of an automatic batch failed, so the notice
+            // never says that nothing was exported.
+            "\(UserMessage.export(failure).title). \(UserMessage.export(failure).detail)"
         case .noPreferredFolder:
             String(localized: "No save folder is set. Choose one in Settings › Export.", table: "Editor")
         case .undoHistoryTrimmed:
             String(localized: "The oldest undo steps were discarded to limit memory use.", table: "Editor")
+        case .sensitiveTextMasked(0):
+            String(
+                localized:
+                    "No e-mail addresses or phone numbers were found to mask. Check the image before you share it.",
+                table: "Editor")
+        case .sensitiveTextMasked(let count):
+            String(
+                localized:
+                    "Masked \(count) e-mail addresses or phone numbers. Check the image for anything else before you share it.",
+                table: "Editor")
+        case .maskingFailed:
+            String(
+                localized:
+                    "Automatic masking did not finish, so nothing was masked. Check the image before you share it.",
+                table: "Editor")
+        case .maskingInProgress:
+            String(
+                localized: "Masking e-mail addresses and phone numbers. Try again when it finishes.", table: "Editor")
         }
+    }
+
+    /// The canvas while automatic masking runs.
+    static var maskingPlaceholder: String {
+        String(localized: "Masking e-mail addresses and phone numbers…", table: "Editor")
     }
 
     /// "Not available on this Mac: English, Portuguese" with language names in the user's locale.
@@ -222,11 +249,6 @@ enum EditorStrings {
         let names = codes.map { Locale.current.localizedString(forLanguageCode: $0) ?? $0 }
         let list = ListFormatter.localizedString(byJoining: names)
         return String(localized: "Not available on this Mac: \(list)", table: "Editor")
-    }
-
-    /// The alert's wording (`UserMessage.importFailure`), shown inline: one mapping for both.
-    static func importMessage(_ failure: ImportFailure) -> String {
-        UserMessage.importFailure(failure).detail
     }
 
     static func exportMessage(_ outcome: ExportOutcome) -> String {
@@ -243,17 +265,10 @@ enum EditorStrings {
         }
     }
 
-    /// The alert's title and detail for the same failure (`UserMessage.export`): one step of an
-    /// automatic batch failed, so the notice never says that nothing was exported.
-    static func automaticExportFailure(_ failure: ExportFailure) -> String {
-        let message = UserMessage.export(failure)
-        return "\(message.title). \(message.detail)"
-    }
-
     static func exportFailure(_ failure: ExportFailure) -> String {
         switch failure {
-        case .busy: String(localized: "Automatic export was skipped because another export is still running.")
-        case .upload(let failure): GitHubUploadStrings.message(failure)
+        // Worded as the alert words them; the rest say that this one write did not happen.
+        case .busy, .upload: UserMessage.export(failure).detail
         case .renderFailed, .encodeFailed:
             String(localized: "Nothing was exported: the image could not be rendered.", table: "Editor")
         case .budgetExceeded: String(localized: "Nothing was exported: the image is too large.", table: "Editor")
@@ -262,12 +277,21 @@ enum EditorStrings {
         case .accessDenied:
             String(localized: "Nothing was saved: Recortia cannot write to that folder.", table: "Editor")
         case .destinationExists: String(localized: "Nothing was saved: a file with that name exists.", table: "Editor")
+        case .nameTooLong:
+            String(localized: "Nothing was saved: the file name is too long for that folder.", table: "Editor")
         case .diskFull: String(localized: "Nothing was saved: the disk is full.", table: "Editor")
         case .volumeUnavailable: String(localized: "Nothing was saved: the volume is not available.", table: "Editor")
         case .staleDocument:
             String(localized: "Nothing was exported: the image changed meanwhile. Try again.", table: "Editor")
         case .system(let code):
             String(localized: "Nothing was exported: the system reported error \(code).", table: "Editor")
+        case .leftover(let name):
+            String(
+                localized:
+                    "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it.",
+                table: "Editor")
+        case .maskingUnfinished:
+            String(localized: "Nothing was exported: automatic masking did not finish.", table: "Editor")
         }
     }
 }

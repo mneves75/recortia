@@ -100,6 +100,9 @@
             E2EScenario(
                 id: "automatic-save-settings", title: "Automatic save writes only to the folder chosen in Settings",
                 run: AutomaticSaveScenarios.settings),
+            E2EScenario(
+                id: "auto-redaction", title: "New captures are masked before they are shown or exported",
+                run: AutoRedactionScenarios.autoRedaction),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(
                 id: "appearance-contrast", title: "Review marks stay visible on dark and light content",

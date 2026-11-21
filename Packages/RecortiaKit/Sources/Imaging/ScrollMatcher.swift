@@ -79,7 +79,6 @@ package enum ScrollMatcher {
         return min(maximumStripHeight, max(4, regionHeight / 20, forPixels))
     }
 
-    /// Smallest region that can hold three strips.
     package static func minimumRegionHeight(regionHeight: Int, width: Int) -> Int {
         stripHeight(regionHeight: regionHeight, width: width) * 3
     }

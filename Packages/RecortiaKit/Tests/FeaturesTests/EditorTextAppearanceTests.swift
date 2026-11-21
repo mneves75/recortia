@@ -10,6 +10,51 @@ import Testing
 @MainActor
 struct EditorTextAppearanceTests {
 
+    @Test("Starting text input with a click keeps an open color adjustment as one undo step")
+    func clickToBeginTextKeepsAdjustment() throws {
+        let h = EditorHarness()
+        defer { h.model.close() }
+        let model = h.model
+        model.selectTool(.text)
+        h.click(20, 30)
+        model.commitTextEditing("Água")
+        let original = model.document
+        let count = model.session.undoCount
+        let group = model.beginContinuousChange()
+        model.setStrokeColor(.yellow)
+        model.pointerDown(at: Point(x: 200, y: 200))
+        #expect(model.textEditing != nil)
+        model.cancelTextEditing()
+        model.setStrokeColor(.white)
+        model.endContinuousChange(group)
+        #expect(model.session.undoCount == count + 1)
+        model.undo()
+        #expect(model.document == original)
+    }
+
+    @Test("Redo with nothing to redo keeps an open color adjustment as one undo step")
+    func refusedRedoKeepsAdjustment() throws {
+        let h = EditorHarness()
+        defer { h.model.close() }
+        let model = h.model
+        model.selectTool(.text)
+        h.click(20, 30)
+        model.commitTextEditing("Água")
+        model.setStrokeColor(.white)
+        model.undo()
+        let original = model.document
+        let count = model.session.undoCount
+        let group = model.beginContinuousChange()
+        model.setStrokeColor(.yellow)
+        #expect(!model.canRedo)
+        model.redo()
+        model.setStrokeColor(.black)
+        model.endContinuousChange(group)
+        #expect(model.session.undoCount == count + 1)
+        model.undo()
+        #expect(model.document == original)
+    }
+
     @Test("Active text input and closed editors refuse without changing input or history")
     func inputAndClosedRefusal() throws {
         let h = EditorHarness()

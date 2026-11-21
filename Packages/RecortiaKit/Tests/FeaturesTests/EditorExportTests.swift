@@ -16,9 +16,19 @@ struct EditorExportTests {
     func saveOverwriteFollowsConfirmation() async {
         let h = EditorHarness()
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
-        _ = await h.model.export(.save(url, overwriteConfirmed: false))
-        _ = await h.model.export(.save(url, overwriteConfirmed: true))
+        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: false))
+        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: true))
         #expect(h.files.saves.map(\.overwrite) == [false, true])
+    }
+
+    @Test("Save writes the format its sheet named even when the preference changes while it is open")
+    func saveKeepsTheSheetFormat() async {
+        let h = EditorHarness()
+        let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
+        h.settings.update { $0.defaultExportFormat = .jpeg }
+        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: false))
+        _ = await h.model.export(.save(url, format: .png, overwriteConfirmed: true))
+        #expect(h.files.saves.map(\.snapshot.format) == [.png, .png], "a .png name receives PNG bytes")
     }
 
     @Test("Save to the preferred folder needs an authorized folder")

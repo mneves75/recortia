@@ -61,7 +61,6 @@ struct WindowChooserView: View {
         .frame(width: 420)
     }
 
-    /// Height of the loading and empty states.
     static let placeholderHeight: CGFloat = 120
     /// Beyond this the list scrolls (about eight two-line rows).
     static let maximumListHeight: CGFloat = 340

@@ -17,7 +17,6 @@
     final class SyntheticAutoScroll: AutoScrollService {
         private(set) var steppedTargets: [CaptureTarget] = []
         private(set) var stopCount = 0
-        /// What `isAtEnd` reports; a scenario can make the target look finished.
         var atEnd: Bool?
 
         func step(_ target: CaptureTarget) async -> AutoScrollStep {
@@ -38,6 +37,7 @@
         private let desktop: CGImage
         /// Delay before `windows()` returns, so the chooser's loading state is observable.
         var windowsDelay: Duration = .milliseconds(400)
+        var fixedCaptureDate: Date?
         private(set) var captures: [CaptureTarget] = []
 
         init(desktop: CGImage) {
@@ -99,7 +99,7 @@
             guard let image = desktop.cropping(to: pixels) else { throw .system(code: -1) }
             let geometry = CaptureGeometry(
                 source: source, desktopBounds: clipped, pointPixelScale: scale,
-                pixelSize: PixelSize(width: image.width, height: image.height), capturedAt: Date())
+                pixelSize: PixelSize(width: image.width, height: image.height), capturedAt: fixedCaptureDate ?? Date())
             return (image, geometry)
         }
     }
@@ -171,7 +171,6 @@
             return frame
         }
 
-        /// Lets a held feed continue.
         func release() {
             holdAfter = nil
             resumeWaiter()
@@ -279,5 +278,39 @@
         func preferenceData(forKey key: String) -> Data? { values[key] }
 
         func setPreferenceData(_ data: Data?, forKey key: String) { values[key] = data }
+    }
+
+    /// Scripted automatic-masking detection (FR-06): returns the regions a scenario sets, can hold
+    /// until released, or fail. It reads no pixels and never runs Vision.
+    @MainActor
+    final class SyntheticSensitiveText: SensitiveTextService {
+        struct Failure: Error {}
+
+        var regions: [PixelRect] = []
+        var fails = false
+        var holds = false
+        private var waiter: CheckedContinuation<Void, Never>?
+        var isWaiting: Bool { waiter != nil }
+        private(set) var requestCount = 0
+
+        func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
+            requestCount += 1
+            if holds { await withCheckedContinuation { waiter = $0 } }
+            try Task.checkCancellation()
+            if fails { throw Failure() }
+            return regions
+        }
+
+        func release() {
+            waiter?.resume()
+            waiter = nil
+        }
+
+        func reset() {
+            release()
+            regions = []
+            fails = false
+            holds = false
+        }
     }
 #endif

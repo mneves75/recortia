@@ -1,10 +1,8 @@
 import AppKit
 
-/// How this process was started (FR-01, ADR-007).
 enum LaunchKind: Equatable {
     /// Opened by the person (Finder, Spotlight, Dock, `open`).
     case user
-    /// Started by "Open at login".
     case loginItem
 
     /// Reads the open-application event, current during `applicationDidFinishLaunching`. macOS
@@ -17,11 +15,14 @@ enum LaunchKind: Equatable {
     }
 }
 
-/// The window a launch shows: a menu-bar app is otherwise invisible after being opened.
+/// The window a launch shows: a menu-bar app is otherwise invisible after being opened. A launch
+/// to open files (Open With, a drop on the Dock icon, `open -a`) shows their editors instead, even
+/// before onboarding is finished; the tour still appears on the next plain launch.
 enum LaunchWindow: Equatable {
     case onboarding, settings, none
 
-    static func choose(onboardingPending: Bool, kind: LaunchKind) -> LaunchWindow {
+    static func choose(onboardingPending: Bool, kind: LaunchKind, opensFiles: Bool) -> LaunchWindow {
+        if opensFiles { return .none }
         if onboardingPending { return .onboarding }
         return kind == .user ? .settings : .none
     }

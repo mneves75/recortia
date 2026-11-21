@@ -95,13 +95,15 @@ struct PinContentView: View {
     let pinID: PinID
     let model: PinsModel
     let fitScale: Double
+    /// How long a success notice stays: returns when it should go. Scenarios release it themselves.
+    var successNoticeTimer: @MainActor () async -> Void = { try? await Task.sleep(for: .seconds(4)) }
     /// The latest copy or drag-out outcome, in the editor's words (PIN-02).
-    @State private var status: String?
+    @State private var status: PinNotice?
 
     var body: some View {
         if let pin = model.pin(for: pinID) {
             PinView(
-                pin: pin, fitScale: fitScale, status: status,
+                pin: pin, fitScale: fitScale, status: status?.text,
                 onOpacity: { model.setOpacity($0, for: pinID) },
                 onZoom: { model.setZoom($0, for: pinID) },
                 onExport: { action in Task { await export(action) } },
@@ -113,14 +115,21 @@ struct PinContentView: View {
         status = nil
         let outcome = await model.export(action, pinID)
         guard outcome != .canceled, model.pin(for: pinID) != nil else { return }
-        let message = EditorStrings.exportMessage(outcome)
-        status = message
-        AccessibilityNotification.Announcement(message).post()
-        // Failures stay until the next action; a success note clears itself.
+        let notice = PinNotice(text: EditorStrings.exportMessage(outcome))
+        status = notice
+        AccessibilityNotification.Announcement(notice.text).post()
+        // Failures stay until the next action; a success note clears itself. Repeated exports
+        // show the same text, so the timer dismisses only the notice that started it.
         guard outcome.didWrite else { return }
-        try? await Task.sleep(for: .seconds(4))
-        if status == message { status = nil }
+        await successNoticeTimer()
+        if status?.id == notice.id { status = nil }
     }
+}
+
+/// One shown pin notice; each export gets its own identity even when the text repeats.
+private struct PinNotice {
+    let id = UUID()
+    let text: String
 }
 
 struct PinView: View {
@@ -159,6 +168,7 @@ struct PinView: View {
                     .padding(.horizontal, 8)
                     .padding(.bottom, 6)
                     .background(Color(nsColor: .windowBackgroundColor))
+                    .accessibilityIdentifier("pin.status")
             }
         }
     }
@@ -171,7 +181,7 @@ struct PinView: View {
             .labelStyle(.iconOnly)
             .help(Text("Close Pin"))
             .keyboardShortcut(.cancelAction)
-            // ⌘W closes the focused pin as well.
+            // ⌘W closes the focused pin too: a separate hidden button, so Close keeps Escape.
             Button("Close Pin", action: onClose)
                 .keyboardShortcut("w")
                 .frame(width: 0, height: 0)
@@ -187,6 +197,7 @@ struct PinView: View {
                 .labelStyle(.iconOnly)
                 .help(Text(String(localized: "Copy", table: "Editor")))
                 .keyboardShortcut("c")
+                .accessibilityIdentifier("pin.copy")
                 Button {
                     onExport(.drag)
                 } label: {

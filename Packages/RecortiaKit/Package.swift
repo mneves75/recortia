@@ -9,7 +9,7 @@ import PackageDescription
 let package = Package(
     name: "RecortiaKit",
     defaultLocalization: "en",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v26)],
     products: [
         .library(name: "Domain", targets: ["Domain"]),
         .library(name: "Imaging", targets: ["Imaging"]),
@@ -19,8 +19,9 @@ let package = Package(
     ],
     targets: [
         .target(name: "Domain"),
-        .target(name: "Imaging", dependencies: ["Domain"]),
-        .target(name: "MacPlatform", dependencies: ["Domain", "Imaging"]),
+        .target(name: "Imaging", dependencies: ["Domain"], swiftSettings: [.strictMemorySafety()]),
+        .target(
+            name: "MacPlatform", dependencies: ["Domain", "Imaging"], swiftSettings: [.strictMemorySafety()]),
         // Main-actor feature models (capture, scroll, export, pins, settings) and the service
         // protocols the composition root fulfils. No AppKit/SwiftUI views live here.
         .target(name: "Features", dependencies: ["Domain", "Imaging", "MacPlatform"]),

@@ -209,7 +209,6 @@
                 context.check("\(label): the newly chosen folder gets nothing", chosen == 0, "\(chosen) files")
                 context.check("\(label): nothing is written elsewhere", try images(in: work) == topLevel)
             }
-            /// Starts a capture whose automatic save waits at the render, before the write.
             func holdCapture(_ label: String, folder: URL) async throws -> Int {
                 try context.require(
                     "\(label): no export is in flight before the held capture",
@@ -228,7 +227,6 @@
                     "waiting=\(gate.isWaiting), busy=\(export.isBusy)")
                 return renders
             }
-            /// Releases the held render and waits until that export has finished.
             func releaseAndFinish(_ label: String, renders: Int) async throws {
                 gate.release()
                 try context.require(
@@ -316,7 +314,6 @@
             return canonical(url)
         }
 
-        /// Image file names directly inside `folder`.
         private static func images(in folder: URL) throws -> Set<String> {
             Set(
                 try FileManager.default.contentsOfDirectory(atPath: folder.path).filter {
@@ -330,7 +327,8 @@
             var occupied: [String: Data] = [:]
             let now = Date()
             for second in 0..<60 {
-                let name = ExportFilename.make(for: now.addingTimeInterval(Double(second)), format: .png)
+                let name = FilenameTemplate.default.name(for: now.addingTimeInterval(Double(second)), format: .png)
+                    .name(attempt: 1)
                 let data = Data("not a capture \(second)".utf8)
                 try data.write(to: folder.appending(path: name), options: .withoutOverwriting)
                 occupied[name] = data

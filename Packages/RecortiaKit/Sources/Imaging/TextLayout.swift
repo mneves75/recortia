@@ -28,10 +28,9 @@ public struct TextLayoutMetrics: Hashable, Sendable {
 
 /// Stateless public-system-font resolution shared by native editing, selection and export.
 public enum TextLayout {
-    /// Bounded mitigation for transient nil font results: CI runs 38652457209 and 38795897584,
-    /// and sandbox E0 run 5/30 (monospaced, size 28). Reruns pass; the cause is not established.
-    /// Each stage repeats the same call at most twice after a nil. Under load, 100 sandboxed
-    /// runs saw three nils, each recovered by the first repeat (docs/specs/full-source-review).
+    /// Bounded mitigation for transient nil font results from the system; the cause is not
+    /// established. Each stage repeats the same call at most twice after a nil, then reports a
+    /// failure at that stage (docs/specs/full-source-review/plan.md, F-1).
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont {
         try nativeFont(
             for: appearance, size: size,
@@ -128,13 +127,15 @@ public enum TextLayout {
         guard width.isFinite, height.isFinite, width > 0, height > 0 else { throw .unmeasurableText }
         let content = Rect<DocumentSpace>(origin: text.origin, size: Size(width: width, height: height))
         guard content.maxX.isFinite, content.maxY.isFinite else { throw .unmeasurableText }
-        let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: height), transform: nil)
+        let path = CGMutablePath()
+        path.addRect(CGRect(x: 0, y: 0, width: width, height: height))
         let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
         let visible = CTFrameGetVisibleStringRange(frame)
         guard visible.length == text.string.utf16.count else { throw .unmeasurableText }
         guard let lines = CTFrameGetLines(frame) as? [CTLine] else { throw .unmeasurableText }
         var origins = Array(repeating: CGPoint.zero, count: lines.count)
-        CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+        // Length 0 asks for every line, and `origins` has exactly one slot per line.
+        unsafe CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
         var bounds = content
         for (line, origin) in zip(lines, origins) {
             let ink = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])

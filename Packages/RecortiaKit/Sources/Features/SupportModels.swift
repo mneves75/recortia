@@ -8,6 +8,8 @@ public final class LoginItemModel {
     public private(set) var isEnabled: Bool
     public private(set) var lastErrorOccurred = false
     @ObservationIgnored private let service: any LoginItemService
+    /// The state the failed request asked for; a refresh that finds it clears the warning.
+    @ObservationIgnored private var failedRequest: Bool?
 
     public init(service: any LoginItemService) {
         self.service = service
@@ -17,15 +19,20 @@ public final class LoginItemModel {
     public func setEnabled(_ enabled: Bool) {
         do {
             try service.setEnabled(enabled)
-            lastErrorOccurred = false
+            failedRequest = nil
         } catch {
-            lastErrorOccurred = true
+            failedRequest = enabled
         }
+        lastErrorOccurred = failedRequest != nil
         isEnabled = service.isEnabled
     }
 
     public func refresh() {
         isEnabled = service.isEnabled
+        if failedRequest == isEnabled {
+            failedRequest = nil
+            lastErrorOccurred = false
+        }
     }
 }
 
@@ -89,7 +96,6 @@ public final class ShortcutStatusModel {
     }
 
     public func state(of name: String) -> ShortcutState { states[name] ?? .unassigned }
-    func hasFailed(_ name: String) -> Bool { state(of: name) == .failed }
     /// True while a shortcut waits for macOS to let its keys go, so the caller keeps checking.
     public var isHoldingAny: Bool { states.values.contains(.heldBySystem) }
 
@@ -157,11 +163,10 @@ public struct DefaultShortcut<Shortcut: Hashable>: Hashable {
     }
 }
 
-/// Default global shortcuts (ADR-005): which commands receive them, and what Restore Defaults sets.
 public enum ShortcutDefaultsPlan {
-    /// The defaults to apply: each default is offered once (a later version's new default is
-    /// offered on its first launch), only to a command without a shortcut, and never onto keys
-    /// another command already uses. A default the user cleared is never offered again.
+    /// The defaults to apply: those not yet offered, only to a command without a shortcut, and
+    /// never onto keys another command already uses. The caller decides when to seed and records
+    /// the offers, so a default the user cleared is not seeded again.
     public static func defaultsToSeed<Shortcut: Hashable>(
         _ defaults: [DefaultShortcut<Shortcut>], assigned: [String: Shortcut], alreadyOffered: Set<String>
     ) -> [DefaultShortcut<Shortcut>] {

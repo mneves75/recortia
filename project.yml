@@ -1,14 +1,14 @@
-# XcodeGen spec. Regenerate the committed project with `xcodegen generate` after editing.
+# XcodeGen spec. Regenerate the committed project with `scripts/xcodegen.sh generate` after editing.
 name: Recortia
 options:
   bundleIdPrefix: dev.mvneves
   deploymentTarget:
-    macOS: "15.0"
+    macOS: "26.0"
   createIntermediateGroups: true
   developmentLanguage: en
 settings:
   base:
-    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
     ARCHS: arm64
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
@@ -19,8 +19,8 @@ settings:
     DEAD_CODE_STRIPPING: YES
     DEVELOPMENT_TEAM: Q96FUTC5G8
     CODE_SIGN_STYLE: Manual
-    MARKETING_VERSION: 0.14.0
-    CURRENT_PROJECT_VERSION: 28
+    MARKETING_VERSION: 0.15.0
+    CURRENT_PROJECT_VERSION: 29
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     SWIFT_EMIT_LOC_STRINGS: YES
     ENABLE_HARDENED_RUNTIME: YES
@@ -56,6 +56,13 @@ targets:
         NSHumanReadableCopyright: Recortia contributors
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, pt-BR]
+        # Open With, a drop on the Dock icon and `open -a` (FR-03). Viewer at Alternate rank: Recortia
+        # never saves back to the opened file and never becomes the default app by itself.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: PNG or JPEG image
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.png, public.jpeg]
     settings:
       configs:
         # Release: the data-protection keychain holds the preferences seal secret, which needs an
@@ -131,11 +138,16 @@ targets:
       - path: RecortiaApp/App/SpacePolicy.swift
       - path: RecortiaApp/App/AppPresence.swift
     settings:
+      configs:
+        # Debug-only test helper, like the runner: a Release build compiles and links nothing.
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_FOREGROUND_HOST
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: "*"
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.Recortia.E2E.ForegroundHost
         PRODUCT_NAME: RecortiaE2EForegroundHost
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) RECORTIA_FOREGROUND_HOST
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: NO
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools

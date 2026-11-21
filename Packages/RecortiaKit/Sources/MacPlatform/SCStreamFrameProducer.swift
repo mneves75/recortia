@@ -93,9 +93,8 @@ actor SCStreamFrameProducer: ScrollFrameProducer {
         session = nil
         current.output.detach()
         let stream = current.stream
-        // Removing the output cannot fail for an output that was added; if the stream already ended
-        // (for example, the system stopped it) the stop callback reports an error that changes nothing:
-        // the handlers are detached above and the stream is released with `current`.
+        // The handlers are detached above, so no callback reaches the session. Removing the output
+        // and stopping capture are best effort: the stream is released with `current` regardless.
         try? stream.removeStreamOutput(current.output, type: .screen)
         await stopCapture(stream)
     }
@@ -188,13 +187,14 @@ private final class StreamOutput: NSObject, SCStreamOutput, SCStreamDelegate, Se
     /// Copies the frame into memory owned by the image so the capture surface returns to SCK's pool.
     private static func copyImage(from pixelBuffer: CVPixelBuffer) -> CGImage? {
         var surfaceImage: CGImage?
-        guard VTCreateCGImageFromCVPixelBuffer(pixelBuffer, options: nil, imageOut: &surfaceImage) == noErr,
+        // `&surfaceImage` is valid for the call; `data: nil` below lets Core Graphics own the bitmap.
+        guard unsafe VTCreateCGImageFromCVPixelBuffer(pixelBuffer, options: nil, imageOut: &surfaceImage) == noErr,
             let surfaceImage
         else { return nil }
         let colorSpace =
             surfaceImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
         guard
-            let context = CGContext(
+            let context = unsafe CGContext(
                 data: nil, width: surfaceImage.width, height: surfaceImage.height, bitsPerComponent: 8, bytesPerRow: 0,
                 space: colorSpace,
                 bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)

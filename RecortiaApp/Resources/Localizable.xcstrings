@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ Saved files keep the default name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Saved files keep the default name."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Os arquivos salvos mantêm o nome padrão."
+          }
+        }
+      }
+    },
     "%@/%@" : {
       "localizations" : {
         "en" : {
@@ -22,29 +38,73 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld frames · %lld pixels tall"
+            "value" : "%#@frames@ · %2$lld pixels tall"
+          },
+          "substitutions" : {
+            "frames" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg frame"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg frames"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld quadros · %lld pixels de altura"
+            "value" : "%#@frames@ · %2$lld pixels de altura"
+          },
+          "substitutions" : {
+            "frames" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg quadro"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg quadros"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
-    "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them." : {
+    "%lld open images have changes that were not copied or saved. Quitting discards them." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld open images have changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+            "value" : "%lld open images have changes that were not copied or saved. Quitting discards them."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld imagens abertas têm alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+            "value" : "%lld imagens abertas têm alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
           }
         }
       }
@@ -97,6 +157,22 @@
         }
       }
     },
+    "A file name cannot start or end with a period, or have two periods in a row." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A file name cannot start or end with a period, or have two periods in a row."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome do arquivo não pode começar nem terminar com ponto, nem ter dois pontos seguidos."
+          }
+        }
+      }
+    },
     "A file with that name already exists." : {
       "localizations" : {
         "en" : {
@@ -109,6 +185,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Já existe um arquivo com esse nome."
+          }
+        }
+      }
+    },
+    "A scrolling capture is waiting for review. Quitting discards it." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma captura com rolagem está aguardando revisão e será descartada ao sair."
           }
         }
       }
@@ -305,18 +391,18 @@
         }
       }
     },
-    "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them." : {
+    "An open image has changes that were not copied or saved. Quitting discards them." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "An open image has changes that were not copied, saved, dragged, or pinned. Quitting discards them."
+            "value" : "An open image has changes that were not copied or saved. Quitting discards them."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma imagem aberta tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Sair descarta essas alterações."
+            "value" : "Uma imagem aberta tem alterações que não foram copiadas nem salvas. Sair descarta essas alterações."
           }
         }
       }
@@ -1513,6 +1599,22 @@
         }
       }
     },
+    "Enter a file name." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a file name."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite um nome de arquivo."
+          }
+        }
+      }
+    },
     "Enter a valid GitHub owner and repository name." : {
       "localizations" : {
         "en" : {
@@ -1545,23 +1647,6 @@
         }
       }
     },
-    "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everything happens on this Mac. Screenshots and recognized text stay in memory and are never uploaded."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tudo acontece neste Mac. Capturas e textos reconhecidos ficam na memória e nunca são enviados."
-          }
-        }
-      }
-    },
     "Exactly as recognized" : {
       "localizations" : {
         "en" : {
@@ -1574,6 +1659,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exatamente como reconhecido"
+          }
+        }
+      }
+    },
+    "Example: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example: %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exemplo: %@"
           }
         }
       }
@@ -2016,6 +2117,22 @@
         }
       }
     },
+    "Name of saved files" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name of saved files"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nome dos arquivos salvos"
+          }
+        }
+      }
+    },
     "No content was collected. Scroll the area while capturing." : {
       "localizations" : {
         "en" : {
@@ -2108,23 +2225,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indisponível nesta versão."
-          }
-        }
-      }
-    },
-    "Nothing is saved or copied until you choose Copy, Save, or drag an image out." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing is saved or copied until you choose Copy, Save, or drag an image out."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nada é salvo ou copiado até você escolher Copiar, Salvar ou arrastar uma imagem para fora."
           }
         }
       }
@@ -2507,6 +2607,38 @@
         }
       }
     },
+    "Placeholders: {date}, {time}, {counter}" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Placeholders: {date}, {time}, {counter}"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcadores: {date}, {time}, {counter}"
+          }
+        }
+      }
+    },
+    "Play a sound after capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play a sound after capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocar um som após a captura"
+          }
+        }
+      }
+    },
     "Preparing preview" : {
       "localizations" : {
         "en" : {
@@ -2583,6 +2715,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Encerrar o Recortia"
+          }
+        }
+      }
+    },
+    "Quit and discard the scrolling capture?" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sair e descartar a captura com rolagem?"
           }
         }
       }
@@ -2747,6 +2889,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Recortia não mantém um histórico local de capturas. O envio opcional ao GitHub envia capturas estáticas somente após configuração e consentimento separados."
+          }
+        }
+      }
+    },
+    "Recortia opens at most %lld images, and %lld megapixels in all, at a time." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia opens at most %lld images, and %lld megapixels in all, at a time."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia abre no máximo %lld imagens, com %lld megapixels no total, por vez."
           }
         }
       }
@@ -3147,23 +3305,6 @@
         }
       }
     },
-    "Screenshots, edits, and recognized text exist only in memory while you work. Recortia keeps no screenshot history and uploads nothing." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Screenshots, edits, and recognized text exist only in memory while you work. Recortia keeps no screenshot history and uploads nothing."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Capturas, edições e textos reconhecidos existem apenas na memória enquanto você trabalha. O Recortia não guarda histórico de capturas e não envia nada."
-          }
-        }
-      }
-    },
     "Scroll automatically" : {
       "localizations" : {
         "en" : {
@@ -3382,6 +3523,22 @@
         }
       }
     },
+    "Some images could not be opened" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some images could not be opened"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir algumas imagens"
+          }
+        }
+      }
+    },
     "Start" : {
       "localizations" : {
         "en" : {
@@ -3422,15 +3579,39 @@
     "Stitched preview with %lld joins" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stitched preview with %lld joins"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stitched preview with %lld join"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Stitched preview with %lld joins"
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pré-visualização unida com %lld junções"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pré-visualização unida com %lld junção"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pré-visualização unida com %lld junções"
+                }
+              }
+            }
           }
         }
       }
@@ -3743,6 +3924,22 @@
         }
       }
     },
+    "The file name is too long for that folder. Choose a shorter name in Settings › Export." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file name is too long for that folder. Choose a shorter name in Settings › Export."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome do arquivo é longo demais para essa pasta. Escolha um nome mais curto em Ajustes › Exportação."
+          }
+        }
+      }
+    },
     "The folder could not be saved" : {
       "localizations" : {
         "en" : {
@@ -3903,6 +4100,22 @@
         }
       }
     },
+    "The name is too long." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The name is too long."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O nome é longo demais."
+          }
+        }
+      }
+    },
     "The page stopped moving. If you reached the end, press Stop." : {
       "localizations" : {
         "en" : {
@@ -3935,12 +4148,44 @@
         }
       }
     },
+    "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O salvamento não terminou e deixou “%@” na pasta. Verifique-o e apague-o se não precisar dele."
+          }
+        }
+      }
+    },
     "The save folder is unavailable, so automatic saves fail. Choose another folder." : {
       "localizations" : {
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "A pasta de salvamento está indisponível, então os salvamentos automáticos falham. Escolha outra pasta."
+          }
+        }
+      }
+    },
+    "The saved GitHub token isn't valid. Replace it in Settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The saved GitHub token isn't valid. Replace it in Settings."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O token do GitHub salvo não é válido. Substitua-o nos Ajustes."
           }
         }
       }
@@ -3989,6 +4234,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A área com rolagem não está mais disponível, então a captura parou."
+          }
+        }
+      }
+    },
+    "The scrolling capture waiting for review is discarded too." : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A captura com rolagem que está aguardando revisão também será descartada."
           }
         }
       }
@@ -4165,6 +4420,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use um repositório privado dedicado e um token limitado a ele, com permissão Contents: leitura e escrita. O token fica nas Chaves. Cada envio cria um commit em screenshots/."
+          }
+        }
+      }
+    },
+    "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use only letters, numbers, spaces, hyphens, underscores, periods and parentheses."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use apenas letras, números, espaços, hífens, sublinhados, pontos e parênteses."
+          }
+        }
+      }
+    },
+    "Use only the placeholders {date}, {time} and {counter}." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use only the placeholders {date}, {time} and {counter}."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use apenas os marcadores {date}, {time} e {counter}."
           }
         }
       }
@@ -4389,6 +4676,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O macOS está usando este atalho."
+          }
+        }
+      }
+    },
+    "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O mascaramento automático não terminou: nada foi mascarado, e esta captura não foi copiada, salva nem enviada automaticamente."
+          }
+        }
+      }
+    },
+    "Mask e-mail addresses and phone numbers in new captures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mask e-mail addresses and phone numbers in new captures"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mascarar e-mails e números de telefone em novas capturas"
           }
         }
       }

@@ -2,9 +2,22 @@ import Domain
 import Imaging
 
 extension EditorModel {
+    /// The native canvas could not draw the current document and cleared its pixels (NEW-01). The
+    /// editor is not ready, and an offered drag of it is revoked, until the canvas draws again.
+    /// Repeated reports for the same state change nothing, so a redraw cannot loop.
     public func reportCanvasRenderFailure() {
-        guard !isClosed, notice != .previewFailed else { return }
-        post(.previewFailed)
+        guard !isClosed else { return }
+        let key = currentOutputKey
+        if failedCanvasDraw != key {
+            environment.export.invalidatePendingDrag(documentID: session.document.id)
+            failedCanvasDraw = key
+        }
+        if notice != .previewFailed { post(.previewFailed) }
+    }
+
+    /// The native canvas drew the current document.
+    public func reportCanvasDrawSucceeded() {
+        if failedCanvasDraw != nil { failedCanvasDraw = nil }
     }
 
     public var canSetTextAppearance: Bool { !isClosed && textEditing == nil }

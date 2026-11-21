@@ -25,10 +25,9 @@ public typealias DocumentID = TypedID<DocumentTag>
 public typealias RequestID = TypedID<RequestTag>
 public typealias CalloutID = TypedID<CalloutTag>
 
-/// Identity carried by every asynchronous result (OCR, render, capture, export).
-///
-/// A result is accepted only if its request was not canceled and the document's revision and
-/// privacy epoch still match (SPEC.md §6, concurrency policy).
+/// Identity of an asynchronous document request (OCR, render, export), recording the revision
+/// and privacy epoch it started from. Callers use these fields to check freshness under the
+/// concurrency policy (SPEC.md §6).
 public struct RequestIdentity: Hashable, Sendable {
     public let requestID: RequestID
     public let documentID: DocumentID

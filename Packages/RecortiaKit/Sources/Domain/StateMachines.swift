@@ -150,15 +150,22 @@ public enum ExportFailure: Hashable, Sendable {
     case clipboardFailed
     case accessDenied
     case destinationExists
+    /// The file name is longer than the destination's volume accepts.
+    case nameTooLong
     case diskFull
     case volumeUnavailable
     case staleDocument
     case system(code: Int)
+    /// A save failed and left this entry, relative to its folder.
+    case leftover(name: String)
+    /// Automatic masking of the capture did not finish, so its automatic batch was skipped, or an
+    /// export was asked for while the masks were still on their way (FR-06).
+    case maskingUnfinished
 }
 
 /// Export: requested → snapshotting → sanitizing → rendering → encoding → committing → succeeded.
-/// Failure or cancellation before commit never reports success; cancellation during or after the
-/// commit reports that the action already completed.
+/// Before commit, cancellation enters `.canceled`; during commit it enters
+/// `.succeeded(canceledAfterCommit: true)`. Terminal states accept no further cancel event.
 public enum ExportState: Hashable, Sendable {
     case requested
     case snapshotting

@@ -68,22 +68,16 @@
             context.check(
                 "the controller is the window's delegate, so close is answered",
                 window.delegate === controller, "\(String(describing: window.delegate))")
+            // With nothing in review there is nothing to discard, so close does not ask. Asking
+            // while a capture waits in review is checked with a real review in `last-window`.
             var asked = 0
             controller.confirmDiscard = {
                 asked += 1
                 return false
             }
             context.check(
-                "closing the review asks before discarding", controller.windowShouldClose(window) == false,
-                "asked=\(asked)")
-            context.check("the question is asked exactly once per attempt", asked == 1, "asked=\(asked)")
-            controller.confirmDiscard = {
-                asked += 1
-                return true
-            }
-            context.check(
-                "a confirmed discard closes the review", controller.windowShouldClose(window) == true,
-                "asked=\(asked)")
+                "with nothing in review, the window closes without asking",
+                controller.windowShouldClose(window) == true && asked == 0, "asked=\(asked)")
 
             try await plantedChrome(context)
             try await checkerboardStaysOnScreen(harness, context)
@@ -190,7 +184,8 @@
             }
             let view = ScrollReviewView(
                 preview: preview, outputSize: PixelSize(width: width, height: height), seams: seams,
-                partialReason: nil, assemblyFailed: false, onAccept: {}, onDiscard: {})
+                partialReason: nil, assemblyFailed: false, isPreparingPreview: false, canAccept: true,
+                canDiscard: true, onAccept: {}, onDiscard: {})
             let window = E2ESnapshot.host(view, appearance: appearance)
             defer { window.close() }
             guard let root = window.contentView else { throw E2EAbort("the review host has no content") }

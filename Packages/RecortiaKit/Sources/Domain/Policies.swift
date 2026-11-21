@@ -12,6 +12,10 @@ public enum ImportLimitViolation: Error, Hashable, Sendable {
 public enum ImportLimits {
     public static let maxCompressedBytes = 64 * 1024 * 1024
     public static let maxPixelArea = 40_000_000
+    /// Decoded pixels one Open With, Dock-icon drop or `open -a` request may hold over all its
+    /// files: two images at the per-image limit, about 305 MiB as 8-bit RGBA. Without it ten
+    /// 40 MP files keep about 1.49 GiB of source rasters (T1 security 4B).
+    public static let maxOpenedPixelArea = 2 * maxPixelArea
 
     public static func check(byteCount: Int) -> ImportLimitViolation? {
         byteCount > maxCompressedBytes ? .tooManyBytes : nil
@@ -49,9 +53,10 @@ public struct ScrollLimits: Hashable, Sendable {
     public var maxOutputArea: Int
     public var maxSide: Int
     public var defaultMaxHeight: Int
-    /// Peak bytes a single `append` may hold at once: the accepted output rows, the previous frame's
-    /// matching planes, and the incoming frame's pixel and matching planes. Checked before the
-    /// incoming frame is converted. The default is SPEC §10's 512 MiB target for the heavy workflow.
+    /// Peak bytes a single `append` may hold at once: the accepted output rows and previous-frame
+    /// planes, the incoming frame's storage, matcher scratch and bookkeeping, and reserved output
+    /// growth. Checked before the incoming frame is converted. The default is SPEC §10's 512 MiB
+    /// target for the heavy workflow.
     public var maxWorkingBytes: Int
 
     public init(
@@ -134,11 +139,16 @@ public struct ExportOptions: Hashable, Sendable, Codable {
     public var scale: Double
     /// JPEG has no alpha: transparency is flattened against this opaque color (FR-07).
     public var jpegBackground: RGBA
+    public var filenameTemplate: FilenameTemplate
 
-    public init(format: ExportFormat = .png, scale: Double = 1, jpegBackground: RGBA = .white) {
+    public init(
+        format: ExportFormat = .png, scale: Double = 1, jpegBackground: RGBA = .white,
+        filenameTemplate: FilenameTemplate = .default
+    ) {
         self.format = format
         self.scale = scale
         self.jpegBackground = jpegBackground
+        self.filenameTemplate = filenameTemplate
     }
 
     public static let validScaleRange: ClosedRange<Double> = 0.1...8
@@ -154,17 +164,9 @@ public struct ExportOptions: Hashable, Sendable, Codable {
     }
 }
 
-/// Screenshot filenames: timestamp only. Never window titles, recognized text, account IDs, or URLs (FR-07).
+/// Screenshot filenames come from a `FilenameTemplate`: never window titles, recognized text,
+/// account IDs, or URLs (FR-07).
 public enum ExportFilename {
-    public static func make(for date: Date, format: ExportFormat, timeZone: TimeZone = .current) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = timeZone
-        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-        return "Recortia \(formatter.string(from: date)).\(format.fileExtension)"
-    }
-
     /// `attempt` 1 returns `name`; later attempts insert " (n)" before the extension.
     public static func deduplicated(_ name: String, attempt: Int) -> String {
         guard attempt > 1 else { return name }
@@ -200,7 +202,10 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var captureIncludesWindowShadow = true
     public var autoCopy = false
     public var autoSave = false
-    public var launchAtLogin = false
+    /// Never read: the login item is the truth. Optional so a blob without the key still decodes;
+    /// `SettingsStore.sanitized` sets it back to false, so it is always encoded, because 0.14.0
+    /// and earlier require the key and rolling back must keep the person's preferences (PREF-01).
+    package var launchAtLogin: Bool? = false
     public var updateChecksEnabled = false
     public var automaticScrollingEnabled = false
     public var defaultExportFormat = ExportFormatKind.png
@@ -216,8 +221,28 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// Stored only once the person changes it; read `keepsRunningInMenuBar`. Blobs written before
     /// 0.13 have no such key, and synthesized Codable cannot default a missing non-optional one.
     public var keepsRunningInMenuBarChoice: Bool?
+    /// Stored only once the person changes it; read `autoRedactsSensitiveText`. Optional for the
+    /// same reason as `keepsRunningInMenuBarChoice`: blobs written before 0.15 have no such key.
+    public var autoRedactsSensitiveTextChoice: Bool?
+    /// Stored only once the person sets one; read `filenameTemplate` (A-9).
+    public var filenameTemplateChoice: FilenameTemplate?
+    /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
+    public var playsCaptureSoundChoice: Bool?
 
     public init() {}
+
+    /// Whether a completed capture plays a short sound (FR-01). Off by default.
+    public var playsCaptureSound: Bool {
+        get { playsCaptureSoundChoice ?? false }
+        set { playsCaptureSoundChoice = newValue }
+    }
+
+    /// How saved and dragged files are named (FR-07). GitHub uploads keep their per-intent path
+    /// (ADR-006).
+    public var filenameTemplate: FilenameTemplate {
+        get { filenameTemplateChoice ?? .default }
+        set { filenameTemplateChoice = newValue }
+    }
 
     /// Whether Recortia stays in the menu bar after its last window closes (FR-01). On by default;
     /// off, closing the last window quits.
@@ -226,9 +251,16 @@ public struct Preferences: Hashable, Sendable, Codable {
         set { keepsRunningInMenuBarChoice = newValue }
     }
 
+    /// Whether a new capture opens with secure masks over the e-mail addresses and phone numbers
+    /// that on-device recognition finds (FR-06 amendment). Off by default.
+    public var autoRedactsSensitiveText: Bool {
+        get { autoRedactsSensitiveTextChoice ?? false }
+        set { autoRedactsSensitiveTextChoice = newValue }
+    }
+
     public var exportOptions: ExportOptions {
         let format: ExportFormat = defaultExportFormat == .png ? .png : .jpeg(quality: jpegQuality)
-        return ExportOptions(format: format, scale: defaultExportScale)
+        return ExportOptions(format: format, scale: defaultExportScale, filenameTemplate: filenameTemplate)
     }
 }
 
@@ -240,7 +272,6 @@ extension Preferences {
             || githubUpload?.automatic == true
     }
 
-    /// These preferences with every side-effect consent turned off.
     public var withoutSideEffectConsent: Preferences {
         var copy = self
         copy.autoCopy = false

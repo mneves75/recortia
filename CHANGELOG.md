@@ -15,6 +15,42 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-20
+
+Source candidate, build 29: not tagged or published. It requires macOS 26 or later. Not verified on
+this build: macOS 26.0 itself (the test Mac runs 27.3), VoiceOver (including opening Position and Size) and Full Keyboard Access on the
+regrouped toolbar, physical keyboard, Spaces and permission checks, and recognition recall on real
+screens.
+
+### Added
+
+- Optional masking of e-mail addresses and phone numbers in new captures (Settings › Privacy ›
+  Redaction, off by default). Recognition runs on this Mac; the masks are ordinary secure masks you
+  can review and delete. It cannot find every address or number. If recognition fails, is
+  cancelled or runs out of time, the capture opens unmasked with a notice and its automatic copy,
+  save and upload are skipped. The patterns follow Fosco by Gabriel Buzzi (MIT).
+- Open PNG and JPEG files in Recortia from Finder, the Dock icon or `open -a`.
+- A filename template for saved files, with `{date}`, `{time}` and `{counter}` placeholders.
+- An optional sound when a capture completes.
+- Move a selected object up or down one place in its stack, in one undo step.
+
+### Changed
+
+- Recortia now requires macOS 26. macOS 15 is no longer supported.
+- The editor uses the system sidebar and inspector containers, and every toolbar item stays
+  visible at the smallest window width.
+- Output Preview is read-only: background, padding, corners and shadow stay editable there, but
+  objects cannot be moved or resized.
+- Moving or resizing an object never moves a secure mask or uncovers what it hides.
+
+### Fixed
+
+- Saving checks the chosen folder by identity rather than by name, writes to a staging file and
+  publishes only that file, reads it back, and keeps a replaced file owner-only when it belonged to
+  someone else.
+- GitHub upload checks consent immediately before the request leaves, builds the link it shows
+  from the upload itself, and limits the size of a pasted token.
+
 ## [0.14.0] - 2026-11-11
 
 Build 28. Notarized and published as

@@ -6,7 +6,7 @@
 #   ./init.sh check --unsigned      the repository gate
 #   ./init.sh e2e --lang all        the DEBUG scenario runner through the real app
 #   ./init.sh doctor                toolchain report only
-#   ./init.sh tests                 print tests.json
+#   ./init.sh tests                 print the observed run report (scripts/tests-report.py)
 # Exit codes: 0 ok, 1 no reviewed toolchain matches, 2 bad usage.
 set -euo pipefail
 cd "${0:A:h}"

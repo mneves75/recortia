@@ -97,7 +97,8 @@ struct ScrollLimitsTests {
         let firstPeak = try #require(
             ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: false))
         #expect(firstPeak <= budget)
-        // After the first frame: output rows plus the previous frame's luma are retained.
+        // After the first frame at least the output rows and the previous frame's luma are
+        // retained (a lower bound: its signatures are left out).
         let retained = 4000 * 10_000 * 4 + 4000 * 10_000 * 4
         let secondPeak = try #require(
             ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: retained, appending: true))

@@ -7,8 +7,10 @@ import Observation
 public enum ExportAction: Hashable, Sendable {
     /// Copy Image: always a sanitized PNG only (FR-07).
     case copy
-    /// Save to a user-chosen URL; `overwriteConfirmed` only after the user confirmed replacing a file.
-    case save(to: URL, overwriteConfirmed: Bool)
+    /// Save to a user-chosen URL in the format its save panel named, so the bytes match the
+    /// extension even if the preference changed meanwhile; `overwriteConfirmed` only after the user
+    /// confirmed replacing a file.
+    case save(to: URL, format: ExportFormat, overwriteConfirmed: Bool)
     /// Save with a collision-free name into a previously authorized folder.
     case saveToFolder(URL)
     case drag
@@ -55,26 +57,37 @@ public struct AutomaticExportPlan: Hashable, Sendable {
 
     let copy: Bool
     let save: Save?
+    /// `SettingsStore.saveFolderSelection` at capture: a later choice of folder revokes the save.
+    let saveFolderSelection: Int
     let upload: GitHubDestination?
     let uploadConsentID: UUID
 
     public var isEmpty: Bool { !copy && save == nil && upload == nil }
 }
 
-/// Drives `ExportState` for Copy, Save, and Drag (FR-07, EXP-02).
+/// The live check an automatic step makes when it starts and again after its render (EXP-03).
+enum AutomaticStepCheck: Hashable, Sendable {
+    case allowed
+    /// The person turned the step off or chose another destination: skipped without a message.
+    case revoked
+    /// The step is still wanted but cannot run, such as a save folder that stopped resolving.
+    case failed(ExportFailure)
+}
+
+/// Drives `ExportState` for Copy, Save, Drag, and GitHub upload (FR-07, EXP-02, NET-01).
 ///
 /// Order: take an immutable snapshot through the export pipeline, verify that it still matches
 /// the live document (revision and privacy epoch), then commit to exactly one sink. The pipeline
 /// performs sanitizing, rendering, and encoding in one call, so the state reports `.rendering`
 /// while it runs and `.encoding` once the encoded bytes are verified. Success is reported only
-/// after the sink returns. Cancel before the commit leaves every sink untouched; cancel during
-/// the commit lets the write finish and reports `.alreadyCompleted`. A drag stays uncommitted
-/// until a receiver accepts the file, so a drag the user abandons is a plain cancellation.
+/// after the sink returns. Cancel before the commit leaves every sink untouched; a confirmed
+/// write that a cancel reached reports `.alreadyCompleted`, while an interrupted upload can leave
+/// its completion unknown. A drag stays uncommitted until a receiver writes the promised file, so
+/// a drag the user abandons is a plain cancellation.
 @MainActor
 @Observable
 public final class ExportCoordinator {
     public private(set) var state: ExportState?
-    private(set) var lastOutcome: ExportOutcome?
     private var operation: Operation?
     private var automaticBatch: Operation?
 
@@ -121,23 +134,32 @@ public final class ExportCoordinator {
 
     public var isBusy: Bool { operation != nil }
 
+    /// Whether the running export belongs to `documentID`; each editor shows and cancels only its own.
+    public func isBusy(documentID: DocumentID) -> Bool { operation?.documentID == documentID }
+
     /// Exports `session` through one sink. `currentSession` returns the live session (nil once
     /// its editor closed) and is consulted after the snapshot, before anything is committed.
     public func export(
         _ action: ExportAction, session: DocumentSession,
+        currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
+    ) async -> ExportOutcome {
+        await export(
+            action, session: session, currentSession: currentSession, uploadConsentID: nil, isAllowed: { .allowed })
+    }
+
+    /// The automatic path: `isAllowed` is the step's live check after its render, and an upload
+    /// carries the consent identity its batch was planned with.
+    private func export(
+        _ action: ExportAction, session: DocumentSession,
         currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
-        uploadConsentID: UUID? = nil, isAllowed: @escaping @MainActor () -> Bool = { true }
+        uploadConsentID: UUID?, isAllowed: @escaping @MainActor () -> AutomaticStepCheck
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
             action, documentID: session.document.id, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
             makeSnapshot: { options, date in try await exporter.makeSnapshot(of: session, options: options, date: date)
             },
-            isCurrent: { snapshot in
-                guard let current = currentSession() else { return false }
-                return current.document.id == snapshot.documentID && current.revision == snapshot.revision
-                    && current.privacyEpoch == snapshot.privacyEpoch
-            })
+            isCurrent: { snapshot in currentSession()?.accepts(snapshot) == true })
     }
 
     /// Exports a pin's sanitized raster (FR-09, ADR-007) at its own size. `isCurrent` is false once
@@ -158,7 +180,7 @@ public final class ExportCoordinator {
 
     private func run(
         _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?,
-        isAllowed: @escaping @MainActor () -> Bool = { true }, fixedScale: Double? = nil,
+        isAllowed: @escaping @MainActor () -> AutomaticStepCheck = { .allowed }, fixedScale: Double? = nil,
         makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
         isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
     ) async -> ExportOutcome {
@@ -184,7 +206,7 @@ public final class ExportCoordinator {
         let task = Task<ShareSnapshot, any Error> { try await makeSnapshot(options, date) }
         snapshotTask = task
         let result = await task.result
-        if operation?.cancelRequested == true { return finish(.canceled) }
+        if operation?.cancelRequested == true { return .canceled }
 
         let snapshot: ShareSnapshot
         switch result {
@@ -197,9 +219,12 @@ public final class ExportCoordinator {
 
         guard isCurrent(snapshot) else { return fail(.staleDocument) }
         // The setting that authorized an automatic write may have changed during the render.
-        guard isAllowed() else {
+        switch isAllowed() {
+        case .allowed: break
+        case .revoked:
             apply(.cancel)
-            return finish(.canceled)
+            return .canceled
+        case .failed(let failure): return fail(failure)
         }
 
         do throws(SinkError) {
@@ -209,7 +234,7 @@ public final class ExportCoordinator {
                 apply(.commit)
                 try clipboard.write(snapshot)
                 completed = .copied
-            case .save(let url, let overwrite):
+            case .save(let url, _, let overwrite):
                 apply(.commit)
                 completed = .saved(try await files.save(snapshot, to: url, overwrite: overwrite))
             case .saveToFolder(let folder):
@@ -217,16 +242,28 @@ public final class ExportCoordinator {
                 completed = .saved(try await files.saveUnique(snapshot, in: folder))
             case .upload(let destination, let intent):
                 guard let upload else { return fail(.upload(.missingCredential)) }
+                // No request of any kind (lookups included) for consent that is no longer live.
+                guard settings.githubUploadConsentID == consentID else {
+                    apply(.cancel)
+                    return .canceled
+                }
+                // Rechecked by the uploader before each request: main-actor work queued before
+                // this task (a Settings change) runs before it starts.
+                let settings = self.settings
+                let consentHolds = { @MainActor @Sendable () -> Bool in
+                    settings.githubUploadConsentID == consentID
+                        && settings.preferences.githubUpload?.automatic == true
+                        && settings.preferences.githubUpload?.destination == destination
+                }
+                let isLive = { @MainActor @Sendable [weak self] () -> Bool in
+                    guard let self else { return false }
+                    return self.operation?.cancelRequested == false && consentHolds() && isCurrent(snapshot)
+                }
                 let task = Task<URL, any Error> { [weak self] in
                     try await upload.upload(
-                        snapshot, to: destination, intent: intent,
+                        snapshot, to: destination, intent: intent, isLive: isLive,
                         isCurrent: { [weak self] in
-                            guard let self, self.operation?.cancelRequested == false,
-                                self.settings.githubUploadConsentID == consentID,
-                                self.settings.preferences.githubUpload?.automatic == true,
-                                self.settings.preferences.githubUpload?.destination == destination,
-                                isCurrent(snapshot)
-                            else { return false }
+                            guard let self, isLive() else { return false }
                             self.apply(.commit)
                             return true
                         })
@@ -236,9 +273,13 @@ public final class ExportCoordinator {
                 case .success(let url): completed = .uploaded(url)
                 case .failure(let error):
                     let failure = (error as? GitHubUploadFailure) ?? .completionUnknown
-                    if failure == .canceled {
+                    // Consent revoked before the image request started is the person's own
+                    // action: any failure then (a lookup's 403 or timeout included) ends the upload
+                    // silently, as a revocation before the step does. Once the image request has
+                    // started (`.committing`), its failed or unknown result is reported.
+                    if failure == .canceled || (!consentHolds() && state != .committing) {
                         if state != .canceled { apply(.cancel) }
-                        return finish(.canceled)
+                        return .canceled
                     }
                     return fail(.upload(failure))
                 }
@@ -265,21 +306,21 @@ public final class ExportCoordinator {
                     completed = .dragged
                 } else if operation?.cancelRequested == true {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
                 } else if lease.isRevoked || delivery == .delivered {
                     // Revoked before the write, or a sink that reported delivery without it.
                     return fail(.staleDocument)
                 } else {
                     apply(.cancel)
-                    return finish(.canceled)
+                    return .canceled
                 }
             }
             if operation?.cancelRequested == true {
                 apply(.cancel)
-                return finish(.alreadyCompleted(completed))
+                return .alreadyCompleted(completed)
             }
             apply(.committed)
-            return finish(completed)
+            return completed
         } catch {
             return fail(Self.failure(for: error))
         }
@@ -317,7 +358,8 @@ public final class ExportCoordinator {
         }
     }
 
-    /// The document changed or its editor closed: a drag offered for it can no longer commit.
+    /// The document changed or its editor closed: revokes its pending drag, which blocks a write
+    /// not yet claimed. A receiver that already claimed the lease can finish.
     func invalidatePendingDrag(documentID: DocumentID) {
         guard pendingDrag?.documentID == documentID else { return }
         revokePendingDrag()
@@ -339,7 +381,7 @@ public final class ExportCoordinator {
             ? chosen.preferredSaveFolderBookmark.flatMap(folders.resolveFolder).map { .folder($0) }
                 ?? .folderUnavailable : nil
         return AutomaticExportPlan(
-            copy: chosen.autoCopy, save: save,
+            copy: chosen.autoCopy, save: save, saveFolderSelection: settings.saveFolderSelection,
             upload: chosen.githubUpload.flatMap { $0.automatic ? $0.destination : nil },
             uploadConsentID: settings.githubUploadConsentID)
     }
@@ -357,59 +399,66 @@ public final class ExportCoordinator {
         // only if it is still allowed when it starts, and the same live check runs again after its
         // render.
         var outcomes: [ExportOutcome] = []
-        if plan.copy {
+        let copyCheck = { @MainActor () -> AutomaticStepCheck in settings.preferences.autoCopy ? .allowed : .revoked }
+        if plan.copy, copyCheck() == .allowed {
             outcomes.append(
                 await export(
-                    .copy, session: session, currentSession: currentSession,
-                    isAllowed: { settings.preferences.autoCopy }))
+                    .copy, session: session, currentSession: currentSession, uploadConsentID: nil,
+                    isAllowed: copyCheck))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
-        if let save = plan.save, settings.preferences.autoSave {
-            if case .folder(let folder) = save {
-                let saveAllowed = { @MainActor [folders] in
-                    // Compare folders, not bookmark bytes: a moved folder's bookmark is renewed.
-                    settings.preferences.autoSave
-                        && settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder) == folder
-                }
-                if saveAllowed() {
+        if let save = plan.save {
+            let saveCheck = { @MainActor [folders] () -> AutomaticStepCheck in
+                // Off, or another folder chosen since the capture: skipped without a message.
+                guard settings.preferences.autoSave, settings.saveFolderSelection == plan.saveFolderSelection
+                else { return .revoked }
+                // The planned folder (its bookmark may have been renewed after a move) that does
+                // not resolve, such as an ejected volume, is a failure.
+                guard case .folder(let folder) = save,
+                    let live = settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder)
+                else { return .failed(.accessDenied) }
+                return live == folder ? .allowed : .revoked
+            }
+            switch saveCheck() {
+            case .allowed:
+                if case .folder(let folder) = save {
                     outcomes.append(
                         await export(
                             .saveToFolder(folder), session: session, currentSession: currentSession,
-                            isAllowed: saveAllowed))
+                            uploadConsentID: nil, isAllowed: saveCheck))
                 }
-            } else {
-                outcomes.append(.failed(.accessDenied))
+            case .revoked: break
+            case .failed(let failure): outcomes.append(.failed(failure))
             }
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
         if let destination = plan.upload, let live = settings.preferences.githubUpload, live.automatic,
-            live.destination == destination
+            live.destination == destination, settings.githubUploadConsentID == plan.uploadConsentID
         {
             outcomes.append(
                 await export(
                     .upload(to: destination, intent: UUID()), session: session,
-                    currentSession: currentSession, uploadConsentID: plan.uploadConsentID))
+                    currentSession: currentSession, uploadConsentID: plan.uploadConsentID, isAllowed: { .allowed }))
         }
         return outcomes
     }
 
     public func exportOptions(for action: ExportAction) -> ExportOptions {
         var options = settings.preferences.exportOptions
-        if action == .copy { options.format = .png }
+        switch action {
+        case .copy: options.format = .png
+        case .save(_, let format, _): options.format = format
+        case .saveToFolder, .drag, .upload: break
+        }
         return options
     }
 
     // MARK: Helpers
 
     private func fail(_ failure: ExportFailure) -> ExportOutcome {
-        if state == .canceled { return finish(.canceled) }
+        if state == .canceled { return .canceled }
         apply(.fail(failure))
-        return finish(.failed(failure))
-    }
-
-    private func finish(_ outcome: ExportOutcome) -> ExportOutcome {
-        lastOutcome = outcome
-        return outcome
+        return .failed(failure)
     }
 
     private func apply(_ event: ExportEvent) {
@@ -425,10 +474,12 @@ public final class ExportCoordinator {
         switch error {
         case .clipboardWriteFailed: .clipboardFailed
         case .destinationExists: .destinationExists
+        case .nameTooLong: .nameTooLong
         case .accessDenied: .accessDenied
         case .diskFull: .diskFull
         case .volumeUnavailable: .volumeUnavailable
         case .writeFailed(let code): .system(code: code)
+        case .leftover(let name): .leftover(name: name)
         }
     }
 }

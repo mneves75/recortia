@@ -46,11 +46,41 @@ struct AnnotationRendererTests {
             let first = try draw([annotation])
             let second = try draw([annotation])
             #expect(first == second, "\(annotation.kind) is not deterministic")
-            let b = annotation.outsetBounds
+            // The stroke, and an arrow's head, reach past the geometric bounds.
+            let b = annotation.bounds.insetBy(dx: -annotation.style.lineWidth * 4, dy: -annotation.style.lineWidth * 4)
             let bounds = FixtureRect(
                 x: Int(b.minX.rounded(.down)) - 2, y: Int(b.minY.rounded(.down)) - 2,
                 width: Int(b.width.rounded(.up)) + 4, height: Int(b.height.rounded(.up)) + 4)
             #expect(inked(first, in: bounds) > 20, "\(annotation.kind) drew nothing")
+        }
+    }
+
+    @Test("A straight arrow whose layout overflows fails the render instead of vanishing from it")
+    func overflowingStraightArrowFailsRender() async throws {
+        let harness = ImagingHarness()
+        let asset = try await harness.add(try ChartFixture.solid(width: 40, height: 30, color: .init(9, 9, 9)))
+        var document = Document(asset: asset)
+        document.annotations = [
+            Annotation(kind: .arrow(start: Point(x: 0, y: 0), end: Point(x: 1.4e308, y: 1.4e308)), style: .default)
+        ]
+        await #expect(throws: RenderError.invalidGeometry) { try await harness.renderer.render(document, scale: 1) }
+        let context = try #require(ChartFixture.context(width: 40, height: 30))
+        #expect(throws: RenderError.invalidGeometry) { try AnnotationRenderer.draw(document.annotations, in: context) }
+    }
+
+    @Test("A translucent straight arrow paints the shaft and head junction once")
+    func straightArrowJunctionAlpha() throws {
+        let p = try draw([
+            Annotation(
+                kind: .arrow(start: Point(x: 10, y: 40), end: Point(x: 110, y: 40)),
+                style: Annotation.Style(stroke: RGBA(r: 255, g: 0, b: 0, a: 128), lineWidth: 4))
+        ])
+        let body = p.pixel(x: 40, y: 40).a
+        #expect(body >= 126)
+        // The shaft ends inside the head: 110 - 18 * 0.8 = 95.6, head base at 92.
+        #expect(p.pixel(x: 94, y: 40).a == body)
+        for y in 0..<p.height {
+            for x in 0..<p.width { #expect(p.pixel(x: x, y: y).a <= 129) }
         }
     }
 
@@ -62,6 +92,59 @@ struct AnnotationRendererTests {
         let shaft = (20..<60).filter { p.pixel(x: 40, y: $0).a > 0 }.count
         let head = (20..<60).filter { p.pixel(x: 102, y: $0).a > 0 }.count
         #expect(shaft >= 3 && head > shaft * 2)
+    }
+
+    @Test("A step numeral is black or white, whichever has the higher WCAG contrast with the fill")
+    func stepNumeralContrast() throws {
+        func numeralChannels(_ fill: RGBA) throws -> (darkest: UInt8, lightest: UInt8) {
+            let p = try draw([
+                Annotation(kind: .step(center: Point(x: 60, y: 40), number: 8), style: Annotation.Style(stroke: fill))
+            ])
+            var darkest: UInt8 = 255, lightest: UInt8 = 0
+            for y in 30..<50 {
+                for x in 50..<70 {
+                    darkest = min(darkest, p.pixel(x: x, y: y).r)
+                    lightest = max(lightest, p.pixel(x: x, y: y).r)
+                }
+            }
+            return (darkest, lightest)
+        }
+        // #909090: 6.6:1 against black, 3.2:1 against white.
+        let mid = try numeralChannels(RGBA(r: 0x90, g: 0x90, b: 0x90))
+        #expect(mid.darkest < 0x40 && mid.lightest <= 0x92)
+        let dark = try numeralChannels(RGBA(r: 0x30, g: 0x30, b: 0x30))
+        #expect(dark.lightest > 0xC0 && dark.darkest >= 0x2E)
+    }
+
+    @Test("A step numeral over a translucent fill stays visible on dark and light backgrounds")
+    func translucentStepNumeralVisible() throws {
+        for background in [ChartFixture.Color(0, 0, 0), ChartFixture.Color(255, 255, 255)] {
+            for alpha: UInt8 in [0, 128] {
+                let context = try #require(ChartFixture.context(width: 120, height: 80))
+                context.setFillColor(
+                    CGColor(
+                        srgbRed: Double(background.r) / 255, green: Double(background.g) / 255,
+                        blue: Double(background.b) / 255, alpha: 1))
+                context.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+                context.translateBy(x: 0, y: 80)
+                context.scaleBy(x: 1, y: -1)
+                let fill = RGBA(r: 0x90, g: 0x90, b: 0x90, a: alpha)
+                try AnnotationRenderer.draw(
+                    [
+                        Annotation(
+                            kind: .step(center: Point(x: 60, y: 40), number: 8), style: Annotation.Style(stroke: fill))
+                    ], in: context)
+                let p = try pixels(try #require(context.makeImage()))
+                // A numeral stroke differs from the background by at least 160 in some pixel.
+                var strongest = 0
+                for y in 30..<50 {
+                    for x in 54..<66 {
+                        strongest = max(strongest, abs(Int(p.pixel(x: x, y: y).r) - Int(background.r)))
+                    }
+                }
+                #expect(strongest >= 160, "background \(background.r), fill alpha \(alpha): \(strongest)")
+            }
+        }
     }
 
     @Test("Highlighter is translucent and numbered steps render their number")

@@ -114,18 +114,6 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         }
     }
 
-    /// Bounds including the stroke, used for hit testing and dirty regions.
-    public var outsetBounds: Rect<DocumentSpace> {
-        let pad = style.lineWidth / 2 + (isArrow ? style.lineWidth * 3 : 0)
-        let b = bounds
-        return Rect(x: b.minX - pad, y: b.minY - pad, width: b.width + 2 * pad, height: b.height + 2 * pad)
-    }
-
-    private var isArrow: Bool {
-        if case .arrow = kind { return true }
-        return false
-    }
-
     public func translated(dx: Double, dy: Double) -> Annotation {
         var copy = self
         switch kind {
@@ -152,7 +140,6 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         return copy
     }
 
-    /// Maps the annotation's geometry from `old` bounds into `new` bounds (resize handles).
     public func resized(from old: Rect<DocumentSpace>, to new: Rect<DocumentSpace>) -> Annotation {
         guard old.width > 0 || old.height > 0 else {
             return translated(dx: new.minX - old.minX, dy: new.minY - old.minY)

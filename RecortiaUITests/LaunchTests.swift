@@ -1,6 +1,5 @@
 import XCTest
 
-/// E2E smoke: the real app launches as a menu-bar agent and exposes its status item.
 final class LaunchTests: XCTestCase {
     @MainActor
     func testLaunchesWithStatusItem() throws {

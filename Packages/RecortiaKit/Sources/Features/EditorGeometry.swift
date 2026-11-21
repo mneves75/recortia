@@ -169,11 +169,6 @@ enum EditorGeometry {
         return Rect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
     }
 
-    static func isFinite(_ rect: Rect<DocumentSpace>) -> Bool {
-        rect.origin.isFinite && rect.width.isFinite && rect.height.isFinite
-    }
-
-    /// Constrains a dragged rectangle to a square when requested.
     static func constrainedRect(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>, square: Bool)
         -> Rect<DocumentSpace>
     {

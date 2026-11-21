@@ -3,6 +3,7 @@
 
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -11,10 +12,13 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # One source for the reviewed pins: the real record. A copied literal here rots into a false
-# failure the moment the toolchain is re-observed, which is how this suite broke on 2026-10-28.
+# failure the moment the toolchain is re-observed.
 RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
 STABLE_VERSION = RECORD["stable_xcode_baseline"]["version"]
 STABLE_BUILD = RECORD["stable_xcode_baseline"]["build"]
+SWIFT_MAJOR_MINOR = RECORD["expected_bundled_swift_compiler_major_minor"]
+# A compiler banner in the shape `xcrun swift --version` prints, carrying the reviewed major.minor.
+SWIFT_BANNER = f"swift-driver version: 1.0 Apple Swift version {SWIFT_MAJOR_MINOR}.9 (fixture)"
 # The record names a release candidate only while one is installed. Otherwise the development
 # controls use a candidate derived from the stable pin, so it can never equal that pin.
 if RECORD["actual_xcode_release_channel"] == "release_candidate":
@@ -39,11 +43,11 @@ class E2EToolchainTests(unittest.TestCase):
         (self.root / "scripts").mkdir()
         for name in ("e2e.sh", "doctor.sh"):
             shutil.copy(ROOT / "scripts" / name, self.root / "scripts" / name)
+        shutil.copytree(ROOT / "scripts/lib", self.root / "scripts/lib")
         (self.root / "TOOLCHAIN.json").write_text(json.dumps(FIXTURE_RECORD))
         self.bin = self.root / "bin"
         self.bin.mkdir()
         (self.bin / "python3").symlink_to(sys.executable)
-        self.tool("xcodegen", "#!/bin/sh\nexit 0\n")
         self.tool("xcrun", f"#!{sys.executable}\n" + '''import pathlib, sys
 args = sys.argv[1:]
 if args == ['--sdk', 'macosx', '--show-sdk-version']:
@@ -51,10 +55,11 @@ if args == ['--sdk', 'macosx', '--show-sdk-version']:
 elif args == ['--sdk', 'macosx', '--show-sdk-build-version']:
     print(pathlib.Path('.fixture-sdk-build').read_text().strip())
 elif args == ['swift', '--version']:
-    print('Swift fixture compiler')
+    print(pathlib.Path('.fixture-swift').read_text().strip())
 else:
     sys.exit(f'unexpected xcrun arguments: {args}')
 ''')
+        (self.root / ".fixture-swift").write_text(SWIFT_BANNER + "\n")
         (self.root / ".fixture-sdk-version").write_text("27.0\n")
         (self.root / ".fixture-sdk-build").write_text("27A123\n")
         (self.root / ".fixture-untracked.json").write_text("[]")
@@ -84,6 +89,10 @@ else:
         app.parent.mkdir(parents=True)
         app.write_text('#!/bin/sh\ntouch launch-reached\nprintf \'[{"passed":true,"screenshots":[]}]\' > "$2/report.json"\n')
         app.chmod(0o755)
+        helper = self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app/Contents/MacOS/RecortiaE2EForegroundHost"
+        helper.parent.mkdir(parents=True)
+        helper.write_text("#!/bin/sh\n# foreground helper fixture\n")
+        helper.chmod(0o755)
 
     def tool(self, name: str, source: str) -> None:
         executable = self.bin / name
@@ -277,6 +286,61 @@ else:
                 self.assertFalse((self.root / "build-reached").exists())
                 self.assertFalse((self.root / "launch-reached").exists())
 
+    def test_no_build_rejects_a_changed_or_missing_foreground_helper(self) -> None:
+        # Native focus checks launch the sibling helper; reusing a build must cover it too.
+        helper_bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app"
+        helper = helper_bundle / "Contents/MacOS/RecortiaE2EForegroundHost"
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        record = json.loads((self.root / ".build/dd-e2e-provenance.json").read_text())
+        self.assertRegex(record.get("foreground_host_bundle_sha256", ""), r"^[0-9a-f]{64}$")
+        (self.root / "launch-reached").unlink()
+        helper.write_text("#!/bin/sh\n# a different helper\n")
+        refused = self.run_e2e("--no-build")
+        self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+        self.assertIn("provenance", refused.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+        shutil.rmtree(helper_bundle)
+        missing = self.run_e2e("--no-build")
+        self.assertEqual(2, missing.returncode, missing.stdout + missing.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_no_build_requires_a_regular_executable_foreground_helper(self) -> None:
+        helper = (self.root / ".build/dd/Build/Products/Debug/RecortiaE2EForegroundHost.app"
+                  / "Contents/MacOS/RecortiaE2EForegroundHost")
+        built = self.run_e2e()
+        self.assertEqual(0, built.returncode, built.stdout + built.stderr)
+        (self.root / "launch-reached").unlink()
+        helper.chmod(0o644)  # same bytes, no longer executable
+        refused = self.run_e2e("--no-build")
+        self.assertEqual(2, refused.returncode, refused.stdout + refused.stderr)
+        self.assertFalse((self.root / "launch-reached").exists())
+        real = helper.with_name("real-helper")
+        helper.rename(real)
+        real.chmod(0o755)
+        helper.symlink_to(real.name)
+        self.assertEqual(2, self.run_e2e().returncode, "a linked helper is not a built executable")
+        self.assertFalse((self.root / "launch-reached").exists())
+
+    def test_a_linked_directory_on_either_executable_path_is_refused(self) -> None:
+        # Review 2 N03: a regular executable under a linked Contents/MacOS sits outside the hash.
+        products = self.root / ".build/dd/Build/Products/Debug"
+        for bundle, executable in (("RecortiaE2EForegroundHost.app", "RecortiaE2EForegroundHost"),
+                                   ("RecortiaE2E.app", "RecortiaE2E")):
+            with self.subTest(bundle=bundle):
+                macos = products / bundle / "Contents/MacOS"
+                elsewhere = self.root / f"elsewhere-{executable}"
+                macos.rename(elsewhere)
+                macos.symlink_to(elsewhere, target_is_directory=True)
+                for marker in ("build-reached", "launch-reached"):
+                    (self.root / marker).unlink(missing_ok=True)
+                for arguments in ((), ("--no-build",)):
+                    result = self.run_e2e(*arguments)
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertFalse((self.root / "launch-reached").exists())
+                macos.unlink()
+                elsewhere.rename(macos)
+
     def test_bundle_hash_does_not_follow_external_symlinks(self) -> None:
         bundle = self.root / ".build/dd/Build/Products/Debug/RecortiaE2E.app"
         resources = bundle / "Contents/Resources"
@@ -295,12 +359,82 @@ else:
         self.assertEqual(0, reused.returncode, reused.stdout + reused.stderr)
 
 
+class SwiftEntryPointTests(unittest.TestCase):
+    def test_gate_scripts_run_swift_only_through_xcrun(self) -> None:
+        # doctor qualifies `xcrun swift`; a bare `swift` may resolve to another compiler on PATH.
+        bare = re.compile(r"(?:^|[;&|(]|\bthen|\bdo)[ \t]*swift[ \t]+[-a-z]", re.MULTILINE)
+        self.assertTrue(bare.search("x\nswift test --parallel\n"), "control: a bare call is seen")
+        self.assertFalse(bare.search("xcrun swift test\n"), "control: an xcrun call is allowed")
+        self.assertFalse(bare.search("    swift = record\n"), "control: an assignment is not a call")
+        offenders = []
+        for path in sorted((ROOT / "scripts").glob("*.sh")) + [ROOT / "init.sh"]:
+            source = path.read_text()
+            for match in bare.finditer(source):
+                offenders.append(f"{path.relative_to(ROOT)}:{source.count(chr(10), 0, match.start()) + 1}")
+        self.assertEqual([], offenders)
+
+
+class SelectXcodeTests(unittest.TestCase):
+    """CI picks its Xcode with scripts/select-xcode.sh; candidates are fake app folders."""
+
+    def run_selector(self, candidates: list[tuple[str, str, str]]) -> subprocess.CompletedProcess[str]:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = pathlib.Path(directory.name)
+        (root / "scripts").mkdir()
+        shutil.copy(ROOT / "scripts/select-xcode.sh", root / "scripts/select-xcode.sh")
+        (root / "TOOLCHAIN.json").write_text(json.dumps(RECORD))
+        applications = root / "Applications"
+        for name, version, build in candidates:
+            developer = applications / name / "Contents/Developer"
+            developer.mkdir(parents=True)
+            (developer / "fixture-version").write_text(f"Xcode {version}\nBuild version {build}\n")
+        binaries = root / "bin"
+        binaries.mkdir()
+        (binaries / "python3").symlink_to(sys.executable)
+        xcodebuild = binaries / "xcodebuild"
+        xcodebuild.write_text('#!/bin/sh\n[ "$1" = -version ] || exit 64\ncat "$DEVELOPER_DIR/fixture-version"\n')
+        xcodebuild.chmod(0o755)
+        self.applications = applications
+        return subprocess.run(
+            ["/bin/zsh", str(root / "scripts/select-xcode.sh"), str(applications)],
+            cwd=root, capture_output=True, text=True, timeout=15,
+            env={"PATH": f"{binaries}:/usr/bin:/bin"},
+        )
+
+    def test_a_same_version_wrong_build_listed_first_is_not_selected(self) -> None:
+        result = self.run_selector([
+            ("Xcode-a.app", STABLE_VERSION, DEVELOPMENT_BUILD),
+            ("Xcode-b.app", STABLE_VERSION, STABLE_BUILD),
+        ])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(f"{self.applications}/Xcode-b.app/Contents/Developer", result.stdout.strip())
+        self.assertIn("Xcode-a.app", result.stderr, "every candidate is listed")
+
+    def test_no_matching_build_fails_naming_expected_and_available(self) -> None:
+        result = self.run_selector([
+            ("Xcode-a.app", STABLE_VERSION, DEVELOPMENT_BUILD),
+            ("Xcode.app", "26.9", STABLE_BUILD),
+        ])
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+        self.assertIn(f"stable baseline {STABLE_VERSION} ({STABLE_BUILD})", result.stderr)
+        self.assertIn(f"{STABLE_VERSION} ({DEVELOPMENT_BUILD})", result.stderr)
+        self.assertIn(f"26.9 ({STABLE_BUILD})", result.stderr)
+
+    def test_no_installed_xcode_fails(self) -> None:
+        result = self.run_selector([])
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("available: none", result.stderr)
+
+
 class DoctorTests(unittest.TestCase):
     def run_doctor(
         self, swift_exit: int = 0, *, version: str = STABLE_VERSION, build: str = STABLE_BUILD,
         mode: str | None = None, arguments: tuple[str, ...] = (),
         observed_channel: str = "release_candidate", stable_channel: str = "stable",
         required_major: int = 27, allow_beta_release: bool = False,
+        swift_banner: str = SWIFT_BANNER,
     ) -> subprocess.CompletedProcess[str]:
         scratch = ROOT / ".scratch"
         scratch.mkdir(exist_ok=True)
@@ -310,6 +444,7 @@ class DoctorTests(unittest.TestCase):
             (root / "scripts/doctor.sh").write_bytes((ROOT / "scripts/doctor.sh").read_bytes())
             (root / "TOOLCHAIN.json").write_text(json.dumps({
                 "required_stable_xcode_major": required_major,
+                "expected_bundled_swift_compiler_major_minor": SWIFT_MAJOR_MINOR,
                 "allow_beta_toolchains_for_release": allow_beta_release,
                 "stable_xcode_baseline": {
                     "version": STABLE_VERSION, "build": STABLE_BUILD, "release_channel": stable_channel,
@@ -322,12 +457,11 @@ class DoctorTests(unittest.TestCase):
             binaries.mkdir()
             scripts = {
                 "xcodebuild": f"#!/bin/sh\nprintf 'Xcode {version}\\nBuild version {build}\\n'\n",
-                "xcodegen": "#!/bin/sh\nexit 0\n",
                 "python3": "",
                 "xcrun": (
                     f"#!{sys.executable}\nimport signal, sys\n"
                     "signal.signal(signal.SIGPIPE, signal.SIG_DFL)\n"
-                    "sys.stdout.write('Swift test compiler\\n' + 'secondary line\\n' * 100000)\n"
+                    f"sys.stdout.write({swift_banner + chr(10)!r} + 'secondary line\\n' * 100000)\n"
                     f"sys.stdout.flush()\nsys.exit({swift_exit})\n"
                 ),
             }
@@ -388,6 +522,20 @@ class DoctorTests(unittest.TestCase):
 
     def test_swift_failure_still_fails_doctor(self) -> None:
         self.assertNotEqual(0, self.run_doctor(42).returncode)
+
+    def test_swift_compiler_must_match_the_reviewed_major_minor(self) -> None:
+        self.assertEqual(0, self.run_doctor().returncode, "control: the reviewed compiler passes")
+        major, minor = SWIFT_MAJOR_MINOR.split(".")
+        for banner in (
+            f"Apple Swift version {major}.{int(minor) + 1}.0 (fixture)",
+            f"Apple Swift version {int(major) + 1}.{minor} (fixture)",
+            f"Apple Swift version {major}.{minor}0.1 (fixture)",
+            "Swift compiler without a version",
+        ):
+            with self.subTest(banner=banner):
+                result = self.run_doctor(swift_banner=banner)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"!= expected {SWIFT_MAJOR_MINOR}", result.stderr)
 
 
 if __name__ == "__main__":

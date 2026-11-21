@@ -36,7 +36,6 @@ struct ScrollScriptFrame {
     }
 }
 
-/// Outcome of feeding a script to a stitcher, judged against ground truth.
 struct ScrollRunLog {
     var results: [ScrollAppendResult] = []
     /// `.accepted` whose offset differs from the true displacement: the failure SCR-02 forbids.

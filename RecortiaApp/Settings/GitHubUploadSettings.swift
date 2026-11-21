@@ -8,6 +8,7 @@ enum GitHubUploadStrings {
         switch failure {
         case .invalidDestination: String(localized: "Enter a valid GitHub owner and repository name.")
         case .missingCredential: String(localized: "Save a GitHub token in Settings before uploading.")
+        case .invalidCredential: String(localized: "The saved GitHub token isn't valid. Replace it in Settings.")
         case .credentialsUnavailable: String(localized: "The GitHub token could not be accessed in Keychain.")
         case .publicRepository: String(localized: "Upload refused: the GitHub repository is public.")
         case .tooLarge: String(localized: "GitHub uploads are limited to 8 MB. Reduce the export scale.")
@@ -46,7 +47,7 @@ enum GitHubDestinationSaver {
     ) -> Result {
         let previous = settings.preferences.githubUpload?.destination
         do {
-            // The store call and the Keychain share one rule for what a token may contain.
+            // The token store admits the pasted text; everything after it trusts the token.
             try credentials.store(GitHubTokenStore.validatedToken(token), for: destination)
         } catch { return .failed(error) }
         settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination) }
