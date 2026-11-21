@@ -222,3 +222,22 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
 - PR #40 squash-merged as `cdffc96` (tree equal to the verified head), tagged `v0.14.0`,
   `scripts/release.sh` exit 0, notarized, published, public download byte-identical, installed in
   `/Applications`. Details: `docs/specs/editor-redesign/release-0.14.0.md`.
+
+## 2026-11-21 — T6 native qualification and A-5
+
+- The cumulative T6 native suite on `c5bd784` reported 68/73 in each language. The same five
+  scenarios failed. The original native reports and provenance are in E2E run
+  `20261121-113721-19677`. PRs #43–#47 record the scope and outcomes of that cumulative evidence.
+- Draft #47 contains `c2dc828`, which passed the clean local unsigned gate (1,082 package tests)
+  and the hosted Debug and Release checks. Its focused native rerun was void when the console
+  resumed input. No outcomes from that rerun qualify the candidate.
+- The current T6 head `8d1ed31` follows AppKit's cooperative activation contract. It passed
+  the unsigned E2E target build with stable Xcode 27.2 (27B52) and a fresh read-only review. The
+  exact-head hosted gate and an uninterrupted native rerun are pending. Opus cross-model review
+  hit its usage limit.
+- A-5 proceeds in an isolated worktree with live region selection as the default and an explicit
+  freeze action for one display during selection. Its crop and magnifier use the same frame.
+- The repository generates `tests.json` as its test inventory and
+  `.scratch/tests-report.json` as the run-status record via `scripts/tests-report.py`.
+  New test code is limited to behavior over the requested `cccc` complexity threshold or
+  regular-expression behavior. Pruning and independent verification follow implementation.
