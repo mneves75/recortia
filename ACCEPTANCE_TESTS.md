@@ -163,8 +163,17 @@ Pin a capture, copy it, and drag it out: the clipboard and the promised file hol
 sanitized, freshly encoded image as the editor's 1× export, with no other pasteboard types.
 Redact the source, close the pin, or close all pins while a drag offer waits: the receiver gets
 no file and the outcome is stale or canceled, never delivered. A pin added from a raw image is
-refused. Each open pin is a normal-level window that AltTab lists; RED-01's paired-secret
+refused. Each new pin is a normal-level window that AltTab lists; RED-01's paired-secret
 comparison holds for the pin's clipboard and drag-out bytes.
+
+### PIN-03 — Keep on Top and click-through
+
+A new pin is normal-level and takes clicks. Keep on Top floats it and keeps it on every Space;
+Click Through is unavailable until then, makes the pin ignore the mouse and shows a lock, and
+ends when Keep on Top is turned off. Unlock All Pins, in the menu bar and the menu-bar extra, is
+enabled only while a pin is click-through and restores clicks on every pin. A shown floating pin
+keeps Recortia in ⌘Tab and the Dock. Synthetic: `PinLayeringTests`, E2E `pin-on-top`; clicks
+reaching another app and third-party switcher listing stay physical.
 
 ## Redaction and export — release blocking
 

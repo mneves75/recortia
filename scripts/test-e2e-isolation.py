@@ -25,6 +25,9 @@ FORBIDDEN: dict[str, re.Pattern[str]] = {
     "InstallEventHandler": re.compile(r"\bInstallEventHandler\s*[({]"),
     "CGRequestScreenCaptureAccess": re.compile(r"\bCGRequestScreenCaptureAccess\s*[({]"),
     "AXIsProcessTrustedWithOptions": re.compile(r"\bAXIsProcessTrustedWithOptions\s*[({]"),
+    # Another app's interface: element snapping uses a synthetic tree in the runner (ADR-010).
+    "AXUIElementCreateSystemWide": re.compile(r"\bAXUIElementCreateSystemWide\s*[({]"),
+    "LiveInterfaceElements": re.compile(r"\bLiveInterfaceElements\s*[({]"),
     "addGlobalMonitorForEvents": re.compile(r"\baddGlobalMonitorForEvents\b"),
     # The real screen.
     "SCShareableContent": re.compile(r"\bSCShareableContent\b"),
@@ -80,6 +83,8 @@ class E2EIsolationTests(unittest.TestCase):
             "InstallEventHandler": "InstallEventHandler(target, handler, 1, &spec, nil, nil)",
             "CGRequestScreenCaptureAccess": "_ = CGRequestScreenCaptureAccess()",
             "AXIsProcessTrustedWithOptions": "_ = AXIsProcessTrustedWithOptions(nil)",
+            "AXUIElementCreateSystemWide": "let system = AXUIElementCreateSystemWide()",
+            "LiveInterfaceElements": "let elements = LiveInterfaceElements()",
             "addGlobalMonitorForEvents": "NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { _ in }",
             "SCShareableContent": "let content = try await SCShareableContent.current",
             "SCScreenshotManager": "let image = try await SCScreenshotManager.captureImage(contentFilter: f, configuration: c)",

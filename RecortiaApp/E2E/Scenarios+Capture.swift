@@ -325,11 +325,14 @@
             return geometry
         }
 
-        static func mouseEvent(_ type: NSEvent.EventType, at point: CGPoint, in view: NSView) throws -> NSEvent {
+        static func mouseEvent(
+            _ type: NSEvent.EventType, at point: CGPoint, in view: NSView, modifiers: NSEvent.ModifierFlags = []
+        ) throws -> NSEvent {
             let location = view.convert(point, to: nil)
             guard let window = view.window,
                 let event = NSEvent.mouseEvent(
-                    with: type, location: location, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    with: type, location: location, modifierFlags: modifiers,
+                    timestamp: ProcessInfo.processInfo.systemUptime,
                     windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)
             else { throw E2EAbort("could not synthesize \(type) event") }
             return event

@@ -31,6 +31,8 @@ struct AppServices {
     let clock: any FeatureClock
     /// Nil in the E2E runner and previews, which play no sound.
     var captureSound: (any CaptureSoundService)? = nil
+    /// Element frames for region snapping (ADR-010); synthetic in the E2E runner, nil in previews.
+    var interfaceElements: (any InterfaceElementFrameService)? = nil
 }
 
 final class SystemClock: FeatureClock {
@@ -106,6 +108,7 @@ extension AppServices {
             folders: LiveSaveFolders.storing(in: settings), textRecognition: recognition,
             qrDecoder: recognition, sensitiveText: LiveSensitiveText(store: store),
             scrollFrames: scrollFrames, stitcher: LiveStitcher(), autoScroller: LiveAutoScroll(frames: scrollFrames),
-            loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound())
+            loginItem: LiveLoginItem(), clock: SystemClock(), captureSound: LiveCaptureSound(),
+            interfaceElements: LiveInterfaceElements())
     }
 }

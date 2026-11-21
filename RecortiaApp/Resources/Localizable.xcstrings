@@ -481,6 +481,22 @@
         }
       }
     },
+    "Aspect ratio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aspect ratio"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proporção"
+          }
+        }
+      }
+    },
     "Assign shortcuts" : {
       "localizations" : {
         "en" : {
@@ -1179,6 +1195,22 @@
         }
       }
     },
+    "Click Through" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click Through"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorar cliques"
+          }
+        }
+      }
+    },
     "Close All Pins" : {
       "localizations" : {
         "en" : {
@@ -1837,6 +1869,22 @@
         }
       }
     },
+    "Free" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Livre"
+          }
+        }
+      }
+    },
     "General" : {
       "localizations" : {
         "en" : {
@@ -2089,6 +2137,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manter quebras de linha"
+          }
+        }
+      }
+    },
+    "Keep on Top" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep on Top"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manter na frente"
           }
         }
       }
@@ -2904,6 +2968,22 @@
         }
       }
     },
+    "Reads only the position and size of buttons and other elements under the pointer, never their text." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reads only the position and size of buttons and other elements under the pointer, never their text."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lê apenas a posição e o tamanho dos botões e de outros elementos sob o ponteiro, nunca o texto deles."
+          }
+        }
+      }
+    },
     "Ready. Press Start and Recortia scrolls the area for you." : {
       "localizations" : {
         "en" : {
@@ -3380,18 +3460,18 @@
         }
       }
     },
-    "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on automatic scrolling." : {
+    "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on snapping to interface elements or automatic scrolling." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on automatic scrolling."
+            "value" : "Screen Recording is requested the first time you capture. Accessibility is requested only if you turn on snapping to interface elements or automatic scrolling."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A Gravação de Tela é solicitada na primeira captura. A Acessibilidade só é solicitada se você ativar a rolagem automática."
+            "value" : "A Gravação de Tela é solicitada na primeira captura. A Acessibilidade só é solicitada se você ativar o ajuste aos elementos da interface ou a rolagem automática."
           }
         }
       }
@@ -3648,6 +3728,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Menor"
+          }
+        }
+      }
+    },
+    "Snap to interface elements" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snap to interface elements"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustar aos elementos da interface"
           }
         }
       }
@@ -4506,6 +4602,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indisponível"
+          }
+        }
+      }
+    },
+    "Unlock All Pins" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock All Pins"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear todas as fixações"
           }
         }
       }

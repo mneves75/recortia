@@ -290,6 +290,10 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// The language text recognition tries first, as a full identifier (`pt-Latn-BR`); nil is
     /// Automatic (FR-08).
     public var primaryRecognitionLanguage: String?
+    /// Stored only once the person picks one in the region overlay; read `regionAspect` (A-4).
+    public var regionAspectChoice: SelectionAspect?
+    /// Stored only once the person changes it; read `snapsToInterfaceElements` (B-7).
+    public var snapsToInterfaceElementsChoice: Bool?
 
     public init() {}
 
@@ -297,6 +301,19 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var playsCaptureSound: Bool {
         get { playsCaptureSoundChoice ?? false }
         set { playsCaptureSoundChoice = newValue }
+    }
+
+    /// The ratio a region selection keeps (FR-02, A-4). Free by default.
+    public var regionAspect: SelectionAspect {
+        get { regionAspectChoice ?? .free }
+        set { regionAspectChoice = newValue }
+    }
+
+    /// Whether a region selection also snaps to the interface elements of the app under the
+    /// pointer, read through Accessibility (FR-02, ADR-010). Off by default.
+    public var snapsToInterfaceElements: Bool {
+        get { snapsToInterfaceElementsChoice ?? false }
+        set { snapsToInterfaceElementsChoice = newValue }
     }
 
     /// What a completed capture opens; the editor by default (ADR-009).

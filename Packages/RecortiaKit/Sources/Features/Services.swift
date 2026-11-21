@@ -35,8 +35,20 @@ public protocol ScreenPermissionService: AnyObject {
 public protocol AccessibilityPermissionService: AnyObject {
     /// Whether the process is trusted for Accessibility (automatic scrolling only).
     var isTrusted: Bool { get }
-    /// Shows the OS prompt. Called only after the user opts into automatic scrolling.
+    /// Shows the OS prompt. Called only after the user opts into automatic scrolling or element
+    /// snapping in Settings.
     func requestWithPrompt()
+}
+
+/// Interface element frames for region snapping (FR-02, B-7, ADR-010). It only checks
+/// Accessibility and never requests it, and it reads no text: `InterfaceElementReading` has no
+/// field for any.
+@MainActor
+public protocol InterfaceElementFrameService: AnyObject {
+    /// The element frames of the app that owns the frontmost of `windows` under the pointer, read
+    /// off the main actor within `ElementSnapping.Limits.standard`. Nil when Accessibility is not
+    /// granted, no listed window is under the pointer, or the app cannot be read.
+    func frames(under windows: [WindowInfo]) async -> ElementSnapping.Walk?
 }
 
 // MARK: - Assets and import

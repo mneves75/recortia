@@ -34,6 +34,12 @@ public struct Pin: Identifiable, Sendable {
     public let displayScale: Double
     public var opacity: Double
     public var zoom: Double
+    /// Floats above normal windows (ADR-007 amendment). Off for every new pin, so by default a pin
+    /// stays a normal-level window that window switchers list.
+    public var keepsOnTop = false
+    /// Lets clicks reach the window below. Only a pin on top can be click-through; Unlock All Pins
+    /// in the menus ends it, because a click-through pin cannot be clicked to turn it off.
+    public var isClickThrough = false
 }
 
 /// Reference pins (FR-09, PIN-01): at most `PinLimits.maxPins`, invalidated on privacy changes,
@@ -162,6 +168,30 @@ public final class PinsModel {
     public func setZoom(_ zoom: Double, for id: PinID) {
         let value = zoom.isFinite ? zoom : 1
         update(id) { $0.zoom = min(max(value, Self.zoomRange.lowerBound), Self.zoomRange.upperBound) }
+    }
+
+    /// Turning Keep on Top off also ends click-through: clicks would bring the window below in
+    /// front of the pin, which could then not be reached at all.
+    public func setKeepsOnTop(_ keepsOnTop: Bool, for id: PinID) {
+        update(id) {
+            $0.keepsOnTop = keepsOnTop
+            if !keepsOnTop { $0.isClickThrough = false }
+        }
+    }
+
+    /// Refused for a pin that is not on top.
+    public func setClickThrough(_ isClickThrough: Bool, for id: PinID) {
+        update(id) { $0.isClickThrough = isClickThrough && $0.keepsOnTop }
+    }
+
+    /// True while a pin ignores the mouse: Unlock All Pins is enabled exactly then.
+    public var hasClickThroughPin: Bool { pins.contains(where: \.isClickThrough) }
+
+    /// Unlock All Pins: every pin takes clicks again and keeps its level.
+    public func unlockAll() {
+        for index in pins.indices where pins[index].isClickThrough {
+            pins[index].isClickThrough = false
+        }
     }
 
     public func pin(for id: PinID) -> Pin? {

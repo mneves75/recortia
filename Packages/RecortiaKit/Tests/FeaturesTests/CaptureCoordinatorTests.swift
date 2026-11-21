@@ -26,6 +26,7 @@ final class CaptureHarness {
     let clock = ManualClock()
     let storage = MemoryPreferenceStorage()
     let sound = FakeCaptureSound()
+    let elements = FakeInterfaceElements()
     let settings: SettingsStore
     let coordinator: CaptureCoordinator
     var completions: [CaptureCompletion] = []
@@ -34,7 +35,8 @@ final class CaptureHarness {
         permission = FakeScreenPermission(isGranted: permissionGranted)
         settings = SettingsStore(storage: storage)
         coordinator = CaptureCoordinator(
-            capture: capture, permission: permission, assets: assets, clock: clock, settings: settings, sound: sound)
+            capture: capture, permission: permission, assets: assets, clock: clock, settings: settings, sound: sound,
+            elements: elements)
         coordinator.onCaptured = { [unowned self] in self.completions.append($0) }
     }
 
@@ -248,7 +250,7 @@ struct CaptureCoordinatorTests {
 
         let fresh = CaptureCoordinator(
             capture: h.capture, permission: h.permission, assets: h.assets, clock: h.clock,
-            settings: SettingsStore(storage: h.storage), sound: nil)
+            settings: SettingsStore(storage: h.storage), sound: nil, elements: nil)
         #expect(fresh.hasRepeatRegion == false)
         let blob = h.storage.values.values.map { String(decoding: $0, as: UTF8.self) }.joined()
         #expect(!blob.contains("120"))  // the region's y coordinate never reaches storage

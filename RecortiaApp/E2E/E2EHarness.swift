@@ -17,6 +17,8 @@
         let capture: SyntheticCaptureService
         let permission: SyntheticScreenPermission
         let accessibility = SyntheticAccessibilityPermission()
+        /// A synthetic interface tree for element snapping; never reads another app through Accessibility.
+        let interfaceElements: SyntheticInterfaceElements
         let scrollFrames: SyntheticScrollFrames
         /// Records automatic-scroll steps; never posts a system event to this Mac.
         let autoScroll = SyntheticAutoScroll()
@@ -62,6 +64,7 @@
             desktop = try SyntheticDesktop.image()
             capture = SyntheticCaptureService(desktop: desktop)
             permission = SyntheticScreenPermission()
+            interfaceElements = SyntheticInterfaceElements(accessibility: accessibility)
             scrollFrames = SyntheticScrollFrames()
             let run = UUID().uuidString
             clipboard = PrivatePasteboardClipboard(
@@ -80,8 +83,9 @@
                 clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
                 textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
                 scrollFrames: scrollFrames,
-                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: sensitiveText.clock
-            )
+                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem,
+                clock: sensitiveText.clock,
+                interfaceElements: interfaceElements)
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(
@@ -153,7 +157,7 @@
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
                 $0.keepsRunningInMenuBar = true; $0.autoRedactsSensitiveText = false
-                $0.afterCapture = .openEditor
+                $0.afterCapture = .openEditor; $0.regionAspect = .free
             }
             features.quickActions.dismiss()
             folderChooser.answers = []

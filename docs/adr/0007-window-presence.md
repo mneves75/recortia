@@ -111,3 +111,47 @@ icon. The owner approved this as a class B change behind a setting whose default
 **Consequences.** The `settings` and `launch-presentation` E2E scenarios cover the switch, the
 single message and reopening with the icon hidden. Whether the status item really leaves and
 returns, and a relaunch from Finder or Spotlight, remain physical checks.
+
+## Amendment (2026-11-21): Keep on Top and click-through, per pin
+
+**Context.** Pins as normal-level windows (decision 1) cannot stay above the window a person is
+working in, which is what a reference pin is often for. The rejected alternative above, a per-pin
+"Keep on top" toggle, was rejected as a default; the owner approved it as an opt-in (program
+2026-11, T3 B-3), together with click-through for tracing over or reading through a pin.
+
+**Decision.**
+
+- **Keep on Top**, per pin, off for every new pin. On, the pin floats above normal windows
+  (`.floating`) and keeps `SpacePolicy.joinsAllSpaces`; off, it is the normal-level window of
+  decision 1. The default pin is unchanged.
+- **Click-through**, per pin, off for every new pin, and only available while the pin is on top:
+  a click-through pin at the normal level would sink under the window the click reaches, leaving
+  nothing to see or click. Turning Keep on Top off also ends click-through. On, the pin ignores
+  mouse events and shows a lock in its corner, so a locked pin never looks like an ordinary one.
+- Both toggles are in the pin's hover control strip and its context menu. A click-through pin
+  cannot be clicked to reach either, so **Unlock All Pins** (Window menu, and the menu-bar extra's
+  Pins submenu) turns click-through off on every pin and keeps their level. It is enabled only
+  while a pin is click-through. With the menu-bar icon hidden, a pin still makes Recortia regular,
+  so ⌘Tab or the Dock reaches the app menu; Close All Pins remains in both menus as before.
+- **Presence.** A pin is a switchable window at any level: `AppPresence.isSwitchable` counts a
+  `PinPanel` even when it floats, so the app stays regular, the Dock click and the last-window rule
+  treat it like any other pin.
+- Exports do not change: copy and drag-out still export the pin's sanitized raster through
+  `ExportPipeline`.
+
+**Accepted cost.** A third-party window switcher may no longer list a pin while it floats; the
+measurement in Context showed floating windows are rejected. Turning Keep on Top off brings it
+back, and ⌘Tab and the Dock still reach Recortia.
+
+**Alternatives rejected.**
+
+- **Click-through on its own, at any level.** Simpler rule, but a click-through normal-level pin
+  disappears behind the first window clicked through it.
+- **A modifier-key unlock** (holding a key restores clicks). It means watching the keyboard while
+  any pin is locked, and the held key also reaches the app the person is working in.
+
+**Consequences.** The `pin-on-top` E2E scenario drives both toggles through the real strip and
+checks the window level, `ignoresMouseEvents`, the lock, the Space behavior, Unlock All Pins on
+every pin and in the menu bar, and (in a child-process probe) that a shown floating,
+click-through pin keeps Recortia regular. Whether a third-party switcher lists a floating pin, and
+clicks really passing through to another app, remain physical checks.

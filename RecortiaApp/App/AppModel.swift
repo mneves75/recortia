@@ -24,7 +24,8 @@ struct FeatureModels {
         self.textClipboard = textClipboard
         capture = CaptureCoordinator(
             capture: services.capture, permission: services.screenPermission, assets: services.assets,
-            clock: services.clock, settings: settings, sound: services.captureSound)
+            clock: services.clock, settings: settings, sound: services.captureSound,
+            elements: services.interfaceElements)
         export = ExportCoordinator(
             exporter: services.exporter, clipboard: services.clipboard, files: services.files, drag: services.drag,
             folders: services.folders, clock: services.clock, settings: settings, upload: services.githubUpload)
@@ -55,6 +56,8 @@ final class AppModel: AppActions {
     let onboarding: OnboardingModel
     let shortcutStatus: ShortcutStatusModel
     let features: FeatureModels
+    /// Window › Unlock All Pins in the app's menu bar.
+    @ObservationIgnored let pinMenu: PinMenuState
     private var isStartingScrollingCapture = false
 
     var openDocument: ((DocumentSession, EditorInitialAction, _ importedFileName: String?) -> EditorModel?)?
@@ -119,6 +122,7 @@ final class AppModel: AppActions {
         onboarding = OnboardingModel(settings: settings)
         shortcutStatus = ShortcutStatusModel(registry: shortcutRegistry, names: ShortcutBinding.names)
         features = FeatureModels(services: services, settings: settings, textClipboard: textClipboard)
+        pinMenu = PinMenuState(pins: features.pins)
         captureWindowVisibility = CaptureWindowVisibility(capture: features.capture, scroll: features.scroll) {
             [weak self] in self?.isStartingScrollingCapture == true
         }
@@ -171,6 +175,8 @@ final class AppModel: AppActions {
             return AppCommand.captureModes.contains { isEnabled($0) }
         case .bringPinsForward, .closeAllPins:
             return !features.pins.pins.isEmpty
+        case .unlockAllPins:
+            return features.pins.hasClickThroughPin
         case .settings, .featureTour, .about, .quit:
             return true
         }
@@ -196,6 +202,7 @@ final class AppModel: AppActions {
         case .pasteImage: importImage(from: .pasteboard)
         case .bringPinsForward: features.pins.bringForward()
         case .closeAllPins: features.pins.closeAll()
+        case .unlockAllPins: features.pins.unlockAll()
         case .settings: showSettings()
         case .featureTour:
             if !onboardingWindow.isVisible { onboarding.beginTour() }

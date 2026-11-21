@@ -31,6 +31,7 @@ final class RegionOverlayController {
     var onCancel: (() -> Void)?
     /// Space, as in the macOS Screenshot app: continue as a window selection.
     var onSwitchToWindow: (() -> Void)?
+    var onAspectChange: ((SelectionAspect) -> Void)?
 
     private var windows: [CGDirectDisplayID: OverlayWindow] = [:]
     private let pool: WindowSparePool<DisplayInfo, OverlayWindow>
@@ -57,7 +58,10 @@ final class RegionOverlayController {
         for display in displays { pool.spare(for: display)?.displayIfNeeded() }
     }
 
-    func present(displays: [DisplayInfo], notice: String?, allowsWindowSwitch: Bool) {
+    func present(
+        displays: [DisplayInfo], notice: String?, allowsWindowSwitch: Bool, aspect: SelectionAspect?,
+        snapFrames: [Rect<DesktopSpace>]
+    ) {
         let wanted = Set(displays.map(\.id))
         for (id, window) in windows where !wanted.contains(id) {
             hide(window)
@@ -65,18 +69,24 @@ final class RegionOverlayController {
         }
         for display in displays {
             if let existing = windows[display.id] {
-                existing.selectionView.notice = notice
-                existing.selectionView.allowsWindowSwitch = allowsWindowSwitch
+                configure(existing.selectionView, notice, allowsWindowSwitch, aspect, snapFrames)
                 continue
             }
             guard let screen = display.screen else { continue }
             let reused = pool.spare(for: display) != nil
             guard let window = pool.take(display) else { continue }
-            window.selectionView.notice = notice
-            window.selectionView.allowsWindowSwitch = allowsWindowSwitch
-            window.selectionView.onSwitchToWindow = { [weak self] in self?.onSwitchToWindow?() }
-            window.selectionView.onCommit = { [weak self] rect, display in self?.onCommit?(rect, display) }
-            window.selectionView.onCancel = { [weak self] in self?.onCancel?() }
+            let view = window.selectionView
+            configure(view, notice, allowsWindowSwitch, aspect, snapFrames)
+            view.onSwitchToWindow = { [weak self] in self?.onSwitchToWindow?() }
+            view.onCommit = { [weak self] rect, display in self?.onCommit?(rect, display) }
+            view.onCancel = { [weak self] in self?.onCancel?() }
+            view.onAspectChange = { [weak self] in self?.onAspectChange?($0) }
+            view.onSelectionBegan = { [weak self, weak view] in
+                guard let self else { return }
+                for other in self.windows.values where other.selectionView !== view {
+                    other.selectionView.clearSelection()
+                }
+            }
             windows[display.id] = window
             if reused {
                 if window.frame != screen.frame { window.setFrame(screen.frame, display: false) }
@@ -98,6 +108,17 @@ final class RegionOverlayController {
         window.orderOut(nil)
         window.selectionView.resetSelection()
         pool.giveBack(window, for: window.display)
+    }
+
+    private func configure(
+        _ view: RegionSelectionView, _ notice: String?, _ allowsWindowSwitch: Bool, _ aspect: SelectionAspect?,
+        _ snapFrames: [Rect<DesktopSpace>]
+    ) {
+        view.notice = notice
+        view.allowsWindowSwitch = allowsWindowSwitch
+        view.offersAspect = aspect != nil
+        view.aspect = aspect ?? .free
+        view.snapFrames = snapFrames
     }
 
     private func focusWindowUnderPointer() {
@@ -136,11 +157,16 @@ final class OverlayWindow: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-/// Draws the dimmed screen, the selection, and a live size label in the display's real pixels.
+/// Draws the dimmed screen, the selection, snap guides, and a size label in the display's real
+/// pixels with the aspect control. Release commits the dragged area at once; after an arrow key
+/// the selection stays, and Return commits it (A-4).
 final class RegionSelectionView: NSView {
     var onCommit: ((Rect<DesktopSpace>, DisplayInfo) -> Void)?
     var onCancel: (() -> Void)?
     var onSwitchToWindow: (() -> Void)?
+    var onAspectChange: ((SelectionAspect) -> Void)?
+    /// A drag began here, so the other displays' overlays drop their selections.
+    var onSelectionBegan: (() -> Void)?
     var notice: String? {
         didSet { needsDisplay = true }
     }
@@ -151,33 +177,75 @@ final class RegionSelectionView: NSView {
             needsDisplay = true
         }
     }
+    /// Whether the size label offers the aspect control; without it a selection is free.
+    var offersAspect = true {
+        didSet {
+            aspectControl.isHidden = !offersAspect
+            selectionDidChange()
+        }
+    }
+    var aspect = SelectionAspect.free {
+        didSet {
+            guard aspect != oldValue else { return }
+            aspectControl.selectedSegment = SelectionAspect.allCases.firstIndex(of: aspect) ?? 0
+            if let held {
+                self.held = RegionPrecision.fitted(
+                    held, to: aspect, within: localBounds, minimumSide: RegionSelection.minimumSide)
+            } else if isDragging {
+                resolveDrag()
+            }
+            selectionDidChange()
+        }
+    }
+    /// Other apps' window frames in desktop points; with the display's edges, what a drag snaps to.
+    var snapFrames: [Rect<DesktopSpace>] = [] {
+        didSet { if isDragging, held == nil { resolveDrag() } }
+    }
 
     private let display: DisplayInfo
-    private var anchor: CGPoint?
-    private var current: CGPoint?
+    private let aspectControl: AspectControl
+    private var anchor: Point<DisplaySpace>?
+    private var pointer: Point<DisplaySpace>?
+    private var drag: SelectionDrag<DisplaySpace>?
+    /// A selection the keyboard adjusted: the pointer no longer drives it, and Return commits it.
+    private var held: Rect<DisplaySpace>?
+    private var isDragging = false
+    private var keys = SelectionKeys()
     private var pointerLeftDisplay = false
 
     init(display: DisplayInfo) {
         self.display = display
+        aspectControl = AspectControl(
+            labels: SelectionAspect.allCases.map(Self.title), trackingMode: .selectOne, target: nil, action: nil)
         super.init(frame: .zero)
         setAccessibilityElement(true)
         setAccessibilityRole(.layoutArea)
         setAccessibilityLabel(String(localized: "Screen area selection"))
         setAccessibilityHelp(instructions)
+        aspectControl.target = self
+        aspectControl.action = #selector(aspectChosen(_:))
+        aspectControl.controlSize = .small
+        aspectControl.selectedSegment = 0
+        // The overlay keeps the keyboard; the control is for the pointer and VoiceOver.
+        aspectControl.refusesFirstResponder = true
+        // The overlay is two-tone: the control renders the same in light and dark appearance.
+        aspectControl.appearance = NSAppearance(named: .darkAqua)
+        aspectControl.setAccessibilityLabel(String(localized: "Aspect ratio"))
+        addSubview(aspectControl)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
 
-    /// Whether a drag is in progress.
-    var hasSelection: Bool { anchor != nil }
+    /// Whether a drag is in progress or a nudged selection is held.
+    var hasSelection: Bool { selection != nil }
 
-    /// Forgets an unfinished drag, so a reused overlay starts without the previous selection.
+    /// Forgets the selection, the held modifiers and the window frames, so a reused overlay starts
+    /// without the previous capture's selection, ratio drag, snap guide or snap targets.
     func resetSelection() {
-        anchor = nil
-        current = nil
-        pointerLeftDisplay = false
-        needsDisplay = true
+        clearSelection()
+        keys = SelectionKeys()
+        snapFrames = []
     }
 
     override var isFlipped: Bool { true }
@@ -188,43 +256,89 @@ final class RegionSelectionView: NSView {
         addCursorRect(bounds, cursor: .crosshair)
     }
 
+    override func layout() {
+        super.layout()
+        aspectControl.frame = chip().control
+    }
+
+    /// The selection in view points, while dragging or held.
+    var selection: Rect<DisplaySpace>? {
+        if let held { return held }
+        guard let anchor, let corner = drag?.corner else { return nil }
+        return Rect(spanning: anchor, corner)
+    }
+
+    /// The guides the dragged edges lie on.
+    var visibleGuides: [SnapGuide<DisplaySpace>] {
+        held == nil && isDragging ? drag?.guides ?? [] : []
+    }
+
+    /// Drops this display's selection, as when a drag begins on another display.
+    func clearSelection() {
+        anchor = nil
+        pointer = nil
+        drag = nil
+        held = nil
+        isDragging = false
+        pointerLeftDisplay = false
+        selectionDidChange()
+    }
+
     // MARK: Input
 
     override func mouseDown(with event: NSEvent) {
-        let point = clampedPoint(convert(event.locationInWindow, from: nil))
-        anchor = point
-        current = point
-        pointerLeftDisplay = false
-        needsDisplay = true
+        onSelectionBegan?()
+        clearSelection()
+        keys = Self.keys(event.modifierFlags)
+        let start = RegionPrecision.snappedAnchor(
+            localPoint(convert(event.locationInWindow, from: nil)), keys: keys, guides: snapGuides())
+        anchor = start.corner
+        pointer = start.corner
+        drag = start
+        isDragging = true
+        selectionDidChange()
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard anchor != nil else { return }
+        guard isDragging, held == nil, anchor != nil else { return }
         let raw = convert(event.locationInWindow, from: nil)
         pointerLeftDisplay = !bounds.contains(raw)
-        current = clampedPoint(raw)
-        needsDisplay = true
+        pointer = localPoint(raw)
+        keys = Self.keys(event.modifierFlags)
+        resolveDrag()
     }
 
     override func mouseUp(with event: NSEvent) {
-        defer {
-            anchor = nil
-            current = nil
-            pointerLeftDisplay = false
-            needsDisplay = true
-        }
-        guard let rect = selectionRect, rect.width >= 1, rect.height >= 1 else { return }
+        guard isDragging else { return }
+        isDragging = false
+        pointerLeftDisplay = false
+        guard held == nil else { return selectionDidChange() }
+        let rect = committable
+        clearSelection()
+        guard let rect else { return }
         onCommit?(desktopRect(for: rect), display)
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        keys = Self.keys(event.modifierFlags)
+        if isDragging, held == nil { resolveDrag() }
     }
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 53:  // Escape
             onCancel?()
-        case 36, 76:  // Return, keypad Enter: capture the whole display
-            onCommit?(display.frame, display)
-        case 49:  // Space: choose a window instead, unless a drag is in progress
-            if allowsWindowSwitch, anchor == nil { onSwitchToWindow?() }
+        case 36, 76:  // Return, keypad Enter: the selection, or the whole display without one
+            if let rect = committable {
+                clearSelection()
+                onCommit?(desktopRect(for: rect), display)
+            } else {
+                onCommit?(display.frame, display)
+            }
+        case 49:  // Space: choose a window instead, unless a selection is in progress
+            if allowsWindowSwitch, !isDragging, held == nil { onSwitchToWindow?() }
+        case 123...126 where !event.modifierFlags.contains(.command):
+            nudge(event)
         default:
             super.keyDown(with: event)
         }
@@ -232,6 +346,62 @@ final class RegionSelectionView: NSView {
 
     override func cancelOperation(_ sender: Any?) {
         onCancel?()
+    }
+
+    private func nudge(_ event: NSEvent) {
+        guard let rect = committable else { return }
+        let direction: NudgeDirection =
+            switch event.keyCode {
+            case 123: .left
+            case 124: .right
+            case 125: .down
+            default: .up
+            }
+        held = RegionPrecision.nudged(
+            rect, direction, keys: Self.keys(event.modifierFlags), aspect: aspect, within: localBounds,
+            minimumSide: RegionSelection.minimumSide)
+        selectionDidChange()
+    }
+
+    @objc private func aspectChosen(_ sender: NSSegmentedControl) {
+        let cases = SelectionAspect.allCases
+        guard cases.indices.contains(sender.selectedSegment) else { return }
+        aspect = cases[sender.selectedSegment]
+        onAspectChange?(aspect)
+        window?.makeFirstResponder(self)
+    }
+
+    private func resolveDrag() {
+        guard let anchor, let pointer else { return }
+        drag = RegionPrecision.drag(
+            anchor: anchor, pointer: pointer, aspect: aspect, keys: keys, guides: snapGuides(), within: localBounds)
+        selectionDidChange()
+    }
+
+    private func selectionDidChange() {
+        needsDisplay = true
+        needsLayout = true
+    }
+
+    private var committable: Rect<DisplaySpace>? {
+        guard let selection, selection.width >= RegionSelection.minimumSide,
+            selection.height >= RegionSelection.minimumSide
+        else { return nil }
+        return selection
+    }
+
+    private static func keys(_ flags: NSEvent.ModifierFlags) -> SelectionKeys {
+        SelectionKeys(shift: flags.contains(.shift), option: flags.contains(.option), command: flags.contains(.command))
+    }
+
+    private static func title(_ aspect: SelectionAspect) -> String {
+        switch aspect {
+        case .free: String(localized: "Free")
+        case .square: "1:1"
+        case .fourByThree: "4:3"
+        case .sixteenByNine: "16:9"
+        case .threeByTwo: "3:2"
+        }
     }
 
     // MARK: Drawing
@@ -242,10 +412,10 @@ final class RegionSelectionView: NSView {
         NSColor.black.withAlphaComponent(reduceTransparency ? 0.5 : 0.3).setFill()
         bounds.fill()
 
-        if let rect = selectionRect {
+        let lineWidth: CGFloat = highContrast ? 2 : 1
+        if let rect = selection.map(Self.cgRect) {
             NSColor.clear.setFill()
             rect.fill(using: .copy)
-            let lineWidth: CGFloat = highContrast ? 2 : 1
             NSColor.black.setStroke()
             let outer = NSBezierPath(rect: rect.insetBy(dx: -lineWidth, dy: -lineWidth))
             outer.lineWidth = lineWidth
@@ -254,8 +424,9 @@ final class RegionSelectionView: NSView {
             let inner = NSBezierPath(rect: rect)
             inner.lineWidth = lineWidth
             inner.stroke()
-            drawSizeLabel(for: rect)
         }
+        for guide in visibleGuides { drawGuide(guide, lineWidth: lineWidth) }
+        drawChip()
 
         var lines = [instructions]
         if let notice { lines.insert(notice, at: 0) }
@@ -266,27 +437,83 @@ final class RegionSelectionView: NSView {
             lines.joined(separator: "\n"), anchoredAt: CGPoint(x: bounds.midX, y: bounds.minY + 48), centered: true)
     }
 
-    private func drawSizeLabel(for rect: CGRect) {
-        let size = RegionSelection.pixelSize(of: desktopRect(for: rect), on: display)
-        let text = String(localized: "\(size.width) × \(size.height) px")
-        let origin = CGPoint(x: rect.maxX - 4, y: min(rect.maxY + 6, bounds.maxY - 28))
-        drawLabel(text, anchoredAt: origin, alignRight: true)
+    /// A white line on a black keyline across the display, like the selection's own border.
+    private func drawGuide(_ guide: SnapGuide<DisplaySpace>, lineWidth: CGFloat) {
+        let path = NSBezierPath()
+        let position = CGFloat(guide.position)
+        switch guide.axis {
+        case .vertical:
+            path.move(to: CGPoint(x: position, y: bounds.minY))
+            path.line(to: CGPoint(x: position, y: bounds.maxY))
+        case .horizontal:
+            path.move(to: CGPoint(x: bounds.minX, y: position))
+            path.line(to: CGPoint(x: bounds.maxX, y: position))
+        }
+        NSColor.black.setStroke()
+        path.lineWidth = lineWidth * 3
+        path.stroke()
+        NSColor.white.setStroke()
+        path.lineWidth = lineWidth
+        path.stroke()
     }
 
-    private func drawLabel(_ text: String, anchoredAt point: CGPoint, alignRight: Bool = false, centered: Bool = false)
-    {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
-            .foregroundColor: NSColor.white,
-        ]
-        let string = NSAttributedString(string: text, attributes: attributes)
+    private static let labelAttributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
+        .foregroundColor: NSColor.white,
+    ]
+
+    private struct Chip {
+        var background: CGRect
+        var text: NSAttributedString?
+        var textOrigin: CGPoint
+        var control: CGRect
+    }
+
+    /// The size label with the aspect control when offered: under the selection's bottom-right corner, or at
+    /// the bottom of the display before there is a selection.
+    private func chip() -> Chip {
+        let control = offersAspect ? aspectControl.intrinsicContentSize : .zero
+        let text = selection.map { rect in
+            let size = RegionSelection.pixelSize(of: desktopRect(for: rect), on: display)
+            return NSAttributedString(
+                string: String(localized: "\(size.width) × \(size.height) px"), attributes: Self.labelAttributes)
+        }
+        let textSize = text?.size() ?? .zero
+        let gap = text == nil || !offersAspect ? 0 : DesignTokens.Space.s
+        let content = CGSize(width: textSize.width + gap + control.width, height: max(textSize.height, control.height))
+        let padding = CGSize(width: DesignTokens.Space.s, height: DesignTokens.Space.xs)
+        var origin =
+            selection.map(Self.cgRect).map { CGPoint(x: $0.maxX - 4 - content.width, y: $0.maxY + 6 + padding.height) }
+            ?? CGPoint(x: bounds.midX - content.width / 2, y: bounds.maxY - 48 - content.height)
+        // Keep the chip, with its background, fully inside the display.
+        let insetX = 12 + padding.width, insetY = 12 + padding.height
+        origin.x = min(max(origin.x, bounds.minX + insetX), bounds.maxX - content.width - insetX)
+        origin.y = min(max(origin.y, bounds.minY + insetY), bounds.maxY - content.height - insetY)
+        return Chip(
+            background: CGRect(origin: origin, size: content).insetBy(dx: -padding.width, dy: -padding.height),
+            text: text, textOrigin: CGPoint(x: origin.x, y: origin.y + (content.height - textSize.height) / 2),
+            control: CGRect(
+                x: origin.x + textSize.width + gap, y: origin.y + (content.height - control.height) / 2,
+                width: control.width, height: control.height))
+    }
+
+    private func drawChip() {
+        let chip = chip()
+        guard chip.text != nil || offersAspect else { return }
+        NSColor.black.withAlphaComponent(0.75).setFill()
+        let radius = DesignTokens.Radius.control
+        NSBezierPath(roundedRect: chip.background, xRadius: radius, yRadius: radius).fill()
+        chip.text?.draw(at: chip.textOrigin)
+    }
+
+    private func drawLabel(_ text: String, anchoredAt point: CGPoint, centered: Bool) {
+        let string = NSAttributedString(string: text, attributes: Self.labelAttributes)
         let textSize = string.boundingRect(
             with: CGSize(width: min(bounds.width - 40, 640), height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin]
         ).size
         var origin = point
         if centered { origin.x -= textSize.width / 2 }
-        if alignRight { origin.x -= textSize.width }
         // Keep the label (and its background) fully inside the display.
         let margin: CGFloat = 12
         origin.x = min(max(origin.x, bounds.minX + margin), bounds.maxX - textSize.width - margin)
@@ -299,24 +526,44 @@ final class RegionSelectionView: NSView {
 
     // MARK: Geometry
 
-    private var selectionRect: CGRect? {
-        guard let anchor, let current else { return nil }
-        return CGRect(
-            x: min(anchor.x, current.x), y: min(anchor.y, current.y), width: abs(anchor.x - current.x),
-            height: abs(anchor.y - current.y))
+    /// The view's own points, which cover exactly this display.
+    private var localBounds: Rect<DisplaySpace> {
+        Rect(x: 0, y: 0, width: bounds.width, height: bounds.height)
     }
 
-    private func clampedPoint(_ point: CGPoint) -> CGPoint {
-        CGPoint(x: min(max(point.x, bounds.minX), bounds.maxX), y: min(max(point.y, bounds.minY), bounds.maxY))
+    private func localPoint(_ point: CGPoint) -> Point<DisplaySpace> {
+        Point(x: min(max(point.x, bounds.minX), bounds.maxX), y: min(max(point.y, bounds.minY), bounds.maxY))
     }
 
-    /// View points (flipped, top-left) → desktop points. The window covers exactly this display.
-    private func desktopRect(for rect: CGRect) -> Rect<DesktopSpace> {
-        let sx = bounds.width > 0 ? display.frame.width / bounds.width : 1
-        let sy = bounds.height > 0 ? display.frame.height / bounds.height : 1
+    private static func cgRect(_ rect: Rect<DisplaySpace>) -> CGRect {
+        CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height)
+    }
+
+    /// Desktop points per view point; 1 while the window covers exactly this display.
+    private var scale: (x: Double, y: Double) {
+        (
+            bounds.width > 0 ? display.frame.width / bounds.width : 1,
+            bounds.height > 0 ? display.frame.height / bounds.height : 1
+        )
+    }
+
+    /// The display's edges and every listed window frame, in view points.
+    private func snapGuides() -> [SnapGuide<DisplaySpace>] {
+        let scale = scale
+        let frames = snapFrames.map { frame in
+            Rect<DisplaySpace>(
+                x: (frame.minX - display.frame.minX) / scale.x, y: (frame.minY - display.frame.minY) / scale.y,
+                width: frame.width / scale.x, height: frame.height / scale.y)
+        }
+        return RegionPrecision.guides(within: localBounds, frames: frames)
+    }
+
+    /// View points (flipped, top-left) → desktop points.
+    private func desktopRect(for rect: Rect<DisplaySpace>) -> Rect<DesktopSpace> {
+        let scale = scale
         return Rect(
-            x: display.frame.minX + rect.minX * sx, y: display.frame.minY + rect.minY * sy, width: rect.width * sx,
-            height: rect.height * sy)
+            x: display.frame.minX + rect.minX * scale.x, y: display.frame.minY + rect.minY * scale.y,
+            width: rect.width * scale.x, height: rect.height * scale.y)
     }
 
     private var instructions: String {
@@ -329,4 +576,9 @@ final class RegionSelectionView: NSView {
                 localized:
                     "Drag to select an area. Press Return to capture the whole display or Escape to cancel.")
     }
+}
+
+/// A click on another display's overlay picks a ratio at once, without first making it key.
+private final class AspectControl: NSSegmentedControl {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

@@ -3,9 +3,10 @@ import Domain
 import Features
 import SwiftUI
 
-/// Reference pins (FR-09, ADR-007): ordinary normal-level panels (never click-through) on every
-/// Space, movable by dragging, with opacity, zoom, copy, drag-out, and an explicit close.
-/// Escape or ⌘W closes the focused pin.
+/// Reference pins (FR-09, ADR-007): ordinary normal-level panels on every Space, movable by
+/// dragging, with opacity, zoom, copy, drag-out, and an explicit close. Escape or ⌘W closes the
+/// focused pin. Per pin, Keep on Top floats it and click-through (only while on top) lets clicks
+/// pass; Unlock All Pins in the menus ends click-through, since such a pin cannot be clicked.
 final class PinsUIController {
     private let model: PinsModel
     private var panels: [PinID: PinPanel] = [:]
@@ -37,9 +38,11 @@ final class PinsUIController {
     }
 }
 
-final class PinPanel: NSPanel {
+final class PinPanel: NSPanel, SwitchableAtAnyLevel {
     /// Chosen once, so the pin is sized for the screen it appears on (FR-09).
     private let targetScreen = ScreenChoice.screen()
+    /// Follows the pin's Keep on Top and click-through state.
+    private var layering: ObservationLoop?
 
     init(pinID: PinID, model: PinsModel) {
         super.init(
@@ -63,6 +66,18 @@ final class PinPanel: NSPanel {
             rootView: PinContentView(pinID: pinID, model: model, fitScale: fit))
         controller.sizingOptions = [.preferredContentSize]
         contentViewController = controller
+        layering = ObservationLoop { [weak self, weak model] in
+            guard let self, let pin = model?.pin(for: pinID) else { return }
+            self.applyLayering(of: pin)
+        }
+    }
+
+    /// Keep on Top floats the pin above normal windows; its Space behavior never changes, so it
+    /// still joins every Space (ADR-007 amendment).
+    private func applyLayering(of pin: Pin) {
+        let target: NSWindow.Level = pin.keepsOnTop ? .floating : .normal
+        if level != target { level = target }
+        if ignoresMouseEvents != pin.isClickThrough { ignoresMouseEvents = pin.isClickThrough }
     }
 
     override var canBecomeKey: Bool { true }
@@ -108,6 +123,8 @@ struct PinContentView: View {
                 pin: pin, fitScale: fitScale, status: status?.text, controlsAlwaysVisible: controlsAlwaysVisible,
                 onOpacity: { model.setOpacity($0, for: pinID) },
                 onZoom: { model.setZoom($0, for: pinID) },
+                onKeepOnTop: { model.setKeepsOnTop($0, for: pinID) },
+                onClickThrough: { model.setClickThrough($0, for: pinID) },
                 onExport: { action in Task { await export(action) } },
                 onClose: { model.close(pinID) })
         }
@@ -141,6 +158,8 @@ struct PinView: View {
     var controlsAlwaysVisible = false
     let onOpacity: @MainActor (Double) -> Void
     let onZoom: (Double) -> Void
+    let onKeepOnTop: (Bool) -> Void
+    let onClickThrough: (Bool) -> Void
     let onExport: (PinExportAction) -> Void
     let onClose: () -> Void
     @State private var isHovering = false
@@ -156,8 +175,11 @@ struct PinView: View {
     }
 
     /// Hidden until the pointer enters, so the pin shows only the image; always shown to
-    /// VoiceOver and while a copy or drag-out notice is up.
-    private var showsControls: Bool { controlsAlwaysVisible || isHovering || voiceOver || status != nil }
+    /// VoiceOver and while a copy or drag-out notice is up. A click-through pin gets no pointer
+    /// events, so a hover that was in progress when it locked does not keep the strip up.
+    private var showsControls: Bool {
+        controlsAlwaysVisible || (isHovering && !pin.isClickThrough) || voiceOver || status != nil
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -174,8 +196,31 @@ struct PinView: View {
                 .opacity(showsControls ? 1 : 0)
                 .allowsHitTesting(showsControls)
         }
+        .overlay(alignment: .topTrailing) {
+            if pin.isClickThrough { lockedBadge }
+        }
         .onHover { isHovering = $0 }
+        .contextMenu {
+            Toggle("Keep on Top", isOn: keepOnTop)
+            Toggle("Click Through", isOn: clickThrough)
+                .disabled(!pin.keepsOnTop)
+        }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: showsControls)
+    }
+
+    private var keepOnTop: Binding<Bool> { Binding(get: { pin.keepsOnTop }, set: onKeepOnTop) }
+    private var clickThrough: Binding<Bool> { Binding(get: { pin.isClickThrough }, set: onClickThrough) }
+
+    /// Shown while the pin lets clicks through, so a locked pin never looks like an ordinary one.
+    private var lockedBadge: some View {
+        Image(systemName: "lock.fill")
+            .font(.caption)
+            .padding(DesignTokens.Space.xs)
+            .background(Color(nsColor: .windowBackgroundColor).opacity(0.92), in: Circle())
+            .padding(DesignTokens.Space.s)
+            .accessibilityElement()
+            .accessibilityLabel(Text("Click Through"))
+            .accessibilityIdentifier("pin.locked")
     }
 
     private var strip: some View {
@@ -273,8 +318,54 @@ struct PinView: View {
             .fixedSize()
             .help(Text("Opacity"))
             .accessibilityIdentifier("pin.opacity")
+            Divider().frame(height: 16)
+            Toggle(isOn: keepOnTop) {
+                Label("Keep on Top", systemImage: "pin")
+            }
+            .help(Text("Keep on Top"))
+            .accessibilityIdentifier("pin.keepOnTop")
+            // Only a pin on top lets clicks through; anything else would sink under the window
+            // the click reaches.
+            Toggle(isOn: clickThrough) {
+                Label("Click Through", systemImage: "cursorarrow.slash")
+            }
+            .help(Text("Click Through"))
+            .disabled(!pin.keepsOnTop)
+            .accessibilityIdentifier("pin.clickThrough")
         }
+        .toggleStyle(.button)
+        .labelStyle(.iconOnly)
         .controlSize(.small)
+    }
+}
+
+/// Whether Unlock All Pins can act, for the app's menu bar: SwiftUI re-reads menu-bar commands
+/// only through `@ObservedObject` (see `EditorCommands`), so this republishes the pins' state.
+/// The menu-bar extra's `MenuContent` observes the model directly.
+final class PinMenuState: ObservableObject {
+    @Published private(set) var canUnlock = false
+    private var loop: ObservationLoop?
+
+    init(pins: PinsModel) {
+        loop = ObservationLoop { [weak self, weak pins] in
+            guard let self, let pins, canUnlock != pins.hasClickThroughPin else { return }
+            canUnlock = pins.hasClickThroughPin
+        }
+    }
+}
+
+/// Window › Unlock All Pins (ADR-007 amendment): with the menu-bar extra's item, the way back from
+/// a click-through pin, reachable while the menu-bar icon is hidden because a pin keeps the app
+/// in ⌘Tab and the Dock.
+struct PinMenuCommands: Commands {
+    @ObservedObject var state: PinMenuState
+    let app: any AppActions
+
+    var body: some Commands {
+        CommandGroup(after: .windowArrangement) {
+            Button(AppCommand.unlockAllPins.title) { app.perform(.unlockAllPins) }
+                .disabled(!state.canUnlock)
+        }
     }
 }
 

@@ -19,7 +19,7 @@ public struct CaptureCompletion: Sendable {
 /// Pure region-selection rules shared by the coordinator and the overlay (FR-02).
 public enum RegionSelection {
     /// Minimum committed size in points; smaller drags (a click) do not capture.
-    static let minimumSide = 1.0
+    public static let minimumSide = 1.0
 
     /// Clamps `rect` to `display` (v1 regions never cross displays). Returns nil when nothing
     /// usable remains; `wasClamped` tells the overlay to explain the limitation.
@@ -81,6 +81,10 @@ public final class CaptureCoordinator {
     public private(set) var purpose: CapturePurpose = .edit
     public private(set) var selectionContext: SelectionContext?
     public private(set) var notice: Notice?
+    /// Frames of other apps' on-screen windows that a region selection snaps to (A-4), then the
+    /// interface elements of the app under the pointer when that setting is on (B-7); empty until
+    /// listed, outside a region selection, and when listing fails. Held for one selection only.
+    public private(set) var snapFrames: [Rect<DesktopSpace>] = []
     private(set) var lastSelectionWasClamped = false
     private var repeatRegion: RepeatRegion?
 
@@ -92,12 +96,14 @@ public final class CaptureCoordinator {
     @ObservationIgnored private let clock: any FeatureClock
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let sound: (any CaptureSoundService)?
+    @ObservationIgnored private let elements: (any InterfaceElementFrameService)?
     /// The current request's start-to-overlay interval (A-13).
     @ObservationIgnored private var overlayInterval: LatencyInterval?
     /// Each capture call's own interval, so a stale one closes only its own.
     @ObservationIgnored private var captureIntervals: [RequestID: LatencyInterval] = [:]
     @ObservationIgnored private var active: ActiveCapture?
     @ObservationIgnored private var task: Task<Void, Never>?
+    @ObservationIgnored private var snapTask: Task<Void, Never>?
 
     private struct ActiveCapture {
         let id: RequestID
@@ -113,7 +119,8 @@ public final class CaptureCoordinator {
 
     public init(
         capture: any CaptureService, permission: any ScreenPermissionService, assets: any ImageAssetService,
-        clock: any FeatureClock, settings: SettingsStore, sound: (any CaptureSoundService)?
+        clock: any FeatureClock, settings: SettingsStore, sound: (any CaptureSoundService)?,
+        elements: (any InterfaceElementFrameService)?
     ) {
         self.capture = capture
         self.permission = permission
@@ -121,9 +128,17 @@ public final class CaptureCoordinator {
         self.clock = clock
         self.settings = settings
         self.sound = sound
+        self.elements = elements
     }
 
     public var hasRepeatRegion: Bool { repeatRegion != nil }
+
+    /// The ratio region selections keep; the person's last choice (A-4).
+    public var regionAspect: SelectionAspect { settings.preferences.regionAspect }
+
+    public func setRegionAspect(_ aspect: SelectionAspect) {
+        settings.update { $0.regionAspect = aspect }
+    }
 
     public var delayForDelayedCapture: Int {
         let configured = settings.preferences.captureDelaySeconds
@@ -183,6 +198,7 @@ public final class CaptureCoordinator {
         guard state == .selecting, let active else { return false }
         abandonOverlayInterval()
         selectionContext = nil
+        forgetSnapFrames()
         apply(.selectionCommitted(delaySeconds: active.delaySeconds))
         let id = active.id
         task = Task { [weak self] in await self?.run(target, id: id) }
@@ -195,6 +211,7 @@ public final class CaptureCoordinator {
     @discardableResult
     public func switchToWindowSelection() -> Bool {
         guard state == .selecting, mode == .region, purpose == .edit, let active else { return false }
+        forgetSnapFrames()
         mode = .window
         selectionContext = .loadingWindows
         let id = active.id
@@ -240,6 +257,7 @@ public final class CaptureCoordinator {
         switch mode {
         case .region, nil:
             selectionContext = .region(capture.displays())
+            loadSnapFrames(id)
         case .repeatRegion:
             let displays = capture.displays()
             if let memory = repeatRegion,
@@ -253,6 +271,7 @@ public final class CaptureCoordinator {
                 notice = .repeatRegionUnavailable
                 mode = .region
                 selectionContext = .region(displays)
+                loadSnapFrames(id)
             }
         case .display:
             let displays = capture.displays()
@@ -279,6 +298,29 @@ public final class CaptureCoordinator {
             guard isCurrent(id) else { return }
             handle(error)
         }
+    }
+
+    /// Lists window frames for snapping alongside the region overlay, then, with element snapping
+    /// on as the selection starts, the element frames of the app under the pointer. A failed list
+    /// or read only leaves that snapping off: display edges and the window frames already listed
+    /// still snap, and the selection itself depends on neither. A result is accepted only while
+    /// the same request is still selecting a region.
+    private func loadSnapFrames(_ id: RequestID) {
+        let snapsToElements = settings.preferences.snapsToInterfaceElements
+        snapTask = Task { [weak self] in
+            guard let self else { return }
+            guard let windows = try? await self.capture.windows(), self.isSelectingRegion(id) else { return }
+            let windowFrames = windows.map(\.frame)
+            self.snapFrames = windowFrames
+            guard snapsToElements, let elements = self.elements, case .region(let displays)? = self.selectionContext,
+                let walk = await elements.frames(under: windows), self.isSelectingRegion(id)
+            else { return }
+            self.snapFrames = windowFrames + ElementSnapping.admitted(walk.frames, displays: displays.map(\.frame))
+        }
+    }
+
+    private func isSelectingRegion(_ id: RequestID) -> Bool {
+        isCurrent(id) && state == .selecting && mode == .region
     }
 
     private func run(_ target: CaptureTarget, id: RequestID) async {
@@ -386,6 +428,7 @@ public final class CaptureCoordinator {
         task = nil
         active = nil
         selectionContext = nil
+        forgetSnapFrames()
         apply(.cancel)
     }
 
@@ -394,6 +437,13 @@ public final class CaptureCoordinator {
         active = nil
         task = nil
         selectionContext = nil
+        forgetSnapFrames()
+    }
+
+    private func forgetSnapFrames() {
+        snapTask?.cancel()
+        snapTask = nil
+        if !snapFrames.isEmpty { snapFrames = [] }
     }
 
     private func apply(_ event: CaptureEvent) {
