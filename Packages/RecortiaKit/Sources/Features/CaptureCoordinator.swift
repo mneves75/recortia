@@ -372,7 +372,9 @@ public final class CaptureCoordinator {
         let completion = CaptureCompletion(
             requestID: id,
             session: DocumentSession(
-                document: Document(capture: info, windowBackground: preferences.windowCaptureBackground)),
+                document: Document(
+                    capture: info, windowBackground: preferences.windowCaptureBackground,
+                    defaultFraming: preferences.defaultFraming)),
             purpose: purpose)
         apply(.captureSucceeded)
         finish()

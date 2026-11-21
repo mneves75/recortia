@@ -185,6 +185,8 @@ struct MaskingAdmissionTests {
             Step(name: "setPadding", expectation: .refused) { model.setPadding(20) },
             Step(name: "setCornerRadius", expectation: .refused) { model.setCornerRadius(12) },
             Step(name: "setShadow", expectation: .refused) { model.setShadow(Presentation.Shadow()) },
+            Step(name: "setAspect", expectation: .refused) { model.setAspect(.square) },
+            Step(name: "setBalancesContent", expectation: .refused) { model.setBalancesContent(false) },
             Step(name: "setSpotlightDim", expectation: .refused) { model.setSpotlightDim(0.2, for: spotlight) },
             Step(name: "setObfuscationAmount", expectation: .refused) { model.setObfuscationAmount(40, for: effect) },
             Step(name: "commitTextEditing", expectation: .refused) {
@@ -284,6 +286,8 @@ struct MaskingAdmissionTests {
             Step(name: "setColorSampleSize", expectation: .inert) { model.setColorSampleSize(.fiveByFive) },
             Step(name: "setSamplesDarkestPixel", expectation: .inert) { model.setSamplesDarkestPixel(true) },
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
+            Step(name: "saveDefaultFraming", expectation: .inert) { model.saveDefaultFraming() },
+            Step(name: "resetDefaultFraming", expectation: .inert) { model.resetDefaultFraming() },
             Step(name: "applySavedColor", expectation: .inert) { model.applySavedColor(model.style.stroke) },
             Step(name: "removeSavedColor", expectation: .inert) { model.removeSavedColor(model.style.stroke) },
             Step(name: "clearRuler", expectation: .inert) { model.clearRuler() },

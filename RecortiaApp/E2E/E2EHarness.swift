@@ -157,7 +157,7 @@
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
                 $0.keepsRunningInMenuBar = true; $0.autoRedactsSensitiveText = false
-                $0.afterCapture = .openEditor; $0.regionAspect = .free
+                $0.afterCapture = .openEditor; $0.regionAspect = .free; $0.defaultFraming = nil
             }
             features.quickActions.dismiss()
             folderChooser.answers = []

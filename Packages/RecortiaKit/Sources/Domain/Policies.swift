@@ -296,6 +296,9 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var snapsToInterfaceElementsChoice: Bool?
     /// Stored only once the person picks one in the colour picker; read `colorFormat` (A-7).
     public var colorFormatChoice: ColorFormat?
+    /// The framing new captures open with (FR-13); nil until the person saves one in the editor.
+    /// Documents already open never change with it.
+    public var defaultFraming: Presentation?
 
     public init() {}
 

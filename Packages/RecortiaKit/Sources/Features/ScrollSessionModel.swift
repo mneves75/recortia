@@ -273,7 +273,11 @@ public final class ScrollSessionModel {
         stitcher.reset()
         preview = nil
         sessionID = nil
-        onAccepted?(DocumentSession(document: Document(asset: info)), settings.preferences.autoRedactsSensitiveText)
+        let preferences = settings.preferences
+        // A scrolling capture is a capture: it opens with the saved default framing.
+        let document = Document(
+            capture: info, windowBackground: .transparent, defaultFraming: preferences.defaultFraming)
+        onAccepted?(DocumentSession(document: document), preferences.autoRedactsSensitiveText)
     }
 
     func clearNotice() { notice = nil }

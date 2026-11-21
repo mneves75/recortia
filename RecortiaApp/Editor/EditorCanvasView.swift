@@ -224,10 +224,8 @@ final class EditorCanvasView: NSView, NSTextViewDelegate {
         let viewport = model.viewport
         let document = model.document
         var shownRect = document.canvasRect
-        if model.showsOutputPreview {
-            let padding = document.presentation.padding
-            shownRect = document.contentRect.insetBy(dx: -padding, dy: -padding)
-        }
+        // The preview renders at export scale 1; it covers the framed output, aspect expansion included.
+        if model.showsOutputPreview { shownRect = document.framedRect(exportScale: 1) }
         let canvas = viewport.viewRect(shownRect).cg
         drawCheckerboard(in: canvas, context)
 

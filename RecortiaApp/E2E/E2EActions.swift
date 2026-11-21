@@ -85,10 +85,7 @@
             // The window was resized after the editor fitted its first layout; fit what is shown now.
             let model = controller.model
             let document = model.document
-            let padding = document.presentation.padding
-            let shown =
-                model.showsOutputPreview
-                ? document.contentRect.insetBy(dx: -padding, dy: -padding) : document.canvasRect
+            let shown = model.showsOutputPreview ? document.framedRect(exportScale: 1) : document.canvasRect
             model.setViewport(.fitting(shown, in: model.viewportSize, maxZoom: 1 / max(model.backingScale, 0.5)))
             controller.canvasView?.needsDisplay = true
             await E2ESnapshot.settle(root, for: .milliseconds(350))
