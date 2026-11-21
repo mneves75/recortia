@@ -240,6 +240,8 @@ final class LiveLoginItem: LoginItemService {
 
 extension KeychainPreferenceIntegrity: @retroactive PreferenceIntegrityService {}
 
+extension SparkleUpdateService: @retroactive UpdateService {}
+
 /// The system's Tink sound through System Sound Services, registered as an interface sound so it
 /// follows the alert volume and stays silent while "Play user interface sound effects" is off.
 /// No bundled audio, no microphone.

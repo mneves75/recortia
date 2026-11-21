@@ -1067,6 +1067,38 @@
         }
       }
     },
+    "Check for Updates…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar atualizações…"
+          }
+        }
+      }
+    },
+    "Check for updates automatically" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates automatically"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar atualizações automaticamente"
+          }
+        }
+      }
+    },
     "Check the GitHub upload" : {
       "localizations" : {
         "en" : {
@@ -1329,6 +1361,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar, Salvar ou Arrastar para fora"
+          }
+        }
+      }
+    },
+    "Could not check for updates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not check for updates"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível buscar atualizações"
           }
         }
       }
@@ -2247,6 +2295,22 @@
         }
       }
     },
+    "Later" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais tarde"
+          }
+        }
+      }
+    },
     "Loading languages" : {
       "localizations" : {
         "en" : {
@@ -3128,6 +3192,38 @@
         }
       }
     },
+    "Recortia %@ is available" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia %@ is available"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia %@ está disponível"
+          }
+        }
+      }
+    },
+    "Recortia %@ is the newest version." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia %@ is the newest version."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia %@ é a versão mais recente."
+          }
+        }
+      }
+    },
     "Recortia asks for Screen Recording permission the first time you capture, not now. Opening and editing images never needs it." : {
       "localizations" : {
         "en" : {
@@ -3176,6 +3272,38 @@
         }
       }
     },
+    "Recortia checks the update’s signature before installing it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia checks the update’s signature before installing it."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia verifica a assinatura da atualização antes de instalá-la."
+          }
+        }
+      }
+    },
+    "Recortia could not read the update feed. Try again later." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia could not read the update feed. Try again later."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia não conseguiu ler o feed de atualizações. Tente novamente mais tarde."
+          }
+        }
+      }
+    },
     "Recortia could not remember access to that folder. Choose another folder." : {
       "localizations" : {
         "en" : {
@@ -3188,6 +3316,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Recortia não conseguiu guardar o acesso a essa pasta. Escolha outra pasta."
+          }
+        }
+      }
+    },
+    "Recortia is up to date" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortia is up to date"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Recortia está atualizado"
           }
         }
       }
@@ -3744,6 +3888,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar menu de captura"
+          }
+        }
+      }
+    },
+    "Show Update" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Update"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar atualização"
           }
         }
       }

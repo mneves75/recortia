@@ -8,6 +8,30 @@
     // DEBUG-only replacements for the boundaries that would need TCC, real input, or the user's
     // clipboard. Every other service in the E2E run is the live one from `AppServices.live()`.
 
+    /// Stands in for Sparkle (FP-024): scripted results, no network, no updater window.
+    @MainActor
+    final class SyntheticUpdateService: UpdateService {
+        var result = UpdateCheckResult.noUpdate
+        private(set) var starts: [Bool] = []
+        private(set) var automatic: [Bool] = []
+        private(set) var checks = 0
+        private(set) var installs = 0
+
+        func start(checksAutomatically: Bool) -> UpdaterStart {
+            starts.append(checksAutomatically)
+            return .started
+        }
+
+        func setChecksAutomatically(_ enabled: Bool) { automatic.append(enabled) }
+
+        func checkForUpdates() async -> UpdateCheckResult {
+            checks += 1
+            return result
+        }
+
+        func installUpdate() { installs += 1 }
+    }
+
     /// Records automatic-scroll steps instead of posting events. The E2E run grants Accessibility
     /// synthetically, so the live scroller would drive whatever window a target names, possibly one
     /// of the host Mac's own. No scenario needs a real scroll: frames come from

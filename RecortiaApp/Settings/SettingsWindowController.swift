@@ -50,7 +50,7 @@ final class SettingsWindowController {
             String(localized: "General"), "gearshape",
             GeneralSettingsTab(
                 settings: model.settings, loginItem: model.features.loginItem,
-                setShowsMenuBarIcon: model.setShowsMenuBarIcon))
+                setShowsMenuBarIcon: model.setShowsMenuBarIcon, updater: model.features.updater))
         add(
             String(localized: "Shortcuts"), "keyboard",
             ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts))

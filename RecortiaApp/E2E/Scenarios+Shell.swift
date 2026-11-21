@@ -235,7 +235,7 @@
                 .openImage: true,
                 .pasteImage: true, .reopenClosedCapture: false, .bringPinsForward: false, .closeAllPins: false,
                 .unlockAllPins: false,
-                .settings: true, .about: true,
+                .settings: true, .about: true, .checkForUpdates: true,
                 .featureTour: true, .quit: true,
             ]
             for command in AppCommand.allCases {
@@ -337,7 +337,7 @@
             context.check("automatic copy is off by default", !preferences.autoCopy)
             context.check("automatic save is off by default", !preferences.autoSave)
             context.check("automatic upload is off by default", preferences.githubUpload?.automatic != true)
-            context.check("update checks are off by default", !preferences.updateChecksEnabled)
+            context.check("update checks are off by default", !preferences.checksForUpdatesAutomatically)
             context.check("automatic scrolling is off by default", !preferences.automaticScrollingEnabled)
             context.check("export defaults to PNG at 100%", harness.settings.exportOptions == ExportOptions())
             try await checkLoginItemRefresh(context)
@@ -787,7 +787,7 @@
                 host(
                     GeneralSettingsTab(
                         settings: model.settings, loginItem: model.features.loginItem,
-                        setShowsMenuBarIcon: model.setShowsMenuBarIcon))
+                        setShowsMenuBarIcon: model.setShowsMenuBarIcon, updater: model.features.updater))
             case 1:
                 host(
                     ShortcutsSettingsTab(status: model.shortcutStatus, onRestoreDefaults: model.restoreDefaultShortcuts)

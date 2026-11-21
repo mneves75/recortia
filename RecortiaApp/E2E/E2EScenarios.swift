@@ -33,6 +33,9 @@
                 run: DesktopScenarios.captureMenuFocus),
             E2EScenario(id: "settings", title: "Settings tabs", run: ShellScenarios.settings),
             E2EScenario(
+                id: "updater", title: "Check for Updates reports each result without network",
+                run: UpdaterScenarios.updater),
+            E2EScenario(
                 id: "quit-confirmation", title: "Quit asks before discarding edits",
                 run: ShellScenarios.quitConfirmation),
             E2EScenario(id: "shortcuts", title: "macOS-style default shortcuts", run: ShortcutScenarios.defaults),

@@ -26,6 +26,10 @@ Acceptance:
 Focused verification: `scripts/check.sh --unsigned`; `git diff Package.resolved`;
 `swift package --package-path Packages/RecortiaKit show-dependencies`.
 
+Status: **done** 2026-11-21 on `feat/t6-updater`, with Sparkle **2.10.1** (newest stable; 2.10.0
+was planned). Package.resolved v3 records version and revision; the binary checksum lives in
+Sparkle's manifest at that revision and SwiftPM verifies it. Review evidence: ADR-0001.
+
 ---
 
 ## T2 — Updater adapter, menu item and opt-in setting
@@ -51,6 +55,12 @@ Acceptance:
 
 Focused verification: `swift test --package-path Packages/RecortiaKit --filter UpdateService`;
 the `Info.plist` script control; native E2E `updater` scenario in EN and PT-BR.
+
+Status: **implemented, awaiting native E2E** (2026-11-21, `feat/t6-updater`). Package tests
+(`SparkleUpdateServiceTests`, `UpdaterModelTests`, `SparkleImportScanTests`) and the
+`scripts/check-updater-plist.py` control cover it; the bilingual `updater` scenario is built but
+not yet run. Without `SUPublicEDKey` (T3) the entry points stay hidden, so acceptance 2 and 3 on
+the shipping app wait for T3.
 
 ---
 
