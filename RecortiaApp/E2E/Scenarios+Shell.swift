@@ -233,7 +233,8 @@
                 .captureRegion: true, .captureDisplay: true, .captureWindow: true, .captureWithDelay: true,
                 .repeatLastRegion: false, .scrollingCapture: true, .captureText: true, .captureMenu: true,
                 .openImage: true,
-                .pasteImage: true, .bringPinsForward: false, .closeAllPins: false, .settings: true, .about: true,
+                .pasteImage: true, .bringPinsForward: false, .closeAllPins: false, .unlockAllPins: false,
+                .settings: true, .about: true,
                 .featureTour: true, .quit: true,
             ]
             for command in AppCommand.allCases {
