@@ -243,6 +243,15 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   during registration, a freeze command could be dropped while a canceled read drained, and
   the native magnifier assertion needed a source-pixel comparison. The older plan's pixel
   coordinates and sleep/timeout cleanup also remain required.
+- A-5 checkpoint `d119e78` resolves the review findings, adds pixel coordinates and clears
+  capture state on system/display sleep. Both unsigned Debug targets compiled. The focused
+  package test covered seven cases, all 115 targeted redaction/privacy tests passed, and all
+  781 extracted strings had pt-BR translations. The planted aliased-image control failed at
+  the source-frame release assertion while registration was suspended. The restored suite
+  passed again. A separate model re-reviewed the changes and cleared the three findings.
+- The A-5 working branch is pushed separately. The owner still needs to choose the frame
+  retention duration. Bilingual native execution needs an unlocked console with a five-minute
+  idle start and no input until the run finishes. The affected macOS 26 physical checks remain open.
 - The repository generates `tests.json` as its test inventory and
   `.scratch/tests-report.json` as the run-status record via `scripts/tests-report.py`.
   New test code is limited to behavior over the requested `cccc` complexity threshold or
