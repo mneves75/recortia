@@ -88,6 +88,32 @@ struct DefaultFramingTests {
         #expect(h.completions[0].session.document.presentation == Self.framing, "earlier captures keep theirs")
     }
 
+    // Failure mode: a saved framing that sets no background switches the window-capture
+    // background in Settings › Capture off for window captures.
+    @Test("A saved framing with no background keeps the window background on window captures only")
+    func savedNoneKeepsWindowBackground() async {
+        let h = CaptureHarness()
+        let color = RGBA(r: 20, g: 200, b: 90)
+        let bare = Presentation(padding: 24, cornerRadius: 8, aspect: .landscape16x9)
+        h.settings.update {
+            $0.windowCaptureBackground = .solid(color)
+            $0.defaultFraming = bare
+        }
+        h.coordinator.start(.window)
+        await waitFor("windows listed") { h.coordinator.selectionContext == .window([TestFixtures.window]) }
+        h.coordinator.commitSelection(.window(TestFixtures.window))
+        await waitFor("window captured") { h.completions.count == 1 }
+        var expected = bare
+        expected.background = .solid(color)
+        #expect(h.completions[0].session.document.presentation == expected)
+        #expect(h.settings.preferences.windowCaptureBackground == .solid(color), "the setting stays on")
+
+        h.coordinator.start(.region)
+        h.coordinator.commitRegion(h.regionRect, on: TestFixtures.primaryDisplay)
+        await waitFor("region captured") { h.completions.count == 2 }
+        #expect(h.completions[1].session.document.presentation == bare)
+    }
+
     @Test("An accepted scrolling capture opens with the saved framing")
     func scrollingCapture() async {
         let h = ScrollHarness()

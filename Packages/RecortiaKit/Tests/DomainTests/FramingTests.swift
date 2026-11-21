@@ -113,7 +113,7 @@ struct FramingTests {
         #expect(!Presentation(aspect: .free).centresOpaqueContent)
     }
 
-    @Test("A saved framing replaces the window background for every new capture")
+    @Test("A saved background wins for every capture; a saved None keeps a window capture's background")
     func captureFraming() {
         let framing = Presentation(background: .solid(.white), padding: 20, aspect: .square)
         let geometry = CaptureGeometry(
@@ -125,5 +125,21 @@ struct FramingTests {
         #expect(window.presentation == Presentation(background: .solid(.black)))
         let framed = Document(capture: asset, windowBackground: .solid(.black), defaultFraming: framing)
         #expect(framed.presentation == framing)
+
+        // A saved framing with no background keeps the window background; everything else is saved.
+        let bare = Presentation(padding: 20, aspect: .square)
+        var expected = bare
+        expected.background = .solid(.black)
+        let kept = Document(capture: asset, windowBackground: .solid(.black), defaultFraming: bare)
+        #expect(kept.presentation == expected)
+        let transparent = Document(capture: asset, windowBackground: .transparent, defaultFraming: bare)
+        #expect(transparent.presentation == bare)
+        let region = ImageAssetInfo(
+            id: AssetID(), pixelSize: PixelSize(width: 4, height: 4),
+            origin: .captured(
+                CaptureGeometry(
+                    source: .region(displayID: 1), desktopBounds: geometry.desktopBounds, pointPixelScale: 1,
+                    pixelSize: geometry.pixelSize, capturedAt: geometry.capturedAt)))
+        #expect(Document(capture: region, windowBackground: .solid(.black), defaultFraming: bare).presentation == bare)
     }
 }

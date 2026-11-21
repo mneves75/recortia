@@ -286,17 +286,17 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
 
     /// A new capture's document. A window capture is framed over a solid `windowBackground`
     /// (FR-02); the colour is a presentation step, so the source pixels, and any secure mask
-    /// filled into them, stay as captured. A saved default framing replaces it for every capture.
+    /// filled into them, stay as captured. A saved default framing applies to every capture; its
+    /// background wins unless it is None, which keeps the window background.
     public init(
         capture asset: ImageAssetInfo, windowBackground: WindowCaptureBackground, defaultFraming: Presentation? = nil
     ) {
         self.init(asset: asset)
-        if let defaultFraming {
-            presentation = defaultFraming
-        } else if case .captured(let geometry) = asset.origin, case .window = geometry.source,
-            case .solid(let color) = windowBackground
+        presentation = defaultFraming ?? .plain
+        if presentation.background == .none, case .captured(let geometry) = asset.origin,
+            case .window = geometry.source, case .solid(let color) = windowBackground
         {
-            presentation = Presentation(background: .solid(color))
+            presentation.background = .solid(color)
         }
     }
 
