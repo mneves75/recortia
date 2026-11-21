@@ -181,7 +181,7 @@ struct ScrollSessionModelEndingTests {
         await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .accepted)
-        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil))
+        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil, pointPixelScale: 1))
     }
 
     static func runUntilStepsGoUnanswered(_ h: ScrollHarness) async {
@@ -281,7 +281,9 @@ struct ScrollSessionModelEndingTests {
         #expect(h.stitcher.appendCount == 1)
 
         await h.model.accept()
-        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: .limit(.duration)))
+        #expect(
+            h.assets.registeredStitched.first?.origin
+                == .scrollCapture(partialReason: .limit(.duration), pointPixelScale: 1))
     }
 
     @Test("Reaching the 2-minute limit with nothing captured fails clearly")

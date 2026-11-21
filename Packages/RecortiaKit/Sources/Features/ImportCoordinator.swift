@@ -47,10 +47,15 @@ public final class ImportCoordinator {
     public var isImporting: Bool { imageImporter.isImporting }
     public let imageImporter: ImageImporter
     private(set) var lastFailure: ImportFailure?
-    @ObservationIgnored public var onImported: ((DocumentSession, _ fileName: String?) -> Void)?
+    /// Receives each new document, its file name, and whether its e-mail addresses and phone
+    /// numbers are to be masked before it is shown (FR-06), read once when the document is created.
+    @ObservationIgnored public var onImported:
+        ((DocumentSession, _ fileName: String?, _ masksSensitiveText: Bool) -> Void)?
+    @ObservationIgnored private let settings: SettingsStore
 
-    public init(input: any ImageInputService, assets: any ImageAssetService) {
+    public init(input: any ImageInputService, assets: any ImageAssetService, settings: SettingsStore) {
         imageImporter = ImageImporter(input: input, assets: assets)
+        self.settings = settings
     }
 
     @discardableResult
@@ -66,7 +71,7 @@ public final class ImportCoordinator {
             let info = try await imageImporter.importImage(admission, pixelBudget: pixelBudget)
             let session = DocumentSession(document: Document(asset: info))
             lastFailure = nil
-            onImported?(session, admission.fileName)
+            onImported?(session, admission.fileName, settings.preferences.autoRedactsSensitiveText)
             return .success((session, info.pixelSize.checkedArea ?? Int.max))
         } catch {
             lastFailure = error

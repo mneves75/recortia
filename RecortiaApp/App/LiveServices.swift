@@ -61,11 +61,12 @@ final class LiveImageAssets: ImageAssetService {
         return await store.insert(decoded, origin: .captured(geometry))
     }
 
-    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-        -> ImageAssetInfo
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+        async throws(ImportError) -> ImageAssetInfo
     {
         let decoded = try await Self.canonicalize(image)
-        return await store.insert(decoded, origin: .scrollCapture(partialReason: partialReason))
+        return await store.insert(
+            decoded, origin: .scrollCapture(partialReason: partialReason, pointPixelScale: pointPixelScale))
     }
 
     func release(_ id: AssetID) {

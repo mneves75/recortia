@@ -292,7 +292,7 @@ struct PrivacySettingsTab: View {
             }
             Section("Redaction") {
                 Toggle(
-                    "Mask e-mail addresses and phone numbers in new captures",
+                    "Mask e-mail addresses and phone numbers in new captures and opened images",
                     isOn: settings.binding(\.autoRedactsSensitiveText)
                 )
                 .accessibilityIdentifier("settings.autoRedactsSensitiveText")

@@ -47,9 +47,10 @@ public protocol ImageAssetService: AnyObject {
     func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo
     /// Canonicalizes a captured image and registers it with its capture geometry.
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo
-    /// Registers a stitched scrolling capture; `partialReason` is non-nil for an accepted partial result.
-    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-        -> ImageAssetInfo
+    /// Registers a stitched scrolling capture; `partialReason` is non-nil for an accepted partial
+    /// result, `pointPixelScale` is its pixels per point.
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+        async throws(ImportError) -> ImageAssetInfo
     /// Releases an asset's pixels when no document references it any more.
     func release(_ id: AssetID)
 }

@@ -4670,18 +4670,18 @@
         }
       }
     },
-    "Mask e-mail addresses and phone numbers in new captures" : {
+    "Mask e-mail addresses and phone numbers in new captures and opened images" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mask e-mail addresses and phone numbers in new captures"
+            "value" : "Mask e-mail addresses and phone numbers in new captures and opened images"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mascarar e-mails e números de telefone em novas capturas"
+            "value" : "Mascarar e-mails e números de telefone em novas capturas e imagens abertas"
           }
         }
       }

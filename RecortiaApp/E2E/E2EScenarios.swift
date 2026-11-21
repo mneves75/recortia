@@ -106,6 +106,10 @@
             E2EScenario(
                 id: "auto-redaction", title: "New captures are masked before they are shown or exported",
                 run: AutoRedactionScenarios.autoRedaction),
+            E2EScenario(
+                id: "auto-redaction-sources",
+                title: "Scrolling captures and opened images are masked before they are shown",
+                run: AutoRedactionScenarios.sources),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
             E2EScenario(
                 id: "quick-actions", title: "Quick actions after a capture hold it only until dismissed",
