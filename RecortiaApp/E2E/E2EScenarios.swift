@@ -123,6 +123,9 @@
             E2EScenario(
                 id: "window-latency", title: "Each window opens in under 50 ms", run: LatencyScenarios.windowLatency,
                 runsOnlyWhenNamed: true),
+            E2EScenario(
+                id: "latency-prebuilt", title: "Pre-built capture windows: measured, and invisible while spare",
+                run: PrebuiltWindowScenarios.latency),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
             E2EScenario(
                 id: "scroll-target-binding", title: "Automatic scrolling stays bound through discovery and Stop",
