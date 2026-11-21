@@ -158,7 +158,19 @@ extension EditorModel {
     /// Ends the editor: cancels in-flight work, drops late results, and releases the pixels of
     /// every asset this editor held (undo history included). Idempotent.
     public func close() {
-        guard !isClosed else { return }
+        _ = finishClose(keepsDocument: false)
+    }
+
+    /// Closes like `close()` but returns the document without its history, and leaves the pixels of
+    /// its assets to the caller (`ClosedCaptureSlot`). When masking forbids keeping it
+    /// (`isKeptOnClose`, read before closing settles the masking), it closes like `close()` and
+    /// returns nil.
+    func closeKeepingDocument() -> DocumentSession? {
+        finishClose(keepsDocument: isKeptOnClose)
+    }
+
+    private func finishClose(keepsDocument: Bool) -> DocumentSession? {
+        guard !isClosed else { return nil }
         cancelGesture()
         endContinuousChange()
         textEditing = nil
@@ -178,7 +190,10 @@ extension EditorModel {
         clearQR()
         baseImage = nil
         outputPreview = nil
-        for id in knownAssets { environment.assets.release(id) }
+        let kept = keepsDocument ? session.withoutHistory() : nil
+        let held = kept.map { Set($0.document.assets.keys) } ?? []
+        for id in knownAssets where !held.contains(id) { environment.assets.release(id) }
         knownAssets = []
+        return kept
     }
 }
