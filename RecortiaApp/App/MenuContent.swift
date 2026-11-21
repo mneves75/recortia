@@ -24,6 +24,7 @@ struct MenuContent: View {
             Menu(String(localized: "Pins")) {
                 item(.bringPinsForward)
                 item(.closeAllPins)
+                item(.unlockAllPins)
             }
             Divider()
             item(.settings)

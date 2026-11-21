@@ -30,6 +30,7 @@ struct RecortiaApp: App {
             // The editor's commands act on the key editor window only; Open Image… and Paste Image
             // open a new one.
             EditorMenuCommands(commands: .shared, app: appDelegate.model)
+            PinMenuCommands(state: appDelegate.model.pinMenu, app: appDelegate.model)
             CommandGroup(replacing: .help) {}
         }
         // Settings is an AppKit window (SettingsWindowController) so it follows the active Space.

@@ -1179,6 +1179,22 @@
         }
       }
     },
+    "Click Through" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click Through"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorar cliques"
+          }
+        }
+      }
+    },
     "Close All Pins" : {
       "localizations" : {
         "en" : {
@@ -2089,6 +2105,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manter quebras de linha"
+          }
+        }
+      }
+    },
+    "Keep on Top" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep on Top"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manter na frente"
           }
         }
       }
@@ -4506,6 +4538,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indisponível"
+          }
+        }
+      }
+    },
+    "Unlock All Pins" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock All Pins"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear todas as fixações"
           }
         }
       }

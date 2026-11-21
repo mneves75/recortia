@@ -16,6 +16,8 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
     case pasteImage
     case bringPinsForward
     case closeAllPins
+    /// Turns click-through off on every pin; a click-through pin cannot be clicked (ADR-007).
+    case unlockAllPins
     case settings
     case featureTour
     case about
@@ -43,6 +45,7 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
         case .pasteImage: String(localized: "Paste Image")
         case .bringPinsForward: String(localized: "Bring Pins Forward")
         case .closeAllPins: String(localized: "Close All Pins")
+        case .unlockAllPins: String(localized: "Unlock All Pins")
         case .settings: String(localized: "Settings…")
         case .featureTour: String(localized: "Feature Tour")
         case .about: String(localized: "About Recortia")
