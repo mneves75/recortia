@@ -99,6 +99,14 @@ window opens, a capture starts, or the preference is turned back on meanwhile. L
 a window, minimizing, hiding, capture suspension and closing a capture panel never quit. Quit
 stays available in both modes.
 
+Settings › Capture offers "After a capture": open the editor (default) or show quick actions
+(ADR-009). Quick actions show a nonactivating thumbnail of the sanitized capture, after the
+capture's automatic exports, with Copy, Save, drag, Pin, Open in Editor and Dismiss; every
+action goes through the export pipeline. Dismissing it, its 8 s timeout (paused under the
+pointer), a finished action or a newer capture releases the capture's pixels. With automatic
+masking on, captures always open in the editor. Capture Text and scrolling capture keep their
+own flows.
+
 ### FR-02 — Capture
 
 Region selection invoked by a global shortcut must remain on the user's current desktop,
