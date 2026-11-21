@@ -475,6 +475,20 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Substituir" } }
       }
     },
+    "Replace Existing File?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Replace Existing File?" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Substituir o arquivo existente?" } }
+      }
+    },
+    "A file exists at this destination. Replace it?": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "A file exists at this destination. Replace it?" } },
+        "pt-BR": {
+          "stringUnit": { "state": "translated", "value": "Já existe um arquivo neste destino. Quer substituí-lo?" }
+        }
+      }
+    },
     "Opens %@": {
       "localizations": {
         "en": {
