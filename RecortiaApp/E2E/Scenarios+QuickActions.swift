@@ -44,6 +44,12 @@
                 "the thumbnail is a non-activating floating panel",
                 panel.styleMask.contains(.nonactivatingPanel) && panel.level == .floating && panel.isFloatingPanel,
                 "\(panel.styleMask.rawValue) level \(panel.level.rawValue)")
+            let shownFrame = panel.frame
+            await E2ESnapshot.settle(root, for: .milliseconds(400))
+            context.check(
+                "the thumbnail keeps the one size its content set",
+                panel.frame.size == shownFrame.size && shownFrame.width > 0 && shownFrame.height > 0,
+                "\(shownFrame.size) → \(panel.frame.size)")
             context.check(
                 "the thumbnail joins all Spaces", panel.collectionBehavior == SpacePolicy.joinsAllSpaces,
                 "\(panel.collectionBehavior.rawValue)")

@@ -33,7 +33,9 @@ final class QuickActionsUIController {
         shownID = shown?.id
         guard let shown else { return }
         let panel = Self.makePanel()
-        panel.setContent(QuickActionsView(capture: shown, model: model, actions: self))
+        // One owner of the size: fixed once from the content, which never changes size (a status
+        // overlays the preview). Tracked sizing looped through constraint passes until AppKit threw.
+        panel.setContent(QuickActionsView(capture: shown, model: model, actions: self), fixedToFittingSize: true)
         self.panel = panel
         present(panel)
     }
@@ -122,6 +124,17 @@ struct QuickActionsView: View {
         VStack(spacing: DesignTokens.Space.s) {
             QuickActionsThumbnail(preview: capture.preview) { perform(actions.drag) }
                 .frame(width: thumbnailSize.width, height: thumbnailSize.height)
+                .overlay(alignment: .bottom) {
+                    if let status {
+                        Text(status)
+                            .font(.callout)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .noticeStyle()
+                            .padding(DesignTokens.Space.xs)
+                            .accessibilityIdentifier("quickActions.status")
+                    }
+                }
             HStack(spacing: DesignTokens.Space.s) {
                 button(String(localized: "Copy", table: "Editor"), "doc.on.doc", id: "copy") { perform(actions.copy) }
                     .keyboardShortcut("c")
@@ -146,14 +159,6 @@ struct QuickActionsView: View {
                 .keyboardShortcut(.cancelAction)
             }
             .controlSize(.small)
-            if let status {
-                Text(status)
-                    .font(.callout)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: Self.maxThumbnail.width)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("quickActions.status")
-            }
         }
         .padding(DesignTokens.Space.m)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -225,6 +230,11 @@ final class QuickActionsThumbnailView: NSImageView {
     required init?(coder: NSCoder) { nil }
 
     override var mouseDownCanMoveWindow: Bool { false }
+
+    /// SwiftUI gives the preview its size; the image's own size must not feed back into layout.
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+    }
 
     override func mouseDown(with event: NSEvent) {
         dragStarted = false
