@@ -463,16 +463,10 @@
         }
       }
     },
-    "Replace Existing File?": {
+    "“%@” already exists. Do you want to replace it?": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Replace Existing File?" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Substituir arquivo existente?" } }
-      }
-    },
-    "A file exists at this destination. Replace it?": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "A file exists at this destination. Replace it?" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Já existe um arquivo neste destino. Deseja substituí-lo?" } }
+        "en": { "stringUnit": { "state": "translated", "value": "“%@” already exists. Do you want to replace it?" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "“%@” já existe. Quer substituí-lo?" } }
       }
     },
     "Replace": {

@@ -149,7 +149,9 @@ public enum ExportFailure: Hashable, Sendable {
     case budgetExceeded
     case clipboardFailed
     case accessDenied
-    case destinationExists
+    /// A file exists where the save would write: the file the save resolved to, which a Replace
+    /// question names and its consent must name back; nil when no single file was meant.
+    case destinationExists(URL?)
     /// The file name is longer than the destination's volume accepts.
     case nameTooLong
     case diskFull

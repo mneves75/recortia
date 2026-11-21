@@ -9,9 +9,9 @@ public enum ExportAction: Hashable, Sendable {
     case copy
     /// Save to a user-chosen URL in the format its save panel named, so the bytes match the
     /// extension even if the preference changed meanwhile; under Automatic the file takes the
-    /// extension of the format chosen. `overwriteConfirmed` only after the user confirmed
-    /// replacing a file.
-    case save(to: URL, format: ExportFormatChoice, overwriteConfirmed: Bool)
+    /// extension of the format chosen. `replacing` is the file the person agreed to replace, as
+    /// the collision named it; only that exact file is overwritten.
+    case save(to: URL, format: ExportFormatChoice, replacing: URL?)
     /// Save with a collision-free name into a previously authorized folder.
     case saveToFolder(URL)
     case drag
@@ -91,9 +91,6 @@ public final class ExportCoordinator {
     public private(set) var state: ExportState?
     private var operation: Operation?
     private var automaticBatch: Operation?
-    /// Under Automatic, the file a save to each panel name found existing: consent to replace it
-    /// covers that file only, since the retry renders again and may name another (FR-07).
-    @ObservationIgnored private var automaticCollisions: [URL: URL] = [:]
 
     @ObservationIgnored private let exporter: any ExportService
     @ObservationIgnored private let clipboard: any ClipboardSinkService
@@ -238,16 +235,17 @@ public final class ExportCoordinator {
                 apply(.commit)
                 try clipboard.write(snapshot)
                 completed = .copied
-            case .save(let url, let format, let overwrite):
+            case .save(let url, let format, let replacing):
                 apply(.commit)
                 let destination = format == .automatic ? Self.named(url, for: snapshot.format) : url
-                let collided = automaticCollisions.removeValue(forKey: url)
-                let replaces = overwrite && (format != .automatic || collided == destination)
+                // Consent travels with this save and names one file. A retry that renders again
+                // may resolve to another (Automatic), which is then created exclusively and, if
+                // it exists, reported so the person is asked about it by name (FR-07).
+                let replaces = replacing?.standardizedFileURL == destination.standardizedFileURL
                 do throws(SinkError) {
                     completed = .saved(try await files.save(snapshot, to: destination, overwrite: replaces))
-                } catch {
-                    if error == .destinationExists, format == .automatic { automaticCollisions[url] = destination }
-                    throw error
+                } catch .destinationExists {
+                    return fail(.destinationExists(destination))
                 }
             case .saveToFolder(let folder):
                 apply(.commit)
@@ -497,7 +495,7 @@ public final class ExportCoordinator {
     static func failure(for error: SinkError) -> ExportFailure {
         switch error {
         case .clipboardWriteFailed: .clipboardFailed
-        case .destinationExists: .destinationExists
+        case .destinationExists: .destinationExists(nil)
         case .nameTooLong: .nameTooLong
         case .accessDenied: .accessDenied
         case .diskFull: .diskFull

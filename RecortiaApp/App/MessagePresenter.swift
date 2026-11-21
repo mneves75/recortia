@@ -94,12 +94,20 @@ enum MessagePresenter {
 
     /// Asks before Save replaces an existing file from a window without a sheet parent (the
     /// quick-action thumbnail); the editor asks the same in a sheet.
-    static func confirmReplacement() -> Bool {
-        let alert = makeConfirmation(
-            title: String(localized: "Replace Existing File?", table: "Editor"),
-            detail: String(localized: "A file exists at this destination. Replace it?", table: "Editor"),
-            action: String(localized: "Replace", table: "Editor"), cancel: String(localized: "Cancel", table: "Editor"))
-        return runModal(alert) == .alertFirstButtonReturn
+    static func confirmReplacement(of existing: URL) -> Bool {
+        runModal(makeReplacement(of: existing)) == .alertFirstButtonReturn
+    }
+
+    /// Asks before replacing `existing`, named as the collision reported it, so the person knows
+    /// which file goes (report.jpg, not the report.png the panel showed). The file name only,
+    /// never its folder (PRIV-01).
+    static func makeReplacement(of existing: URL) -> NSAlert {
+        makeConfirmation(
+            title: String(
+                localized: "“\(existing.lastPathComponent)” already exists. Do you want to replace it?", table: "Editor"
+            ),
+            detail: "", action: String(localized: "Replace", table: "Editor"),
+            cancel: String(localized: "Cancel", table: "Editor"))
     }
 
     /// A warning that asks before something is thrown away: the destructive action first, then

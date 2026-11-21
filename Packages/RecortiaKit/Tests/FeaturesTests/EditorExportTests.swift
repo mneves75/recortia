@@ -16,9 +16,11 @@ struct EditorExportTests {
     func saveOverwriteFollowsConfirmation() async {
         let h = EditorHarness()
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
-        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: false))
-        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: true))
-        #expect(h.files.saves.map(\.overwrite) == [false, true])
+        h.files.existing = [url]
+        #expect(
+            await h.model.export(.save(url, format: .fixed(.png), replacing: nil)) == .failed(.destinationExists(url)))
+        #expect(await h.model.export(.save(url, format: .fixed(.png), replacing: url)) == .saved(url))
+        #expect(h.files.saves.map(\.overwrite) == [true])
     }
 
     @Test("Save writes the format its sheet named even when the preference changes while it is open")
@@ -26,8 +28,8 @@ struct EditorExportTests {
         let h = EditorHarness()
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
         h.settings.update { $0.defaultExportFormat = .jpeg }
-        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: false))
-        _ = await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: true))
+        _ = await h.model.export(.save(url, format: .fixed(.png), replacing: nil))
+        _ = await h.model.export(.save(url, format: .fixed(.png), replacing: url))
         #expect(h.files.saves.map(\.snapshot.format) == [.png, .png], "a .png name receives PNG bytes")
     }
 

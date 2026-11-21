@@ -327,7 +327,7 @@
             let denials: Set<String> = ["Nothing was exported", "Nada foi exportado"]
             let failures: [ExportFailure] = [
                 .busy, .renderFailed, .encodeFailed, .budgetExceeded, .clipboardFailed, .accessDenied,
-                .destinationExists, .nameTooLong, .diskFull, .volumeUnavailable, .staleDocument, .system(code: 5),
+                .destinationExists(nil), .nameTooLong, .diskFull, .volumeUnavailable, .staleDocument, .system(code: 5),
                 .upload(.missingCredential),
             ]
             let titles = failures.map { "\($0): \(UserMessage.export($0).title)" }

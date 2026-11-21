@@ -109,7 +109,7 @@
                 panel.orderFrontRegardless()
             }
             quickActionsUI.chooseSaveDestination = { nil }
-            quickActionsUI.confirmReplacement = { false }
+            quickActionsUI.confirmReplacement = { _ in false }
             wire()
             // What a normal launch does (ADR-005), without registering any handler.
             ShortcutDefaults.seedIfNeeded(isNewInstall: !settings.preferences.hasCompletedOnboarding)

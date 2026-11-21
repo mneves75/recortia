@@ -138,7 +138,7 @@ struct EditorExportLifecycleTests {
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
         let gate = Pending<Void>()
         h.files.pending = gate
-        let task = Task { await h.model.export(.save(url, format: .fixed(.png), overwriteConfirmed: false)) }
+        let task = Task { await h.model.export(.save(url, format: .fixed(.png), replacing: nil)) }
         await waitFor("file commit in progress") { gate.waiterCount == 1 }
         #expect(h.export.state == .committing)
         h.model.close()
@@ -202,7 +202,7 @@ struct EditorExportLifecycleTests {
         let task = Task { await h.model.export(.copy) }
         await waitFor("snapshot suspended") { gate.waiterCount == 1 }
         let url = URL(fileURLWithPath: "/tmp/recortia-tests/never-written.png")
-        #expect(await other.export(.save(url, format: .fixed(.png), overwriteConfirmed: false)) == .rejectedBusy)
+        #expect(await other.export(.save(url, format: .fixed(.png), replacing: nil)) == .rejectedBusy)
         #expect(other.notice == .exported(.rejectedBusy))
         #expect(h.files.saves.isEmpty)
         #expect(h.exporter.snapshotCount == 1, "the rejected save reserved nothing and rendered nothing")

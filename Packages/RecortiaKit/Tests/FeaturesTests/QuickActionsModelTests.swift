@@ -205,26 +205,25 @@ struct QuickActionsModelTests {
             choosing: {
                 asked += 1
                 return nil
-            }, confirmReplacement: { false })
+            }, confirmReplacement: { _ in false })
         #expect(outcome.didWrite)
         #expect(asked == 0 && h.files.uniqueSaves.map(\.folder) == [folder])
         #expect(h.assets.released == h.assetIDs)
 
         let other = QuickActionsHarness()
         await other.shown()
-        #expect(await other.model.save(choosing: { nil }, confirmReplacement: { false }) == .canceled)
+        #expect(await other.model.save(choosing: { nil }, confirmReplacement: { _ in false }) == .canceled)
         #expect(other.model.isShown && other.files.saves.isEmpty)
         let url = URL(filePath: "/tmp/capture.png")
-        other.files.error = .destinationExists
-        var confirmations = 0
+        other.files.existing = [url]
+        var named: [URL] = []
         let replaced = await other.model.save(
             choosing: { (url, .fixed(.png)) },
             confirmReplacement: {
-                confirmations += 1
-                other.files.error = nil
+                named.append($0)
                 return true
             })
-        #expect(replaced == .saved(url) && confirmations == 1)
+        #expect(replaced == .saved(url) && named == [url], "the question names the file it replaces")
         #expect(other.files.saves.map(\.overwrite) == [true])
         #expect(other.assets.released == other.assetIDs)
     }

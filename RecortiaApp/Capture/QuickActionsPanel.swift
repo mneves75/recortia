@@ -17,7 +17,7 @@ final class QuickActionsUIController {
     var present: @MainActor (HostingPanel) -> Void = { $0.presentInCorner() }
     /// A destination for Save when Settings names no folder; scenarios never show a panel.
     var chooseSaveDestination: @MainActor () async -> (url: URL, format: ExportFormatChoice)?
-    var confirmReplacement: @MainActor () async -> Bool = { MessagePresenter.confirmReplacement() }
+    var confirmReplacement: @MainActor (_ existing: URL) async -> Bool = { MessagePresenter.confirmReplacement(of: $0) }
 
     init(model: QuickActionsModel, settings: SettingsStore) {
         self.model = model
