@@ -84,6 +84,20 @@ struct FramingTests {
     static let solidBeforePresets =
         #"{"background":{"solid":{"_0":{"a":255,"b":3,"g":2,"r":1}}},"cornerRadius":0,"padding":0}"#
 
+    @Test("A layer placement written before mirroring decodes unmirrored and re-encodes to the same bytes")
+    func placementBeforeMirroring() throws {
+        let old = #"{"rotation":0,"scale":1,"translation":{"x":3,"y":4}}"#
+        let placement = try JSONDecoder().decode(LayerPlacement.self, from: Data(old.utf8))
+        #expect(placement == LayerPlacement(translation: Point(x: 3, y: 4)))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        #expect(String(decoding: try encoder.encode(placement), as: UTF8.self) == old)
+        var mirrored = placement
+        mirrored.mirrored = true
+        let again = try JSONDecoder().decode(LayerPlacement.self, from: encoder.encode(mirrored))
+        #expect(again.mirrored)
+    }
+
     @Test("A document written before presets decodes unchanged, as Free with balance on")
     func oldDocumentDecodes() throws {
         let document = try JSONDecoder().decode(Document.self, from: Data(Self.documentBeforePresets.utf8))

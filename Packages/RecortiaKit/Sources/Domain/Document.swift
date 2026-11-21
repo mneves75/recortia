@@ -77,6 +77,26 @@ public struct LayerPlacement: Hashable, Sendable, Codable {
         self.mirrored = mirrored
     }
 
+    private enum CodingKeys: String, CodingKey { case translation, scale, rotation, mirrored }
+
+    /// A placement written before mirroring existed has no `mirrored` key and is not mirrored;
+    /// an unmirrored placement is written without the key, so old documents keep their bytes.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        translation = try c.decode(Point<DocumentSpace>.self, forKey: .translation)
+        scale = try c.decode(Double.self, forKey: .scale)
+        rotation = try c.decode(Double.self, forKey: .rotation)
+        mirrored = try c.decodeIfPresent(Bool.self, forKey: .mirrored) ?? false
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(translation, forKey: .translation)
+        try c.encode(scale, forKey: .scale)
+        try c.encode(rotation, forKey: .rotation)
+        if mirrored { try c.encode(true, forKey: .mirrored) }
+    }
+
     /// Whether the rotation is a whole number of quarter turns, so the layer's edges stay
     /// horizontal and vertical.
     public var isAxisAligned: Bool {
