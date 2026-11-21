@@ -207,16 +207,18 @@ public protocol ScrollFrameSourceService: AnyObject {
 
 @MainActor
 public protocol ScrollStitchService: AnyObject {
-    /// Discards all accepted frames and starts a new stitch.
-    func reset()
+    /// Discards all accepted frames and starts a new stitch along `direction`.
+    func reset(direction: ScrollCaptureDirection)
     /// Offers a frame to the stitcher; matching runs off the main actor in the adapter.
     func append(_ frame: CGImage, elapsed: Duration) async -> ScrollAppendResult
     var acceptedFrameCount: Int { get }
+    /// The stitched image's size, as assembled (wide for a horizontal stitch).
     var outputSize: PixelSize { get }
     /// True once content was accepted and the latest frames kept arriving unchanged: the page
     /// stopped moving, which in automatic mode means it ended.
     var endOfPageDetected: Bool { get }
-    func preview(maxHeight: Int) async -> CGImage?
+    /// The stitch scaled to at most `maxLength` pixels along its scroll direction.
+    func preview(maxLength: Int) async -> CGImage?
     func assemble() async throws -> CGImage
 }
 
@@ -229,11 +231,13 @@ public enum AutoScrollStep: Hashable, Sendable {
 
 @MainActor
 public protocol AutoScrollService: AnyObject {
-    /// Sends one minimal scroll action to the chosen target (Accessibility, automatic mode only).
-    func step(_ target: CaptureTarget) async -> AutoScrollStep
+    /// Sends one minimal scroll action to the chosen target that reveals more of the page in
+    /// `direction`: below, or to the right (Accessibility, automatic mode only).
+    func step(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> AutoScrollStep
     func stop()
-    /// Whether the target's scroll area reports that it is at its end; nil when it cannot tell.
-    func isAtEnd(_ target: CaptureTarget) async -> Bool?
+    /// Whether the target's scroll area reports that it is at its end in `direction`; nil when it
+    /// cannot tell.
+    func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool?
 }
 
 // MARK: - System

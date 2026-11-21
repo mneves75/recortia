@@ -151,6 +151,9 @@
                 run: PrebuiltWindowScenarios.latency),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
             E2EScenario(
+                id: "scroll-horizontal", title: "Scrolling capture of a page that scrolls to the right",
+                run: ScrollScenarios.horizontal),
+            E2EScenario(
                 id: "scroll-target-binding", title: "Automatic scrolling stays bound through discovery and Stop",
                 run: ScrollScenarios.automaticTarget),
             E2EScenario(id: "import", title: "Import and import errors", run: OutputScenarios.importFiles),

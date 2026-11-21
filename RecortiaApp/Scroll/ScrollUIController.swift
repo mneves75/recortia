@@ -152,10 +152,11 @@ private struct LiveScrollHUD: View {
     var body: some View {
         ScrollHUDView(
             hud: ScrollHUDState(
-                source: sourceDescription, state: model.state, mode: model.mode, notice: model.notice,
-                pageEndLikely: model.pageEndLikely, acceptedFrames: model.acceptedFrames,
-                outputHeight: model.outputSize.height),
-            onStart: { model.start() }, onPause: { model.pause() }, onResume: { model.resume() },
+                source: sourceDescription, state: model.state, mode: model.mode, direction: model.direction,
+                notice: model.notice, pageEndLikely: model.pageEndLikely, acceptedFrames: model.acceptedFrames,
+                outputLength: model.direction == .horizontal ? model.outputSize.width : model.outputSize.height),
+            onChooseDirection: { model.chooseDirection($0) }, onStart: { model.start() }, onPause: { model.pause() },
+            onResume: { model.resume() },
             onStop: { model.stop() }, onCancel: { model.cancel() })
     }
 
@@ -179,7 +180,7 @@ private struct LiveScrollReview: View {
 
     var body: some View {
         ScrollReviewView(
-            preview: model.preview, outputSize: model.outputSize, seams: model.seams,
+            preview: model.preview, outputSize: model.outputSize, direction: model.direction, seams: model.seams,
             partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
             isPreparingPreview: model.isPreparingPreview, canAccept: model.canAccept, canDiscard: model.canDiscard,
             onAccept: { Task { await model.accept() } }, onDiscard: onDiscard)
