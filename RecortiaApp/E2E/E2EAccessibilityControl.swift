@@ -278,10 +278,10 @@
             }
         }
 
-        /// Opens or closes a native disclosure through its title button, the way a person or an
-        /// assistive app does: opening clicks the title with the pointer, closing presses it through
-        /// accessibility. Requires the triangle's reported state and the content to follow.
-        /// SwiftUI's triangle inside a Form ignores Press, so the title (`<identifier>.title`) toggles.
+        /// Opens or closes a native disclosure as a person does, with a pointer click at the centre of
+        /// its triangle, which lands on the title button (SwiftUI folds that button into the triangle's
+        /// accessibility element, and the triangle ignores Press inside a Form). Requires the
+        /// triangle's reported state to follow. Proves pointer delivery, not VoiceOver.
         static func setDisclosure(
             _ identifier: String, titled title: String, expanded: Bool, in pane: NSView, _ context: ScenarioContext
         ) async throws {
@@ -290,13 +290,9 @@
             await E2ESnapshot.settle(pane)
             let triangle = try disclosureTriangle(identifier, titled: title, in: pane, context)
             guard try expandedState(triangle, identifier, context) != expanded else { return }
-            if expanded {
-                try click("\(identifier).title", in: pane, context)
-            } else {
-                try pressCheckingEffect("\(identifier).title", in: pane, context)
-            }
+            try click(triangle, named: identifier, in: pane, context)
             try context.require(
-                "\(identifier) disclosure \(expanded ? "opens by a click" : "closes by Press") on its title",
+                "\(identifier) disclosure \(expanded ? "opens" : "closes") by a click on its title",
                 await E2EWait.until {
                     let current = findTriangle(titled: title, in: element(identifier, in: pane))
                     return (current.triangle?.value(forKey: "accessibilityValue") as? NSNumber)?.intValue

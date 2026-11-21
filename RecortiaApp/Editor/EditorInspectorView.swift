@@ -698,7 +698,6 @@ private struct PositionSection: View {
                     state.showsPositionAndSize.toggle()
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("inspector.positionAndSize.title")
             }
             .accessibilityIdentifier("inspector.positionAndSize")
         }
