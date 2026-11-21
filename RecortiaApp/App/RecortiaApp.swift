@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model: AppModel
     #if RECORTIA_E2E
         private let e2eRequest: E2ELaunchRequest
+        private let e2eHarness: E2EHarness?
     #endif
 
     override init() {
@@ -51,12 +52,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // reads or writes the user's preferences or keychain, whatever it was launched with,
             // and it refuses to launch at all without a valid runner or probe request.
             e2eRequest = E2ERunner.admit()
+            e2eHarness = E2ERunner.prepare(e2eRequest)
+            let scenarioModel = e2eHarness?.app
             let settings = SettingsStore.e2eInMemory()
         #else
+            let scenarioModel: AppModel? = nil
             let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)
         #endif
-        model = AppModel(
-            settings: settings, services: .live(settings: settings), shortcutRegistry: KeyboardShortcutsRegistry())
+        model =
+            scenarioModel
+            ?? AppModel(
+                settings: settings, services: .live(settings: settings), shortcutRegistry: KeyboardShortcutsRegistry())
         super.init()
     }
 
@@ -64,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if RECORTIA_E2E
             // Only in the RecortiaE2E target: the admitted request (the scenario runner in
             // RecortiaApp/E2E, or one of its probes) replaces the normal launch.
-            E2ERunner.start(e2eRequest)
+            E2ERunner.start(e2eRequest, harness: e2eHarness)
         #else
             integrity.prepare()
             ShortcutDefaults.seedIfNeeded(isNewInstall: !model.settings.preferences.hasCompletedOnboarding)

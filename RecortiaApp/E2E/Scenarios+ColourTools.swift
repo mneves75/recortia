@@ -40,6 +40,8 @@
             let controller = try await harness.openImported(image, name: "colour-tools.png")
             let model = controller.model
             let root = try context.unwrap("editor content", controller.contentRoot)
+            let window = try context.unwrap("editor window", controller.window)
+            try await E2EAccessibilityControl.showAndActivate(window, context)
             let p = E2EActions.point
             let snapshots = harness.exportGate.snapshotCount
             let imageClipboard = harness.clipboard.pasteboard.changeCount
@@ -62,8 +64,11 @@
             context.check("picking #777777", try await pick(p(96, 96)) == grey)
             context.check("picking alone copies nothing", harness.textPasteboard.changeCount == beforePick)
             await show()
-            try E2EAccessibilityControl.press("color.copy", in: root, context)
-            context.check("the native Copy writes HEX", copied() == "#777777", String(describing: copied()))
+            try E2EAccessibilityControl.click("color.copy", in: root, context)
+            context.check(
+                "the native Copy writes HEX",
+                await E2EWait.until { harness.textPasteboard.changeCount != beforePick && copied() == "#777777" },
+                String(describing: copied()))
             let expected: [(ColorFormat, String)] = [
                 (.cssRGB, "rgb(119, 119, 119)"),
                 (.normalizedRGB, "0.467, 0.467, 0.467"),
@@ -89,11 +94,12 @@
             // Contrast of the synthetic two-colour fixture: #777777 on white is 4.478:1.
             let beforeContrast = harness.textPasteboard.changeCount
             await show()
-            try E2EAccessibilityControl.press("color.useAsText", in: root, context)
-            context.check("the grey becomes the text colour", model.contrastText == grey)
+            try E2EAccessibilityControl.click("color.useAsText", in: root, context)
+            try context.require("the grey becomes the text colour", await E2EWait.until { model.contrastText == grey })
             context.check("picking white", try await pick(p(250, 96)) == .white)
             await show()
-            try E2EAccessibilityControl.press("color.useAsBackground", in: root, context)
+            try E2EAccessibilityControl.click("color.useAsBackground", in: root, context)
+            try context.require("the white becomes the background", await E2EWait.until { model.contrast != nil })
             let contrast = try context.unwrap("a contrast ratio", model.contrast)
             context.check("the ratio is 4.478", abs(contrast.ratio - 4.4781) < 0.0001, "\(contrast.ratio)")
             await show()

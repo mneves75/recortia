@@ -52,6 +52,8 @@
             let controller = try await harness.openImported(image, name: "framing.png")
             let model = controller.model
             let root = try context.unwrap("editor content", controller.contentRoot)
+            let window = try context.unwrap("editor window", controller.window)
+            try await E2EAccessibilityControl.showAndActivate(window, context)
             model.selectTool(.select)
             model.clearSelection()
             controller.panes.chosenInspectorTab = .image
@@ -77,7 +79,7 @@
 
             // A swatch applies its background.
             await show()
-            try E2EAccessibilityControl.press("image.swatch.0", in: root, context)
+            try E2EAccessibilityControl.click("image.swatch.0", in: root, context)
             try context.require(
                 "the White swatch applies a white background",
                 await E2EWait.until { model.document.presentation.background == .solid(.white) },
@@ -138,7 +140,7 @@
             try context.require(
                 "9:16 is chosen", await E2EWait.until { model.document.presentation.aspect == .portrait9x16 })
             await show()
-            try E2EAccessibilityControl.press("image.swatch.9", in: root, context)
+            try E2EAccessibilityControl.click("image.swatch.9", in: root, context)
             try context.require(
                 "the radial swatch applies",
                 await E2EWait.until {

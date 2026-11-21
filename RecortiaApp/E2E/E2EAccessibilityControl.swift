@@ -200,9 +200,15 @@
 
         /// Presents only the scenario's synthetic window through the ordinary-window activation path.
         static func showAndActivate(_ window: NSWindow, _ context: ScenarioContext) async throws {
+            if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(window.frame) }) {
+                window.center(on: ScreenChoice.screen())
+            }
             AppPresence.shared.windowWillAppear()
             window.makeKeyAndOrderFront(nil)
-            NSApp.activate()
+            let foreground =
+                E2EForegroundFixture.runnerIsForeground ? nil : try await E2EForegroundFixture.start(context)
+            defer { foreground?.requestStop() }
+            try await foreground?.yieldToRunner()
             try context.require(
                 "the synthetic control window is visible, key and foreground",
                 await E2EWait.until { isReadyForInput(window) },

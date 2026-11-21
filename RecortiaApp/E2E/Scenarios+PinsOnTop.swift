@@ -67,15 +67,16 @@
                 E2EAccessibilityControl.isPresent("pin.locked", in: root))
             context.snapshot(root, shot: "pin-locked")
             context.check("with a locked pin, Unlock All Pins is enabled", harness.app.isEnabled(.unlockAllPins))
-            await checkMainMenu(enabled: true, context)
+            let unlock = await checkMainMenu(enabled: true, context)
 
             pins.setKeepsOnTop(true, for: second)
             pins.setClickThrough(true, for: second)
             try context.require(
                 "a second pin locks too", await E2EWait.until(timeout: .seconds(3)) { other.ignoresMouseEvents })
 
-            // The command both menus perform.
-            harness.app.perform(.unlockAllPins)
+            let item = try context.unwrap("the Window menu has Unlock All Pins", unlock)
+            let menu = try context.unwrap("Unlock All Pins belongs to the Window menu", item.menu)
+            menu.performActionForItem(at: menu.index(of: item))
             context.check(
                 "Unlock All Pins restores mouse events on every pin",
                 await E2EWait.until(timeout: .seconds(3)) { !panel.ignoresMouseEvents && !other.ignoresMouseEvents })
@@ -86,7 +87,7 @@
             context.check("an unlocked pin hides its lock", !E2EAccessibilityControl.isPresent("pin.locked", in: root))
             context.check(
                 "with no locked pin, Unlock All Pins is disabled again", !harness.app.isEnabled(.unlockAllPins))
-            await checkMainMenu(enabled: false, context)
+            _ = await checkMainMenu(enabled: false, context)
 
             try E2EAccessibilityControl.pressCheckingEffect("pin.keepOnTop", in: root, context)
             context.check(
@@ -98,20 +99,15 @@
         }
 
         /// Window › Unlock All Pins in the app's menu bar, brought up to date as opening the menu would.
-        private static func checkMainMenu(enabled: Bool, _ context: ScenarioContext) async {
+        private static func checkMainMenu(enabled: Bool, _ context: ScenarioContext) async -> NSMenuItem? {
             let title = AppCommand.unlockAllPins.title
-            func item() -> NSMenuItem? {
-                for top in NSApp.mainMenu?.items ?? [] {
-                    guard let menu = top.submenu else { continue }
-                    menu.delegate?.menuNeedsUpdate?(menu)
-                    if let found = menu.items.first(where: { $0.title == title }) { return found }
-                }
-                return nil
-            }
+            func item() -> NSMenuItem? { EditorToolbarScenarios.viewCommand(title) }
             let matched = await E2EWait.until(timeout: .seconds(3)) { item()?.isEnabled == enabled }
+            let command = item()
             context.check(
                 "the menu bar's Unlock All Pins is \(enabled ? "enabled" : "disabled")", matched,
-                item().map { "found in menu, enabled \($0.isEnabled)" } ?? "no item titled \(title)")
+                command.map { "found in menu, enabled \($0.isEnabled)" } ?? "no item titled \(title)")
+            return command
         }
     }
 #endif

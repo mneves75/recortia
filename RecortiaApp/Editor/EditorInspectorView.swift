@@ -1073,6 +1073,7 @@ private struct PixelToolsSection: View {
                     .accessibilityIdentifier("color.format")
                     if let text = model.pickedColorText {
                         Text(verbatim: text).monospaced().textSelection(.enabled)
+                            .accessibilityLabel(Text(verbatim: text))
                             .accessibilityIdentifier("color.formatted")
                     }
                     ButtonRow {

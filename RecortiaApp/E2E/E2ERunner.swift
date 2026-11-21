@@ -102,35 +102,44 @@
             }
         }
 
+        /// The SwiftUI scene and its commands use the same synthetic app as the scenarios.
+        static func prepare(_ request: E2ELaunchRequest) -> E2EHarness? {
+            guard case .runner(let directory, _) = request else { return nil }
+            let language = Bundle.main.preferredLocalizations.first ?? "en"
+            do {
+                return try E2EHarness(output: E2EOutput(directory: directory, language: language))
+            } catch {
+                log("setup failed: \(error)")
+                exit(1)
+            }
+        }
+
         /// Starts what `admit` accepted; the process exits with its result.
-        static func start(_ request: E2ELaunchRequest) {
+        static func start(_ request: E2ELaunchRequest, harness: E2EHarness?) {
             switch request {
             case .panelProbe(let kind): E2EPanelProbe.start(kind)
             case .lastWindowProbe(let kind): LastWindowProbe.start(kind)
-            case .runner(let directory, let only):
+            case .runner(_, let only):
+                guard let harness else {
+                    log("setup failed: missing scenario harness")
+                    exit(1)
+                }
                 Task {
-                    let code = await run(directory: directory, only: only)
+                    let code = await run(harness, only: only)
                     exit(code)
                 }
             }
         }
 
-        static func run(directory: URL, only: [String]?) async -> Int32 {
+        private static func run(_ harness: E2EHarness, only: [String]?) async -> Int32 {
             NSApp.appearance = NSAppearance(named: .aqua)
-            let language = Bundle.main.preferredLocalizations.first ?? "en"
-            let output = E2EOutput(directory: directory, language: language)
+            openFiles = { [weak app = harness.app] in app?.openFiles($0) }
+            let output = harness.output
             let scenarios = E2EScenarios.all
             let selected = scenarios.filter { only?.contains($0.id) ?? !$0.runsOnlyWhenNamed }
-            let harness: E2EHarness
-            do {
-                try FileManager.default.createDirectory(at: output.workDirectory, withIntermediateDirectories: true)
-                harness = try E2EHarness(output: output)
-                openFiles = { [weak app = harness.app] in app?.openFiles($0) }
-            } catch {
-                log("setup failed: \(error)")
-                return 1
-            }
-            log("running \(selected.count) scenarios (\(language)) into \(directory.path(percentEncoded: false))")
+            log(
+                "running \(selected.count) scenarios (\(output.language)) into \(output.directory.path(percentEncoded: false))"
+            )
 
             var results: [E2EScenarioResult] = []
             for scenario in selected {
