@@ -290,6 +290,8 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// The language text recognition tries first, as a full identifier (`pt-Latn-BR`); nil is
     /// Automatic (FR-08).
     public var primaryRecognitionLanguage: String?
+    /// Stored only once the person picks one in the region overlay; read `regionAspect` (A-4).
+    public var regionAspectChoice: SelectionAspect?
 
     public init() {}
 
@@ -297,6 +299,12 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var playsCaptureSound: Bool {
         get { playsCaptureSoundChoice ?? false }
         set { playsCaptureSoundChoice = newValue }
+    }
+
+    /// The ratio a region selection keeps (FR-02, A-4). Free by default.
+    public var regionAspect: SelectionAspect {
+        get { regionAspectChoice ?? .free }
+        set { regionAspectChoice = newValue }
     }
 
     /// What a completed capture opens; the editor by default (ADR-009).

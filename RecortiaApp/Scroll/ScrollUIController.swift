@@ -34,7 +34,7 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
                 overlay.present(
                     displays: displays(),
                     notice: String(localized: "Select the area that scrolls. Leave out fixed headers if you can."),
-                    allowsWindowSwitch: false)
+                    allowsWindowSwitch: false, aspect: nil, snapFrames: [])
             }
             closeHUD()
             closeReview()

@@ -197,7 +197,8 @@
             harness.app.perform(.captureRegion)
             try context.require("the shortcut action starts selection", harness.features.capture.state == .selecting)
             probe.recordKeyEvent("\(ProcessInfo.processInfo.systemUptime): first present requested")
-            overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
+            overlay.present(
+                displays: [display], notice: nil, allowsWindowSwitch: true, aspect: .free, snapFrames: [])
             let window = try context.unwrap("the real region overlay was created", created)
             await E2ESnapshot.settle(window.selectionView)
             context.check(
@@ -255,7 +256,8 @@
 
             // A repeated presentation must remain usable without depending on AppKit allowing
             // a background process to activate itself (a real menu click is owner-only QA).
-            overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
+            overlay.present(
+                displays: [display], notice: nil, allowsWindowSwitch: true, aspect: .free, snapFrames: [])
             let repeatedWindow = try context.unwrap("the replacement overlay was created", created)
             await E2ESnapshot.settle(repeatedWindow.selectionView)
             context.check(
@@ -355,7 +357,8 @@
                     !NSApp.isActive && NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
                 harness.app.perform(.captureRegion)
                 try context.require("repeat starts selection", harness.features.capture.state == .selecting)
-                overlay.present(displays: [display], notice: nil, allowsWindowSwitch: true)
+                overlay.present(
+                    displays: [display], notice: nil, allowsWindowSwitch: true, aspect: .free, snapFrames: [])
                 let window = try context.unwrap("repeat creates the overlay", created)
                 await E2ESnapshot.settle(window.selectionView)
                 let key = window.isKeyWindow
