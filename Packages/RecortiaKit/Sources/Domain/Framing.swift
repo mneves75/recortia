@@ -37,6 +37,19 @@ public struct OutputFrame: Hashable, Sendable {
 }
 
 extension Presentation {
+    /// A saved framing stays within the inspector's ranges and uses only finite values.
+    public var validSavedFraming: Presentation? {
+        let range = 0.0...512
+        guard range.contains(padding), range.contains(cornerRadius) else { return nil }
+        if let shadow {
+            guard shadow.radius.isFinite, shadow.radius >= 0, shadow.offsetY.isFinite, shadow.opacity.isFinite else {
+                return nil
+            }
+        }
+        if case .linearGradient(_, _, let angle) = background, !angle.isFinite { return nil }
+        return self
+    }
+
     /// The built-in background swatches: six solid colours, then four gradients.
     public static let backgroundSwatches: [Background] = [
         .solid(RGBA(r: 255, g: 255, b: 255)),
