@@ -52,21 +52,21 @@ preferences never revives the old intent; the final pre-write check rejects it (
 | Dependency or release compromise | Mutable action/package, fork secrets, malicious update | Locked reviewed inputs; protected release path; signature verification; least privilege | REL-01/02 |
 | False security assurance | App claims universal secret detection, erasure, or compatibility | Scope-specific language; explicit unsupported cases; published validation status | RED-04; release review |
 
-Saving into a folder that other local accounts can write to, or that grants them inherited
-access, is outside what Recortia can protect (EXP-02). There Recortia writes temporary files
-owner-only, applies a replaced file's mode and ACL only through the descriptor of the file it
-wrote (its ACL before its mode), refuses to apply them when, at that moment, the temporary name
-no longer leads to that file alone, and removes the temporary file after a failure on a best-effort
-basis. The final rename and the cleanup still act on names, and metadata calls a volume refuses
-are skipped, so these are limits on what Recortia itself does, not a promise about what another
-account with write access to that folder can cause. It also does not guarantee two things, both unreproduced and both needing another account with access to that
-folder: an account covered by an inherited entry that opens the temporary file in the instant
-before Recortia removes that entry, while it is still empty, can keep reading the bytes written
-afterwards; and because the replaced file's mode and ACL are read by pathname, an account that can
-rename entries in a shared, non-sticky folder can substitute a more permissive file and the new
-capture takes that access. Closing them needs a private staging location and a destination policy
-bound to an identity-checked descriptor (`docs/specs/code-review-2026-11/findings.md`, NV-02 and
-NV-05).
+File saving binds the selected folder to a descriptor and performs saves and cleanup relative to
+that descriptor (EXP-02). On volumes with enforced ownership, permissions and exclusive rename,
+sanitized bytes first go into a private owner-only staging folder with no ACL. Replacement reads
+the destination's ACL, group and mode through one checked descriptor. Final access is applied to
+the staging file before it is published. Replace authorizes the entry at the destination name at
+save time. A concurrent substitution can still cause failure and rollback.
+
+On volumes without enforced ownership, such as FAT and exFAT, the guarantee is integrity. Other
+accounts with access to that volume can read or change its contents. A new save claims its name
+exclusively and verifies the bytes by reading them back. Cleanup removes only entries verified as
+created by that save. Recortia reports any leftover it cannot remove safely.
+
+The earlier NV-02 and NV-05 findings described the pathname-based implementation. Private staging
+and descriptor-bound access are the corresponding mitigations in the current implementation.
+Physical cross-account verification remains open. [Historical findings](docs/specs/code-review-2026-11/findings.md) · [Current implementation](Packages/RecortiaKit/Sources/MacPlatform/FileSink.swift)
 
 ## Non-sandboxed build review
 
