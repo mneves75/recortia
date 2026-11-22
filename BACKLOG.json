@@ -208,12 +208,28 @@
     "requirements": ["FR-01", "FR-06", "FR-07", "FR-08", "FR-09", "FR-13"],
     "scope": "Save Optimized Copy, Copy Text, passive opt-in automatic Pin, named framing recipes, inset border and text watermark. See docs/specs/capture-workflow-expansion/plan.md.",
     "pull_request": "https://github.com/mneves75/recortia/pull/50",
-    "status": "source_candidate_awaiting_full_qualification",
-    "verification": "The corrected combined source passed 54 targeted package methods and the unsigned E2E build. The focused native capture, pins, inspector and automatic redaction flows passed in English and Brazilian Portuguese at a5daba2. The final native framing scenario passed in both languages at a533ec9, which changes only the fixture and progress record. See progress.md for reports. Full candidate verification is pending.",
-    "installation": "Build 29 remains installed. Build 30 has not been installed.",
-    "release": "Source candidate only. Exact-commit security, signing, minimum macOS, physical desktop behavior, merge and tag remain open."
+    "status": "locally_installed_awaiting_full_qualification",
+    "verification": "The signed artifact is from f6f579f3e836023029643cf49d205b166ab57cce. Hosted CI passed on its exact tree. Independent verification passed 120 focused package tests and the sanitized PNG pipeline at 1× and 2×. Focused bilingual capture, Pin and framing flows passed on the same implementation. The exact build reported 73/73 in each language during a full run invalidated by console activity. The separate Portuguese retry stopped at 58/73 with SecurityAgent in the foreground. Fourteen scenarios failed the required foreground-fixture control, and a masking notice assertion passed on the subsequent focused replay. Four cooperative dynamic Spaces checks passed. See progress.md for receipts.",
+    "installation": "Signed Developer ID 0.16.0 (30) installed on macOS 27.3. The running 0.15.0 session and rollback bundle were preserved. Build 30 launch is pending.",
+    "release": "A private dry run verified signing and the disk image. Exact-commit release security, notarization, live update, physical desktop checks, minimum macOS, merge and tag remain open."
   },
   "current_local_installation": {
+    "candidate": "0.16.0 Developer ID local candidate",
+    "app_version": "0.16.0",
+    "build": 30,
+    "date": "2026-11-22",
+    "source_commit": "f6f579f3e836023029643cf49d205b166ab57cce",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Verified export from scripts/release.sh --dry-run, 0.16.0-dev-20261122T213252Z-40700.",
+    "backup_path": "Primary main checkout: .scratch/install-0.16.0-20261122/Recortia.app (previous signed 0.15.0 build 29).",
+    "executable_sha256": "25a18c72cf4fe30065037896e5da6b9d838bf9ba7351e0bb62ee35e02f1f5011",
+    "installed_equals_developer_id_export": true,
+    "launched": false,
+    "notarized": false,
+    "verification": "Independent verification passed bundle content, mode and link-target comparison, strict Developer ID signature, Hardened Runtime and local execution assessment. The running build 29 process preserved its PID, start time and mapped executable inode across the exchange. Receipt in the primary main checkout: .scratch/install-0.16.0-20261122/installation.json.",
+    "qualification": "Signed installation on macOS 27.3 passed. Build 30 launch, installed-app fullscreen, minimum macOS, physical VoiceOver and TCC remain open."
+  },
+  "previous_local_installation_0_15_0": {
     "candidate": "0.15.0 Developer ID local candidate",
     "app_version": "0.15.0",
     "build": 29,

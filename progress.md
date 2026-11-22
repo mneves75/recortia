@@ -461,5 +461,32 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   It validates the border and watermark, recipe persistence and naming limits, exact exported
   pixels after Apply, one-step Undo and Redo, and stale recipe refusal. Evidence is in
   `.scratch/e2e/20261122-180719-74058/`. The capture and framing branch is draft PR #50.
-- The source candidate is 0.16.0 (30). Full bilingual native verification and hosted CI must
-  run with that exact version. The signed installation remains at 0.15.0 (29).
+- Source candidate 0.16.0 (30) is `f6f579f3e836023029643cf49d205b166ab57cce`.
+  [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45070687927) passed the gate
+  and unsigned Release scan. Its synthetic merge tree matches the candidate tree
+  `9d39808b29c5f31dc387d1ae742d0523dab39ebc`. A fresh verifier passed 120 focused package
+  tests and compared 20 sanitized PNG exports at 1× and 2×, including mask-equivalent and
+  unmasked controls. Four cooperative dynamic Spaces checks passed with zero Space switches.
+  Evidence is in `.scratch/logs/ci-f6f579f.json` and `.scratch/logs/space-dynamic-f6f579f.log`.
+- The exact candidate reported 73/73 scenarios and 252 screenshots in each language on
+  macOS 27.3 (26C5047e), Xcode 27.2 (27B52), Swift 6.4.2 and SDK 27.2 (26B118).
+  The console monitor invalidated the combined run after detecting input during Portuguese.
+  The separate Portuguese run passed 58/73. macOS SecurityAgent held the foreground, and
+  14 scenarios refused a non-key, inactive fixture. The remaining assertion was a missing
+  post-masking notice. An unchanged-build Portuguese replay passed both `auto-redaction`
+  and `editor-notices` with 10 screenshots. The full bilingual run still needs a dedicated
+  foreground session. Evidence is in `.scratch/e2e/20261122-185040-13661/`,
+  `.scratch/e2e/20261122-191139-7891/` and `.scratch/e2e/20261122-192451-21603/`.
+- The on-disk installation at `/Applications/Recortia.app` is 0.16.0 (30) from the exact
+  Developer ID dry run. An independent check verified the signed app, its nested Sparkle
+  components, Hardened Runtime, the embedded profile and Keychain group, the absence of
+  debug entitlements, the disk image checksum and local Gatekeeper acceptance. The
+  installed contents, modes and symlink targets match the export. The disk image SHA-256
+  is `a975c6161b803e62fde701b313bd1edcb2f9f3cc2616f6f9b845abee31c61285`.
+- The existing build 29 session preserved PID 93036, start time and its mapped executable
+  inode. The rollback bundle and installation receipt are in the primary checkout under
+  `.scratch/install-0.16.0-20261122/`. Build 30 launch waits for the existing session to
+  close. Installed-app fullscreen, VoiceOver, TCC, real Save and Print panels, physical
+  horizontal scrolling capture, and macOS 26.0 execution still need dedicated validation.
+  The release security controls SEC-11, SEC-17 and SEC-18, notarization and live Sparkle
+  update also remain open. Merge and tagging wait for qualification.
