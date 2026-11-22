@@ -241,6 +241,8 @@ public enum AfterCapture: String, Hashable, Sendable, Codable, CaseIterable {
     case openEditor
     /// A small thumbnail with Copy, Save, Open in Editor, Pin and Dismiss.
     case showQuickActions
+    /// A sanitized reference pin.
+    case pin
 }
 
 /// What a window capture is shown over (FR-02). The captured pixels keep their transparent

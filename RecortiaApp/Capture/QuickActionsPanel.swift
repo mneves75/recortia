@@ -202,6 +202,13 @@ struct QuickActionsView: View {
     /// The last action that did not complete, in the editor's words; cleared by the next action.
     @State private var status: String?
 
+    init(capture: QuickCapture, model: QuickActionsModel, actions: QuickActionsUIController) {
+        self.capture = capture
+        self.model = model
+        self.actions = actions
+        _status = State(initialValue: capture.automaticPinFailure.map { EditorStrings.message(.pinFailed($0)) })
+    }
+
     static let maxThumbnail = CGSize(width: 240, height: 160)
 
     private var thumbnailSize: CGSize {

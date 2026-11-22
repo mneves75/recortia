@@ -29,7 +29,7 @@ final class PinsUIController {
         for pin in pins where panels[pin.id] == nil {
             let panel = PinPanel(pinID: pin.id, model: model)
             panels[pin.id] = panel
-            panel.presentNearPointer()
+            panel.presentNearPointer(takesFocus: pin.takesFocus)
         }
         if model.bringForwardRequest != lastBringForward {
             lastBringForward = model.bringForwardRequest
@@ -82,7 +82,7 @@ final class PinPanel: NSPanel, SwitchableAtAnyLevel {
 
     override var canBecomeKey: Bool { true }
 
-    func presentNearPointer() {
+    func presentNearPointer(takesFocus: Bool) {
         let pointer = NSEvent.mouseLocation
         if let visible = targetScreen?.visibleFrame {
             let size = frame.size
@@ -90,8 +90,13 @@ final class PinPanel: NSPanel, SwitchableAtAnyLevel {
             let y = min(max(pointer.y - size.height / 2, visible.minY), visible.maxY - size.height)
             setFrameOrigin(CGPoint(x: x, y: y))
         }
-        AppPresence.shared.activate()
-        makeKeyAndOrderFront(nil)
+        if takesFocus {
+            AppPresence.shared.activate()
+            makeKeyAndOrderFront(nil)
+        } else {
+            AppPresence.shared.windowWillAppear()
+            orderFrontRegardless()
+        }
     }
 
     /// Shrinks very large images so a new pin fits the visible frame of the screen it appears on;

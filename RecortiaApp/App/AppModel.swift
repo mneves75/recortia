@@ -197,8 +197,10 @@ final class AppModel: AppActions {
             return recognizeText != nil && !features.scroll.state.isActive
         case .captureMenu:
             return AppCommand.captureModes.contains { isEnabled($0) }
-        case .bringPinsForward, .closeAllPins:
+        case .bringPinsForward:
             return !features.pins.pins.isEmpty
+        case .closeAllPins:
+            return !features.pins.pins.isEmpty || features.quickActions.isPreparingAutomaticPin
         case .unlockAllPins:
             return features.pins.hasClickThroughPin
         case .checkForUpdates:
@@ -211,6 +213,7 @@ final class AppModel: AppActions {
     func perform(_ command: AppCommand) {
         guard isEnabled(command) else { return }
         if AppCommand.captureModes.contains(command) {
+            features.quickActions.cancelAutomaticPin()
             // A capture can start and cancel before an observation task re-evaluates the quit.
             quitDecision += 1
             let quickPanels = [quickActionsUI?.previewPanel, quickActionsUI?.panel].compactMap { $0 }
@@ -231,7 +234,9 @@ final class AppModel: AppActions {
             // A new editor through the normal open path; masking already settled before the close.
             if let session = features.closedCapture.take() { _ = openDocument?(session, .none, nil) }
         case .bringPinsForward: features.pins.bringForward()
-        case .closeAllPins: features.pins.closeAll()
+        case .closeAllPins:
+            features.quickActions.cancelAutomaticPin()
+            features.pins.closeAll()
         case .unlockAllPins: features.pins.unlockAll()
         case .settings: showSettings()
         case .featureTour:
@@ -419,6 +424,7 @@ final class AppModel: AppActions {
         unexportedEditCount = { [editors] in editors.unexportedEditCount }
         editorWindow = { [editors] in editors.window(for: $0) }
         let monitor = SystemEventMonitor { [weak self] event in
+            features.quickActions.cancelAutomaticPin()
             switch event {
             case .displaysChanged:
                 features.capture.displayConfigurationChanged()
@@ -463,22 +469,28 @@ final class AppModel: AppActions {
             let editor = openDocument?(completion.session, masks ? .maskSensitiveText : .none, nil)
             toEditor.end()
             runAutomaticExports(plan, for: completion.session, editor: editor, masks: masks)
-        case .quickActions:
-            showQuickActions(completion.session, plan: features.export.automaticExportPlan())
+        case .quickActions, .pin:
+            let permission = followUp == .pin ? features.services.screenPermission : nil
+            presentCapture(
+                completion.session, plan: features.export.automaticExportPlan(), pinningIfAllowedBy: permission)
         case .recognizeText:
             recognizeText?(completion.session)
         }
     }
 
-    /// The thumbnail shows once the capture's automatic batch has run; without an editor, every
-    /// failure of that batch is an alert.
-    private func showQuickActions(_ session: DocumentSession, plan: AutomaticExportPlan) {
-        let quickActions = features.quickActions
+    /// The thumbnail or pin shows after the automatic batch, on the same capture.
+    private func presentCapture(
+        _ session: DocumentSession, plan: AutomaticExportPlan,
+        pinningIfAllowedBy permission: (any ScreenPermissionService)?
+    ) {
+        let presentation = features.quickActions.schedulePresentation(
+            session, after: plan, pinningIfAllowedBy: permission)
         automaticExportsInFlight += 1
         Task {
             defer { automaticExportsInFlight -= 1 }
-            let outcomes = await quickActions.present(session, after: plan)
-            reportAutomaticExport(outcomes, from: nil)
+            let outcome = await presentation.value
+            if outcome.permissionDenied { showMessage(.capture(.permissionDenied), .app) }
+            reportAutomaticExport(outcome.exports, from: nil)
         }
     }
 

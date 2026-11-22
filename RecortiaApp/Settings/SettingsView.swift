@@ -133,6 +133,7 @@ struct CaptureSettingsTab: View {
                 Picker("After a capture", selection: settings.binding(\.afterCapture)) {
                     Text("Open the editor").tag(AfterCapture.openEditor)
                     Text("Show quick actions").tag(AfterCapture.showQuickActions)
+                    Text("Pin the capture").tag(AfterCapture.pin)
                 }
                 .help(Text("Captures open in the editor while automatic masking is on."))
                 .accessibilityIdentifier("settings.afterCapture")

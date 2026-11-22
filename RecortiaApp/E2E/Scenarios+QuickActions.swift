@@ -167,6 +167,69 @@
             try await checkReplacement(harness, context)
             try await checkPreviewReplacement(harness, context)
             try await checkMaskedPreview(harness, store, context)
+            try await checkAutomaticPin(harness, store, context)
+        }
+
+        private static func checkAutomaticPin(
+            _ harness: E2EHarness, _ store: ImageStore, _ context: ScenarioContext
+        ) async throws {
+            let previous = harness.settings.preferences
+            let pinsUI = PinsUIController(model: harness.features.pins)
+            defer {
+                harness.app.perform(.closeAllPins)
+                harness.exportGate.holdNextSnapshot = false
+                harness.exportGate.release()
+                harness.settings.update {
+                    $0.afterCaptureChoice = previous.afterCaptureChoice
+                    $0.autoCopy = previous.autoCopy
+                }
+                withExtendedLifetime(pinsUI) {}
+            }
+            let baseline = await settledCount(store)
+            let copies = harness.clipboard.writeCount
+            let editors = harness.editors.controllers.count
+            harness.settings.update {
+                $0.afterCapture = .pin
+                $0.autoCopy = true
+            }
+            harness.exportGate.holdNextSnapshot = true
+            try commitNotesRegion(harness, context)
+            try context.require(
+                "the automatic copy is suspended before any pin opens",
+                await E2EWait.until { harness.exportGate.isWaiting } && harness.features.pins.pins.isEmpty)
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
+            // Let a mistaken activation request succeed even when macOS requires cooperation.
+            try await foreground.yieldToRunner()
+            try context.require(
+                "the owned host is foreground before the pending pin can open",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier
+                    && !NSApp.isActive)
+            harness.exportGate.release()
+            try context.require(
+                "the capture opens a native pin",
+                await E2EWait.until { NSApp.windows.contains { $0 is PinPanel && $0.isVisible } })
+            let panel = try context.unwrap(
+                "visible pin window", NSApp.windows.first(where: { $0 is PinPanel && $0.isVisible }))
+            await E2ESnapshot.settle(panel.contentView)
+            context.check(
+                "automatic Pin uses the ordinary all-Spaces panel and keeps Recortia switchable",
+                AppPresence.isSwitchable(panel) && panel.level == .normal
+                    && panel.collectionBehavior == SpacePolicy.joinsAllSpaces
+                    && NSApp.activationPolicy() == .regular && panel.isOnActiveSpace)
+            context.check(
+                "the owned host stays foreground while the automatic pin opens",
+                NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier
+                    && !NSApp.isActive)
+            context.check("the automatic pin does not take the keyboard", !panel.isKeyWindow)
+            context.check(
+                "Pin shows no editor or thumbnail and Copy runs once",
+                harness.editors.controllers.count == editors && harness.quickActionsUI.panel == nil
+                    && harness.features.pins.pins.count == 1 && harness.clipboard.writeCount == copies + 1)
+            context.check("automatic Pin releases the capture's source pixels", await waitForCount(store, baseline))
+            harness.app.perform(.closeAllPins)
+            context.check("closing the pin orders its panel out", await E2EWait.until { !panel.isVisible })
+            await foreground.stop(context)
         }
 
         private static func checkPreview(
@@ -470,6 +533,16 @@
 
         /// Captures the notes window and waits for its thumbnail; returns the panel's content.
         private static func showThumbnail(_ harness: E2EHarness, _ context: ScenarioContext) async throws -> NSView {
+            try commitNotesRegion(harness, context)
+            try context.require(
+                "the thumbnail shows",
+                await E2EWait.until { harness.features.quickActions.isShown && harness.quickActionsUI.panel != nil })
+            let root = try context.unwrap("thumbnail content", harness.quickActionsUI.panel?.contentView)
+            await E2ESnapshot.settle(root)
+            return root
+        }
+
+        private static func commitNotesRegion(_ harness: E2EHarness, _ context: ScenarioContext) throws {
             let coordinator = harness.features.capture
             harness.app.perform(.captureRegion)
             try context.require(
@@ -478,12 +551,6 @@
                 "committing the region is accepted",
                 coordinator.commitRegion(
                     E2EActions.desktopRect(SyntheticDesktop.notesWindow), on: harness.capture.display))
-            try context.require(
-                "the thumbnail shows",
-                await E2EWait.until { harness.features.quickActions.isShown && harness.quickActionsUI.panel != nil })
-            let root = try context.unwrap("thumbnail content", harness.quickActionsUI.panel?.contentView)
-            await E2ESnapshot.settle(root)
-            return root
         }
 
         /// The store's size once it has stopped changing (releases are asynchronous).

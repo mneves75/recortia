@@ -102,6 +102,137 @@ struct QuickActionsModelTests {
         #expect(CaptureFollowUp.decide(purpose: .edit, preferences: preferences) == .editor(masksSensitiveText: true))
     }
 
+    @Test("Pin after capture runs the chosen automatic batch once, then replaces the source with a pin")
+    func automaticPinAfterExports() async {
+        let h = QuickActionsHarness()
+        let folder = URL(filePath: "/tmp/recortia-automatic-pin", directoryHint: .isDirectory)
+        h.folders.folder = folder
+        h.settings.update {
+            $0.afterCapture = .pin
+            $0.autoCopy = true
+            $0.preferredSaveFolderBookmark = Data([1])
+            $0.autoSave = true
+        }
+        let pending = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = pending
+        let presenting = h.model.schedulePresentation(
+            h.session, after: h.export.automaticExportPlan(), pinningIfAllowedBy: FakeScreenPermission())
+        h.settings.update { $0.afterCapture = .openEditor }
+        await waitFor("the automatic batch renders before pinning") { pending.waiterCount == 1 }
+        #expect(h.pins.pins.isEmpty)
+        #expect(!h.model.isShown)
+        h.exporter.pending = nil
+        pending.resolve(.success(()))
+        let result = await presenting.value
+        #expect(!result.permissionDenied)
+        #expect(h.pins.pins.count == 1)
+        #expect(h.pins.pins.first?.takesFocus == false)
+        #expect(h.model.capture == nil)
+        #expect(h.assets.released == h.assetIDs)
+        #expect(h.clipboard.writes.map(\.documentID) == [h.session.document.id])
+        #expect(h.files.uniqueSaves.map(\.folder) == [folder])
+        #expect(h.upload.uploaded.isEmpty)
+    }
+
+    @Test("Pin alone creates a local reference without enabling any automatic export")
+    func automaticPinAlone() async {
+        let h = QuickActionsHarness()
+        let permission = FakeScreenPermission()
+        let result = await h.model.schedulePresentation(
+            h.session, after: h.export.automaticExportPlan(), pinningIfAllowedBy: permission
+        ).value
+        #expect(result.exports.isEmpty && h.exporter.snapshotCount == 0)
+        #expect(h.pins.pins.count == 1 && h.model.capture == nil && !h.model.isShown)
+        #expect(h.assets.released == h.assetIDs)
+        #expect(permission.requestCount == 0 && h.upload.uploaded.isEmpty)
+    }
+
+    @Test("A full pin budget falls back to the same thumbnail without repeating its automatic copy")
+    func automaticPinLimitKeepsCapture() async throws {
+        let h = QuickActionsHarness()
+        let existing = try #require(makeImage())
+        for _ in 0..<PinLimits.maxPins {
+            try h.pins.add(existing, source: nil, displayScale: 1)
+        }
+        h.settings.update { $0.autoCopy = true }
+        let result = await h.model.schedulePresentation(
+            h.session, after: h.export.automaticExportPlan(), pinningIfAllowedBy: FakeScreenPermission()
+        ).value
+        #expect(result.exports == [.copied])
+        #expect(h.clipboard.writes.count == 1)
+        #expect(h.pins.pins.count == PinLimits.maxPins)
+        #expect(h.model.isShown && !h.model.isPreparingAutomaticPin)
+        #expect(h.model.capture?.session.document.id == h.session.document.id)
+        #expect(h.model.capture?.automaticPinFailure == .limitReached)
+        #expect(h.assets.released.isEmpty)
+        h.model.openInEditor()
+        #expect(h.opened.map(\.document.id) == [h.session.document.id])
+        #expect(h.model.capture == nil && h.assets.released.isEmpty)
+    }
+
+    @Test("The earlier queued automatic pin cannot reclaim a replaced capture")
+    func queuedAutomaticPinCannotReplaceNewCapture() async {
+        let h = QuickActionsHarness()
+        let plan = h.export.automaticExportPlan()
+        let first = h.model.schedulePresentation(h.session, after: plan, pinningIfAllowedBy: FakeScreenPermission())
+        let replacement = TestFixtures.session()
+        let second = h.model.schedulePresentation(replacement, after: plan)
+        _ = await first.value
+        _ = await second.value
+        #expect(h.pins.pins.isEmpty)
+        #expect(h.model.isShown && h.model.capture?.session.document.id == replacement.document.id)
+        #expect(h.assets.released == h.assetIDs)
+    }
+
+    @Test("Revoking Screen Recording during the automatic export prevents delivery and pinning")
+    func revokedPermissionPreventsAutomaticDelivery() async {
+        let h = QuickActionsHarness()
+        let permission = FakeScreenPermission()
+        h.settings.update { $0.autoCopy = true }
+        let pending = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = pending
+        let presenting = h.model.schedulePresentation(
+            h.session, after: h.export.automaticExportPlan(), pinningIfAllowedBy: permission)
+        await waitFor("the automatic copy is rendering") { pending.waiterCount == 1 }
+        permission.isGranted = false
+        pending.resolve(.success(()))
+        let result = await presenting.value
+        #expect(result.permissionDenied && result.exports.isEmpty)
+        #expect(h.clipboard.writes.isEmpty && h.files.uniqueSaves.isEmpty && h.upload.uploaded.isEmpty)
+        #expect(h.pins.pins.isEmpty && h.model.capture == nil)
+        #expect(h.assets.released == h.assetIDs)
+        #expect(permission.requestCount == 0)
+    }
+
+    @Test("A pin render returning after cancellation or permission loss releases its source", arguments: [false, true])
+    func lateAutomaticPinRender(permissionLost: Bool) async throws {
+        let h = QuickActionsHarness()
+        let permission = FakeScreenPermission()
+        let pending = Pending<Result<CGImage, ExportServiceError>>()
+        h.renderer.pending = pending
+        let presenting = h.model.schedulePresentation(
+            h.session, after: h.export.automaticExportPlan(), pinningIfAllowedBy: permission)
+        await waitFor("the automatic pin is rendering") { pending.waiterCount == 1 }
+        var replacement: DocumentSession?
+        if permissionLost {
+            permission.isGranted = false
+        } else {
+            h.model.cancelAutomaticPin()
+            #expect(h.assets.released == h.assetIDs)
+            h.renderer.pending = nil
+            let next = TestFixtures.session()
+            replacement = next
+            _ = await h.model.schedulePresentation(next, after: h.export.automaticExportPlan()).value
+        }
+        pending.resolve(.success(try #require(makeImage())))
+        let result = await presenting.value
+        #expect(result.permissionDenied == permissionLost)
+        #expect(h.pins.pins.isEmpty && h.model.capture?.session.document.id == replacement?.document.id)
+        #expect(h.model.isShown == (replacement != nil))
+        #expect(h.pins.canAddPin && h.assets.released == h.assetIDs)
+        #expect(h.clipboard.writes.isEmpty && permission.requestCount == 0)
+    }
+
     @Test("The capture's automatic exports run before the thumbnail shows")
     func automaticExportsFirst() async throws {
         let h = QuickActionsHarness()

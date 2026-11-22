@@ -2990,6 +2990,22 @@
         }
       }
     },
+    "Pin the capture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pin the capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixar a captura"
+          }
+        }
+      }
+    },
     "Pinned screenshot" : {
       "localizations" : {
         "en" : {

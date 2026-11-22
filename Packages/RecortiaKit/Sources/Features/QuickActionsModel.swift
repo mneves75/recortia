@@ -8,6 +8,7 @@ import Observation
 public enum CaptureFollowUp: Hashable, Sendable {
     case editor(masksSensitiveText: Bool)
     case quickActions
+    case pin
     case recognizeText
 
     /// Capture Text keeps its flow. With automatic masking on, the capture opens in the editor
@@ -16,7 +17,11 @@ public enum CaptureFollowUp: Hashable, Sendable {
     public static func decide(purpose: CapturePurpose, preferences: Preferences) -> CaptureFollowUp {
         guard purpose == .edit else { return .recognizeText }
         if preferences.autoRedactsSensitiveText { return .editor(masksSensitiveText: true) }
-        return preferences.afterCapture == .showQuickActions ? .quickActions : .editor(masksSensitiveText: false)
+        return switch preferences.afterCapture {
+        case .openEditor: .editor(masksSensitiveText: false)
+        case .showQuickActions: .quickActions
+        case .pin: .pin
+        }
     }
 }
 
@@ -28,6 +33,7 @@ public struct QuickCapture: Identifiable, Sendable {
     public internal(set) var preview: CGImage?
     /// The link this capture's own automatic upload returned, if it uploaded.
     public internal(set) var uploadedURL: URL?
+    public internal(set) var automaticPinFailure: PinError?
 }
 
 /// The quick-action thumbnail after a capture (B-1, ADR-009). One capture at a time: its
@@ -41,6 +47,7 @@ public struct QuickCapture: Identifiable, Sendable {
 @MainActor
 @Observable
 public final class QuickActionsModel {
+    public typealias PresentationOutcome = (exports: [ExportOutcome], permissionDenied: Bool)
     /// How long a shown thumbnail waits for an action, counted again whenever the pointer leaves it.
     public static let timeout: Duration = .seconds(8)
     /// The preview's longest side in pixels; the thumbnail shows it at most 240 pt wide on 2× displays.
@@ -59,6 +66,9 @@ public final class QuickActionsModel {
     private var isPreviewKey = false
     private var previewRequest: UUID?
     private var previewTask: Task<CGImage, any Error>?
+    private var automaticPinPermission: (any ScreenPermissionService)?
+
+    public var isPreparingAutomaticPin: Bool { automaticPinPermission != nil }
 
     /// Receives the session for Open in Editor; the editor then owns its pixels.
     @ObservationIgnored public var onOpenInEditor: ((DocumentSession) -> Void)?
@@ -93,26 +103,86 @@ public final class QuickActionsModel {
     /// completed) on it, then shows the thumbnail. Returns the automatic outcomes for the caller to
     /// report. Like the editor's batch, it waits for another export to free the shared slot.
     public func present(_ session: DocumentSession, after plan: AutomaticExportPlan) async -> [ExportOutcome] {
-        discard()
-        let id = UUID()
-        capture = QuickCapture(id: id, session: session)
-        var outcomes: [ExportOutcome] = []
-        if !plan.isEmpty {
-            guard await waitForExportSlot(id) else { return [.canceled] }
-            outcomes = await export.runAutomaticExports(
-                plan, for: session, currentSession: { [weak self] in self?.held(id) })
+        let pending = hold(session, pinningIfAllowedBy: nil)
+        return await finishPresentation(pending, after: plan).exports
+    }
+
+    /// Admit the capture now so an earlier queued job cannot replace it. A supplied permission
+    /// service selects Pin, with the same thumbnail as its fallback.
+    public func schedulePresentation(
+        _ session: DocumentSession, after plan: AutomaticExportPlan,
+        pinningIfAllowedBy permission: (any ScreenPermissionService)? = nil
+    ) -> Task<PresentationOutcome, Never> {
+        let pending = hold(session, pinningIfAllowedBy: permission)
+        return Task {
+            await withTaskCancellationHandler {
+                await finishPresentation(pending, after: plan)
+            } onCancel: { [weak self] in
+                Task { @MainActor in self?.discardIfCurrent(pending.id) }
+            }
         }
-        guard capture?.id == id else { return outcomes }
-        let document = session.document
+    }
+
+    private func hold(
+        _ session: DocumentSession, pinningIfAllowedBy permission: (any ScreenPermissionService)?
+    ) -> QuickCapture {
+        discard()
+        let pending = QuickCapture(id: UUID(), session: session)
+        capture = pending
+        automaticPinPermission = permission
+        return pending
+    }
+
+    private func finishPresentation(_ pending: QuickCapture, after plan: AutomaticExportPlan) async
+        -> PresentationOutcome
+    {
+        let id = pending.id
+        let sessionIfCurrent: @MainActor @Sendable () -> DocumentSession? = { [weak self] in
+            guard !Task.isCancelled, self?.automaticPinPermission?.isGranted != false else { return nil }
+            return self?.held(id)
+        }
+        var outcomes: [ExportOutcome] = []
+        if let ended = endedPresentation(id, exports: outcomes) { return ended }
+        if !plan.isEmpty {
+            guard await waitForExportSlot(id) else { return ([.canceled], false) }
+            if let ended = endedPresentation(id, exports: outcomes) { return ended }
+            outcomes = await export.runAutomaticExports(plan, for: pending.session, currentSession: sessionIfCurrent)
+        }
+        if let ended = endedPresentation(id, exports: outcomes) { return ended }
+        var pinFailure: PinError?
+        if isPreparingAutomaticPin {
+            do {
+                try await pins.pin(pending.session, takesFocus: false, currentSession: sessionIfCurrent)
+                discardIfCurrent(id)
+                return (outcomes, false)
+            } catch {
+                if let ended = endedPresentation(id, exports: outcomes) { return ended }
+                pinFailure = error
+            }
+        }
+        let document = pending.session.document
         let side = document.assets.values.map { Double(max($0.pixelSize.width, $0.pixelSize.height)) }.max() ?? 1
         let preview = try? await renderer.render(document, scale: min(1, Self.previewMaxPixels / max(side, 1)))
-        guard capture?.id == id else { return outcomes }
+        if let ended = endedPresentation(id, exports: outcomes) { return ended }
         capture?.preview = preview
         // Only this batch's outcome, run under the consent identity fixed at capture.
         capture?.uploadedURL = outcomes.lazy.compactMap(\.uploadedURL).first
+        capture?.automaticPinFailure = pinFailure
+        automaticPinPermission = nil
         isShown = true
         armTimer()
-        return outcomes
+        return (outcomes, false)
+    }
+
+    private func endedPresentation(_ id: UUID, exports: [ExportOutcome]) -> PresentationOutcome? {
+        guard capture?.id == id else { return (exports, false) }
+        if Task.isCancelled {
+            discard()
+            return (exports, false)
+        }
+        guard automaticPinPermission?.isGranted == false else { return nil }
+        discard()
+        return (exports.filter { $0 != .failed(.staleDocument) }, true)
     }
 
     /// The pointer over the thumbnail stops its timer; leaving starts a full `timeout` again.
@@ -250,6 +320,10 @@ public final class QuickActionsModel {
         discard()
     }
 
+    public func cancelAutomaticPin() {
+        if isPreparingAutomaticPin { discard() }
+    }
+
     // MARK: Lifecycle
 
     private func held(_ id: UUID) -> DocumentSession? {
@@ -284,6 +358,10 @@ public final class QuickActionsModel {
         if finished { discard() } else { armTimer() }
     }
 
+    private func discardIfCurrent(_ id: UUID) {
+        if capture?.id == id { discard() }
+    }
+
     private func discard() {
         guard let held = capture else { return }
         clear()
@@ -297,6 +375,7 @@ public final class QuickActionsModel {
         timer = nil
         clearPreview()
         capture = nil
+        automaticPinPermission = nil
         isShown = false
         isActing = false
         isPointerInside = false
