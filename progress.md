@@ -451,3 +451,9 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   the recipe name sheet after a rejected blank name. Its next run waits for the
   validation message to clear and invokes the accessible Save action. Evidence is in
   `.scratch/e2e/20261122-175455-86096/`.
+- Both languages accepted the valid recipe after a refusal and reproduced the earlier
+  export pixels after Apply. The fixture attempted Undo while still in Output Preview,
+  where Recortia disables Undo and Redo, and used an offscreen coordinate for Save
+  as Default. It now leaves Preview before checking the history and uses accessible
+  actions for the recipe and default buttons. Evidence is in
+  `.scratch/e2e/20261122-180352-38997/`.

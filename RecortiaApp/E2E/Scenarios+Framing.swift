@@ -292,17 +292,17 @@
             let framing = model.document.presentation
             let name = "Café"
             let maximumName = String(repeating: "é", count: 32)
-            func click(_ identifier: String) async throws {
+            func press(_ identifier: String) async throws {
                 await E2EActions.scrollInspector(controller, to: 1)
                 await E2ESnapshot.settle(root)
-                try E2EAccessibilityControl.click(identifier, in: root, context)
+                try E2EAccessibilityControl.pressCheckingEffect(identifier, in: root, context)
             }
-            try await click("image.saveFramingRecipe")
+            try await press("image.saveFramingRecipe")
             try await enterRecipeName(name, in: window, refusing: [""], context)
             let recipe = try context.unwrap("the saved named framing", model.framingRecipes.first)
             context.check(
                 "the saved recipe contains the original framing", recipe.name == name && recipe.presentation == framing)
-            try await click("image.saveFramingRecipe")
+            try await press("image.saveFramingRecipe")
             try await enterRecipeName(
                 maximumName, in: window, refusing: ["CAFE\u{301}", maximumName + "a"], context)
             context.check(
@@ -325,6 +325,7 @@
                 })
             context.check("applying adds one undo step", model.session.undoCount == undoCount + 1)
             try await verifyAppliedOutput()
+            model.setShowsOutputPreview(false)
             model.undo()
             context.check("one undo restores the former framing", model.document.presentation == revised)
             model.redo()
@@ -334,7 +335,7 @@
             context.check(
                 "applying the current style again succeeds without new history", model.session.undoCount == appliedCount
             )
-            try await click("image.saveDefaultFraming")
+            try await press("image.saveDefaultFraming")
             try context.require(
                 "the applied recipe is saved as the explicit default",
                 await E2EWait.until {
@@ -342,12 +343,12 @@
                 })
 
             let renamed = "Água"
-            try await click("image.renameFramingRecipe")
+            try await press("image.renameFramingRecipe")
             try await enterRecipeName(renamed, in: window, refusing: [maximumName], context)
             context.check(
                 "duplicate rename is refused and a valid rename keeps the recipe identity",
                 model.framingRecipes.contains { $0.id == recipe.id && $0.name == renamed })
-            try await click("image.deleteFramingRecipe")
+            try await press("image.deleteFramingRecipe")
             try context.require(
                 "deleting removes the named recipe",
                 await E2EWait.until {
@@ -358,13 +359,12 @@
                 model.document.presentation == framing && model.defaultFraming == framing)
 
             model.setPadding(37)
-            try await click("image.saveFramingRecipe")
+            try await press("image.saveFramingRecipe")
             try await enterRecipeName(renamed, in: window, context)
             let replacement = try context.unwrap(
                 "the recreated recipe", model.framingRecipes.first { $0.name == renamed })
             try context.require("reusing a deleted name creates a new identity", replacement.id != recipe.id)
             try checkStaleRecipe(recipe.id, in: model, context)
-            model.setShowsOutputPreview(false)
         }
 
         private static func checkStaleRecipe(_ id: UUID, in model: EditorModel, _ context: ScenarioContext) throws {
