@@ -228,10 +228,7 @@
                 harness.app.perform(.closeAllPins)
                 harness.exportGate.holdNextSnapshot = false
                 harness.exportGate.release()
-                harness.settings.update {
-                    $0.afterCaptureChoice = previous.afterCaptureChoice
-                    $0.autoCopy = previous.autoCopy
-                }
+                harness.settings.update { $0 = previous }
                 withExtendedLifetime(pinsUI) {}
             }
             let baseline = await settledCount(store)
@@ -254,12 +251,14 @@
                 "the owned host is foreground before the pending pin can open",
                 NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier
                     && !NSApp.isActive)
+            E2ERunner.log("quick-actions: releasing automatic Pin export")
             harness.exportGate.release()
             try context.require(
                 "the capture opens a native pin",
                 await E2EWait.until { NSApp.windows.contains { $0 is PinPanel && $0.isVisible } })
             let panel = try context.unwrap(
                 "visible pin window", NSApp.windows.first(where: { $0 is PinPanel && $0.isVisible }))
+            E2ERunner.log("quick-actions: automatic Pin window \(panel.windowNumber) is visible")
             await E2ESnapshot.settle(panel.contentView)
             context.check(
                 "automatic Pin uses the ordinary all-Spaces panel and keeps Recortia switchable",
@@ -276,6 +275,14 @@
                 harness.editors.controllers.count == editors && harness.quickActionsUI.panel == nil
                     && harness.features.pins.pins.count == 1 && harness.clipboard.writeCount == copies + 1)
             context.check("automatic Pin releases the capture's source pixels", await waitForCount(store, baseline))
+            let pin = try context.unwrap("the visible automatic Pin model", harness.features.pins.pins.first)
+            let originalWidth = panel.frame.width
+            harness.features.pins.setZoom(pin.zoom * 1.5, for: pin.id)
+            context.check(
+                "zoom grows the live pin while the foreground host keeps the keyboard",
+                await E2EWait.until { panel.frame.width > originalWidth }
+                    && NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier
+                    && !panel.isKeyWindow)
             harness.app.perform(.closeAllPins)
             context.check("closing the pin orders its panel out", await E2EWait.until { !panel.isVisible })
             await foreground.stop(context)

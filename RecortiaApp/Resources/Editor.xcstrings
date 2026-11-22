@@ -1023,18 +1023,18 @@
         }
       }
     },
-    "Text recognition for English or Portuguese is not available on this Mac, so other languages were used.": {
+    "English or Portuguese text recognition is unavailable on this Mac.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Text recognition for English or Portuguese is not available on this Mac, so other languages were used."
+            "value": "English or Portuguese text recognition is unavailable on this Mac."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O reconhecimento de texto em inglês ou português não está disponível neste Mac, então outros idiomas foram usados."
+            "value": "O reconhecimento de texto em inglês ou português não está disponível neste Mac."
           }
         }
       }

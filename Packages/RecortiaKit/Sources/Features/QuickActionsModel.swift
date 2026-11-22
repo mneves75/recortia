@@ -60,7 +60,7 @@ public final class QuickActionsModel {
     /// How long a shown thumbnail waits for an action, counted again whenever the pointer leaves it.
     public static let timeout: Duration = .seconds(8)
     /// The preview's longest side in pixels; the thumbnail shows it at most 240 pt wide on 2× displays.
-    static let previewMaxPixels = 640.0
+    static let previewMaxPixels = 640
     private static let expandedPreviewMaxPixels = 1600
 
     public private(set) var capture: QuickCapture?
@@ -76,7 +76,13 @@ public final class QuickActionsModel {
     private var isPreviewKey = false
     private var previewRequest: UUID?
     private var previewTask: Task<CGImage, any Error>?
-    private var textCopyTask: Task<String?, any Error>?
+    private struct TextRecognition {
+        var supported: [Locale.Language]?
+        var languagesUnavailable = false
+        var text: Result<String?, any Error> = .success(nil)
+    }
+
+    private var textCopyTask: Task<TextRecognition, Never>?
     private var automaticPinPermission: (any ScreenPermissionService)?
 
     public var isPreparingAutomaticPin: Bool { automaticPinPermission != nil }
@@ -175,8 +181,8 @@ public final class QuickActionsModel {
             }
         }
         let document = pending.session.document
-        let side = document.assets.values.map { Double(max($0.pixelSize.width, $0.pixelSize.height)) }.max() ?? 1
-        let preview = try? await renderer.render(document, scale: min(1, Self.previewMaxPixels / max(side, 1)))
+        let preview = try? await renderer.render(
+            document, scale: Self.previewScale(for: document, maximumSide: Self.previewMaxPixels))
         if let ended = endedPresentation(id, exports: outcomes) { return ended }
         capture?.preview = preview
         // Only this batch's outcome, run under the consent identity fixed at capture.
@@ -221,7 +227,7 @@ public final class QuickActionsModel {
     public func openPreview() async throws {
         guard canOpenPreview, let capture else { return }
         let document = capture.session.document
-        let scale = try Self.expandedPreviewScale(for: document)
+        let scale = try Self.previewScale(for: document, maximumSide: Self.expandedPreviewMaxPixels)
         let request = UUID()
         previewRequest = request
         armTimer()
@@ -235,17 +241,17 @@ public final class QuickActionsModel {
         expandedPreview = try result.get()
     }
 
-    private static func expandedPreviewScale(for document: Document) throws(RenderError) -> Double {
+    private static func previewScale(for document: Document, maximumSide: Int) throws(RenderError) -> Double {
         let size = document.outputPixelSize(exportScale: 1)
         guard !size.isEmpty else { throw .invalidGeometry }
         let side = max(size.width, size.height)
-        guard side > expandedPreviewMaxPixels else { return 1 }
+        guard side > maximumSide else { return 1 }
         // Aspect presets round up by a whole ratio multiple. Leave room for that final step.
         let ratio = document.presentation.aspect.ratio
         let rounding = max(ratio?.width ?? 1, ratio?.height ?? 1)
-        let scale = Double(expandedPreviewMaxPixels - rounding) / Double(side)
+        let scale = Double(maximumSide - rounding) / Double(side)
         let scaled = document.outputPixelSize(exportScale: scale)
-        guard !scaled.isEmpty, max(scaled.width, scaled.height) <= expandedPreviewMaxPixels else {
+        guard !scaled.isEmpty, max(scaled.width, scaled.height) <= maximumSide else {
             throw .invalidGeometry
         }
         return scale
@@ -272,22 +278,30 @@ public final class QuickActionsModel {
     }
 
     /// Recognizes only the current sanitized output, without using the thumbnail's smaller raster.
-    public func copyText() async -> QuickTextCopyOutcome {
-        guard !Task.isCancelled else { return .canceled }
-        guard textCopyTask == nil, let held = begin() else { return .rejectedBusy }
+    public func copyText() async -> (outcome: QuickTextCopyOutcome, languagesUnavailable: Bool) {
+        guard !Task.isCancelled else { return (.canceled, false) }
+        guard textCopyTask == nil, let held = begin() else { return (.rejectedBusy, false) }
         let request = UUID()
         let identity = held.session.requestIdentity()
         let mode = settings.preferences.ocrTextMode
         let document = held.session.document
-        let task = Task { [renderer, textRecognition, settings] () throws -> String? in
-            let image = try await renderer.render(document, scale: 1)
-            try Task.checkCancellation()
-            let supported = await textRecognition.supportedLanguages()
-            try Task.checkCancellation()
-            let (languages, _) = settings.recognitionLanguages(supported: supported)
-            let result = try await textRecognition.recognize(image, languages: languages)
-            try Task.checkCancellation()
-            return result.isEmpty ? nil : result.text(mode: mode)
+        let task = Task { [renderer, textRecognition, settings] in
+            var recognized = TextRecognition()
+            do {
+                let image = try await renderer.render(document, scale: 1)
+                try Task.checkCancellation()
+                let supported = await textRecognition.supportedLanguages()
+                try Task.checkCancellation()
+                let (languages, unavailable) = settings.recognitionLanguages(supported: supported)
+                recognized.supported = supported
+                recognized.languagesUnavailable = !unavailable.isEmpty
+                let result = try await textRecognition.recognize(image, languages: languages)
+                try Task.checkCancellation()
+                recognized.text = .success(result.isEmpty ? nil : result.text(mode: mode))
+            } catch {
+                recognized.text = .failure(error)
+            }
+            return recognized
         }
         textCopyRequest = request
         textCopyTask = task
@@ -299,20 +313,29 @@ public final class QuickActionsModel {
             }
         }
         let result = await withTaskCancellationHandler {
-            await task.result
+            await task.value
         } onCancel: {
             task.cancel()
         }
         guard !Task.isCancelled, !task.isCancelled, textCopyRequest == request,
             capture?.id == held.id, capture?.session.accepts(identity) == true
-        else { return .canceled }
-        switch result {
+        else { return (.canceled, false) }
+        let outcome: QuickTextCopyOutcome
+        switch result.text {
         case .failure(let error):
-            return error is CancellationError ? .canceled : .recognitionFailed
+            guard !(error is CancellationError) else { return (.canceled, false) }
+            outcome = .recognitionFailed
         case .success(let text):
-            guard let text, !text.isEmpty else { return .noText }
-            return textClipboard.writePlainText(text) ? .copied : .clipboardFailed
+            if let text, !text.isEmpty {
+                outcome = textClipboard.writePlainText(text) ? .copied : .clipboardFailed
+            } else {
+                outcome = .noText
+            }
         }
+        if let supported = result.supported {
+            settings.forgetUnsupportedPrimaryRecognitionLanguage(supported: supported)
+        }
+        return (outcome, result.languagesUnavailable)
     }
 
     /// Offers the sanitized snapshot on the drag chip (ADR-004); the thumbnail ends once a

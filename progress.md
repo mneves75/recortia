@@ -432,3 +432,16 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   reported three errors in RenderEngine, so that file's complexity report may be incomplete.
 - Combined native qualification, version bump, signed installation and release closeout are
   still open.
+- The first combined run on `65ed7a4` reached the accessible decoration control in each
+  language, then could not focus the input through its numeric-field helper. The quick-actions
+  scenario crashed during the automatic Pin handoff in both languages. The crash report shows
+  recursive AppKit window sizing. Pin now fits explicitly on creation and zoom, and the
+  native watermark scenario uses the real text-field click. Evidence is in
+  `.scratch/e2e/20261122-174424-21236/`.
+- Review found three integration gaps. A real build 29 preference reader originally rejected
+  the new Pin raw value. It now accepts the same current blob and preserves the previous
+  capture choice, automatic save and the folder bookmark. The fallback thumbnail uses the
+  framed output geometry and remains at or below 640 px. Copy Text reports unavailable
+  recognition languages without acting on stale results. The combined focused package run
+  passed 54 methods, including the new assertions on capture state and actual fallback
+  raster dimensions. Native qualification is tracked separately.

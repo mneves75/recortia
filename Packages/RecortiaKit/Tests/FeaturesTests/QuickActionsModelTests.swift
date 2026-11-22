@@ -1,6 +1,8 @@
 import CoreGraphics
 import Domain
 import Foundation
+import Imaging
+import RecortiaFixtures
 import Testing
 
 @testable import Features
@@ -92,6 +94,15 @@ struct QuickActionsModelTests {
         let older = try JSONDecoder().decode(Preferences.self, from: JSONSerialization.data(withJSONObject: object))
         #expect(older.afterCapture == .openEditor)
         #expect(CaptureFollowUp.decide(purpose: .edit, preferences: older) == .editor(masksSensitiveText: false))
+
+        stored.afterCapture = .pin
+        let pinned = try JSONEncoder().encode(stored)
+        let pinObject = try #require(JSONSerialization.jsonObject(with: pinned) as? [String: Any])
+        #expect(pinObject["afterCaptureChoice"] as? String == "showQuickActions")
+        #expect(try JSONDecoder().decode(Preferences.self, from: pinned).afterCapture == .pin)
+        stored.afterCapture = .openEditor
+        #expect(
+            try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(stored)).afterCapture == .openEditor)
     }
 
     @Test("Show quick actions routes captures to the thumbnail; masking and Capture Text keep their flows")
@@ -154,24 +165,33 @@ struct QuickActionsModelTests {
 
     @Test("A full pin budget falls back to the same thumbnail without repeating its automatic copy")
     func automaticPinLimitKeepsCapture() async throws {
-        let h = QuickActionsHarness()
+        let store = ImageStore()
+        let image = try #require(makeImage(width: 320, height: 320))
+        let asset = await store.insert(try ImageDecoder.decode(ContainerCrafting.pngData(image)), origin: .pasted)
+        var document = Document(asset: asset)
+        document.presentation = Presentation(padding: 256, aspect: .landscape16x9)
+        let session = DocumentSession(document: document)
+        let h = QuickActionsHarness(renderService: QuickActionsRenderService(store: store))
         let existing = try #require(makeImage())
         for _ in 0..<PinLimits.maxPins {
             try h.pins.add(existing, source: nil, displayScale: 1)
         }
         h.settings.update { $0.autoCopy = true }
         let result = await h.model.schedulePresentation(
-            h.session, after: h.export.automaticExportPlan(), pinningIfAllowedBy: FakeScreenPermission()
+            session, after: h.export.automaticExportPlan(), pinningIfAllowedBy: FakeScreenPermission()
         ).value
         #expect(result.exports == [.copied])
         #expect(h.clipboard.writes.count == 1)
         #expect(h.pins.pins.count == PinLimits.maxPins)
         #expect(h.model.isShown && !h.model.isPreparingAutomaticPin)
-        #expect(h.model.capture?.session.document.id == h.session.document.id)
+        #expect(h.model.capture?.session.document.id == session.document.id)
         #expect(h.model.capture?.automaticPinFailure == .limitReached)
+        let preview = try #require(h.model.capture?.preview)
+        #expect(document.outputPixelSize(exportScale: 1).width > QuickActionsModel.previewMaxPixels)
+        #expect(max(preview.width, preview.height) <= QuickActionsModel.previewMaxPixels)
         #expect(h.assets.released.isEmpty)
         h.model.openInEditor()
-        #expect(h.opened.map(\.document.id) == [h.session.document.id])
+        #expect(h.opened.map(\.document.id) == [session.document.id])
         #expect(h.model.capture == nil && h.assets.released.isEmpty)
     }
 

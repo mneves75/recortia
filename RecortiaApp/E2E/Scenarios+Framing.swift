@@ -259,8 +259,14 @@
                     E2EAccessibilityControl.isPresent("image.decoration.textError", in: root)
                         && editor.model.document.presentation.watermark == nil
                 })
-            try await E2EAccessibilityControl.enterNumber(
-                "image.decoration.watermark", text: "Revisão", in: root, context)
+            try E2EAccessibilityControl.click("image.decoration.watermark", in: root, context)
+            try context.require(
+                "the watermark control opens its native text editor",
+                await E2EWait.until { (window.firstResponder as? NSTextView)?.isFieldEditor == true })
+            let field = try context.unwrap("watermark field editor", window.firstResponder as? NSTextView)
+            field.insertText("Revisão", replacementRange: field.selectedRange())
+            try context.require("typing reaches the watermark field", field.string == "Revisão")
+            try E2EAccessibilityControl.press("image.decoration.applyWatermark", in: root, context)
             try context.require(
                 "the native field commits the accented watermark",
                 await E2EWait.until { editor.model.document.presentation.watermark?.text == "Revisão" })

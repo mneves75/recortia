@@ -143,13 +143,18 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
 
     func copyText(for captureID: UUID) async -> String? {
         guard let panel, canUseActions(captureID, from: panel) else { return nil }
-        return switch await model.copyText() {
-        case .copied: EditorStrings.message(.textCopied)
-        case .noText: EditorStrings.message(.noTextFound)
-        case .recognitionFailed: EditorStrings.message(.recognitionFailed)
-        case .clipboardFailed: EditorStrings.message(.copyFailed)
-        case .canceled, .rejectedBusy: nil
+        let result = await model.copyText()
+        guard canUseActions(captureID, from: panel) else { return nil }
+        let message: String
+        switch result.outcome {
+        case .copied: message = EditorStrings.message(.textCopied)
+        case .noText: message = EditorStrings.message(.noTextFound)
+        case .recognitionFailed: message = EditorStrings.message(.recognitionFailed)
+        case .clipboardFailed: message = EditorStrings.message(.copyFailed)
+        case .canceled, .rejectedBusy: return nil
         }
+        return result.languagesUnavailable
+            ? message + "\n" + EditorStrings.message(.recognitionLanguagesUnavailable) : message
     }
 
     func save() async -> String? {
@@ -335,12 +340,13 @@ struct QuickActionsView: View {
         VStack(spacing: DesignTokens.Space.s) {
             QuickActionsThumbnail(preview: capture.preview) { perform(actions.drag) }
                 .frame(width: thumbnailSize.width, height: thumbnailSize.height)
+                .frame(width: Self.maxThumbnail.width)
                 .overlay(alignment: .bottom) {
                     if let status {
                         Text(status)
                             .font(.callout)
                             .multilineTextAlignment(.center)
-                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
                             .noticeStyle()
                             .padding(DesignTokens.Space.xs)
                             .accessibilityIdentifier("quickActions.status")

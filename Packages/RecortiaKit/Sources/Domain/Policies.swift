@@ -305,8 +305,14 @@ public struct Preferences: Hashable, Sendable, Codable {
     public var filenameTemplateChoice: FilenameTemplate?
     /// Stored only once the person changes it; read `playsCaptureSound` (A-12).
     public var playsCaptureSoundChoice: Bool?
-    /// Stored only once the person changes it; read `afterCapture` (B-1).
-    public var afterCaptureChoice: AfterCapture?
+    /// Keep this key readable by builds that predate automatic Pin.
+    package enum StoredAfterCapture: String, Codable, Hashable, Sendable {
+        case openEditor
+        case showQuickActions
+    }
+
+    package var afterCaptureChoice: StoredAfterCapture?
+    private var pinAfterCaptureChoice: Bool?
     /// Stored only once the person picks a format; read `exportFormat`.
     public var automaticExportFormatChoice: Bool?
     /// Stored only once the person picks a format; read `exportFormat`.
@@ -381,8 +387,18 @@ public struct Preferences: Hashable, Sendable, Codable {
 
     /// What a completed capture opens; the editor by default (ADR-009).
     public var afterCapture: AfterCapture {
-        get { afterCaptureChoice ?? .openEditor }
-        set { afterCaptureChoice = newValue }
+        get {
+            if pinAfterCaptureChoice == true { return .pin }
+            return afterCaptureChoice == .showQuickActions ? .showQuickActions : .openEditor
+        }
+        set {
+            if newValue == .pin {
+                pinAfterCaptureChoice = true
+            } else {
+                pinAfterCaptureChoice = nil
+                afterCaptureChoice = newValue == .showQuickActions ? .showQuickActions : .openEditor
+            }
+        }
     }
 
     /// How saved and dragged files are named (FR-07). GitHub uploads keep their per-intent path

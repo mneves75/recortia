@@ -186,7 +186,7 @@ enum EditorStrings {
         case .recognitionLanguagesUnavailable:
             String(
                 localized:
-                    "Text recognition for English or Portuguese is not available on this Mac, so other languages were used.",
+                    "English or Portuguese text recognition is unavailable on this Mac.",
                 table: "Editor")
         case .textCopied: String(localized: "Text copied.", table: "Editor")
         case .copyFailed: String(localized: "Could not copy the text.", table: "Editor")

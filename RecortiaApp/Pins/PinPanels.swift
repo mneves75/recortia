@@ -43,6 +43,7 @@ final class PinPanel: NSPanel, SwitchableAtAnyLevel {
     private let targetScreen = ScreenChoice.screen()
     /// Follows the pin's Keep on Top and click-through state.
     private var layering: ObservationLoop?
+    private var fittedImageSize: CGSize?
 
     init(pinID: PinID, model: PinsModel) {
         super.init(
@@ -64,11 +65,17 @@ final class PinPanel: NSPanel, SwitchableAtAnyLevel {
         let fit = Self.fitScale(for: model.pin(for: pinID), visibleFrame: targetScreen?.visibleFrame)
         let controller = NSHostingController(
             rootView: PinContentView(pinID: pinID, model: model, fitScale: fit))
-        controller.sizingOptions = [.preferredContentSize]
+        // Preferred-size tracking can reenter AppKit layout while a pin is ordered passively.
+        controller.sizingOptions = []
         contentViewController = controller
-        layering = ObservationLoop { [weak self, weak model] in
+        layering = ObservationLoop { [weak self, weak model, weak controller] in
             guard let self, let pin = model?.pin(for: pinID) else { return }
             self.applyLayering(of: pin)
+            let imageSize = PinView.imageSize(for: pin, fitScale: fit)
+            if self.fittedImageSize != imageSize, let controller {
+                self.fittedImageSize = imageSize
+                self.setContentSize(NSHostingView(rootView: controller.rootView).fittingSize)
+            }
         }
     }
 
@@ -174,10 +181,12 @@ struct PinView: View {
     /// The pop-up's choices; a pin opened at another default opacity shows its own value.
     static let opacityChoices: [Double] = [1, 0.75, 0.5, 0.25]
 
-    private var imageSize: CGSize {
+    static func imageSize(for pin: Pin, fitScale: Double) -> CGSize {
         let scale = fitScale * pin.zoom / pin.displayScale
         return CGSize(width: Double(pin.image.width) * scale, height: Double(pin.image.height) * scale)
     }
+
+    private var imageSize: CGSize { Self.imageSize(for: pin, fitScale: fitScale) }
 
     /// Hidden until the pointer enters, so the pin shows only the image; always shown to
     /// VoiceOver and while a copy or drag-out notice is up. A click-through pin gets no pointer

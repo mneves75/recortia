@@ -18,7 +18,7 @@ struct QuickActionsCopyTextTests {
         try session.addSecureMask(covering: Rect(x: 300, y: 200, width: 360, height: 320))
         let text = RecordingRecognition()
         text.pending = Pending<Void>()
-        let h = QuickActionsHarness(renderService: QuickOCRRenderer(store: store), textRecognition: text)
+        let h = QuickActionsHarness(renderService: QuickActionsRenderService(store: store), textRecognition: text)
         h.settings.update {
             $0.primaryRecognitionLanguage = Locale.Language(identifier: "pt-BR").maximalIdentifier
             $0.ocrTextMode = .normalizedWhitespace
@@ -42,7 +42,8 @@ struct QuickActionsCopyTextTests {
         await drain()
         #expect(h.model.isShown && h.model.isActing && h.textClipboard.writes.isEmpty)
         text.pending?.resolve(())
-        #expect(await copy.value == .copied)
+        let completed = await copy.value
+        #expect(completed.outcome == .copied && !completed.languagesUnavailable)
         #expect(h.textClipboard.writes == ["Relatório trimestral Revisão concluída"])
         #expect(h.model.isShown && !h.model.isActing)
         #expect(h.exporter.snapshotCount == 0 && h.files.saves.isEmpty && h.upload.uploaded.isEmpty)
@@ -61,6 +62,10 @@ struct QuickActionsCopyTextTests {
         let delayed = Pending<Void>()
         text.pending = delayed
         let h = QuickActionsHarness(textRecognition: text)
+        if interruption == .selection {
+            text.languages = ["en-US"]
+            h.settings.update { $0.primaryRecognitionLanguage = "pt-Latn-BR" }
+        }
         let link = QuickUpload.link(for: h.session.document.id)
         if interruption == .copyLink {
             h.settings.update {
@@ -97,14 +102,18 @@ struct QuickActionsCopyTextTests {
         if !h.model.isShown { await h.shown() }
         #expect(!h.model.isActing)
         text.pending = nil
-        #expect(await h.model.copyText() == .rejectedBusy)
+        #expect(await h.model.copyText().outcome == .rejectedBusy)
         delayed.resolve(())
         delayedRender.resolve(.success(lateImage))
-        #expect(await first.value == .canceled)
+        let canceled = await first.value
+        #expect(canceled.outcome == .canceled && !canceled.languagesUnavailable)
+        if interruption == .selection {
+            #expect(h.settings.preferences.primaryRecognitionLanguage == "pt-Latn-BR")
+        }
         if blocksRender { #expect(text.image == nil) }
         let previous = interruption == .copyLink ? [link.absoluteString] : []
         #expect(h.textClipboard.writes == previous)
-        #expect(await h.model.copyText() == .copied)
+        #expect(await h.model.copyText().outcome == .copied)
         #expect(h.textClipboard.writes.count == previous.count + 1 && h.model.isShown && !h.model.isActing)
     }
 
@@ -112,18 +121,30 @@ struct QuickActionsCopyTextTests {
     func unusableOCR() async {
         let text = RecordingRecognition()
         let h = QuickActionsHarness(textRecognition: text)
+        text.languages = ["en-US"]
+        h.settings.update { $0.primaryRecognitionLanguage = "pt-Latn-BR" }
         await h.shown()
         _ = h.textClipboard.writePlainText("previous content")
         h.renderer.shouldFail = true
-        #expect(await h.model.copyText() == .recognitionFailed)
+        let refused = await h.model.copyText()
+        #expect(refused.outcome == .recognitionFailed && !refused.languagesUnavailable)
+        #expect(h.settings.preferences.primaryRecognitionLanguage == "pt-Latn-BR")
         #expect(text.image == nil)
         h.renderer.shouldFail = false
         text.fails = true
-        #expect(await h.model.copyText() == .recognitionFailed)
+        let failed = await h.model.copyText()
+        #expect(failed.outcome == .recognitionFailed && failed.languagesUnavailable)
+        #expect(h.settings.preferences.primaryRecognitionLanguage == nil)
+        #expect(text.requestedLanguages.map { $0.languageCode?.identifier } == ["en"])
         text.fails = false
         text.lines = ["   ", "\t"]
-        #expect(await h.model.copyText() == .noText)
+        let empty = await h.model.copyText()
+        #expect(empty.outcome == .noText && empty.languagesUnavailable)
         #expect(h.textClipboard.writes == ["previous content"])
+        text.lines = ["English text"]
+        let copied = await h.model.copyText()
+        #expect(copied.outcome == .copied && copied.languagesUnavailable)
+        #expect(h.textClipboard.writes == ["previous content", "English text"])
         #expect(h.model.isShown && !h.model.isActing)
     }
 }
@@ -133,11 +154,12 @@ private final class RecordingRecognition: TextRecognitionService {
     var pending: Pending<Void>?
     var fails = false
     var lines = ["  Relatório  trimestral  ", " Revisão concluída "]
+    var languages = ["en-US", "pt-BR", "fr-FR"]
     private(set) var image: CGImage?
     private(set) var requestedLanguages: [Locale.Language] = []
 
     func supportedLanguages() async -> [Locale.Language] {
-        ["en-US", "pt-BR", "fr-FR"].map(Locale.Language.init(identifier:))
+        languages.map(Locale.Language.init(identifier:))
     }
 
     func recognize(_ image: CGImage, languages: [Locale.Language]) async throws -> OCRResult {
@@ -153,7 +175,7 @@ private final class RecordingRecognition: TextRecognitionService {
 }
 
 @MainActor
-private final class QuickOCRRenderer: RenderService {
+final class QuickActionsRenderService: RenderService {
     let renderer: PrivacyRenderer
 
     init(store: ImageStore) { renderer = PrivacyRenderer(store: store) }
