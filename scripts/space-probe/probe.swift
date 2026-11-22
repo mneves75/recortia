@@ -6,7 +6,7 @@
 //   mode "fresh": wait for the fullscreen host (pid in HOST_PID_FILE), then create + present.
 //   mode "stale": create + present now on the current desktop Space, write READY_FILE, wait for
 //                 the host to become frontmost, then present the SAME window again.
-// FORCE=1 uses activate(ignoringOtherApps:) to stand in for user-granted activation.
+// FORCE=1 separately diagnoses forced activation. Recortia uses cooperative activation.
 import AppKit
 
 let variant = CommandLine.arguments[1]
@@ -44,6 +44,10 @@ func zAboveIn(_ hostPID: pid_t) -> String {
 func readHostPID() -> pid_t? {
     guard let text = try? String(contentsOfFile: hostPIDFile, encoding: .utf8) else { return nil }
     return pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines))
+}
+
+final class ProbePinPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
 
 final class Probe: NSObject, NSApplicationDelegate {
@@ -134,7 +138,8 @@ final class Probe: NSObject, NSApplicationDelegate {
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .canJoinAllApplications]
         case "dynamic-pin":
             // `PinPanel` (ADR-007): a normal-level, non-floating borderless panel on every Space.
-            let p = NSPanel(contentRect: rect, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
+            let p = ProbePinPanel(
+                contentRect: rect, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
             p.isFloatingPanel = false
             p.level = .normal
             p.hidesOnDeactivate = false
@@ -166,9 +171,17 @@ final class Probe: NSObject, NSApplicationDelegate {
         case "default", "follow-activate-first", "panel-activating":
             activateApp()
             window.makeKeyAndOrderFront(nil)
-        case "dynamic-follow", "dynamic-pin":
-            // `AppPresence.activate()`: an accessory app becomes regular, then activates and shows.
-            NSApp.setActivationPolicy(.regular)
+        case "dynamic-follow":
+            if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
+            window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+            window.makeKeyAndOrderFront(nil)
+            activateApp()
+        case "dynamic-pin":
+            if presented {
+                window.orderFrontRegardless()
+                return
+            }
+            if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
             activateApp()
             window.makeKeyAndOrderFront(nil)
         case "follow-order-first":
@@ -191,6 +204,7 @@ final class Probe: NSObject, NSApplicationDelegate {
             "windowOnActiveSpaceBefore": onActiveBefore.map { $0 ? "yes" : "no" } ?? "new",
             "spaceChanges": spaceChanges,
             "windowVisible": window.isVisible,
+            "windowIsKey": window.isKeyWindow,
             "windowOnActiveSpace": window.isOnActiveSpace,
             "probeOnScreen": windows(of: getpid()).count,
             "hostOnScreenAfter": windows(of: hostPID).count,

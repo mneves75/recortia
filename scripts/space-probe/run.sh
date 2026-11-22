@@ -13,8 +13,9 @@
 #   overlay, dynamic-follow, dynamic-pin (see probe.swift). Each prints one JSON line;
 #   spaceChanges must be 0 for every variant Recortia uses (follow-*, activate-only-follow,
 #   panel-*, overlay, and the dynamic-* variants that start accessory and become regular, ADR-007).
-# FORCE=1 stands in for user-granted activation (a hotkey or menu click); without it macOS 14+
-# may decline the probe's cooperative activation request.
+# Use the default cooperative mode to qualify the presentation order. A fullscreen host can
+# keep focus while the probe appears on its Space. FORCE=1 is a separate forced-activation
+# diagnostic. The reused dynamic pin is brought forward without requesting activation.
 set -u
 cd "${0:A:h}"
 : "${DEVELOPER_DIR:=/Applications/Xcode.app/Contents/Developer}"
