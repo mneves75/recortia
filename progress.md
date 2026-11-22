@@ -445,3 +445,9 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   recognition languages without acting on stale results. The combined focused package run
   passed 54 methods, including the new assertions on capture state and actual fallback
   raster dimensions. Native qualification is tracked separately.
+- The bilingual run on `a5daba2` passed quick actions, both Pin scenarios, the inspector
+  and automatic redaction. The real automatic Pin stayed passive and zoomed without a
+  crash in both languages. Framing passed the decoration steps and then stalled at
+  the recipe name sheet after a rejected blank name. Its next run waits for the
+  validation message to clear and invokes the accessible Save action. Evidence is in
+  `.scratch/e2e/20261122-175455-86096/`.

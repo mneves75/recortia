@@ -406,15 +406,17 @@
                 let editor = try context.unwrap("recipe native field editor", sheet.firstResponder as? NSTextView)
                 editor.selectAll(nil)
                 editor.insertText(text, replacementRange: editor.selectedRange())
-            }
-            for rejectedName in rejected {
-                try await fill(rejectedName)
+                try context.require("the native name field contains the typed text", editor.string == text)
                 try context.require(
                     "typing clears the previous recipe-name error",
                     await E2EWait.until {
                         !E2EAccessibilityControl.isPresent("framing.recipeNameError", in: root)
                     })
-                try E2EAccessibilityControl.click("framing.saveRecipeName", in: root, context)
+                await E2ESnapshot.settle(root)
+            }
+            for rejectedName in rejected {
+                try await fill(rejectedName)
+                try E2EAccessibilityControl.pressCheckingEffect("framing.saveRecipeName", in: root, context)
                 try context.require(
                     "the refused name leaves its sheet open with an error",
                     await E2EWait.until {
@@ -423,12 +425,18 @@
                     })
             }
             try await fill(name)
-            try E2EAccessibilityControl.click("framing.saveRecipeName", in: root, context)
+            try E2EAccessibilityControl.pressCheckingEffect("framing.saveRecipeName", in: root, context)
+            let closed = await E2EWait.until { window.attachedSheet == nil }
+            var detail = ""
+            if !closed {
+                detail = "original sheet still attached: \(window.attachedSheet === sheet)"
+                if E2EAccessibilityControl.isPresent("framing.recipeNameError", in: root) {
+                    let error = try E2EAccessibilityControl.name(for: "framing.recipeNameError", in: root, context)
+                    detail += "; validation: \(error)"
+                }
+            }
             try context.require(
-                "saving a valid name closes the sheet",
-                await E2EWait.until {
-                    window.attachedSheet == nil
-                })
+                "saving a valid name closes the sheet", closed, detail)
         }
     }
 #endif
