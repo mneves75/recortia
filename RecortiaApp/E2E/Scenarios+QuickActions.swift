@@ -244,30 +244,42 @@
                 "cancel restores the same preview and thumbnail",
                 await E2EWait.until { panel.isVisible && thumbnail.isVisible && ui.previewPanel === panel })
             checkPreviewForeground(panel, thumbnail, foreground, context)
-            try await pressEscape(in: panel, context)
+            panel.makeKey()
+            try context.require(
+                "the preview can be focused while the owned app stays foreground",
+                await E2EWait.until { panel.isKeyWindow })
+            try pressEscape(in: panel, foreground, context)
             try context.require(
                 "Escape from the preview closes only the expanded panel",
                 await E2EWait.until { ui.previewPanel == nil && thumbnail.isVisible && model.capture?.id == capture.id }
             )
-            checkPreviewForeground(panel, thumbnail, foreground, context, requireNoKey: false)
+            context.check(
+                "closing the focused preview leaves the owned app foreground",
+                !panel.isKeyWindow
+                    && NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier,
+                previewFocusDetail(panel, thumbnail, foreground))
 
-            try await foreground.restore()
-            thumbnail.makeKey()
-            try context.require("the thumbnail can be focused", await E2EWait.until { thumbnail.isKeyWindow })
+            if !thumbnail.isKeyWindow { thumbnail.makeKey() }
+            try context.require(
+                "the thumbnail can be focused while the owned app stays foreground",
+                await E2EWait.until {
+                    thumbnail.isKeyWindow
+                        && NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier
+                })
             try E2EAccessibilityControl.pressCheckingEffect("quickActions.preview", in: root, context)
             try context.require(
                 "the same capture can be previewed again", await E2EWait.until { ui.previewPanel != nil })
             context.check(
                 "opening the preview leaves key focus in the thumbnail",
                 thumbnail.isKeyWindow && ui.previewPanel?.isKeyWindow == false)
-            try await pressEscape(in: thumbnail, context)
+            try pressEscape(in: thumbnail, foreground, context)
             try context.require(
                 "Escape from the thumbnail closes only the expanded panel",
                 await E2EWait.until { ui.previewPanel == nil && thumbnail.isVisible && model.capture?.id == capture.id }
             )
             context.check(
                 "Escape keeps the thumbnail key and the other app foreground",
-                thumbnail.isKeyWindow && !NSApp.isActive
+                thumbnail.isKeyWindow
                     && NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier,
                 previewFocusDetail(panel, thumbnail, foreground))
             await foreground.stop(context)
@@ -349,23 +361,25 @@
                 "\(maskedA.width)×\(maskedA.height)")
         }
 
-        private static func pressEscape(in panel: HostingPanel, _ context: ScenarioContext) async throws {
-            panel.makeKey()
-            try context.require("explicit focus makes the panel key", await E2EWait.until { panel.isKeyWindow })
+        private static func pressEscape(
+            in panel: HostingPanel, _ foreground: E2EForegroundFixture, _ context: ScenarioContext
+        ) throws {
+            try context.require(
+                "Escape goes to the key panel while the owned app stays foreground",
+                panel.isKeyWindow
+                    && NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier)
             NSApp.sendEvent(
                 try CaptureVisibilityScenarios.keyEvent(53, characters: "\u{1b}", windowNumber: panel.windowNumber))
         }
 
         private static func checkPreviewForeground(
             _ panel: HostingPanel, _ thumbnail: HostingPanel, _ foreground: E2EForegroundFixture,
-            _ context: ScenarioContext, requireNoKey: Bool = true
+            _ context: ScenarioContext
         ) {
             context.check(
-                requireNoKey
-                    ? "the owned foreground app retains activation and Recortia does not take key"
-                    : "closing the focused preview leaves the owned app foreground",
+                "the owned foreground app retains activation and Recortia does not take key",
                 NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground.processIdentifier
-                    && !NSApp.isActive && !panel.isKeyWindow && (!requireNoKey || !thumbnail.isKeyWindow),
+                    && !NSApp.isActive && !panel.isKeyWindow && !thumbnail.isKeyWindow,
                 previewFocusDetail(panel, thumbnail, foreground))
         }
 

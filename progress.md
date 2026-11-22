@@ -338,3 +338,13 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
 - The full A-5 attempt on `2d1b6df` stopped after the login screen took the foreground.
   That attempt is void. GitHub's exact-head checks passed for A-5. The qualification launcher
   now checks the kernel lock field directly and rejects the login screen in its foreground check.
+- On clean `269ee56`, both unsigned Debug targets compiled and hosted CI passed the unsigned
+  and Release isolation checks. The uninterrupted bilingual run `20261121-205717-66634`
+  passed window presence, other Spaces, capture focus and recapture. Quick Actions proved
+  the full preview image, light and dark chrome, both panels hidden for capture, restoration on
+  cancel, and the first Escape's closure. The owned app stayed frontmost after deliberate
+  keyboard focus. The test had also expected the runner's activation flag to stay false and
+  tried to make the owned app's window key while the thumbnail held key focus. Independent
+  review approved separating those checks. Both Escape routes now require the expected key
+  panel and the owned foreground process immediately before Escape, without reassigning key
+  focus in the dispatch helper. The second Escape and subsequent RED assertions need replay.
