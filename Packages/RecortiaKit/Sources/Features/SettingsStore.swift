@@ -162,26 +162,11 @@ public final class SettingsStore {
         if case .solid(let color) = input.windowCaptureBackground {
             output.windowCaptureBackground = .solid(color.withAlpha(255))
         }
-        output.defaultFraming = input.defaultFraming.flatMap(framing)
+        output.defaultFraming = input.defaultFraming?.validSavedFraming
+        if input.framingRecipes?.entries.isEmpty == true { output.framingRecipes = nil }
         // Automatic saving writes only to a folder the person chose; without one it is off.
         if input.preferredSaveFolderBookmark == nil { output.autoSave = false }
         return output
-    }
-
-    /// A saved framing the editor could have produced: padding and corner radius within the
-    /// inspector's range, a finite shadow and gradient angle; nil for anything else.
-    private static func framing(_ input: Presentation) -> Presentation? {
-        let range = 0.0...512
-        guard input.padding.isFinite, range.contains(input.padding), input.cornerRadius.isFinite,
-            range.contains(input.cornerRadius), input.border?.isValid != false, input.watermark?.isValid != false
-        else { return nil }
-        if let shadow = input.shadow {
-            guard shadow.radius.isFinite, shadow.radius >= 0, shadow.offsetY.isFinite, shadow.opacity.isFinite else {
-                return nil
-            }
-        }
-        if case .linearGradient(_, _, let angle) = input.background, !angle.isFinite { return nil }
-        return input
     }
 
     /// The full form of a BCP 47 language identifier made of ASCII letters, digits, `-` and `_`,

@@ -1448,6 +1448,7 @@ private struct BackgroundSection: View {
                     .disabled(model.defaultFraming == nil)
                     .accessibilityIdentifier("image.resetDefaultFraming")
             }
+            FramingRecipesControls(model: model)
         } header: {
             Text(String(localized: "Framing", table: "Editor"))
         }
@@ -1472,6 +1473,130 @@ private struct BackgroundSection: View {
                 .linearGradient(from: RGBA(r: 99, g: 99, b: 102), to: RGBA(r: 44, g: 44, b: 46), angleDegrees: 135))
         case .radial:
             model.setBackground(.radialGradient(center: RGBA(r: 99, g: 99, b: 102), edge: RGBA(r: 44, g: 44, b: 46)))
+        }
+    }
+}
+
+private struct FramingRecipesControls: View {
+    let model: EditorModel
+
+    @State private var selectedID: UUID?
+    @State private var namingID: UUID?
+    @State private var name = ""
+    @State private var isNaming = false
+    @State private var namingFailure: FramingRecipes.Failure?
+    @State private var operationFailure: FramingRecipes.Failure?
+    @FocusState private var nameFocused: Bool
+
+    private var selected: FramingRecipe? { model.framingRecipes.first { $0.id == selectedID } }
+
+    var body: some View {
+        let recipe = selected
+        if !model.framingRecipes.isEmpty {
+            Picker(
+                String(localized: "Framing Recipe", table: "Editor"),
+                selection: Binding(get: { selected?.id }, set: { selectedID = $0 })
+            ) {
+                Text("Choose a Recipe", tableName: "Editor").tag(nil as UUID?)
+                ForEach(model.framingRecipes) { recipe in
+                    Text(verbatim: recipe.name).tag(Optional(recipe.id))
+                }
+            }
+            .accessibilityIdentifier("image.framingRecipe")
+
+            ButtonRow {
+                Button(String(localized: "Apply Recipe", table: "Editor")) {
+                    guard let recipe else { return }
+                    perform { () throws(FramingRecipes.Failure) in try model.applyFramingRecipe(recipe.id) }
+                }
+                .accessibilityIdentifier("image.applyFramingRecipe")
+                Button(String(localized: "Rename Recipe…", table: "Editor")) {
+                    guard let recipe else { return }
+                    startNaming(recipe)
+                }
+                .accessibilityIdentifier("image.renameFramingRecipe")
+                Button(String(localized: "Delete Recipe", table: "Editor")) {
+                    guard let recipe else { return }
+                    perform { () throws(FramingRecipes.Failure) in
+                        try model.removeFramingRecipe(recipe.id)
+                        selectedID = nil
+                    }
+                }
+                .accessibilityIdentifier("image.deleteFramingRecipe")
+            }
+            .disabled(recipe == nil)
+        }
+        Button(String(localized: "Save Framing Recipe…", table: "Editor")) { startNaming(nil) }
+            .accessibilityIdentifier("image.saveFramingRecipe")
+            .sheet(isPresented: $isNaming) { nameForm }
+        if let operationFailure {
+            Text(message(operationFailure))
+                .foregroundStyle(.red)
+        }
+    }
+
+    private var nameForm: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Space.m) {
+            TextField(String(localized: "Recipe Name", table: "Editor"), text: $name)
+                .focused($nameFocused)
+                .accessibilityIdentifier("framing.recipeName")
+                .onChange(of: name) { _, _ in namingFailure = nil }
+            if let namingFailure {
+                Text(message(namingFailure))
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("framing.recipeNameError")
+            }
+            HStack {
+                Spacer()
+                Button(String(localized: "Cancel", table: "Editor"), role: .cancel) { isNaming = false }
+                    .keyboardShortcut(.cancelAction)
+                Button(String(localized: "Save", table: "Editor")) { saveName() }
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("framing.saveRecipeName")
+            }
+        }
+        .padding()
+        .frame(width: 340)
+        .onAppear { nameFocused = true }
+    }
+
+    private func startNaming(_ recipe: FramingRecipe?) {
+        namingID = recipe?.id
+        name = recipe?.name ?? ""
+        namingFailure = nil
+        operationFailure = nil
+        isNaming = true
+    }
+
+    private func saveName() {
+        do throws(FramingRecipes.Failure) {
+            if let namingID {
+                try model.renameFramingRecipe(namingID, to: name)
+            } else {
+                selectedID = try model.saveFramingRecipe(named: name)
+            }
+            isNaming = false
+        } catch {
+            namingFailure = error
+        }
+    }
+
+    private func perform(_ action: () throws(FramingRecipes.Failure) -> Void) {
+        do {
+            try action()
+            operationFailure = nil
+        } catch {
+            operationFailure = error
+        }
+    }
+
+    private func message(_ failure: FramingRecipes.Failure) -> String {
+        switch failure {
+        case .invalidName: String(localized: "Enter a name with at most 64 bytes and no line breaks.", table: "Editor")
+        case .duplicateName: String(localized: "A recipe already uses that name.", table: "Editor")
+        case .limitReached: String(localized: "Delete a recipe before saving another.", table: "Editor")
+        case .invalidFraming: String(localized: "This framing cannot be saved as a recipe.", table: "Editor")
+        case .unavailable: String(localized: "This recipe is no longer available.", table: "Editor")
         }
     }
 }

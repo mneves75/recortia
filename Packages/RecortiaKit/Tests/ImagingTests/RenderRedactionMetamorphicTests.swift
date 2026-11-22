@@ -102,26 +102,8 @@ enum RedactionFixtures {
                 // The mask touches only the first layer; source binding must protect the second.
                 return try session(document, maskRect: masked ? secret.documentRect : nil)
             }),
-        RedactionRecipe(
-            name: "decorated presentation, spotlight, annotation", options: ExportOptions(),
-            build: single { document in
-                let s = secret
-                document.presentation = Presentation(
-                    background: .linearGradient(from: RGBA(r: 10, g: 20, b: 200), to: .white, angleDegrees: 30),
-                    padding: 12, cornerRadius: 10, shadow: Presentation.Shadow(radius: 6, offsetY: 3, opacity: 0.4),
-                    border: Presentation.Border(width: 3, color: .black),
-                    watermark: Presentation.Watermark(text: "Revisão", position: .center, rotationDegrees: -20))
-                document.callouts = [
-                    Callout(
-                        kind: .spotlight(
-                            Rect(x: Double(s.x - 8), y: Double(s.y - 8), width: 40, height: 30), dimOpacity: 0.5))
-                ]
-                document.annotations = [
-                    Annotation(
-                        kind: .arrow(start: Point(x: 5, y: 5), end: Point(x: Double(s.midX), y: Double(s.midY))),
-                        style: .default)
-                ]
-            }),
+        presentationRecipe(decorated: false),
+        presentationRecipe(decorated: true),
         RedactionRecipe(
             name: "9:16 preset, balance, radial gradient", options: ExportOptions(scale: 1.5),
             build: single { document in
@@ -142,6 +124,33 @@ enum RedactionFixtures {
                 ]
             }),
     ]
+
+    private static func presentationRecipe(decorated: Bool) -> RedactionRecipe {
+        RedactionRecipe(
+            name: decorated ? "decorated presentation, spotlight, annotation" : "presentation, spotlight, annotation",
+            options: ExportOptions(),
+            build: single { document in
+                let s = secret
+                document.presentation = Presentation(
+                    background: .linearGradient(from: RGBA(r: 10, g: 20, b: 200), to: .white, angleDegrees: 30),
+                    padding: 12, cornerRadius: 10, shadow: Presentation.Shadow(radius: 6, offsetY: 3, opacity: 0.4))
+                if decorated {
+                    document.presentation.border = Presentation.Border(width: 3, color: .black)
+                    document.presentation.watermark = Presentation.Watermark(
+                        text: "Revisão", position: .center, rotationDegrees: -20)
+                }
+                document.callouts = [
+                    Callout(
+                        kind: .spotlight(
+                            Rect(x: Double(s.x - 8), y: Double(s.y - 8), width: 40, height: 30), dimOpacity: 0.5))
+                ]
+                document.annotations = [
+                    Annotation(
+                        kind: .arrow(start: Point(x: 5, y: 5), end: Point(x: Double(s.midX), y: Double(s.midY))),
+                        style: .default)
+                ]
+            })
+    }
 }
 
 extension FixtureRect {
