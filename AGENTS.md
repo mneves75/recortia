@@ -85,7 +85,16 @@ and `editor-toolbar` in bilingual E2E.
 Program 2026-11 invariants (T2–T6, `docs/specs/program-2026-11/decisions.md`):
 - **Quick actions:** the thumbnail exports only through ShareSnapshot. Preview is a sanitized
   in-memory render of that capture. Both surfaces share suspension, restoration and expiry.
-  A Replace answer that arrives after its capture is dismissed or replaced writes nothing.
+  Optimized Save holds the same prepared bytes through destination selection and exact-path
+  replacement consent, with current presentation and capture checks at both steps. Copy Text
+  uses the full-size sanitized image and rechecks capture, request, revision and privacy epoch
+  before the clipboard write. Canceled recognition retains its slot until unwinding.
+- **Automatic Pin:** decide the capture route and automatic export plan before suspension.
+  Masked captures still open in the editor. Automatic Pin preserves the foreground app and
+  keyboard focus. A pin render or budget refusal shows the current thumbnail without another batch.
+- **Framing:** default and named recipes share saved-style admission. Applying a recipe is one
+  undoable edit. The border and watermark are painted on the sanitized output after the final
+  mask. Keep both decorated and undecorated RED fixtures in the gate.
 - **Frozen selection:** live by default. An explicit freeze reads one display, the loupe and
   crop use that raster, and expiry is enforced against a monotonic deadline even if the timer
   resumes late. Keep `capture-precision` and `quick-actions` in bilingual E2E.

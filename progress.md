@@ -408,3 +408,27 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   The bundle omits the updater key. Keep Sparkle inactive and reassess the current
   [package-update advisory](https://github.com/sparkle-project/Sparkle/security/advisories/GHSA-gcjm-h3jh-p2vc)
   before enabling updates. Main, public download and release tag remain at their prior version.
+
+## 2026-11-22 — Capture actions and framing
+
+- Save Optimized Copy, Copy Text, opt-in automatic Pin, named framing recipes, and output border
+  and watermark are integrated on `feat/capture-export-actions`. The installed app is still
+  0.15.0 (29). [Scope and acceptance](docs/specs/capture-workflow-expansion/plan.md)
+- Save Optimized Copy passed 49 focused methods. The Copy Text review recorded 70 methods and
+  both Debug builds. A final focused Copy Text run passed three methods with eight case
+  invocations, including resuming from a canceled render. The automatic Pin focus fix passed
+  42 focused methods and both Debug builds. Receipts are in `.scratch/logs/` and
+  `.scratch/ticket03-*.log` in the integration worktree.
+- The renderer rejected the planted decomposed watermark input after the byte-exact fix.
+  Framing's integration gate passed both Debug builds and 815 translated strings. The first
+  native framing run failed in both languages because the disclosure header did not report its
+  state. The next candidate reuses the existing inspector disclosure control. The failing
+  report and earlier build logs are preserved under `.scratch/framing-preintegration/`.
+- Test pruning reviewed each changed assertion. Kept rejection, output-byte, focus,
+  persistence and cancellation checks with distinct inputs. Restored the undecorated RED
+  fixture alongside the decorated case and moved the recipe pixel comparison directly after
+  Apply. A whole-repository test deletion was unnecessary. `cccc` 1.8.0 measured
+  `copyText` at 10, `SettingsStore.load` at 6 and the renderer at 8. The Swift parser
+  reported three errors in RenderEngine, so that file's complexity report may be incomplete.
+- Combined native qualification, version bump, signed installation and release closeout are
+  still open.

@@ -203,6 +203,11 @@ For each supported format and scale, render the same snapshot through every sink
 
 Inject render failure, encoding failure, clipboard failure, denied folder access, destination collision, disk full, unplugged volume, and canceled drag. No false success notification. A prior destination file survives a failed atomic save. Clipboard is untouched on failure before write. Successful committed writes are not described as canceled/retracted. Drag receivers get a complete file for the transfer lifetime.
 
+From quick actions, save a photographic JPEG and a transparent PNG through Save Optimized Copy.
+Match the advertised format, dimensions and byte count to the actual file. Test a configured
+preferred folder, exact-path replacement and a delayed picker during a new capture selection.
+Declining replacement preserves the original file.
+
 ### EXP-03 — Automatic save folder
 
 Through the real Settings › Export controls with a scripted folder panel: turning automatic save
@@ -222,6 +227,11 @@ without losing consent; automatic save is never on without a folder (bilingual
 Build a versioned corpus with at least 100 synthetic screenshots balanced between English and Portuguese, varied system font sizes, light/dark themes, punctuation, digits, accents, multiline text, and code. Report character error rate on a separate clean typed-text subset and on the full corpus. Proposed clean-subset gate: CER <= 1%; do not represent that as universal OCR accuracy. Record actual Vision request revision and language configuration.
 
 Verify bounding-box alignment, raw versus normalized output, supported-language discovery, cancellation, and privacy-epoch invalidation. A no-text result does not clear or replace the clipboard. Disconnected-network tests succeed after any OS-provided language resources required by the environment are already present; report any unavailable system resource rather than silently fetching through a custom service.
+
+In the bilingual quick-actions scenario, use Copy Text on a synthetic accented fixture through
+the real Vision adapter. Refuse blank or failed results, and keep the prior clipboard on a late
+result after capture suspension. Confirm package coverage identifies full-size sanitized pixels
+and keeps the action bounded when a canceled render or recognition still runs.
 
 ### OCR-02 — QR payload safety
 
@@ -267,6 +277,11 @@ its box with it off; a radial gradient has its centre colour in the middle and i
 the corners; 1:1 and 9:16 PNG exports match their size pixel for pixel; a document written before
 presets decodes unchanged. A saved default framing reaches new captures only (`framing-presets`,
 both languages, with dark companions).
+
+Save a named recipe, change the current framing, then apply the recipe through the Image
+inspector. The next export matches the pixels from before the change. Check one-step undo and
+redo, 64-byte names, invalid and duplicate names, stale recipe identities and unchanged defaults
+after rename or delete. Persist only admitted preferences.
 
 Draw a translucent border and a rotated watermark on a synthetic output. Verify all four edges,
 the chosen anchor, unchanged output dimensions and consistent preview and export at two scales.

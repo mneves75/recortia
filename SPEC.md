@@ -99,13 +99,14 @@ window opens, a capture starts, or the preference is turned back on meanwhile. L
 a window, minimizing, hiding, capture suspension and closing a capture panel never quit. Quit
 stays available in both modes.
 
-Settings › Capture offers "After a capture": open the editor (default) or show quick actions
-(ADR-009). Quick actions show a nonactivating thumbnail of the sanitized capture, after the
-capture's automatic exports, with Copy, Save, drag, Pin, Open in Editor and Dismiss; every
-action goes through the export pipeline. Dismissing it, its 8 s timeout (paused under the
-pointer), a finished action or a newer capture releases the capture's pixels. With automatic
-masking on, captures always open in the editor. Capture Text and scrolling capture keep their
-own flows.
+Settings › Capture offers "After a capture": open the editor (default), show quick actions,
+or pin the capture. Quick actions show a nonactivating thumbnail of the sanitized capture after
+its automatic exports. Preview and Copy Text leave the thumbnail available. Dismissal, expiry,
+a completed image delivery or a newer capture releases its pixels (ADR-009). Automatic Pin
+runs the same planned exports, orders the sanitized pin without taking keyboard focus, and
+releases the source. A render or pin-budget refusal offers the same capture in quick actions
+with the reason visible. With automatic masking on, the capture opens in the editor.
+Capture Text, scrolling capture and import keep their own flows.
 
 Settings › General also offers "Show the icon in the menu bar", on by default (older preferences
 load as on). Off, Recortia removes its status item; opening Recortia again from Finder, the Dock,
@@ -223,6 +224,11 @@ PNG is the default. JPEG requires flattening transparency against an explicit ba
 
 Save uses a user-selected destination or a previously authorized preferred folder, sanitized collision-resistant filenames, a same-directory temporary file, and atomic replacement/rename where supported. Overwrite requires confirmation. Encode failure leaves the destination intact. Quota, revocation, full disk, and disconnected volumes are explicit errors. File promises for drag-out must keep sanitized bytes alive until the receiving app completes or the transfer is canceled; do not delete a promised file prematurely.
 
+**Save Optimized Copy…** in quick actions prepares one sanitized snapshot using Automatic,
+shows its format, dimensions and encoded size, and always asks for a destination. It confirms
+replacement at the exact output path and writes the bytes already prepared. A stale capture
+cannot present the picker or act on a delayed replacement response.
+
 Auto-copy and auto-save are off by default. If later enabled, show that copying/saving happens before subsequent edits and cannot be retracted from other applications. Auto-save writes only to the folder chosen in Settings: turning it on without a reachable folder asks for one, and a cancel leaves it off; removing the folder turns it off in the same change; a remembered folder that becomes unreachable stays chosen, Settings says so, and each save fails visibly without writing anywhere else. An ordinary screenshot filename MUST NOT include a window title, recognized text, account identifier, or URL.
 
 ### FR-08 — OCR and QR
@@ -232,6 +238,11 @@ Run Vision locally and off the UI actor. Support a crop-to-text command and OCR 
 Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. A primary language chosen in Settings from those the recognizer reports is tried first, ahead of the others in their usual order; one the recognizer no longer reports returns to Automatic. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
 
 Recognized ranges MUST have normalized bounding boxes converted through the shared geometry layer. OCR is tied to document revision and privacy epoch; outdated results cannot overwrite the clipboard after a new capture or redaction. Text mode with no detected text leaves existing clipboard content unchanged and displays a nonblocking message.
+
+**Copy Text** from quick actions recognizes the normal-resolution sanitized image with the
+editor's language and formatting preferences. Only the still-current explicit request may
+write a nonempty result. A new capture selection cancels recognition even if the thumbnail is
+later restored. The thumbnail remains available and its inactivity timer resumes afterward.
 
 Decode QR payloads as untrusted data. Display the payload; copy or open only after an explicit user action. Never automatically follow URLs, Wi-Fi configuration, payment payloads, or executable/deep-link schemes. QR fixture equality is byte-level, not visual approximation.
 
@@ -273,6 +284,10 @@ Output Decoration adds an optional inset border and one text watermark with a fi
 opacity and rotation. Draw both after secure replacement and composition. Output Preview and all
 export sinks use the same decorated raster. Decorations preserve output dimensions and never
 sample any source pixels.
+
+Named framing recipes store up to 12 typed framing styles in preferences. A recipe applies
+to the open document in one undoable change. Renaming or deleting a recipe preserves applied
+styles and the explicit framing default. Refuse blank, duplicate, invalid or stale entries.
 
 ### FR-14 — Settings, accessibility, and release behavior
 
