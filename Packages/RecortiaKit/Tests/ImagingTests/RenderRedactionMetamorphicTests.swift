@@ -103,12 +103,14 @@ enum RedactionFixtures {
                 return try session(document, maskRect: masked ? secret.documentRect : nil)
             }),
         RedactionRecipe(
-            name: "presentation, spotlight, annotation", options: ExportOptions(),
+            name: "decorated presentation, spotlight, annotation", options: ExportOptions(),
             build: single { document in
                 let s = secret
                 document.presentation = Presentation(
                     background: .linearGradient(from: RGBA(r: 10, g: 20, b: 200), to: .white, angleDegrees: 30),
-                    padding: 12, cornerRadius: 10, shadow: Presentation.Shadow(radius: 6, offsetY: 3, opacity: 0.4))
+                    padding: 12, cornerRadius: 10, shadow: Presentation.Shadow(radius: 6, offsetY: 3, opacity: 0.4),
+                    border: Presentation.Border(width: 3, color: .black),
+                    watermark: Presentation.Watermark(text: "Revisão", position: .center, rotationDegrees: -20))
                 document.callouts = [
                     Callout(
                         kind: .spotlight(

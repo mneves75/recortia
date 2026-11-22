@@ -192,6 +192,10 @@ struct MaskingAdmissionTests {
             Step(name: "setShadow", expectation: .refused) { model.setShadow(Presentation.Shadow()) },
             Step(name: "setAspect", expectation: .refused) { model.setAspect(.square) },
             Step(name: "setBalancesContent", expectation: .refused) { model.setBalancesContent(false) },
+            Step(name: "setFramingBorder", expectation: .refused) { model.setFramingBorder(Presentation.Border()) },
+            Step(name: "setFramingWatermark", expectation: .refused) {
+                #expect(!model.setFramingWatermark(Presentation.Watermark(text: "Draft")))
+            },
             Step(name: "setSpotlightDim", expectation: .refused) { model.setSpotlightDim(0.2, for: spotlight) },
             Step(name: "setObfuscationAmount", expectation: .refused) { model.setObfuscationAmount(40, for: effect) },
             Step(name: "commitTextEditing", expectation: .refused) {

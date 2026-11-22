@@ -1,6 +1,102 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Output Decoration": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Output Decoration" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Decoração da imagem" } }
+      }
+    },
+    "Border": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Border" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Borda" } }
+      }
+    },
+    "Border width": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Border width" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Largura da borda" } }
+      }
+    },
+    "Border color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Border color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor da borda" } }
+      }
+    },
+    "Watermark text": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark text" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Texto da marca-d’água" } }
+      }
+    },
+    "Apply Watermark": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply Watermark" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplicar marca-d’água" } }
+      }
+    },
+    "Remove Watermark": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Watermark" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover marca-d’água" } }
+      }
+    },
+    "Enter one line of watermark text up to 256 bytes.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enter one line of watermark text up to 256 bytes." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Digite uma linha de texto de até 256 bytes." } }
+      }
+    },
+    "Watermark position": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark position" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Posição da marca-d’água" } }
+      }
+    },
+    "Top Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Top Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto superior esquerdo" } }
+      }
+    },
+    "Top Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Top Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto superior direito" } }
+      }
+    },
+    "Center": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Center" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Centro" } }
+      }
+    },
+    "Bottom Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bottom Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto inferior esquerdo" } }
+      }
+    },
+    "Bottom Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bottom Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto inferior direito" } }
+      }
+    },
+    "Watermark opacity (%)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark opacity (%)" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Opacidade da marca-d’água (%)" } }
+      }
+    },
+    "Watermark rotation (°)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark rotation (°)" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Rotação da marca-d’água (°)" } }
+      }
+    },
     "Print…": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Print…" } },

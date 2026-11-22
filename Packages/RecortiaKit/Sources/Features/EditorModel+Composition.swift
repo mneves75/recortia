@@ -266,6 +266,23 @@ extension EditorModel {
         edit("Balance", inPreview: true) { $0.presentation.balancesContent = balances }
     }
 
+    public func setFramingBorder(_ border: Presentation.Border?) {
+        guard border?.isValid != false else { return }
+        edit("Border", inPreview: true) { $0.presentation.border = border }
+    }
+
+    @discardableResult
+    public func setFramingWatermark(_ watermark: Presentation.Watermark?) -> Bool {
+        var admitted = watermark
+        if var value = admitted {
+            guard let text = Presentation.Watermark.normalizedText(value.text) else { return false }
+            value.text = text
+            guard value.isValid else { return false }
+            admitted = value
+        }
+        return edit("Watermark", inPreview: true) { $0.presentation.watermark = admitted }
+    }
+
     /// The framing new captures open with; nil until one is saved. Open documents never change.
     public var defaultFraming: Presentation? { environment.settings.preferences.defaultFraming }
 

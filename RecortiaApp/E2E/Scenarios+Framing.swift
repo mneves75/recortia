@@ -213,6 +213,53 @@
             context.check(
                 "the next capture opens unframed", plain.model.document.presentation == .plain,
                 "\(plain.model.document.presentation)")
+            try await verifyOutputDecoration(plain, context)
+            let decorated = try await exported(plain, "decorated")
+            let black = ChartFixture.Color(0, 0, 0)
+            context.check(
+                "the decoration is present in the exported file",
+                decorated.pixel(x: 0, y: 0) == black
+                    && decorated.pixel(x: decorated.width - 1, y: decorated.height - 1) == black)
+        }
+
+        private static func verifyOutputDecoration(_ editor: EditorWindowController, _ context: ScenarioContext)
+            async throws
+        {
+            let window = try context.unwrap("editor window for decoration", editor.window)
+            let root = try context.unwrap("editor content for decoration", editor.contentRoot)
+            try await E2EAccessibilityControl.showAndActivate(window, context)
+            editor.panes.chosenInspectorTab = .image
+            await E2ESnapshot.settle(root)
+            await E2EActions.scrollInspector(editor, to: 0)
+            await E2ESnapshot.settle(root)
+            try await E2EAccessibilityControl.setDisclosure(
+                "image.decoration", titled: String(localized: "Output Decoration", table: "Editor"),
+                expanded: true, in: root, context)
+            try E2EAccessibilityControl.click("image.decoration.border", in: root, context)
+            try context.require(
+                "the border control applies its default width",
+                await E2EWait.until { editor.model.document.presentation.border?.width == 4 })
+            try E2EAccessibilityControl.press("image.decoration.applyWatermark", in: root, context)
+            try context.require(
+                "blank watermark text is refused without editing",
+                await E2EWait.until {
+                    E2EAccessibilityControl.isPresent("image.decoration.textError", in: root)
+                        && editor.model.document.presentation.watermark == nil
+                })
+            try await E2EAccessibilityControl.enterNumber(
+                "image.decoration.watermark", text: "Revisão", in: root, context)
+            try context.require(
+                "the native field commits the accented watermark",
+                await E2EWait.until { editor.model.document.presentation.watermark?.text == "Revisão" })
+            editor.model.undo()
+            context.check("one undo removes the watermark", editor.model.document.presentation.watermark == nil)
+            editor.model.redo()
+            context.check(
+                "redo restores the watermark", editor.model.document.presentation.watermark?.text == "Revisão")
+            editor.model.setShowsOutputPreview(true)
+            await E2EActions.snapshotEditor(editor, context, shot: "output-decoration")
+            await E2EActions.darkEditor(editor, context, shot: "output-decoration", surface: "decorated output preview")
+            editor.model.setShowsOutputPreview(false)
         }
     }
 #endif

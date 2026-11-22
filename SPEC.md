@@ -269,6 +269,11 @@ Add imported images as independently movable/scalable layers on an expandable ca
 
 Add background fill/gradient, padding, corner radius, and shadow as parameters. Backgrounds are none, a solid colour, a linear gradient or a centred radial gradient, with six solid and four gradient built-in swatches. An output aspect preset (Free, 1:1, 4:5, 16:9, 9:16, 3:2, named by ratio only) grows the background to the smallest exact multiple of the ratio that holds the padded content, so padding is a minimum; with a preset, Balance (on by default) centres the content's fully opaque pixels instead of its box, by a whole-pixel move that keeps the box inside the output. "Save as Default Framing" stores the whole framing as one preference that new screen and scrolling captures open with (a saved background of None keeps a window capture's background from Settings); Reset clears it; open documents and opened images never change with it. The canvas itself stays color-neutral and unaffected by translucent window materials. Provide spotlight and magnifier callouts only after source-redaction propagation and cache invalidation tests pass. Magnifier sources cannot point to the final composited output and create a render cycle. All tools use the same export geometry as the preview.
 
+Output Decoration adds an optional inset border and one text watermark with a fixed anchor,
+opacity and rotation. Draw both after secure replacement and composition. Output Preview and all
+export sinks use the same decorated raster. Decorations preserve output dimensions and never
+sample any source pixels.
+
 ### FR-14 — Settings, accessibility, and release behavior
 
 Use native controls, system typography, and platform-adaptive chrome. Availability-gate newer presentation APIs rather than raising the deployment target merely for appearance. Respect Reduce Motion, Reduce Transparency, increased contrast, light/dark mode, and keyboard focus visibility. Tool state cannot be communicated by color alone.

@@ -268,6 +268,11 @@ the corners; 1:1 and 9:16 PNG exports match their size pixel for pixel; a docume
 presets decodes unchanged. A saved default framing reaches new captures only (`framing-presets`,
 both languages, with dark companions).
 
+Draw a translucent border and a rotated watermark on a synthetic output. Verify all four edges,
+the chosen anchor, unchanged output dimensions and consistent preview and export at two scales.
+Change pixels only under a secure mask and require unchanged decorated output. Confirm legacy
+presentation data has no decorations and reject invalid text, opacity, rotation and widths.
+
 ## UX, privacy, performance, and release
 
 ### UX-01 — Keyboard, accessibility, and localization

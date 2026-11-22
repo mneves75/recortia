@@ -173,7 +173,7 @@ public final class SettingsStore {
     private static func framing(_ input: Presentation) -> Presentation? {
         let range = 0.0...512
         guard input.padding.isFinite, range.contains(input.padding), input.cornerRadius.isFinite,
-            range.contains(input.cornerRadius)
+            range.contains(input.cornerRadius), input.border?.isValid != false, input.watermark?.isValid != false
         else { return nil }
         if let shadow = input.shadow {
             guard shadow.radius.isFinite, shadow.radius >= 0, shadow.offsetY.isFinite, shadow.opacity.isFinite else {

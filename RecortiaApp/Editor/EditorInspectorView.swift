@@ -50,6 +50,7 @@ struct EditorInspectorView: View {
                     }
                 case .image:
                     BackgroundSection(model: model, coalescer: coalescer)
+                    FramingDecorationSection(model: model, coalescer: coalescer)
                     SizeSection(model: model)
                     TransformSection(model: model)
                     ImagesSection(model: model, actions: actions)
@@ -1228,6 +1229,110 @@ private struct SizeSection: View {
         } header: {
             Text(String(localized: "Canvas Size", table: "Editor"))
         }
+    }
+}
+
+private struct FramingDecorationSection: View {
+    let model: EditorModel
+    let coalescer: ChangeCoalescer
+    @State private var draft = ""
+    @State private var refusedText = false
+
+    var body: some View {
+        let presentation = model.document.presentation
+        DisclosureGroup(String(localized: "Output Decoration", table: "Editor")) {
+            Toggle(
+                String(localized: "Border", table: "Editor"),
+                isOn: Binding(
+                    get: { presentation.border != nil },
+                    set: { model.setFramingBorder($0 ? Presentation.Border() : nil) })
+            )
+            .accessibilityIdentifier("image.decoration.border")
+            if let border = presentation.border {
+                UndoableSlider(
+                    title: String(localized: "Border width", table: "Editor"),
+                    value: border.width, range: Presentation.Border.widthRange, model: model
+                ) { width in
+                    updateBorder { $0.width = width.rounded() }
+                }
+                ColorPicker(
+                    String(localized: "Border color", table: "Editor"),
+                    selection: colorBinding(
+                        { border.color },
+                        { color in coalescer.run(model) { updateBorder { $0.color = color } } }))
+            }
+            TextField(String(localized: "Watermark text", table: "Editor"), text: $draft)
+                .accessibilityIdentifier("image.decoration.watermark")
+                .onSubmit(applyWatermark)
+                .onChange(of: draft) { refusedText = false }
+            ButtonRow {
+                Button(String(localized: "Apply Watermark", table: "Editor"), action: applyWatermark)
+                    .accessibilityIdentifier("image.decoration.applyWatermark")
+                if presentation.watermark != nil {
+                    Button(String(localized: "Remove Watermark", table: "Editor")) {
+                        model.setFramingWatermark(nil)
+                    }
+                }
+            }
+            if refusedText {
+                Text(String(localized: "Enter one line of watermark text up to 256 bytes.", table: "Editor"))
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("image.decoration.textError")
+            }
+            if let watermark = presentation.watermark {
+                watermarkControls(watermark)
+            }
+        }
+        .accessibilityIdentifier("image.decoration")
+        .onChange(of: presentation.watermark?.text, initial: true) { _, current in
+            draft = current ?? ""
+            refusedText = false
+        }
+    }
+
+    @ViewBuilder
+    private func watermarkControls(_ watermark: Presentation.Watermark) -> some View {
+        Picker(
+            String(localized: "Watermark position", table: "Editor"),
+            selection: Binding(
+                get: { watermark.position }, set: { position in updateWatermark { $0.position = position } })
+        ) {
+            Text(String(localized: "Top Left", table: "Editor")).tag(Presentation.Watermark.Position.topLeft)
+            Text(String(localized: "Top Right", table: "Editor")).tag(Presentation.Watermark.Position.topRight)
+            Text(String(localized: "Center", table: "Editor")).tag(Presentation.Watermark.Position.center)
+            Text(String(localized: "Bottom Left", table: "Editor")).tag(Presentation.Watermark.Position.bottomLeft)
+            Text(String(localized: "Bottom Right", table: "Editor")).tag(Presentation.Watermark.Position.bottomRight)
+        }
+        UndoableSlider(
+            title: String(localized: "Watermark opacity (%)", table: "Editor"),
+            value: watermark.opacity * 100, range: 5...100, model: model
+        ) { value in
+            updateWatermark { $0.opacity = value / 100 }
+        }
+        UndoableSlider(
+            title: String(localized: "Watermark rotation (°)", table: "Editor"),
+            value: watermark.rotationDegrees, range: Presentation.Watermark.rotationRange, model: model
+        ) { value in
+            updateWatermark { $0.rotationDegrees = value.rounded() }
+        }
+    }
+
+    private func applyWatermark() {
+        var watermark = model.document.presentation.watermark ?? Presentation.Watermark(text: draft)
+        watermark.text = draft
+        refusedText = !model.setFramingWatermark(watermark)
+    }
+
+    private func updateBorder(_ edit: (inout Presentation.Border) -> Void) {
+        guard var border = model.document.presentation.border else { return }
+        edit(&border)
+        model.setFramingBorder(border)
+    }
+
+    private func updateWatermark(_ edit: (inout Presentation.Watermark) -> Void) {
+        guard var watermark = model.document.presentation.watermark else { return }
+        edit(&watermark)
+        model.setFramingWatermark(watermark)
     }
 }
 
