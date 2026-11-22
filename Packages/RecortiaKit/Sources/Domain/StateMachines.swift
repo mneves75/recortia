@@ -194,6 +194,7 @@ public enum ExportState: Hashable, Sendable {
         case (.sanitizing, .render): return .rendering
         case (.rendering, .encode): return .encoding
         case (.encoding, .commit): return .committing
+        case (.committing, .destinationCollision): return .encoding
         case (.committing, .committed): return .succeeded(canceledAfterCommit: false)
         case (.committing, .cancel): return .succeeded(canceledAfterCommit: true)
         case (.committing, .fail(let failure)): return .failed(failure)
@@ -210,6 +211,8 @@ public enum ExportEvent: Hashable, Sendable {
     case render
     case encode
     case commit
+    /// The exclusive file attempt found an existing name and wrote nothing.
+    case destinationCollision
     case committed
     case cancel
     case fail(ExportFailure)

@@ -1,6 +1,22 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ · %lld × %lld px · %lld bytes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %lld × %lld px · %lld bytes"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %lld × %lld px · %lld bytes"
+          }
+        }
+      }
+    },
     "%@ Saved files keep the default name." : {
       "localizations" : {
         "en" : {
@@ -3696,6 +3712,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Acontece logo após a captura, antes de você editar ou ocultar informações, e não pode ser desfeito em outros apps."
+          }
+        }
+      }
+    },
+    "Save Optimized Copy…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Optimized Copy…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvar cópia otimizada…"
           }
         }
       }

@@ -29,9 +29,10 @@ final class QuickActionsHarness {
     let session = TestFixtures.session()
     private(set) var opened: [DocumentSession] = []
 
-    init() {
+    init(fileSink: (any FileSinkService)? = nil) {
         export = ExportCoordinator(
-            exporter: exporter, clipboard: clipboard, files: files, drag: drag, printer: printer, folders: folders,
+            exporter: exporter, clipboard: clipboard, files: fileSink ?? files, drag: drag, printer: printer,
+            folders: folders,
             clock: clock, settings: settings, upload: upload)
         pins = PinsModel(renderer: renderer, settings: settings, export: export)
         model = QuickActionsModel(

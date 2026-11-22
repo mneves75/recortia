@@ -20,6 +20,29 @@ public enum ExportAction: Hashable, Sendable {
     case print
 }
 
+/// Only the prepared file's metadata crosses into the destination picker.
+public struct OptimizedSaveDetails: Sendable {
+    public let format: ExportFormat
+    public let pixelSize: PixelSize
+    public let byteCount: Int
+    public let suggestedFilename: String
+    public let preferredFolder: URL?
+}
+
+/// Dialogs must close and return when their presenting task is canceled.
+public struct OptimizedSaveDialogs {
+    let chooseDestination: @MainActor (OptimizedSaveDetails) async -> URL?
+    let confirmReplacement: @MainActor (URL) async -> Bool
+
+    public init(
+        chooseDestination: @escaping @MainActor (OptimizedSaveDetails) async -> URL?,
+        confirmReplacement: @escaping @MainActor (URL) async -> Bool
+    ) {
+        self.chooseDestination = chooseDestination
+        self.confirmReplacement = confirmReplacement
+    }
+}
+
 public enum ExportOutcome: Hashable, Sendable {
     case copied
     /// The print panel shows the snapshot; the person may still cancel there, so the document
@@ -120,8 +143,14 @@ public final class ExportCoordinator {
         let id: UUID
         let documentID: DocumentID
         var cancelRequested = false
+        var dismissDialog: (() -> Void)?
         /// A drag is offered and waiting for a receiver; cancel is decided when it ends.
         var awaitingDragReceiver = false
+    }
+
+    private enum Request {
+        case action(ExportAction)
+        case optimizedSave(OptimizedSaveDialogs)
     }
 
     public init(
@@ -154,19 +183,29 @@ public final class ExportCoordinator {
         currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
     ) async -> ExportOutcome {
         await export(
-            action, session: session, currentSession: currentSession, uploadConsentID: nil, isAllowed: { .allowed })
+            .action(action), session: session, currentSession: currentSession, uploadConsentID: nil,
+            isAllowed: { .allowed })
+    }
+
+    public func saveOptimized(
+        _ session: DocumentSession, using dialogs: OptimizedSaveDialogs,
+        currentSession: @escaping @MainActor @Sendable () -> DocumentSession?
+    ) async -> ExportOutcome {
+        await export(
+            .optimizedSave(dialogs), session: session, currentSession: currentSession, uploadConsentID: nil,
+            isAllowed: { .allowed })
     }
 
     /// The automatic path: `isAllowed` is the step's live check after its render, and an upload
     /// carries the consent identity its batch was planned with.
     private func export(
-        _ action: ExportAction, session: DocumentSession,
+        _ request: Request, session: DocumentSession,
         currentSession: @escaping @MainActor @Sendable () -> DocumentSession?,
         uploadConsentID: UUID?, isAllowed: @escaping @MainActor () -> AutomaticStepCheck
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
-            action, documentID: session.document.id, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
+            request, documentID: session.document.id, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
             makeSnapshot: { options, date in try await exporter.makeSnapshot(of: session, options: options, date: date)
             },
             isCurrent: { snapshot in currentSession()?.accepts(snapshot) == true })
@@ -180,7 +219,7 @@ public final class ExportCoordinator {
     ) async -> ExportOutcome {
         let exporter = self.exporter
         return await run(
-            action == .copy ? .copy : .drag, documentID: exportID, uploadConsentID: nil, fixedScale: 1,
+            .action(action == .copy ? .copy : .drag), documentID: exportID, uploadConsentID: nil, fixedScale: 1,
             makeSnapshot: { options, date in
                 try await exporter.makeSnapshot(
                     ofPinned: image, exportID: exportID, privacyEpoch: privacyEpoch, options: options, date: date)
@@ -189,32 +228,32 @@ public final class ExportCoordinator {
     }
 
     private func run(
-        _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?,
+        _ request: Request, documentID: DocumentID, uploadConsentID: UUID?,
         isAllowed: @escaping @MainActor () -> AutomaticStepCheck = { .allowed }, fixedScale: Double? = nil,
         makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
         isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
     ) async -> ExportOutcome {
         let started = clock.uptime()
         let outcome = await perform(
-            action, documentID: documentID, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
+            request, documentID: documentID, uploadConsentID: uploadConsentID, isAllowed: isAllowed,
             fixedScale: fixedScale, makeSnapshot: makeSnapshot, isCurrent: isCurrent)
-        recordDiagnostics(outcome, of: action, duration: clock.uptime() - started)
+        recordDiagnostics(outcome, of: request, duration: clock.uptime() - started)
         return outcome
     }
 
     /// One typed line per export outcome; a busy refusal started nothing and is not recorded.
-    private func recordDiagnostics(_ outcome: ExportOutcome, of action: ExportAction, duration: Duration) {
+    private func recordDiagnostics(_ outcome: ExportOutcome, of request: Request, duration: Duration) {
         guard let diagnostics else { return }
         let sink: DiagnosticExportSink =
-            switch action {
-            case .copy: .clipboard
-            case .save, .saveToFolder: .file
-            case .drag: .drag
-            case .upload: .github
-            case .print: .print
+            switch request {
+            case .action(.copy): .clipboard
+            case .action(.save), .action(.saveToFolder), .optimizedSave: .file
+            case .action(.drag): .drag
+            case .action(.upload): .github
+            case .action(.print): .print
             }
         let format: DiagnosticImageFormat =
-            switch exportOptions(for: action).formatChoice {
+            switch options(for: request).formatChoice {
             case .fixed(.png): .png
             case .fixed(.jpeg): .jpeg
             case .fixed(.heic): .heic
@@ -235,7 +274,7 @@ public final class ExportCoordinator {
     }
 
     private func perform(
-        _ action: ExportAction, documentID: DocumentID, uploadConsentID: UUID?,
+        _ request: Request, documentID: DocumentID, uploadConsentID: UUID?,
         isAllowed: @escaping @MainActor () -> AutomaticStepCheck, fixedScale: Double?,
         makeSnapshot: @escaping @MainActor (ExportOptions, Date) async throws -> ShareSnapshot,
         isCurrent: @escaping @MainActor @Sendable (ShareSnapshot) -> Bool
@@ -256,7 +295,7 @@ public final class ExportCoordinator {
         apply(.render)
 
         // The export pipeline is the one admission point for these options.
-        var options = exportOptions(for: action)
+        var options = options(for: request)
         if let fixedScale { options.scale = fixedScale }
         let date = clock.now()
         let task = Task<ShareSnapshot, any Error> { try await makeSnapshot(options, date) }
@@ -285,16 +324,16 @@ public final class ExportCoordinator {
 
         do throws(SinkError) {
             let completed: ExportOutcome
-            switch action {
-            case .copy:
+            switch request {
+            case .action(.copy):
                 apply(.commit)
                 try clipboard.write(snapshot)
                 completed = .copied
-            case .print:
+            case .action(.print):
                 apply(.commit)
                 try printer.present(snapshot)
                 completed = .printed
-            case .save(let url, let format, let replacing):
+            case .action(.save(let url, let format, let replacing)):
                 apply(.commit)
                 let destination = format == .automatic ? Self.named(url, for: snapshot.format) : url
                 // Consent travels with this save and names one file. A retry that renders again
@@ -306,10 +345,10 @@ public final class ExportCoordinator {
                 } catch .destinationExists {
                     return fail(.destinationExists(destination))
                 }
-            case .saveToFolder(let folder):
+            case .action(.saveToFolder(let folder)):
                 apply(.commit)
                 completed = .saved(try await files.saveUnique(snapshot, in: folder))
-            case .upload(let destination, let intent):
+            case .action(.upload(let destination, let intent)):
                 guard let upload else { return fail(.upload(.missingCredential)) }
                 // No request of any kind (lookups included) for consent that is no longer live.
                 guard settings.githubUploadConsentID == consentID else {
@@ -352,7 +391,7 @@ public final class ExportCoordinator {
                     }
                     return fail(.upload(failure))
                 }
-            case .drag:
+            case .action(.drag):
                 // The receiver writes the file later, after an unbounded wait; the lease lets a
                 // document change, cancel, or close revoke the offer before that write (RED-03).
                 let lease = ExportLease()
@@ -383,16 +422,78 @@ public final class ExportCoordinator {
                     apply(.cancel)
                     return .canceled
                 }
+            case .optimizedSave(let dialogs):
+                return await deliverOptimizedSave(snapshot, using: dialogs, isCurrent: isCurrent)
             }
-            if operation?.cancelRequested == true {
-                apply(.cancel)
-                return .alreadyCompleted(completed)
-            }
-            apply(.committed)
-            return completed
+            return complete(completed)
         } catch {
             return fail(Self.failure(for: error))
         }
+    }
+
+    private func deliverOptimizedSave(
+        _ snapshot: ShareSnapshot, using dialogs: OptimizedSaveDialogs,
+        isCurrent: @MainActor (ShareSnapshot) -> Bool
+    ) async -> ExportOutcome {
+        func canDeliver() -> Bool {
+            !Task.isCancelled && operation?.cancelRequested == false && isCurrent(snapshot)
+        }
+
+        let details = OptimizedSaveDetails(
+            format: snapshot.format, pixelSize: snapshot.pixelSize, byteCount: snapshot.bytes.count,
+            suggestedFilename: snapshot.suggestedFilename,
+            preferredFolder: settings.preferences.preferredSaveFolderBookmark.flatMap(folders.resolveFolder))
+        guard canDeliver(), let selected = await waitForDialog({ await dialogs.chooseDestination(details) }),
+            canDeliver()
+        else { return cancelPreparedSave() }
+        guard selected.isFileURL, !selected.hasDirectoryPath else { return fail(.system(code: Int(EINVAL))) }
+        let destination = Self.named(selected, for: snapshot.format).standardizedFileURL
+
+        var overwrite = false
+        while canDeliver() {
+            apply(.commit)
+            do throws(SinkError) {
+                let saved = try await files.save(snapshot, to: destination, overwrite: overwrite)
+                return complete(.saved(saved), callerCanceled: Task.isCancelled)
+            } catch .destinationExists {
+                guard !overwrite else { return fail(.destinationExists(destination)) }
+                apply(.destinationCollision)
+                guard canDeliver(), await waitForDialog({ await dialogs.confirmReplacement(destination) }) == true
+                else { break }
+                overwrite = true
+            } catch {
+                return fail(Self.failure(for: error))
+            }
+        }
+        return cancelPreparedSave()
+    }
+
+    private func waitForDialog<Value: Sendable>(_ show: @escaping @MainActor () async -> Value?) async -> Value? {
+        let task = Task<Value?, Never> {
+            guard !Task.isCancelled else { return nil }
+            return await show()
+        }
+        operation?.dismissDialog = { task.cancel() }
+        defer { operation?.dismissDialog = nil }
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func cancelPreparedSave() -> ExportOutcome {
+        if state == .encoding { apply(.cancel) }
+        return .canceled
+    }
+
+    private func complete(_ completed: ExportOutcome, callerCanceled: Bool = false) -> ExportOutcome {
+        if operation?.cancelRequested == true || callerCanceled {
+            apply(.cancel)
+            return .alreadyCompleted(completed)
+        }
+        apply(.committed)
+        return completed
     }
 
     /// Cancels the running export. Before the commit nothing is written; during the commit the
@@ -413,6 +514,7 @@ public final class ExportCoordinator {
         guard var current = operation else { return }
         current.cancelRequested = true
         operation = current
+        current.dismissDialog?()
         uploadTask?.cancel()
         if current.awaitingDragReceiver {
             revokePendingDrag()
@@ -472,7 +574,7 @@ public final class ExportCoordinator {
         if plan.copy, copyCheck() == .allowed {
             outcomes.append(
                 await export(
-                    .copy, session: session, currentSession: currentSession, uploadConsentID: nil,
+                    .action(.copy), session: session, currentSession: currentSession, uploadConsentID: nil,
                     isAllowed: copyCheck))
         }
         guard automaticBatch?.cancelRequested == false, !Task.isCancelled else { return outcomes }
@@ -493,7 +595,7 @@ public final class ExportCoordinator {
                 if case .folder(let folder) = save {
                     outcomes.append(
                         await export(
-                            .saveToFolder(folder), session: session, currentSession: currentSession,
+                            .action(.saveToFolder(folder)), session: session, currentSession: currentSession,
                             uploadConsentID: nil, isAllowed: saveCheck))
                 }
             case .revoked: break
@@ -506,10 +608,20 @@ public final class ExportCoordinator {
         {
             outcomes.append(
                 await export(
-                    .upload(to: destination, intent: UUID()), session: session,
+                    .action(.upload(to: destination, intent: UUID())), session: session,
                     currentSession: currentSession, uploadConsentID: plan.uploadConsentID, isAllowed: { .allowed }))
         }
         return outcomes
+    }
+
+    private func options(for request: Request) -> ExportOptions {
+        switch request {
+        case .action(let action): return exportOptions(for: action)
+        case .optimizedSave:
+            var options = settings.exportOptions
+            options.formatChoice = .automatic
+            return options
+        }
     }
 
     public func exportOptions(for action: ExportAction) -> ExportOptions {

@@ -20,6 +20,12 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
     /// A destination for Save when Settings names no folder; scenarios never show a panel.
     var chooseSaveDestination: @MainActor () async -> (url: URL, format: ExportFormatChoice)?
     var confirmReplacement: @MainActor (_ existing: URL) async -> Bool = { MessagePresenter.confirmReplacement(of: $0) }
+    /// Lets the synthetic scenario supply destinations without opening actual save panels.
+    var optimizedSaveDialogs:
+        (
+            chooseDestination: @MainActor (OptimizedSaveDetails) async -> URL?,
+            confirmReplacement: @MainActor (URL) async -> Bool
+        )?
 
     init(model: QuickActionsModel, settings: SettingsStore) {
         self.model = model
@@ -139,6 +145,28 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
         Self.failure(await model.save(choosing: chooseSaveDestination, confirmReplacement: confirmReplacement))
     }
 
+    func saveOptimized() async -> String? {
+        guard let panel, let captureID = shownID, canPresentOptimizedSave(captureID, from: panel) else { return nil }
+        let choose = optimizedSaveDialogs?.chooseDestination ?? Self.chooseOptimizedDestination
+        let confirm =
+            optimizedSaveDialogs?.confirmReplacement ?? { await Self.confirmOptimizedReplacement($0, in: panel) }
+        let dialogs = OptimizedSaveDialogs(
+            chooseDestination: { [weak self] details in
+                guard self?.canPresentOptimizedSave(captureID, from: panel) == true else { return nil }
+                return await choose(details)
+            },
+            confirmReplacement: { [weak self] url in
+                guard self?.canPresentOptimizedSave(captureID, from: panel) == true else { return false }
+                return await confirm(url)
+            })
+        return Self.failure(await model.saveOptimized(using: dialogs))
+    }
+
+    private func canPresentOptimizedSave(_ captureID: UUID, from panel: HostingPanel) -> Bool {
+        !Task.isCancelled && !captureSuspended && self.panel === panel && panel.isVisible
+            && model.isShown && model.capture?.id == captureID
+    }
+
     func drag() async -> String? { Self.failure(await model.drag()) }
 
     func pin() async -> String? { (await model.pin()).map { EditorStrings.message(.pinFailed($0)) } }
@@ -180,6 +208,80 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
         defer { AppPresence.shared.setNeedsRefresh() }
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
         return (url, format)
+    }
+
+    private static func chooseOptimizedDestination(_ details: OptimizedSaveDetails) async -> URL? {
+        guard !Task.isCancelled else { return nil }
+        let panel = NSSavePanel()
+        let type: (String, UTType) =
+            switch details.format {
+            case .png: ("PNG", .png)
+            case .jpeg: ("JPEG", .jpeg)
+            case .heic: ("HEIC", .heic)
+            }
+        panel.title = String(localized: "Save Optimized Copy…")
+        panel.message = String(
+            localized:
+                "\(type.0) · \(details.pixelSize.width) × \(details.pixelSize.height) px · \(details.byteCount) bytes")
+        panel.allowedContentTypes = [type.1]
+        panel.allowsOtherFileTypes = false
+        panel.nameFieldStringValue = details.suggestedFilename
+        panel.directoryURL = details.preferredFolder
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        SpacePolicy.follow(panel)
+        AppPresence.shared.activate()
+        defer {
+            panel.orderOut(nil)
+            AppPresence.shared.setNeedsRefresh()
+        }
+        let response = await OptimizedSavePrompt().run(
+            begin: { panel.begin(completionHandler: $0) }, dismiss: { panel.cancel(nil) })
+        return response == .OK ? panel.url : nil
+    }
+
+    private static func confirmOptimizedReplacement(_ existing: URL, in parent: NSWindow) async -> Bool {
+        guard parent.isVisible, parent.attachedSheet == nil else { return false }
+        let alert = MessagePresenter.makeReplacement(of: existing)
+        let response = await OptimizedSavePrompt().run(
+            begin: { alert.beginSheetModal(for: parent, completionHandler: $0) },
+            dismiss: {
+                if alert.window.sheetParent === parent { parent.endSheet(alert.window, returnCode: .abort) }
+            })
+        return response == .alertFirstButtonReturn
+    }
+}
+
+@MainActor
+private final class OptimizedSavePrompt {
+    private var completion: CheckedContinuation<NSApplication.ModalResponse, Never>?
+
+    func run(
+        begin: (@escaping @MainActor (NSApplication.ModalResponse) -> Void) -> Void,
+        dismiss: @escaping @MainActor () -> Void
+    ) async -> NSApplication.ModalResponse {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled else {
+                    continuation.resume(returning: .abort)
+                    return
+                }
+                completion = continuation
+                begin { [weak self] in self?.finish($0) }
+            }
+        } onCancel: {
+            Task { @MainActor in
+                guard self.completion != nil else { return }
+                dismiss()
+                self.finish(.abort)
+            }
+        }
+    }
+
+    private func finish(_ response: NSApplication.ModalResponse) {
+        let continuation = completion
+        completion = nil
+        continuation?.resume(returning: response)
     }
 }
 
@@ -233,6 +335,9 @@ struct QuickActionsView: View {
                     perform(actions.save)
                 }
                 .keyboardShortcut("s")
+                button(String(localized: "Save Optimized Copy…"), "arrow.down.to.line", id: "saveOptimized") {
+                    perform(actions.saveOptimized)
+                }
                 button(String(localized: "Open in Editor"), "square.and.pencil", id: "edit", whileActing: true) {
                     actions.openInEditor()
                 }

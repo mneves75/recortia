@@ -3,7 +3,8 @@
 See the [optimized save specification](optimized-save-spec.md) for overwrite consent, dialog
 cancellation and the file sink's commit boundary.
 
-**Status** ready-for-agent
+**Status** implemented. Targeted package checks and both unsigned Debug builds passed.
+The bilingual native scenario, actual save panel and replacement focus still need execution.
 
 **Blocked by** 01, to share the verified thumbnail lifecycle and native control surface.
 

@@ -216,6 +216,13 @@ public final class QuickActionsModel {
         return finish(held, outcome)
     }
 
+    public func saveOptimized(using dialogs: OptimizedSaveDialogs) async -> ExportOutcome {
+        guard let held = begin() else { return .rejectedBusy }
+        let outcome = await export.saveOptimized(
+            held.session, using: dialogs, currentSession: { [weak self] in self?.held(held.id) })
+        return finish(held, outcome)
+    }
+
     /// Pins a sanitized render; the pin keeps only that raster, so the capture's pixels go.
     public func pin() async -> PinError? {
         guard let held = begin() else { return nil }

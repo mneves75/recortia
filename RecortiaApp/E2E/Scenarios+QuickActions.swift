@@ -2,6 +2,7 @@
     import AppKit
     import Domain
     import Features
+    import ImageIO
     import Imaging
     import MacPlatform
     import RecortiaFixtures
@@ -60,6 +61,7 @@
             let names: [(String, String)] = [
                 ("copy", String(localized: "Copy", table: "Editor")),
                 ("save", String(localized: "Save", table: "Editor")),
+                ("saveOptimized", String(localized: "Save Optimized Copy…")),
                 ("edit", String(localized: "Open in Editor")),
                 ("pin", String(localized: "Pin", table: "Editor")),
                 ("preview", String(localized: "Preview")),
@@ -165,6 +167,8 @@
             harness.editors.closeAll()
             context.check("closing the editor releases them", await waitForCount(store, baseline))
             try await checkReplacement(harness, context)
+            try await checkOptimizedSave(harness, context)
+            try await checkOptimizedSaveDuringSelection(harness, context)
             try await checkPreviewReplacement(harness, context)
             try await checkMaskedPreview(harness, store, context)
         }
@@ -466,6 +470,121 @@
                     && (try? Data(contentsOf: kept)) == originals[kept],
                 "\(asked.map(\.lastPathComponent))")
             harness.features.quickActions.dismiss()
+        }
+
+        private static func checkOptimizedSave(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
+            let folder = harness.output.workDirectory.appending(
+                path: "thumbnail-optimized", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let urls = ["png", "jpg"].map { folder.appending(path: "report.\($0)").standardizedFileURL }
+            let original = Data("existing image".utf8)
+            for url in urls { try original.write(to: url) }
+            defer { harness.quickActionsUI.optimizedSaveDialogs = nil }
+
+            var offered: OptimizedSaveDetails?
+            var replacements: [URL] = []
+            func answerReplacement(_ approved: Bool) {
+                harness.quickActionsUI.optimizedSaveDialogs = (
+                    chooseDestination: {
+                        offered = $0
+                        return folder.appending(path: "report.heic")
+                    },
+                    confirmReplacement: {
+                        replacements.append($0)
+                        return approved
+                    }
+                )
+            }
+            answerReplacement(false)
+            let root = try await showThumbnail(harness, context)
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.saveOptimized", in: root, context)
+            let model = harness.features.quickActions
+            context.check(
+                "the optimized replacement prompt can be declined",
+                await E2EWait.until { replacements.count == 1 && !model.isActing })
+            context.check(
+                "declining optimized Replace keeps both files and the thumbnail",
+                model.isShown && urls.allSatisfy { (try? Data(contentsOf: $0)) == original })
+
+            answerReplacement(true)
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.saveOptimized", in: root, context)
+            context.check(
+                "optimized save finishes through the native thumbnail control",
+                await E2EWait.until { replacements.count == 2 && model.capture == nil })
+            let details = try context.unwrap("the prepared file's displayed details", offered)
+            let destination = folder.appending(path: "report.\(details.format.fileExtension)").standardizedFileURL
+            let encoded = try Data(contentsOf: destination)
+            let source = try context.unwrap(
+                "the written optimized image", CGImageSourceCreateWithData(encoded as CFData, nil))
+            let image = try context.unwrap(
+                "the decoded optimized image", CGImageSourceCreateImageAtIndex(source, 0, nil))
+            context.check(
+                "only the exact name confirmed in the optimized dialog was replaced",
+                urls.contains(destination) && replacements == [destination, destination]
+                    && urls.filter { $0 != destination }.allSatisfy { (try? Data(contentsOf: $0)) == original })
+            context.check(
+                "the optimized file matches the advertised codec, dimensions and byte count",
+                CGImageSourceGetType(source) as String? == (details.format == .png ? "public.png" : "public.jpeg")
+                    && image.width == details.pixelSize.width && image.height == details.pixelSize.height
+                    && encoded.count == details.byteCount)
+        }
+
+        private static func checkOptimizedSaveDuringSelection(_ harness: E2EHarness, _ context: ScenarioContext)
+            async throws
+        {
+            let export = harness.features.export
+            let capture = harness.features.capture
+            let model = harness.features.quickActions
+            let ui = harness.quickActionsUI
+            let gate = harness.exportGate
+            let folder = harness.output.workDirectory.appending(
+                path: "suspended-optimized", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            defer {
+                gate.holdNextSnapshot = false
+                gate.release()
+                capture.cancel()
+                ui.optimizedSaveDialogs = nil
+                ui.dismiss()
+            }
+
+            let root = try await showThumbnail(harness, context)
+            let thumbnail = try context.unwrap("the original thumbnail", ui.panel)
+            let screen = try context.unwrap("a display for the thumbnail", ScreenChoice.screen())
+            thumbnail.ignoresMouseEvents = true
+            thumbnail.center(on: screen)
+            let heldID = try context.unwrap("the original capture ID", model.capture?.id)
+            var dialogsPresented = 0
+            ui.optimizedSaveDialogs = (
+                chooseDestination: { _ in
+                    dialogsPresented += 1
+                    return folder.appending(path: "late-save.png")
+                },
+                confirmReplacement: { _ in
+                    dialogsPresented += 1
+                    return true
+                }
+            )
+            gate.holdNextSnapshot = true
+            try E2EAccessibilityControl.pressCheckingEffect("quickActions.saveOptimized", in: root, context)
+            try context.require("optimized encoding starts", await E2EWait.until { gate.isWaiting && model.isActing })
+
+            harness.app.perform(.captureRegion)
+            try context.require(
+                "the new selection hides the original thumbnail while encoding waits",
+                capture.state == .selecting && model.capture?.id == heldID && !thumbnail.isVisible)
+
+            gate.release()
+            try context.require(
+                "the suspended optimized save releases its export slot",
+                await E2EWait.until { !model.isActing && !export.isBusy })
+            let files = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            context.check(
+                "the suspended optimized save presents no dialog and writes no file",
+                dialogsPresented == 0 && files.isEmpty)
+            context.check(
+                "the original capture remains held during selection",
+                capture.state == .selecting && model.capture?.id == heldID)
         }
 
         /// Captures the notes window and waits for its thumbnail; returns the panel's content.
