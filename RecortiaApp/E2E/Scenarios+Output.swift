@@ -622,15 +622,16 @@
                 "before launch, opened files wait unread",
                 harness.importInput.fileReads == reads && harness.editors.controllers.count == before)
             harness.app.openDocument = wired
-            harness.app.openFilesRequestedBeforeLaunch()
-            let opened = await E2EWait.until(timeout: .seconds(20)) {
-                harness.editors.controllers.count == before + 12
-            }
+            let opening = try context.unwrap(
+                "the waiting requests start a launch batch", harness.app.openFilesRequestedBeforeLaunch())
+            await opening.value
+            let titles = harness.editors.controllers.dropFirst(before).compactMap { $0.window?.title }
+            let expected = requests.flatMap { $0.map(\.lastPathComponent) }
             context.check(
-                "launch opens both waiting requests, each within its own limit", opened,
-                "editors: \(harness.editors.controllers.count - before)")
+                "launch opens both waiting requests in order, each within its own limit",
+                titles == expected, titles.joined(separator: ", "))
             context.check(
-                "the waiting requests are read once each, in order", harness.importInput.fileReads == reads + 12,
+                "the waiting requests are read once each", harness.importInput.fileReads == reads + expected.count,
                 "\(harness.importInput.fileReads - reads)")
             context.check("nothing is refused", harness.messages.values.count == messages)
         }

@@ -347,22 +347,24 @@ final class AppModel: AppActions {
             requestsBeforeLaunch.append(urls)
             return
         }
-        open([urls])
+        _ = open([urls])
     }
 
     /// Replays, in order, the requests that arrived before the editors were wired.
-    func openFilesRequestedBeforeLaunch() {
+    @discardableResult
+    func openFilesRequestedBeforeLaunch() -> Task<Void, Never>? {
         let requests = requestsBeforeLaunch
         requestsBeforeLaunch = []
-        if !requests.isEmpty { open(requests) }
+        guard !requests.isEmpty else { return nil }
+        return open(requests)
     }
 
-    private func open(_ requests: [[URL]]) {
+    private func open(_ requests: [[URL]]) -> Task<Void, Never> {
         let importer = features.importer
         // Counted until reported, so closing the first opened editor while the next file decodes
         // waits for the rest of the request instead of quitting.
         openRequestsInFlight += 1
-        Task {
+        return Task {
             defer { openRequestsInFlight -= 1 }
             for failures in await importer.openRequests(requests) {
                 if let message = UserMessage.openFailures(failures) { showMessage(message, .app) }
