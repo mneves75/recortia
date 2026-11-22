@@ -397,8 +397,13 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   process continued with the original PID and mapped executable inode. Its bundle remains intact
   in the primary main checkout at `.scratch/install-0.15.0-20261122/Recortia.app`; the same
   directory has `installation.json`.
-  Build 29 awaits its first launch. The public distribution assessment requires a notarization
-  ticket.
+  The public distribution assessment requires a notarization ticket.
+- The build 28 process had exited before build 29 was started with
+  `/usr/bin/open -gj -a /Applications/Recortia.app` at 19:34:08 UTC. After 62 seconds, AppKit
+  reported finish-launching, and the running executable's device and inode matched the
+  installed executable. Strict signature and the Developer ID execution assessment passed.
+  The primary checkout holds `.scratch/install-0.15.0-20261122/launch.json`. The launch
+  exercised this account on macOS 27.3. TCC, minimum-macOS and fullscreen behavior remain open.
 - Preliminary release review leaves SEC-11, SEC-17 and SEC-18 open for this candidate.
   The bundle omits the updater key. Keep Sparkle inactive and reassess the current
   [package-update advisory](https://github.com/sparkle-project/Sparkle/security/advisories/GHSA-gcjm-h3jh-p2vc)

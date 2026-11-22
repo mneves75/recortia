@@ -212,10 +212,10 @@
     "backup_path": "Primary main checkout: .scratch/install-0.15.0-20261122/Recortia.app (previous signed 0.14.0 build 28).",
     "executable_sha256": "623b37eed86d21c4be2abb4e25624ccf3973aa9505cb7cc1d5c787efe697b599",
     "installed_equals_developer_id_export": true,
-    "launched": false,
+    "launched": true,
     "notarized": false,
     "verification": "Independent PASS: all 177 entries match the export, strict Developer ID signature and local execution assessment passed. The previous process retained its PID, start time and mapped executable inode across the atomic exchange. Receipt in the primary main checkout: .scratch/install-0.15.0-20261122/installation.json.",
-    "qualification": "On-disk signed installation passed. The existing session remained on build 28. Build 29 launch, installed-app fullscreen, minimum-macOS, physical VoiceOver and TCC remain open."
+    "qualification": "On-disk signed installation and background launch on macOS 27.3 passed. The build 28 session survived the install and had exited before build 29 launched. AppKit reported launch complete, and the running executable matched the installed bundle by device and inode. Launch receipt in the primary checkout: .scratch/install-0.15.0-20261122/launch.json. Installed-app fullscreen, minimum-macOS, physical VoiceOver and TCC remain open."
   },
   "previous_local_installation_0_14_0": {
     "candidate": "0.14.0 notarized release, installed from the published DMG",
@@ -599,7 +599,7 @@
       "full": "20261122-130236-98961: 73/73 scenarios, 5661 assertions and 250 screenshots per language. Same Debug app as focus; unlocked idle console throughout.",
       "spaces": "Four cooperative fixture cases passed with zero switches using the order and reused-pin path of the app. The forced comparison lost console isolation and contributes no qualification. The fixture logs are in the feat/quick-capture-preview qualification worktree. Installed-app fullscreen remains open.",
       "hosted_ci": "https://github.com/mneves75/recortia/actions/runs/44989058389",
-      "status": "Installed locally as signed 0.15.0 build 29. The installed bundle's first launch, notarization, release security controls and physical qualification remain open."
+      "status": "Installed locally as signed 0.15.0 build 29. Background launch completed on macOS 27.3. Notarization, release security controls and physical qualification remain open."
     }
   },
   "tasks": [
