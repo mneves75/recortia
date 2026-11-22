@@ -3,8 +3,9 @@
 See the [optimized save specification](optimized-save-spec.md) for overwrite consent, dialog
 cancellation and the file sink's commit boundary.
 
-**Status** implemented. Targeted package checks and both unsigned Debug builds passed.
-The bilingual native scenario, actual save panel and replacement focus still need execution.
+**Status** focused verification passed. The bilingual native thumbnail scenario uses scripted
+destination and replacement decisions. The system Save panel and replacement focus remain
+manual checks. See [progress](../../../progress.md).
 
 **Blocked by** 01, to share the verified thumbnail lifecycle and native control surface.
 

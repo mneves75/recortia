@@ -92,6 +92,8 @@ Program 2026-11 invariants (T2–T6, `docs/specs/program-2026-11/decisions.md`):
 - **Automatic Pin:** decide the capture route and automatic export plan before suspension.
   Masked captures still open in the editor. Automatic Pin preserves the foreground app and
   keyboard focus. A pin render or budget refusal shows the current thumbnail without another batch.
+  Store Pin in its optional `pinAfterCaptureChoice` key and preserve the prior editor or thumbnail
+  choice for rollback. Fit the native pin explicitly on first presentation and zoom changes.
 - **Framing:** default and named recipes share saved-style admission. Applying a recipe is one
   undoable edit. The border and watermark are painted on the sanitized output after the final
   mask. Keep both decorated and undecorated RED fixtures in the gate.

@@ -8,8 +8,10 @@ The current version is **0.14.0** (build 28), signed with Developer ID and notar
 available as a DMG from the [0.14.0 release](https://github.com/mneves75/recortia/releases/tag/v0.14.0).
 The physical checks listed under [Known limitations](#known-limitations) have not run. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md).
-The 0.15.0 candidate adds frozen region selection and a larger preview from the capture thumbnail.
-Its acceptance and local installation are recorded in [BACKLOG.json](BACKLOG.json).
+The 0.16.0 source candidate adds Save Optimized Copy and Copy Text to the capture thumbnail,
+an opt-in automatic Pin, and reusable framing with a border and text watermark. It includes
+frozen region selection and the larger capture preview from the 0.15.0 candidate. Qualification
+and local installation records are in [BACKLOG.json](BACKLOG.json).
 
 Recortia is an independent open-source project and is not affiliated with any other screenshot
 app.

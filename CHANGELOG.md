@@ -15,7 +15,7 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
-Program 2026-11 follow-on trains (PRs #43 to #49) for the 0.15.0 candidate. It requires macOS 26
+Source candidate 0.16.0 (build 30), including the Program 2026-11 follow-on trains. It requires macOS 26
 or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification and open checks.
 
 ### Added
@@ -26,6 +26,10 @@ or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification 
   discards the capture. With automatic masking on, captures still open in the editor.
 - Preview opens a larger view of the current capture from the thumbnail. Closing the preview
   keeps the thumbnail available until it expires.
+- Save Optimized Copy shows the exact format and size before saving the current capture as
+  PNG or JPEG. Copy Text recognizes text from the current capture on this Mac.
+- Settings › Capture › After a capture can pin still captures without taking keyboard focus.
+- The Image inspector can save reusable framing recipes and apply an inset border or text watermark.
 - Press F during region selection to freeze the display for precise selection and pixel
   inspection. Press F again to resume live selection.
 - Automatic masking of e-mail addresses and phone numbers now also covers scrolling captures and

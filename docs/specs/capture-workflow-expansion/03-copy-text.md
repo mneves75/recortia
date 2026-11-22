@@ -1,6 +1,7 @@
 # 03. Copy recognized text
 
-**Status** implemented. The native bilingual scenario compiles and awaits execution.
+**Status** focused verification passed with the bilingual native thumbnail and real Vision
+recognition on synthetic text. See [progress](../../../progress.md).
 
 **Blocked by** 01, to share the verified thumbnail lifecycle and native control surface.
 

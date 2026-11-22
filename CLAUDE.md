@@ -19,7 +19,7 @@ candidate is recorded.
   all package tests, Debug build, pt-BR coverage of every extracted string, E2E target build); drop `--unsigned` when the signing identity is available.
 - Release check (hosted CI): `scripts/check-release-build.sh` (doctor `--release`, unsigned Release builds of Recortia and RecortiaE2E, scans for test-only code and the E2E runner).
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
-- Focused capture and framing acceptance: `./init.sh e2e --lang all --unsigned --only quick-actions,auto-redaction,framing-presets,inspector-context`
+- Focused capture and framing acceptance: `./init.sh e2e --lang all --unsigned --only quick-actions,auto-redaction,framing-presets,inspector-context,pins,pin-on-top`
   with the shared native-test lock and an idle, unlocked console. Keep the provenance for each run.
 - End-to-end: `./init.sh e2e --lang all` runs the doctor, then the DEBUG scenario runner
   (`-RecortiaE2E <dir>`) through the real app, and writes screenshots, `report.json` and

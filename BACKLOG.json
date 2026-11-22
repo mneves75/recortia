@@ -201,6 +201,18 @@
       ".scratch/local-install-build12-20261002/installation.json"
     ]
   },
+  "source_candidate_0_16_0": {
+    "version": "0.16.0",
+    "build": 30,
+    "date": "2026-11-22",
+    "requirements": ["FR-01", "FR-06", "FR-07", "FR-08", "FR-09", "FR-13"],
+    "scope": "Save Optimized Copy, Copy Text, passive opt-in automatic Pin, named framing recipes, inset border and text watermark. See docs/specs/capture-workflow-expansion/plan.md.",
+    "pull_request": "https://github.com/mneves75/recortia/pull/50",
+    "status": "source_candidate_awaiting_full_qualification",
+    "verification": "The corrected combined source passed 54 targeted package methods and the unsigned E2E build. The focused native capture, pins, inspector and automatic redaction flows passed in English and Brazilian Portuguese at a5daba2. The final native framing scenario passed in both languages at a533ec9, which changes only the fixture and progress record. See progress.md for reports. Full candidate verification is pending.",
+    "installation": "Build 29 remains installed. Build 30 has not been installed.",
+    "release": "Source candidate only. Exact-commit security, signing, minimum macOS, physical desktop behavior, merge and tag remain open."
+  },
   "current_local_installation": {
     "candidate": "0.15.0 Developer ID local candidate",
     "app_version": "0.15.0",

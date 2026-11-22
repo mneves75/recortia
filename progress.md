@@ -457,3 +457,9 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   as Default. It now leaves Preview before checking the history and uses accessible
   actions for the recipe and default buttons. Evidence is in
   `.scratch/e2e/20261122-180352-38997/`.
+- Framing passed in both languages at `a533ec9`, with eight screenshots per language.
+  It validates the border and watermark, recipe persistence and naming limits, exact exported
+  pixels after Apply, one-step Undo and Redo, and stale recipe refusal. Evidence is in
+  `.scratch/e2e/20261122-180719-74058/`. The capture and framing branch is draft PR #50.
+- The source candidate is 0.16.0 (30). Full bilingual native verification and hosted CI must
+  run with that exact version. The signed installation remains at 0.15.0 (29).
