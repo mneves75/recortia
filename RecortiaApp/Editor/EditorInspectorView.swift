@@ -736,27 +736,8 @@ private struct PositionSection: View {
 
     var body: some View {
         Section {
-            let title = String(localized: "Position and Size", table: "Editor")
-            Button {
-                state.showsPositionAndSize.toggle()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(state.showsPositionAndSize ? 90 : 0))
-                    Text(title)
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(title))
-            .accessibilityValue(
-                Text(
-                    state.showsPositionAndSize
-                        ? String(localized: "Expanded", table: "Editor")
-                        : String(localized: "Collapsed", table: "Editor"))
+            InspectorDisclosureButton(
+                title: String(localized: "Position and Size", table: "Editor"), expanded: $state.showsPositionAndSize
             )
             .accessibilityIdentifier("inspector.positionAndSize")
             if state.showsPositionAndSize {
@@ -765,6 +746,35 @@ private struct PositionSection: View {
                 }
             }
         }
+    }
+}
+
+private struct InspectorDisclosureButton: View {
+    let title: String
+    @Binding var expanded: Bool
+
+    var body: some View {
+        Button {
+            expanded.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+                Text(title)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(
+            Text(
+                expanded
+                    ? String(localized: "Expanded", table: "Editor")
+                    : String(localized: "Collapsed", table: "Editor"))
+        )
     }
 }
 
@@ -1235,58 +1245,69 @@ private struct SizeSection: View {
 private struct FramingDecorationSection: View {
     let model: EditorModel
     let coalescer: ChangeCoalescer
+    @State private var expanded = false
     @State private var draft = ""
     @State private var refusedText = false
 
     var body: some View {
         let presentation = model.document.presentation
-        DisclosureGroup(String(localized: "Output Decoration", table: "Editor")) {
-            Toggle(
-                String(localized: "Border", table: "Editor"),
-                isOn: Binding(
-                    get: { presentation.border != nil },
-                    set: { model.setFramingBorder($0 ? Presentation.Border() : nil) })
+        Section {
+            InspectorDisclosureButton(
+                title: String(localized: "Output Decoration", table: "Editor"), expanded: $expanded
             )
-            .accessibilityIdentifier("image.decoration.border")
-            if let border = presentation.border {
-                UndoableSlider(
-                    title: String(localized: "Border width", table: "Editor"),
-                    value: border.width, range: Presentation.Border.widthRange, model: model
-                ) { width in
-                    updateBorder { $0.width = width.rounded() }
-                }
-                ColorPicker(
-                    String(localized: "Border color", table: "Editor"),
-                    selection: colorBinding(
-                        { border.color },
-                        { color in coalescer.run(model) { updateBorder { $0.color = color } } }))
-            }
-            TextField(String(localized: "Watermark text", table: "Editor"), text: $draft)
-                .accessibilityIdentifier("image.decoration.watermark")
-                .onSubmit(applyWatermark)
-                .onChange(of: draft) { refusedText = false }
-            ButtonRow {
-                Button(String(localized: "Apply Watermark", table: "Editor"), action: applyWatermark)
-                    .accessibilityIdentifier("image.decoration.applyWatermark")
-                if presentation.watermark != nil {
-                    Button(String(localized: "Remove Watermark", table: "Editor")) {
-                        model.setFramingWatermark(nil)
-                    }
-                }
-            }
-            if refusedText {
-                Text(String(localized: "Enter one line of watermark text up to 256 bytes.", table: "Editor"))
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("image.decoration.textError")
-            }
-            if let watermark = presentation.watermark {
-                watermarkControls(watermark)
+            .accessibilityIdentifier("image.decoration")
+            if expanded {
+                decorationControls(presentation)
             }
         }
-        .accessibilityIdentifier("image.decoration")
         .onChange(of: presentation.watermark?.text, initial: true) { _, current in
             draft = current ?? ""
             refusedText = false
+        }
+    }
+
+    @ViewBuilder
+    private func decorationControls(_ presentation: Presentation) -> some View {
+        Toggle(
+            String(localized: "Border", table: "Editor"),
+            isOn: Binding(
+                get: { presentation.border != nil },
+                set: { model.setFramingBorder($0 ? Presentation.Border() : nil) })
+        )
+        .accessibilityIdentifier("image.decoration.border")
+        if let border = presentation.border {
+            UndoableSlider(
+                title: String(localized: "Border width", table: "Editor"),
+                value: border.width, range: Presentation.Border.widthRange, model: model
+            ) { width in
+                updateBorder { $0.width = width.rounded() }
+            }
+            ColorPicker(
+                String(localized: "Border color", table: "Editor"),
+                selection: colorBinding(
+                    { border.color },
+                    { color in coalescer.run(model) { updateBorder { $0.color = color } } }))
+        }
+        TextField(String(localized: "Watermark text", table: "Editor"), text: $draft)
+            .accessibilityIdentifier("image.decoration.watermark")
+            .onSubmit(applyWatermark)
+            .onChange(of: draft) { refusedText = false }
+        ButtonRow {
+            Button(String(localized: "Apply Watermark", table: "Editor"), action: applyWatermark)
+                .accessibilityIdentifier("image.decoration.applyWatermark")
+            if presentation.watermark != nil {
+                Button(String(localized: "Remove Watermark", table: "Editor")) {
+                    model.setFramingWatermark(nil)
+                }
+            }
+        }
+        if refusedText {
+            Text(String(localized: "Enter one line of watermark text up to 256 bytes.", table: "Editor"))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("image.decoration.textError")
+        }
+        if let watermark = presentation.watermark {
+            watermarkControls(watermark)
         }
     }
 
