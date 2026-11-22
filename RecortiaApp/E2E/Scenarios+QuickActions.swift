@@ -7,6 +7,50 @@
     import MacPlatform
     import RecortiaFixtures
 
+    /// Real Vision by default, with a one-shot failure or late callback for Copy Text.
+    @MainActor
+    final class SyntheticRecognitionGate: TextRecognitionService {
+        enum Interception { case failure, delay }
+
+        var next: Interception?
+        private let recognition: any TextRecognitionService
+        private var waiter: CheckedContinuation<Void, Never>?
+        private(set) var lateCompletions = 0
+
+        var isWaiting: Bool { waiter != nil }
+
+        init(recognition: any TextRecognitionService) { self.recognition = recognition }
+
+        func supportedLanguages() async -> [Locale.Language] { await recognition.supportedLanguages() }
+
+        func recognize(_ image: CGImage, languages: [Locale.Language]) async throws -> OCRResult {
+            let interception = next
+            next = nil
+            switch interception {
+            case .failure:
+                throw E2EAbort("scripted recognition failure")
+            case .delay:
+                await withCheckedContinuation { waiter = $0 }
+                lateCompletions += 1
+                let stale = OCRResult.Line(
+                    text: "Resultado atrasado", confidence: 1, box: Rect(x: 0, y: 0, width: 1, height: 1))
+                return OCRResult(lines: [stale], revision: 3, languages: [])
+            case nil:
+                return try await recognition.recognize(image, languages: languages)
+            }
+        }
+
+        func release() {
+            waiter?.resume()
+            waiter = nil
+        }
+
+        func reset() {
+            next = nil
+            release()
+        }
+    }
+
     /// The quick-action thumbnail (B-1, ADR-009) through the real capture path, `AppModel`'s
     /// synchronous follow-up decision, the product's thumbnail controller and its SwiftUI buttons.
     /// The image store's size shows when the capture's pixels are released.
@@ -171,6 +215,7 @@
             try await checkOptimizedSaveDuringSelection(harness, context)
             try await checkPreviewReplacement(harness, context)
             try await checkMaskedPreview(harness, store, context)
+            try await checkCopyText(harness, store, context)
         }
 
         private static func checkPreview(
@@ -585,6 +630,92 @@
             context.check(
                 "the original capture remains held during selection",
                 capture.state == .selecting && model.capture?.id == heldID)
+        }
+
+        private static func checkCopyText(_ harness: E2EHarness, _ store: ImageStore, _ context: ScenarioContext)
+            async throws
+        {
+            let sample = try TextCorpus.render(
+                id: "quick-actions-text", language: .portugueseBrazil, category: .prose,
+                theme: .light, pointSize: 20, scale: 2, lines: RecognitionScenarios.ocrLines)
+            // Warm up Vision before the thumbnail's timeout starts, as in the editor OCR scenario.
+            _ = await RecognitionScenarios.visionDiagnosis(sample.image)
+            let model = harness.features.quickActions
+            let ui = harness.quickActionsUI
+            let capture = harness.features.capture
+            let recognition = harness.recognitionGate
+            let board = harness.textPasteboard
+            let originalMode = harness.settings.preferences.ocrTextMode
+            defer {
+                ui.dismiss()
+                capture.cancel()
+                recognition.reset()
+                board.clearContents()
+                harness.settings.update { $0.ocrTextMode = originalMode }
+            }
+            harness.settings.update { $0.ocrTextMode = .preserveLineBreaks }
+            let asset = await store.insert(try ImageDecoder.decode(E2EDrawing.png(sample.image)), origin: .pasted)
+            let session = DocumentSession(document: Document(asset: asset))
+            _ = await model.present(session, after: harness.features.export.automaticExportPlan())
+            try context.require(
+                "the OCR fixture has a visible thumbnail", await E2EWait.until { ui.panel?.isVisible == true })
+            let thumbnail = try context.unwrap("the OCR thumbnail", ui.panel)
+            let root = try context.unwrap("the OCR thumbnail content", thumbnail.contentView)
+            let screen = try context.unwrap("a display for the OCR thumbnail", ScreenChoice.screen())
+            thumbnail.ignoresMouseEvents = true
+            thumbnail.center(on: screen)
+            await E2ESnapshot.settle(root)
+            let control = "quickActions.copyText"
+            let status = "quickActions.status"
+            let heldID = model.capture?.id
+            let expectedLabel = context.output.language == "pt-BR" ? "Copiar texto" : "Copy Text"
+            let label = try E2EAccessibilityControl.name(for: control, in: root, context)
+            context.check("Copy Text exposes the localized accessible name", label == expectedLabel, label)
+
+            let earlier = "Conteúdo anterior"
+            _ = harness.features.textClipboard.writePlainText(earlier)
+            recognition.next = .failure
+            try E2EAccessibilityControl.pressCheckingEffect(control, in: root, context)
+            try context.require(
+                "a failed Copy Text reports a status and keeps the previous clipboard",
+                await E2EWait.until { !model.isActing && E2EAccessibilityControl.isPresent(status, in: root) }
+                    && board.string(forType: .string) == earlier && model.capture?.id == heldID)
+
+            let previousCompletions = recognition.lateCompletions
+            recognition.next = .delay
+            try E2EAccessibilityControl.pressCheckingEffect(control, in: root, context)
+            try context.require("the Copy Text request waits in OCR", await E2EWait.until { recognition.isWaiting })
+            harness.app.perform(.captureRegion)
+            try context.require(
+                "a new selection hides the OCR thumbnail", capture.state == .selecting && !thumbnail.isVisible)
+            capture.cancel()
+            try context.require(
+                "canceling the selection restores the same thumbnail with an idle action slot",
+                await E2EWait.until { thumbnail.isVisible && !model.isActing && model.capture?.id == heldID })
+            recognition.release()
+            try context.require(
+                "the canceled Copy Text receives a late result",
+                await E2EWait.until { recognition.lateCompletions == previousCompletions + 1 && model.canCopyText })
+            await E2ESnapshot.settle(root)
+            context.check(
+                "a canceled Copy Text changes neither the clipboard nor status",
+                board.string(forType: .string) == earlier && !E2EAccessibilityControl.isPresent(status, in: root))
+
+            try E2EAccessibilityControl.pressCheckingEffect(control, in: root, context)
+            try context.require(
+                "native Copy Text writes real on-device recognition to the private pasteboard",
+                await E2EWait.until(timeout: .seconds(40)) {
+                    !model.isActing && board.string(forType: .string) != earlier
+                })
+            let copied = try context.unwrap("the recognized clipboard text", board.string(forType: .string))
+            let lines = copied.split(separator: "\n")
+            context.check(
+                "Copy Text keeps the order, line breaks and Brazilian Portuguese accents",
+                lines.count == 3 && lines[0].contains("Quarterly report") && lines[1].contains("Relatório trimestral")
+                    && lines[2].contains("coração e informação"), copied)
+            context.check(
+                "the same thumbnail stays available after Copy Text", thumbnail.isVisible && model.capture?.id == heldID
+            )
         }
 
         /// Captures the notes window and waits for its thumbnail; returns the panel's content.

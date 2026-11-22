@@ -29,7 +29,11 @@ final class QuickActionsHarness {
     let session = TestFixtures.session()
     private(set) var opened: [DocumentSession] = []
 
-    init(fileSink: (any FileSinkService)? = nil) {
+    init(
+        fileSink: (any FileSinkService)? = nil, renderService: (any RenderService)? = nil,
+        textRecognition: (any TextRecognitionService)? = nil
+    ) {
+        let renderer = renderService ?? self.renderer
         export = ExportCoordinator(
             exporter: exporter, clipboard: clipboard, files: fileSink ?? files, drag: drag, printer: printer,
             folders: folders,
@@ -37,7 +41,7 @@ final class QuickActionsHarness {
         pins = PinsModel(renderer: renderer, settings: settings, export: export)
         model = QuickActionsModel(
             export: export, pins: pins, renderer: renderer, assets: assets, folders: folders, settings: settings,
-            clock: clock, textClipboard: textClipboard)
+            clock: clock, textRecognition: textRecognition ?? FakeTextRecognition(), textClipboard: textClipboard)
         model.onOpenInEditor = { [weak self] in self?.opened.append($0) }
     }
 

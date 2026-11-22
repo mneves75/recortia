@@ -30,6 +30,7 @@
         let github = SyntheticGitHubUpload()
         let updates = SyntheticUpdateService()
         let exportGate: SyntheticExportGate
+        let recognitionGate: SyntheticRecognitionGate
         let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
         /// Scripted detection for automatic masking; never reads the screen or runs Vision.
@@ -78,13 +79,14 @@
 
             let live = AppServices.live(settings: settings)
             exportGate = SyntheticExportGate(exporter: live.exporter)
+            recognitionGate = SyntheticRecognitionGate(recognition: live.textRecognition)
             importInput = SyntheticImportInput(input: live.input)
             services = AppServices(
                 githubUpload: github, githubCredentials: github,
                 capture: capture, screenPermission: permission, accessibility: accessibility,
                 assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
                 clipboard: clipboard, files: live.files, drag: drag, printer: printer, folders: live.folders,
-                textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
+                textRecognition: recognitionGate, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
                 scrollFrames: scrollFrames,
                 stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem,
                 clock: sensitiveText.clock,
@@ -163,6 +165,7 @@
 
         func reset() {
             exportGate.release()
+            recognitionGate.reset()
             sensitiveText.reset()
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil

@@ -48,7 +48,8 @@ struct FeatureModels {
         pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
         quickActions = QuickActionsModel(
             export: export, pins: pins, renderer: services.renderer, assets: services.assets,
-            folders: services.folders, settings: settings, clock: services.clock, textClipboard: textClipboard)
+            folders: services.folders, settings: settings, clock: services.clock,
+            textRecognition: services.textRecognition, textClipboard: textClipboard)
         ocrLanguages = OCRLanguagesModel(service: services.textRecognition)
         loginItem = LoginItemModel(service: services.loginItem)
         updater = UpdaterModel(service: services.updates, settings: settings)

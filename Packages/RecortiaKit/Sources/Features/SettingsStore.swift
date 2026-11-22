@@ -72,6 +72,19 @@ public final class SettingsStore {
         update { $0.primaryRecognitionLanguage = nil }
     }
 
+    /// Recognize English and Portuguese when available, with the selected primary language first.
+    func recognitionLanguages(supported: [Locale.Language]) -> (languages: [Locale.Language], unavailable: [String]) {
+        let preferredCodes = ["en", "pt"]
+        let codes = Set(supported.compactMap { $0.languageCode?.identifier })
+        let unavailable = preferredCodes.filter { !codes.contains($0) }
+        let preferred = supported.filter { preferredCodes.contains($0.languageCode?.identifier ?? "") }
+        let languages = preferred.isEmpty ? supported : preferred
+        guard let primary = preferences.primaryRecognitionLanguage,
+            let first = supported.first(where: { $0.maximalIdentifier == primary })
+        else { return (languages, unavailable) }
+        return ([first] + languages.filter { $0.maximalIdentifier != primary }, unavailable)
+    }
+
     /// Shows or hides the menu-bar icon. Returns true only when this hides it for the first time,
     /// so the caller tells the person how to get back (open Recortia again).
     @discardableResult

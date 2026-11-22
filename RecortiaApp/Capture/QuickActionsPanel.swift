@@ -94,7 +94,7 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
     func captureVisibilityChanged(suspended: Bool) {
         captureSuspended = suspended
         if suspended {
-            model.suspendPreview(keepingVisiblePreview: previewPanel?.isVisible == true)
+            model.suspendForCapture(keepingVisiblePreview: previewPanel?.isVisible == true)
         } else {
             renderThumbnail()
             // Back ordering restores the existing panels without their former keyboard focus.
@@ -141,30 +141,41 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
 
     func copy() async -> String? { Self.failure(await model.copy()) }
 
+    func copyText(for captureID: UUID) async -> String? {
+        guard let panel, canUseActions(captureID, from: panel) else { return nil }
+        return switch await model.copyText() {
+        case .copied: EditorStrings.message(.textCopied)
+        case .noText: EditorStrings.message(.noTextFound)
+        case .recognitionFailed: EditorStrings.message(.recognitionFailed)
+        case .clipboardFailed: EditorStrings.message(.copyFailed)
+        case .canceled, .rejectedBusy: nil
+        }
+    }
+
     func save() async -> String? {
         Self.failure(await model.save(choosing: chooseSaveDestination, confirmReplacement: confirmReplacement))
     }
 
     func saveOptimized() async -> String? {
-        guard let panel, let captureID = shownID, canPresentOptimizedSave(captureID, from: panel) else { return nil }
+        guard let panel, let captureID = shownID, canUseActions(captureID, from: panel) else { return nil }
         let choose = optimizedSaveDialogs?.chooseDestination ?? Self.chooseOptimizedDestination
         let confirm =
             optimizedSaveDialogs?.confirmReplacement ?? { await Self.confirmOptimizedReplacement($0, in: panel) }
         let dialogs = OptimizedSaveDialogs(
             chooseDestination: { [weak self] details in
-                guard self?.canPresentOptimizedSave(captureID, from: panel) == true else { return nil }
+                guard self?.canUseActions(captureID, from: panel) == true else { return nil }
                 return await choose(details)
             },
             confirmReplacement: { [weak self] url in
-                guard self?.canPresentOptimizedSave(captureID, from: panel) == true else { return false }
+                guard self?.canUseActions(captureID, from: panel) == true else { return false }
                 return await confirm(url)
             })
         return Self.failure(await model.saveOptimized(using: dialogs))
     }
 
-    private func canPresentOptimizedSave(_ captureID: UUID, from panel: HostingPanel) -> Bool {
+    private func canUseActions(_ captureID: UUID, from panel: HostingPanel) -> Bool {
         !Task.isCancelled && !captureSuspended && self.panel === panel && panel.isVisible
-            && model.isShown && model.capture?.id == captureID
+            && shownID == captureID && model.isShown && model.capture?.id == captureID
     }
 
     func drag() async -> String? { Self.failure(await model.drag()) }
@@ -331,6 +342,10 @@ struct QuickActionsView: View {
             HStack(spacing: DesignTokens.Space.s) {
                 button(String(localized: "Copy", table: "Editor"), "doc.on.doc", id: "copy") { perform(actions.copy) }
                     .keyboardShortcut("c")
+                button(String(localized: "Copy Text", table: "Editor"), "text.viewfinder", id: "copyText") {
+                    perform { await actions.copyText(for: capture.id) }
+                }
+                .disabled(!model.canCopyText)
                 button(String(localized: "Save", table: "Editor"), "square.and.arrow.down", id: "save") {
                     perform(actions.save)
                 }
@@ -383,7 +398,7 @@ struct QuickActionsView: View {
         status = nil
         Task {
             let text = await action()
-            // A completed action closes the thumbnail; a failure stays until the next action.
+            // Feedback stays on the thumbnail until the next action.
             if let text {
                 status = text
                 AccessibilityNotification.Announcement(text).post()

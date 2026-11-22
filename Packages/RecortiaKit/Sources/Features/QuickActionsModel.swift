@@ -30,6 +30,15 @@ public struct QuickCapture: Identifiable, Sendable {
     public internal(set) var uploadedURL: URL?
 }
 
+public enum QuickTextCopyOutcome: Equatable, Sendable {
+    case copied
+    case noText
+    case recognitionFailed
+    case clipboardFailed
+    case canceled
+    case rejectedBusy
+}
+
 /// The quick-action thumbnail after a capture (B-1, ADR-009). One capture at a time: its
 /// automatic exports run first, then it shows with Copy, Save, Open in Editor, Pin and Dismiss
 /// until an action ends it or `timeout` passes without the pointer over it.
@@ -50,15 +59,17 @@ public final class QuickActionsModel {
     public private(set) var capture: QuickCapture?
     public private(set) var expandedPreview: CGImage?
     public var canOpenPreview: Bool { isShown && !isActing && previewTask == nil && expandedPreview == nil }
+    public var canCopyText: Bool { isShown && !isActing && textCopyTask == nil }
     /// False while the capture's automatic exports run: the thumbnail is not shown yet.
     public private(set) var isShown = false
-    /// An action (copy, save, drag offer, pin) is running; the others wait for it.
+    /// An image or text action is running; the others wait for it.
     public private(set) var isActing = false
     public private(set) var isPointerInside = false
     private var isPointerInsidePreview = false
     private var isPreviewKey = false
     private var previewRequest: UUID?
     private var previewTask: Task<CGImage, any Error>?
+    private var textCopyTask: Task<String?, any Error>?
 
     /// Receives the session for Open in Editor; the editor then owns its pixels.
     @ObservationIgnored public var onOpenInEditor: ((DocumentSession) -> Void)?
@@ -70,14 +81,16 @@ public final class QuickActionsModel {
     @ObservationIgnored private let folders: any SaveFolderService
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let clock: any FeatureClock
+    @ObservationIgnored private let textRecognition: any TextRecognitionService
     @ObservationIgnored private let textClipboard: any TextClipboardService
+    @ObservationIgnored private var textCopyRequest: UUID?
     @ObservationIgnored private var timer: Task<Void, Never>?
     @ObservationIgnored private var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
 
     public init(
         export: ExportCoordinator, pins: PinsModel, renderer: any RenderService, assets: any ImageAssetService,
         folders: any SaveFolderService, settings: SettingsStore, clock: any FeatureClock,
-        textClipboard: any TextClipboardService
+        textRecognition: any TextRecognitionService, textClipboard: any TextClipboardService
     ) {
         self.export = export
         self.pins = pins
@@ -86,6 +99,7 @@ public final class QuickActionsModel {
         self.folders = folders
         self.settings = settings
         self.clock = clock
+        self.textRecognition = textRecognition
         self.textClipboard = textClipboard
     }
 
@@ -175,7 +189,8 @@ public final class QuickActionsModel {
         return true
     }
 
-    public func suspendPreview(keepingVisiblePreview: Bool) {
+    public func suspendForCapture(keepingVisiblePreview: Bool) {
+        cancelTextCopy()
         if !keepingVisiblePreview { closePreview() }
         setPointerInside(false)
         setPointerInsidePreview(false)
@@ -184,6 +199,50 @@ public final class QuickActionsModel {
 
     public func copy() async -> ExportOutcome {
         await run(.copy)
+    }
+
+    /// Recognizes only the current sanitized output, without using the thumbnail's smaller raster.
+    public func copyText() async -> QuickTextCopyOutcome {
+        guard !Task.isCancelled else { return .canceled }
+        guard textCopyTask == nil, let held = begin() else { return .rejectedBusy }
+        let request = UUID()
+        let identity = held.session.requestIdentity()
+        let mode = settings.preferences.ocrTextMode
+        let document = held.session.document
+        let task = Task { [renderer, textRecognition, settings] () throws -> String? in
+            let image = try await renderer.render(document, scale: 1)
+            try Task.checkCancellation()
+            let supported = await textRecognition.supportedLanguages()
+            try Task.checkCancellation()
+            let (languages, _) = settings.recognitionLanguages(supported: supported)
+            let result = try await textRecognition.recognize(image, languages: languages)
+            try Task.checkCancellation()
+            return result.isEmpty ? nil : result.text(mode: mode)
+        }
+        textCopyRequest = request
+        textCopyTask = task
+        defer {
+            textCopyTask = nil
+            if textCopyRequest == request {
+                textCopyRequest = nil
+                end(held, finished: false)
+            }
+        }
+        let result = await withTaskCancellationHandler {
+            await task.result
+        } onCancel: {
+            task.cancel()
+        }
+        guard !Task.isCancelled, !task.isCancelled, textCopyRequest == request,
+            capture?.id == held.id, capture?.session.accepts(identity) == true
+        else { return .canceled }
+        switch result {
+        case .failure(let error):
+            return error is CancellationError ? .canceled : .recognitionFailed
+        case .success(let text):
+            guard let text, !text.isEmpty else { return .noText }
+            return textClipboard.writePlainText(text) ? .copied : .clipboardFailed
+        }
     }
 
     /// Offers the sanitized snapshot on the drag chip (ADR-004); the thumbnail ends once a
@@ -240,6 +299,8 @@ public final class QuickActionsModel {
     /// nothing of the capture, so the thumbnail stays and its timer keeps running.
     public func copyLink() -> Bool {
         guard isShown, let url = capture?.uploadedURL else { return false }
+        // A later explicit clipboard action takes precedence over pending recognition.
+        cancelTextCopy()
         return textClipboard.writePlainText(url.absoluteString)
     }
 
@@ -305,9 +366,19 @@ public final class QuickActionsModel {
         clearPreview()
         capture = nil
         isShown = false
+        cancelTextCopy()
         isActing = false
         isPointerInside = false
         resumeExportSlotWaiters()
+    }
+
+    private func cancelTextCopy() {
+        guard textCopyRequest != nil else { return }
+        textCopyRequest = nil
+        // Keep the OCR slot until the canceled render or recognition has unwound.
+        textCopyTask?.cancel()
+        isActing = false
+        armTimer()
     }
 
     private func clearPreview() {

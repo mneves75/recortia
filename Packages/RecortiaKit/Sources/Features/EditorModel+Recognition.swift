@@ -94,20 +94,9 @@ extension EditorModel {
     /// preferred codes the system lacks. The caller publishes those only for a current request.
     func preferredLanguages() async -> (languages: [Locale.Language], unavailable: [String]) {
         let supported = await environment.textRecognition.supportedLanguages()
-        let codes = Set(supported.compactMap { $0.languageCode?.identifier })
-        let unavailable = Self.preferredRecognitionLanguages.filter { !codes.contains($0) }
-        let preferred = supported.filter {
-            Self.preferredRecognitionLanguages.contains($0.languageCode?.identifier ?? "")
-        }
-        let languages = preferred.isEmpty ? supported : preferred
         environment.settings.forgetUnsupportedPrimaryRecognitionLanguage(supported: supported)
-        guard let primary = environment.settings.preferences.primaryRecognitionLanguage,
-            let first = supported.first(where: { $0.maximalIdentifier == primary })
-        else { return (languages, unavailable) }
-        return ([first] + languages.filter { $0.maximalIdentifier != primary }, unavailable)
+        return environment.settings.recognitionLanguages(supported: supported)
     }
-
-    static let preferredRecognitionLanguages = ["en", "pt"]
 
     // MARK: QR
 
