@@ -32,6 +32,8 @@ public struct Pin: Identifiable, Sendable {
     public let exportID: DocumentID?
     /// Pixels per point used to show the image at its captured size; 1 for imported images.
     public let displayScale: Double
+    /// Whether the pin takes keyboard focus when it first appears.
+    public let takesFocus: Bool
     public var opacity: Double
     public var zoom: Double
     /// Floats above normal windows (ADR-007 amendment). Off for every new pin, so by default a pin
@@ -77,8 +79,9 @@ public final class PinsModel {
     /// Renders `session` through the sanitizing renderer and pins the result, unless the live
     /// session moved on while rendering.
     @discardableResult
-    public func pin(_ session: DocumentSession, currentSession: () -> DocumentSession?) async throws(PinError) -> PinID
-    {
+    public func pin(
+        _ session: DocumentSession, takesFocus: Bool = true, currentSession: () -> DocumentSession?
+    ) async throws(PinError) -> PinID {
         guard canAddPin else { throw .limitReached }
         // The slot stays reserved until the renderer returns, even if the caller is canceled or
         // Close All runs meanwhile: the image is still allocated until then.
@@ -95,20 +98,20 @@ public final class PinsModel {
         guard generation == requestGeneration else { throw .staleDocument }
         guard let current = currentSession(), current.accepts(identity) else { throw .staleDocument }
         let scale = session.document.assets.count == 1 ? session.document.assets.values.first?.pointPixelScale : nil
-        return try insert(image, source: identity, displayScale: scale ?? 1, exportable: true)
+        return try insert(image, source: identity, displayScale: scale ?? 1, exportable: true, takesFocus: takesFocus)
     }
 
     /// Adds an already rendered, sanitized image.
     @discardableResult
     public func add(_ image: CGImage, source: RequestIdentity?, displayScale: Double) throws(PinError) -> PinID {
         guard canAddPin else { throw .limitReached }
-        return try insert(image, source: source, displayScale: displayScale, exportable: false)
+        return try insert(image, source: source, displayScale: displayScale, exportable: false, takesFocus: true)
     }
 
     /// Appends a pin into a free slot. A rendering request calls this while still holding its own
     /// reservation, so it checks the committed pins only.
     private func insert(
-        _ image: CGImage, source: RequestIdentity?, displayScale: Double, exportable: Bool
+        _ image: CGImage, source: RequestIdentity?, displayScale: Double, exportable: Bool, takesFocus: Bool
     ) throws(PinError) -> PinID {
         guard pins.count < PinLimits.maxPins else { throw .limitReached }
         let (pixels, overflow) = image.width.multipliedReportingOverflow(by: image.height)
@@ -119,6 +122,7 @@ public final class PinsModel {
             id: PinID(), image: image, sourceDocumentID: source?.documentID, privacyEpoch: source?.privacyEpoch ?? 0,
             exportID: exportable ? DocumentID() : nil,
             displayScale: displayScale.isFinite && displayScale > 0 ? displayScale : 1,
+            takesFocus: takesFocus,
             opacity: settings.preferences.pinDefaultOpacity, zoom: 1)
         pins.append(pin)
         return pin.id

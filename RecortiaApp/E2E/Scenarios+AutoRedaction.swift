@@ -38,6 +38,7 @@
         static func autoRedaction(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let detection = harness.sensitiveText
             harness.settings.update {
+                $0.afterCapture = .pin
                 $0.autoRedactsSensitiveText = true
                 $0.autoCopy = true
             }
@@ -51,7 +52,10 @@
             try context.require("detection runs on the new capture", await E2EWait.until { detection.isWaiting })
             context.check("the editor opens while masking is pending", model.isMaskingPending)
             // Decided at capture completion: this change belongs to the next capture.
-            harness.settings.update { $0.autoRedactsSensitiveText = false }
+            harness.settings.update {
+                $0.autoRedactsSensitiveText = false
+                $0.afterCapture = .openEditor
+            }
             context.check(
                 "the editor model holds no capture pixels while pending",
                 model.baseImage == nil && model.calloutBaseImage == nil)
@@ -93,6 +97,9 @@
             try context.require(
                 "the automatic copy ran after the masks landed",
                 await E2EWait.until { harness.clipboard.writeCount == copies + 1 })
+            context.check(
+                "automatic masking success opens only the editor despite the Pin choice",
+                harness.features.pins.pins.isEmpty && harness.quickActionsUI.panel == nil)
             let data = try context.unwrap("PNG on the pasteboard", harness.clipboard.pasteboard.data(forType: .png))
             let copied = try E2EActions.decode(data, "automatic copy", context)
             context.check(
@@ -112,7 +119,10 @@
                 await E2EWait.until { harness.clipboard.writeCount == copies + 2 && !harness.features.export.isBusy })
 
             // Failed: the capture is shown with a notice, its batch is skipped, manual export works.
-            harness.settings.update { $0.autoRedactsSensitiveText = true }
+            harness.settings.update {
+                $0.autoRedactsSensitiveText = true
+                $0.afterCapture = .pin
+            }
             detection.holds = false
             detection.fails = true
             let messages = harness.messages.values.count
@@ -126,6 +136,9 @@
             context.check(
                 "nothing was masked or copied automatically",
                 failed.model.document.masks.isEmpty && harness.clipboard.writeCount == copies + 2)
+            context.check(
+                "automatic masking failure opens only the editor despite the Pin choice",
+                harness.features.pins.pins.isEmpty && harness.quickActionsUI.panel == nil)
             try await harness.editors.waitForBase(failed.model)
             await E2EActions.snapshotEditor(failed, context, shot: "failed")
             await E2EActions.darkEditor(failed, context, shot: "failed", surface: "failed masking notice")
