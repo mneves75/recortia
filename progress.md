@@ -299,3 +299,14 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   while preserving the spelling of its missing child. The assertion now verifies the exact
   child of the resolved parent and rejects a symlink. Temporary controls accepted the intended
   missing child and rejected a similarly prefixed sibling and two kinds of symlink.
+- Clean `2d1b6df` passed the local unsigned gate (1,085 tests and both Debug builds), hosted
+  CI and the focused bilingual diagnostics replay. The full English replay
+  `20261121-210130-89670` then passed 68 of 73. In the cold-launch import control, the 20-second
+  wait ended as the 11th read was still admitted. The four later import-dependent scenarios
+  reported busy. The preceding qualified bilingual run passed these five scenarios. The
+  Portuguese part of this full attempt is void after console input.
+- Cold-launch replay now returns the handle of the admitted batch. The existing scenario
+  awaits its completion before checking all 12 native editor titles in order, once-only reads
+  and no refusals. The runner's existing watchdog bounds a hung batch. A fresh independent
+  source review confirmed the startup counter and asynchronous dispatch remain in their
+  original positions. Bilingual replay is pending.
