@@ -299,7 +299,10 @@ private struct QuickActionsPreviewView: View {
         let height = CGFloat(image.height)
         let horizontal = DesignTokens.Space.m * 2
         let vertical = horizontal + DesignTokens.Space.s + controlsHeight
-        let scale = min(1 / backingScale, (bounds.width - horizontal) / width, (bounds.height - vertical) / height)
+        let thumbnail = QuickActionsView.maxThumbnail
+        let inspectionScale = 2 * min(thumbnail.width / width, thumbnail.height / height)
+        let preferredScale = max(1 / backingScale, inspectionScale)
+        let scale = min(preferredScale, (bounds.width - horizontal) / width, (bounds.height - vertical) / height)
         return CGSize(width: width * scale, height: height * scale)
     }
 

@@ -361,3 +361,9 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   focus in the dispatch helper. The second Escape and subsequent RED assertions need replay.
 - The independent source verification of the comparison plan passed. Native acceptance
   combines the ten preview, capture and import scenarios on the branch with `309a550` included.
+- Clean `7b84230` passed 1,085 package tests, both Debug builds, and the bilingual native runs
+  `20261122-005232-79090` (10/10 each) and `20261122-005502-91505` (73/73 each). The Developer ID
+  dry run also completed. Independent review found that a 320×100 capture on a 2× display could
+  shrink from a 240×75 pt thumbnail to a 160×50 pt preview. Preview now magnifies small rasters
+  for inspection within the same display bounds. The renderer's raster keeps its existing size
+  limits. Requalification of the sizing correction is pending.
