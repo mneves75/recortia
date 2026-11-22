@@ -505,5 +505,30 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   editor notices, automatic export and export feedback also passed, for 5/5 scenarios and
   15 screenshots per language in `.scratch/e2e/20261122-192831-53509/`. The unique held-timer
   control stays in the existing native scenario. No unit test was added.
-- The corrected source becomes 0.16.0 (31). The installed signed build 30 remains recorded
-  separately until a verified replacement is installed.
+- The exact 0.16.0 (31) candidate is `d768455f1cb34dcf5ee3331c6979221b8f23e68e`.
+  A fresh independent replay passed 5/5 scenarios and produced 15 screenshots per language
+  in `.scratch/e2e/20261122-193848-62361/`. The persistent count was present after expiry and
+  the export contained zero secret pixels. Its unmasked control contained 84,397.
+- On macOS 27.3 and stable Xcode 27.2 (27B52), `./init.sh check --unsigned` passed with
+  Vision enabled, including the package suite, both Debug builds and malformed-launch
+  rejection. The first parallel run exceeded the 10-second Vision cancellation bound.
+  The isolated assertion passed, and it passed again in the full rerun. Logs are in
+  `.scratch/logs/check-d768455-unsigned.log`, `.scratch/logs/vision-cancel-d768455-isolated.log`
+  and `.scratch/logs/check-d768455-unsigned-rerun.log`. [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45078123627)
+  passed the gate and unsigned Release scan on the identical tree
+  `3ad6f00827ce0b6710bb7af51b6bc51f21b15053`. Hosted CI declares Vision unavailable.
+- `scripts/release.sh --dry-run` produced the signed build 31 export and disk image.
+  Independent checks passed the strict signatures for the app and Sparkle components, the
+  entitlement allowlist, the absence of test markers, and the disk-image integrity check.
+  The disk image SHA-256 is `38f0007eac7b1787dbc8c3cbb8fd54f2397ef156dfc7cebf5759ea2f3110803f`.
+  The app passed local Gatekeeper assessment. The disk image remains unnotarized.
+- The on-disk installation at `/Applications/Recortia.app` is 0.16.0 (31). A fresh verifier
+  matched all 177 installed entries to the signed export. The signed build 30 rollback and
+  installation receipt are in the primary checkout at `.scratch/install-0.16.0-build31-20261122/`.
+  The running build 29 session still mapped the same executable at PID 93036. Build 31 has
+  yet to launch.
+- macOS SecurityAgent still held the foreground after the checks. Full bilingual replay and
+  installed-app fullscreen verification need a dedicated desktop. Physical VoiceOver, TCC,
+  native Save and Print panels, horizontal capture and macOS 26.0 remain unverified.
+  SEC-11, SEC-17, SEC-18, notarization and live Sparkle update remain open. The branch is in
+  draft PR #50 and release closeout has not started.

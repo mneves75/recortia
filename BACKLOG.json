@@ -208,10 +208,10 @@
     "requirements": ["FR-01", "FR-06", "FR-07", "FR-08", "FR-09", "FR-13"],
     "scope": "The capture and framing features from build 30, with a fix for a stale editor notice timer dismissing the automatic masking count.",
     "pull_request": "https://github.com/mneves75/recortia/pull/50",
-    "status": "source_candidate_awaiting_full_qualification",
-    "verification": "A deterministic native replay reproduced the missing count with the old timer logic. The corrected implementation passed all five focused native scenarios in each language before this build-number increment. See progress.md for receipts.",
-    "installation": "Signed build 30 is installed on disk. The preserved build 29 session is still running.",
-    "release": "Full candidate verification, exact-commit release security, notarization, live update, physical desktop checks, minimum macOS, merge and tag remain open."
+    "status": "locally_installed_awaiting_full_qualification",
+    "verification": "At d768455f1cb34dcf5ee3331c6979221b8f23e68e, hosted CI and unsigned Release scanning passed on the identical tree. The stable local unsigned gate passed on rerun with Vision enabled. The earlier run failed the existing Vision cancellation timing bound, which passed in isolation and in the full rerun. An independent native replay passed all five affected scenarios in English and Brazilian Portuguese. See progress.md for receipts.",
+    "installation": "Verified Developer ID 0.16.0 (31) is installed in /Applications on macOS 27.3. The build 30 rollback and running build 29 session were preserved. Build 31 launch is pending.",
+    "release": "Private disk-image integrity and signing passed. Full native qualification, exact-tree release security, notarization, live Sparkle update, physical desktop checks, minimum macOS, merge and tag remain open."
   },
   "previous_source_candidate_0_16_0_build_30": {
     "version": "0.16.0",
@@ -226,6 +226,22 @@
     "release": "A private dry run verified signing and the disk image. Exact-commit release security, notarization, live update, physical desktop checks, minimum macOS, merge and tag remain open."
   },
   "current_local_installation": {
+    "candidate": "0.16.0 Developer ID local candidate",
+    "app_version": "0.16.0",
+    "build": 31,
+    "date": "2026-11-22",
+    "source_commit": "d768455f1cb34dcf5ee3331c6979221b8f23e68e",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Verified export from scripts/release.sh --dry-run, 0.16.0-dev-20261122T223117Z-81147.",
+    "backup_path": "Primary main checkout: .scratch/install-0.16.0-build31-20261122/Recortia.app (previous signed 0.16.0 build 30).",
+    "executable_sha256": "9edae65996f318d20adfac08cb232d86ae1d02abf42d335825bc8be8d28818a7",
+    "installed_equals_developer_id_export": true,
+    "launched": false,
+    "notarized": false,
+    "verification": "Independent verification matched all 177 installed bundle entries to the export. Strict Developer ID signature, Hardened Runtime, entitlements and local Gatekeeper assessment passed. The running build 29 process preserved its PID, start time and mapped executable inode. Receipt in the primary main checkout: .scratch/install-0.16.0-build31-20261122/installation.json.",
+    "qualification": "Signed installation on macOS 27.3 passed. First launch of build 31, full bilingual E2E, installed-app fullscreen, minimum macOS, physical VoiceOver and TCC remain open."
+  },
+  "previous_local_installation_0_16_0_build_30": {
     "candidate": "0.16.0 Developer ID local candidate",
     "app_version": "0.16.0",
     "build": 30,
