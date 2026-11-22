@@ -31,9 +31,13 @@ enum RenderEngine {
         let map = CGAffineTransform(
             a: s, b: 0, c: 0, d: s, tx: frame.contentOriginX - content.minX * s,
             ty: frame.contentOriginY - content.minY * s)
-        let presented = !document.presentation.isPlain
+        var framing = document.presentation
+        framing.border = nil
+        framing.watermark = nil
+        let presented = !framing.isPlain
         try checkBudget(
-            document, sources: sources, outputSize: size, map: map, presented: presented, drawsCallouts: true)
+            document, sources: sources, outputSize: size, map: map, presented: presented, drawsCallouts: true,
+            watermarkOpacityLayer: (document.presentation.watermark?.opacity ?? 1) < 1)
 
         let images = try sanitizedLayerImages(document, sources: sources)
         var raster = try RenderRaster(width: size.width, height: size.height)
@@ -57,8 +61,9 @@ enum RenderEngine {
         let shift = document.presentation.centresOpaqueContent ? balanceShift(raster, content: contentBounds) : (0, 0)
         var final =
             presented
-            ? try present(raster, document.presentation, contentRect: contentPixels, scale: s, shift: shift)
+            ? try present(raster, framing, contentRect: contentPixels, scale: s, shift: shift)
             : raster
+        try decorate(&final, with: document.presentation, scale: s)
         final.normalizeTransparentPixels()
         guard let image = final.makeImage() else { throw RenderError.allocationFailed }
         return image
@@ -139,7 +144,8 @@ enum RenderEngine {
         if let crop = document.crop, !isFinite(crop) { throw RenderError.invalidGeometry }
         let presentation = document.presentation
         guard presentation.padding.isFinite, presentation.padding >= 0, presentation.cornerRadius.isFinite,
-            presentation.cornerRadius >= 0
+            presentation.cornerRadius >= 0, presentation.border?.isValid != false,
+            presentation.watermark?.isValid != false
         else { throw RenderError.invalidGeometry }
         if let shadow = presentation.shadow {
             guard shadow.radius.isFinite, shadow.radius >= 0, shadow.offsetY.isFinite, shadow.opacity.isFinite else {
@@ -164,7 +170,7 @@ enum RenderEngine {
     /// Estimates the renderer's own buffers and refuses before allocating any of them.
     static func checkBudget(
         _ document: Document, sources: [AssetID: CGImage], outputSize: PixelSize, map: CGAffineTransform,
-        presented: Bool, drawsCallouts: Bool
+        presented: Bool, drawsCallouts: Bool, watermarkOpacityLayer: Bool = false
     ) throws(RenderError) {
         let limit = RenderLimits.maxWorkingBytes
         var pixels = 0
@@ -185,6 +191,7 @@ enum RenderEngine {
         }
         add(outputArea)
         if presented { add(outputArea) }
+        if watermarkOpacityLayer { add(outputArea) }
         var seen = Set<AssetID>()
         // `RenderRaster.fill` writes from one temporary row, at most as wide as the widest raster.
         var fillRow = outputSize.width
@@ -455,6 +462,78 @@ enum RenderEngine {
             context.restoreGState()
         }
         return output
+    }
+
+    private static func decorate(
+        _ raster: inout RenderRaster, with presentation: Presentation, scale: Double
+    ) throws(RenderError) {
+        guard presentation.border != nil || presentation.watermark != nil else { return }
+        let output = CGRect(x: 0, y: 0, width: raster.width, height: raster.height)
+        try raster.withTopLeftContext { (context: CGContext) throws(RenderError) in
+            if let border = presentation.border {
+                let inset = min(border.width * scale, min(output.width, output.height) / 2)
+                let inner = output.insetBy(dx: inset, dy: inset)
+                let ring = CGMutablePath()
+                ring.addRect(output)
+                if !inner.isEmpty { ring.addRect(inner) }
+                context.addPath(ring)
+                context.setFillColor(border.color.cgColor)
+                context.fillPath(using: .evenOdd)
+            }
+            if let watermark = presentation.watermark {
+                try drawWatermark(watermark, in: output, scale: scale, context)
+            }
+        }
+    }
+
+    private static func drawWatermark(
+        _ watermark: Presentation.Watermark, in output: CGRect, scale: Double, _ context: CGContext
+    ) throws(RenderError) {
+        let shortSide = min(output.width, output.height)
+        let fontSize = max(8, min(44 * scale, shortSide * 0.12))
+        let text = Annotation.TextContent(
+            origin: Point(x: 0, y: 0), string: watermark.text, fontSize: fontSize, appearance: .outlined)
+        let layout: TextLayout.Operation
+        do {
+            layout = try TextLayout.operation(
+                for: text, style: Annotation.Style(stroke: .black, lineWidth: max(0.6, fontSize * 0.07)))
+        } catch {
+            throw .textLayoutFailed(error)
+        }
+        let ink = layout.metrics.frame.cg
+        let angle = watermark.rotationDegrees * .pi / 180
+        let cosine = abs(cos(angle)), sine = abs(sin(angle))
+        let rotatedWidth = ink.width * cosine + ink.height * sine
+        let rotatedHeight = ink.width * sine + ink.height * cosine
+        let interior = output.insetBy(dx: shortSide * 0.04, dy: shortSide * 0.04)
+        guard rotatedWidth > 0, rotatedHeight > 0 else { throw .invalidGeometry }
+        let fit = min(1, interior.width / rotatedWidth, interior.height / rotatedHeight)
+        let halfWidth = rotatedWidth * fit / 2, halfHeight = rotatedHeight * fit / 2
+        let left = interior.minX + halfWidth, right = interior.maxX - halfWidth
+        let top = interior.minY + halfHeight, bottom = interior.maxY - halfHeight
+        let center: CGPoint
+        switch watermark.position {
+        case .topLeft: center = CGPoint(x: left, y: top)
+        case .topRight: center = CGPoint(x: right, y: top)
+        case .center: center = CGPoint(x: output.midX, y: output.midY)
+        case .bottomLeft: center = CGPoint(x: left, y: bottom)
+        case .bottomRight: center = CGPoint(x: right, y: bottom)
+        }
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.setShouldSmoothFonts(false)
+        context.setShouldAntialias(true)
+        context.translateBy(x: center.x, y: center.y)
+        context.rotate(by: angle)
+        context.scaleBy(x: fit, y: fit)
+        context.translateBy(x: -ink.midX, y: -ink.midY)
+        if watermark.opacity < 1 {
+            // Composite the glyph fill and outline once at the chosen opacity.
+            context.setAlpha(watermark.opacity)
+            context.beginTransparencyLayer(in: ink, auxiliaryInfo: nil)
+        }
+        layout.draw(in: context)
+        if watermark.opacity < 1 { context.endTransparencyLayer() }
     }
 
     private static func drawBackground(_ background: Presentation.Background, in rect: CGRect, _ context: CGContext) {

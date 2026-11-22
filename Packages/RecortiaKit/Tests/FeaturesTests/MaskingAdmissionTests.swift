@@ -124,7 +124,12 @@ struct MaskingAdmissionTests {
     func everyEntryPointWhilePending() async throws {
         let h = EditorHarness()
         h.sensitiveText.pending = Pending<Void>()
-        h.settings.update { $0.autoCopy = true }
+        var recipes = FramingRecipes()
+        let recipeID = try recipes.save(named: "Existing Recipe", presentation: Presentation(padding: 32))
+        h.settings.update {
+            $0.autoCopy = true
+            $0.framingRecipes = recipes
+        }
         let model = EditorModel(
             session: try Self.populatedSession(), environment: h.model.environment, autoRedacts: true)
         await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
@@ -192,6 +197,13 @@ struct MaskingAdmissionTests {
             Step(name: "setShadow", expectation: .refused) { model.setShadow(Presentation.Shadow()) },
             Step(name: "setAspect", expectation: .refused) { model.setAspect(.square) },
             Step(name: "setBalancesContent", expectation: .refused) { model.setBalancesContent(false) },
+            Step(name: "setFramingBorder", expectation: .refused) { model.setFramingBorder(Presentation.Border()) },
+            Step(name: "setFramingWatermark", expectation: .refused) {
+                #expect(!model.setFramingWatermark(Presentation.Watermark(text: "Draft")))
+            },
+            Step(name: "applyFramingRecipe", expectation: .refused) {
+                #expect(throws: FramingRecipes.Failure.unavailable) { try model.applyFramingRecipe(recipeID) }
+            },
             Step(name: "setSpotlightDim", expectation: .refused) { model.setSpotlightDim(0.2, for: spotlight) },
             Step(name: "setObfuscationAmount", expectation: .refused) { model.setObfuscationAmount(40, for: effect) },
             Step(name: "commitTextEditing", expectation: .refused) {
@@ -295,6 +307,18 @@ struct MaskingAdmissionTests {
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
             Step(name: "saveDefaultFraming", expectation: .inert) { model.saveDefaultFraming() },
             Step(name: "resetDefaultFraming", expectation: .inert) { model.resetDefaultFraming() },
+            Step(name: "saveFramingRecipe", expectation: .inert) {
+                let id = try model.saveFramingRecipe(named: "New Recipe")
+                #expect(model.framingRecipes.contains { $0.id == id && $0.name == "New Recipe" })
+            },
+            Step(name: "renameFramingRecipe", expectation: .inert) {
+                try model.renameFramingRecipe(recipeID, to: "Renamed Recipe")
+                #expect(model.framingRecipes.contains { $0.id == recipeID && $0.name == "Renamed Recipe" })
+            },
+            Step(name: "removeFramingRecipe", expectation: .inert) {
+                try model.removeFramingRecipe(recipeID)
+                #expect(!model.framingRecipes.contains { $0.id == recipeID })
+            },
             Step(name: "applySavedColor", expectation: .inert) { model.applySavedColor(model.style.stroke) },
             Step(name: "removeSavedColor", expectation: .inert) { model.removeSavedColor(model.style.stroke) },
             Step(name: "clearRuler", expectation: .inert) { model.clearRuler() },

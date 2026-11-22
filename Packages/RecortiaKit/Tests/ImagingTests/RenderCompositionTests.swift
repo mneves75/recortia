@@ -85,6 +85,86 @@ struct RenderCompositionTests {
         #expect(abs(Int(outside.b) - Int(original.b) / 2) <= 2)
     }
 
+    @Test("An output border paints every edge once without changing dimensions", arguments: [1.0, 2.0])
+    func outputBorder(scale: Double) async throws {
+        let harness = ImagingHarness()
+        let asset = try await harness.add(try ChartFixture.solid(width: 40, height: 30, color: Self.gray))
+        var document = Document(
+            assets: [asset.id: asset], canvasSize: Size(width: 40, height: 30),
+            layers: [ImageLayer(assetID: asset.id)])
+        document.presentation.border = Presentation.Border(width: 3, color: RGBA(r: 255, g: 0, b: 0, a: 128))
+
+        let result = try pixels(try await harness.renderer.render(document, scale: scale))
+        let width = Int(40 * scale)
+        let height = Int(30 * scale)
+        let border = Int(3 * scale)
+        #expect(result.width == width && result.height == height)
+        let expected = color(192, 64, 64)
+        #expect(result.pixel(x: 0, y: 0).distance(to: expected) <= 2)
+        #expect(result.pixel(x: width - 1, y: height - 1).distance(to: expected) <= 2)
+        #expect(result.pixel(x: border - 1, y: height / 2).distance(to: expected) <= 2)
+        #expect(result.pixel(x: width / 2, y: height - border).distance(to: expected) <= 2)
+        #expect(result.pixel(x: border, y: height / 2) == Self.gray)
+        #expect(result.pixel(x: width / 2, y: height - border - 1) == Self.gray)
+    }
+
+    @Test(
+        "A rotated Unicode watermark stays inside its output corner and preserves transparency",
+        arguments: [Presentation.Watermark.Position.topRight, .bottomLeft])
+    func outputWatermark(position: Presentation.Watermark.Position) async throws {
+        let harness = ImagingHarness()
+        let width = 160
+        let height = 100
+        let asset = try await harness.add(
+            try ChartFixture.solid(width: width, height: height, color: color(0, 0, 0, 0)))
+        var document = Document(asset: asset)
+        document.presentation.watermark = Presentation.Watermark(
+            text: "Olá", position: position, opacity: 0.4, rotationDegrees: -27)
+
+        let result = try pixels(try await harness.renderer.render(document, scale: 1))
+        #expect(result.width == width && result.height == height)
+        let ink: [(x: Int, y: Int, alpha: UInt8)] = (0..<height).flatMap { y in
+            (0..<width).compactMap { x in
+                let alpha = result.pixel(x: x, y: y).a
+                return alpha == 0 ? nil : (x: x, y: y, alpha: alpha)
+            }
+        }
+        #expect(ink.count > 20)
+        let peakAlpha = try #require(ink.map { $0.alpha }.max())
+        #expect((70...103).contains(peakAlpha))
+        #expect(ink.allSatisfy { $0.x > 0 && $0.x < width - 1 && $0.y > 0 && $0.y < height - 1 })
+        switch position {
+        case .topRight: #expect(ink.allSatisfy { $0.x > width / 2 && $0.y < height / 2 })
+        case .bottomLeft: #expect(ink.allSatisfy { $0.x < width / 2 && $0.y > height / 2 })
+        default: Issue.record("Expected a corner fixture")
+        }
+    }
+
+    @Test("Malformed output decoration is refused before rendering")
+    func invalidOutputDecoration() async throws {
+        let harness = ImagingHarness()
+        let asset = try await harness.add(try ChartFixture.solid(width: 40, height: 30, color: Self.gray))
+        let base = Document(asset: asset)
+        let invalid = [
+            Presentation(watermark: Presentation.Watermark(text: "")),
+            Presentation(watermark: Presentation.Watermark(text: "First\nSecond")),
+            Presentation(watermark: Presentation.Watermark(text: String(repeating: "é", count: 129))),
+            Presentation(watermark: Presentation.Watermark(text: String(repeating: "e\u{301}", count: 128))),
+            Presentation(watermark: Presentation.Watermark(text: "Draft", rotationDegrees: .infinity)),
+            Presentation(border: Presentation.Border(width: .nan)),
+        ]
+        for presentation in invalid {
+            var document = base
+            document.presentation = presentation
+            do {
+                _ = try await harness.renderer.render(document, scale: 1)
+                Issue.record("Invalid output decoration rendered")
+            } catch {
+                #expect(error == .invalidGeometry)
+            }
+        }
+    }
+
     @Test("A magnifier enlarges sanitized layers only: no annotations, no other callouts, no render cycle")
     func magnifierSamplesBaseOnly() async throws {
         let harness = ImagingHarness()

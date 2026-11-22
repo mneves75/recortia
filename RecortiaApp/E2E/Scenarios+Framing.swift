@@ -45,8 +45,17 @@
 
         static func framingPresets(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let saved = harness.settings.preferences.defaultFraming
-            defer { harness.settings.update { $0.defaultFraming = saved } }
-            harness.settings.update { $0.defaultFraming = nil }
+            let savedRecipes = harness.settings.preferences.framingRecipes
+            defer {
+                harness.settings.update {
+                    $0.defaultFraming = saved
+                    $0.framingRecipes = savedRecipes
+                }
+            }
+            harness.settings.update {
+                $0.defaultFraming = nil
+                $0.framingRecipes = nil
+            }
             let image: CGImage
             do { image = try windowLike() } catch { throw E2EAbort("framing fixture: \(error)") }
             let controller = try await harness.openImported(image, name: "framing.png")
@@ -213,6 +222,207 @@
             context.check(
                 "the next capture opens unframed", plain.model.document.presentation == .plain,
                 "\(plain.model.document.presentation)")
+            try await verifyOutputDecoration(plain, context)
+            let decorated = try await exported(plain, "decorated")
+            let black = ChartFixture.Color(0, 0, 0)
+            context.check(
+                "the decoration is present in the exported file",
+                decorated.pixel(x: 0, y: 0) == black
+                    && decorated.pixel(x: decorated.width - 1, y: decorated.height - 1) == black)
+            try await namedRecipes(controller, context) {
+                let fromRecipe = try await exported(controller, "recipe-replay")
+                context.check("the named recipe reproduces all the original output pixels", fromRecipe == tall)
+            }
+        }
+
+        private static func verifyOutputDecoration(_ editor: EditorWindowController, _ context: ScenarioContext)
+            async throws
+        {
+            let window = try context.unwrap("editor window for decoration", editor.window)
+            let root = try context.unwrap("editor content for decoration", editor.contentRoot)
+            try await E2EAccessibilityControl.showAndActivate(window, context)
+            editor.panes.chosenInspectorTab = .image
+            await E2ESnapshot.settle(root)
+            await E2EActions.scrollInspector(editor, to: 0)
+            await E2ESnapshot.settle(root)
+            try await E2EAccessibilityControl.setDisclosure(
+                "image.decoration", titled: String(localized: "Output Decoration", table: "Editor"),
+                expanded: true, in: root, context)
+            try E2EAccessibilityControl.click("image.decoration.border", in: root, context)
+            try context.require(
+                "the border control applies its default width",
+                await E2EWait.until { editor.model.document.presentation.border?.width == 4 })
+            try E2EAccessibilityControl.press("image.decoration.applyWatermark", in: root, context)
+            try context.require(
+                "blank watermark text is refused without editing",
+                await E2EWait.until {
+                    E2EAccessibilityControl.isPresent("image.decoration.textError", in: root)
+                        && editor.model.document.presentation.watermark == nil
+                })
+            try await E2EAccessibilityControl.enterNumber(
+                "image.decoration.watermark", text: "Revisão", in: root, context)
+            try context.require(
+                "the native field commits the accented watermark",
+                await E2EWait.until { editor.model.document.presentation.watermark?.text == "Revisão" })
+            editor.model.undo()
+            context.check("one undo removes the watermark", editor.model.document.presentation.watermark == nil)
+            editor.model.redo()
+            context.check(
+                "redo restores the watermark", editor.model.document.presentation.watermark?.text == "Revisão")
+            editor.model.setShowsOutputPreview(true)
+            await E2EActions.snapshotEditor(editor, context, shot: "output-decoration")
+            await E2EActions.darkEditor(editor, context, shot: "output-decoration", surface: "decorated output preview")
+            editor.model.setShowsOutputPreview(false)
+        }
+
+        private static func namedRecipes(
+            _ controller: EditorWindowController, _ context: ScenarioContext,
+            verifyAppliedOutput: () async throws -> Void
+        ) async throws {
+            let root = try context.unwrap("recipe controls root", controller.contentRoot)
+            let window = try context.unwrap("recipe editor window", controller.window)
+            try await E2EAccessibilityControl.showAndActivate(window, context)
+            let model = controller.model
+            let framing = model.document.presentation
+            let name = "Café"
+            let maximumName = String(repeating: "é", count: 32)
+            func click(_ identifier: String) async throws {
+                await E2EActions.scrollInspector(controller, to: 1)
+                await E2ESnapshot.settle(root)
+                try E2EAccessibilityControl.click(identifier, in: root, context)
+            }
+            try await click("image.saveFramingRecipe")
+            try await enterRecipeName(name, in: window, refusing: [""], context)
+            let recipe = try context.unwrap("the saved named framing", model.framingRecipes.first)
+            context.check(
+                "the saved recipe contains the original framing", recipe.name == name && recipe.presentation == framing)
+            try await click("image.saveFramingRecipe")
+            try await enterRecipeName(
+                maximumName, in: window, refusing: ["CAFE\u{301}", maximumName + "a"], context)
+            context.check(
+                "duplicate save and 65 UTF-8 bytes are refused and 64 UTF-8 bytes are accepted",
+                model.framingRecipes.map(\.name) == [name, maximumName])
+
+            model.setPadding(37)
+            let revised = model.document.presentation
+            model.setShowsOutputPreview(true)
+            let undoCount = model.session.undoCount
+            await E2EActions.scrollInspector(controller, to: 1)
+            await E2ESnapshot.settle(root)
+            _ = try await E2EAccessibilityControl.chooseFromMenu(
+                name, opening: "image.framingRecipe", in: root, context)
+            try E2EAccessibilityControl.click("image.applyFramingRecipe", in: root, context)
+            try context.require(
+                "applying a recipe restores the whole framing in Preview",
+                await E2EWait.until {
+                    model.document.presentation == framing && model.showsOutputPreview
+                })
+            context.check("applying adds one undo step", model.session.undoCount == undoCount + 1)
+            try await verifyAppliedOutput()
+            model.undo()
+            context.check("one undo restores the former framing", model.document.presentation == revised)
+            model.redo()
+            context.check("one redo reapplies the framing", model.document.presentation == framing)
+            let appliedCount = model.session.undoCount
+            try model.applyFramingRecipe(recipe.id)
+            context.check(
+                "applying the current style again succeeds without new history", model.session.undoCount == appliedCount
+            )
+            try await click("image.saveDefaultFraming")
+            try context.require(
+                "the applied recipe is saved as the explicit default",
+                await E2EWait.until {
+                    model.defaultFraming == framing
+                })
+
+            let renamed = "Água"
+            try await click("image.renameFramingRecipe")
+            try await enterRecipeName(renamed, in: window, refusing: [maximumName], context)
+            context.check(
+                "duplicate rename is refused and a valid rename keeps the recipe identity",
+                model.framingRecipes.contains { $0.id == recipe.id && $0.name == renamed })
+            try await click("image.deleteFramingRecipe")
+            try context.require(
+                "deleting removes the named recipe",
+                await E2EWait.until {
+                    model.framingRecipes.map(\.name) == [maximumName]
+                })
+            context.check(
+                "renaming and deleting leave both the applied framing and the explicit default",
+                model.document.presentation == framing && model.defaultFraming == framing)
+
+            model.setPadding(37)
+            try await click("image.saveFramingRecipe")
+            try await enterRecipeName(renamed, in: window, context)
+            let replacement = try context.unwrap(
+                "the recreated recipe", model.framingRecipes.first { $0.name == renamed })
+            try context.require("reusing a deleted name creates a new identity", replacement.id != recipe.id)
+            try checkStaleRecipe(recipe.id, in: model, context)
+            model.setShowsOutputPreview(false)
+        }
+
+        private static func checkStaleRecipe(_ id: UUID, in model: EditorModel, _ context: ScenarioContext) throws {
+            let document = model.document
+            let history = model.session.undoCount
+            let recipes = model.framingRecipes
+            func failsClosed(_ action: () throws(FramingRecipes.Failure) -> Void) -> Bool {
+                do {
+                    try action()
+                    return false
+                } catch {
+                    return error == .unavailable
+                }
+            }
+            try context.require(
+                "a stale ID cannot apply, rename or delete the recreated recipe",
+                failsClosed { () throws(FramingRecipes.Failure) in try model.applyFramingRecipe(id) }
+                    && failsClosed { () throws(FramingRecipes.Failure) in try model.renameFramingRecipe(id, to: "Outro")
+                    }
+                    && failsClosed { () throws(FramingRecipes.Failure) in try model.removeFramingRecipe(id) })
+            context.check(
+                "the recreated recipe, document and history are untouched",
+                model.framingRecipes == recipes && model.document == document && model.session.undoCount == history)
+        }
+
+        private static func enterRecipeName(
+            _ name: String, in window: NSWindow, refusing rejected: [String] = [], _ context: ScenarioContext
+        ) async throws {
+            let sheet = try context.unwrap(
+                "the recipe name sheet",
+                await E2EWait.until { window.attachedSheet != nil } ? window.attachedSheet : nil)
+            let root = try context.unwrap("recipe name sheet content", sheet.contentView)
+            await E2ESnapshot.settle(root)
+            func fill(_ text: String) async throws {
+                try E2EAccessibilityControl.click("framing.recipeName", in: root, context)
+                try context.require(
+                    "the name field owns this sheet's editor",
+                    await E2EWait.until { (sheet.firstResponder as? NSTextView)?.isFieldEditor == true })
+                let editor = try context.unwrap("recipe native field editor", sheet.firstResponder as? NSTextView)
+                editor.selectAll(nil)
+                editor.insertText(text, replacementRange: editor.selectedRange())
+            }
+            for rejectedName in rejected {
+                try await fill(rejectedName)
+                try context.require(
+                    "typing clears the previous recipe-name error",
+                    await E2EWait.until {
+                        !E2EAccessibilityControl.isPresent("framing.recipeNameError", in: root)
+                    })
+                try E2EAccessibilityControl.click("framing.saveRecipeName", in: root, context)
+                try context.require(
+                    "the refused name leaves its sheet open with an error",
+                    await E2EWait.until {
+                        window.attachedSheet === sheet
+                            && E2EAccessibilityControl.isPresent("framing.recipeNameError", in: root)
+                    })
+            }
+            try await fill(name)
+            try E2EAccessibilityControl.click("framing.saveRecipeName", in: root, context)
+            try context.require(
+                "saving a valid name closes the sheet",
+                await E2EWait.until {
+                    window.attachedSheet == nil
+                })
         }
     }
 #endif

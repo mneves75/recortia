@@ -330,6 +330,7 @@ public struct Preferences: Hashable, Sendable, Codable {
     /// The framing new captures open with (FR-13); nil until the person saves one in the editor.
     /// Documents already open never change with it.
     public var defaultFraming: Presentation?
+    public var framingRecipes: FramingRecipes?
 
     public init() {}
 

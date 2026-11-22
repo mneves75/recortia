@@ -210,10 +210,61 @@ public struct Presentation: Hashable, Sendable, Codable {
         }
     }
 
+    public struct Border: Hashable, Sendable, Codable {
+        public static let widthRange: ClosedRange<Double> = 1...64
+        public var width: Double
+        public var color: RGBA
+
+        public init(width: Double = 4, color: RGBA = .black) {
+            self.width = width
+            self.color = color
+        }
+
+        package var isValid: Bool { Self.widthRange.contains(width) }
+    }
+
+    public struct Watermark: Hashable, Sendable, Codable {
+        public enum Position: String, Hashable, Sendable, Codable, CaseIterable {
+            case topLeft, topRight, center, bottomLeft, bottomRight
+        }
+
+        public static let opacityRange: ClosedRange<Double> = 0.05...1
+        public static let rotationRange: ClosedRange<Double> = -180...180
+        public var text: String
+        public var position: Position
+        public var opacity: Double
+        public var rotationDegrees: Double
+
+        public init(text: String, position: Position = .bottomRight, opacity: Double = 0.7, rotationDegrees: Double = 0)
+        {
+            self.text = text
+            self.position = position
+            self.opacity = opacity
+            self.rotationDegrees = rotationDegrees
+        }
+
+        package static func normalizedText(_ input: String) -> String? {
+            let controls = CharacterSet.controlCharacters.union(.newlines)
+            guard !input.unicodeScalars.contains(where: controls.contains) else { return nil }
+            let text = input.trimmingCharacters(in: .whitespaces).precomposedStringWithCanonicalMapping
+            return (1...256).contains(text.utf8.count) ? text : nil
+        }
+
+        package var isValid: Bool {
+            guard let normalized = Self.normalizedText(text), normalized.utf8.elementsEqual(text.utf8) else {
+                return false
+            }
+            return Self.opacityRange.contains(opacity)
+                && Self.rotationRange.contains(rotationDegrees)
+        }
+    }
+
     public var background: Background
     public var padding: Double
     public var cornerRadius: Double
     public var shadow: Shadow?
+    public var border: Border?
+    public var watermark: Watermark?
     public var aspect: FramingAspect
     /// With an aspect preset, centre the content's opaque pixels rather than its box, so a window
     /// capture's transparent shadow margin does not push the window off centre.
@@ -221,7 +272,7 @@ public struct Presentation: Hashable, Sendable, Codable {
 
     public init(
         background: Background = .none, padding: Double = 0, cornerRadius: Double = 0, shadow: Shadow? = nil,
-        aspect: FramingAspect = .free, balancesContent: Bool = true
+        aspect: FramingAspect = .free, balancesContent: Bool = true, border: Border? = nil, watermark: Watermark? = nil
     ) {
         self.background = background
         self.padding = padding
@@ -229,6 +280,8 @@ public struct Presentation: Hashable, Sendable, Codable {
         self.shadow = shadow
         self.aspect = aspect
         self.balancesContent = balancesContent
+        self.border = border
+        self.watermark = watermark
     }
 
     public static let plain = Presentation()
@@ -239,7 +292,7 @@ public struct Presentation: Hashable, Sendable, Codable {
     public var centresOpaqueContent: Bool { aspect != .free && balancesContent }
 
     private enum CodingKeys: String, CodingKey {
-        case background, padding, cornerRadius, shadow, aspect, balancesContent
+        case background, padding, cornerRadius, shadow, aspect, balancesContent, border, watermark
     }
 
     /// Documents and preferences written before aspect presets have no `aspect` or
@@ -252,6 +305,8 @@ public struct Presentation: Hashable, Sendable, Codable {
         shadow = try container.decodeIfPresent(Shadow.self, forKey: .shadow)
         aspect = try container.decodeIfPresent(FramingAspect.self, forKey: .aspect) ?? .free
         balancesContent = try container.decodeIfPresent(Bool.self, forKey: .balancesContent) ?? true
+        border = try container.decodeIfPresent(Border.self, forKey: .border)
+        watermark = try container.decodeIfPresent(Watermark.self, forKey: .watermark)
     }
 
     /// Free and balance on are written without their keys, each on its own, so documents and
@@ -264,6 +319,8 @@ public struct Presentation: Hashable, Sendable, Codable {
         try container.encodeIfPresent(shadow, forKey: .shadow)
         if aspect != .free { try container.encode(aspect, forKey: .aspect) }
         if !balancesContent { try container.encode(false, forKey: .balancesContent) }
+        try container.encodeIfPresent(border, forKey: .border)
+        try container.encodeIfPresent(watermark, forKey: .watermark)
     }
 }
 
@@ -446,6 +503,7 @@ public struct Document: Identifiable, Hashable, Sendable, Codable {
         annotations.reduce(0) { $0 + $1.estimatedByteCost }
             + masks.reduce(0) { $0 + 64 + $1.sourceRegions.values.reduce(0) { $0 + $1.count * 32 } }
             + (obfuscations.count + layers.count + callouts.count + assets.count) * 128
+            + (presentation.watermark?.text.utf8.count ?? 0) * 2
     }
 
     /// Bytes copied per undo snapshot for the document's element arrays. Element payloads such as

@@ -266,6 +266,23 @@ extension EditorModel {
         edit("Balance", inPreview: true) { $0.presentation.balancesContent = balances }
     }
 
+    public func setFramingBorder(_ border: Presentation.Border?) {
+        guard border?.isValid != false else { return }
+        edit("Border", inPreview: true) { $0.presentation.border = border }
+    }
+
+    @discardableResult
+    public func setFramingWatermark(_ watermark: Presentation.Watermark?) -> Bool {
+        var admitted = watermark
+        if var value = admitted {
+            guard let text = Presentation.Watermark.normalizedText(value.text) else { return false }
+            value.text = text
+            guard value.isValid else { return false }
+            admitted = value
+        }
+        return edit("Watermark", inPreview: true) { $0.presentation.watermark = admitted }
+    }
+
     /// The framing new captures open with; nil until one is saved. Open documents never change.
     public var defaultFraming: Presentation? { environment.settings.preferences.defaultFraming }
 
@@ -279,6 +296,38 @@ extension EditorModel {
     public func resetDefaultFraming() {
         guard !isClosed else { return }
         environment.settings.update { $0.defaultFraming = nil }
+    }
+
+    public var framingRecipes: [FramingRecipe] { environment.settings.preferences.framingRecipes?.entries ?? [] }
+
+    public func applyFramingRecipe(_ id: UUID) throws(FramingRecipes.Failure) {
+        guard let recipe = framingRecipes.first(where: { $0.id == id }),
+            edit("Framing Recipe", inPreview: true, { $0.presentation = recipe.presentation })
+        else { throw .unavailable }
+    }
+
+    public func saveFramingRecipe(named name: String) throws(FramingRecipes.Failure) -> UUID {
+        try changeFramingRecipes { recipes throws(FramingRecipes.Failure) in
+            try recipes.save(named: name, presentation: document.presentation)
+        }
+    }
+
+    public func renameFramingRecipe(_ id: UUID, to name: String) throws(FramingRecipes.Failure) {
+        try changeFramingRecipes { recipes throws(FramingRecipes.Failure) in try recipes.rename(id, to: name) }
+    }
+
+    public func removeFramingRecipe(_ id: UUID) throws(FramingRecipes.Failure) {
+        try changeFramingRecipes { recipes throws(FramingRecipes.Failure) in try recipes.remove(id) }
+    }
+
+    private func changeFramingRecipes<Result>(
+        _ change: (inout FramingRecipes) throws(FramingRecipes.Failure) -> Result
+    ) throws(FramingRecipes.Failure) -> Result {
+        guard !isClosed else { throw .unavailable }
+        var recipes = environment.settings.preferences.framingRecipes ?? FramingRecipes()
+        let result = try change(&recipes)
+        environment.settings.update { $0.framingRecipes = recipes }
+        return result
     }
 
     public func setSpotlightDim(_ dim: Double, for id: CalloutID) {
