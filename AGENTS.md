@@ -83,7 +83,12 @@ the window's frame view so they show the toolbar. Bridged items perform AXPress 
 and `editor-toolbar` in bilingual E2E.
 
 Program 2026-11 invariants (T2–T6, `docs/specs/program-2026-11/decisions.md`):
-- **Quick actions:** the thumbnail exports only through ShareSnapshot. A Replace answer that arrives after its capture is dismissed or replaced writes nothing.
+- **Quick actions:** the thumbnail exports only through ShareSnapshot. Preview is a sanitized
+  in-memory render of that capture. Both surfaces share suspension, restoration and expiry.
+  A Replace answer that arrives after its capture is dismissed or replaced writes nothing.
+- **Frozen selection:** live by default. An explicit freeze reads one display, the loupe and
+  crop use that raster, and expiry is enforced against a monotonic deadline even if the timer
+  resumes late. Keep `capture-precision` and `quick-actions` in bilingual E2E.
 - **Reopen Closed Capture:** a single slot held in memory, never on disk. It records a monotonic deadline and checks it on every read, so a late timer cannot extend the 10 minutes. It never keeps a capture whose masking is pending or has failed, even after the notice is dismissed.
 - **Diagnostics file:** off by default. It records typed events only, never text, paths or error messages.
 - **HEIC:** a HEIC export holds only the primary item and the `hvc1` tiles it names through `dimg`; anything else is refused, never passed.

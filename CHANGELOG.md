@@ -15,11 +15,8 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
-Program 2026-11 trains T2 to T6 (PRs #43 to #47): not tagged, versioned or published. It requires
-macOS 26 or later. Not verified: the full bilingual native E2E of these trains, macOS 26.0 itself,
-VoiceOver and Full Keyboard Access on the new surfaces, physical keyboard, mouse-wheel, Spaces and
-permission checks, a real print panel, horizontal scrolling in real apps, and recognition recall
-on real screens.
+Program 2026-11 follow-on trains (PRs #43 to #49) for the 0.15.0 candidate. It requires macOS 26
+or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification and open checks.
 
 ### Added
 
@@ -27,6 +24,10 @@ on real screens.
   Save, drag, Pin, Open in Editor, Dismiss and, when this capture was uploaded, Copy Link. The
   capture's automatic exports run first; dismissing the thumbnail or leaving it for 8 seconds
   discards the capture. With automatic masking on, captures still open in the editor.
+- Preview opens a larger view of the current capture from the thumbnail. Closing the preview
+  keeps the thumbnail available until it expires.
+- Press F during region selection to freeze the display for precise selection and pixel
+  inspection. Press F again to resume live selection.
 - Automatic masking of e-mail addresses and phone numbers now also covers scrolling captures and
   images opened as new documents (Open, Open With, a drop on the app, Paste Image). Images added
   as a layer to an open editor are not scanned.

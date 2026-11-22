@@ -367,3 +367,39 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   shrink from a 240×75 pt thumbnail to a 160×50 pt preview. Preview now magnifies small rasters
   for inspection within the same display bounds. The renderer's raster keeps its existing size
   limits. Requalification of the sizing correction is pending.
+
+## 2026-11-22 — Qualified native replay and local 0.15.0 installation
+
+- On clean `6ac344b`, GitHub Actions run 44989058389 passed the unsigned gate and Release
+  isolation check on matching source tree `ed68094`. Local Xcode 27.2 (27B52), macOS 27.3
+  (26C5047e), passed `RegionPrecisionCaptureTests` (7 tests, including resumed and stalled
+  expiry at 60 seconds and permission loss). The cold-launch fixture delivered both six-file
+  requests once, in order, with no refusals.
+- Interrupted and timed-out attempts contributed no qualification. The uninterrupted retry passed
+  11/11 focused and 73/73 full scenarios in each language, with 576 and 5,661 assertions per
+  language respectively. Evidence in the `feat/quick-capture-preview` qualification worktree:
+  `.scratch/logs/e2e-6ac344b-qualified-full.log`, native runs
+  `20261122-125852-63870` and `20261122-130236-98961`. Independent visual review measured the
+  larger preview fixture at 1280×840 pixels versus 480×315 in the thumbnail. The small-capture
+  enlargement has source verification and still needs physical observation.
+- A source comparison found the old dynamic probe activated before ordering and used the
+  new-pin path for an existing pin. The corrected cooperative probe passed all four
+  fresh/reused window and pin cases with zero Space switches, preserving the fullscreen host.
+  The host retained foreground ownership. The forced comparison recorded one switch for a
+  reused ordinary window and one for the policy-free control. Console input invalidated that
+  comparison. Both logs are in the same qualification worktree:
+  `.scratch/logs/space-order-cooperative-6ac344b-20261122-133257.log` and
+  `.scratch/logs/space-order-compare-6ac344b-20261122-132914.log`. The installed app's
+  physical fullscreen behavior remains open.
+- Installed the exact Developer ID export, 0.15.0 (29), at `/Applications/Recortia.app`.
+  Independent verification matched 177 bundle entries, strict signing, Hardened Runtime,
+  provisioning profile, Keychain entitlement and macOS execution policy. The existing 0.14.0
+  process continued with the original PID and mapped executable inode. Its bundle remains intact
+  in the primary main checkout at `.scratch/install-0.15.0-20261122/Recortia.app`; the same
+  directory has `installation.json`.
+  Build 29 awaits its first launch. The public distribution assessment requires a notarization
+  ticket.
+- Preliminary release review leaves SEC-11, SEC-17 and SEC-18 open for this candidate.
+  The bundle omits the updater key. Keep Sparkle inactive and reassess the current
+  [package-update advisory](https://github.com/sparkle-project/Sparkle/security/advisories/GHSA-gcjm-h3jh-p2vc)
+  before enabling updates. Main, public download and release tag remain at their prior version.
