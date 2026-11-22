@@ -203,6 +203,18 @@
   },
   "source_candidate_0_16_0": {
     "version": "0.16.0",
+    "build": 31,
+    "date": "2026-11-22",
+    "requirements": ["FR-01", "FR-06", "FR-07", "FR-08", "FR-09", "FR-13"],
+    "scope": "The capture and framing features from build 30, with a fix for a stale editor notice timer dismissing the automatic masking count.",
+    "pull_request": "https://github.com/mneves75/recortia/pull/50",
+    "status": "source_candidate_awaiting_full_qualification",
+    "verification": "A deterministic native replay reproduced the missing count with the old timer logic. The corrected implementation passed all five focused native scenarios in each language before this build-number increment. See progress.md for receipts.",
+    "installation": "Signed build 30 is installed on disk. The preserved build 29 session is still running.",
+    "release": "Full candidate verification, exact-commit release security, notarization, live update, physical desktop checks, minimum macOS, merge and tag remain open."
+  },
+  "previous_source_candidate_0_16_0_build_30": {
+    "version": "0.16.0",
     "build": 30,
     "date": "2026-11-22",
     "requirements": ["FR-01", "FR-06", "FR-07", "FR-08", "FR-09", "FR-13"],

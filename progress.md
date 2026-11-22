@@ -490,3 +490,20 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   horizontal scrolling capture, and macOS 26.0 execution still need dedicated validation.
   The release security controls SEC-11, SEC-17 and SEC-18, notarization and live Sparkle
   update also remain open. Merge and tagging wait for qualification.
+
+## 2026-11-22 — Keep the automatic masking count visible
+
+- The standalone Portuguese run revealed a separate masking notice failure. The opaque mask
+  was present and the sanitized automatic copy passed. The model had lost its persistent
+  masking count. An older transient status task could dismiss a newer notice before SwiftUI
+  delivered cancellation.
+- The existing automatic-redaction scenario now expires a held masking-in-progress timer
+  after detection completes. The old status task cleared the count and failed the
+  assertion in `.scratch/e2e/20261122-192751-28003/pt-BR/`.
+- Status tasks capture the notice serial at render time and check it before announcement and
+  before dismissal. The same test passed in both languages. Automatic redaction sources,
+  editor notices, automatic export and export feedback also passed, for 5/5 scenarios and
+  15 screenshots per language in `.scratch/e2e/20261122-192831-53509/`. The unique held-timer
+  control stays in the existing native scenario. No unit test was added.
+- The corrected source becomes 0.16.0 (31). The installed signed build 30 remains recorded
+  separately until a verified replacement is installed.

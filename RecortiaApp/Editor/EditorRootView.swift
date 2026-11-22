@@ -84,6 +84,7 @@ extension EditorModel {
 struct EditorNoticePresentation {
     var autoDismissDelay: Duration = .seconds(8)
     var announce: @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
+    var waitToDismiss: @MainActor (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
 
     /// Failures, and notices that carry a link or ask the person to act, stay until dismissed.
     /// Only success and passive information dismisses itself.
@@ -359,6 +360,7 @@ struct EditorStatusBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let noticeSerial = model.noticeSerial
         HStack(spacing: DesignTokens.Space.s) {
             Text(EditorFormat.size(model.document.canvasSize))
                 .monospacedDigit()
@@ -399,18 +401,19 @@ struct EditorStatusBar: View {
         .padding(.vertical, DesignTokens.Space.xs)
         // Tall enough for a two-line notice, so a short notice never resizes the canvas.
         .frame(minHeight: 44)
-        .animation(reduceMotion ? nil : .default, value: model.noticeSerial)
-        .task(id: model.noticeSerial) {
-            guard let notice = model.notice else { return }
+        .animation(reduceMotion ? nil : .default, value: noticeSerial)
+        .task(id: noticeSerial) {
+            guard model.noticeSerial == noticeSerial, let notice = model.notice else { return }
             // Status text is silent for VoiceOver unless it is posted, and a timeout must not
             // remove it before a person who needs more time has read it.
             presentation.announce(EditorStrings.message(notice))
             guard !EditorNoticePresentation.persists(notice) else { return }
             do {
-                try await Task.sleep(for: presentation.autoDismissDelay)
+                try await presentation.waitToDismiss(presentation.autoDismissDelay)
             } catch {
                 return
             }
+            guard !Task.isCancelled, model.noticeSerial == noticeSerial else { return }
             model.dismissNotice()
         }
     }

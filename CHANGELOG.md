@@ -15,7 +15,7 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
-Source candidate 0.16.0 (build 30), including the Program 2026-11 follow-on trains. It requires macOS 26
+Source candidate 0.16.0 (build 31), including the Program 2026-11 follow-on trains. It requires macOS 26
 or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification and open checks.
 
 ### Added
@@ -71,6 +71,8 @@ or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification 
 - The Replace question names the file it would replace, and only that file is replaced.
 
 ### Fixed
+
+- The editor keeps the automatic masking count visible even if an earlier notice expires.
 
 - Rounded and monospaced text could fail to render under heavy load because a shared system font
   cache returned nothing while another thread released fonts. Those fonts now come from Core Text.

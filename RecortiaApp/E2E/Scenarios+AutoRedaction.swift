@@ -37,6 +37,21 @@
 
         static func autoRedaction(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
             let detection = harness.sensitiveText
+            var holdNoticeTimeout = true
+            var noticeTimeout: CheckedContinuation<Void, Never>?
+            harness.editors.noticePresentation.waitToDismiss = { delay in
+                if holdNoticeTimeout {
+                    holdNoticeTimeout = false
+                    await withCheckedContinuation { noticeTimeout = $0 }
+                } else {
+                    try await Task.sleep(for: delay)
+                }
+            }
+            defer {
+                holdNoticeTimeout = false
+                noticeTimeout?.resume()
+                harness.editors.noticePresentation = EditorNoticePresentation()
+            }
             harness.settings.update {
                 $0.afterCapture = .pin
                 $0.autoRedactsSensitiveText = true
@@ -83,8 +98,13 @@
                 root, in: window, shot: "pending", surface: "masking placeholder", settle: .milliseconds(350))
 
             // Masked: one undo step, bound to the detected pixels; the frozen copy runs on it.
+            try context.require(
+                "the earlier masking notice started its timer", await E2EWait.until { noticeTimeout != nil })
             detection.release()
             try context.require("masking finishes", await E2EWait.until { model.autoRedaction == .done })
+            noticeTimeout?.resume()
+            noticeTimeout = nil
+            await E2ESnapshot.settle(root)
             let asset = try context.unwrap("capture asset", model.document.layers.first?.assetID)
             context.check(
                 "one opaque mask bound to the detected pixels, as one undo step",
@@ -92,7 +112,8 @@
                     && model.document.masks.allSatisfy { $0.fill.isOpaque } && model.canUndo,
                 "\(model.document.masks)")
             context.check(
-                "the editor says how many items it masked", model.notice == .sensitiveTextMasked(1),
+                "the editor keeps the masking count when the earlier timer expires",
+                model.notice == .sensitiveTextMasked(1),
                 "\(String(describing: model.notice))")
             try context.require(
                 "the automatic copy ran after the masks landed",
