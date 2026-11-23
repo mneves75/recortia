@@ -547,3 +547,24 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
 - The full native runner waited for the desktop to go idle. Its preflight ended before
   building or running either language after internal free space fell below 20 GB. The
   shared native-test lock was free afterward.
+
+## 2026-11-23 — Full bilingual native run and Spaces probe
+
+- With 65 GB free and the unlocked console idle, `./init.sh e2e --lang all --unsigned`
+  rebuilt and ran the exact clean candidate `09be9d583462f7ea59d4626e1095885c69b790c2`
+  under the shared lock. The console monitor recorded no interruptions. Both English and
+  Brazilian Portuguese passed 73/73 scenarios with 6,048 passing assertions and 252
+  screenshots per language. A fresh independent check matched the reports, screenshot files,
+  commit, tree fingerprint, and app and foreground-host hashes. Evidence is in
+  `.scratch/e2e/20261123-005051-69310/` and `.scratch/logs/e2e-09be9d5-full.log`.
+  Host macOS was 27.3 (26C5047e). The stable toolchain was Xcode 27.2 (27B52),
+  Swift 6.4.2, and SDK 27.2 (26B118).
+- `FORCE=0 zsh scripts/space-probe/run.sh fresh dynamic-follow dynamic-pin` and the
+  corresponding `stale` run passed all four cooperative cases. Each probe appeared above
+  its owned fullscreen host with zero Space switches, and the host kept the foreground.
+  The console stayed unlocked and idle. Evidence is in `.scratch/logs/space-dynamic-09be9d5.log`.
+- [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45107716922) passed the
+  gate and the Release binary scan on the identical tree
+  `3963ec9e09cba228d66e0c4651b3cd5205434abe`.
+- Installed-app fullscreen, VoiceOver, TCC, physical Save and Print panels, live horizontal
+  capture, and execution on macOS 26.0 still require manual qualification.
