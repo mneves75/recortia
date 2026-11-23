@@ -1,6 +1,6 @@
 # Capture workflow expansion
 
-**Status** The larger Quick Preview is in the 0.15.0 candidate. Save Optimized Copy, Copy Text, automatic Pin, framing recipes, the inset border and the text watermark are implemented in the 0.16.0 candidate. Signed build 31 is installed locally. First launch, full native qualification and release are pending. [Verification record](../../../progress.md)
+**Status** The larger Quick Preview is in the 0.15.0 candidate. Save Optimized Copy, Copy Text, automatic Pin, framing recipes, the inset border and the text watermark are implemented in the 0.16.0 candidate. Signed build 31 passed local installation and first launch. Full native qualification and release are pending. [Verification record](../../../progress.md)
 
 **Baselines.** This is a source review of ScreenDrop commit `71c4017` and Recortia draft `5cc56ce` in PR #48, stacked on #42–#47. Recortia `main` was `b2726b4` (0.14.0, macOS 15.0 floor), and the `v0.14.0` tag points to `cdffc96`. “In the stack” means source exists on the 0.15.0 candidate with a macOS 26.0 floor. Its unsigned gate passed with 1,085 package tests. Its full native qualification is pending. I inspected the upstream code without installing or running it. The latest upstream release observed was v0.39.1, on a different commit. [Upstream feature overview](https://github.com/fayazara/screendrop/blob/71c40179229b5e3060737b963f1ffa346484f88b/README.md#L34-L47) · [Upstream release](https://github.com/fayazara/screendrop/releases/tag/v0.39.1) · [Recortia draft](https://github.com/mneves75/recortia/pull/48)
 

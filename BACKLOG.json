@@ -210,7 +210,7 @@
     "pull_request": "https://github.com/mneves75/recortia/pull/50",
     "status": "locally_installed_awaiting_full_qualification",
     "verification": "At d768455f1cb34dcf5ee3331c6979221b8f23e68e, hosted CI and unsigned Release scanning passed on the identical tree. The stable local unsigned gate passed on rerun with Vision enabled. The earlier run failed the existing Vision cancellation timing bound, which passed in isolation and in the full rerun. An independent native replay passed all five affected scenarios in English and Brazilian Portuguese. See progress.md for receipts.",
-    "installation": "Verified Developer ID 0.16.0 (31) is installed in /Applications on macOS 27.3. The build 30 rollback and running build 29 session were preserved. Build 31 launch is pending.",
+    "installation": "Verified Developer ID 0.16.0 (31) is installed in /Applications. Independent first-launch verification passed on macOS 27.3 after the previous session exited. The build 30 rollback was preserved.",
     "release": "Private disk-image integrity and signing passed. Full native qualification, exact-tree release security, notarization, live Sparkle update, physical desktop checks, minimum macOS, merge and tag remain open."
   },
   "previous_source_candidate_0_16_0_build_30": {
@@ -236,10 +236,10 @@
     "backup_path": "Primary main checkout: .scratch/install-0.16.0-build31-20261122/Recortia.app (previous signed 0.16.0 build 30).",
     "executable_sha256": "9edae65996f318d20adfac08cb232d86ae1d02abf42d335825bc8be8d28818a7",
     "installed_equals_developer_id_export": true,
-    "launched": false,
+    "launched": true,
     "notarized": false,
     "verification": "Independent verification matched all 177 installed bundle entries to the export. Strict Developer ID signature, Hardened Runtime, entitlements and local Gatekeeper assessment passed. The running build 29 process preserved its PID, start time and mapped executable inode. Receipt in the primary main checkout: .scratch/install-0.16.0-build31-20261122/installation.json.",
-    "qualification": "Signed installation on macOS 27.3 passed. First launch of build 31, full bilingual E2E, installed-app fullscreen, minimum macOS, physical VoiceOver and TCC remain open."
+    "qualification": "Signed installation and first launch on macOS 27.3 passed. AppKit reported launch complete, and the running executable matched the signed installation by device and inode. Launch receipt in the primary checkout: .scratch/install-0.16.0-build31-20261122/launch.json. Full bilingual E2E, installed-app fullscreen, minimum macOS, physical VoiceOver and TCC remain open."
   },
   "previous_local_installation_0_16_0_build_30": {
     "candidate": "0.16.0 Developer ID local candidate",

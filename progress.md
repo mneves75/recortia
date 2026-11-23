@@ -525,10 +525,25 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
 - The on-disk installation at `/Applications/Recortia.app` is 0.16.0 (31). A fresh verifier
   matched all 177 installed entries to the signed export. The signed build 30 rollback and
   installation receipt are in the primary checkout at `.scratch/install-0.16.0-build31-20261122/`.
-  The running build 29 session still mapped the same executable at PID 93036. Build 31 has
-  yet to launch.
+  The running build 29 session still mapped the same executable at PID 93036 across the
+  installation.
 - macOS SecurityAgent still held the foreground after the checks. Full bilingual replay and
   installed-app fullscreen verification need a dedicated desktop. Physical VoiceOver, TCC,
   native Save and Print panels, horizontal capture and macOS 26.0 remain unverified.
   SEC-11, SEC-17, SEC-18, notarization and live Sparkle update remain open. The branch is in
   draft PR #50 and release closeout has not started.
+
+## 2026-11-23 — First launch of installed build 31
+
+- The build 29 process had exited before `/usr/bin/open -gj -a /Applications/Recortia.app`
+  started build 31 at 03:30:34 UTC. AppKit reported launch complete on macOS 27.3 (26C5047e).
+  An independent verifier matched PID 54328's mapped executable device and inode to the
+  installed app, matched the executable SHA-256 to the Developer ID export, and confirmed the
+  deep strict signature. The primary checkout holds
+  `.scratch/install-0.16.0-build31-20261122/launch.json`.
+- The preceding documentation commit `1493d58` passed `./init.sh check --unsigned` on the
+  Mac with Vision enabled. [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45079837604)
+  passed the gate and Release binary scan on the identical tree.
+- The full native runner waited for the desktop to go idle. Its preflight ended before
+  building or running either language after internal free space fell below 20 GB. The
+  shared native-test lock was free afterward.
