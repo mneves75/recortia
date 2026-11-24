@@ -611,3 +611,17 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   `SEC-17` (release token scope/waiver), `SEC-18` (opt-in diagnostics waiver), distinct-model
   acceptance, unlocked foreground bilingual E2E replay, physical macOS 26.0 / Spaces / TCC /
   VoiceOver checks, and Developer ID notarization.
+
+## 2026-11-24 — Published 0.16.0
+
+- PRs #42-#50 were consolidated into #51 and squash-merged into `main` at `993391e`; its tree
+  `b49f50e` equals the verified head `3210f39`. `protect-main` now also requires the `check` status.
+- `scripts/release.sh` on `v0.16.0`: the first run failed in the gate on one wall-clock assertion
+  (`SensitiveTextTests.swift:340`) with the host load average near 54, so nothing was archived. One
+  rerun after the load fell exited 0 with app and DMG notarization Accepted and both stapled.
+  `Recortia-0.16.0.dmg` SHA-256 `9c3e412fa93ef97389a23de359da9ccfc0f2d53899c824b78a1c4bd41ba8923d`; an anonymous download matched it.
+- Security gate WAIVED (SEC-11, SEC-17, SEC-18, until 2026-12-24) on the identical tree.
+- The notarized app is installed in `/Applications`; the previous bundle is kept as a rollback and
+  the running session was not restarted.
+- Not run on the exact release commit: native end-to-end suite and Spaces probe (console in use).
+  Not run at all: macOS 26.0, VoiceOver, physical Spaces and permission checks, live Sparkle update.

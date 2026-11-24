@@ -4,24 +4,21 @@ A native, local-first macOS screenshot utility: capture, annotate, redact for re
 and share from the menu bar. Nothing leaves your Mac unless you turn on the optional GitHub
 upload, and Recortia keeps no screenshot archive.
 
-The current version is **0.14.0** (build 28), signed with Developer ID and notarized,
-available as a DMG from the [0.14.0 release](https://github.com/mneves75/recortia/releases/tag/v0.14.0).
+The current version is **0.16.0** (build 31), signed with Developer ID and notarized,
+available as a DMG from the [0.16.0 release](https://github.com/mneves75/recortia/releases/tag/v0.16.0).
 The physical checks listed under [Known limitations](#known-limitations) have not run. What
-changed in each version is in [CHANGELOG.md](CHANGELOG.md).
-The 0.16.0 source candidate adds Save Optimized Copy and Copy Text to the capture thumbnail,
-an opt-in automatic Pin, and reusable framing with a border and text watermark. It includes
-frozen region selection and the larger capture preview from the 0.15.0 candidate. Qualification
-and local installation records are in [BACKLOG.json](BACKLOG.json).
+changed in each version is in [CHANGELOG.md](CHANGELOG.md). Qualification and local installation
+records are in [BACKLOG.json](BACKLOG.json).
 
 Recortia is an independent open-source project and is not affiliated with any other screenshot
 app.
 
 ## Install
 
-Recortia 0.14 requires macOS 15 or later on Apple Silicon; from 0.15 it requires macOS 26 or later.
+Recortia 0.16 requires macOS 26 or later on Apple Silicon.
 
-Download `Recortia-0.14.0.dmg` from the
-[0.14.0 release](https://github.com/mneves75/recortia/releases/tag/v0.14.0), open it and drag
+Download `Recortia-0.16.0.dmg` from the
+[0.16.0 release](https://github.com/mneves75/recortia/releases/tag/v0.16.0), open it and drag
 Recortia to Applications. To update, install a newer DMG the same way; there is no in-app updater
 yet.
 
@@ -152,7 +149,7 @@ in [docs/architecture/module-contracts.md](docs/architecture/module-contracts.md
   hosts, the scrolling compatibility matrix, VoiceOver and input-method passes, and the
   performance budgets. On the build Mac, the first opening of the editor and of Settings took
   longer than the 50 ms target (PERF-02).
-- Physical keyboard, Spaces and permission checks were not run on 0.14.0.
+- Physical keyboard, Spaces and permission checks were not run on 0.16.0.
 - The editor's window toolbar has been checked only on macOS 27; on macOS 26 it may draw
   differently.
 - VoiceOver and Full Keyboard Access have not been checked on the editor toolbar, its menu buttons,

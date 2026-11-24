@@ -15,8 +15,13 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
-Source candidate 0.16.0 (build 31), including the Program 2026-11 follow-on trains. It requires macOS 26
-or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification and open checks.
+## [0.16.0] - 2026-11-24
+
+Build 31, including the Program 2026-11 follow-on trains. Published as a Developer ID signed and
+notarized DMG (`Recortia-0.16.0.dmg`, SHA-256 `9c3e412fa93ef97389a23de359da9ccfc0f2d53899c824b78a1c4bd41ba8923d`). It requires macOS 26 or later. Not verified
+on this build: macOS 26.0 itself (the build Mac runs 27.3), VoiceOver, physical Spaces and
+permission checks, and the native end-to-end suite on the exact release commit.
+[BACKLOG.json](BACKLOG.json) records qualification and open checks.
 
 ### Added
 
