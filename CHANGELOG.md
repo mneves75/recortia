@@ -77,6 +77,20 @@ or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification 
 - Rounded and monospaced text could fail to render under heavy load because a shared system font
   cache returned nothing while another thread released fonts. Those fonts now come from Core Text.
 - The Replace Existing File question is translated into Portuguese.
+- Automatic scrolling capture no longer aborts when a canceled settle check returns after a new
+  frame, keeps reading frames across Pause/Resume during end-of-page checks, and enforces its
+  duration limit against monotonic uptime.
+- Open and Save file panels consistently follow the active Space and restore Dock presence
+  through `FilePanelPresenter`, and non-activating pins update observed window presence right
+  away.
+- Saving over files on non-owner mounts (such as exFAT/FAT32 or shared folders) no longer fails
+  on staged-file permissions, and long export filenames truncate safely within UTF-8 byte limits.
+- Deleting the optional diagnostics file now removes both active and rotated log files even when
+  removing one fails.
+- Scheduled update checks now re-check Recortia's preference live on each trigger instead of
+  relying on a cached startup state.
+- Automatic export filename resolution preserves non-image dot suffixes (such as `report.v2`)
+  instead of stripping them as file extensions.
 
 ## [0.15.0] - 2026-11-20
 

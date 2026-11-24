@@ -568,3 +568,44 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   `3963ec9e09cba228d66e0c4651b3cd5205434abe`.
 - Installed-app fullscreen, VoiceOver, TCC, physical Save and Print panels, live horizontal
   capture, and execution on macOS 26.0 still require manual qualification.
+
+## 2026-11-24 — Repository hardening pass
+
+- On branch `harden/defect-prevention-20261124` (based on `447dba4`), completed repository-wide
+  defect-prevention hardening (H1–H12) plus independent adversarial review fixes:
+  - Concurrency, lifecycle, and type-level invariants: fixed post-await cancellation and
+    pause/resume epoch races in `ScrollSessionModel` (`settleElapsed`, `collect`, monotonic
+    `deadlineTask`) and `CaptureCoordinator.freezePermissionCheck`; made `ImportAdmission` a
+    `~Copyable` identity-checked linear token (`IO-01`); replaced non-cancellable continuation
+    waiters with `CancellableWaiters` and completed `EditorModel.isolated deinit`; gated
+    `EditorModel` mutations during pending masking and rejected non-finite gradient angles;
+    added `ProtocolModelVerificationTests` bounded exhaustive BFS verification (H4, 3 protocols
+    with planted regression controls).
+  - AppKit, updater, sink, and redaction boundaries: made `AppPresence` `@Observable` with
+    `windowDidAppear()` sync for non-activating pins; centralized `NSOpenPanel`/`NSSavePanel`
+    Space policy and presence handling in `FilePanelPresenter`; made `SparkleUpdateService`
+    check background-update consent live with `probePreflight`; hardened `FileSink` staging
+    (`fchmod` on non-owner mounts, UTF-8 byte-budget `SafeFilename.truncated`) and
+    `DiagnosticsLog.delete()` cleanup; removed unreachable `SensitiveText` document-matcher
+    code, reducing true file complexity from 208 to 167 cognitive (`-41`, max `26 -> 19`) and
+    239 to 196 cyclomatic (`-43`, functions `96 -> 83`, parse errors `17 -> 3`).
+  - Gate hardening and test pruning (`mneves-prune-tests`): added `ArchitectureBoundaryScanTests`
+    (5/5 static boundary checks with planted controls), `check-localization.py` format-specifier
+    and per-case plural parity, `check-updater-plist.py` Release plist verification, and
+    `tests-report.py --check` enforcement of `check.sh` core steps; pruned dead `RecortiaUITests`,
+    duplicated/flaky stress and naming tests (`FontResolutionStressTests`,
+    `SensitiveTextBenchmarkTests`, duplicate `ColorFormatTests`/`ExportCoordinator.named` cases).
+- Gates (`scripts/check.sh --unsigned` and `scripts/check-release-build.sh`) passed on macOS 27.3
+  with Xcode 27.2 (`27B52`) and Swift 6.4.2: 12/12 Python gate suites, `tests-report.py --check`
+  (`14 gates, 3 suites, 12 tests`), `swift format lint --strict`, `check-project-fresh.sh`,
+  `RecortiaKit` Swift tests with Vision enabled (including 5/5 `ArchitectureBoundaryScanTests`
+  and 3/3 `ProtocolModelVerificationTests`), Debug + Release `Recortia`/`RecortiaE2E` builds,
+  `check-localization.py`, `check-release-binary.sh` (6 Mach-O scanned per product), and
+  `check-updater-plist.py`.
+- `mneves-security` pre-deploy audit on integrated commit `ef76d43` (receipts in primary checkout
+  `.scratch/security-gate/ef76d4321dd68d5cb1d13632843cf3258ea2c63b/`): **0 code-fixable security
+  findings** (`GHSA-gcjm-h3jh-p2vc` disproved/unreachable — Sparkle dormant and DMG-only);
+  production release remains owner-gated on `SEC-11` (two-UID shared-mount test/waiver),
+  `SEC-17` (release token scope/waiver), `SEC-18` (opt-in diagnostics waiver), distinct-model
+  acceptance, unlocked foreground bilingual E2E replay, physical macOS 26.0 / Spaces / TCC /
+  VoiceOver checks, and Developer ID notarization.

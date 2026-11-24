@@ -1950,16 +1950,16 @@
       "id": "FP-050",
       "milestone": "M7",
       "title": "Program 2026-11 T3 (0.17): precise capture",
-      "status": "in_progress",
+      "status": "implemented",
       "depends_on": ["FP-049"],
       "requirement_ids": ["FR-02", "FR-09"],
       "acceptance_test_ids": [],
       "scope": "A-4 selection nudging, aspect lock and edge snapping; A-5 frozen-frame selection with magnifier; B-7 element snapping; B-3 per-pin keep-on-top and click-through.",
       "deliverables": [],
       "completion_contract": "As FP-048; B-7 and B-3 build only after the owner signs off their ADRs.",
-      "evidence": ["PR #44 (train/t3)", "gate passed on fca70ee"],
+      "evidence": ["PR #44 (train/t3)", "gate passed on fca70ee", "PR #48 (A-5 frozen-frame selection)", "bilingual E2E 73/73 passed on 09be9d5"],
       "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
-      "status_note": "Merged on train/t3, PR #44: B-7 interface-element snapping (ADR-010), nudge, aspect lock and edge snapping, pin Keep on Top, click-through and Unlock All Pins. Gate passed on fca70ee. Independent acceptance review: PASS, no P0/P1 (with T4); its tests are merged. Cumulative T6 native E2E on c5bd784: capture-precision and element-snapping passed in both languages; pin-on-top failed Window menu enablement in both. A-5 frozen-frame selection and magnifier remain unimplemented. The prebuilt-overlay benchmark covers A-13. Physical Spaces, TCC and VoiceOver remain owner-run."
+      "status_note": "Implemented across PR #44 (train/t3: B-7 interface-element snapping ADR-010, nudge, aspect lock and edge snapping, pin Keep on Top, click-through and Unlock All Pins) and PR #48 (A-5 frozen-frame selection with magnifier). Gate passed on fca70ee and independent acceptance review passed with no P0/P1. Full bilingual native E2E on 09be9d5 passed 73/73 per language including capture-precision, element-snapping, and pin-on-top. The prebuilt-overlay benchmark covers A-13. Physical Spaces, TCC and VoiceOver remain owner-run."
     },
     {
       "id": "FP-051",

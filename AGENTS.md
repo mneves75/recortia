@@ -153,7 +153,8 @@ Window presence (ADR-007): Recortia is accessory at launch and regular while a s
 exists; `AppPresence` owns that rule. An ordinary window is shown through
 `AppPresence.present(_:)` (regular, Space policy, order, activate); other presenting code (alerts,
 About, open panels, pins) activates through `AppPresence.activate()`; only capture panels and menus
-use a bare `NSApp.activate()`. Pins are normal-level windows by default (they
+use a bare `NSApp.activate()`. `FilePanelPresenter` is the sole boundary allowed to call file-panel
+`.runModal()`, applying `SpacePolicy.follow` before `AppPresence.activate()`. Pins are normal-level windows by default (they
 still join all Spaces) so window switchers list them; only a pin's opt-in Keep on Top floats it
 (ADR-007 amendment), and Unlock All Pins always recovers a click-through pin; never make pins float by default. Keep the
 `window-presence` E2E scenario in the gate, and rerun the space probe's `dynamic` mode and the
@@ -216,7 +217,10 @@ failing tests on 2026-10-28 and blocked every gate for a day's work. `./init.sh`
 installed toolchain against that record and then execs a suite. `tests.json` is the test
 inventory `scripts/tests-report.py` generates; never edit it by hand. Run statuses go to the
 uncommitted `.scratch/tests-report.json`. Keep `--check` failing when a gate loses its test, when a
-`scripts/test-*.py` is outside the one list `--run-tests` executes, or when a caller stops running it.
+`scripts/test-*.py` is outside the one list `--run-tests` executes, when a caller stops running it,
+or when `check.sh` drops a core verification step (including localization format-specifier parity).
+Keep `ArchitectureBoundaryScanTests` enforcing `Domain` import purity, production crash/`NSScreen.main`
+bans, the bare `NSApp.activate` allowlist, and the `FilePanelPresenter` `.runModal()` boundary.
 
 Identify the actual working directory, repository state, branch, existing instructions, uncommitted changes, Xcode project/workspace, shared schemes, packages, tests, and build scripts. Do not assume this spec's proposed paths already exist. Preserve unrelated work; never reset, delete, stash, force-push, or overwrite it without permission.
 
