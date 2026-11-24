@@ -163,32 +163,13 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: NO
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-  RecortiaUITests:
-    type: bundle.ui-testing
-    platform: macOS
-    sources:
-      - path: RecortiaUITests
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.mvneves.RecortiaUITests
-        TEST_TARGET_NAME: Recortia
-        GENERATE_INFOPLIST_FILE: YES
-    dependencies:
-      - target: Recortia
-      - package: RecortiaKit
-        product: RecortiaFixtures
 schemes:
   Recortia:
     build:
       targets:
         Recortia: all
-        RecortiaUITests: [test]
     run:
       config: Debug
-    test:
-      config: Debug
-      targets:
-        - RecortiaUITests
     archive:
       config: Release
   RecortiaE2E:

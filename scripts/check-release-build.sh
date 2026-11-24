@@ -27,6 +27,11 @@ scripts/check-release-binary.sh "$products/Recortia.app"
 echo "== E2E runner in the Release E2E product"
 scripts/check-release-binary.sh --runner "$products/RecortiaE2E.app"
 
+echo "== updater Info.plist contract in Release products"
+python3 scripts/check-updater-plist.py \
+  --app-plist "$products/Recortia.app/Contents/Info.plist" \
+  --e2e-plist "$products/RecortiaE2E.app/Contents/Info.plist"
+
 helper=$products/RecortiaE2EForegroundHost.app
 if [[ -e "$helper/Contents/MacOS" ]]; then
   echo "release: the E2E foreground helper has an executable in Release: $helper/Contents/MacOS" >&2

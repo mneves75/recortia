@@ -8,8 +8,11 @@ public key (32 bytes, base64). The E2E runner carries no Sparkle key at all, so 
 can start in it. Without arguments it reads the plists XcodeGen generates from project.yml (the
 freshness gate keeps them current); a built bundle's Contents/Info.plist works the same way.
 
-Usage: scripts/check-updater-plist.py [<shipping Info.plist> <runner Info.plist>]
+Usage:
+  scripts/check-updater-plist.py [<shipping Info.plist> <runner Info.plist>]
+  scripts/check-updater-plist.py [--app-plist <path>] [--e2e-plist <path>]
 """
+import argparse
 import base64
 import binascii
 import pathlib
@@ -56,14 +59,40 @@ def shipping_problems(info: dict) -> list[str]:
     return problems
 
 
+def parse_paths(argv: list[str]) -> tuple[pathlib.Path, pathlib.Path] | None:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--app-plist", type=pathlib.Path)
+    parser.add_argument("--e2e-plist", type=pathlib.Path)
+    parser.add_argument("positional", nargs="*", type=pathlib.Path)
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit:
+        return None
+    has_flags = args.app_plist is not None or args.e2e_plist is not None
+    if has_flags:
+        if args.positional:
+            return None
+        return (
+            args.app_plist or (ROOT / "RecortiaApp/Info.plist"),
+            args.e2e_plist or (ROOT / "RecortiaApp/E2E/Info.plist"),
+        )
+    if len(args.positional) == 0:
+        return (ROOT / "RecortiaApp/Info.plist", ROOT / "RecortiaApp/E2E/Info.plist")
+    if len(args.positional) == 2:
+        return (args.positional[0], args.positional[1])
+    return None
+
+
 def main() -> int:
-    if len(sys.argv) not in (1, 3):
-        print(__doc__.strip().splitlines()[-1], file=sys.stderr)
+    paths = parse_paths(sys.argv[1:])
+    if paths is None:
+        print(
+            "Usage: scripts/check-updater-plist.py [<shipping Info.plist> <runner Info.plist>] "
+            "| [--app-plist <path>] [--e2e-plist <path>]",
+            file=sys.stderr,
+        )
         return 2
-    shipping, runner = (
-        (pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])) if len(sys.argv) == 3
-        else (ROOT / "RecortiaApp/Info.plist", ROOT / "RecortiaApp/E2E/Info.plist")
-    )
+    shipping, runner = paths
     problems = []
     try:
         shipping_info, runner_info = load(shipping), load(runner)

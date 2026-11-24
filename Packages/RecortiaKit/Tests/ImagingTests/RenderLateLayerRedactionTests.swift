@@ -93,10 +93,10 @@ struct RenderLateLayerRedactionTests {
 
     // Failure mode (Codex review): callouts were drawn after the output-space mask fill, so a
     // secure mask drawn over a magnifier's destination was painted over by the magnified source.
-    @Test("A secure mask over a magnifier's destination hides it in the export", arguments: [1] as [UInt64])
-    func maskOverMagnifierDestination(seed: UInt64) async throws {
+    @Test("A secure mask over a magnifier's destination hides it in the export")
+    func maskOverMagnifierDestination() async throws {
         let harness = ImagingHarness()
-        let pair = try RedactionFixtures.pair(seed: seed)
+        let pair = try RedactionFixtures.pair(seed: 1)
         let secret = RedactionFixtures.secret
         let fill = RGBA(r: 12, g: 34, b: 56)
         let destination = Rect<DocumentSpace>(x: 4, y: 4, width: 24, height: 16)

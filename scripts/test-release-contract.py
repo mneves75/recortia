@@ -360,6 +360,13 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertIsNotNone(check, f"release.sh never compares the bundled {name}")
                 self.assertLess(check.start(), notarize, f"{name} is checked only after notarization")
 
+    def test_exported_app_updater_plist_is_checked_before_notarization(self) -> None:
+        script = RELEASE.read_text()
+        notarize = script.index("== notarize the app")
+        check = 'python3 "$src/scripts/check-updater-plist.py" --app-plist "$app/Contents/Info.plist"'
+        self.assertEqual(1, script.count(check), "release.sh must check the exported app's Info.plist")
+        self.assertLess(script.index(check), notarize, "updater Info.plist check must precede notarization")
+
     def test_bundled_notice_matches_pinned_dependency(self) -> None:
         if not hasattr(self, "app"):
             self.skipTest("run with --app and --package-checkout to check the bundled notices")

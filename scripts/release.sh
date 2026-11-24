@@ -147,6 +147,7 @@ if [[ "$signature" != *"flags=0x10000(runtime)"* ]]; then
   exit 1
 fi
 scripts/check-release-binary.sh "$app"
+python3 "$src/scripts/check-updater-plist.py" --app-plist "$app/Contents/Info.plist"
 notice="$src/RecortiaApp/Resources/KeyboardShortcuts-LICENSE.txt"
 upstream_notice="$out/spm/checkouts/KeyboardShortcuts/license"
 bundled_notice="$app/Contents/Resources/KeyboardShortcuts-LICENSE.txt"

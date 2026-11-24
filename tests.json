@@ -69,6 +69,14 @@
       ]
     },
     {
+      "id": "release-build",
+      "protected_file": "scripts/check-release-build.sh",
+      "tests": [],
+      "invoked_by": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
       "id": "release-contract",
       "protected_file": "scripts/release.sh",
       "tests": [

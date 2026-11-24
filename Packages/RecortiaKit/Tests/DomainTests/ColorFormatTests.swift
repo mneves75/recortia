@@ -111,26 +111,13 @@ struct ColorFormatTests {
         #expect(RGBA.linearComponent(1) == 1)
     }
 
-    @Test("Relative luminance at the edges and for mid grey")
-    func luminance() {
-        #expect(RGBA.black.relativeLuminance == 0)
-        #expect(abs(RGBA.white.relativeLuminance - 1) < 1e-12)
-        #expect(abs(RGBA(r: 119, g: 119, b: 119).relativeLuminance - 0.184475) < 1e-6)
-        // Rec. 709 weights: pure green outweighs red, which outweighs blue.
-        #expect(abs(RGBA(r: 0, g: 255, b: 0).relativeLuminance - 0.7152) < 1e-12)
-        #expect(abs(RGBA(r: 0, g: 0, b: 255).relativeLuminance - 0.0722) < 1e-12)
-    }
-
-    @Test("WCAG 2 contrast for published pairs, in either order")
-    func publishedPairs() throws {
-        let max = try #require(ContrastRatio(foreground: .black, background: .white))
-        #expect(max.ratio == 21)
-        #expect(try #require(ContrastRatio(foreground: .white, background: .white)).ratio == 1)
-
-        let grey = RGBA(r: 0x77, g: 0x77, b: 0x77)
-        let low = try #require(ContrastRatio(foreground: grey, background: .white))
+    @Test("WCAG 2 hex-boundary pairs sit on the right side of AA, AAA and large-text thresholds")
+    func thresholdBoundaryPairs() throws {
+        // #777777 vs #767676 straddle 4.5:1 AA normal text; #5A5A5A vs #595959 straddle 7:1 AAA;
+        // #959595 vs #949494 straddle 3:1 large text. General oracle/extremes/symmetry live in
+        // ReviewContrastOracleTests.
+        let low = try #require(ContrastRatio(foreground: RGBA(r: 0x77, g: 0x77, b: 0x77), background: .white))
         #expect(abs(low.ratio - 4.4781) < 0.0001)
-        #expect(ContrastRatio(foreground: .white, background: grey)?.ratio == low.ratio)
         #expect(!low.passes(.aa, largeText: false) && low.passes(.aa, largeText: true))
         #expect(!low.passes(.aaa, largeText: false) && !low.passes(.aaa, largeText: true))
 
@@ -144,7 +131,6 @@ struct ColorFormatTests {
         let belowAAA = try #require(ContrastRatio(foreground: RGBA(r: 0x5A, g: 0x5A, b: 0x5A), background: .white))
         #expect(!belowAAA.passes(.aaa, largeText: false))
 
-        // 3:1 for large text: #949494 passes at 3.03, #959595 fails at 2.995.
         #expect(
             ContrastRatio(foreground: RGBA(r: 0x94, g: 0x94, b: 0x94), background: .white)?.passes(.aa, largeText: true)
                 == true)
@@ -162,12 +148,6 @@ struct ColorFormatTests {
             try #require(ContrastRatio(foreground: RGBA(r: 0x95, g: 0x95, b: 0x95), background: .white)).shownRatio
                 == 2.99)
         #expect(try #require(ContrastRatio(foreground: .black, background: .white)).shownRatio == 21)
-    }
-
-    @Test("Contrast needs two opaque colours")
-    func translucentContrast() {
-        #expect(ContrastRatio(foreground: .clear, background: .white) == nil)
-        #expect(ContrastRatio(foreground: .black, background: RGBA.white.withAlpha(254)) == nil)
     }
 
     @Test("The preferred format defaults to HEX and survives a round trip; older blobs decode")

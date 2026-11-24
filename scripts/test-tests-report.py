@@ -71,7 +71,20 @@ class TestsReportTests(unittest.TestCase):
             runs = any(caller in gate["invoked_by"] and gate["tests"] for gate in self.gates)
             path = self.root / caller
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("#!/bin/sh\n" + ("python3 scripts/tests-report.py --run-tests\n" if runs else ""))
+            if caller == "scripts/check.sh":
+                path.write_text(
+                    "#!/bin/sh\n"
+                    "scripts/doctor.sh\n"
+                    "python3 scripts/tests-report.py --run-tests\n"
+                    "xcrun swift format lint --strict --recursive Packages/RecortiaKit/Sources\n"
+                    "scripts/check-project-fresh.sh\n"
+                    "xcrun swift test --package-path Packages/RecortiaKit --parallel\n"
+                    "scripts/check-localization.py .build/dd Recortia\n"
+                    'RECORTIA_E2E_BINARY="$PWD/RecortiaE2E" \\\n'
+                    "  python3 scripts/test-e2e-isolation.py E2ELaunchGuardTests\n"
+                )
+            else:
+                path.write_text("#!/bin/sh\n" + ("python3 scripts/tests-report.py --run-tests\n" if runs else ""))
         # The fixture is its own repository, so evidence binds to a commit this test controls.
         for arguments in (("init", "-q"), ("add", "-A"), ("-c", "user.name=fixture", "-c",
                           "user.email=fixture@example.invalid", "commit", "-qm", "fixture")):
@@ -135,6 +148,35 @@ class TestsReportTests(unittest.TestCase):
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn("scripts/check.sh never runs `python3 scripts/tests-report.py --run-tests`",
                               result.stderr)
+
+    def test_missing_required_check_step_is_reported(self) -> None:
+        self.assertEqual(0, self.run_report().returncode)
+        check = self.root / "scripts/check.sh"
+        original = check.read_text()
+        steps = (
+            ("scripts/doctor.sh", "scripts/doctor.sh\n"),
+            ("swift format lint --strict", "xcrun swift format lint --strict --recursive Packages/RecortiaKit/Sources\n"),
+            ("scripts/check-project-fresh.sh", "scripts/check-project-fresh.sh\n"),
+            ("swift test", "xcrun swift test --package-path Packages/RecortiaKit --parallel\n"),
+            ("scripts/check-localization.py", "scripts/check-localization.py .build/dd Recortia\n"),
+            (
+                "RECORTIA_E2E_BINARY launch guard",
+                'RECORTIA_E2E_BINARY="$PWD/RecortiaE2E" \\\n  python3 scripts/test-e2e-isolation.py E2ELaunchGuardTests\n',
+            ),
+        )
+        for label, snippet in steps:
+            self.assertIn(snippet, original)
+            for mode, replacement in (
+                ("deleted", ""),
+                ("commented", "".join(f"# {line}\n" for line in snippet.splitlines())),
+                ("echoed", f'echo "{snippet.splitlines()[0]}"\n'),
+            ):
+                with self.subTest(step=label, mode=mode):
+                    check.write_text(original.replace(snippet, replacement))
+                    result = self.run_report("--check")
+                    check.write_text(original)
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(f"scripts/check.sh never runs required gate step `{label}`", result.stderr)
 
     def test_run_tests_runs_exactly_the_listed_tests(self) -> None:
         result = self.run_report("--run-tests")

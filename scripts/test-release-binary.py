@@ -2,8 +2,10 @@
 """REL-01: the test-only-marker gate must scan every Mach-O in the app bundle, with planted controls."""
 
 import pathlib
+import plistlib
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -153,12 +155,13 @@ class ReleaseBuildGateTests(unittest.TestCase):
     Release, scans the shipping app, and refuses a Release runner hook or foreground helper."""
 
     def run_build_gate(self, *, helper_executable: bool = False, marker: str | None = None,
-                       runner_marker: str | None = None, doctor_exit: int = 0) -> subprocess.CompletedProcess[str]:
+                       runner_marker: str | None = None, doctor_exit: int = 0,
+                       app_plist_change=None, e2e_plist_change=None) -> subprocess.CompletedProcess[str]:
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = root = pathlib.Path(directory.name)
         (root / "scripts").mkdir()
-        for name in ("check-release-build.sh", "check-release-binary.sh"):
+        for name in ("check-release-build.sh", "check-release-binary.sh", "check-updater-plist.py"):
             (root / "scripts" / name).write_bytes((ROOT / "scripts" / name).read_bytes())
             (root / "scripts" / name).chmod(0o755)
         self.calls = root / "calls"
@@ -166,8 +169,19 @@ class ReleaseBuildGateTests(unittest.TestCase):
         doctor.write_text(f"#!/bin/sh\necho \"doctor $*\" >> '{self.calls}'\nexit {doctor_exit}\n")
         doctor.chmod(0o755)
         products = root / ".build/dd-release/Build/Products/Release"
+        app_info = plistlib.loads((ROOT / "RecortiaApp/Info.plist").read_bytes())
+        if app_plist_change:
+            app_plist_change(app_info)
+        e2e_info = plistlib.loads((ROOT / "RecortiaApp/E2E/Info.plist").read_bytes())
+        if e2e_plist_change:
+            e2e_plist_change(e2e_info)
+        staged_app_plist = root / "staged-app-Info.plist"
+        staged_e2e_plist = root / "staged-e2e-Info.plist"
+        staged_app_plist.write_bytes(plistlib.dumps(app_info))
+        staged_e2e_plist.write_bytes(plistlib.dumps(e2e_info))
         bin_directory = root / "bin"
         bin_directory.mkdir()
+        (bin_directory / "python3").symlink_to(sys.executable)
         production = (MACH_O_MAGIC + b"production").hex()
         # Stand-in xcodebuild: records its arguments and writes what a Release build of each scheme leaves.
         script = (
@@ -175,6 +189,8 @@ class ReleaseBuildGateTests(unittest.TestCase):
             f"echo \"xcodebuild $*\" >> '{self.calls}'\n"
             f"products='{products}'\n"
             "mkdir -p \"$products/Recortia.app/Contents/MacOS\" \"$products/RecortiaE2E.app/Contents/MacOS\"\n"
+            f"cp '{staged_app_plist}' \"$products/Recortia.app/Contents/Info.plist\"\n"
+            f"cp '{staged_e2e_plist}' \"$products/RecortiaE2E.app/Contents/Info.plist\"\n"
             f"printf '%s' '{production}' | xxd -r -p > \"$products/Recortia.app/Contents/MacOS/Recortia\"\n"
             f"printf '%s' '{production}' | xxd -r -p > \"$products/RecortiaE2E.app/Contents/MacOS/RecortiaE2E\"\n"
             # The E2E product links the fixture generators on purpose; that is not the runner.
@@ -228,6 +244,19 @@ class ReleaseBuildGateTests(unittest.TestCase):
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                 self.assertIn("RecortiaE2E.app", result.stderr)
                 self.assertIn("test-only code (", result.stderr)
+
+    def test_bad_exported_updater_plist_fails_release_build_gate(self) -> None:
+        bad_app = self.run_build_gate(
+            app_plist_change=lambda info: info.__setitem__("SUEnableAutomaticChecks", True)
+        )
+        self.assertEqual(1, bad_app.returncode, bad_app.stdout + bad_app.stderr)
+        self.assertIn("SUEnableAutomaticChecks", bad_app.stderr)
+
+        bad_e2e = self.run_build_gate(
+            e2e_plist_change=lambda info: info.__setitem__("SUFeedURL", "https://mneves75.github.io/recortia/appcast.xml")
+        )
+        self.assertEqual(1, bad_e2e.returncode, bad_e2e.stdout + bad_e2e.stderr)
+        self.assertIn("E2E runner carries Sparkle key SUFeedURL", bad_e2e.stderr)
 
     def test_hosted_ci_runs_the_release_build_gate_unconditionally(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()

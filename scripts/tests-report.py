@@ -70,6 +70,12 @@ GATES: list[dict[str, object]] = [
         "invoked_by": ["scripts/check.sh"],
     },
     {
+        "id": "release-build",
+        "file": "scripts/check-release-build.sh",
+        "tests": [],
+        "invoked_by": [".github/workflows/ci.yml"],
+    },
+    {
         "id": "release-contract",
         "file": "scripts/release.sh",
         "tests": ["scripts/test-release-contract.py"],
@@ -337,11 +343,57 @@ def observe(suite: dict[str, str], head: str) -> dict[str, object]:
     }
 
 
+REQUIRED_CHECK_STEPS: tuple[tuple[str, str], ...] = (
+    ("scripts/doctor.sh", r"^scripts/doctor\.sh(?:\s|$)"),
+    ("swift format lint --strict", r"^(?:xcrun\s+)?swift\s+format\s+lint\b.*--strict\b"),
+    ("scripts/check-project-fresh.sh", r"^scripts/check-project-fresh\.sh(?:\s|$)"),
+    ("swift test", r"^(?:xcrun\s+)?swift\s+test\b.*--package-path\s+Packages/RecortiaKit\b"),
+    ("scripts/check-localization.py", r"^(?:python3\s+)?scripts/check-localization\.py(?:\s|$)"),
+    (
+        "RECORTIA_E2E_BINARY launch guard",
+        r"^RECORTIA_E2E_BINARY=\S+\s+python3\s+scripts/test-e2e-isolation\.py\b",
+    ),
+)
+
+
+def script_commands(script: str) -> list[str]:
+    """Logical non-comment, non-echo command lines, joining trailing backslash continuations."""
+    commands: list[str] = []
+    pending = ""
+    for raw in script.splitlines():
+        stripped = raw.strip()
+        if not pending and (not stripped or stripped.startswith("#")):
+            continue
+        if stripped.endswith("\\"):
+            pending += stripped[:-1].rstrip() + " "
+            continue
+        line = (pending + stripped).strip()
+        pending = ""
+        if not line or line.startswith("#"):
+            continue
+        first = line.split(None, 1)[0]
+        if first in ("echo", "print"):
+            continue
+        commands.append(line)
+    if pending.strip():
+        commands.append(pending.strip())
+    return commands
+
+
 def runs_gate_tests(script: str) -> bool:
     """A command line starting `python3 scripts/tests-report.py --run-tests`, not a comment or an
     echo. check.sh itself refuses to pass unless that step printed the completion line."""
     return any(line.strip() == RUN_TESTS or line.strip().startswith(RUN_TESTS + " ")
                for line in script.splitlines())
+
+
+def missing_check_steps(script: str) -> list[str]:
+    commands = script_commands(script)
+    return [
+        label
+        for label, pattern in REQUIRED_CHECK_STEPS
+        if not any(re.search(pattern, command) for command in commands)
+    ]
 
 
 def run_tests() -> int:
@@ -374,6 +426,10 @@ def inventory_problems() -> list[str]:
                 continue
             if gate["tests"] and not runs_gate_tests(caller_path.read_text()):
                 problems.append(f"{gate['id']}: {caller} never runs `{RUN_TESTS}`")
+    check_script = ROOT / "scripts/check.sh"
+    if check_script.exists():
+        for missing in missing_check_steps(check_script.read_text()):
+            problems.append(f"scripts/check.sh never runs required gate step `{missing}`")
     named = {pathlib.Path(t).name for gate in GATES for t in gate["tests"]}  # type: ignore[union-attr]
     for path in sorted((ROOT / "scripts").glob("test-*.py")):
         if path.name not in named:

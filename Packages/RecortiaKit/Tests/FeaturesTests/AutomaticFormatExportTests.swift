@@ -123,4 +123,17 @@ struct AutomaticFormatExportTests {
         #expect(await h.export(.saveToFolder(folder)) != .rejectedBusy)
         #expect(h.files.uniqueSaves.last?.snapshot.suggestedFilename.hasSuffix(".jpg") == true)
     }
+
+    @Test("Resolved filenames rewrite mismatched extensions, keep .JPEG, and append missing extensions")
+    func resolvedExtensionNaming() {
+        for (url, format, expected) in [
+            ("/tmp/recortia-tests/a.png", ExportFormat.jpeg(quality: 0.92), "/tmp/recortia-tests/a.jpg"),
+            ("/tmp/recortia-tests/a.JPEG", .jpeg(quality: 0.92), "/tmp/recortia-tests/a.JPEG"),
+            ("/tmp/recortia-tests/a.jpg", .png, "/tmp/recortia-tests/a.png"),
+            ("/tmp/recortia-tests/a", .png, "/tmp/recortia-tests/a.png"),
+        ] {
+            let named = ExportCoordinator.named(URL(filePath: url), for: format)
+            #expect(named.path == expected, "\(url) as \(format)")
+        }
+    }
 }

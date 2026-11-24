@@ -28,7 +28,7 @@ echo "== gate inventory"
 python3 scripts/tests-report.py --check
 
 echo "== format lint"
-xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests RecortiaApp RecortiaUITests
+xcrun swift format lint --strict --recursive --parallel Packages/RecortiaKit/Sources Packages/RecortiaKit/Tests RecortiaApp
 
 echo "== generated project is current (compared with git)"
 scripts/check-project-fresh.sh

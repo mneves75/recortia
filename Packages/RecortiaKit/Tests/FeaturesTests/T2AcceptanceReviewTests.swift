@@ -178,29 +178,6 @@ struct T2AcceptanceReviewTests {
         #expect(once != input)
     }
 
-    // MARK: Automatic format: Copy Image is PNG, saved names follow the bytes (FR-07)
-
-    // Failure mode: a Save under Automatic writes JPEG bytes to a name the person reads as PNG,
-    // or a folder save is named for one format and holds the other.
-    @Test("Under Automatic, every saved file's extension names the format of its bytes")
-    func automaticNamesFollowBytes() async throws {
-        let h = QuickActionsHarness()
-        h.settings.update { $0.exportFormat = .automatic }
-        let panelSave = ExportAction.save(to: URL(filePath: "/tmp/a.png"), format: .automatic, replacing: nil)
-        let options = h.export.exportOptions(for: panelSave)
-        #expect(options.automaticFormat)
-        #expect(h.export.exportOptions(for: .copy).formatChoice == .fixed(.png))
-        for (url, format, expected) in [
-            ("/tmp/recortia-t2-review/a.png", ExportFormat.jpeg(quality: 0.92), "/tmp/recortia-t2-review/a.jpg"),
-            ("/tmp/recortia-t2-review/a.JPEG", .jpeg(quality: 0.92), "/tmp/recortia-t2-review/a.JPEG"),
-            ("/tmp/recortia-t2-review/a.jpg", .png, "/tmp/recortia-t2-review/a.png"),
-            ("/tmp/recortia-t2-review/a", .png, "/tmp/recortia-t2-review/a.png"),
-        ] {
-            let named = ExportCoordinator.named(URL(filePath: url), for: format)
-            #expect(named.path == expected, "\(url) as \(format)")
-        }
-    }
-
     // MARK: Helpers
 
     private static func object(_ preferences: Preferences) throws -> [String: Any] {

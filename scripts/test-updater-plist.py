@@ -101,6 +101,52 @@ class UpdaterPlistTests(unittest.TestCase):
                     self.assertEqual(1, result.returncode, result.stdout)
                     self.assertIn("cannot read a plist", result.stderr)
 
+    def test_explicit_app_and_e2e_flags_validate_exported_plists(self):
+        (ROOT / ".scratch").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / ".scratch") as directory:
+            app_copy = pathlib.Path(directory) / "ExportedApp-Info.plist"
+            e2e_copy = pathlib.Path(directory) / "ExportedE2E-Info.plist"
+            app_copy.write_bytes(SHIPPING.read_bytes())
+            e2e_copy.write_bytes(RUNNER.read_bytes())
+
+            for argv in (
+                ["--app-plist", str(app_copy)],
+                ["--e2e-plist", str(e2e_copy)],
+                ["--app-plist", str(app_copy), "--e2e-plist", str(e2e_copy)],
+            ):
+                with self.subTest(argv=argv):
+                    result = subprocess.run(
+                        [sys.executable, str(CHECK), *argv], capture_output=True, text=True, timeout=15
+                    )
+                    self.assertEqual(0, result.returncode, result.stderr)
+
+            bad_app = plistlib.loads(SHIPPING.read_bytes())
+            bad_app["SUAllowsAutomaticUpdates"] = True
+            app_copy.write_bytes(plistlib.dumps(bad_app))
+            result = subprocess.run(
+                [sys.executable, str(CHECK), "--app-plist", str(app_copy)], capture_output=True, text=True, timeout=15
+            )
+            self.assertEqual(1, result.returncode, result.stdout)
+            self.assertIn("SUAllowsAutomaticUpdates", result.stderr)
+
+            app_copy.write_bytes(SHIPPING.read_bytes())
+            bad_e2e = plistlib.loads(RUNNER.read_bytes())
+            bad_e2e["SUFeedURL"] = "https://mneves75.github.io/recortia/appcast.xml"
+            e2e_copy.write_bytes(plistlib.dumps(bad_e2e))
+            result = subprocess.run(
+                [sys.executable, str(CHECK), "--app-plist", str(app_copy), "--e2e-plist", str(e2e_copy)],
+                capture_output=True, text=True, timeout=15,
+            )
+            self.assertEqual(1, result.returncode, result.stdout)
+            self.assertIn("E2E runner carries Sparkle key SUFeedURL", result.stderr)
+
+            for invalid in ([str(app_copy)], ["--app-plist", str(app_copy), str(e2e_copy)]):
+                with self.subTest(invalid=invalid):
+                    result = subprocess.run(
+                        [sys.executable, str(CHECK), *invalid], capture_output=True, text=True, timeout=15
+                    )
+                    self.assertEqual(2, result.returncode, result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

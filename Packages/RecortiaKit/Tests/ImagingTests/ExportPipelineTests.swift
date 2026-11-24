@@ -54,8 +54,9 @@ struct ExportPipelineTests {
         }
     }
 
-    @Test("Preview geometry (renderBase + AnnotationRenderer) matches export geometry", arguments: [2.0])
-    func previewMatchesExport(scale: Double) async throws {
+    @Test("Preview geometry (renderBase + AnnotationRenderer) matches export geometry")
+    func previewMatchesExport() async throws {
+        let scale = 2.0
         let harness = ImagingHarness()
         let asset = try await harness.add(try ChartFixture.geometryChart(width: 60, height: 40))
         var document = Document(asset: asset)
