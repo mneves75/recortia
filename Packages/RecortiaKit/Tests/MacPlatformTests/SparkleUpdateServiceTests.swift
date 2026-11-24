@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 
 @testable import MacPlatform
@@ -136,15 +137,15 @@ struct SparkleUpdateServiceTests {
     func optIn() throws {
         let engines = Engines()
         let updates = service(Self.configured, engines)
-        var allowed = false
-        _ = updates.start(mayCheckInBackground: { allowed })
+        let allowed = Mutex(false)
+        _ = updates.start(mayCheckInBackground: { allowed.withLock { $0 } })
         let engine = try #require(engines.made.first)
         let mayCheck = try #require(engine.mayCheckInBackground)
-        allowed = true
+        allowed.withLock { $0 = true }
         updates.setChecksAutomatically(true)
         #expect(engine.automaticallyChecksForUpdates && mayCheck())
         // Preference reset or drift outside setChecksAutomatically immediately refuses scheduled checks.
-        allowed = false
+        allowed.withLock { $0 = false }
         engine.automaticallyChecksForUpdates = true
         #expect(!mayCheck())
         updates.setChecksAutomatically(false)
