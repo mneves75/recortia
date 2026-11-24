@@ -5,6 +5,21 @@
   "status": "beta_implemented_awaiting_manual_validation",
   "policy": "FR-01 through FR-14 implementation was approved on 2026-09-26; FR-15 GitHub upload and local test installation on 2026-10-01. No task is complete without recorded verification; other providers, FR-16, publishing and live-data access require separate authorization.",
   "current_candidate": {
+    "version": "0.16.0",
+    "app_version": "0.16.0",
+    "build": 31,
+    "date": "2026-11-24",
+    "scope": "Program 2026-11 trains T1-T6, the capture workflow expansion (quick actions, preview, optimized copy, frozen selection, framing) and the 2026-11-24 defect-prevention hardening; see CHANGELOG.md.",
+    "release": {"tag": "v0.16.0", "commit": "993391e4c5e3ac0efba62f65f7b5ea84bf23e504", "tree": "b49f50e8da74f07250637ece92540c171df39ad1", "url": "https://github.com/mneves75/recortia/releases/tag/v0.16.0", "published_at": "2026-11-24T09:25:33Z", "draft": false, "prerelease": false, "latest": true, "dmg": "Recortia-0.16.0.dmg", "dmg_sha256": "9c3e412fa93ef97389a23de359da9ccfc0f2d53899c824b78a1c4bd41ba8923d", "notarization_submissions": {"app": "17e3e018-e854-44ac-9def-6cb67cdb8121", "dmg": "087d617f-770e-44a6-9c1a-c926dd931d43"}, "security_gate": "WAIVED (SEC-11, SEC-17, SEC-18, expiring 2026-12-24); record .scratch/security-gate/993391e4c5e3ac0efba62f65f7b5ea84bf23e504/production.json, reused from the identical tree 3210f39", "release_log": ".scratch/logs/release-0.16.0-rerun.log (exit 0); output .build/release/0.16.0/"},
+    "status": "released",
+    "verification": "PRs #42-#50 were consolidated into #51 and squash-merged at 993391e (tree b49f50e equals the verified head 3210f39); hosted CI 45333004675 passed on that tree and a distinct-model verifier accepted it. scripts/release.sh on the tag: the first run failed in the gate on one wall-clock assertion (SensitiveTextTests.swift:340, 60 s against a 10 s limit) while the host load average was about 54; the log is kept in .scratch/logs/release-0.16.0-gate.log. A single rerun after the load fell exited 0: gate, archive, Developer ID export, entitlement and binary checks, app and DMG notarization Accepted, both stapled. An anonymous download of the published asset has the same SHA-256 as the build artifact.",
+    "limitations": [
+      "The native end-to-end suite and the Spaces probe were not run on the exact release commit (the console was in use); the earlier full bilingual run and Spaces probe on 09be9d5 is recorded in progress.md.",
+      "macOS 26.0 itself, VoiceOver, physical Spaces and permission checks, and a live Sparkle update were not run.",
+      "SEC-11, SEC-17 and SEC-18 are owner-waived until 2026-12-24."
+    ]
+  },
+  "previous_release_0_14_0": {
     "version": "0.14.0",
     "app_version": "0.14.0",
     "build": 28,
@@ -226,6 +241,21 @@
     "release": "A private dry run verified signing and the disk image. Exact-commit release security, notarization, live update, physical desktop checks, minimum macOS, merge and tag remain open."
   },
   "current_local_installation": {
+    "candidate": "0.16.0 notarized release",
+    "app_version": "0.16.0",
+    "build": 31,
+    "date": "2026-11-24",
+    "source_commit": "993391e4c5e3ac0efba62f65f7b5ea84bf23e504",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Verified notarized export of scripts/release.sh on tag v0.16.0.",
+    "backup_path": "Primary main checkout: .scratch/install-0.16.0-notarized-20261124/Recortia-prev.app (previous unnotarized 0.16.0 build 31).",
+    "executable_sha256": "3396f70f54d6b653115e544c7fb7e167ead402ae0fb1192ec58c457db1c43bd6",
+    "installed_equals_developer_id_export": true,
+    "launched": false,
+    "notarized": true,
+    "verification": "The installed bundle is identical to the export (diff -rq). Strict codesign, stapler validate and spctl (source=Notarized Developer ID) passed, with Hardened Runtime, the embedded provisioning profile, the Keychain access group Q96FUTC5G8.dev.mvneves.Recortia and no get-task-allow. The running process (PID 72206, started 2026-11-23 01:58) was preserved and still executes the previous unnotarized binary until Recortia is restarted. Receipt: .scratch/install-0.16.0-notarized-20261124/installation.json."
+  },
+  "previous_local_installation_0_16_0_build_31_unnotarized": {
     "candidate": "0.16.0 Developer ID local candidate",
     "app_version": "0.16.0",
     "build": 31,
