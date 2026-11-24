@@ -57,10 +57,15 @@ public actor DiagnosticsLog {
     @discardableResult
     public func delete() -> Bool {
         let fileManager = FileManager.default
+        var allSucceeded = true
         for url in [fileURL, previousFileURL] where itemType(url) != nil {
-            do { try fileManager.removeItem(at: url) } catch { return false }
+            do {
+                try fileManager.removeItem(at: url)
+            } catch {
+                allSucceeded = false
+            }
         }
-        return existingFiles().isEmpty
+        return allSucceeded && existingFiles().isEmpty
     }
 
     /// The diagnostics files that exist now, current first.

@@ -15,6 +15,8 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
     private var shownID: UUID?
     private var captureSuspended = false
     private var loop: ObservationLoop?
+    private var activeDialogID: UUID?
+    private var cancelActiveDialog: (@MainActor () -> Void)?
     /// Orders the panel in; scenarios park it offscreen instead.
     var present: @MainActor (HostingPanel) -> Void = { $0.presentInCorner() }
     /// A destination for Save when Settings names no folder; scenarios never show a panel.
@@ -29,7 +31,7 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
 
     init(model: QuickActionsModel, settings: SettingsStore) {
         self.model = model
-        chooseSaveDestination = { Self.chooseDestination(options: settings.exportOptions) }
+        chooseSaveDestination = { await Self.chooseDestination(options: settings.exportOptions) }
         super.init()
         loop = ObservationLoop { [weak self] in
             self?.renderThumbnail()
@@ -40,6 +42,7 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
     private func renderThumbnail() {
         let shown = model.isShown ? model.capture : nil
         guard shown?.id != shownID else { return }
+        dismissActiveDialog()
         closePreviewPanel()
         panel?.close()
         panel = nil
@@ -158,7 +161,13 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
     }
 
     func save() async -> String? {
-        Self.failure(await model.save(choosing: chooseSaveDestination, confirmReplacement: confirmReplacement))
+        Self.failure(
+            await model.save(
+                choosing: { [weak self] in
+                    guard let self else { return nil }
+                    return await self.runDialog { await self.chooseSaveDestination() }
+                },
+                confirmReplacement: confirmReplacement))
     }
 
     func saveOptimized() async -> String? {
@@ -168,14 +177,39 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
             optimizedSaveDialogs?.confirmReplacement ?? { await Self.confirmOptimizedReplacement($0, in: panel) }
         let dialogs = OptimizedSaveDialogs(
             chooseDestination: { [weak self] details in
-                guard self?.canUseActions(captureID, from: panel) == true else { return nil }
-                return await choose(details)
+                guard let self, self.canUseActions(captureID, from: panel) else { return nil }
+                return await self.runDialog { await choose(details) }
             },
             confirmReplacement: { [weak self] url in
-                guard self?.canUseActions(captureID, from: panel) == true else { return false }
-                return await confirm(url)
+                guard let self, self.canUseActions(captureID, from: panel) else { return false }
+                return await self.runDialog { await confirm(url) }
             })
         return Self.failure(await model.saveOptimized(using: dialogs))
+    }
+
+    private func runDialog<T: Sendable>(_ operation: @escaping @MainActor () async -> T) async -> T {
+        dismissActiveDialog()
+        let id = UUID()
+        let task = Task { @MainActor in await operation() }
+        activeDialogID = id
+        cancelActiveDialog = { task.cancel() }
+        defer {
+            if activeDialogID == id {
+                activeDialogID = nil
+                cancelActiveDialog = nil
+            }
+        }
+        return await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func dismissActiveDialog() {
+        cancelActiveDialog?()
+        activeDialogID = nil
+        cancelActiveDialog = nil
     }
 
     private func canUseActions(_ captureID: UUID, from panel: HostingPanel) -> Bool {
@@ -205,7 +239,8 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
     }
 
     /// The editor's Save panel, app-modal because the thumbnail has no window to attach a sheet to.
-    private static func chooseDestination(options: ExportOptions) -> (url: URL, format: ExportFormatChoice)? {
+    private static func chooseDestination(options: ExportOptions) async -> (url: URL, format: ExportFormatChoice)? {
+        guard !Task.isCancelled else { return nil }
         let format = options.formatChoice
         let panel = NSSavePanel()
         // Automatic offers the PNG name; the save then takes the extension of the format chosen.
@@ -219,10 +254,7 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
         panel.nameFieldStringValue = options.filenameTemplate.name(for: Date(), format: options.format).name(attempt: 1)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
-        AppPresence.shared.activate()
-        // A finished save panel is ordered out, not closed: re-evaluate the Dock presence.
-        defer { AppPresence.shared.setNeedsRefresh() }
-        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        guard let url = await FilePanelPresenter.present(panel) else { return nil }
         return (url, format)
     }
 
@@ -245,59 +277,18 @@ final class QuickActionsUIController: NSObject, NSWindowDelegate {
         panel.directoryURL = details.preferredFolder
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
-        SpacePolicy.follow(panel)
-        AppPresence.shared.activate()
-        defer {
-            panel.orderOut(nil)
-            AppPresence.shared.setNeedsRefresh()
-        }
-        let response = await OptimizedSavePrompt().run(
-            begin: { panel.begin(completionHandler: $0) }, dismiss: { panel.cancel(nil) })
-        return response == .OK ? panel.url : nil
+        return await FilePanelPresenter.present(panel)
     }
 
     private static func confirmOptimizedReplacement(_ existing: URL, in parent: NSWindow) async -> Bool {
         guard parent.isVisible, parent.attachedSheet == nil else { return false }
         let alert = MessagePresenter.makeReplacement(of: existing)
-        let response = await OptimizedSavePrompt().run(
+        let response = await CancellableModalPrompt().run(
             begin: { alert.beginSheetModal(for: parent, completionHandler: $0) },
             dismiss: {
                 if alert.window.sheetParent === parent { parent.endSheet(alert.window, returnCode: .abort) }
             })
         return response == .alertFirstButtonReturn
-    }
-}
-
-@MainActor
-private final class OptimizedSavePrompt {
-    private var completion: CheckedContinuation<NSApplication.ModalResponse, Never>?
-
-    func run(
-        begin: (@escaping @MainActor (NSApplication.ModalResponse) -> Void) -> Void,
-        dismiss: @escaping @MainActor () -> Void
-    ) async -> NSApplication.ModalResponse {
-        await withTaskCancellationHandler {
-            await withCheckedContinuation { continuation in
-                guard !Task.isCancelled else {
-                    continuation.resume(returning: .abort)
-                    return
-                }
-                completion = continuation
-                begin { [weak self] in self?.finish($0) }
-            }
-        } onCancel: {
-            Task { @MainActor in
-                guard self.completion != nil else { return }
-                dismiss()
-                self.finish(.abort)
-            }
-        }
-    }
-
-    private func finish(_ response: NSApplication.ModalResponse) {
-        let continuation = completion
-        completion = nil
-        continuation?.resume(returning: response)
     }
 }
 

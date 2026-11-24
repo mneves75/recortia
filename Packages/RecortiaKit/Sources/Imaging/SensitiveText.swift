@@ -26,7 +26,7 @@
 //
 // Changes from the original: patterns compile once behind a typed error instead of `try!`; the sweep
 // is structured concurrency over Recortia's `TextRecognizer` and surfaces recognition failure instead
-// of logging it; boxes are outset to whole pixels; two alternative matchers exist for comparison.
+// of logging it; boxes are outset to whole pixels.
 
 import CoreGraphics
 import Domain
@@ -48,11 +48,8 @@ public struct SensitiveTextMatch: Sendable, Equatable {
 public enum SensitiveTextError: Error, Equatable, Sendable {
     /// A built-in pattern failed to compile; carries the pattern's name.
     case patternInvalid(String)
-    case dataDetectorUnavailable
     /// A tile of the capture could not be cropped or resampled.
     case tileUnavailable
-    /// The document recognizer failed on both its default and CPU compute paths.
-    case documentRecognitionFailed
     /// The asset is no longer in the image store (its editor closed).
     case assetUnavailable
     /// A match's box could not be mapped onto the image. The sweep fails rather than drop the match.
@@ -66,7 +63,7 @@ public enum SensitiveTextError: Error, Equatable, Sendable {
     case rangeUnmappable
 }
 
-// MARK: - Pattern matcher (variant A)
+// MARK: - Pattern matcher
 
 /// Finds e-mail addresses and phone numbers in one line of text. Built for OCR output, so it
 /// tolerates the damage Vision typically does (a stray space after a dot, a missing separator).
@@ -515,41 +512,7 @@ public struct SensitiveTextMatcher: Sendable {
     }
 }
 
-// MARK: - System data detector (variant B)
-
-/// `NSDataDetector` phone numbers and `mailto:` links, for comparison with the patterns.
-struct DataDetectorMatcher: Sendable {
-    private let detector: NSDataDetector
-
-    init() throws(SensitiveTextError) {
-        let types =
-            NSTextCheckingResult.CheckingType.phoneNumber.rawValue | NSTextCheckingResult.CheckingType.link.rawValue
-        do { detector = try NSDataDetector(types: types) } catch { throw .dataDetectorUnavailable }
-    }
-
-    func matches(in text: String, kinds: Set<SensitiveTextKind>) -> [SensitiveTextMatch] {
-        detector.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { result in
-            let kind: SensitiveTextKind
-            switch result.resultType {
-            case .phoneNumber: kind = .phone
-            case .link where result.url?.scheme?.lowercased() == "mailto": kind = .email
-            default: return nil
-            }
-            guard kinds.contains(kind) else { return nil }
-            return SensitiveTextMatch(kind: kind, range: result.range)
-        }
-    }
-}
-
 // MARK: - Sweep
-
-/// How lines are searched (benchmark harness; the product uses `patterns`). `documents` asks
-/// Vision's document recognizer for its own detected data instead of reading lines.
-enum SensitiveTextMethod: String, Sendable, CaseIterable {
-    case patterns
-    case dataDetector
-    case documents
-}
 
 /// A detected item and the whole-pixel rectangle that covers it, top-left origin.
 public struct SensitiveRegion: Sendable, Equatable {
@@ -566,19 +529,15 @@ public struct SensitiveTextScanner: Sendable {
     /// Vision's boxes hug the ink and anti-aliasing and descenders sit just outside them.
     static let outsetFraction = 0.15
 
-    /// Side of a fine-sweep tile in resampled pixels (Fosco's 2048 by default).
+    /// Side of a fine-sweep tile in resampled pixels (1024-px fine tiles, decisions.md 2026-11-20).
     let fineTileSide: CGFloat
 
-    /// 1024-px fine tiles (decisions.md, 2026-11-20): 99.2% recall against 96.6% at 2048.
     public init() { fineTileSide = 1024 }
 
-    /// For the tile-size experiment in the benchmark.
-    init(fineTileSide: CGFloat) { self.fineTileSide = fineTileSide }
-
-    /// Regions of the stored asset `id` that show e-mail addresses or phone numbers, found by the
-    /// pattern matcher (decisions.md, 2026-11-20). The pixels are read here, inside Imaging, and
-    /// never leave it. Throws `assetUnavailable` when the store no longer holds the asset, and
-    /// otherwise as `sensitiveRegions(in:pixelsPerPoint:languages:kinds:method:)` does.
+    /// Regions of the stored asset `id` that show e-mail addresses or phone numbers. The pixels
+    /// are read here, inside Imaging, and never leave it. Throws `assetUnavailable` when the store
+    /// no longer holds the asset, and otherwise as `sensitiveRegions(in:pixelsPerPoint:languages:kinds:)`
+    /// does.
     @concurrent
     public func sensitiveRegions(
         of id: AssetID, in store: ImageStore, pixelsPerPoint: Double, languages: [Locale.Language]
@@ -590,22 +549,16 @@ public struct SensitiveTextScanner: Sendable {
     /// Regions of `image` that show e-mail addresses or phone numbers. `pixelsPerPoint` is the
     /// capture's backing scale. Throws `CancellationError` when cancelled and a recognition error
     /// when any tile cannot be read, so a caller never takes a partial sweep for a complete one.
-    /// `method` other than `.patterns` exists for the benchmark harness only; `tileStarted` runs as
-    /// each tile's scan begins, for the cancellation test.
+    /// `tileStarted` runs as each tile's scan begins, for the cancellation test.
     @concurrent
     func sensitiveRegions(
         in image: CGImage, pixelsPerPoint: Double, languages: [Locale.Language],
-        kinds: Set<SensitiveTextKind> = Set(SensitiveTextKind.allCases), method: SensitiveTextMethod = .patterns,
+        kinds: Set<SensitiveTextKind> = Set(SensitiveTextKind.allCases),
         tileStarted: @escaping @Sendable () -> Void = {}
     ) async throws -> [SensitiveRegion] {
         try Task.checkCancellation()
         guard !kinds.isEmpty else { return [] }
-        let matcher: LineMatcher
-        switch method {
-        case .patterns: matcher = .patterns(try SensitiveTextMatcher.shared.get())
-        case .dataDetector: matcher = .dataDetector(try DataDetectorMatcher())
-        case .documents: matcher = .documents
-        }
+        let matcher = try SensitiveTextMatcher.shared.get()
         let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
         let jobs = try Self.tileJobs(for: bounds.size, pixelsPerPoint: pixelsPerPoint, fineTileSide: fineTileSide)
         let recognizer = self.recognizer
@@ -683,43 +636,23 @@ public struct SensitiveTextScanner: Sendable {
         return regions
     }
 
-    enum LineMatcher: Sendable {
-        case patterns(SensitiveTextMatcher)
-        case dataDetector(DataDetectorMatcher)
-        case documents
-
-        func matches(in text: String, kinds: Set<SensitiveTextKind>) -> [SensitiveTextMatch] {
-            switch self {
-            case .patterns(let matcher): matcher.matches(in: text, kinds: kinds)
-            case .dataDetector(let matcher): matcher.matches(in: text, kinds: kinds)
-            case .documents: []
-            }
-        }
-    }
-
     /// A match and its box in source pixels (top-left origin).
     typealias BoxedMatch = (kind: SensitiveTextKind, rect: CGRect)
 
     private static func scanTile(
         of image: CGImage, sourceRect: CGRect, layout: TileLayout, kinds: Set<SensitiveTextKind>,
-        languages: [Locale.Language], matcher: LineMatcher, recognizer: TextRecognizer
+        languages: [Locale.Language], matcher: SensitiveTextMatcher, recognizer: TextRecognizer
     ) async throws -> [BoxedMatch] {
         try Task.checkCancellation()
         let tile = try renderTile(of: image, sourceRect: sourceRect, scale: layout.scale)
         let tileSize = CGSize(width: tile.width, height: tile.height)
         var matches = TileMatches()
-        if case .documents = matcher {
-            for match in try await documentMatches(in: tile, languages: languages, kinds: kinds) {
-                try matches.append(match.kind, match.box)
-            }
-        } else {
-            let observations = try await recognizer.recognizedObservations(tile, languages: languages).observations
-            guard observations.count <= maximumObservationsPerTile else { throw SensitiveTextError.tooManyMatches }
-            try Task.checkCancellation()
-            try matchesAcrossFragments(
-                of: observations, tileSize: tileSize, kinds: kinds, matcher: matcher, into: &matches)
-            try matchesInAlternateReadings(of: observations, kinds: kinds, matcher: matcher, into: &matches)
-        }
+        let observations = try await recognizer.recognizedObservations(tile, languages: languages).observations
+        guard observations.count <= maximumObservationsPerTile else { throw SensitiveTextError.tooManyMatches }
+        try Task.checkCancellation()
+        try matchesAcrossFragments(
+            of: observations, tileSize: tileSize, kinds: kinds, matcher: matcher, into: &matches)
+        try matchesInAlternateReadings(of: observations, kinds: kinds, matcher: matcher, into: &matches)
         let unit = CGRect(x: 0, y: 0, width: 1, height: 1)
         return try matches.items.map { kind, box throws(SensitiveTextError) in
             // A box Vision cannot place on the tile fails the sweep (R05); no height filter drops
@@ -752,7 +685,7 @@ public struct SensitiveTextScanner: Sendable {
     /// fragments is read as the single line it is.
     private static func matchesAcrossFragments(
         of observations: [RecognizedTextObservation], tileSize: CGSize, kinds: Set<SensitiveTextKind>,
-        matcher: LineMatcher, into matches: inout TileMatches
+        matcher: SensitiveTextMatcher, into matches: inout TileMatches
     ) throws(SensitiveTextError) {
         let fragments = observations.compactMap { observation in
             observation.topCandidates(1).first.map { Fragment(text: $0, box: observation.boundingBox.cgRect) }
@@ -784,7 +717,7 @@ public struct SensitiveTextScanner: Sendable {
 
     /// A lower-ranked reading sometimes gets right the character the best one got wrong.
     private static func matchesInAlternateReadings(
-        of observations: [RecognizedTextObservation], kinds: Set<SensitiveTextKind>, matcher: LineMatcher,
+        of observations: [RecognizedTextObservation], kinds: Set<SensitiveTextKind>, matcher: SensitiveTextMatcher,
         into matches: inout TileMatches
     ) throws(SensitiveTextError) {
         for observation in observations {
@@ -821,56 +754,6 @@ public struct SensitiveTextScanner: Sendable {
                 x: matchBox.minX, y: min(matchBox.minY, box.minY), width: matchBox.width,
                 height: max(matchBox.maxY, box.maxY) - min(matchBox.minY, box.minY))
         }
-    }
-
-    // MARK: Variant C
-
-    /// Matches that Vision's document recognizer reports as detected data, in the tile's unit square.
-    private static func documentMatches(
-        in tile: CGImage, languages: [Locale.Language], kinds: Set<SensitiveTextKind>
-    ) async throws -> [(kind: SensitiveTextKind, box: CGRect)] {
-        var request = RecognizeDocumentsRequest()
-        let supported = request.supportedRecognitionLanguages
-        let resolved = languages.map { TextRecognizer.match($0, in: supported) }
-        let unavailable = zip(languages, resolved).filter { $0.1 == nil }.map(\.0)
-        guard unavailable.isEmpty else { throw TextRecognitionError.unsupportedLanguages(unavailable) }
-        request.textRecognitionOptions.recognitionLanguages = resolved.compactMap { $0 }
-        request.textRecognitionOptions.useLanguageCorrection = false
-        request.textRecognitionOptions.automaticallyDetectLanguage = false
-        let documents: [DocumentObservation]
-        do {
-            documents = try await request.perform(on: tile)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            try Task.checkCancellation()
-            for (stage, devices) in request.supportedComputeStageDevices {
-                guard let cpu = devices.first(where: { if case .cpu = $0 { true } else { false } }) else { continue }
-                request.setComputeDevice(cpu, for: stage)
-            }
-            do { documents = try await request.perform(on: tile) } catch is CancellationError {
-                throw CancellationError()
-            } catch { throw SensitiveTextError.documentRecognitionFailed }
-        }
-        var found: [(kind: SensitiveTextKind, box: CGRect)] = []
-        for document in documents {
-            let container = document.document
-            let cells = container.tables.flatMap { $0.rows.flatMap { $0.map(\.content.text) } }
-            for text in [container.text] + cells {
-                for detected in text.detectedData {
-                    let kind: SensitiveTextKind
-                    switch detected.match.details {
-                    case .emailAddress: kind = .email
-                    case .phoneNumber: kind = .phone
-                    case .link(let link) where link.url.scheme?.lowercased() == "mailto": kind = .email
-                    default: continue
-                    }
-                    guard kinds.contains(kind) else { continue }
-                    found.append((kind, detected.boundingRegion.boundingBox.cgRect))
-                }
-            }
-        }
-        return found
     }
 
     // MARK: Tiles and regions

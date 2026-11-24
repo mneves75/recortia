@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 
 /// Recortia is a menu-bar app (`LSUIElement`) that joins ⌘Tab and the Dock while it has a window
 /// the user can switch to, and leaves them when the last one closes (FR-01, ADR-007).
@@ -13,19 +14,24 @@ import AppKit
 /// (`onLastWindowClosed`). Only a real close counts: launching without a window, minimizing,
 /// hiding, a capture that orders windows out, and closing a capture panel never do.
 @MainActor
+@Observable
 final class AppPresence {
     static let shared = AppPresence()
 
-    /// How many times the app returned to accessory; lets E2E prove a replacement did not demote.
-    private(set) var demotions = 0
+    #if DEBUG
+        /// How many times the app returned to accessory; lets E2E prove a replacement did not demote.
+        @ObservationIgnored private(set) var demotions = 0
+    #endif
     /// Called when a closed switchable window left none, nothing holds the app, and it is not hidden.
-    var onLastWindowClosed: (@MainActor () -> Void)?
+    @ObservationIgnored var onLastWindowClosed: (@MainActor () -> Void)?
     /// Active reasons to keep the app regular without a visible window (capture suspension).
     private var holds = 0
-    private var refreshScheduled = false
+    /// Observed mirror of `liveHasUserWindow` so `withObservationTracking` wakes on window/hide changes.
+    private var trackedHasUserWindow = false
+    @ObservationIgnored private var refreshScheduled = false
     /// A switchable window closed since the last refresh.
-    private var closedSwitchableWindow = false
-    private var observers: [any NSObjectProtocol] = []
+    @ObservationIgnored private var closedSwitchableWindow = false
+    @ObservationIgnored private var observers: [any NSObjectProtocol] = []
 
     private init() {}
 
@@ -39,9 +45,18 @@ final class AppPresence {
         for name in names {
             observers.append(
                 NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
-                    MainActor.assumeIsolated { AppPresence.shared.setNeedsRefresh() }
+                    MainActor.assumeIsolated {
+                        AppPresence.shared.syncObservedPresence()
+                        AppPresence.shared.setNeedsRefresh()
+                    }
                 })
         }
+        observers.append(
+            NotificationCenter.default.addObserver(
+                forName: NSApplication.didHideNotification, object: nil, queue: .main
+            ) { _ in
+                MainActor.assumeIsolated { AppPresence.shared.syncObservedPresence() }
+            })
         observers.append(
             NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) {
                 notification in
@@ -49,6 +64,7 @@ final class AppPresence {
                 let window = notification.object as? NSWindow
                 MainActor.assumeIsolated { AppPresence.shared.windowWillClose(window) }
             })
+        syncObservedPresence()
     }
 
     private func windowWillClose(_ window: NSWindow?) {
@@ -63,6 +79,7 @@ final class AppPresence {
         windowWillAppear()
         SpacePolicy.follow(window)
         window.makeKeyAndOrderFront(nil)
+        syncObservedPresence()
         NSApp.activate()
     }
 
@@ -76,6 +93,7 @@ final class AppPresence {
     /// Becomes regular now, for a switchable window about to be ordered in.
     func windowWillAppear() {
         if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
+        syncObservedPresence()
     }
 
     /// Re-evaluates on a later main-actor turn, after the window change in progress completes.
@@ -91,10 +109,12 @@ final class AppPresence {
     /// Capture temporarily orders Recortia's windows out; they still exist for the user.
     func beginHold() {
         holds += 1
+        syncObservedPresence()
     }
 
     func endHold() {
         holds = max(0, holds - 1)
+        syncObservedPresence()
         setNeedsRefresh()
     }
 
@@ -106,7 +126,17 @@ final class AppPresence {
     /// A window the person can still return to: one shown or minimized, one a capture ordered out
     /// (a hold), or any while Recortia is hidden.
     var hasUserWindow: Bool {
+        _ = trackedHasUserWindow
+        return liveHasUserWindow
+    }
+
+    private var liveHasUserWindow: Bool {
         holds > 0 || NSApp.isHidden || NSApp.windows.contains(where: Self.isSwitchable)
+    }
+
+    private func syncObservedPresence() {
+        let live = liveHasUserWindow
+        if trackedHasUserWindow != live { trackedHasUserWindow = live }
     }
 
     private func refresh() {
@@ -114,6 +144,7 @@ final class AppPresence {
         // means the person is still working, and cancelling that capture must not quit.
         let closed = closedSwitchableWindow
         closedSwitchableWindow = false
+        syncObservedPresence()
         if NSApp.windows.contains(where: Self.isSwitchable) {
             windowWillAppear()
             return
@@ -121,7 +152,9 @@ final class AppPresence {
         guard holds == 0, !NSApp.isHidden else { return }
         if NSApp.activationPolicy() == .regular {
             NSApp.setActivationPolicy(.accessory)
-            demotions += 1
+            #if DEBUG
+                demotions += 1
+            #endif
         }
         if closed { onLastWindowClosed?() }
     }

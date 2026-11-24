@@ -196,6 +196,8 @@ struct VolumeTraits {
     var saver: uid_t = geteuid()
     /// Gives the open stage a group, returning 0 or -1 with `errno` like fchown(2).
     var changeGroup: (Int32, gid_t) -> Int32 = { fchown($0, uid_t.max, $1) }
+    /// Gives an open descriptor a mode, returning 0 or -1 with `errno` like fchmod(2).
+    var changeMode: (Int32, mode_t) -> Int32 = { fchmod($0, $1) }
     /// Runs right after an overwrite swapped the stage with the destination.
     var afterSwap: (URL) -> Void = { _ in }
     /// Runs once the probe that reads a folder's inherited entries exists, before it is discarded.
@@ -714,7 +716,14 @@ final class Stage {
         // lets anyone else in; then the file is created inside it, owner-only.
         var failure: Int32?
         do throws(FileSystemFailure) { try POSIXFileSystem.clearACL(folder) } catch { failure = error.code }
-        if failure == nil, fchmod(folder, 0o700) != 0 { failure = errno }
+        if failure == nil {
+            if privateNamespace {
+                if fileSystem.changeMode(folder, 0o700) != 0 { failure = errno }
+            } else {
+                // Best effort on volumes that ignore ownership (exFAT, FAT32, some shares).
+                _ = fileSystem.changeMode(folder, 0o700)
+            }
+        }
         var file: Int32 = -1
         if failure == nil {
             file = unsafe openat(
@@ -852,16 +861,29 @@ enum SafeFilename {
         while let first = cleaned.first, first == "." || first.isWhitespace { cleaned.removeFirst() }
         while let last = cleaned.last, last.isWhitespace { cleaned.removeLast() }
         if cleaned.isEmpty { cleaned = "Recortia.\(fallbackExtension)" }
-        return truncated(cleaned)
+        return truncated(cleaned, fallbackExtension: fallbackExtension)
     }
 
-    private static func truncated(_ name: String) -> String {
+    private static func truncated(_ name: String, fallbackExtension: String) -> String {
         guard name.utf8.count > maxBytes else { return name }
         let url = URL(fileURLWithPath: name)
         let ext = url.pathExtension
         let suffix = ext.isEmpty ? "" : ".\(ext)"
-        var base = url.deletingPathExtension().lastPathComponent
-        while base.utf8.count + suffix.utf8.count > maxBytes, !base.isEmpty { base.removeLast() }
-        return base + suffix
+        if suffix.utf8.count < maxBytes {
+            var base = url.deletingPathExtension().lastPathComponent
+            while base.utf8.count + suffix.utf8.count > maxBytes, !base.isEmpty { base.removeLast() }
+            while let last = base.last, last.isWhitespace { base.removeLast() }
+            if !base.isEmpty { return base + suffix }
+        }
+        // Overlong extension or multibyte base that could not fit before it: clip the whole name
+        // rather than leaving a leading-dot hidden name or exceeding `maxBytes`.
+        var clipped = name
+        while clipped.utf8.count > maxBytes, !clipped.isEmpty { clipped.removeLast() }
+        while let first = clipped.first, first == "." || first.isWhitespace { clipped.removeFirst() }
+        while let last = clipped.last, last.isWhitespace { clipped.removeLast() }
+        if !clipped.isEmpty { return clipped }
+        var fallback = "Recortia.\(fallbackExtension)"
+        while fallback.utf8.count > maxBytes, !fallback.isEmpty { fallback.removeLast() }
+        return fallback.isEmpty || fallback.hasPrefix(".") ? "Recortia" : fallback
     }
 }

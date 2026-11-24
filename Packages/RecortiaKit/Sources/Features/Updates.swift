@@ -6,8 +6,9 @@ import Observation
 /// `SparkleUpdateService`; the E2E run uses a synthetic one that touches no network.
 @MainActor
 public protocol UpdateService: AnyObject {
-    /// Starts the updater once, without a request.
-    func start(checksAutomatically: Bool) -> UpdaterStart
+    /// Starts the updater once, without a request. `mayCheckInBackground` is read live before any
+    /// scheduled background check runs.
+    func start(mayCheckInBackground: @escaping @MainActor () -> Bool) -> UpdaterStart
     func setChecksAutomatically(_ enabled: Bool)
     func checkForUpdates() async -> UpdateCheckResult
     /// The updater's own window for an update a check found.
@@ -33,7 +34,10 @@ public final class UpdaterModel {
     /// Once, at launch. Returns at once whatever happens; asks the feed nothing.
     public func start() {
         guard status == nil else { return }
-        status = service?.start(checksAutomatically: settings.preferences.checksForUpdatesAutomatically) ?? .unavailable
+        status =
+            service?.start(mayCheckInBackground: { [weak self] in
+                self?.settings.preferences.checksForUpdatesAutomatically == true
+            }) ?? .unavailable
     }
 
     /// Whether the menu item and the Settings toggle are shown.

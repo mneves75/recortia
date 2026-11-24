@@ -16,6 +16,7 @@ struct UpdaterModelTests {
         var startResult = UpdaterStart.started
         var result = UpdateCheckResult.noUpdate
         private(set) var starts: [Bool] = []
+        private(set) var mayCheckInBackground: (@MainActor () -> Bool)?
         private(set) var automatic: [Bool] = []
         private(set) var checks = 0
         private(set) var installs = 0
@@ -23,8 +24,9 @@ struct UpdaterModelTests {
         var gate: CheckedContinuation<Void, Never>?
         var holdsChecks = false
 
-        func start(checksAutomatically: Bool) -> UpdaterStart {
-            starts.append(checksAutomatically)
+        func start(mayCheckInBackground: @escaping @MainActor () -> Bool) -> UpdaterStart {
+            self.mayCheckInBackground = mayCheckInBackground
+            starts.append(mayCheckInBackground())
             return startResult
         }
 
@@ -130,14 +132,20 @@ struct UpdaterModelTests {
         #expect(updates.installs == 1)
     }
 
-    @Test("The toggle stores the choice and tells the updater")
-    func toggle() {
+    @Test("The toggle stores the choice, tells the updater, and live background authorization follows settings resets")
+    func toggle() throws {
         let updates = FakeUpdates()
         let store = settings()
         let model = UpdaterModel(service: updates, settings: store)
         model.start()
+        let mayCheck = try #require(updates.mayCheckInBackground)
+        #expect(!mayCheck())
         model.setChecksAutomatically(true)
         #expect(store.preferences.checksForUpdatesAutomaticallyChoice == true && model.checksAutomatically)
+        #expect(mayCheck())
+        // A direct preference reset (bypassing setChecksAutomatically) immediately revokes background checks.
+        store.update { $0.checksForUpdatesAutomatically = false }
+        #expect(!mayCheck())
         model.setChecksAutomatically(false)
         #expect(store.preferences.checksForUpdatesAutomaticallyChoice == false && !model.checksAutomatically)
         #expect(updates.automatic == [true, false])

@@ -97,7 +97,7 @@ struct SparkleUpdateServiceTests {
             let engines = Engines()
             let updates = service(info, engines)
             #expect(!SparkleUpdateService.isConfigured(info))
-            #expect(updates.start(checksAutomatically: true) == .unavailable)
+            #expect(updates.start(mayCheckInBackground: { true }) == .unavailable)
             #expect(await updates.checkForUpdates() == .failed)
             updates.setChecksAutomatically(true)
             updates.installUpdate()
@@ -112,7 +112,7 @@ struct SparkleUpdateServiceTests {
             var info: [String: Any] = ["SUPublicEDKey": Self.testKey]
             info["SUFeedURL"] = feed
             let engines = Engines()
-            #expect(service(info, engines).start(checksAutomatically: false) == .unavailable)
+            #expect(service(info, engines).start(mayCheckInBackground: { false }) == .unavailable)
             #expect(engines.made.isEmpty)
         }
     }
@@ -122,8 +122,8 @@ struct SparkleUpdateServiceTests {
         let engines = Engines()
         let updates = service(Self.configured, engines)
         #expect(SparkleUpdateService.isConfigured(Self.configured))
-        #expect(updates.start(checksAutomatically: false) == .started)
-        #expect(updates.start(checksAutomatically: true) == .started, "a second start changes nothing")
+        #expect(updates.start(mayCheckInBackground: { false }) == .started)
+        #expect(updates.start(mayCheckInBackground: { true }) == .started, "a second start changes nothing")
         let engine = try #require(engines.made.first)
         #expect(engines.made.count == 1 && engine.starts == 1)
         #expect(engine.automaticAtStart == false, "Sparkle schedules from this value as it starts")
@@ -132,19 +132,23 @@ struct SparkleUpdateServiceTests {
         #expect(!mayCheck(), "a scheduled check is refused while the person has not opted in")
     }
 
-    @Test("Opting in turns Sparkle's schedule on and admits scheduled checks; opting out refuses them")
+    @Test("Opting in turns Sparkle's schedule on and admits scheduled checks; preference reset refuses them live")
     func optIn() throws {
         let engines = Engines()
         let updates = service(Self.configured, engines)
-        _ = updates.start(checksAutomatically: false)
+        var allowed = false
+        _ = updates.start(mayCheckInBackground: { allowed })
         let engine = try #require(engines.made.first)
         let mayCheck = try #require(engine.mayCheckInBackground)
+        allowed = true
         updates.setChecksAutomatically(true)
         #expect(engine.automaticallyChecksForUpdates && mayCheck())
-        // Sparkle's own stored value cannot keep checks going after the person turns them off.
-        updates.setChecksAutomatically(false)
+        // Preference reset or drift outside setChecksAutomatically immediately refuses scheduled checks.
+        allowed = false
         engine.automaticallyChecksForUpdates = true
         #expect(!mayCheck())
+        updates.setChecksAutomatically(false)
+        #expect(!engine.automaticallyChecksForUpdates && !mayCheck())
         #expect(engine.probes == 0)
     }
 
@@ -153,8 +157,8 @@ struct SparkleUpdateServiceTests {
         let engines = Engines()
         engines.startError = CocoaError(.featureUnsupported)
         let updates = service(Self.configured, engines)
-        #expect(updates.start(checksAutomatically: false) == .failed)
-        #expect(updates.start(checksAutomatically: false) == .failed)
+        #expect(updates.start(mayCheckInBackground: { false }) == .failed)
+        #expect(updates.start(mayCheckInBackground: { false }) == .failed)
         #expect(await updates.checkForUpdates() == .failed)
         updates.installUpdate()
         let engine = try #require(engines.made.first)
@@ -167,7 +171,7 @@ struct SparkleUpdateServiceTests {
             let engines = Engines()
             engines.result = result
             let updates = service(Self.configured, engines)
-            _ = updates.start(checksAutomatically: false)
+            _ = updates.start(mayCheckInBackground: { false })
             #expect(await updates.checkForUpdates() == result)
             updates.installUpdate()
             let engine = try #require(engines.made.first)
@@ -186,7 +190,7 @@ struct SparkleUpdateServiceTests {
             feedURL: URL(string: "https://updates.example.com/appcast.xml"), sendsSystemProfile: true,
             allowsAutomaticUpdates: false, automaticallyDownloadsUpdates: false)
         let updates = service(Self.configured, engines)
-        #expect(updates.start(checksAutomatically: false) == .started)
+        #expect(updates.start(mayCheckInBackground: { false }) == .started)
         let engine = try #require(engines.made.first)
         #expect(engine.overriddenFeed == URL(string: Self.feed), "the validated plist feed, exactly")
         #expect(engine.overridesBeforeStart)
@@ -227,11 +231,27 @@ struct SparkleUpdateServiceTests {
             engines.stored = stored
             engines.ignoresOverrides = ignoresOverrides
             let updates = service(Self.configured, engines)
-            #expect(updates.start(checksAutomatically: true) == .failed, "\(name)")
+            #expect(updates.start(mayCheckInBackground: { true }) == .failed, "\(name)")
             #expect(await updates.checkForUpdates() == .failed, "\(name)")
             let engine = try #require(engines.made.first)
             #expect(engine.starts == 0 && engine.probes == 0, "\(name): Sparkle started anyway")
         }
+    }
+
+    @Test("Probe preflight returns failed when Sparkle cannot check without an active session")
+    func probePreflight() {
+        #expect(
+            SparkleEngine.probePreflight(probeActive: false, sessionInProgress: false, canCheckForUpdates: false)
+                == .failed)
+        #expect(
+            SparkleEngine.probePreflight(probeActive: false, sessionInProgress: false, canCheckForUpdates: true)
+                == .start)
+        #expect(
+            SparkleEngine.probePreflight(probeActive: true, sessionInProgress: false, canCheckForUpdates: true)
+                == .inProgress)
+        #expect(
+            SparkleEngine.probePreflight(probeActive: false, sessionInProgress: true, canCheckForUpdates: false)
+                == .inProgress)
     }
 
     @Test("Sparkle's no-update error is no update; any other error is a failed check")

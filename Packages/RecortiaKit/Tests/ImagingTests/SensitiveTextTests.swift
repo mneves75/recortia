@@ -29,7 +29,6 @@ struct SensitiveTextPatternTests {
             }
         }
         _ = try SensitiveTextMatcher.shared.get()
-        _ = try DataDetectorMatcher()
     }
 }
 
@@ -615,7 +614,7 @@ struct SensitiveTextSeamTests {
             Self.address, kind: .email, widthPoints: widthPoints, heightPoints: heightPoints, scale: scale,
             pointSize: pointSize, x: x, top: 150)
         let item = try #require(screen.planted.first)
-        let regions = try await SensitiveTextScanner(fineTileSide: 1024).sensitiveRegions(
+        let regions = try await SensitiveTextScanner().sensitiveRegions(
             in: screen.image, pixelsPerPoint: Double(scale), languages: [OCRRecognitionTests.english])
         let covering = regions.map {
             CGRect(x: $0.rect.minX, y: $0.rect.minY, width: $0.rect.width, height: $0.rect.height)
@@ -731,7 +730,7 @@ struct SensitiveTextCoveragePixelTests {
         let rects = regions.map {
             CGRect(x: $0.rect.minX, y: $0.rect.minY, width: $0.rect.width, height: $0.rect.height)
         }
-        let (covered, total) = SensitiveTextBenchmarkTests.coverage(of: item.rect, by: rects)
+        let (covered, total) = Self.coverage(of: item.rect, by: rects)
         #expect(covered == total, "\(token): \(covered) of \(total) ink-box pixels; ink \(item.rect), masks \(rects)")
     }
 
@@ -763,7 +762,7 @@ struct SensitiveTextCoveragePixelTests {
         let rects = regions.map {
             CGRect(x: $0.rect.minX, y: $0.rect.minY, width: $0.rect.width, height: $0.rect.height)
         }
-        let (covered, total) = SensitiveTextBenchmarkTests.coverage(of: item.rect, by: rects)
+        let (covered, total) = Self.coverage(of: item.rect, by: rects)
         #expect(covered == total, "\(pointSize) pt: \(covered) of \(total); ink \(item.rect), masks \(rects)")
     }
 
@@ -774,5 +773,28 @@ struct SensitiveTextCoveragePixelTests {
         for _ in 0..<SensitiveTextScanner.maximumMatchesPerTile { try matches.append(.phone, box) }
         #expect(throws: SensitiveTextError.tooManyMatches) { try matches.append(.phone, box) }
         #expect(matches.items.count == SensitiveTextScanner.maximumMatchesPerTile)
+    }
+
+    /// Pixels of `rect` (integral, top-left) inside the union of `regions` (integral).
+    private static func coverage(of rect: CGRect, by regions: [CGRect]) -> (covered: Int, total: Int) {
+        let candidates = regions.filter { $0.intersects(rect) }
+        var covered = 0
+        for y in Int(rect.minY)..<Int(rect.maxY) {
+            let sorted = candidates.filter { $0.minY <= Double(y) && $0.maxY >= Double(y + 1) }
+                .map { ($0.minX, $0.maxX) }.sorted { $0.0 < $1.0 }
+            var merged: [(CGFloat, CGFloat)] = []
+            for span in sorted {
+                if let last = merged.last, span.0 <= last.1 {
+                    merged[merged.count - 1].1 = max(last.1, span.1)
+                } else {
+                    merged.append(span)
+                }
+            }
+            for span in merged {
+                let lower = max(span.0, rect.minX), upper = min(span.1, rect.maxX)
+                if lower < upper { covered += Int(upper - lower) }
+            }
+        }
+        return (covered, Int(rect.width) * Int(rect.height))
     }
 }

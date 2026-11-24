@@ -64,7 +64,6 @@ public final class SparkleUpdateService {
     private let makeEngine: @MainActor () -> any UpdaterEngine
     private var engine: (any UpdaterEngine)?
     private var started: UpdaterStart?
-    private var checksAutomatically = false
 
     /// `info` is the app's Info.plist dictionary.
     public convenience init(info: [String: Any]?) {
@@ -89,18 +88,18 @@ public final class SparkleUpdateService {
     }
 
     /// Starts Sparkle once; later calls return the first result. Never throws and never checks.
-    public func start(checksAutomatically: Bool) -> UpdaterStart {
+    /// `mayCheckInBackground` is the live source of truth for scheduled background checks.
+    public func start(mayCheckInBackground: @escaping @MainActor () -> Bool) -> UpdaterStart {
         if let started { return started }
-        let result = startEngine(checksAutomatically: checksAutomatically)
+        let result = startEngine(mayCheckInBackground: mayCheckInBackground)
         started = result
         return result
     }
 
-    private func startEngine(checksAutomatically: Bool) -> UpdaterStart {
+    private func startEngine(mayCheckInBackground: @escaping @MainActor () -> Bool) -> UpdaterStart {
         guard let feed else { return .unavailable }
-        self.checksAutomatically = checksAutomatically
         let engine = makeEngine()
-        engine.automaticallyChecksForUpdates = checksAutomatically
+        engine.automaticallyChecksForUpdates = mayCheckInBackground()
         engine.overrideStoredSettings(feed: feed)
         // Fail closed: a value Sparkle still takes from storage would ask another server, send the
         // system profile or install without the person choosing it (PRIV-01).
@@ -109,7 +108,7 @@ public final class SparkleUpdateService {
             automaticallyDownloadsUpdates: false)
         guard engine.settings == expected else { return .failed }
         do {
-            try engine.start { [weak self] in self?.checksAutomatically == true }
+            try engine.start(mayCheckInBackground: mayCheckInBackground)
         } catch {
             return .failed
         }
@@ -119,7 +118,6 @@ public final class SparkleUpdateService {
 
     public func setChecksAutomatically(_ enabled: Bool) {
         guard let engine else { return }
-        checksAutomatically = enabled
         engine.automaticallyChecksForUpdates = enabled
     }
 
@@ -175,17 +173,35 @@ final class SparkleEngine: NSObject, UpdaterEngine, SPUUpdaterDelegate {
         try controller.updater.start()
     }
 
+    enum ProbePreflight: Equatable {
+        case start
+        case inProgress
+        case failed
+    }
+
+    static func probePreflight(probeActive: Bool, sessionInProgress: Bool, canCheckForUpdates: Bool) -> ProbePreflight {
+        if probeActive || sessionInProgress { return .inProgress }
+        return canCheckForUpdates ? .start : .failed
+    }
+
     func checkForUpdateInformation() async -> UpdateCheckResult {
         let updater = controller.updater
-        // A probe does nothing while a session runs, and would then never finish.
-        guard probe == nil, !updater.sessionInProgress, updater.canCheckForUpdates else {
+        switch Self.probePreflight(
+            probeActive: probe != nil, sessionInProgress: updater.sessionInProgress,
+            canCheckForUpdates: updater.canCheckForUpdates)
+        {
+        case .inProgress:
+            // A probe does nothing while a session runs, and would then never finish.
             updater.checkForUpdates()
             return .inProgress
-        }
-        foundVersion = nil
-        return await withCheckedContinuation { continuation in
-            probe = continuation
-            updater.checkForUpdateInformation()
+        case .failed:
+            return .failed
+        case .start:
+            foundVersion = nil
+            return await withCheckedContinuation { continuation in
+                probe = continuation
+                updater.checkForUpdateInformation()
+            }
         }
     }
 
@@ -216,6 +232,7 @@ final class SparkleEngine: NSObject, UpdaterEngine, SPUUpdaterDelegate {
 
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
         guard updateCheck == .updatesInBackground, !mayCheckInBackground() else { return }
+        if updater.automaticallyChecksForUpdates { updater.automaticallyChecksForUpdates = false }
         throw NSError(
             domain: "dev.mvneves.Recortia.updates", code: 1,
             userInfo: [NSLocalizedDescriptionKey: "Automatic update checks are off."])

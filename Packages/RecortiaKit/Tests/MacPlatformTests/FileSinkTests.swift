@@ -154,6 +154,60 @@ struct FileSinkTests {
     }
 
     @Test(
+        "Overlong filenames with huge extensions stay within 255 UTF-8 bytes and never become hidden dotfiles",
+        arguments: [
+            "a." + String(repeating: "x", count: 300),
+            "a." + String(repeating: "x", count: 254),
+            "😀." + String(repeating: "x", count: 252),
+            String(repeating: "a", count: 300) + ".png",
+            String(repeating: "é", count: 200) + ".png",
+        ])
+    func overlongSanitizedNamesStayBoundedAndVisible(suggested: String) throws {
+        let sanitized = SafeFilename.sanitize(suggested, fallbackExtension: "png")
+        #expect(!sanitized.isEmpty)
+        #expect(!sanitized.hasPrefix("."), "sanitized name became a hidden dotfile: \(sanitized)")
+        #expect(sanitized.utf8.count <= SafeFilename.maxBytes, "exceeded maxBytes: \(sanitized.utf8.count)")
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = try FileSink().saveUnique(TestSupport.snapshot(suggestedFilename: suggested), in: folder)
+        #expect(url.lastPathComponent == sanitized)
+    }
+
+    @Test("Stage fchmod failure is best-effort on non-owner volumes and fails closed on owner-enforcing volumes")
+    func stageChmodFollowsOwnershipEnforcement() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("shot.png")
+        try priorBytes.write(to: url)
+
+        var chmodCalls = 0
+        let nonOwnerFS = POSIXFileSystem(
+            volumeTraits: { _ in VolumeTraits(exclusiveRename: true, swap: true, enforcesOwners: false) },
+            changeMode: { _, _ in
+                chmodCalls += 1
+                errno = ENOTSUP
+                return -1
+            })
+        _ = try FileSink(fileSystem: nonOwnerFS).save(snapshot, to: url, overwrite: true)
+        #expect(chmodCalls == 1)
+        #expect(try Data(contentsOf: url) == snapshot.bytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
+
+        try priorBytes.write(to: url)
+        let ownerEnforcingFS = POSIXFileSystem(
+            volumeTraits: { _ in VolumeTraits(exclusiveRename: true, swap: true, enforcesOwners: true) },
+            changeMode: { _, _ in
+                errno = EPERM
+                return -1
+            })
+        #expect(throws: SinkError.accessDenied) {
+            try FileSink(fileSystem: ownerEnforcingFS).save(snapshot, to: url, overwrite: true)
+        }
+        #expect(try Data(contentsOf: url) == priorBytes)
+        #expect(TestSupport.directoryEntries(folder) == ["shot.png"])
+    }
+
+    @Test(
         "Write failures map to typed errors, keep the prior file, and remove the temporary file",
         arguments: [
             (ENOSPC, SinkError.diskFull),

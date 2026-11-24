@@ -360,7 +360,7 @@ enum SaveFolderPanel {
         panel.allowsMultipleSelection = false
         panel.prompt = String(localized: "Choose")
         panel.message = String(localized: "Choose where automatic saves go.")
-        return panel.runModal() == .OK ? panel.url : nil
+        return FilePanelPresenter.runModal(panel)
     }
 }
 

@@ -75,6 +75,7 @@ final class AppModel: AppActions {
     /// File › Reopen Closed Capture in the app's menu bar.
     @ObservationIgnored let reopenMenu: ReopenMenuState
     private var isStartingScrollingCapture = false
+    private var isChoosingImageFile = false
 
     var openDocument: ((DocumentSession, EditorInitialAction, _ importedFileName: String?) -> EditorModel?)?
     var recognizeText: ((DocumentSession) -> Void)?
@@ -188,7 +189,9 @@ final class AppModel: AppActions {
             return openDocument != nil && !features.scroll.state.isActive
         case .scrollingCapture:
             return openDocument != nil && !features.capture.state.isActive
-        case .openImage, .pasteImage:
+        case .openImage:
+            return openDocument != nil && !features.importer.isImporting && !isChoosingImageFile
+        case .pasteImage:
             return openDocument != nil && !features.importer.isImporting
         case .reopenClosedCapture:
             return openDocument != nil && !features.closedCapture.isEmpty
@@ -583,16 +586,18 @@ final class AppModel: AppActions {
     }
 
     private func chooseImageFile() {
-        AppPresence.shared.activate()
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.png, .jpeg]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.message = String(localized: "Choose a PNG or JPEG image to open.")
-        // A finished open panel is ordered out, not closed: re-evaluate the Dock presence.
-        defer { AppPresence.shared.setNeedsRefresh() }
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        importImage(from: .file(url))
+        guard !isChoosingImageFile else { return }
+        isChoosingImageFile = true
+        Task {
+            defer { isChoosingImageFile = false }
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.png, .jpeg]
+            panel.allowsMultipleSelection = false
+            panel.canChooseDirectories = false
+            panel.message = String(localized: "Choose a PNG or JPEG image to open.")
+            guard let url = await FilePanelPresenter.present(panel) else { return }
+            importImage(from: .file(url))
+        }
     }
 
     private func registerShortcutHandlers() {

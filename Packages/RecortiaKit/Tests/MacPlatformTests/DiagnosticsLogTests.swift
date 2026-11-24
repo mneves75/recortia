@@ -104,6 +104,24 @@ struct DiagnosticsLogTests {
         #expect(await log.delete(), "deleting nothing succeeds")
     }
 
+    @Test("Delete still removes the rotated file when removing the active file fails")
+    func deleteRemovesSecondFileWhenFirstFails() async throws {
+        let root = try temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let log = DiagnosticsLog(directory: root)
+        #expect(await log.append(Self.event, at: Self.date))
+        try Data("old\n".utf8).write(to: log.previousFileURL)
+        try FileManager.default.setAttributes([.immutable: true], ofItemAtPath: log.fileURL.path)
+        defer { try? FileManager.default.setAttributes([.immutable: false], ofItemAtPath: log.fileURL.path) }
+
+        #expect(!(await log.delete()), "failed removal of the active file reports false")
+        #expect(FileManager.default.fileExists(atPath: log.fileURL.path), "control: active file stayed undeletable")
+        #expect(
+            !FileManager.default.fileExists(atPath: log.previousFileURL.path),
+            "rotated diagnostics file was left behind after active file removal failed")
+        #expect(await log.existingFiles() == [log.fileURL])
+    }
+
     @Test("A link at the file's name is never followed; the event is dropped")
     func refusesLinks() async throws {
         let root = try temporaryFolder()

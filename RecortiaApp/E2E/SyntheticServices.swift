@@ -17,8 +17,8 @@
         private(set) var checks = 0
         private(set) var installs = 0
 
-        func start(checksAutomatically: Bool) -> UpdaterStart {
-            starts.append(checksAutomatically)
+        func start(mayCheckInBackground: @escaping @MainActor () -> Bool) -> UpdaterStart {
+            starts.append(mayCheckInBackground())
             return .started
         }
 
