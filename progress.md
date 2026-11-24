@@ -575,12 +575,13 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
   defect-prevention hardening (H1–H12) plus independent adversarial review fixes:
   - Concurrency, lifecycle, and type-level invariants: fixed post-await cancellation and
     pause/resume epoch races in `ScrollSessionModel` (`settleElapsed`, `collect`, monotonic
-    `deadlineTask`) and `CaptureCoordinator.freezePermissionCheck`; made `ImportAdmission` a
-    `~Copyable` identity-checked linear token (`IO-01`); replaced non-cancellable continuation
+    `deadlineTask`) and `CaptureCoordinator.freezePermissionCheck`; enforced single-use
+    `ImportAdmission` identity (`id: UUID`) through `ImageImporter`'s 3-state `SlotState`
+    (`IO-01`); replaced non-cancellable continuation
     waiters with `CancellableWaiters` and completed `EditorModel.isolated deinit`; gated
     `EditorModel` mutations during pending masking and rejected non-finite gradient angles;
-    added `ProtocolModelVerificationTests` bounded exhaustive BFS verification (H4, 3 protocols
-    with planted regression controls).
+    added `ProtocolModelVerificationTests` bounded exhaustive BFS verification (H4, 3 protocol
+    models + 1 BFS negative control, with planted regression controls).
   - AppKit, updater, sink, and redaction boundaries: made `AppPresence` `@Observable` with
     `windowDidAppear()` sync for non-activating pins; centralized `NSOpenPanel`/`NSSavePanel`
     Space policy and presence handling in `FilePanelPresenter`; made `SparkleUpdateService`
@@ -595,12 +596,13 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
     `tests-report.py --check` enforcement of `check.sh` core steps; pruned dead `RecortiaUITests`,
     duplicated/flaky stress and naming tests (`FontResolutionStressTests`,
     `SensitiveTextBenchmarkTests`, duplicate `ColorFormatTests`/`ExportCoordinator.named` cases).
-- Gates (`scripts/check.sh --unsigned` and `scripts/check-release-build.sh`) passed on macOS 27.3
-  with Xcode 27.2 (`27B52`) and Swift 6.4.2: 12/12 Python gate suites, `tests-report.py --check`
-  (`14 gates, 3 suites, 12 tests`), `swift format lint --strict`, `check-project-fresh.sh`,
-  `RecortiaKit` Swift tests with Vision enabled (including 5/5 `ArchitectureBoundaryScanTests`
-  and 3/3 `ProtocolModelVerificationTests`), Debug + Release `Recortia`/`RecortiaE2E` builds,
-  `check-localization.py`, `check-release-binary.sh` (6 Mach-O scanned per product), and
+- Gates (`scripts/check.sh --unsigned` and `scripts/check-release-build.sh`) passed on exact
+  commit `1e2820a` (macOS 27.3, Xcode 27.2 `27B52`, Swift 6.4.2): 12/12 Python gate suites,
+  `tests-report.py --check` (`14 gates, 3 suites, 12 tests`), `swift format lint --strict`,
+  `check-project-fresh.sh`, 1,118 `RecortiaKit` Swift tests in 190 suites with Vision enabled
+  (including 5/5 `ArchitectureBoundaryScanTests` and 4/4 `ProtocolModelVerificationTests`), Debug
+  + Release `Recortia`/`RecortiaE2E` builds, `check-localization.py` (820 extracted strings),
+  E2E launch guard (1/1), `check-release-binary.sh` (6 Mach-O scanned per product), and
   `check-updater-plist.py`.
 - `mneves-security` pre-deploy audit on integrated commit `ef76d43` (receipts in primary checkout
   `.scratch/security-gate/ef76d4321dd68d5cb1d13632843cf3258ea2c63b/`): **0 code-fixable security
