@@ -7,21 +7,22 @@ import MacPlatform
 /// Shared helpers for MacPlatform tests. Nothing here touches the real screen, the general
 /// pasteboard, permissions, or input events.
 enum TestSupport {
-    /// PNG signature followed by arbitrary payload bytes. Sinks treat snapshots as opaque sanitized
-    /// bytes, so a structurally minimal payload is enough to verify byte-for-byte behavior.
+    /// The PNG signature; `snapshot` appends arbitrary bytes to it. Sinks treat snapshots as opaque
+    /// sanitized bytes, so these fixtures need no complete PNG container.
     static let pngSignature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 
     static func snapshot(
         format: ExportFormat = .png, bytes: Data? = nil,
-        suggestedFilename: String = "Recortia 2026-09-26 at 10.00.00.png"
+        suggestedFilename: String = "Recortia 2026-09-26 at 10.00.00.png", filename: ExportName? = nil,
+        pixelSize: PixelSize = PixelSize(width: 4, height: 4)
     ) -> ShareSnapshot {
         let payload = bytes ?? (pngSignature + Data((0..<256).map { UInt8($0 & 0xFF) }))
         return ShareSnapshot(
             documentID: DocumentID(), revision: 3, privacyEpoch: 1, format: format,
-            pixelSize: PixelSize(width: 4, height: 4), bytes: payload, suggestedFilename: suggestedFilename)
+            pixelSize: pixelSize, bytes: payload,
+            filename: filename ?? ExportName(literal: suggestedFilename))
     }
 
-    /// A tiny opaque RGBA image created in memory.
     static func image(width: Int, height: Int) -> CGImage? {
         guard
             let context = CGContext(
@@ -45,7 +46,6 @@ enum TestSupport {
                 id: id, frame: frame, pointPixelScale: scale, rotationDegrees: rotation))
     }
 
-    /// A fresh, uniquely named directory under the system temporary directory.
     static func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("recortia-macplatform-tests-\(UUID().uuidString)", isDirectory: true)

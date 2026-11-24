@@ -39,19 +39,21 @@
             let renderer = PreviewEditorRenderer()
             let export = ExportCoordinator(
                 exporter: PreviewEditorExporter(), clipboard: PreviewEditorSink(), files: PreviewEditorSink(),
-                drag: PreviewEditorSink(), folders: PreviewEditorSink(), clock: PreviewEditorClock(), settings: settings
-            )
+                drag: PreviewEditorSink(), printer: PreviewEditorSink(), folders: PreviewEditorSink(),
+                clock: PreviewEditorClock(), settings: settings)
             return EditorEnvironment(
                 renderer: renderer, export: export, folders: PreviewEditorSink(),
-                textRecognition: PreviewTextRecognition(), qrDecoder: PreviewEditorQR(), assets: PreviewEditorAssets(),
-                input: PreviewEditorAssets(), pins: PinsModel(renderer: renderer, settings: settings, export: export),
-                textClipboard: PreviewEditorSink(), links: PreviewEditorSink(), settings: settings)
+                textRecognition: PreviewTextRecognition(), qrDecoder: PreviewEditorQR(),
+                sensitiveText: PreviewEditorQR(), assets: PreviewEditorAssets(), input: PreviewEditorAssets(),
+                pins: PinsModel(renderer: renderer, settings: settings, export: export),
+                textClipboard: PreviewEditorSink(), links: PreviewEditorSink(), settings: settings,
+                clock: PreviewEditorClock())
         }
 
         static func rootView(for model: EditorModel, actions: any EditorWindowActions) -> some View {
             let canvas = EditorCanvasView(model: model)
             canvas.actions = actions
-            return EditorRootView(model: model, canvas: canvas, actions: actions)
+            return EditorRootView(model: model, canvas: canvas, actions: actions, panes: EditorPanes())
         }
     }
 
@@ -59,6 +61,7 @@
     final class PreviewEditorActions: EditorWindowActions {
         func copyImage() {}
         func saveImage() {}
+        func printImage() {}
         func saveToPreferredFolder() {}
         func pin() {}
         func addImageFromFile() {}
@@ -101,10 +104,11 @@
     }
 
     /// Every sink refuses: previews never write anywhere.
-    final class PreviewEditorSink: ClipboardSinkService, FileSinkService, DragSinkService, SaveFolderService,
-        TextClipboardService, ExternalLinkOpenerService
+    final class PreviewEditorSink: ClipboardSinkService, FileSinkService, DragSinkService, PrintSinkService,
+        SaveFolderService, TextClipboardService, ExternalLinkOpenerService
     {
         func write(_ snapshot: ShareSnapshot) throws(SinkError) { throw .clipboardWriteFailed }
+        func present(_ snapshot: ShareSnapshot) throws(SinkError) { throw .printFailed }
         func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL {
             throw .accessDenied
         }
@@ -125,8 +129,12 @@
         func sleep(for duration: Duration) async throws { try await Task.sleep(for: duration) }
     }
 
-    final class PreviewEditorQR: QRDecodingService {
+    final class PreviewEditorQR: QRDecodingService, SensitiveTextService {
         func decode(_ image: CGImage) async throws -> [QRPayload] { [] }
+        func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] { [] }
+        func textLineRegions(
+            in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]
+        ) async throws -> [PixelRect] { [] }
     }
 
     final class PreviewEditorAssets: ImageAssetService, ImageInputService {
@@ -136,8 +144,8 @@
         func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
             throw .unreadable
         }
-        func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-            -> ImageAssetInfo
+        func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+            async throws(ImportError) -> ImageAssetInfo
         {
             throw .unreadable
         }

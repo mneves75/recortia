@@ -1,8 +1,10 @@
 import AppKit
+import AudioToolbox
 import Domain
 import Features
 import Imaging
 import MacPlatform
+import os
 
 // Live adapters from the Features service protocols to the Imaging and MacPlatform
 // implementations. Heavy work (decode, render, encode, file I/O, capture) runs off the main
@@ -56,14 +58,19 @@ final class LiveImageAssets: ImageAssetService {
 
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
         let decoded = try await Self.canonicalize(image)
-        return await store.insert(decoded, origin: .captured(geometry))
+        return await registerCapture(decoded, geometry: geometry)
     }
 
-    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-        -> ImageAssetInfo
+    func registerCapture(_ image: DecodedImage, geometry: CaptureGeometry) async -> ImageAssetInfo {
+        await store.insert(image, origin: .captured(geometry))
+    }
+
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+        async throws(ImportError) -> ImageAssetInfo
     {
         let decoded = try await Self.canonicalize(image)
-        return await store.insert(decoded, origin: .scrollCapture(partialReason: partialReason))
+        return await store.insert(
+            decoded, origin: .scrollCapture(partialReason: partialReason, pointPixelScale: pointPixelScale))
     }
 
     func release(_ id: AssetID) {
@@ -153,6 +160,19 @@ final class LiveClipboard: ClipboardSinkService {
     }
 }
 
+/// Shows the print panel as a sheet on the editor whose export it is (B-9a).
+final class LivePrinter: PrintSinkService {
+    func present(_ snapshot: ShareSnapshot) throws(SinkError) {
+        let operation = try PrintSink.operation(for: snapshot)
+        guard
+            let window = NSApp.windows.first(where: {
+                ($0.windowController as? EditorWindowController)?.model.document.id == snapshot.documentID
+            }), window.attachedSheet == nil
+        else { throw .printFailed }
+        operation.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)
+    }
+}
+
 final class LiveFiles: FileSinkService {
     func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL {
         try await Self.save(snapshot, url, overwrite)
@@ -223,3 +243,41 @@ final class LiveLoginItem: LoginItemService {
 }
 
 extension KeychainPreferenceIntegrity: @retroactive PreferenceIntegrityService {}
+
+extension SparkleUpdateService: @retroactive UpdateService {}
+
+/// The system's Tink sound through System Sound Services, registered as an interface sound so it
+/// follows the alert volume and stays silent while "Play user interface sound effects" is off.
+/// No bundled audio, no microphone.
+final class LiveCaptureSound: CaptureSoundService {
+    private var soundID: SystemSoundID?
+
+    func playCaptureSound() {
+        guard let id = soundID ?? register() else { return }
+        AudioServicesPlaySystemSound(id)
+    }
+
+    private func register() -> SystemSoundID? {
+        var id: SystemSoundID = 0
+        let url = URL(fileURLWithPath: "/System/Library/Sounds/Tink.aiff") as CFURL
+        let created = AudioServicesCreateSystemSoundID(url, &id)
+        guard created == noErr else {
+            Logger(subsystem: "dev.mvneves.Recortia", category: "sound").error(
+                "capture sound unavailable: \(created, privacy: .public)")
+            return nil
+        }
+        var isInterfaceSound: UInt32 = 1
+        let marked = AudioServicesSetProperty(
+            kAudioServicesPropertyIsUISound, UInt32(MemoryLayout<SystemSoundID>.size), &id,
+            UInt32(MemoryLayout<UInt32>.size), &isInterfaceSound)
+        guard marked == noErr else {
+            // Unmarked, it would play even with interface sound effects off.
+            Logger(subsystem: "dev.mvneves.Recortia", category: "sound").error(
+                "capture sound not marked as an interface sound: \(marked, privacy: .public)")
+            AudioServicesDisposeSystemSoundID(id)
+            return nil
+        }
+        soundID = id
+        return id
+    }
+}

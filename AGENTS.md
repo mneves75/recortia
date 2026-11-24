@@ -6,7 +6,7 @@ Build the approved milestone of the native macOS screenshot utility defined in S
 
 Read, in order: this file, SPEC.md, IMPLEMENTATION_PLAN.md, the selected task in BACKLOG.json, the relevant ACCEPTANCE_TESTS.md cases, and existing repository instructions/ADRs. Consult SOURCES.md when an API or external assumption matters. Read actual implementation before proposing edits.
 
-**Authority.** The owner approved implementation of the v1 milestones (FR-01…FR-14) on 2026-09-26 and the GitHub portion of FR-15 as recorded below; other FR-15 providers and FR-16 still need separate design and approval. For new work, propose the change first when it is not already a planned task. Once work is approved, complete its scoped changes without repeatedly asking for the same approval. New permissions, external transfers beyond configured opt-in upload, paid services, license changes, credential access, architecture replacement, release publishing, and scope expansion require fresh approval.
+**Authority.** The owner approved implementation of the v1 milestones (FR-01…FR-14) on 2026-09-26 and the GitHub portion of FR-15 as recorded below; other FR-15 providers and FR-16 were approved on 2026-11-19, each behind an owner-signed design (below). For new work, propose the change first when it is not already a planned task. Once work is approved, complete its scoped changes without repeatedly asking for the same approval. New permissions, external transfers beyond configured opt-in upload, paid services, license changes, credential access, architecture replacement, release publishing, and scope expansion require fresh approval.
 
 ## First-session preflight
 
@@ -14,6 +14,14 @@ Read, in order: this file, SPEC.md, IMPLEMENTATION_PLAN.md, the selected task in
 test installation are approved. FR-16 and other providers remain deferred. Automated tests use
 synthetic sinks; this implementation request does not authorize sending real screenshots or
 reading personal screen content during validation.
+
+**Additional owner authorization (2026-11-19):** classes A and B of
+`docs/specs/enhancement-plan-2026-11/plan.md`, FR-16 automation and further FR-15 providers are
+approved; each class-B item, FR-16 and every new provider is built only after the owner signs off
+its ADR or threat model. Class C stays excluded. Opt-in automatic redaction of e-mail addresses and
+phone numbers at capture is approved (FR-06 amendment in SPEC.md). The deployment floor rises to
+macOS 26 with ADR-008 in the 0.15 train. Order, stops and routing:
+`docs/specs/program-2026-11/plan.md`.
 
 Import admission and canvas keyboard ownership follow SPEC.md's concurrency policy and
 ACCEPTANCE_TESTS.md IO-01/EDIT-02. Keep `import-admission` and `canvas-focus` synthetic
@@ -41,6 +49,18 @@ queued after that neither adds a step nor redirects the save. Each step still re
 preference, folder and consent right before it starts; those are staleness checks, never removed.
 Keep `automatic-export` in bilingual E2E.
 
+Automatic masking (FR-06 amendment) is decided in that same synchronous step
+(`autoRedactsSensitiveText`). Until its masks land as one undo step, the editor renders no base and
+refuses every edit, selection, export, pin, Output Preview and recognition, and the batch waits
+(`EditorModel.runAutomaticExports`). The batch exports the session frozen when masking settles,
+before any waiter resumes; a later change, Undo included, makes it stale, never unmasked. A result
+counts only for the request identity it started from. Error, cancellation, a stale result and the
+deadline fail closed and skip the batch. Continuous-change groups cannot open while masking runs.
+Detection reads pixels only inside Imaging (`SensitiveTextScanner.sensitiveRegions(of:in:)`).
+The editor keeps the masking count until dismissal. An earlier transient notice's timer checks
+its original serial before it can clear the notice.
+Keep `auto-redaction` and `auto-redaction-sources` in bilingual E2E.
+
 Curved arrows retain the existing arrow kind with an optional control; `ArrowCurve` maps the
 visible midpoint and operation-local `ArrowLayout` owns painted shaft/head ink. Keep the
 `curved-arrows` bilingual native gate: real numeric commits, mixed/future defaults, zoom pixels
@@ -58,11 +78,42 @@ shown tab follows selection and tool until the person picks one. The cosmetic-ef
 actions are a SwiftUI `.toolbar` bridged into the AppKit editor window with
 `sceneBridgingOptions = [.toolbars]`; the window is still the one `EditorWindowController` builds,
 so Space policy, presence, sizing and the remembered content size (which excludes the toolbar) do
-not change. No API newer than macOS 15 and no `#available`. Every toolbar item stays in
+not change. No API newer than macOS 26 and no `#available`. Every toolbar item stays in
 `visibleItems` at the minimum content width (980 pt): no overflow chevron. Editor screenshots render
 the window's frame view so they show the toolbar. Bridged items perform AXPress while
 `accessibilityPerformPress()` returns false, so scenarios check the effect. Keep `inspector-context`
 and `editor-toolbar` in bilingual E2E.
+
+Program 2026-11 invariants (T2–T6, `docs/specs/program-2026-11/decisions.md`):
+- **Quick actions:** the thumbnail exports only through ShareSnapshot. Preview is a sanitized
+  in-memory render of that capture. Both surfaces share suspension, restoration and expiry.
+  Optimized Save holds the same prepared bytes through destination selection and exact-path
+  replacement consent, with current presentation and capture checks at both steps. Copy Text
+  uses the full-size sanitized image and rechecks capture, request, revision and privacy epoch
+  before the clipboard write. Canceled recognition retains its slot until unwinding.
+- **Automatic Pin:** decide the capture route and automatic export plan before suspension.
+  Masked captures still open in the editor. Automatic Pin preserves the foreground app and
+  keyboard focus. A pin render or budget refusal shows the current thumbnail without another batch.
+  Store Pin in its optional `pinAfterCaptureChoice` key and preserve the prior editor or thumbnail
+  choice for rollback. Fit the native pin explicitly on first presentation and zoom changes.
+- **Framing:** default and named recipes share saved-style admission. Applying a recipe is one
+  undoable edit. The border and watermark are painted on the sanitized output after the final
+  mask. Keep both decorated and undecorated RED fixtures in the gate.
+- **Frozen selection:** live by default. An explicit freeze reads one display, the loupe and
+  crop use that raster, and expiry is enforced against a monotonic deadline even if the timer
+  resumes late. Keep `capture-precision` and `quick-actions` in bilingual E2E.
+- **Reopen Closed Capture:** a single slot held in memory, never on disk. It records a monotonic deadline and checks it on every read, so a late timer cannot extend the 10 minutes. It never keeps a capture whose masking is pending or has failed, even after the notice is dismissed.
+- **Diagnostics file:** off by default. It records typed events only, never text, paths or error messages.
+- **HEIC:** a HEIC export holds only the primary item and the `hvc1` tiles it names through `dimg`; anything else is refused, never passed.
+- **Printing:** always a fixed PNG through ExportPipeline, and it never marks the document exported.
+- **Horizontal scrolling capture:** must leave vertical stitching byte-identical (the digest tests).
+- **Updater (FP-024):** Sparkle is imported only in `MacPlatform/SparkleUpdateService.swift`.
+  - Without `SUPublicEDKey` and an https feed it is never created.
+  - Before it starts, it overrides Sparkle's stored feed, system-profile and download settings, and fails closed if any of them reads back otherwise.
+  - Recortia's sealed preference admits each scheduled check.
+  - `SUAllowsAutomaticUpdates` stays false.
+- **Preference enums:** a new value of a stored preference enum goes in its own optional `…Choice` key. An older build fails the whole blob on an unknown case.
+- **Bilingual E2E:** keep `quick-actions`, `editor-menu`, `editor-zoom`, `capture-precision`, `element-snapping`, `pin-on-top`, `latency-prebuilt`, `text-redaction`, `colour-tools`, `layer-transforms`, `arrow-styles`, `framing-presets`, `reopen-closed`, `diagnostics`, `heic-and-print`, `scroll-horizontal` and `updater` in the bilingual E2E run.
 
 Full-source review invariants (2026-10, `docs/specs/full-source-review/plan.md`): every
 independent document edit settles an active move/resize first (`settleTransformGesture`), so a
@@ -71,9 +122,12 @@ cancelling input does not. Automatic scrolling acts only on the frame source's s
 window and keep `scroll-target-binding` in bilingual E2E; Stop during scroll startup stops the
 producer before `startCapture`. Mask source mapping fails closed on non-finite inverses or
 corners. Scroll append admission counts the matcher scratch. Closing an editor cancels only its
-own export work. `TextLayout.nativeFont` repeats a nil font result at most twice with the same
-inputs and reports which stage failed; do not add locks, caches or fallback fonts without new
-evidence, and treat a recurrence after the retry as an open incident (see the plan's F-1 row).
+own export work. `TextLayout.nativeFont` builds designed fonts from Core Text objects only:
+NSFont's shared cache returns nil while another thread releases fonts (F-1,
+`docs/specs/full-source-review/f1-investigation.md`; `resolutionWhileFontsAreReleased` guards
+it). It still repeats a nil result at most twice and reports the failing stage, and a substituted
+font fails as `mismatchedFont`; do not add locks, caches or fallback fonts, and treat any new nil
+as an open incident.
 
 Capture completion must exercise the real editor presentation path (`editor-presentation`),
 not only the offscreen editor host. Keep editor visibility independent of cooperative app
@@ -96,10 +150,13 @@ fullscreen app; keep `space-policy`, `other-spaces` and `screen-choice` in the E
 Choose screens with `ScreenChoice` (capture display, then pointer), never `NSScreen.main`.
 
 Window presence (ADR-007): Recortia is accessory at launch and regular while a switchable window
-exists; `AppPresence` owns that rule. Code that presents an ordinary window activates through
-`AppPresence.activate()`, or calls `AppPresence.windowWillAppear()` before it orders and
-activates; only capture panels and menus use a bare `NSApp.activate()`. Pins are normal-level windows (they
-still join all Spaces) so window switchers list them; never make them floating again. Keep the
+exists; `AppPresence` owns that rule. An ordinary window is shown through
+`AppPresence.present(_:)` (regular, Space policy, order, activate); other presenting code (alerts,
+About, open panels, pins) activates through `AppPresence.activate()`; only capture panels and menus
+use a bare `NSApp.activate()`. `FilePanelPresenter` is the sole boundary allowed to call file-panel
+`.runModal()`, applying `SpacePolicy.follow` before `AppPresence.activate()`. Pins are normal-level windows by default (they
+still join all Spaces) so window switchers list them; only a pin's opt-in Keep on Top floats it
+(ADR-007 amendment), and Unlock All Pins always recovers a click-through pin; never make pins float by default. Keep the
 `window-presence` E2E scenario in the gate, and rerun the space probe's `dynamic` mode and the
 installed-app fullscreen check when changing activation or pin windows.
 Synthetic checks guard configuration only; physical Space/display qualification stays manual,
@@ -157,9 +214,13 @@ and the runtime-OS requirement at once). Read it before proposing any build-hard
 `TOOLCHAIN.json` owns the toolchain pins. No test and no script copies them: `scripts/test-doctor.py`
 derives its fixtures from the record, because a copied pin turned a correct record update into three
 failing tests on 2026-10-28 and blocked every gate for a day's work. `./init.sh` resolves the
-installed toolchain against that record and then execs a suite. `tests.json` is generated by
-`scripts/tests-report.py`; never edit it by hand, and keep `--check` failing when a gate loses its
-test, when a `scripts/test-*.py` is named by no gate, or when a caller stops invoking one.
+installed toolchain against that record and then execs a suite. `tests.json` is the test
+inventory `scripts/tests-report.py` generates; never edit it by hand. Run statuses go to the
+uncommitted `.scratch/tests-report.json`. Keep `--check` failing when a gate loses its test, when a
+`scripts/test-*.py` is outside the one list `--run-tests` executes, when a caller stops running it,
+or when `check.sh` drops a core verification step (including localization format-specifier parity).
+Keep `ArchitectureBoundaryScanTests` enforcing `Domain` import purity, production crash/`NSScreen.main`
+bans, the bare `NSApp.activate` allowlist, and the `FilePanelPresenter` `.runModal()` boundary.
 
 Identify the actual working directory, repository state, branch, existing instructions, uncommitted changes, Xcode project/workspace, shared schemes, packages, tests, and build scripts. Do not assume this spec's proposed paths already exist. Preserve unrelated work; never reset, delete, stash, force-push, or overwrite it without permission.
 
@@ -176,7 +237,7 @@ xcodebuild -showsdks
 
 Only after finding a real project/package should you run its listing commands. A missing project is a fact to report, not a reason to manufacture a successful build. On a non-Mac environment, explicitly mark AppKit/ScreenCaptureKit compilation, TCC, live capture, UI, and notarization checks unavailable. Do not substitute an HTML screenshot or Linux-only test for macOS evidence.
 
-Use stable Xcode 27 / bundled Swift 6.4 / Swift 6 mode as the researched baseline, then record the exact verified local build and SDK. Keep deployment target macOS 15.0 unless a reviewed change says otherwise. Never silently install a beta or raise the deployment target to make a compile error disappear.
+Use stable Xcode 27 / bundled Swift 6.4 / Swift 6 mode as the researched baseline, then record the exact verified local build and SDK. The deployment target is macOS 26.0 from 0.15 (ADR-008, owner 2026-11-19); change it only through a reviewed ADR. Never silently install a beta or raise the deployment target to make a compile error disappear.
 
 ## Work unit and completion discipline
 
@@ -232,6 +293,7 @@ The repository gates default to the exact reviewed `stable_xcode_baseline` in `T
 ```sh
 scripts/check.sh              # doctor/isolation regressions, format lint, project freshness, tests, signed Debug build
 scripts/check.sh --unsigned   # CI and machines without the signing identity
+scripts/check-release-build.sh  # hosted CI: doctor --release, unsigned Release builds of both schemes, test-only and runner scans
 scripts/e2e.sh --lang all     # DEBUG scenario runner through the real app: screenshots + report.json
 scripts/release.sh            # owner-only, on a v<version>[-betaN] tag: fresh checkout, gate, Developer ID export, checks, DMG, notarize, manifest
 scripts/release.sh --dry-run  # untagged local build of the same pipeline without gate or notarization
@@ -247,7 +309,7 @@ including in `--dry-run`; inherited development mode cannot bypass the stable ba
 
 `scripts/e2e.sh` runs the same doctor and writes `provenance.json` (commit, working-tree
 fingerprint including untracked contents, Xcode and SDK builds, toolchain mode, app-bundle
-SHA-256) into each run; `--no-build` refuses a binary whose provenance differs, including one
+and foreground-helper SHA-256 with file modes) into each run; `--no-build` refuses a binary whose provenance differs, including one
 that `check.sh` rebuilt into the shared `.build/dd`. Two runners fight for the foreground, so on a
 shared Mac a caller takes the directory lock `.scratch/e2e.lock` (`mkdir` to take, `rmdir` to
 release) around `scripts/e2e.sh`; the script does not take it itself. Foreground-dependent results

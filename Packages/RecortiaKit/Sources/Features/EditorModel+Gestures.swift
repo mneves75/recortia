@@ -9,9 +9,13 @@ extension EditorModel {
     static let clickSlop = 3.0
 
     public func pointerDown(at p: Point<DocumentSpace>, modifiers: EditorModifiers = []) {
-        guard !isClosed, textEditing == nil, p.isFinite else { return }
-        if tool != .select && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
+        guard !isClosed, admitsAction(), textEditing == nil, p.isFinite else { return }
+        // Beginning text input keeps an open adjustment; committing the text closes it.
+        if tool != .select && tool != .text && !(tool == .arrow && style.curvedArrows) { endContinuousChange() }
         cancelGesture()
+        // Output Preview is read-only and shows no selection, handles or drafts: only panning and
+        // color picking work there (R4-04, F-04).
+        if showsOutputPreview, tool != .hand, tool != .colorPicker { return }
         switch tool {
         case .hand:
             break
@@ -71,22 +75,33 @@ extension EditorModel {
             }
             updateDraft(tool: tool, start: start, points: points, current: p, modifiers: modifiers)
         case .move(let items, let start, let original):
+            guard !isWithinClick(p, of: start) else { return replaceDocumentInGesture("Move", with: original) }
             var dx = p.x - start.x, dy = p.y - start.y
             if modifiers.contains(.shift) {
                 if abs(dx) > abs(dy) { dy = 0 } else { dx = 0 }
             }
-            var moved = original
+            let moved: Document
             do {
-                try Self.translate(&moved, items: items, dx: dx, dy: dy)
+                // The same path as every edit (R2).
+                moved = try Self.applying(
+                    { try Self.translate(&$0, items: items, dx: dx, dy: dy) }, to: original
+                ).updated
             } catch {
                 if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
             }
             replaceDocumentInGesture("Move", with: moved)
-        case .resize(let item, let handle, let frame, let original):
-            var resized = original
+        case .resize(let item, let handle, let frame, let original, let start, let anchor):
+            // Back at the press point the resize minimum or snapping could still alter the object,
+            // so the original snapshot is restored exactly (no re-bind, no history).
+            guard !isWithinClick(p, of: start) else { return replaceDocumentInGesture("Resize", with: original) }
+            let target = Point<DocumentSpace>(x: anchor.x + p.x - start.x, y: anchor.y + p.y - start.y)
+            let resized: Document
             do {
-                try resize(&resized, item: item, handle: handle, frame: frame, to: p, modifiers: modifiers)
+                resized = try Self.applying(
+                    { try resize(&$0, item: item, handle: handle, frame: frame, to: target, modifiers: modifiers) },
+                    to: original
+                ).updated
             } catch {
                 if error is ArrowGeometryFailure { post(.arrowGeometryRefused) }
                 return
@@ -118,6 +133,19 @@ extension EditorModel {
         case .move, .resize, .idle, .marquee, .ruler, .sample:
             break
         }
+    }
+
+    /// Whether `p` is still within a click's slop of the press point `start`, measured in view
+    /// points: the viewport cannot change during a gesture, so this is pointer travel on screen.
+    private func isWithinClick(_ p: Point<DocumentSpace>, of start: Point<DocumentSpace>) -> Bool {
+        let a = viewport.viewPoint(p), b = viewport.viewPoint(start)
+        return hypot(a.x - b.x, a.y - b.y) < Self.clickSlop
+    }
+
+    /// A pointer gesture is in progress; the viewport stays put so a stationary press stays a click.
+    var isPointerGestureActive: Bool {
+        if case .idle = gesture { return false }
+        return true
     }
 
     /// Commits the progress so far and retires this drag before an independent edit can land.
@@ -162,11 +190,18 @@ extension EditorModel {
     // MARK: Select tool
 
     private func beginSelectGesture(at p: Point<DocumentSpace>, modifiers: EditorModifiers) {
-        if let handle = handle(at: p), let item = selection.first, let frame = frame(of: item) {
-            gesture = .resize(item: item, handle: handle, frame: frame, original: document)
+        if let (handle, point) = handle(at: p), let item = selection.first, let frame = frame(of: item) {
+            gesture = .resize(item: item, handle: handle, frame: frame, original: document, start: p, anchor: point)
             return
         }
         if let hit = item(at: p) {
+            // A mask's tolerance band selects it; only its body or a handle square may move it.
+            if case .mask(let id) = hit, let mask = document.masks.first(where: { $0.id == id }),
+                !EditorGeometry.containsInclusive(mask.outputRect, p)
+            {
+                select(hit, extending: modifiers.contains(.shift))
+                return
+            }
             if modifiers.contains(.shift) {
                 select(hit, extending: true)
                 guard selection.contains(hit) else { return }
@@ -183,7 +218,7 @@ extension EditorModel {
     }
 
     private func replaceDocumentInGesture(_ label: String, with updated: Document) {
-        guard updated != document else { return }
+        guard !showsOutputPreview, updated != document else { return }
         endContinuousChange()
         session.beginGroup(label)
         let before = session.document, epoch = session.privacyEpoch
@@ -203,21 +238,22 @@ extension EditorModel {
             let index = document.annotations.firstIndex(where: { $0.id == id })
         {
             switch document.annotations[index].kind {
-            case .arrow(let start, let end, let control):
+            case .arrow(let start, let end, let control, let head):
                 var changed = document.annotations[index]
                 if handle == .bend {
                     guard control != nil else { return }
                     changed.kind = .arrow(
-                        start: start, end: end, control: ArrowCurve.control(start: start, end: end, bend: p))
+                        start: start, end: end, control: ArrowCurve.control(start: start, end: end, bend: p),
+                        head: head)
                 } else {
                     let original = handle == .start ? start : end
                     let movedControl = control?.offset(dx: p.x / 2 - original.x / 2, dy: p.y / 2 - original.y / 2)
                     changed.kind =
                         handle == .start
-                        ? .arrow(start: p, end: end, control: movedControl)
-                        : .arrow(start: start, end: p, control: movedControl)
+                        ? .arrow(start: p, end: end, control: movedControl, head: head)
+                        : .arrow(start: start, end: p, control: movedControl, head: head)
                 }
-                try Self.validateArrowCurve(changed)
+                try Self.validateArrow(changed)
                 document.annotations[index] = changed
                 return
             case .line(let start, let end):
@@ -272,10 +308,12 @@ extension EditorModel {
                         EditorGeometry.constrainedRect(from: start, to: current, square: modifiers.contains(.shift))),
                     style: style.annotationStyle))
         case .freehand:
-            draft = .annotation(Annotation(kind: .freehand(points), style: style.annotationStyle))
+            draft = .annotation(Annotation(kind: .freehand(points, smoothed: nil), style: style.annotationStyle))
         case .highlighter:
-            draft = .annotation(Annotation(kind: .highlighter(points), style: style.highlighterStyle))
-        case .crop, .redact, .blur, .pixelate, .spotlight, .magnifier:
+            draft = .annotation(Annotation(kind: .highlighter(points, smoothed: nil), style: style.highlighterStyle))
+        case .crop:
+            draft = .region(tool, cropRect(from: start, to: current, modifiers: modifiers))
+        case .redact, .blur, .pixelate, .spotlight, .magnifier:
             draft = .region(
                 tool, EditorGeometry.constrainedRect(from: start, to: current, square: modifiers.contains(.shift)))
         default:
@@ -311,7 +349,7 @@ extension EditorModel {
             let segment = Annotation(
                 kind: tool == .arrow ? arrowKind(from: start, to: tip) : .line(start: start, end: tip),
                 style: style.annotationStyle)
-            do { try Self.validateArrowCurve(segment) } catch {
+            do { try Self.validateArrow(segment) } catch {
                 post(.arrowGeometryRefused)
                 return
             }
@@ -328,19 +366,24 @@ extension EditorModel {
             }
         case .freehand, .highlighter:
             guard points.count >= 2 else { return }
+            // Smoothing happens once, here; the stored points are what the canvas and export draw.
+            let smoothed: Bool? = style.smoothsStrokes ? true : nil
+            let kept =
+                style.smoothsStrokes ? StrokeSmoothing.simplify(points, tolerance: StrokeSmoothing.tolerance) : points
             let stroke =
                 tool == .freehand
-                ? Annotation(kind: .freehand(points), style: style.annotationStyle)
-                : Annotation(kind: .highlighter(points), style: style.highlighterStyle)
+                ? Annotation(kind: .freehand(kept, smoothed: smoothed), style: style.annotationStyle)
+                : Annotation(kind: .highlighter(kept, smoothed: smoothed), style: style.highlighterStyle)
             if edit(tool == .freehand ? "Draw" : "Highlight", { $0.annotations.append(stroke) }) {
                 created = .annotation(stroke.id)
             }
         case .crop:
-            guard !isClick else { return }
-            setCrop(rect)
+            let crop = cropRect(from: start, to: end, modifiers: modifiers)
+            guard !isClick, !crop.isEmpty else { return }
+            setCrop(crop)
         case .redact:
             guard !isClick, let area = rect.intersection(document.canvasRect) else { return }
-            created = addRedaction(covering: area)
+            created = redactsTextOnly ? addTextRedaction(covering: area) : addRedaction(covering: area)
         case .blur, .pixelate:
             guard !isClick, let area = rect.intersection(document.canvasRect) else { return }
             let effect = CosmeticObfuscation(
@@ -367,7 +410,8 @@ extension EditorModel {
     private func arrowKind(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) -> Annotation.Kind {
         .arrow(
             start: start, end: end,
-            control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil)
+            control: style.curvedArrows ? ArrowCurve.defaultControl(start: start, end: end) : nil,
+            head: style.arrowHead == .filled ? nil : style.arrowHead)
     }
 
     static let defaultBlurRadius = 12.0
@@ -380,15 +424,17 @@ extension EditorModel {
     func addRedaction(covering rect: Rect<DocumentSpace>) -> EditorItemID? {
         let snapped = EditorGeometry.outwardIntegral(rect)
         guard !isClosed, let area = snapped.intersection(document.canvasRect) else { return nil }
-        let before = document, epoch = session.privacyEpoch
-        do {
-            let id = try session.addSecureMask(covering: area, fill: redactionFill)
-            didChange(from: before, epoch: epoch)
-            return .mask(id)
-        } catch {
-            post(.redactionRefused)
-            return nil
+        let fill = redactionFill
+        let id = MaskID()
+        // Through the one edit path, so the preview guard and coverage rule apply (R5-03).
+        let ok = edit("Redact") { document in
+            guard fill.isOpaque else { throw DocumentError.translucentSecureMask }
+            do { try area.validated() } catch { throw DocumentError.invalidGeometry }
+            guard !area.isEmpty else { throw DocumentError.emptyMask }
+            document.masks.append(
+                SecureMask(id: id, outputRect: area, sourceRegions: try document.sourceRegions(for: area), fill: fill))
         }
+        return ok ? .mask(id) : nil
     }
 
     /// A magnified copy of `source` next to it, kept inside the canvas where possible.
@@ -407,7 +453,8 @@ extension EditorModel {
 
     /// Starts editing an existing text annotation (double-click, Return on a selected text).
     public func beginEditingText(_ id: AnnotationID) {
-        guard !isClosed, let annotation = document.annotations.first(where: { $0.id == id }),
+        guard !isClosed, admitsAction(), !showsOutputPreview,
+            let annotation = document.annotations.first(where: { $0.id == id }),
             case .text(let text) = annotation.kind
         else { return }
         cancelGesture()
@@ -464,18 +511,35 @@ extension EditorModel {
         }
     }
 
-    public func setViewport(_ viewport: EditorViewport) { self.viewport = viewport }
+    /// A mouse wheel zooms around `anchor` when Settings turns wheel zoom on (Option scrolls);
+    /// any scroll zooms with Command; otherwise it scrolls. Trackpad and momentum scrolling never
+    /// wheel-zoom. A notched wheel's line counts as ten points.
+    public func scrollWheel(_ wheel: EditorScrollWheel, at anchor: Point<ViewSpace>) {
+        guard wheel.deltaX.isFinite, wheel.deltaY.isFinite else { return }
+        let preferences = environment.settings.preferences
+        let points = wheel.isPrecise ? 1.0 : 10.0
+        let zooms = preferences.zoomsWithScrollWheel && wheel.isMouseWheel ? !wheel.option : wheel.command
+        guard zooms else { return pan(dx: wheel.deltaX * points, dy: wheel.deltaY * points) }
+        guard anchor.isFinite else { return }
+        let direction = preferences.zoomsWithScrollWheel && preferences.reversesScrollWheelZoom ? -1.0 : 1.0
+        setZoom(viewport.zoom * exp(direction * wheel.deltaY * points * 0.01), anchor: anchor)
+    }
+
+    public func setViewport(_ viewport: EditorViewport) {
+        guard !isPointerGestureActive else { return }
+        self.viewport = viewport
+    }
 
     /// Zoom where 100 % shows one document pixel per device pixel.
     public var zoomPercent: Double { viewport.zoom * backingScale * 100 }
 
     public func zoomToFit() {
-        guard viewportSize.width > 0 else { return }
+        guard viewportSize.width > 0, !isPointerGestureActive else { return }
         viewport = .fitting(document.canvasRect, in: viewportSize, maxZoom: 1 / backingScale)
     }
 
     public func zoomToActualPixels() {
-        guard viewportSize.width > 0 else { return }
+        guard viewportSize.width > 0, !isPointerGestureActive else { return }
         viewport = .centered(on: document.contentRect, in: viewportSize, zoom: 1 / backingScale)
     }
 
@@ -484,18 +548,22 @@ extension EditorModel {
     public func zoomOut(anchor: Point<ViewSpace>? = nil) { setZoom(viewport.nextZoomOut(), anchor: anchor) }
 
     public func setZoom(_ zoom: Double, anchor: Point<ViewSpace>? = nil) {
+        guard !isPointerGestureActive else { return }
         let center = anchor ?? Point(x: viewportSize.width / 2, y: viewportSize.height / 2)
         viewport.setZoom(zoom, anchor: center)
     }
 
     public func zoomToSelection() {
         let frames = selection.compactMap(frame(of:))
-        guard viewportSize.width > 0, let first = frames.first else { return }
+        guard viewportSize.width > 0, !isPointerGestureActive, let first = frames.first else { return }
         let union = frames.dropFirst().reduce(first) { $0.union($1) }
         viewport = .fitting(union, in: viewportSize, margin: 48)
     }
 
-    public func pan(dx: Double, dy: Double) { viewport.pan(dx: dx, dy: dy) }
+    public func pan(dx: Double, dy: Double) {
+        guard !isPointerGestureActive else { return }
+        viewport.pan(dx: dx, dy: dy)
+    }
 
     static func snapped(_ p: Point<DocumentSpace>) -> Point<DocumentSpace> {
         Point(x: p.x.rounded(), y: p.y.rounded())

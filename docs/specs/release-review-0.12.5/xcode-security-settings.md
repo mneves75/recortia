@@ -29,9 +29,9 @@ What it would change:
    `enhanced-security-version-string`, `hardened-heap`, `dyld-ro` and `platform-restrictions-string`
    keys. `scripts/check-release-entitlements.py` accepts an exact reviewed set, so the gate must be
    updated in the same change, deliberately.
-3. **Runtime OS.** The deployment target is macOS 15.0. The v2 protections are an OS capability, so
-   the app has to be exercised on macOS 15 and on the newest release before the entitlement ships;
-   no macOS 15 host exists for this project, and `SPEC.md` §10 already records that release evidence
+3. **Runtime OS.** The deployment target is macOS 26.0 (ADR-008). The v2 protections are an OS capability, so
+   the app has to be exercised on macOS 26 and on the newest release before the entitlement ships;
+   no macOS 26 host exists for this project, and `SPEC.md` §10 already records that release evidence
    from a release-candidate toolchain does not qualify.
 
 Order an adoption should follow (from the skill's own adoption strategy): security compiler warnings
@@ -42,7 +42,7 @@ so the expected cost is low but unproven.
 
 Done when: a build with the capability enabled passes `scripts/check.sh`, the bilingual E2E on a
 stable-OS host at 50/50, `scripts/check-release-binary.sh`, and a notarized candidate launched on
-macOS 15 and on the current release; and `scripts/check-release-entitlements.py` has been updated to
+macOS 26 and on the current release; and `scripts/check-release-entitlements.py` has been updated to
 the new exact set with its own test.
 
 ## Other skills in the collection, and what each produced here

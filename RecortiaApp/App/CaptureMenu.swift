@@ -25,7 +25,6 @@ final class CaptureMenuPresenter: NSObject {
         self.focus = focus
     }
 
-    /// The menu for the current state: a mode whose backend is unavailable is disabled.
     func makeMenu() -> NSMenu {
         let menu = NSMenu(title: AppCommand.captureMenu.title)
         menu.autoenablesItems = false

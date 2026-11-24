@@ -2,6 +2,7 @@
 """REL-01 checks for source provenance and the shipped dependency notice."""
 
 import argparse
+import importlib.util
 import json
 import pathlib
 import re
@@ -15,11 +16,22 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # The reviewed stable pin comes from the record, never a copy: a copied pin fails every release
 # control the moment the toolchain is re-observed.
-STABLE = json.loads((ROOT / "TOOLCHAIN.json").read_text())["stable_xcode_baseline"]
+RECORD = json.loads((ROOT / "TOOLCHAIN.json").read_text())
+STABLE = RECORD["stable_xcode_baseline"]
 STABLE_XCODE = f"Xcode {STABLE['version']}\\nBuild version {STABLE['build']}\\n"
+SWIFT_XCRUN = f"#!/bin/sh\necho 'Apple Swift version {RECORD['expected_bundled_swift_compiler_major_minor']}.0 (fixture)'\n"
 RELEASE = ROOT / "scripts/release.sh"
 RESOLVED = ROOT / "Recortia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
 NOTICE = "KeyboardShortcuts-LICENSE.txt"
+
+
+def inventory_release_status(text: str) -> str | None:
+    """The verdict scripts/tests-report.py gives a release log, from the real parser."""
+    spec = importlib.util.spec_from_file_location("tests_report", ROOT / "scripts/tests-report.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.release_status(text)
 
 
 class ReleaseFixture:
@@ -30,11 +42,11 @@ class ReleaseFixture:
         (root / "scripts").mkdir()
         for name in ("release.sh", "doctor.sh"):
             shutil.copy(ROOT / "scripts" / name, root / "scripts" / name)
+        shutil.copytree(ROOT / "scripts/lib", root / "scripts/lib")
         shutil.copy(ROOT / "TOOLCHAIN.json", root / "TOOLCHAIN.json")
         self.bin = root / "bin"
         self.bin.mkdir()
-        self.write_tool("xcodegen", "#!/bin/sh\nexit 0\n")
-        self.write_tool("xcrun", "#!/bin/sh\necho 'Swift fixture compiler'\n")
+        self.write_tool("xcrun", SWIFT_XCRUN)
         (self.bin / "python3").symlink_to(sys.executable)
         self.write_tool("xcodebuild", "#!/bin/sh\n"
                         f"if [ \"$1\" = -version ]; then printf '{STABLE_XCODE}'; "
@@ -51,6 +63,8 @@ elif args[0] == 'describe':
 elif args[:2] == ['worktree', 'add']:
     target = pathlib.Path(args[-2])
     shutil.copytree(root / 'gate', target)
+elif args[0] == '-C' and args[2:4] == ['worktree', 'remove']:
+    sys.exit(1 if (root / 'fail-cleanup').exists() else 0)
 ''')
         (root / "gate/scripts").mkdir(parents=True)
         gate = root / "gate/scripts/check.sh"
@@ -141,21 +155,87 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertEqual(2, len(fresh), "each dry run needs its own reservation")
         self.assertTrue((fixture.root / "archive-reached").exists(), "dry run control reaches archive")
 
-    def test_missing_xcodegen_fails_release_gate_before_archive(self) -> None:
+    def test_a_failed_dry_run_reads_as_failed_never_as_complete(self) -> None:
         fixture = self.fixture()
-        (fixture.bin / "xcodegen").unlink()
+        result = fixture.run("--dry-run")  # the fixture's xcodebuild fails the archive step
+        self.assertNotEqual(0, result.returncode)
+        output = result.stdout + result.stderr
+        self.assertIn(f"release: failed (exit {result.returncode})", result.stderr)
+        self.assertNotIn("dry run complete", output)
+        self.assertEqual("failed", inventory_release_status(output))
+
+    def run_finish(self, *, exit_status: int, cleanup_fails: bool, completed: bool) -> subprocess.CompletedProcess[str]:
+        """Run release.sh's own EXIT handler: the success path needs codesign, hdiutil and
+        /usr/libexec/PlistBuddy, which no fixture stands in for, so this drives its last step."""
+        script = RELEASE.read_text()
+        handler = re.search(r"(?ms)^finish\(\) \{\n.*?\n^\}\n", script)
+        self.assertIsNotNone(handler, "release.sh must define finish")
+        assert handler is not None
+        fixture = self.fixture()
+        if cleanup_fails:
+            (fixture.root / "fail-cleanup").write_text("")
+        body = (f"source {ROOT / 'scripts/lib/run-identity.sh'}\n" + handler.group(0) + f"root={fixture.root}\nsrc={fixture.root}/src\nlabel=0.1-dev\nout=/out\n"
+                f"dry_run=1\ncompleted=0\ntrap finish EXIT\n{'completed=1' if completed else ':'}\nexit {exit_status}\n")
+        return subprocess.run(["/bin/zsh", "-c", body], cwd=fixture.root, capture_output=True, text=True,
+                              env={"PATH": f"{fixture.bin}:/usr/bin:/bin"}, timeout=15)
+
+    def test_the_verdict_follows_cleanup_and_the_inventory_reads_it(self) -> None:
+        done = self.run_finish(exit_status=0, cleanup_fails=False, completed=True)
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        self.assertEqual("release: dry run complete (0.1-dev, manifest /out/manifest.txt)",
+                         done.stdout.strip().splitlines()[-1])
+        record = "release: run mode dry-run\nrelease: commit " + "a" * 40 + " tree clean\n" + done.stdout
+        self.assertEqual("passed", inventory_release_status(record))
+        failed_cleanup = self.run_finish(exit_status=0, cleanup_fails=True, completed=True)
+        self.assertNotEqual(0, failed_cleanup.returncode)
+        self.assertIn("release: cleanup failed", failed_cleanup.stderr)
+        self.assertNotIn("complete", failed_cleanup.stdout)
+        self.assertEqual("failed", inventory_release_status(failed_cleanup.stdout + failed_cleanup.stderr))
+        early_exit = self.run_finish(exit_status=0, cleanup_fails=False, completed=False)
+        self.assertNotEqual(0, early_exit.returncode, "an exit before the last step is not a success")
+        self.assertNotIn("complete", early_exit.stdout)
+
+    def test_the_run_header_names_the_mode_before_preflight(self) -> None:
+        fixture = self.fixture()
+        for arguments, mode in ((("--dry-run",), "dry-run"), ((), "release")):
+            with self.subTest(mode=mode):
+                result = fixture.run(*arguments)
+                self.assertEqual(f"release: run mode {mode}", result.stdout.splitlines()[0])
+        script = RELEASE.read_text()
+        self.assertLess(script.index('echo "release: run mode $mode"'), script.index("scripts/doctor.sh --release"))
+
+    def test_unknown_arguments_stop_before_the_toolchain_or_release_path(self) -> None:
+        for arguments in (("--dryrun",), ("dry-run",), ("--dry-run", "extra"), ("",)):
+            with self.subTest(arguments=arguments):
+                fixture = self.fixture()
+                result = fixture.run(*arguments)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn("usage: scripts/release.sh [--dry-run]", result.stderr)
+                self.assertNotIn("doctor:", result.stdout + result.stderr)
+                self.assertFalse((fixture.root / ".build").exists())
+                self.assertFalse((fixture.root / "gate-reached").exists())
+
+    def test_unavailable_xcodegen_fails_release_gate_before_archive(self) -> None:
+        fixture = self.fixture()
+        # The pinned XcodeGen cannot be fetched, and a global copy must not stand in for it.
+        fixture.write_tool("curl", "#!/bin/sh\nexit 22\n")
+        global_called = fixture.root / "global-xcodegen-called"
+        fixture.write_tool("xcodegen", f"#!/bin/sh\ntouch '{global_called}'\nexit 0\n")
         gate = fixture.root / "gate"
         shutil.copy(ROOT / "scripts/check.sh", gate / "scripts/check.sh")
-        for name in ("doctor.sh", "check-project-fresh.sh"):
+        for name in ("doctor.sh", "check-project-fresh.sh", "xcodegen.sh"):
             shutil.copy(ROOT / "scripts" / name, gate / "scripts" / name)
+        shutil.copytree(ROOT / "scripts/lib", gate / "scripts/lib")
         shutil.copy(ROOT / "TOOLCHAIN.json", gate / "TOOLCHAIN.json")
-        # Earlier gate tests are independently exercised by their own suites.
-        for name in re.findall(r"python3 scripts/(test-[\w-]+\.py)", (ROOT / "scripts/check.sh").read_text()):
+        # Earlier gate steps are independently exercised by their own suites.
+        for name in re.findall(r"python3 scripts/([\w-]+\.py)", (ROOT / "scripts/check.sh").read_text()):
             (gate / "scripts" / name).write_text("")
-        fixture.write_tool("swift", "#!/bin/sh\nexit 0\n")
         result = fixture.run()
+        self.assertFalse(global_called.exists(), "a global xcodegen must never stand in for the pin")
         self.assertNotEqual(0, result.returncode)
         self.assertIn("the gate failed", result.stderr)
+        gate_log = next((fixture.root / ".build/release").rglob("gate.log")).read_text()
+        self.assertIn("xcodegen: download of", gate_log, "the gate must fail at the pinned XcodeGen")
         self.assertFalse((fixture.root / "archive-reached").exists(), "no archive after a failed freshness gate")
         self.assertFalse(list((fixture.root / ".build/release").rglob("archive-reached")))
 
@@ -169,13 +249,13 @@ class ReleaseContractTests(unittest.TestCase):
                 script = root / "scripts" / name
                 script.write_bytes((ROOT / "scripts" / name).read_bytes())
                 script.chmod(0o755)
+            shutil.copytree(ROOT / "scripts/lib", root / "scripts/lib")
             (root / "TOOLCHAIN.json").write_bytes((ROOT / "TOOLCHAIN.json").read_bytes())
             binaries = root / "bin"
             binaries.mkdir()
             for name, source in {
                 "git": '#!/bin/sh\necho "git boundary reached (mode=$RECORTIA_TOOLCHAIN_MODE)" >&2\nexit 87\n',
-                "xcodegen": "#!/bin/sh\nexit 0\n",
-                "xcrun": "#!/bin/sh\necho 'Swift fixture compiler'\n",
+                "xcrun": SWIFT_XCRUN,
             }.items():
                 executable = binaries / name
                 executable.write_text(source)
@@ -268,6 +348,25 @@ class ReleaseContractTests(unittest.TestCase):
             positions[3], script.index('codesign --verify --deep --strict "$app"', positions[3]),
         )
 
+    def test_every_shipped_notice_is_checked_in_the_bundle_before_notarization(self) -> None:
+        script = RELEASE.read_text()
+        notarize = script.index("== notarize the app")
+        notices = sorted(path.name for path in (ROOT / "RecortiaApp/Resources").glob("*-LICENSE.txt"))
+        self.assertIn("Fosco-LICENSE.txt", notices)
+        for name in notices:
+            with self.subTest(notice=name):
+                bundled = f'"$app/Contents/Resources/{name}"'
+                check = re.search(r"cmp -s [^\n]*" + re.escape(bundled) + r"|" + re.escape(f"={bundled}"), script)
+                self.assertIsNotNone(check, f"release.sh never compares the bundled {name}")
+                self.assertLess(check.start(), notarize, f"{name} is checked only after notarization")
+
+    def test_exported_app_updater_plist_is_checked_before_notarization(self) -> None:
+        script = RELEASE.read_text()
+        notarize = script.index("== notarize the app")
+        check = 'python3 "$src/scripts/check-updater-plist.py" --app-plist "$app/Contents/Info.plist"'
+        self.assertEqual(1, script.count(check), "release.sh must check the exported app's Info.plist")
+        self.assertLess(script.index(check), notarize, "updater Info.plist check must precede notarization")
+
     def test_bundled_notice_matches_pinned_dependency(self) -> None:
         if not hasattr(self, "app"):
             self.skipTest("run with --app and --package-checkout to check the bundled notices")
@@ -285,6 +384,9 @@ class ReleaseContractTests(unittest.TestCase):
             (ROOT / "LICENSE").read_bytes(),
             (self.app / "Contents/Resources/Recortia-LICENSE.txt").read_bytes(),
         )
+        fosco = (ROOT / "RecortiaApp/Resources/Fosco-LICENSE.txt").read_bytes()
+        self.assertIn(b"Copyright (c) 2026 Gabriel Buzzi Venturi", fosco)
+        self.assertEqual(fosco, (self.app / "Contents/Resources/Fosco-LICENSE.txt").read_bytes())
 
 
 if __name__ == "__main__":

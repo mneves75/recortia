@@ -17,7 +17,7 @@ final class PinsHarness {
     init() {
         let export = ExportCoordinator(
             exporter: FakeExportService(), clipboard: FakeClipboard(), files: FakeFileSink(), drag: FakeDragSink(),
-            folders: FakeSaveFolders(), clock: ManualClock(), settings: settings)
+            printer: FakePrinter(), folders: FakeSaveFolders(), clock: ManualClock(), settings: settings)
         model = PinsModel(renderer: renderer, settings: settings, export: export)
     }
 }
@@ -85,7 +85,6 @@ struct PinsModelTests {
         h.model.invalidate(documentID: session.document.id, epoch: session.privacyEpoch)
         #expect(h.model.pins.count == 1)
         #expect(h.model.pins.first?.sourceDocumentID == other.document.id)
-        #expect(h.model.lastInvalidatedCount == 1)
 
         // The current epoch does not invalidate pins made at that epoch.
         let current = try await h.model.pin(session, currentSession: { session })

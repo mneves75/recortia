@@ -110,13 +110,13 @@
         }
 
         /// Imports `harness.desktop` through the real input and decode path without opening an editor.
-        private static func importedSession(_ harness: E2EHarness, name: String) async throws -> DocumentSession {
+        static func importedSession(_ harness: E2EHarness, name: String) async throws -> DocumentSession {
             let url = harness.output.workDirectory.appending(path: name)
             try E2EDrawing.png(harness.desktop).write(to: url, options: .atomic)
             let importer = harness.features.importer
             let opener = importer.onImported
             var imported: DocumentSession?
-            importer.onImported = { imported = $0 }
+            importer.onImported = { session, _, _ in imported = session }
             defer { importer.onImported = opener }
             if case .failure(let failure) = await importer.importImage(from: .file(url)) {
                 throw E2EAbort("import of \(name) failed: \(failure)")

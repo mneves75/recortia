@@ -49,11 +49,25 @@ extension EditorModel {
         return baseImage
     }
 
-    /// True when the output preview matches the current document.
+    /// False while the render of what the canvas displays failed for the current state: the canvas
+    /// then shows older or no pixels instead of what an export would produce, so exports and pins
+    /// are refused (R2-D12). The editing view also needs its native draw of the current state not
+    /// to have failed (NEW-01). A render still on its way counts as ready, as it always has. Undo
+    /// back to the installed render is ready again, and so is switching Output Preview off over a
+    /// base that rendered: each shows a successful render of what it displays.
+    ///
+    /// Readiness is a consistency rule, not a leak barrier: export bytes always come from the
+    /// sanitized document, so a save that passed the recheck before a failure writes correct bytes.
+    public var isPreviewReady: Bool {
+        if showsOutputPreview { return failedOutputKey != currentOutputKey }
+        return failedBaseKey != currentBaseKey && failedCanvasDraw != currentOutputKey
+    }
+
     public var isOutputPreviewCurrent: Bool { outputPreview != nil && installedOutputKey == currentOutputKey }
 
     func scheduleBaseRender() {
-        guard !isClosed, baseTask == nil else { return }
+        // No render of the capture exists before its automatic masks land.
+        guard !isClosed, admitsAction(), baseTask == nil else { return }
         let key = currentBaseKey
         guard key != installedBaseKey, key != failedBaseKey else { return }
         let identity = session.requestIdentity()
@@ -80,6 +94,8 @@ extension EditorModel {
                 installedBaseKey = key
                 failedBaseKey = nil
             case .failure:
+                // Only a failure of the visible render touches an offered drag (NEW-02).
+                if !showsOutputPreview { invalidateOfferedDrag() }
                 failedBaseKey = key
                 post(.previewFailed)
             }
@@ -91,6 +107,14 @@ extension EditorModel {
 
     /// Shows the full sanitized output (crop, presentation, callouts) instead of the editing surface.
     public func setShowsOutputPreview(_ shows: Bool) {
+        if shows, !admitsAction(explaining: true) { return }
+        // The preview is read-only (F-04): a drag in progress and text input are abandoned, and
+        // the selection, which it would not show, is cleared.
+        if shows {
+            cancelGesture()
+            cancelTextEditing()
+            clearSelection()
+        }
         showsOutputPreview = shows
         if shows {
             scheduleOutputRender()
@@ -99,11 +123,16 @@ extension EditorModel {
             outputPreview = nil
             installedOutputKey = nil
             failedOutputKey = nil
+            // The editing view is back: retry its failed base once, without a document edit (NEW-03).
+            if failedBaseKey == currentBaseKey {
+                failedBaseKey = nil
+                scheduleBaseRender()
+            }
         }
     }
 
     func scheduleOutputRender() {
-        guard !isClosed, showsOutputPreview, outputTask == nil else { return }
+        guard !isClosed, admitsAction(), showsOutputPreview, outputTask == nil else { return }
         let key = currentOutputKey
         guard key != installedOutputKey, key != failedOutputKey else { return }
         let identity = session.requestIdentity()
@@ -133,6 +162,7 @@ extension EditorModel {
                 installedOutputKey = key
                 failedOutputKey = nil
             case .failure:
+                invalidateOfferedDrag()
                 failedOutputKey = key
                 post(.previewFailed)
             }
@@ -140,6 +170,13 @@ extension EditorModel {
             droppedResultCount += 1
         }
         scheduleOutputRender()
+    }
+
+    /// The visible render of the current state failed: an offered drag of it must not write either
+    /// (R2-D12a). Revoked before the failure is published; a receiver that already claimed the
+    /// lease may finish, as with any revocation.
+    private func invalidateOfferedDrag() {
+        environment.export.invalidatePendingDrag(documentID: session.document.id)
     }
 
     /// Called whenever the privacy epoch changed: every derivative of the old epoch is stale.
@@ -150,6 +187,7 @@ extension EditorModel {
         let removed = before - pins.pins.count
         inspection = nil
         pickedColor = nil
+        clearContrastColors()
         // Output masks alone cannot hide every duplicate of a source-bound mask in an old base.
         baseImage = nil
         installedBaseKey = nil

@@ -1,5 +1,6 @@
 import Domain
 import Foundation
+import Imaging
 import Observation
 
 /// Preferences persisted as one versioned JSON blob (SPEC §7). Stores settings only: never
@@ -25,19 +26,33 @@ public final class SettingsStore {
     public private(set) var loadIssue: LoadIssue?
     /// Session-only identity: restoring the same settings cannot revive a revoked upload.
     public private(set) var githubUploadConsentID = UUID()
+    /// Session-only count of the person's save-folder choices (choose, clear, or the folder asked
+    /// for when turning automatic save on). A renewed bookmark for the same folder does not count,
+    /// so an automatic save can tell a new choice from a moved or unreachable planned folder.
+    @ObservationIgnored var saveFolderSelection = 0
+
+    /// Whether this Mac encodes HEIC; without it, HEIC is not offered and a stored HEIC choice
+    /// exports PNG (B-9a).
+    public let encodesHEIC: Bool
 
     @ObservationIgnored private let storage: any PreferenceStorage
     @ObservationIgnored private let integrity: any PreferenceIntegrityService
 
-    public init(storage: any PreferenceStorage, integrity: any PreferenceIntegrityService) {
+    public init(
+        storage: any PreferenceStorage, integrity: any PreferenceIntegrityService,
+        encodesHEIC: Bool = ExportCapabilities.encodesHEIC
+    ) {
         self.storage = storage
         self.integrity = integrity
+        self.encodesHEIC = encodesHEIC
         let (loaded, issue) = Self.load(from: storage, integrity: integrity)
         preferences = loaded
         loadIssue = issue
     }
 
-    /// Applies `change`, clamps the result to valid ranges, and persists it.
+    /// The options every export starts from (FR-07).
+    public var exportOptions: ExportOptions { preferences.exportOptions(encodesHEIC: encodesHEIC) }
+
     public func update(_ change: (inout Preferences) -> Void) {
         var updated = preferences
         change(&updated)
@@ -48,9 +63,45 @@ public final class SettingsStore {
         persist()
     }
 
+    /// Returns the primary recognition language to Automatic when this Mac's recognizer no longer
+    /// reports it (FR-08). An empty list, a recognizer that reports nothing, changes nothing.
+    public func forgetUnsupportedPrimaryRecognitionLanguage(supported: [Locale.Language]) {
+        guard let primary = preferences.primaryRecognitionLanguage, !supported.isEmpty,
+            !supported.contains(where: { $0.maximalIdentifier == primary })
+        else { return }
+        update { $0.primaryRecognitionLanguage = nil }
+    }
+
+    /// Recognize English and Portuguese when available, with the selected primary language first.
+    func recognitionLanguages(supported: [Locale.Language]) -> (languages: [Locale.Language], unavailable: [String]) {
+        let preferredCodes = ["en", "pt"]
+        let codes = Set(supported.compactMap { $0.languageCode?.identifier })
+        let unavailable = preferredCodes.filter { !codes.contains($0) }
+        let preferred = supported.filter { preferredCodes.contains($0.languageCode?.identifier ?? "") }
+        let languages = preferred.isEmpty ? supported : preferred
+        guard let primary = preferences.primaryRecognitionLanguage,
+            let first = supported.first(where: { $0.maximalIdentifier == primary })
+        else { return (languages, unavailable) }
+        return ([first] + languages.filter { $0.maximalIdentifier != primary }, unavailable)
+    }
+
+    /// Shows or hides the menu-bar icon. Returns true only when this hides it for the first time,
+    /// so the caller tells the person how to get back (open Recortia again).
+    @discardableResult
+    public func setShowsMenuBarIcon(_ shows: Bool) -> Bool {
+        guard shows != preferences.showsMenuBarIcon else { return false }
+        let explains = !shows && preferences.hasExplainedHiddenMenuBarIcon != true
+        update {
+            $0.showsMenuBarIcon = shows
+            if explains { $0.hasExplainedHiddenMenuBarIcon = true }
+        }
+        return explains
+    }
+
     /// An explicit reset is the one write allowed over a newer Recortia's blob.
     public func resetToDefaults() {
         githubUploadConsentID = UUID()
+        saveFolderSelection += 1
         preferences = Preferences()
         loadIssue = nil
         persist()
@@ -91,13 +142,27 @@ public final class SettingsStore {
         let schemaVersion: Int
     }
 
-    /// Clamps every numeric preference into its documented range; invalid values become defaults.
+    /// Clamps capture delay, finite JPEG quality and finite pin opacity; non-finite quality or
+    /// opacity and an invalid export scale become defaults; an invalid window size and a malformed
+    /// primary recognition language are discarded; a window background colour is made opaque; a
+    /// saved framing outside the editor's ranges is discarded.
     public static func sanitized(_ input: Preferences) -> Preferences {
         let defaults = Preferences()
         var output = input
         output.schemaVersion = Preferences.currentSchemaVersion
+        output.launchAtLogin = false
         output.captureDelaySeconds = CaptureRequest.clampedDelay(input.captureDelaySeconds)
         output.jpegQuality = input.jpegQuality.isFinite ? min(max(input.jpegQuality, 0), 1) : defaults.jpegQuality
+        // Recortia 0.14 reads only PNG or JPEG in this key; the other choices have their own.
+        switch input.defaultExportFormat {
+        case .png, .jpeg: break
+        case .automatic:
+            output.defaultExportFormat = defaults.defaultExportFormat
+            output.automaticExportFormatChoice = true
+        case .heic:
+            output.defaultExportFormat = defaults.defaultExportFormat
+            if input.automaticExportFormatChoice != true { output.heicExportFormatChoice = true }
+        }
         output.defaultExportScale =
             input.defaultExportScale.isFinite && ExportOptions.validScaleRange.contains(input.defaultExportScale)
             ? input.defaultExportScale : defaults.defaultExportScale
@@ -106,8 +171,25 @@ public final class SettingsStore {
             ? min(max(input.pinDefaultOpacity, opacityRange.lowerBound), opacityRange.upperBound)
             : defaults.pinDefaultOpacity
         output.editorContentSize = input.editorContentSize.flatMap(EditorWindowSizing.rememberable)
+        output.primaryRecognitionLanguage = input.primaryRecognitionLanguage.flatMap(languageIdentifier)
+        if case .solid(let color) = input.windowCaptureBackground {
+            output.windowCaptureBackground = .solid(color.withAlpha(255))
+        }
+        output.defaultFraming = input.defaultFraming?.validSavedFraming
+        if input.framingRecipes?.entries.isEmpty == true { output.framingRecipes = nil }
         // Automatic saving writes only to a folder the person chose; without one it is off.
         if input.preferredSaveFolderBookmark == nil { output.autoSave = false }
         return output
+    }
+
+    /// The full form of a BCP 47 language identifier made of ASCII letters, digits, `-` and `_`,
+    /// at most 64 characters; nil for anything else.
+    private static func languageIdentifier(_ text: String) -> String? {
+        guard (1...64).contains(text.count),
+            text.unicodeScalars.allSatisfy({
+                $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "-_".unicodeScalars.contains($0))
+            })
+        else { return nil }
+        return Locale.Language(identifier: text).maximalIdentifier
     }
 }

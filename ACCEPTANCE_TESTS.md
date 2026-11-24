@@ -22,6 +22,13 @@ While selecting, capturing, recognizing text, and collecting scroll frames, inje
 
 On each supported OS, capture a region, each display, a chosen window, a delayed target, and a repeated region. Compare a synthetic fixture's numbered corners and boundaries against expected output. Window ambiguity produces a chooser. Cursor/shadow toggles change only the declared content. The app's checkerboard overlays and reference pins are absent by default.
 
+Window background: with Solid color, a window capture exports with no transparent pixel: its
+corners show the colour, its half-transparent shadow is composited over it once, the opaque body
+is unchanged, and a secure mask over a corner shows its own fill. Exporting twice gives identical
+bytes; Transparent keeps today's alpha; region, display, imported and pasted images stay
+transparent (`WindowBackgroundCompositeTests`, `CaptureCoordinatorTests`). The Capture pane
+control is checked in bilingual `settings`; a live window capture remains a physical check.
+
 ### CAP-02 — One active capture and no idle recording
 
 Invoke region capture from a different application's Space using the global shortcut and
@@ -140,6 +147,12 @@ Repeat for window key loss, app deactivation, and mid-pan interruption. An unrel
 notification must not interrupt the canvas; normal held/released Space remains a control.
 The synthetic `canvas-focus` scenario covers these cases; live IME/VoiceOver checks remain separate.
 
+Wheel zoom: off, a real wheel event scrolls and ⌘-wheel zooms; on, a mouse-wheel event (no
+scroll or momentum phase) zooms with the point under the pointer fixed, ⌥-wheel scrolls, a phased
+(trackpad) or momentum event still scrolls, and Reverse zoom direction inverts the same movement
+(bilingual `editor-zoom`; model rule and math in `EditorZoomPreferenceTests`). Physical mouse,
+Magic Mouse and trackpad checks remain manual.
+
 ### PIN-01 — Reference lifecycle
 
 Create five pins, reach the budget limit, move between displays/Spaces, vary opacity, close the editor, and close each pin. No invisible window blocks user input. Closing pins releases their retained snapshots. A source-document privacy-epoch change updates or invalidates linked pins and prevents a stale raw view from being re-exported.
@@ -150,8 +163,17 @@ Pin a capture, copy it, and drag it out: the clipboard and the promised file hol
 sanitized, freshly encoded image as the editor's 1× export, with no other pasteboard types.
 Redact the source, close the pin, or close all pins while a drag offer waits: the receiver gets
 no file and the outcome is stale or canceled, never delivered. A pin added from a raw image is
-refused. Each open pin is a normal-level window that AltTab lists; RED-01's paired-secret
+refused. Each new pin is a normal-level window that AltTab lists; RED-01's paired-secret
 comparison holds for the pin's clipboard and drag-out bytes.
+
+### PIN-03 — Keep on Top and click-through
+
+A new pin is normal-level and takes clicks. Keep on Top floats it and keeps it on every Space;
+Click Through is unavailable until then, makes the pin ignore the mouse and shows a lock, and
+ends when Keep on Top is turned off. Unlock All Pins, in the menu bar and the menu-bar extra, is
+enabled only while a pin is click-through and restores clicks on every pin. A shown floating pin
+keeps Recortia in ⌘Tab and the Dock. Synthetic: `PinLayeringTests`, E2E `pin-on-top`; clicks
+reaching another app and third-party switcher listing stay physical.
 
 ## Redaction and export — release blocking
 
@@ -181,6 +203,11 @@ For each supported format and scale, render the same snapshot through every sink
 
 Inject render failure, encoding failure, clipboard failure, denied folder access, destination collision, disk full, unplugged volume, and canceled drag. No false success notification. A prior destination file survives a failed atomic save. Clipboard is untouched on failure before write. Successful committed writes are not described as canceled/retracted. Drag receivers get a complete file for the transfer lifetime.
 
+From quick actions, save a photographic JPEG and a transparent PNG through Save Optimized Copy.
+Match the advertised format, dimensions and byte count to the actual file. Test a configured
+preferred folder, exact-path replacement and a delayed picker during a new capture selection.
+Declining replacement preserves the original file.
+
 ### EXP-03 — Automatic save folder
 
 Through the real Settings › Export controls with a scripted folder panel: turning automatic save
@@ -201,6 +228,11 @@ Build a versioned corpus with at least 100 synthetic screenshots balanced betwee
 
 Verify bounding-box alignment, raw versus normalized output, supported-language discovery, cancellation, and privacy-epoch invalidation. A no-text result does not clear or replace the clipboard. Disconnected-network tests succeed after any OS-provided language resources required by the environment are already present; report any unavailable system resource rather than silently fetching through a custom service.
 
+In the bilingual quick-actions scenario, use Copy Text on a synthetic accented fixture through
+the real Vision adapter. Refuse blank or failed results, and keep the prior clipboard on a late
+result after capture suspension. Confirm package coverage identifies full-size sanitized pixels
+and keeps the action bounded when a canceled render or recognition still runs.
+
 ### OCR-02 — QR payload safety
 
 Decode fixtures for ordinary text, HTTPS, unsupported schemes, payment/Wi-Fi-like payloads, and malformed codes. Compare expected payload bytes. Nothing opens, connects, executes, pays, or modifies system settings automatically. User cancellation leaves other app state unchanged.
@@ -208,6 +240,11 @@ Decode fixtures for ordinary text, HTTPS, unsupported schemes, payment/Wi-Fi-lik
 ### PIX-01 — Measurements and colors
 
 Use an sRGB chart with known encoded RGB values and exact geometry. HEX/RGB output matches the defined pixel sampling method, ruler distances remain invariant under editor zoom, and point/pixel labels are unambiguous. A nearest-neighbor loupe does not interpolate. Imported images do not acquire a fictitious Retina scale.
+
+Each copy format matches reference strings, including alpha 0 and rounding; OKLab matches Ottosson's
+published example pairs; WCAG contrast matches published pairs (#777777 on white is 4.48:1, failing AA
+for normal text). Darkest sampling over a synthetic glyph finds it, and point or darkest sampling over a
+secure mask returns the mask fill, never the hidden pixel (`colour-tools`, both languages).
 
 Oversized finite document coordinates yield no sample; extreme loupe radii clamp to the image without
 integer overflow. Rapid output-preview toggles retain one in-flight render and discard canceled results.
@@ -224,7 +261,7 @@ Provide low-texture pages, identical repeated rows, insufficient overlap, revers
 
 ### SCR-03 — Real application compatibility
 
-Test manual and automatic modes in the declared Safari, Chrome, and native-scroll-view targets on macOS 15/26/27. Record app versions, display configuration, scroll settings, and successful/limited/unsupported outcomes. Include Terminal/virtualized content and a scroll modifier as negative cases. Accessibility denial keeps manual mode available. Target/focus change immediately stops synthetic scrolling.
+Test manual and automatic modes in the declared Safari, Chrome, and native-scroll-view targets on macOS 26/27. Record app versions, display configuration, scroll settings, and successful/limited/unsupported outcomes. Include Terminal/virtualized content and a scroll modifier as negative cases. Accessibility denial keeps manual mode available. Target/focus change immediately stops synthetic scrolling.
 
 ### SCR-04 — Limits and cancellation
 
@@ -233,6 +270,23 @@ Exercise the 120-second, 200-frame, 40-MP, 32,768-side, 20,000-default-height, a
 ### COMP-01 — Composite rendering and redaction
 
 Combine at least three images with scaling, opacity, overlap, a background, rounded corners, shadows, spotlight, and magnifier. Verify order, aspect ratios, crop, and output size. Reject render-graph cycles. Re-run RED-01 through RED-03 after every new derived effect or export-capable surface.
+
+Each aspect preset's output is an exact ratio no smaller than the padded content; a synthetic
+window with an asymmetric translucent margin is centred by its opaque body with Balance on and by
+its box with it off; a radial gradient has its centre colour in the middle and its edge colour at
+the corners; 1:1 and 9:16 PNG exports match their size pixel for pixel; a document written before
+presets decodes unchanged. A saved default framing reaches new captures only (`framing-presets`,
+both languages, with dark companions).
+
+Save a named recipe, change the current framing, then apply the recipe through the Image
+inspector. The next export matches the pixels from before the change. Check one-step undo and
+redo, 64-byte names, invalid and duplicate names, stale recipe identities and unchanged defaults
+after rename or delete. Persist only admitted preferences.
+
+Draw a translucent border and a rotated watermark on a synthetic output. Verify all four edges,
+the chosen anchor, unchanged output dimensions and consistent preview and export at two scales.
+Change pixels only under a secure mask and require unchanged decorated output. Confirm legacy
+presentation data has no decorations and reject invalid text, opacity, rotation and widths.
 
 ## UX, privacy, performance, and release
 
@@ -290,6 +344,13 @@ back on, or a window opened while waiting all keep Recortia running. Cancelling 
 editor's discard question keeps the editor and the process (bilingual `last-window`). Child
 processes of the runner prove real exit through `NSApp.terminate` (pin, then last window) and a
 process still running with the preference on or after a launch without a window.
+
+Menu-bar icon (Settings › General, shown by default): the switch turns it off, and only the first
+time says how to get back; turning it on or off again says nothing, and keep running stays on.
+With the icon hidden, reopening Recortia shows Settings and closing it returns to accessory
+without quitting (bilingual `settings` and `launch-presentation`; `MenuBarIconTests`). Physical
+checks: the status item leaves and returns, and opening the installed app from Finder or
+Spotlight with the icon hidden shows Settings.
 
 ### REL-01 — Independent build and CI boundary
 

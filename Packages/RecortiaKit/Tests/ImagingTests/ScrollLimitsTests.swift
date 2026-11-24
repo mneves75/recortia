@@ -97,7 +97,8 @@ struct ScrollLimitsTests {
         let firstPeak = try #require(
             ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: 0, appending: false))
         #expect(firstPeak <= budget)
-        // After the first frame: output rows plus the previous frame's luma are retained.
+        // After the first frame at least the output rows and the previous frame's luma are
+        // retained (a lower bound: its signatures are left out).
         let retained = 4000 * 10_000 * 4 + 4000 * 10_000 * 4
         let secondPeak = try #require(
             ScrollStitcher.peakWorkingBytes(frameSize: size, retainedBytes: retained, appending: true))
@@ -126,7 +127,7 @@ struct ScrollLimitsTests {
         case .side: limits.maxSide = 330
         case .height: limits.defaultMaxHeight = 330
         case .frames: limits.maxAcceptedFrames = 4
-        case .duration, .memory: break  // time and working memory have their own tests
+        case .duration, .memory, .width: break  // time, working memory and width have their own tests
         }
         var stitcher = ScrollStitcher(limits: limits)
         var results: [ScrollAppendResult] = []

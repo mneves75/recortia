@@ -59,7 +59,7 @@ regressions and independent review supplement, rather than complete, the manual 
 ## Execution policy
 
 The owner approved FR-01…FR-14 implementation on 2026-09-26 (AGENTS.md). The original
-docs/handoff/START_HERE.md is historical; other FR-15 providers and FR-16 require separate approval. Publishing,
+docs/handoff/START_HERE.md is historical; other FR-15 providers and FR-16 were approved on 2026-11-19 behind owner-signed designs (`docs/specs/program-2026-11/plan.md`). Publishing,
 live screen access, credentials, and external side effects require explicit authority. A single
 coherent vertical slice must remain buildable.
 
@@ -70,7 +70,7 @@ Every task below inherits SPEC.md and AGENTS.md. Its verification IDs resolve to
 ## Milestone map
 
 The owner authorized optional FR-15 GitHub auto-upload and local test installation on
-2026-10-01. ADR-006 and NET-01 define that extension; other providers and FR-16 remain deferred.
+2026-10-01. ADR-006 and NET-01 define that extension; other providers and FR-16 automation were approved on 2026-11-19 (AGENTS.md).
 
 | Milestone | Outcome | Exit condition |
 |---|---|---|
@@ -440,4 +440,4 @@ Proposed enhancements after 0.14.0 (2026-11-11, not approved work): see
 `docs/specs/enhancement-plan-2026-11/plan.md`. Class A items become backlog tasks only once the
 owner approves them; class B items each need a recorded decision first.
 
-FR-15 (S3 sharing) and FR-16 (automation/on-device assistance) require separate design, tests, threat-model updates, and approval. Their high-level constraints are in SPEC.md. Do not prebuild unused provider abstractions, a server, an agent runtime, or model downloads in the v1 implementation.
+FR-15 (S3 sharing) and FR-16 automation were approved on 2026-11-19; each still requires its design, tests and threat-model update, signed off by the owner before code. On-device assistance remains unapproved. Their high-level constraints are in SPEC.md. Do not prebuild unused provider abstractions, a server, an agent runtime, or model downloads in the v1 implementation.

@@ -33,6 +33,9 @@
                 run: DesktopScenarios.captureMenuFocus),
             E2EScenario(id: "settings", title: "Settings tabs", run: ShellScenarios.settings),
             E2EScenario(
+                id: "updater", title: "Check for Updates reports each result without network",
+                run: UpdaterScenarios.updater),
+            E2EScenario(
                 id: "quit-confirmation", title: "Quit asks before discarding edits",
                 run: ShellScenarios.quitConfirmation),
             E2EScenario(id: "shortcuts", title: "macOS-style default shortcuts", run: ShortcutScenarios.defaults),
@@ -45,6 +48,12 @@
                 id: "capture-focus-repeat", title: "Repeated shortcut overlays own the keyboard",
                 run: CaptureVisibilityScenarios.repeatedShortcutFocus, runsOnlyWhenNamed: true),
             E2EScenario(id: "space-window", title: "Space switches to a window", run: ShortcutScenarios.spaceForWindow),
+            E2EScenario(
+                id: "capture-precision", title: "Region selection nudges, keeps a ratio and snaps to windows",
+                run: CapturePrecisionScenarios.precision),
+            E2EScenario(
+                id: "element-snapping", title: "Region selection snaps to interface elements when allowed",
+                run: ElementSnappingScenarios.snapping),
             E2EScenario(id: "window-chooser", title: "Window chooser", run: CaptureScenarios.windowChooser),
             E2EScenario(id: "countdown", title: "Delayed capture countdown", run: CaptureScenarios.countdown),
             E2EScenario(id: "capture-editor", title: "Capture to editor", run: CaptureScenarios.captureToEditor),
@@ -55,6 +64,9 @@
                 id: "editor-window-size", title: "Editors open at one consistent size",
                 run: EditorWindowSizeScenarios.consistentSize),
             E2EScenario(
+                id: "editor-zoom", title: "Wheel zoom acts on mouse wheels only",
+                run: EditorZoomScenarios.zoom),
+            E2EScenario(
                 id: "recapture", title: "Hide existing windows during recapture",
                 run: CaptureVisibilityScenarios.recapture),
             E2EScenario(
@@ -63,8 +75,16 @@
             E2EScenario(
                 id: "editor-toolbar", title: "Tools and actions live in the window toolbar",
                 run: EditorToolbarScenarios.toolbar),
+            E2EScenario(
+                id: "editor-menu", title: "Every editor command is in the menu bar",
+                run: EditorMenuScenarios.commands),
+            E2EScenario(
+                id: "reopen-closed", title: "A closed editor's image can be reopened for 10 minutes",
+                run: ReopenClosedScenarios.reopenClosed),
             E2EScenario(id: "annotations", title: "Editor annotations and undo", run: EditorScenarios.annotations),
             E2EScenario(id: "curved-arrows", title: "Editable curved arrows", run: CurvedArrowScenarios.editing),
+            E2EScenario(
+                id: "arrow-styles", title: "Arrowhead styles and smoothed strokes", run: ArrowStyleScenarios.styles),
             E2EScenario(
                 id: "saved-colors", title: "Explicit saved annotation colors", run: EditorScenarios.savedColors),
             E2EScenario(
@@ -87,10 +107,22 @@
                 run: EditorScenarios.inspectorHeight),
             E2EScenario(id: "redaction", title: "Redaction and RED-01", run: EditorScenarios.redaction),
             E2EScenario(id: "crop-resize", title: "Crop and resize", run: EditorScenarios.cropResize),
+            E2EScenario(
+                id: "layer-transforms", title: "Rotate, flip and duplicate keep masks and exports aligned",
+                run: LayerTransformScenarios.layerTransforms),
             E2EScenario(id: "ocr-qr", title: "Text recognition and QR", run: RecognitionScenarios.ocrAndQR),
             E2EScenario(id: "pixel-tools", title: "Loupe, ruler, and color picker", run: EditorScenarios.pixelTools),
+            E2EScenario(
+                id: "colour-tools", title: "Colour copy formats, darkest-pixel sampling and contrast",
+                run: ColourToolsScenarios.colourTools),
             E2EScenario(id: "composition", title: "Composition and presentation", run: EditorScenarios.composition),
+            E2EScenario(
+                id: "framing-presets", title: "Framing presets, balance, swatches and the saved default framing",
+                run: FramingScenarios.framingPresets),
             E2EScenario(id: "export-sinks", title: "Copy, save, and drag out", run: OutputScenarios.exportSinks),
+            E2EScenario(
+                id: "heic-and-print", title: "Save as HEIC and print the sanitized image",
+                run: HEICPrintScenarios.heicAndPrint),
             E2EScenario(
                 id: "automatic-export", title: "Automatic export cancellation, busy notice and GitHub",
                 run: AutomaticExportScenarios.regression),
@@ -100,14 +132,39 @@
             E2EScenario(
                 id: "automatic-save-settings", title: "Automatic save writes only to the folder chosen in Settings",
                 run: AutomaticSaveScenarios.settings),
+            E2EScenario(
+                id: "diagnostics", title: "The diagnostics file holds only typed events, and only while it is on",
+                run: DiagnosticsScenarios.file),
+            E2EScenario(
+                id: "auto-redaction", title: "New captures are masked before they are shown or exported",
+                run: AutoRedactionScenarios.autoRedaction),
+            E2EScenario(
+                id: "auto-redaction-sources",
+                title: "Scrolling captures and opened images are masked before they are shown",
+                run: AutoRedactionScenarios.sources),
+            E2EScenario(
+                id: "text-redaction", title: "Text-only redaction covers each recognized line, never less",
+                run: TextRedactionScenarios.textRedaction),
             E2EScenario(id: "pins", title: "Pins", run: OutputScenarios.pins),
+            E2EScenario(
+                id: "pin-on-top", title: "Pins float and let clicks through only when asked, and unlock together",
+                run: PinLayeringScenarios.pinOnTop),
+            E2EScenario(
+                id: "quick-actions", title: "Quick actions after a capture hold it only until dismissed",
+                run: QuickActionsScenarios.quickActions),
             E2EScenario(
                 id: "appearance-contrast", title: "Review marks stay visible on dark and light content",
                 run: AppearanceScenarios.reviewContrast),
             E2EScenario(
                 id: "window-latency", title: "Each window opens in under 50 ms", run: LatencyScenarios.windowLatency,
                 runsOnlyWhenNamed: true),
+            E2EScenario(
+                id: "latency-prebuilt", title: "Pre-built capture windows: measured, and invisible while spare",
+                run: PrebuiltWindowScenarios.latency),
             E2EScenario(id: "scrolling", title: "Scrolling capture", run: ScrollScenarios.scrolling),
+            E2EScenario(
+                id: "scroll-horizontal", title: "Scrolling capture of a page that scrolls to the right",
+                run: ScrollScenarios.horizontal),
             E2EScenario(
                 id: "scroll-target-binding", title: "Automatic scrolling stays bound through discovery and Stop",
                 run: ScrollScenarios.automaticTarget),

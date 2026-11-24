@@ -9,10 +9,39 @@ public enum ExportError: Error, Equatable, Sendable {
     case encodingFailed
 }
 
-/// Encodes a sanitized raster as a fresh PNG or JPEG and passes it through the container
+/// What this Mac's ImageIO can encode, asked once per process.
+public enum ExportCapabilities {
+    /// Whether HEIC export is offered: Macs without an HEVC encoder leave it out of
+    /// `CGImageDestinationCopyTypeIdentifiers`.
+    public static let encodesHEIC: Bool = {
+        let types = CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []
+        return types.contains(ExportFormat.heic(quality: 1).utTypeIdentifier)
+    }()
+}
+
+/// Encodes a sanitized raster as a fresh PNG, JPEG or HEIC and passes it through the container
 /// allowlist. ImageIO adds metadata on its own (an `eXIf` chunk in PNG, Exif APP1 and
 /// Photoshop APP13 in JPEG), so the allowlist is enforced on the encoded bytes.
 enum ExportEncoder {
+    /// The bytes and the format they are in: `options.format`, or what Automatic chose.
+    static func encodeResolvingFormat(_ image: CGImage, options: ExportOptions) throws(ExportError)
+        -> (bytes: Data, format: ExportFormat)
+    {
+        guard options.automaticFormat else { return (try encode(image, options: options), options.format) }
+        var fixed = options
+        fixed.automaticFormat = false
+        fixed.format = .png
+        let png = try encode(image, options: fixed)
+        // Under the floor no JPEG can win, so none is encoded.
+        guard png.count > AutomaticFormatRule.minimumPNGByteCount, try !hasTransparency(image) else {
+            return (png, .png)
+        }
+        fixed.format = .jpeg(quality: AutomaticFormatRule.jpegQuality)
+        let jpeg = try encode(image, options: fixed)
+        return AutomaticFormatRule.keepsJPEG(pngByteCount: png.count, jpegByteCount: jpeg.count)
+            ? (jpeg, fixed.format) : (png, .png)
+    }
+
     static func encode(_ image: CGImage, options: ExportOptions) throws(ExportError) -> Data {
         switch options.format {
         case .png:
@@ -22,10 +51,28 @@ enum ExportEncoder {
             let encoded = try imageIO(
                 flattened, type: "public.jpeg", properties: [kCGImageDestinationLossyCompressionQuality: quality])
             return try ExportContainerFilter.jpeg(encoded)
+        case .heic(let quality):
+            let flattened = try flatten(image, on: options.jpegBackground)
+            let encoded = try imageIO(
+                flattened, type: "public.heic", properties: [kCGImageDestinationLossyCompressionQuality: quality])
+            return try ExportContainerFilter.heic(encoded)
         }
     }
 
-    /// JPEG has no alpha: composite over the declared opaque background first (FR-07).
+    /// Whether any pixel is not fully opaque; an image without an alpha channel never is.
+    static func hasTransparency(_ image: CGImage) throws(ExportError) -> Bool {
+        switch image.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast: return false
+        default: break
+        }
+        do {
+            return !(try RenderRaster(image: image)).isOpaque
+        } catch {
+            throw ExportError.encodingFailed
+        }
+    }
+
+    /// JPEG and HEIC exports have no alpha: composite over the declared opaque background first (FR-07).
     static func flatten(_ image: CGImage, on background: RGBA) throws(ExportError) -> CGImage {
         guard background.isOpaque else { throw ExportError.invalidOptions(.translucentJPEGBackground) }
         return try redraw(image, on: background)
@@ -63,6 +110,17 @@ enum ExportEncoder {
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { throw ExportError.encodingFailed }
         return data as Data
+    }
+}
+
+/// Automatic format (FR-07): a JPEG replaces the PNG only when the PNG is over 0.5 MB and more
+/// than 4× the JPEG, or over 2 MB and more than 2× the JPEG. Sizes are decimal megabytes.
+enum AutomaticFormatRule {
+    static let jpegQuality = 0.92
+    static let minimumPNGByteCount = 500_000
+
+    static func keepsJPEG(pngByteCount png: Int, jpegByteCount jpeg: Int) -> Bool {
+        (png > minimumPNGByteCount && png > 4 * jpeg) || (png > 2_000_000 && png > 2 * jpeg)
     }
 }
 
@@ -121,6 +179,151 @@ enum ExportContainerFilter {
             if keeps(marker: marker, payload: payload) { output.append(reader.slice(offset..<end)) }
             offset = end
         }
+    }
+
+    /// ISOBMFF boxes a HEIC export may hold: the file, its `meta` box, and the item properties.
+    static let heicFileBoxes: Set<String> = ["ftyp", "meta", "mdat"]
+    static let heicMetaBoxes: Set<String> = ["hdlr", "dinf", "pitm", "iinf", "iref", "iprp", "iloc", "idat"]
+    static let heicPropertyBoxes: Set<String> = [
+        "hvcC", "ispe", "colr", "pixi", "irot", "imir", "clap", "clli", "mdcv", "auxC",
+    ]
+    /// Image items only: no `Exif`, `mime` (XMP) or `uri ` item can carry metadata.
+    static let heicItemTypes: Set<String> = ["hvc1", "grid"]
+
+    /// ImageIO writes no metadata item for an image without properties, so nothing is stripped:
+    /// the bytes are checked against the allowlists and refused, never passed, when anything else
+    /// appears. Rewriting ISOBMFF would mean recomputing every item offset in `iloc`.
+    static func heic(_ data: Data) throws(ExportError) -> Data {
+        let reader = DecodeByteReader(data: data)
+        let file = try isoBoxes(reader, in: 0..<reader.count)
+        guard file.first?.type == "ftyp", Set(file.map(\.type)).isSubset(of: heicFileBoxes),
+            file.filter({ $0.type == "meta" }).count == 1, file.contains(where: { $0.type == "mdat" }),
+            let meta = file.first(where: { $0.type == "meta" }), meta.body.count >= 4
+        else { throw ExportError.encodingFailed }
+        // `meta` is a full box: a version and flags word precede its children.
+        let children = try isoBoxes(reader, in: (meta.body.lowerBound + 4)..<meta.body.upperBound)
+        // ISOBMFF allows each of these once per `meta`; a second `iref` or `iinf` would go unread.
+        let childTypes = children.map(\.type)
+        guard Set(childTypes).isSubset(of: heicMetaBoxes), Set(childTypes).count == childTypes.count,
+            let iinf = children.first(where: { $0.type == "iinf" }),
+            let iprp = children.first(where: { $0.type == "iprp" }),
+            let pitm = children.first(where: { $0.type == "pitm" })
+        else { throw ExportError.encodingFailed }
+        let items = try checkItems(reader, iinf: iinf.body)
+        try checkPicture(
+            reader, items: items, primary: try primaryItem(reader, pitm: pitm.body),
+            iref: children.first(where: { $0.type == "iref" })?.body)
+        for container in try isoBoxes(reader, in: iprp.body) {
+            switch container.type {
+            case "ipco":
+                let properties = try isoBoxes(reader, in: container.body)
+                guard Set(properties.map(\.type)).isSubset(of: heicPropertyBoxes) else {
+                    throw ExportError.encodingFailed
+                }
+            case "ipma": break
+            default: throw ExportError.encodingFailed
+            }
+        }
+        return data
+    }
+
+    /// The file holds one picture: the primary item, and when it is a `grid`, the `hvc1` tiles it
+    /// names through its one `dimg` (a reader composes the grid from the first, so a later one is
+    /// a picture of its own). A thumbnail (`thmb`), any other reference, or an item nothing
+    /// reaches from the primary one (a second picture) is refused.
+    private static func checkPicture(
+        _ reader: DecodeByteReader, items: [Int: String], primary: Int, iref: Range<Int>?
+    ) throws(ExportError) {
+        guard let primaryType = items[primary] else { throw ExportError.encodingFailed }
+        var picture: Set<Int> = [primary]
+        if let iref {
+            guard iref.count >= 4 else { throw ExportError.encodingFailed }
+            let idSize = reader.byte(iref.lowerBound) == 0 ? 2 : 4
+            let references = try isoBoxes(reader, in: (iref.lowerBound + 4)..<iref.upperBound)
+            guard references.count <= 1 else { throw ExportError.encodingFailed }
+            for reference in references {
+                guard reference.type == "dimg", primaryType == "grid", reference.body.count >= idSize + 2,
+                    itemID(reader, at: reference.body.lowerBound, size: idSize) == primary
+                else { throw ExportError.encodingFailed }
+                let count = reader.uint16(reference.body.lowerBound + idSize)
+                let first = reference.body.lowerBound + idSize + 2
+                guard first + count * idSize == reference.body.upperBound else { throw ExportError.encodingFailed }
+                for index in 0..<count {
+                    let tile = itemID(reader, at: first + index * idSize, size: idSize)
+                    guard items[tile] == "hvc1" else { throw ExportError.encodingFailed }
+                    picture.insert(tile)
+                }
+            }
+        }
+        guard Set(items.keys) == picture else { throw ExportError.encodingFailed }
+    }
+
+    /// `pitm` is a full box: version 0 names the item in 2 bytes, later versions in 4.
+    private static func primaryItem(_ reader: DecodeByteReader, pitm: Range<Int>) throws(ExportError) -> Int {
+        guard pitm.count >= 6 else { throw ExportError.encodingFailed }
+        let size = reader.byte(pitm.lowerBound) == 0 ? 2 : 4
+        guard pitm.count == 4 + size else { throw ExportError.encodingFailed }
+        return itemID(reader, at: pitm.lowerBound + 4, size: size)
+    }
+
+    private static func itemID(_ reader: DecodeByteReader, at offset: Int, size: Int) -> Int {
+        size == 2 ? reader.uint16(offset) : Int(reader.uint32(offset))
+    }
+
+    /// Every `infe` (version 2 or 3, which name their item type) is an image item; returns each
+    /// item's ID and type.
+    private static func checkItems(_ reader: DecodeByteReader, iinf: Range<Int>) throws(ExportError) -> [Int: String] {
+        guard iinf.count >= 4 else { throw ExportError.encodingFailed }
+        let version = reader.byte(iinf.lowerBound)
+        let countSize = version == 0 ? 2 : 4
+        guard iinf.count >= 4 + countSize else { throw ExportError.encodingFailed }
+        let entries = try isoBoxes(reader, in: (iinf.lowerBound + 4 + countSize)..<iinf.upperBound)
+        guard !entries.isEmpty else { throw ExportError.encodingFailed }
+        var items: [Int: String] = [:]
+        for entry in entries {
+            guard entry.type == "infe", entry.body.count >= 12 else { throw ExportError.encodingFailed }
+            let entryVersion = reader.byte(entry.body.lowerBound)
+            guard entryVersion == 2 || entryVersion == 3 else { throw ExportError.encodingFailed }
+            // version, flags, item ID (2 or 4 bytes), protection index (2), item type (4).
+            let idSize = entryVersion == 2 ? 2 : 4
+            let typeOffset = entry.body.lowerBound + 4 + idSize + 2
+            guard typeOffset + 4 <= entry.body.upperBound else { throw ExportError.encodingFailed }
+            let type = String(decoding: reader.slice(typeOffset..<(typeOffset + 4)), as: UTF8.self)
+            let id = itemID(reader, at: entry.body.lowerBound + 4, size: idSize)
+            guard heicItemTypes.contains(type), items.updateValue(type, forKey: id) == nil else {
+                throw ExportError.encodingFailed
+            }
+        }
+        return items
+    }
+
+    /// The boxes that exactly tile `range`: each one's type and body (after its header).
+    private static func isoBoxes(_ reader: DecodeByteReader, in range: Range<Int>) throws(ExportError)
+        -> [(type: String, body: Range<Int>)]
+    {
+        var boxes: [(type: String, body: Range<Int>)] = []
+        var offset = range.lowerBound
+        while offset < range.upperBound {
+            guard offset + 8 <= range.upperBound else { throw ExportError.encodingFailed }
+            let size32 = Int(reader.uint32(offset))
+            let type = String(decoding: reader.slice((offset + 4)..<(offset + 8)), as: UTF8.self)
+            var header = 8
+            let size: Int
+            switch size32 {
+            case 0: size = range.upperBound - offset
+            case 1:
+                guard offset + 16 <= range.upperBound else { throw ExportError.encodingFailed }
+                let large = (UInt64(reader.uint32(offset + 8)) << 32) | UInt64(reader.uint32(offset + 12))
+                guard large <= UInt64(range.upperBound - offset) else { throw ExportError.encodingFailed }
+                size = Int(large)
+                header = 16
+            default: size = size32
+            }
+            guard size >= header, size <= range.upperBound - offset else { throw ExportError.encodingFailed }
+            boxes.append((type, (offset + header)..<(offset + size)))
+            offset += size
+        }
+        return boxes
     }
 
     private static func keeps(marker: UInt8, payload: Data) -> Bool {

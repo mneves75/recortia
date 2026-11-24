@@ -1,3 +1,4 @@
+import Features
 import KeyboardShortcuts
 import SwiftUI
 
@@ -20,15 +21,21 @@ struct MenuContent: View {
             Divider()
             item(.openImage)
             item(.pasteImage)
+            item(.reopenClosedCapture)
+                .keyboardShortcut("t", modifiers: [.command, .shift])
             Divider()
             Menu(String(localized: "Pins")) {
                 item(.bringPinsForward)
                 item(.closeAllPins)
+                item(.unlockAllPins)
             }
             Divider()
             item(.settings)
                 .keyboardShortcut(",")
             item(.about)
+            if model.features.updater.isOffered {
+                item(.checkForUpdates)
+            }
             item(.featureTour)
             Divider()
             item(.quit)
@@ -43,8 +50,35 @@ struct MenuContent: View {
     }
 }
 
+/// Whether Reopen Closed Capture can act, for the app's menu bar: SwiftUI re-reads menu-bar
+/// commands only through `@ObservedObject` (see `PinMenuState`), so this republishes the slot.
+final class ReopenMenuState: ObservableObject {
+    @Published private(set) var canReopen = false
+    private var loop: ObservationLoop?
+
+    init(slot: ClosedCaptureSlot) {
+        loop = ObservationLoop { [weak self, weak slot] in
+            guard let self, let slot, canReopen == slot.isEmpty else { return }
+            canReopen = !slot.isEmpty
+        }
+    }
+}
+
+/// File › Reopen Closed Capture (⇧⌘T, B-6), after Open Image… and Paste Image.
+struct ReopenMenuCommands: Commands {
+    @ObservedObject var state: ReopenMenuState
+    let app: any AppActions
+
+    var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button(AppCommand.reopenClosedCapture.title) { app.perform(.reopenClosedCapture) }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(!state.canReopen)
+        }
+    }
+}
+
 extension View {
-    /// Shows an active global shortcut as the menu item's key equivalent hint.
     @ViewBuilder
     fileprivate func globalShortcut(_ name: KeyboardShortcuts.Name?) -> some View {
         if let name, let shortcut = KeyboardShortcuts.getShortcut(for: name)?.toSwiftUI {

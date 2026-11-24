@@ -99,8 +99,30 @@ struct EditorCompositionTests {
         #expect(document.layers.first?.placement.translation == .zero)
         #expect(document.annotations.first?.kind == .arrow(start: Point(x: 100, y: 70), end: Point(x: 200, y: 70)))
         #expect(document.masks.first?.outputRect == Rect(x: 60, y: 30, width: 20, height: 20))
-        #expect(document.masks.first?.sourceRegions == regions)
-        #expect(document.masks.first?.sourceRegions[assetID] != nil)
+        // The box keeps its original binding; Fit Canvas also bound what was under it then (R2).
+        let bound = try #require(document.masks.first?.sourceRegions[assetID])
+        #expect(Set(try #require(regions?[assetID])).isSubset(of: bound))
+    }
+
+    @Test("Fitting the canvas also contains masks and cosmetic effects past its edges")
+    func fitCanvasContainsMasksAndEffects() throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.redact)
+        h.drag((10, 10), (30, 30))
+        let mask = try #require(m.document.masks.first)
+        m.selectTool(.blur)
+        h.drag((300, 200), (330, 230))
+        let effect = try #require(m.document.obfuscations.first)
+        m.setFrame(Rect(x: -10, y: 0, width: 20, height: 20), for: .mask(mask.id))
+        m.setFrame(Rect(x: 390, y: 280, width: 30, height: 30), for: .obfuscation(effect.id))
+        #expect(m.document.masks.first?.outputRect.minX == -10)
+        #expect(m.document.obfuscations.first?.rect.maxX == 420)
+        m.fitCanvasToContent()
+        let document = m.document
+        #expect(document.canvasSize == Size(width: 430, height: 310))
+        #expect(document.masks.first?.outputRect == Rect(x: 0, y: 0, width: 20, height: 20))
+        #expect(document.obfuscations.first?.rect == Rect(x: 400, y: 280, width: 30, height: 30))
     }
 
     @Test("Expanding the canvas adds margins and moves content by the top/left margins")
@@ -126,7 +148,9 @@ struct EditorCompositionTests {
         m.duplicateSelection()
         #expect(m.document.layers.count == 2)
         #expect(Set(m.document.layers.map(\.assetID)).count == 1)
-        #expect(m.document.maskedRegions(for: layer.assetID) == [PixelRect(x: 10, y: 10, width: 20, height: 20)])
+        #expect(
+            m.document.masks.flatMap { $0.sourceRegions[layer.assetID] ?? [] }
+                == [PixelRect(x: 10, y: 10, width: 20, height: 20)])
     }
 
     @Test("Transparency comparison toggles the top image between 50 % and opaque")
@@ -223,5 +247,31 @@ struct EditorCompositionTests {
         m.undo()
         m.undo()
         #expect(m.document.crop != nil && m.document.resizeScale == 1)
+    }
+
+    @Test("A crop with a negative span is refused without an undo step, even when it snaps to whole pixels")
+    func negativeCropIsRefused() {
+        let h = EditorHarness(session: EditorFixtures.session(width: 100, height: 100))
+        let m = h.model
+        let before = m.document
+        // Outward snapping would turn this into a 1 × 10 crop; SPEC.md §7 rejects negative spans.
+        m.setCrop(Rect(x: 10.75, y: 20, width: -0.5, height: 10))
+        m.setCrop(Rect(x: 10, y: 20.75, width: 10, height: -0.5))
+        #expect(m.document == before)
+        #expect(m.session.undoCount == 0)
+        #expect(!m.canUndo)
+    }
+
+    @Test("A linear gradient with a non-finite angle is refused without an undo step")
+    func nonFiniteGradientAngleRefused() {
+        let h = EditorHarness()
+        let m = h.model
+        let before = m.document
+        for badAngle in [Double.nan, .infinity, -.infinity] {
+            m.setBackground(.linearGradient(from: .red, to: .yellow, angleDegrees: badAngle))
+        }
+        #expect(m.document == before)
+        #expect(m.session.undoCount == 0)
+        #expect(!m.canUndo)
     }
 }

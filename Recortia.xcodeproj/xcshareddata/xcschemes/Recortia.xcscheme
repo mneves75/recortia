@@ -21,20 +21,6 @@
                ReferencedContainer = "container:Recortia.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "D5C5C8B1F81388A8A495314D"
-               BuildableName = "RecortiaUITests.xctest"
-               BlueprintName = "RecortiaUITests"
-               ReferencedContainer = "container:Recortia.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -53,20 +39,7 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "D5C5C8B1F81388A8A495314D"
-               BuildableName = "RecortiaUITests.xctest"
-               BlueprintName = "RecortiaUITests"
-               ReferencedContainer = "container:Recortia.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

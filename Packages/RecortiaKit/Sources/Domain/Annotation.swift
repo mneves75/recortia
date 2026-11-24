@@ -5,13 +5,23 @@ import Foundation
 public struct Annotation: Identifiable, Hashable, Sendable, Codable {
     public enum Kind: Hashable, Sendable, Codable {
         case text(TextContent)
-        case arrow(start: Point<DocumentSpace>, end: Point<DocumentSpace>, control: Point<DocumentSpace>? = nil)
+        /// `head` nil is the filled head every arrow had before head styles existed.
+        case arrow(
+            start: Point<DocumentSpace>, end: Point<DocumentSpace>, control: Point<DocumentSpace>? = nil,
+            head: ArrowHead? = nil)
         case line(start: Point<DocumentSpace>, end: Point<DocumentSpace>)
         case rectangle(Rect<DocumentSpace>)
         case ellipse(Rect<DocumentSpace>)
-        case freehand([Point<DocumentSpace>])
-        case highlighter([Point<DocumentSpace>])
+        /// `smoothed` true draws the points as a centripetal Catmull–Rom curve (`StrokeSmoothing`);
+        /// nil is the polyline every stroke was before smoothing existed.
+        case freehand([Point<DocumentSpace>], smoothed: Bool? = nil)
+        case highlighter([Point<DocumentSpace>], smoothed: Bool? = nil)
         case step(center: Point<DocumentSpace>, number: Int)
+    }
+
+    /// How an arrow ends. Stored on the arrow itself; an arrow decoded without one is `.filled`.
+    public enum ArrowHead: String, Hashable, Sendable, Codable, CaseIterable {
+        case filled, open, plain, double
     }
 
     public struct TextContent: Hashable, Sendable, Codable {
@@ -83,7 +93,7 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         let base = 128
         switch kind {
         case .text(let text): return base + text.string.utf8.count * 2
-        case .freehand(let points), .highlighter(let points):
+        case .freehand(let points, _), .highlighter(let points, _):
             return base + points.count * MemoryLayout<Point<DocumentSpace>>.stride
         case .arrow, .line, .rectangle, .ellipse, .step: return base
         }
@@ -99,31 +109,19 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             let width = text.maxWidth ?? Double(max(1, text.string.count)) * text.fontSize * 0.6
             let lines = Double(max(1, text.string.split(separator: "\n", omittingEmptySubsequences: false).count))
             return Rect(origin: text.origin, size: Size(width: width, height: lines * text.fontSize * 1.25))
-        case .arrow(let start, let end, let control):
+        case .arrow(let start, let end, let control, _):
             return control.map { ArrowCurve.bounds(start: start, end: end, control: $0) }
                 ?? Rect(spanning: start, end)
         case .line(let start, let end):
             return Rect(spanning: start, end)
         case .rectangle(let rect), .ellipse(let rect):
             return rect
-        case .freehand(let points), .highlighter(let points):
+        case .freehand(let points, _), .highlighter(let points, _):
             return Rect.bounding(points) ?? Rect(origin: .zero, size: Size(width: 0, height: 0))
         case .step(let center, _):
             let r = stepRadius
             return Rect(x: center.x - r, y: center.y - r, width: 2 * r, height: 2 * r)
         }
-    }
-
-    /// Bounds including the stroke, used for hit testing and dirty regions.
-    public var outsetBounds: Rect<DocumentSpace> {
-        let pad = style.lineWidth / 2 + (isArrow ? style.lineWidth * 3 : 0)
-        let b = bounds
-        return Rect(x: b.minX - pad, y: b.minY - pad, width: b.width + 2 * pad, height: b.height + 2 * pad)
-    }
-
-    private var isArrow: Bool {
-        if case .arrow = kind { return true }
-        return false
     }
 
     public func translated(dx: Double, dy: Double) -> Annotation {
@@ -132,27 +130,26 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
         case .text(var text):
             text.origin = text.origin.offset(dx: dx, dy: dy)
             copy.kind = .text(text)
-        case .arrow(let start, let end, let control):
+        case .arrow(let start, let end, let control, let head):
             copy.kind = .arrow(
                 start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy),
-                control: control?.offset(dx: dx, dy: dy))
+                control: control?.offset(dx: dx, dy: dy), head: head)
         case .line(let start, let end):
             copy.kind = .line(start: start.offset(dx: dx, dy: dy), end: end.offset(dx: dx, dy: dy))
         case .rectangle(let rect):
             copy.kind = .rectangle(rect.offsetBy(dx: dx, dy: dy))
         case .ellipse(let rect):
             copy.kind = .ellipse(rect.offsetBy(dx: dx, dy: dy))
-        case .freehand(let points):
-            copy.kind = .freehand(points.map { $0.offset(dx: dx, dy: dy) })
-        case .highlighter(let points):
-            copy.kind = .highlighter(points.map { $0.offset(dx: dx, dy: dy) })
+        case .freehand(let points, let smoothed):
+            copy.kind = .freehand(points.map { $0.offset(dx: dx, dy: dy) }, smoothed: smoothed)
+        case .highlighter(let points, let smoothed):
+            copy.kind = .highlighter(points.map { $0.offset(dx: dx, dy: dy) }, smoothed: smoothed)
         case .step(let center, let number):
             copy.kind = .step(center: center.offset(dx: dx, dy: dy), number: number)
         }
         return copy
     }
 
-    /// Maps the annotation's geometry from `old` bounds into `new` bounds (resize handles).
     public func resized(from old: Rect<DocumentSpace>, to new: Rect<DocumentSpace>) -> Annotation {
         guard old.width > 0 || old.height > 0 else {
             return translated(dx: new.minX - old.minX, dy: new.minY - old.minY)
@@ -175,19 +172,20 @@ public struct Annotation: Identifiable, Hashable, Sendable, Codable {
             text.fontSize = max(6, text.fontSize * sy)
             if let width = text.maxWidth { text.maxWidth = width * sx }
             copy.kind = .text(text)
-        case .arrow(let start, let end, let control):
+        case .arrow(let start, let end, let control, let head):
             copy.kind = .arrow(
-                start: mapSegmentPoint(start), end: mapSegmentPoint(end), control: control.map(mapSegmentPoint))
+                start: mapSegmentPoint(start), end: mapSegmentPoint(end), control: control.map(mapSegmentPoint),
+                head: head)
         case .line(let start, let end):
             copy.kind = .line(start: mapSegmentPoint(start), end: mapSegmentPoint(end))
         case .rectangle:
             copy.kind = .rectangle(new)
         case .ellipse:
             copy.kind = .ellipse(new)
-        case .freehand(let points):
-            copy.kind = .freehand(points.map(map))
-        case .highlighter(let points):
-            copy.kind = .highlighter(points.map(map))
+        case .freehand(let points, let smoothed):
+            copy.kind = .freehand(points.map(map), smoothed: smoothed)
+        case .highlighter(let points, let smoothed):
+            copy.kind = .highlighter(points.map(map), smoothed: smoothed)
         case .step(let center, let number):
             copy.kind = .step(center: map(center), number: number)
         }

@@ -1,6 +1,7 @@
 #if DEBUG
     import AppKit
     import ApplicationServices
+    import Domain
 
     @MainActor
     enum E2EAccessibilityControl {
@@ -93,12 +94,13 @@
             _ = control.perform(press)
         }
 
-        /// Presses a menu button through accessibility, as a person or VoiceOver opens it, and while
-        /// the real menu tracks: records its items, chooses the item titled `title` (or nothing), and
-        /// ends tracking. A common-mode timer ends tracking after two seconds so a menu that never
+        /// Presses a menu button through accessibility, as a person or VoiceOver opens it (or, with
+        /// `byRightClick`, opens a context menu with a secondary click), and while the real menu
+        /// tracks: records its items, chooses the item titled `title` (or nothing), and ends tracking. A common-mode timer ends tracking after two seconds so a menu that never
         /// matches cannot block the run.
         static func chooseFromMenu(
-            _ title: String?, opening identifier: String, in root: NSView, _ context: ScenarioContext
+            _ title: String?, opening identifier: String, in root: NSView, _ context: ScenarioContext,
+            byRightClick: Bool = false
         ) async throws -> [E2EMenuEntry] {
             let session = E2EMenuSession(choosing: title)
             NotificationCenter.default.addObserver(
@@ -112,7 +114,12 @@
             defer { safety.invalidate() }
             let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
             let active = NSApp.isActive
-            try pressCheckingEffect(identifier, in: root, context)
+            if byRightClick {
+                // A context menu opens from the pointer: a secondary click on the control's frame.
+                try pressFrame(try control(identifier, in: root, context), in: root, context, secondary: true)
+            } else {
+                try pressCheckingEffect(identifier, in: root, context)
+            }
             try context.require(
                 "\(identifier) opens its menu", await E2EWait.until(timeout: .seconds(3)) { session.tracked })
             _ = await E2EWait.until(timeout: .seconds(3)) { session.menu == nil || !session.isOpen }
@@ -128,19 +135,26 @@
             return session.entries
         }
 
-        /// Clicks a control of the selected Settings pane like a pointer would: one mouse-down then
+        /// Clicks a control of a pane, such as the selected Settings pane or the editor's inspector,
+        /// like a pointer would: one mouse-down then
         /// one mouse-up, posted in that order to this application's own event queue, so the normal
         /// app event loop dispatches the down and then the up in FIFO order, as Apple's public
         /// event-handling docs describe. This proves pointer delivery, not VoiceOver or
         /// accessibility Press. No global event, tap or other process is involved. The caller's
         /// next settle runs the event loop that delivers both events.
         static func click(_ identifier: String, in pane: NSView, _ context: ScenarioContext) throws {
-            let window = try context.unwrap("the Settings pane has a window", pane.window)
+            try click(try control(identifier, in: pane, context), named: identifier, in: pane, context)
+        }
+
+        /// `click(_:in:_:)` for an element found another way.
+        static func click(_ control: NSObject, named identifier: String, in pane: NSView, _ context: ScenarioContext)
+            throws
+        {
+            let window = try context.unwrap("the pane under \(identifier) has a window", pane.window)
             try context.require(
                 "the window under \(identifier) is visible, key and foreground", isReadyForInput(window),
                 "visible=\(window.isVisible), key=\(window.isKeyWindow), active=\(NSApp.isActive), "
                     + "foregroundPID=\(String(describing: NSWorkspace.shared.frontmostApplication?.processIdentifier))")
-            let control = try control(identifier, in: pane, context)
             try context.require(
                 "\(identifier) exposes its frame", control.responds(to: NSSelectorFromString("accessibilityFrame")))
             let frame = try context.unwrap(
@@ -186,9 +200,16 @@
 
         /// Presents only the scenario's synthetic window through the ordinary-window activation path.
         static func showAndActivate(_ window: NSWindow, _ context: ScenarioContext) async throws {
+            if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(window.frame) }) {
+                window.center(on: ScreenChoice.screen())
+            }
             AppPresence.shared.windowWillAppear()
             window.makeKeyAndOrderFront(nil)
-            NSApp.activate()
+            let foreground =
+                E2EForegroundFixture.runnerIsForeground ? nil : try await E2EForegroundFixture.start(context)
+            defer { foreground?.requestStop() }
+            try await foreground?.yieldToRunner()
+            AppPresence.shared.activate()
             try context.require(
                 "the synthetic control window is visible, key and foreground",
                 await E2EWait.until { isReadyForInput(window) },
@@ -197,6 +218,150 @@
         }
 
         /// Whether an element with `identifier` is in the hosted hierarchy now (records no check).
+        /// Chooses the inspector's text Font and Style as a person does: the Font pop-up through
+        /// accessibility Press and its real menu, then the Style segment through the segmented
+        /// control's own selection and action (as `InspectorScenarios.chooseTab` does).
+        static func chooseTextAppearance(
+            _ appearance: TextAppearance, in root: NSView, _ context: ScenarioContext
+        ) async throws {
+            let (font, style) = textChoices(appearance)
+            let entries = try await chooseFromMenu(fontTitles[font], opening: "text.font", in: root, context)
+            checkFontMenu(entries, context)
+            await E2ESnapshot.settle(root)
+            let segmented = try context.unwrap(
+                "the inspector has the text Style control", textStyleControl(in: root))
+            segmented.setSelected(true, forSegment: style)
+            try context.require(
+                "the Style control sends its action", segmented.sendAction(segmented.action, to: segmented.target))
+        }
+
+        /// The text Font and Style the inspector shows, as one appearance: the Font menu's checked
+        /// item and the selected Style segment.
+        static func shownTextAppearance(in root: NSView, _ context: ScenarioContext) async throws -> TextAppearance? {
+            let entries = try await chooseFromMenu(nil, opening: "text.font", in: root, context)
+            checkFontMenu(entries, context)
+            guard let style = textStyleControl(in: root)?.selectedSegment,
+                let checked = entries.first(where: \.checked), let font = fontTitles.firstIndex(of: checked.title)
+            else { return nil }
+            return TextAppearance.allCases.first { textChoices($0) == (font, style) }
+        }
+
+        /// The Font menu lists exactly System, Rounded and Monospaced, in that order, with one checked.
+        private static func checkFontMenu(_ entries: [E2EMenuEntry], _ context: ScenarioContext) {
+            context.check(
+                "the Font menu lists System, Rounded and Monospaced in order", entries.map(\.title) == fontTitles,
+                "\(entries.map(\.title))")
+            context.check(
+                "the Font menu checks exactly one font", entries.filter(\.checked).count == 1, "\(entries)")
+        }
+
+        private static var fontTitles: [String] {
+            [
+                String(localized: "System", table: "Editor"), String(localized: "Rounded", table: "Editor"),
+                String(localized: "Monospaced", table: "Editor"),
+            ]
+        }
+
+        private static func textChoices(_ appearance: TextAppearance) -> (font: Int, style: Int) {
+            switch appearance {
+            case .standard: (0, 0)
+            case .outlined: (0, 1)
+            case .boxed: (0, 2)
+            case .rounded: (1, 0)
+            case .roundedBoxed: (1, 2)
+            case .monospaced: (2, 0)
+            case .monospacedBoxed: (2, 2)
+            }
+        }
+
+        private static func textStyleControl(in root: NSView) -> NSSegmentedControl? {
+            let styles = [
+                String(localized: "Plain", table: "Editor"), String(localized: "Outline", table: "Editor"),
+                String(localized: "Box", table: "Editor"),
+            ]
+            return EditorWindowController.all(NSSegmentedControl.self, in: root).first { control in
+                control.segmentCount == styles.count
+                    && (0..<control.segmentCount).map { control.label(forSegment: $0) ?? "" } == styles
+            }
+        }
+
+        /// Opens or closes a disclosure header (a button whose accessibility value says Expanded or
+        /// Collapsed) as people do: opening clicks it with the pointer, closing presses it through
+        /// accessibility, as VoiceOver does. Requires the reported state to follow.
+        static func setDisclosure(
+            _ identifier: String, titled title: String, expanded: Bool, in pane: NSView, _ context: ScenarioContext
+        ) async throws {
+            let window = try context.unwrap("the pane under \(identifier) has a window", pane.window)
+            try await showAndActivate(window, context)
+            await E2ESnapshot.settle(pane)
+            guard try disclosureIsExpanded(identifier, titled: title, in: pane, context) != expanded else { return }
+            if expanded {
+                try click(identifier, in: pane, context)
+            } else {
+                try pressCheckingEffect(identifier, in: pane, context)
+            }
+            try context.require(
+                "\(identifier) \(expanded ? "opens by a click" : "closes by Press")",
+                await E2EWait.until { headerValue(identifier, in: pane) == stateName(expanded) },
+                "value now \(String(describing: headerValue(identifier, in: pane)))")
+        }
+
+        /// Whether the disclosure header titled `title` reports itself expanded (it must report
+        /// Expanded or Collapsed, nothing else).
+        static func disclosureIsExpanded(
+            _ identifier: String, titled title: String, in root: NSView, _ context: ScenarioContext
+        ) throws -> Bool {
+            let header = try control(identifier, in: root, context)
+            let label =
+                header.responds(to: NSSelectorFromString("accessibilityLabel"))
+                ? header.value(forKey: "accessibilityLabel") as? String : nil
+            try context.require(
+                "\(identifier) is titled \(title)", label == title, "label \(String(describing: label))")
+            let value = headerValue(identifier, in: root)
+            try context.require(
+                "\(identifier) reports Expanded or Collapsed",
+                value == stateName(true) || value == stateName(false), "value \(String(describing: value))")
+            return value == stateName(true)
+        }
+
+        private static func stateName(_ expanded: Bool) -> String {
+            expanded ? String(localized: "Expanded", table: "Editor") : String(localized: "Collapsed", table: "Editor")
+        }
+
+        private static func headerValue(_ identifier: String, in root: NSView) -> String? {
+            guard let header = element(identifier, in: root),
+                header.responds(to: NSSelectorFromString("accessibilityValue"))
+            else { return nil }
+            return header.value(forKey: "accessibilityValue") as? String
+        }
+
+        /// The element with `identifier` under `root`, recording nothing.
+        private static func element(_ identifier: String, in root: NSView) -> NSObject? {
+            var visited: Set<ObjectIdentifier> = []
+            var remaining = 4096
+            return find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0)
+        }
+
+        /// Performs a control's named accessibility action, as VoiceOver's actions rotor does.
+        static func performCustomAction(
+            _ name: String, on identifier: String, in root: NSView, _ context: ScenarioContext
+        ) throws {
+            let control = try control(identifier, in: root, context)
+            let actions =
+                control.responds(to: NSSelectorFromString("accessibilityCustomActions"))
+                ? (control.value(forKey: "accessibilityCustomActions") as? [NSAccessibilityCustomAction] ?? []) : []
+            let action = try context.unwrap(
+                "\(identifier) offers the \(name) action", actions.first { $0.name == name },
+                "custom actions \(actions.map(\.name)), actions \(control.accessibilityActionNames().map(\.rawValue))")
+            if let handler = action.handler {
+                try context.require("\(name) is handled", handler())
+            } else {
+                let target = try context.unwrap("\(name) has a target", action.target as? NSObject)
+                let selector = try context.unwrap("\(name) has a selector", action.selector)
+                _ = target.perform(selector, with: action)
+            }
+        }
+
         static func isPresent(_ identifier: String, in root: NSView) -> Bool {
             var visited: Set<ObjectIdentifier> = []
             var remaining = 4096
@@ -274,7 +439,17 @@
                 find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0))
         }
 
-        private static func pressFrame(_ control: NSObject, in root: NSView, _ context: ScenarioContext) throws {
+        /// Whether `identifier` is in the accessibility tree under `root` now, recording nothing: for
+        /// scrolling a lazily built inspector until the control exists.
+        static func exists(_ identifier: String, in root: NSView) -> Bool {
+            var visited: Set<ObjectIdentifier> = []
+            var remaining = 4096
+            return find(identifier, in: root, visited: &visited, remaining: &remaining, depth: 0) != nil
+        }
+
+        private static func pressFrame(
+            _ control: NSObject, in root: NSView, _ context: ScenarioContext, secondary: Bool = false
+        ) throws {
             let window = try context.unwrap("control has a window", root.window)
             try context.require(
                 "control exposes its frame", control.responds(to: NSSelectorFromString("accessibilityFrame")))
@@ -286,7 +461,10 @@
                 frame.origin.x.isFinite && frame.origin.y.isFinite && frame.width.isFinite && frame.height.isFinite
                     && frame.width > 0 && frame.height > 0)
             let point = window.convertPoint(fromScreen: NSPoint(x: frame.midX, y: frame.midY))
-            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            // A context menu opens on the secondary mouse-down and its tracking consumes the
+            // mouse-up; a separate up after tracking would reach the control as a click.
+            let types: [NSEvent.EventType] = secondary ? [.rightMouseDown] : [.leftMouseDown, .leftMouseUp]
+            for type in types {
                 let event = try context.unwrap(
                     "control mouse event",
                     NSEvent.mouseEvent(
@@ -372,7 +550,10 @@
             menu.update()
             entries = menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }
                 .map { E2EMenuEntry(title: $0.title, checked: $0.state == .on) }
-            let index = title.flatMap { title in menu.items.firstIndex { $0.title == title } }
+            // Only an item a person could choose: visible and enabled, never a hidden alternate.
+            let index = title.flatMap { title in
+                menu.items.firstIndex { $0.title == title && !$0.isHidden && $0.isEnabled }
+            }
             chosen = index != nil
             // Choose on the next turn of the tracking loop, after the menu finished opening, as a
             // person's click would; a menu chosen inside the notification did not open again.

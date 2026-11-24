@@ -8,9 +8,9 @@ import Testing
 
 @Suite("SCR-02: ambiguous and partial results never report a false success")
 struct ScrollAmbiguityTests {
-    @Test("Low-texture page pauses instead of guessing", arguments: [UInt64(21)])
-    func lowTexture(seed: UInt64) {
-        let fixture = ScrollPageFixture(seed: seed, kind: .lowTexture, pageHeight: 1600, animated: false)
+    @Test("Low-texture page pauses instead of guessing")
+    func lowTexture() {
+        let fixture = ScrollPageFixture(seed: 21, kind: .lowTexture, pageHeight: 1600, animated: false)
         let offsets = fixture.forwardOffsets(steps: 10...90, stationaryChance: 0)
         var stitcher = ScrollStitcher()
         let log = ScrollHarness.run(
@@ -21,9 +21,9 @@ struct ScrollAmbiguityTests {
         #expect(log.pauses.allSatisfy { $0.reason == .lowConfidence || $0.reason == .ambiguousMatch })
     }
 
-    @Test("Identical repeated rows are an ambiguous match", arguments: [UInt64(31)])
-    func repeatedRows(seed: UInt64) throws {
-        let fixture = ScrollPageFixture(seed: seed, kind: .repeatedRows, pageHeight: 1600)
+    @Test("Identical repeated rows are an ambiguous match")
+    func repeatedRows() throws {
+        let fixture = ScrollPageFixture(seed: 31, kind: .repeatedRows, pageHeight: 1600)
         let period = try #require(fixture.repeatPeriod)
         let offsets = fixture.forwardOffsets(steps: 5...80, stationaryChance: 0)
         var stitcher = ScrollStitcher()

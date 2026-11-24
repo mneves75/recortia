@@ -76,11 +76,10 @@ struct TextDecorationExportTests {
         }
     }
 
-    @Test(
-        "Finite-overflow font geometry is rejected before native font resolution", arguments: [TextAppearance.standard])
-    func overflowFontAdmission(appearance: TextAppearance) {
+    @Test("Finite-overflow font geometry is rejected before native font resolution")
+    func overflowFontAdmission() {
         #expect(throws: TextLayoutError.invalidGeometry) {
-            _ = try TextLayout.nativeFont(for: appearance, size: .greatestFiniteMagnitude)
+            _ = try TextLayout.nativeFont(for: .standard, size: .greatestFiniteMagnitude)
         }
     }
 

@@ -25,6 +25,9 @@ final class CaptureHarness {
     let assets = FakeAssetService()
     let clock = ManualClock()
     let storage = MemoryPreferenceStorage()
+    let sound = FakeCaptureSound()
+    let elements = FakeInterfaceElements()
+    let diagnostics = FakeDiagnostics()
     let settings: SettingsStore
     let coordinator: CaptureCoordinator
     var completions: [CaptureCompletion] = []
@@ -33,7 +36,8 @@ final class CaptureHarness {
         permission = FakeScreenPermission(isGranted: permissionGranted)
         settings = SettingsStore(storage: storage)
         coordinator = CaptureCoordinator(
-            capture: capture, permission: permission, assets: assets, clock: clock, settings: settings)
+            capture: capture, permission: permission, assets: assets, clock: clock, settings: settings, sound: sound,
+            elements: elements, diagnostics: diagnostics)
         coordinator.onCaptured = { [unowned self] in self.completions.append($0) }
     }
 
@@ -180,6 +184,32 @@ struct CaptureCoordinatorTests {
         #expect(h.capture.lastOptions?.includesShadow == false)
     }
 
+    // Failure mode: the window background preference never reaches the document, reaches
+    // region captures too, or is read after capture so a later change redirects it.
+    @Test("A window capture opens over the chosen background; a region capture does not")
+    func windowBackgroundFromPreferences() async {
+        let h = CaptureHarness()
+        let color = RGBA(r: 20, g: 200, b: 90)
+        h.settings.update { $0.windowCaptureBackground = .solid(color) }
+        h.coordinator.start(.window)
+        await waitFor("windows listed") { h.coordinator.selectionContext == .window([TestFixtures.window]) }
+        h.coordinator.commitSelection(.window(TestFixtures.window))
+        await waitFor("window captured") { h.completions.count == 1 }
+        #expect(h.completions[0].session.document.presentation == Presentation(background: .solid(color)))
+
+        h.coordinator.start(.region)
+        h.coordinator.commitRegion(h.regionRect, on: TestFixtures.primaryDisplay)
+        await waitFor("region captured") { h.completions.count == 2 }
+        #expect(h.completions[1].session.document.presentation == .plain)
+
+        h.settings.update { $0.windowCaptureBackground = .transparent }
+        h.coordinator.start(.window)
+        await waitFor("windows listed again") { h.coordinator.selectionContext == .window([TestFixtures.window]) }
+        h.coordinator.commitSelection(.window(TestFixtures.window))
+        await waitFor("window captured again") { h.completions.count == 3 }
+        #expect(h.completions[2].session.document.presentation == .plain)
+    }
+
     @Test("Repeat last region captures the remembered rectangle without selection")
     func repeatLastRegion() async {
         let h = CaptureHarness()
@@ -221,7 +251,7 @@ struct CaptureCoordinatorTests {
 
         let fresh = CaptureCoordinator(
             capture: h.capture, permission: h.permission, assets: h.assets, clock: h.clock,
-            settings: SettingsStore(storage: h.storage))
+            settings: SettingsStore(storage: h.storage), sound: nil, elements: nil)
         #expect(fresh.hasRepeatRegion == false)
         let blob = h.storage.values.values.map { String(decoding: $0, as: UTF8.self) }.joined()
         #expect(!blob.contains("120"))  // the region's y coordinate never reaches storage
@@ -254,6 +284,15 @@ struct CaptureCoordinatorTests {
         let expected = Rect<DesktopSpace>(x: -300, y: -150, width: 300, height: 400)
         #expect(h.capture.captureCalls == [.region(expected, display: TestFixtures.leftDisplay)])
         #expect(h.coordinator.lastSelectionWasClamped)
+    }
+
+    @Test("The size label counts the device pixels the capture takes, edges snapped outward")
+    func sizeLabelMatchesSnappedCapture() {
+        let display = DisplayInfo(
+            id: 9, frame: Rect(x: 0, y: 0, width: 1000, height: 800), pointPixelScale: 2, fingerprint: "2x")
+        // At 2x, x 10.25 ... 20.25 covers device pixels 20 ... 41: 21 px, not 10 pt * 2.
+        let rect = Rect<DesktopSpace>(x: 10.25, y: 5, width: 10, height: 10)
+        #expect(RegionSelection.pixelSize(of: rect, on: display) == PixelSize(width: 21, height: 20))
     }
 
     @Test("An empty selection keeps selecting instead of capturing")

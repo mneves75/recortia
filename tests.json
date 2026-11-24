@@ -1,35 +1,20 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-11-01T04:00:11Z",
-  "commit": "7713c6b8444d91367483d6f357f55744ff0fc8c5",
-  "toolchain": {
-    "xcode": "27.2 (27B52)",
-    "channel": "stable",
-    "stable_baseline": "27.2 (27B52)"
-  },
-  "status_source": "local evidence files; CI results are separate and not recorded here",
+  "schema_version": 2,
   "suites": [
     {
       "id": "check",
       "command": "./init.sh check --unsigned",
-      "status": "passed",
-      "evidence": ".scratch/logs/check-18.log",
-      "observed_at": "2026-10-28T21:16:23Z",
-      "note": "local observation of the evidence file above, not a CI result"
+      "evidence": ".scratch/logs/check-*.log"
     },
     {
       "id": "e2e",
       "command": "./init.sh e2e --lang all",
-      "status": "passed",
-      "evidence": ".scratch/logs/e2e-final3.log",
-      "observed_at": "2026-10-28T14:07:28Z",
-      "note": "local observation of the evidence file above, not a CI result"
+      "evidence": ".scratch/logs/e2e-*.log"
     },
     {
       "id": "release-dry-run",
       "command": "scripts/release.sh --dry-run",
-      "status": "not_run",
-      "evidence": null
+      "evidence": ".scratch/logs/release-*.log"
     }
   ],
   "gates": [
@@ -84,6 +69,14 @@
       ]
     },
     {
+      "id": "release-build",
+      "protected_file": "scripts/check-release-build.sh",
+      "tests": [],
+      "invoked_by": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
       "id": "release-contract",
       "protected_file": "scripts/release.sh",
       "tests": [
@@ -97,7 +90,18 @@
       "id": "project-freshness",
       "protected_file": "scripts/check-project-fresh.sh",
       "tests": [
-        "scripts/test-project-freshness.py"
+        "scripts/test-project-freshness.py",
+        "scripts/test-xcodegen-wrapper.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "space-probe",
+      "protected_file": "scripts/space-probe/run.sh",
+      "tests": [
+        "scripts/test-space-probe.py"
       ],
       "invoked_by": [
         "scripts/check.sh"
@@ -108,6 +112,26 @@
       "protected_file": "scripts/tests-report.py",
       "tests": [
         "scripts/test-tests-report.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "deployment-target",
+      "protected_file": "scripts/check-deployment-target.py",
+      "tests": [
+        "scripts/test-deployment-target.py"
+      ],
+      "invoked_by": [
+        "scripts/check.sh"
+      ]
+    },
+    {
+      "id": "updater-plist",
+      "protected_file": "scripts/check-updater-plist.py",
+      "tests": [
+        "scripts/test-updater-plist.py"
       ],
       "invoked_by": [
         "scripts/check.sh"

@@ -61,22 +61,8 @@ public enum EditorTool: String, CaseIterable, Hashable, Sendable {
         return allCases.first { $0.shortcutKey == lowered }
     }
 
-    /// True only for the tool that performs secure source-pixel replacement.
-    var isSecureRedaction: Bool { self == .redact }
-
     /// Blur and pixelation: obfuscation that must always be labeled as not secure.
     public var isCosmeticObfuscation: Bool { self == .blur || self == .pixelate }
-
-    /// Tools whose drag creates a new object in the document.
-    var createsObject: Bool {
-        switch self {
-        case .text, .arrow, .line, .rectangle, .ellipse, .freehand, .highlighter, .step, .redact, .blur, .pixelate,
-            .spotlight, .magnifier:
-            true
-        case .select, .hand, .crop, .loupe, .ruler, .colorPicker:
-            false
-        }
-    }
 
     /// Whether the tool uses stroke/fill/width/opacity style controls.
     public var usesStyle: Bool {
@@ -119,6 +105,14 @@ public enum EditorItemKind: String, Hashable, Sendable, CaseIterable {
     public var isSecure: Bool { self == .redaction }
     public var isCosmetic: Bool { self == .blur || self == .pixelate }
 
+    init(_ style: CosmeticObfuscation.Style) {
+        if case .blur = style { self = .blur } else { self = .pixelate }
+    }
+
+    init(_ kind: Callout.Kind) {
+        if case .spotlight = kind { self = .spotlight } else { self = .magnifier }
+    }
+
     init(_ kind: Annotation.Kind) {
         switch kind {
         case .text: self = .text
@@ -141,7 +135,6 @@ public struct EditorListItem: Hashable, Sendable, Identifiable {
     /// 1-based index among items of the same kind, bottom to top ("Arrow 2").
     public let ordinal: Int
     public let frame: Rect<DocumentSpace>
-    /// Step number for numbered steps.
     public let stepNumber: Int?
 }
 
@@ -184,10 +177,14 @@ public struct EditorStyle: Hashable, Sendable {
     /// Local future boxed-text fill; nil means automatic white. Shape/plain-text fill is separate.
     public var textBackgroundColor: RGBA?
     public var curvedArrows: Bool
+    public var arrowHead: Annotation.ArrowHead
+    /// New freehand and highlighter strokes are simplified and drawn as curves when they end.
+    public var smoothsStrokes: Bool
 
     public init(
         stroke: RGBA = .red, fill: RGBA? = nil, lineWidth: Double = 4, opacity: Double = 1, fontSize: Double = 24,
-        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false
+        textAppearance: TextAppearance = .standard, textBackgroundColor: RGBA? = nil, curvedArrows: Bool = false,
+        arrowHead: Annotation.ArrowHead = .filled, smoothsStrokes: Bool = true
     ) {
         self.stroke = stroke
         self.fill = fill
@@ -197,6 +194,8 @@ public struct EditorStyle: Hashable, Sendable {
         self.textAppearance = textAppearance
         self.textBackgroundColor = textBackgroundColor
         self.curvedArrows = curvedArrows
+        self.arrowHead = arrowHead
+        self.smoothsStrokes = smoothsStrokes
     }
 
     public static let lineWidthRange: ClosedRange<Double> = 1...40
@@ -213,7 +212,6 @@ public struct EditorStyle: Hashable, Sendable {
         return result
     }
 
-    /// Highlighter strokes are wide and translucent, derived from the same color.
     var highlighterStyle: Annotation.Style {
         Annotation.Style(stroke: stroke, fill: nil, lineWidth: max(lineWidth * 4, 12), opacity: min(opacity, 0.5))
     }
@@ -225,7 +223,6 @@ public struct EditorStyle: Hashable, Sendable {
 /// until the gesture ends.
 public enum EditorDraft: Hashable, Sendable {
     case annotation(Annotation)
-    /// A rectangle for crop, redaction, blur, pixelate, spotlight, magnifier, or marquee selection.
     case region(EditorTool, Rect<DocumentSpace>)
     case marquee(Rect<DocumentSpace>)
 }
@@ -281,6 +278,12 @@ public struct EditorColorSample: Hashable, Sendable {
     public var rgbText: String { "\(color.r) \(color.g) \(color.b)" }
 }
 
+/// Which side of a contrast pair a picked colour fills (FR-11).
+public enum ContrastRole: Hashable, Sendable {
+    case text
+    case background
+}
+
 /// Ruler measurement between two anchors, in document pixels; points only when the document is a
 /// single capture with a known point-to-pixel scale (imported images never get one).
 public struct EditorMeasurement: Hashable, Sendable {
@@ -293,7 +296,6 @@ public struct EditorMeasurement: Hashable, Sendable {
     public var distancePixels: Double { (dxPixels * dxPixels + dyPixels * dyPixels).squareRoot() }
     public var dxPoints: Double? { pointPixelScale.map { dxPixels / $0 } }
     public var dyPoints: Double? { pointPixelScale.map { dyPixels / $0 } }
-    var distancePoints: Double? { pointPixelScale.map { distancePixels / $0 } }
 }
 
 /// Nearest-neighbor loupe pixels: an exact crop of the sanitized base, never interpolated.
@@ -340,4 +342,49 @@ public enum EditorNotice: Hashable, Sendable {
     case noPreferredFolder
     /// The oldest undo steps were discarded to stay within the undo budget (FR-04).
     case undoHistoryTrimmed
+    /// Automatic masking covered this many e-mail addresses or phone numbers, possibly none (FR-06).
+    case sensitiveTextMasked(Int)
+    /// Automatic masking did not finish; nothing was masked.
+    case maskingFailed
+    /// The action waits until automatic masking finishes.
+    case maskingInProgress
+    /// The action waits until a text-only redaction's lines are found (A-6).
+    case textRedactionInProgress
+    /// A text-only redaction covered this many recognized lines.
+    case textLinesCovered(Int)
+    /// A text-only redaction found no line, failed, timed out or went stale: the whole rectangle
+    /// stays covered.
+    case textRedactionKeptArea
+}
+
+/// Automatic masking of a new capture (FR-06). While `pending` the editor shows no capture pixels
+/// and refuses every edit, selection, export, pin and Output Preview.
+public enum AutoRedaction: Hashable, Sendable {
+    /// Not requested for this document.
+    case off
+    case pending
+    /// The masks landed as one undo step, or nothing was found.
+    case done
+    /// Detection failed, was cancelled or missed its deadline: nothing was masked.
+    case failed
+}
+
+/// A crop tool preset (A-10): the width-to-height ratio the crop rectangle keeps while it is drawn.
+public enum CropAspect: CaseIterable, Hashable, Sendable {
+    case free, original, square, fourByThree, threeByTwo, sixteenByNine, nineBySixteen
+
+    /// Width and height; `original` is the canvas's own ratio. Nil constrains nothing.
+    public func ratio(canvas: Size<DocumentSpace>) -> (width: Double, height: Double)? {
+        switch self {
+        case .free: nil
+        case .original:
+            canvas.width.isFinite && canvas.height.isFinite && canvas.width > 0 && canvas.height > 0
+                ? (canvas.width, canvas.height) : nil
+        case .square: SelectionAspect.square.ratio
+        case .fourByThree: SelectionAspect.fourByThree.ratio
+        case .threeByTwo: SelectionAspect.threeByTwo.ratio
+        case .sixteenByNine: SelectionAspect.sixteenByNine.ratio
+        case .nineBySixteen: (9, 16)
+        }
+    }
 }

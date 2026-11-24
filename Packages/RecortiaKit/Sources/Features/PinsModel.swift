@@ -15,7 +15,6 @@ public enum PinError: Error, Hashable, Sendable {
     case staleDocument
 }
 
-/// What a pin can hand to another app (PIN-02).
 public enum PinExportAction: Hashable, Sendable {
     case copy
     case drag
@@ -33,8 +32,16 @@ public struct Pin: Identifiable, Sendable {
     public let exportID: DocumentID?
     /// Pixels per point used to show the image at its captured size; 1 for imported images.
     public let displayScale: Double
+    /// Whether the pin takes keyboard focus when it first appears.
+    public let takesFocus: Bool
     public var opacity: Double
     public var zoom: Double
+    /// Floats above normal windows (ADR-007 amendment). Off for every new pin, so by default a pin
+    /// stays a normal-level window that window switchers list.
+    public var keepsOnTop = false
+    /// Lets clicks reach the window below. Only a pin on top can be click-through; Unlock All Pins
+    /// in the menus ends it, because a click-through pin cannot be clicked to turn it off.
+    public var isClickThrough = false
 }
 
 /// Reference pins (FR-09, PIN-01): at most `PinLimits.maxPins`, invalidated on privacy changes,
@@ -46,8 +53,6 @@ public final class PinsModel {
     static let zoomRange: ClosedRange<Double> = 0.25...4
 
     public private(set) var pins: [Pin] = []
-    /// Number of pins removed by the latest privacy invalidation, for a user-visible note.
-    private(set) var lastInvalidatedCount = 0
     /// Increments on Bring Pins Forward; pin windows observe it and order themselves front.
     public private(set) var bringForwardRequest = 0
 
@@ -69,14 +74,14 @@ public final class PinsModel {
     /// True while a new pin has a free slot, counting renders already admitted.
     var canAddPin: Bool { pins.count + pendingRenders < PinLimits.maxPins }
 
-    /// Rendered pixels currently retained by all pins.
     var retainedPixelCount: Int { pins.reduce(0) { $0 + $1.image.width * $1.image.height } }
 
     /// Renders `session` through the sanitizing renderer and pins the result, unless the live
     /// session moved on while rendering.
     @discardableResult
-    public func pin(_ session: DocumentSession, currentSession: () -> DocumentSession?) async throws(PinError) -> PinID
-    {
+    public func pin(
+        _ session: DocumentSession, takesFocus: Bool = true, currentSession: () -> DocumentSession?
+    ) async throws(PinError) -> PinID {
         guard canAddPin else { throw .limitReached }
         // The slot stays reserved until the renderer returns, even if the caller is canceled or
         // Close All runs meanwhile: the image is still allocated until then.
@@ -93,20 +98,20 @@ public final class PinsModel {
         guard generation == requestGeneration else { throw .staleDocument }
         guard let current = currentSession(), current.accepts(identity) else { throw .staleDocument }
         let scale = session.document.assets.count == 1 ? session.document.assets.values.first?.pointPixelScale : nil
-        return try insert(image, source: identity, displayScale: scale ?? 1, exportable: true)
+        return try insert(image, source: identity, displayScale: scale ?? 1, exportable: true, takesFocus: takesFocus)
     }
 
     /// Adds an already rendered, sanitized image.
     @discardableResult
     public func add(_ image: CGImage, source: RequestIdentity?, displayScale: Double) throws(PinError) -> PinID {
         guard canAddPin else { throw .limitReached }
-        return try insert(image, source: source, displayScale: displayScale, exportable: false)
+        return try insert(image, source: source, displayScale: displayScale, exportable: false, takesFocus: true)
     }
 
     /// Appends a pin into a free slot. A rendering request calls this while still holding its own
     /// reservation, so it checks the committed pins only.
     private func insert(
-        _ image: CGImage, source: RequestIdentity?, displayScale: Double, exportable: Bool
+        _ image: CGImage, source: RequestIdentity?, displayScale: Double, exportable: Bool, takesFocus: Bool
     ) throws(PinError) -> PinID {
         guard pins.count < PinLimits.maxPins else { throw .limitReached }
         let (pixels, overflow) = image.width.multipliedReportingOverflow(by: image.height)
@@ -117,6 +122,7 @@ public final class PinsModel {
             id: PinID(), image: image, sourceDocumentID: source?.documentID, privacyEpoch: source?.privacyEpoch ?? 0,
             exportID: exportable ? DocumentID() : nil,
             displayScale: displayScale.isFinite && displayScale > 0 ? displayScale : 1,
+            takesFocus: takesFocus,
             opacity: settings.preferences.pinDefaultOpacity, zoom: 1)
         pins.append(pin)
         return pin.id
@@ -124,9 +130,7 @@ public final class PinsModel {
 
     /// Drops every pin of `documentID` rendered before privacy epoch `epoch` (RED-03).
     public func invalidate(documentID: DocumentID, epoch: UInt64) {
-        let before = pins.count
         remove { $0.sourceDocumentID == documentID && $0.privacyEpoch < epoch }
-        lastInvalidatedCount = before - pins.count
     }
 
     public func close(_ id: PinID) {
@@ -168,6 +172,30 @@ public final class PinsModel {
     public func setZoom(_ zoom: Double, for id: PinID) {
         let value = zoom.isFinite ? zoom : 1
         update(id) { $0.zoom = min(max(value, Self.zoomRange.lowerBound), Self.zoomRange.upperBound) }
+    }
+
+    /// Turning Keep on Top off also ends click-through: clicks would bring the window below in
+    /// front of the pin, which could then not be reached at all.
+    public func setKeepsOnTop(_ keepsOnTop: Bool, for id: PinID) {
+        update(id) {
+            $0.keepsOnTop = keepsOnTop
+            if !keepsOnTop { $0.isClickThrough = false }
+        }
+    }
+
+    /// Refused for a pin that is not on top.
+    public func setClickThrough(_ isClickThrough: Bool, for id: PinID) {
+        update(id) { $0.isClickThrough = isClickThrough && $0.keepsOnTop }
+    }
+
+    /// True while a pin ignores the mouse: Unlock All Pins is enabled exactly then.
+    public var hasClickThroughPin: Bool { pins.contains(where: \.isClickThrough) }
+
+    /// Unlock All Pins: every pin takes clicks again and keeps its level.
+    public func unlockAll() {
+        for index in pins.indices where pins[index].isClickThrough {
+            pins[index].isClickThrough = false
+        }
     }
 
     public func pin(for id: PinID) -> Pin? {

@@ -8,6 +8,7 @@ enum GitHubUploadStrings {
         switch failure {
         case .invalidDestination: String(localized: "Enter a valid GitHub owner and repository name.")
         case .missingCredential: String(localized: "Save a GitHub token in Settings before uploading.")
+        case .invalidCredential: String(localized: "The saved GitHub token isn't valid. Replace it in Settings.")
         case .credentialsUnavailable: String(localized: "The GitHub token could not be accessed in Keychain.")
         case .publicRepository: String(localized: "Upload refused: the GitHub repository is public.")
         case .tooLarge: String(localized: "GitHub uploads are limited to 8 MB. Reduce the export scale.")
@@ -46,7 +47,7 @@ enum GitHubDestinationSaver {
     ) -> Result {
         let previous = settings.preferences.githubUpload?.destination
         do {
-            // The store call and the Keychain share one rule for what a token may contain.
+            // The token store admits the pasted text; everything after it trusts the token.
             try credentials.store(GitHubTokenStore.validatedToken(token), for: destination)
         } catch { return .failed(error) }
         settings.update { $0.githubUpload = GitHubUploadPreferences(destination: destination) }
@@ -86,6 +87,10 @@ struct GitHubUploadSettings: View {
                 TextField("Repository owner", text: $owner)
                 TextField("Private repository", text: $repository)
                 SecureField("Fine-grained GitHub token", text: $token)
+                    .help(
+                        Text(
+                            "Use a dedicated private repository and a fine-grained token restricted to it, with Contents: read and write. The token stays in Keychain. Each upload creates a commit in screenshots/."
+                        ))
                 Button("Save destination and token") { save() }
                     .disabled(
                         credentials == nil || !destination.isValid
@@ -93,11 +98,6 @@ struct GitHubUploadSettings: View {
                 if let message { Text(message).font(.callout).foregroundStyle(.secondary) }
             } header: {
                 Text("GitHub destination")
-            } footer: {
-                Text(
-                    "Use a dedicated private repository and a fine-grained token restricted to it, with Contents: read and write. The token stays in Keychain. Each upload creates a commit in screenshots/."
-                )
-                .font(.callout)
             }
             Section {
                 if let configuration = settings.preferences.githubUpload {
@@ -122,8 +122,9 @@ struct GitHubUploadSettings: View {
             } header: {
                 Text("Automatic upload")
             } footer: {
+                // NET-01's mandatory disclosure: pre-edit upload and Git history retention.
                 Text(
-                    "When enabled, each still capture is uploaded before later edits or redaction. Uploads require a private repository and are limited to 8 MB. Git history retains earlier images; turning this off or closing Recortia does not delete remote copies."
+                    "Each capture is uploaded before you edit or redact it, and Git history keeps every image after you turn this off."
                 )
                 .font(.callout)
             }

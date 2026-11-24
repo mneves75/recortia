@@ -1,6 +1,690 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Output Decoration": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Output Decoration" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Decoração da imagem" } }
+      }
+    },
+    "Border": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Border" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Borda" } }
+      }
+    },
+    "Border width": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Border width" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Largura da borda" } }
+      }
+    },
+    "Border color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Border color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor da borda" } }
+      }
+    },
+    "Watermark text": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark text" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Texto da marca-d’água" } }
+      }
+    },
+    "Apply Watermark": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply Watermark" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplicar marca-d’água" } }
+      }
+    },
+    "Remove Watermark": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove Watermark" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover marca-d’água" } }
+      }
+    },
+    "Enter one line of watermark text up to 256 bytes.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enter one line of watermark text up to 256 bytes." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Digite uma linha de texto de até 256 bytes." } }
+      }
+    },
+    "Watermark position": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark position" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Posição da marca-d’água" } }
+      }
+    },
+    "Top Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Top Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto superior esquerdo" } }
+      }
+    },
+    "Top Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Top Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto superior direito" } }
+      }
+    },
+    "Center": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Center" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Centro" } }
+      }
+    },
+    "Bottom Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bottom Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto inferior esquerdo" } }
+      }
+    },
+    "Bottom Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bottom Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Canto inferior direito" } }
+      }
+    },
+    "Watermark opacity (%)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark opacity (%)" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Opacidade da marca-d’água (%)" } }
+      }
+    },
+    "Watermark rotation (°)": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Watermark rotation (°)" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Rotação da marca-d’água (°)" } }
+      }
+    },
+    "Framing Recipe": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Framing Recipe" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Receita de enquadramento" } }
+      }
+    },
+    "Choose a Recipe": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose a Recipe" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Escolha uma receita" } }
+      }
+    },
+    "Apply Recipe": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Apply Recipe" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aplicar receita" } }
+      }
+    },
+    "Rename Recipe…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rename Recipe…" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Renomear receita…" } }
+      }
+    },
+    "Delete Recipe": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete Recipe" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Apagar receita" } }
+      }
+    },
+    "Save Framing Recipe…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save Framing Recipe…" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar receita de enquadramento…" } }
+      }
+    },
+    "Recipe Name": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Recipe Name" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Nome da receita" } }
+      }
+    },
+    "Enter a name with at most 64 bytes and no line breaks.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enter a name with at most 64 bytes and no line breaks." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Digite um nome de até 64 bytes sem quebras de linha." } }
+      }
+    },
+    "A recipe already uses that name.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "A recipe already uses that name." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Já existe uma receita com esse nome." } }
+      }
+    },
+    "Delete a recipe before saving another.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete a recipe before saving another." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Apague uma receita antes de salvar outra." } }
+      }
+    },
+    "This framing cannot be saved as a recipe.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This framing cannot be saved as a recipe." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Não é possível salvar este enquadramento como receita." } }
+      }
+    },
+    "This recipe is no longer available.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This recipe is no longer available." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Esta receita não está mais disponível." } }
+      }
+    },
+    "Print…": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Print…" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imprimir…" } }
+      }
+    },
+    "Image sent to the print panel.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Image sent to the print panel." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem enviada ao painel de impressão." } }
+      }
+    },
+    "The image could not be sent to the print panel.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The image could not be sent to the print panel." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Não foi possível enviar a imagem ao painel de impressão." } }
+      }
+    },
+    "Rotate Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar para a esquerda" } }
+      }
+    },
+    "Rotate Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar para a direita" } }
+      }
+    },
+    "Flip Horizontal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Horizontal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar horizontalmente" } }
+      }
+    },
+    "Flip Vertical": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Vertical" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar verticalmente" } }
+      }
+    },
+    "Rotate Layer Left": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Layer Left" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar camada para a esquerda" } }
+      }
+    },
+    "Rotate Layer Right": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate Layer Right" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar camada para a direita" } }
+      }
+    },
+    "Flip Layer Horizontal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Layer Horizontal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar camada horizontalmente" } }
+      }
+    },
+    "Flip Layer Vertical": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flip Layer Vertical" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Espelhar camada verticalmente" } }
+      }
+    },
+    "Rotate and Flip": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rotate and Flip" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Girar e espelhar" } }
+      }
+    },
+    "Aspect Ratio": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Aspect Ratio" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Proporção" } }
+      }
+    },
+    "Balance": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Balance" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Equilibrar" } }
+      }
+    },
+    "Black": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Black" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Preto" } }
+      }
+    },
+    "Blue": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Blue" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Azul" } }
+      }
+    },
+    "Center color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Center color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor do centro" } }
+      }
+    },
+    "Edge color": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edge color" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor da borda" } }
+      }
+    },
+    "Free": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Free" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Livre" } }
+      }
+    },
+    "Graphite": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Graphite" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Grafite" } }
+      }
+    },
+    "Graphite Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Graphite Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê grafite" } }
+      }
+    },
+    "Green": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Green" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Verde" } }
+      }
+    },
+    "Radial Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Radial Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê radial" } }
+      }
+    },
+    "Reset Default Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset Default Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Redefinir moldura padrão" } }
+      }
+    },
+    "Save as Default Framing": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save as Default Framing" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Salvar como moldura padrão" } }
+      }
+    },
+    "Silver": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Silver" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Prata" } }
+      }
+    },
+    "Silver Radial Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Silver Radial Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê radial prata" } }
+      }
+    },
+    "Sky Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sky Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê céu" } }
+      }
+    },
+    "Sunset Gradient": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sunset Gradient" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Degradê pôr do sol" } }
+      }
+    },
+    "White": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "White" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Branco" } }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Original" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Original" } }
+      }
+    },
+    "Filled Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Filled Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta cheia" } }
+      }
+    },
+    "Open Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta aberta" } }
+      }
+    },
+    "No Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Sem ponta" } }
+      }
+    },
+    "Double Head": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Double Head" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ponta dupla" } }
+      }
+    },
+    "Mixed arrowheads": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed arrowheads" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pontas diferentes" } }
+      }
+    },
+    "Smooth": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Smooth" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Suavizar" } }
+      }
+    },
+    "Applies to new strokes.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Applies to new strokes." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Vale para novos traços." } }
+      }
+    },
+    "Contrast": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Contrast" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Contraste" } }
+      }
+    },
+    "Darkest Pixel": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Darkest Pixel" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pixel mais escuro" } }
+      }
+    },
+    "Fail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fail" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Falha" } }
+      }
+    },
+    "Large": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Large" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Grande" } }
+      }
+    },
+    "Normal": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Normal" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Normal" } }
+      }
+    },
+    "Pass": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pass" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Passa" } }
+      }
+    },
+    "Use as Background": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use as Background" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Usar como fundo" } }
+      }
+    },
+    "Use as Text": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use as Text" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Usar como texto" } }
+      }
+    },
+    "Collapsed": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Collapsed" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Recolhido" } }
+      }
+    },
+    "Expanded": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Expanded" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Expandido" } }
+      }
+    },
+    "No e-mail addresses or phone numbers were found to mask. Check the image before you share it.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No e-mail addresses or phone numbers were found to mask. Check the image before you share it." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Nenhum e-mail ou número de telefone foi encontrado para mascarar. Confira a imagem antes de compartilhar." } }
+      }
+    },
+    "Nothing was saved: the file name is too long for that folder.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Nothing was saved: the file name is too long for that folder." } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Nada foi salvo: o nome do arquivo é longo demais para essa pasta." } }
+      }
+    },
+    "Scrolling Capture %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scrolling Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura com rolagem %@" } }
+      }
+    },
+    "Pasted Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pasted Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem colada %@" } }
+      }
+    },
+    "Image %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Image %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Imagem %@" } }
+      }
+    },
+    "Capture %@": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Capture %@" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Captura %@" } }
+      }
+    },
+    "Automatic masking did not finish, so nothing was masked. Check the image before you share it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic masking did not finish, so nothing was masked. Check the image before you share it."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O mascaramento automático não terminou, então nada foi mascarado. Confira a imagem antes de compartilhar."
+          }
+        }
+      }
+    },
+    "Masked %lld e-mail addresses or phone numbers. Check the image for anything else before you share it.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Masked %lld e-mail address or phone number. Check the image for anything else before you share it."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Masked %lld e-mail addresses or phone numbers. Check the image for anything else before you share it."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld e-mail ou número de telefone foi mascarado. Confira se resta algo na imagem antes de compartilhar."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld e-mails ou números de telefone foram mascarados. Confira se resta algo na imagem antes de compartilhar."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Covered %lld lines of text.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Covered %lld line of text."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Covered %lld lines of text."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld linha de texto coberta."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld linhas de texto cobertas."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Finding the text to cover. Try again when it finishes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding the text to cover. Try again when it finishes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procurando o texto a cobrir. Tente de novo quando terminar."
+          }
+        }
+      }
+    },
+    "No text lines were found, so the whole area stays covered.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No text lines were found, so the whole area stays covered."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma linha de texto foi encontrada, então toda a área continua coberta."
+          }
+        }
+      }
+    },
+    "Text Only": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text Only"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Somente texto"
+          }
+        }
+      }
+    },
+    "Masking e-mail addresses and phone numbers. Try again when it finishes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masking e-mail addresses and phone numbers. Try again when it finishes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mascarando e-mails e números de telefone. Tente de novo quando terminar."
+          }
+        }
+      }
+    },
+    "Masking e-mail addresses and phone numbers…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masking e-mail addresses and phone numbers…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mascarando e-mails e números de telefone…"
+          }
+        }
+      }
+    },
+    "Nothing was exported: automatic masking did not finish.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was exported: automatic masking did not finish."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada foi exportado: o mascaramento automático não terminou."
+          }
+        }
+      }
+    },
     "Framing": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Framing" } },
@@ -71,12 +755,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Size" } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Tamanho" } }
-      }
-    },
-    "Text Size": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Text Size" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Tamanho do texto" } }
       }
     },
     "%lld objects": {
@@ -151,12 +829,6 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Fundos diferentes" } }
       }
     },
-    "Background Color": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Background Color" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Cor do fundo" } }
-      }
-    },
     "Reset Background": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Reset Background" } },
@@ -193,12 +865,6 @@
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Caixa monoespaçada" } }
       }
     },
-    "Text Style": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Text Style" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Estilo do texto" } }
-      }
-    },
     "Standard": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Standard" } },
@@ -221,12 +887,6 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Finish editing text before changing its style." } },
         "pt-BR": { "stringUnit": { "state": "translated", "value": "Conclua a edição do texto antes de alterar seu estilo." } }
-      }
-    },
-    "Remove Current Color": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Remove Current Color" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Remover cor atual" } }
       }
     },
     "Save Current Color": {
@@ -335,16 +995,10 @@
         }
       }
     },
-    "Replace Existing File?": {
+    "“%@” already exists. Do you want to replace it?": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Replace Existing File?" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Substituir arquivo existente?" } }
-      }
-    },
-    "A file exists at this destination. Replace it?": {
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "A file exists at this destination. Replace it?" } },
-        "pt-BR": { "stringUnit": { "state": "translated", "value": "Já existe um arquivo neste destino. Deseja substituí-lo?" } }
+        "en": { "stringUnit": { "state": "translated", "value": "“%@” already exists. Do you want to replace it?" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "“%@” já existe. Quer substituí-lo?" } }
       }
     },
     "Replace": {
@@ -369,18 +1023,18 @@
         }
       }
     },
-    "Text recognition for English or Portuguese is not available on this Mac, so other languages were used.": {
+    "English or Portuguese text recognition is unavailable on this Mac.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Text recognition for English or Portuguese is not available on this Mac, so other languages were used."
+            "value": "English or Portuguese text recognition is unavailable on this Mac."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O reconhecimento de texto em inglês ou português não está disponível neste Mac, então outros idiomas foram usados."
+            "value": "O reconhecimento de texto em inglês ou português não está disponível neste Mac."
           }
         }
       }
@@ -793,22 +1447,6 @@
         }
       }
     },
-    "Arrange": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrange"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Organizar"
-          }
-        }
-      }
-    },
     "Arrow": {
       "localizations": {
         "en": {
@@ -841,12 +1479,12 @@
         }
       }
     },
-    "Background Color": {
+    "Background color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background Color"
+            "value": "Background color"
           }
         },
         "pt-BR": {
@@ -1113,12 +1751,12 @@
         }
       }
     },
-    "Compare Transparency": {
+    "Compare transparency": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compare Transparency"
+            "value": "Compare transparency"
           }
         },
         "pt-BR": {
@@ -1141,38 +1779,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Copiar"
-          }
-        }
-      }
-    },
-    "Copy HEX": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy HEX"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copiar HEX"
-          }
-        }
-      }
-    },
-    "Copy RGB": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy RGB"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copiar RGB"
           }
         }
       }
@@ -1209,12 +1815,12 @@
         }
       }
     },
-    "Corner Radius": {
+    "Corner radius": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Corner Radius"
+            "value": "Corner radius"
           }
         },
         "pt-BR": {
@@ -1269,22 +1875,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apagar"
-          }
-        }
-      }
-    },
-    "Delete (⌫)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete (⌫)"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apagar (⌫)"
           }
         }
       }
@@ -1417,54 +2007,6 @@
         }
       }
     },
-    "Duplicate (⌘D)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duplicate (⌘D)"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duplicar (⌘D)"
-          }
-        }
-      }
-    },
-    "Edit Text": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit Text"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Editar texto"
-          }
-        }
-      }
-    },
-    "Edit Text (Return)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit Text (Return)"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Editar texto (Return)"
-          }
-        }
-      }
-    },
     "Ellipse": {
       "localizations": {
         "en": {
@@ -1481,12 +2023,12 @@
         }
       }
     },
-    "End Color": {
+    "End color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "End Color"
+            "value": "End color"
           }
         },
         "pt-BR": {
@@ -1545,12 +2087,12 @@
         }
       }
     },
-    "Fill Color": {
+    "Fill color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fill Color"
+            "value": "Fill color"
           }
         },
         "pt-BR": {
@@ -1589,22 +2131,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Formato"
-          }
-        }
-      }
-    },
-    "Recortia Editor": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recortia Editor"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Editor do Recortia"
           }
         }
       }
@@ -1769,12 +2295,12 @@
         }
       }
     },
-    "Line Width": {
+    "Line width": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Line Width"
+            "value": "Line width"
           }
         },
         "pt-BR": {
@@ -2361,12 +2887,12 @@
         }
       }
     },
-    "Pixel Tools": {
+    "Pixel tools": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pixel Tools"
+            "value": "Pixel tools"
           }
         },
         "pt-BR": {
@@ -2601,12 +3127,12 @@
         }
       }
     },
-    "Redaction Color": {
+    "Redaction color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Redaction Color"
+            "value": "Redaction color"
           }
         },
         "pt-BR": {
@@ -2961,12 +3487,12 @@
         }
       }
     },
-    "Show Output Preview": {
+    "Show output preview": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Show Output Preview"
+            "value": "Show output preview"
           }
         },
         "pt-BR": {
@@ -3041,22 +3567,6 @@
         }
       }
     },
-    "Solid": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solid"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sólido"
-          }
-        }
-      }
-    },
     "Spotlight": {
       "localizations": {
         "en": {
@@ -3073,12 +3583,12 @@
         }
       }
     },
-    "Start Color": {
+    "Start color": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start Color"
+            "value": "Start color"
           }
         },
         "pt-BR": {
@@ -3313,18 +3823,50 @@
         }
       }
     },
-    "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them.": {
+    "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This image has changes that were not copied, saved, dragged, or pinned. Closing discards them."
+            "value": "The save did not finish and left “%@” in the folder. Check it, and delete it if you do not need it."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta imagem tem alterações que não foram copiadas, salvas, arrastadas nem fixadas. Fechar descarta essas alterações."
+            "value": "O salvamento não terminou e deixou “%@” na pasta. Verifique-o e apague-o se não precisar dele."
+          }
+        }
+      }
+    },
+    "This image has changes that were not copied or saved. Closing discards them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This image has changes that were not copied or saved. Closing discards them."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta imagem tem alterações que não foram copiadas nem salvas. Fechar descarta essas alterações."
+          }
+        }
+      }
+    },
+    "This image has changes that were not copied or saved; after closing, you can reopen it for 10 minutes, until you quit.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This image has changes that were not copied or saved; after closing, you can reopen it for 10 minutes, until you quit."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta imagem tem alterações que não foram copiadas nem salvas; depois de fechá-la, você pode reabri-la por 10 minutos, até encerrar o Recortia."
           }
         }
       }
@@ -3647,6 +4189,132 @@
             "value": "x %1$@, y %2$@, %3$@ × %4$@ px"
           }
         }
+      }
+    },
+    "Align": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Align" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Alinhar" } }
+      }
+    },
+    "Appearance": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Appearance" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Aparência" } }
+      }
+    },
+    "Arrange": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Arrange" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Organizar" } }
+      }
+    },
+    "Box": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Box" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Caixa" } }
+      }
+    },
+    "Canvas Size": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Canvas Size" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Tamanho da tela" } }
+      }
+    },
+    "Font": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Font" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Fonte" } }
+      }
+    },
+    "Hide Inspector": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hide Inspector" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ocultar Inspetor" } }
+      }
+    },
+    "Hide Sidebar": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hide Sidebar" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ocultar Barra Lateral" } }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Fechar" } }
+      }
+    },
+    "Zoom In": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom In" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ampliar" } }
+      }
+    },
+    "Zoom Out": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom Out" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Reduzir" } }
+      }
+    },
+    "Actual Pixels": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Actual Pixels" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Pixels reais" } }
+      }
+    },
+    "Zoom to Fit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Zoom to Fit" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ajustar à janela" } }
+      }
+    },
+    "Show Output Preview": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show Output Preview" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Mostrar resultado final" } }
+      }
+    },
+    "Tools": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Tools" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Ferramentas" } }
+      }
+    },
+    "Outline": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Outline" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Contorno" } }
+      }
+    },
+    "Plain": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Plain" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Simples" } }
+      }
+    },
+    "Position and Size": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Position and Size" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Posição e tamanho" } }
+      }
+    },
+    "Show Inspector": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show Inspector" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Mostrar Inspetor" } }
+      }
+    },
+    "Show Sidebar": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show Sidebar" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Mostrar Barra Lateral" } }
+      }
+    },
+    "System": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "System" } },
+        "pt-BR": { "stringUnit": { "state": "translated", "value": "Sistema" } }
       }
     }
   },

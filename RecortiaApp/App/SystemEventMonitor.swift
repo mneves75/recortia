@@ -1,12 +1,13 @@
 import AppKit
 
 /// Forwards system events that must stop capture immediately (FR-02, FR-10, PERM-02): display
-/// reconfiguration, screen lock, and the user session becoming inactive (fast user switching).
+/// reconfiguration, screen lock, sleep, and the user session becoming inactive (fast user switching).
 /// Observation only; nothing here polls or records input.
 final class SystemEventMonitor {
     enum Event: Equatable {
         case displaysChanged
         case screenLocked
+        case sleeping
     }
 
     private let handler: (Event) -> Void
@@ -22,11 +23,8 @@ final class SystemEventMonitor {
         observe(DistributedNotificationCenter.default(), Notification.Name("com.apple.screenIsLocked"), .screenLocked)
         observe(
             NSWorkspace.shared.notificationCenter, NSWorkspace.sessionDidResignActiveNotification, .screenLocked)
-    }
-
-    func stop() {
-        for (center, token) in tokens { center.removeObserver(token) }
-        tokens.removeAll()
+        observe(NSWorkspace.shared.notificationCenter, NSWorkspace.willSleepNotification, .sleeping)
+        observe(NSWorkspace.shared.notificationCenter, NSWorkspace.screensDidSleepNotification, .sleeping)
     }
 
     private func observe(_ center: NotificationCenter, _ name: Notification.Name, _ event: Event) {

@@ -21,40 +21,9 @@
         private static let minimumSpan = 0.8
 
         static func reviewContrast(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
-            // A landscape page keeps both seams inside the review's 360 pt preview viewport: a
-            // tall page is scaled to the preview width and the lower seam is clipped away.
-            let width = 480, height = 300
-            let seams = [80, 240]
-            let pages: [(String, NSColor)] = [
-                ("a dark page", NSColor(white: 0.06, alpha: 1)),
-                ("a light page", NSColor(white: 0.97, alpha: 1)),
-                // Mid grey is the worst case for a keyline: neither stroke is far from the content.
-                ("a mid grey page", NSColor(white: 0.5, alpha: 1)),
-            ]
-            for (pageName, pageColor) in pages {
-                for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-                    let name = appearance == .darkAqua ? "dark appearance" : "light appearance"
-                    let clean = try await render(
-                        width: width, height: height, pageColor: pageColor, seams: [], appearance: appearance)
-                    let marked = try await render(
-                        width: width, height: height, pageColor: pageColor, seams: seams, appearance: appearance)
-                    let measured = measure(clean: clean, marked: marked)
-                    context.check(
-                        "every seam marker keeps contrast on \(pageName) in \(name)",
-                        measured.weakestBand >= minimumContrast,
-                        String(
-                            format: "weakest band %.2f:1 over %d changed pixels", measured.weakestBand,
-                            measured.changed))
-                    // The marks must be where the seams are, spanning the width, not a blob
-                    // somewhere else in the preview that happens to be visible.
-                    context.check(
-                        "one marker band per seam spans the preview on \(pageName) in \(name)",
-                        measured.bands == seams.count && measured.narrowestSpan >= minimumSpan,
-                        String(
-                            format: "%d bands, narrowest %.0f%% of the width",
-                            measured.bands, measured.narrowestSpan * 100))
-                }
-            }
+            try await seamContrast(.vertical, context)
+            // A horizontal capture's seams are vertical bands; the same keyline rule holds.
+            try await seamContrast(.horizontal, context)
 
             // The review exists to be dismissed: a titled window keeps its close button, only the
             // controller is its delegate, and the one destructive exit asks first.
@@ -68,22 +37,12 @@
             context.check(
                 "the controller is the window's delegate, so close is answered",
                 window.delegate === controller, "\(String(describing: window.delegate))")
-            var asked = 0
-            controller.confirmDiscard = {
-                asked += 1
-                return false
-            }
+            // With nothing in review there is nothing to discard, so close does not ask. Asking
+            // while a capture waits in review is checked with a real review in `last-window`.
             context.check(
-                "closing the review asks before discarding", controller.windowShouldClose(window) == false,
-                "asked=\(asked)")
-            context.check("the question is asked exactly once per attempt", asked == 1, "asked=\(asked)")
-            controller.confirmDiscard = {
-                asked += 1
-                return true
-            }
-            context.check(
-                "a confirmed discard closes the review", controller.windowShouldClose(window) == true,
-                "asked=\(asked)")
+                "with nothing in review, the window closes without asking",
+                controller.windowShouldClose(window) == true && window.sheets.isEmpty,
+                "\(window.sheets.count) sheets")
 
             try await plantedChrome(context)
             try await checkerboardStaysOnScreen(harness, context)
@@ -179,9 +138,57 @@
                 exports[.aqua] != nil && exports[.aqua] == exports[.darkAqua])
         }
 
+        /// Renders the review with and without seams over three page colours in both appearances.
+        /// A vertical capture is landscape and a horizontal one portrait, so both seams stay inside
+        /// the 360 pt preview viewport, which fits a vertical capture to its width and a horizontal
+        /// one to its height.
+        private static func seamContrast(_ direction: ScrollCaptureDirection, _ context: ScenarioContext) async throws {
+            let horizontal = direction == .horizontal
+            let width = horizontal ? 300 : 480, height = horizontal ? 480 : 300
+            let seams = horizontal ? [80, 220] : [80, 240]
+            let capture = horizontal ? " of a horizontal capture" : ""
+            let pages: [(String, NSColor)] = [
+                ("a dark page", NSColor(white: 0.06, alpha: 1)),
+                ("a light page", NSColor(white: 0.97, alpha: 1)),
+                // Mid grey is the worst case for a keyline: neither stroke is far from the content.
+                ("a mid grey page", NSColor(white: 0.5, alpha: 1)),
+            ]
+            for (pageName, pageColor) in pages {
+                for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                    let name = appearance == .darkAqua ? "dark appearance" : "light appearance"
+                    let clean = try await render(
+                        width: width, height: height, direction: direction, pageColor: pageColor, seams: [],
+                        appearance: appearance)
+                    let marked = try await render(
+                        width: width, height: height, direction: direction, pageColor: pageColor, seams: seams,
+                        appearance: appearance)
+                    // A vertical band spans the preview's height, at the snapshot's scale.
+                    let measured = measure(
+                        clean: clean.pixels, marked: marked.pixels, verticalBands: horizontal,
+                        extent: horizontal
+                            ? Int(ScrollReviewView.horizontalPreviewHeight * marked.scale) : marked.pixels.width)
+                    context.check(
+                        "every seam marker\(capture) keeps contrast on \(pageName) in \(name)",
+                        measured.weakestBand >= minimumContrast,
+                        String(
+                            format: "weakest band %.2f:1 over %d changed pixels", measured.weakestBand,
+                            measured.changed))
+                    // The marks must be where the seams are, spanning the width, not a blob
+                    // somewhere else in the preview that happens to be visible.
+                    context.check(
+                        "one marker band per seam\(capture) spans the preview on \(pageName) in \(name)",
+                        measured.bands == seams.count && measured.narrowestSpan >= minimumSpan,
+                        String(
+                            format: "%d bands, narrowest %.0f%% of the preview",
+                            measured.bands, measured.narrowestSpan * 100))
+                }
+            }
+        }
+
         private static func render(
-            width: Int, height: Int, pageColor: NSColor, seams: [Int], appearance: NSAppearance.Name
-        ) async throws -> DecodedPixels {
+            width: Int, height: Int, direction: ScrollCaptureDirection, pageColor: NSColor, seams: [Int],
+            appearance: NSAppearance.Name
+        ) async throws -> (pixels: DecodedPixels, scale: Double) {
             let preview = try E2EDrawing.image(
                 size: CGSize(width: width, height: height), scale: 1
             ) { rect in
@@ -189,8 +196,9 @@
                 rect.fill()
             }
             let view = ScrollReviewView(
-                preview: preview, outputSize: PixelSize(width: width, height: height), seams: seams,
-                partialReason: nil, assemblyFailed: false, onAccept: {}, onDiscard: {})
+                preview: preview, outputSize: PixelSize(width: width, height: height), direction: direction,
+                seams: seams, partialReason: nil, assemblyFailed: false, isPreparingPreview: false, canAccept: true,
+                canDiscard: true, onAccept: {}, onDiscard: {})
             let window = E2ESnapshot.host(view, appearance: appearance)
             defer { window.close() }
             guard let root = window.contentView else { throw E2EAbort("the review host has no content") }
@@ -198,14 +206,17 @@
             let png = try E2ESnapshot.png(of: root, background: nil)
             guard let representation = NSBitmapImageRep(data: png), let image = representation.cgImage
             else { throw E2EAbort("the review snapshot did not decode") }
-            return try ContainerInspector.pixels(of: image)
+            return (try ContainerInspector.pixels(of: image), Double(image.width) / max(1, root.bounds.width))
         }
 
         /// Where the marks are and how they read: the strongest contrast of any changed pixel
-        /// against the content it replaced, the number of horizontal bands that changed, and the
-        /// narrowest horizontal span of a band as a share of the preview width. Counting bands is
-        /// what separates "the seams are drawn across the image" from "something changed somewhere".
-        private static func measure(clean: DecodedPixels, marked: DecodedPixels) -> (
+        /// against the content it replaced, the number of bands that changed (horizontal, or
+        /// vertical with `verticalBands`), and the narrowest span of a band along its line as a
+        /// share of `extent` pixels. Counting bands is what separates "the seams are drawn across
+        /// the image" from "something changed somewhere".
+        private static func measure(
+            clean: DecodedPixels, marked: DecodedPixels, verticalBands: Bool, extent: Int
+        ) -> (
             weakestBand: Double, bands: Int, narrowestSpan: Double, changed: Int
         ) {
             guard clean.width == marked.width, clean.height == marked.height else {
@@ -223,11 +234,13 @@
                     guard delta > 6 else { continue }
                     changed += 1
                     let ratio = contrast(marked.bytes, clean.bytes, index)
-                    let row = rows[y] ?? (minX: x, maxX: x, strongest: 0)
-                    rows[y] = (min(row.minX, x), max(row.maxX, x), max(row.strongest, ratio))
+                    // `rows` holds lines across the bands: rows, or columns for vertical bands.
+                    let line = verticalBands ? x : y, along = verticalBands ? y : x
+                    let row = rows[line] ?? (minX: along, maxX: along, strongest: 0)
+                    rows[line] = (min(row.minX, along), max(row.maxX, along), max(row.strongest, ratio))
                 }
             }
-            // A 1 pt dashed mark is a few rows tall; rows separated by a gap are another band.
+            // A 1 pt dashed mark is a few lines thick; lines separated by a gap are another band.
             var bands: [(minX: Int, maxX: Int, lastRow: Int, strongest: Double)] = []
             for y in rows.keys.sorted() {
                 guard let row = rows[y] else { continue }
@@ -242,7 +255,7 @@
             }
             let narrowest =
                 bands.isEmpty
-                ? 0 : bands.map { Double($0.maxX - $0.minX + 1) / Double(clean.width) }.min() ?? 0
+                ? 0 : bands.map { Double($0.maxX - $0.minX + 1) / Double(max(1, extent)) }.min() ?? 0
             // The floor applies to every band, not to the brightest pixel anywhere: a mark that
             // reads well at one point and vanishes along the rest of the seam is not visible.
             let weakest = bands.map(\.strongest).min() ?? 0

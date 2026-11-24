@@ -26,12 +26,18 @@ enum RenderEngine {
         let content = document.contentRect
         guard !content.isEmpty else { throw RenderError.invalidGeometry }
 
-        let size = document.outputPixelSize(exportScale: scale)
-        let padding = document.presentation.padding
+        let frame = document.outputFrame(exportScale: scale)
+        let size = frame.pixelSize
         let map = CGAffineTransform(
-            a: s, b: 0, c: 0, d: s, tx: (padding - content.minX) * s, ty: (padding - content.minY) * s)
-        let presented = !document.presentation.isPlain
-        try checkBudget(document, sources: sources, outputSize: size, map: map, presented: presented)
+            a: s, b: 0, c: 0, d: s, tx: frame.contentOriginX - content.minX * s,
+            ty: frame.contentOriginY - content.minY * s)
+        var framing = document.presentation
+        framing.border = nil
+        framing.watermark = nil
+        let presented = !framing.isPlain
+        try checkBudget(
+            document, sources: sources, outputSize: size, map: map, presented: presented, drawsCallouts: true,
+            watermarkOpacityLayer: (document.presentation.watermark?.opacity ?? 1) < 1)
 
         let images = try sanitizedLayerImages(document, sources: sources)
         var raster = try RenderRaster(width: size.width, height: size.height)
@@ -51,10 +57,13 @@ enum RenderEngine {
         // destination) must hide what the callout draws there.
         applyOutputMasks(&raster, document, map: map, pixelClip: contentBounds)
 
+        // Balance moves the finished, sanitized content as a whole, so it cannot uncover anything.
+        let shift = document.presentation.centresOpaqueContent ? balanceShift(raster, content: contentBounds) : (0, 0)
         var final =
             presented
-            ? try present(raster, document.presentation, contentRect: contentPixels, scale: s)
+            ? try present(raster, framing, contentRect: contentPixels, scale: s, shift: shift)
             : raster
+        try decorate(&final, with: document.presentation, scale: s)
         final.normalizeTransparentPixels()
         guard let image = final.makeImage() else { throw RenderError.allocationFailed }
         return image
@@ -71,7 +80,8 @@ enum RenderEngine {
         }
         let size = PixelSize(width: max(1, Int(w)), height: max(1, Int(h)))
         let map = CGAffineTransform(scaleX: scale, y: scale)
-        try checkBudget(document, sources: sources, outputSize: size, map: map, presented: false)
+        try checkBudget(
+            document, sources: sources, outputSize: size, map: map, presented: false, drawsCallouts: false)
 
         let images = try sanitizedLayerImages(document, sources: sources)
         var raster = try RenderRaster(width: size.width, height: size.height)
@@ -134,7 +144,8 @@ enum RenderEngine {
         if let crop = document.crop, !isFinite(crop) { throw RenderError.invalidGeometry }
         let presentation = document.presentation
         guard presentation.padding.isFinite, presentation.padding >= 0, presentation.cornerRadius.isFinite,
-            presentation.cornerRadius >= 0
+            presentation.cornerRadius >= 0, presentation.border?.isValid != false,
+            presentation.watermark?.isValid != false
         else { throw RenderError.invalidGeometry }
         if let shadow = presentation.shadow {
             guard shadow.radius.isFinite, shadow.radius >= 0, shadow.offsetY.isFinite, shadow.opacity.isFinite else {
@@ -159,7 +170,7 @@ enum RenderEngine {
     /// Estimates the renderer's own buffers and refuses before allocating any of them.
     static func checkBudget(
         _ document: Document, sources: [AssetID: CGImage], outputSize: PixelSize, map: CGAffineTransform,
-        presented: Bool
+        presented: Bool, drawsCallouts: Bool, watermarkOpacityLayer: Bool = false
     ) throws(RenderError) {
         let limit = RenderLimits.maxWorkingBytes
         var pixels = 0
@@ -180,17 +191,22 @@ enum RenderEngine {
         }
         add(outputArea)
         if presented { add(outputArea) }
+        if watermarkOpacityLayer { add(outputArea) }
         var seen = Set<AssetID>()
+        // `RenderRaster.fill` writes from one temporary row, at most as wide as the widest raster.
+        var fillRow = outputSize.width
         for layer in document.layers {
             if seen.insert(layer.assetID).inserted, let image = sources[layer.assetID] {
                 add(image.width * image.height)
+                fillRow = max(fillRow, image.width)
             }
             if let crop = layer.sourceCrop { add(crop.width * crop.height) }
         }
+        add(fillRow)
         let outputBounds = PixelRect(x: 0, y: 0, width: outputSize.width, height: outputSize.height)
         let factor = abs(map.a * map.d - map.b * map.c).squareRoot()
         var scratch = 0
-        for callout in document.callouts {
+        for callout in document.callouts where drawsCallouts {
             if case .magnifier(_, let destination) = callout.kind,
                 let area = PixelRect.outward(destination.cg.applying(map), within: outputBounds)
             {
@@ -387,15 +403,33 @@ enum RenderEngine {
         }
     }
 
-    /// Background, card shadow, and the content clipped to a rounded card.
+    /// The whole-pixel move that centres the content's fully opaque pixels in the output instead of
+    /// its box (FR-13 balance), limited so the content box stays inside the output. A window
+    /// capture's translucent shadow margin is not opaque, so the window itself ends up centred.
+    /// Content with no opaque pixel does not move.
+    static func balanceShift(_ raster: RenderRaster, content: PixelRect) -> (dx: Int, dy: Int) {
+        guard let opaque = raster.opaqueBounds(in: content) else { return (0, 0) }
+        let dx = (raster.width - opaque.width) / 2 - opaque.x
+        let dy = (raster.height - opaque.height) / 2 - opaque.y
+        return (
+            min(max(dx, -content.x), raster.width - content.maxX),
+            min(max(dy, -content.y), raster.height - content.maxY)
+        )
+    }
+
+    /// Background, card shadow, and the content clipped to a rounded card, the content moved by
+    /// `shift` whole pixels.
     static func present(
-        _ content: RenderRaster, _ presentation: Presentation, contentRect: CGRect, scale: Double
+        _ content: RenderRaster, _ presentation: Presentation, contentRect unshifted: CGRect, scale: Double,
+        shift: (dx: Int, dy: Int) = (0, 0)
     ) throws(RenderError) -> RenderRaster {
         guard let contentImage = content.makeImage() else { throw RenderError.allocationFailed }
         var output = try RenderRaster(width: content.width, height: content.height)
         let full = CGRect(x: 0, y: 0, width: output.width, height: output.height)
+        let contentRect = unshifted.offsetBy(dx: CGFloat(shift.dx), dy: CGFloat(shift.dy))
         let radius = min(presentation.cornerRadius * scale, min(contentRect.width, contentRect.height) / 2)
-        let card = CGPath(roundedRect: contentRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+        let card = CGMutablePath()
+        card.addRoundedRect(in: contentRect, cornerWidth: radius, cornerHeight: radius)
         try output.withTopLeftContext { context in
             drawBackground(presentation.background, in: full, context)
             if let shadow = presentation.shadow, shadow.opacity > 0 {
@@ -423,10 +457,83 @@ enum RenderEngine {
             context.addPath(card)
             context.clip()
             context.interpolationQuality = .none
-            DrawingPrimitives.drawUpright(contentImage, in: full, context)
+            DrawingPrimitives.drawUpright(
+                contentImage, in: full.offsetBy(dx: CGFloat(shift.dx), dy: CGFloat(shift.dy)), context)
             context.restoreGState()
         }
         return output
+    }
+
+    private static func decorate(
+        _ raster: inout RenderRaster, with presentation: Presentation, scale: Double
+    ) throws(RenderError) {
+        guard presentation.border != nil || presentation.watermark != nil else { return }
+        let output = CGRect(x: 0, y: 0, width: raster.width, height: raster.height)
+        try raster.withTopLeftContext { (context: CGContext) throws(RenderError) in
+            if let border = presentation.border {
+                let inset = min(border.width * scale, min(output.width, output.height) / 2)
+                let inner = output.insetBy(dx: inset, dy: inset)
+                let ring = CGMutablePath()
+                ring.addRect(output)
+                if !inner.isEmpty { ring.addRect(inner) }
+                context.addPath(ring)
+                context.setFillColor(border.color.cgColor)
+                context.fillPath(using: .evenOdd)
+            }
+            if let watermark = presentation.watermark {
+                try drawWatermark(watermark, in: output, scale: scale, context)
+            }
+        }
+    }
+
+    private static func drawWatermark(
+        _ watermark: Presentation.Watermark, in output: CGRect, scale: Double, _ context: CGContext
+    ) throws(RenderError) {
+        let shortSide = min(output.width, output.height)
+        let fontSize = max(8, min(44 * scale, shortSide * 0.12))
+        let text = Annotation.TextContent(
+            origin: Point(x: 0, y: 0), string: watermark.text, fontSize: fontSize, appearance: .outlined)
+        let layout: TextLayout.Operation
+        do {
+            layout = try TextLayout.operation(
+                for: text, style: Annotation.Style(stroke: .black, lineWidth: max(0.6, fontSize * 0.07)))
+        } catch {
+            throw .textLayoutFailed(error)
+        }
+        let ink = layout.metrics.frame.cg
+        let angle = watermark.rotationDegrees * .pi / 180
+        let cosine = abs(cos(angle)), sine = abs(sin(angle))
+        let rotatedWidth = ink.width * cosine + ink.height * sine
+        let rotatedHeight = ink.width * sine + ink.height * cosine
+        let interior = output.insetBy(dx: shortSide * 0.04, dy: shortSide * 0.04)
+        guard rotatedWidth > 0, rotatedHeight > 0 else { throw .invalidGeometry }
+        let fit = min(1, interior.width / rotatedWidth, interior.height / rotatedHeight)
+        let halfWidth = rotatedWidth * fit / 2, halfHeight = rotatedHeight * fit / 2
+        let left = interior.minX + halfWidth, right = interior.maxX - halfWidth
+        let top = interior.minY + halfHeight, bottom = interior.maxY - halfHeight
+        let center: CGPoint
+        switch watermark.position {
+        case .topLeft: center = CGPoint(x: left, y: top)
+        case .topRight: center = CGPoint(x: right, y: top)
+        case .center: center = CGPoint(x: output.midX, y: output.midY)
+        case .bottomLeft: center = CGPoint(x: left, y: bottom)
+        case .bottomRight: center = CGPoint(x: right, y: bottom)
+        }
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.setShouldSmoothFonts(false)
+        context.setShouldAntialias(true)
+        context.translateBy(x: center.x, y: center.y)
+        context.rotate(by: angle)
+        context.scaleBy(x: fit, y: fit)
+        context.translateBy(x: -ink.midX, y: -ink.midY)
+        if watermark.opacity < 1 {
+            // Composite the glyph fill and outline once at the chosen opacity.
+            context.setAlpha(watermark.opacity)
+            context.beginTransparencyLayer(in: ink, auxiliaryInfo: nil)
+        }
+        layout.draw(in: context)
+        if watermark.opacity < 1 { context.endTransparencyLayer() }
     }
 
     private static func drawBackground(_ background: Presentation.Background, in rect: CGRect, _ context: CGContext) {
@@ -437,8 +544,9 @@ enum RenderEngine {
             context.setFillColor(color.cgColor)
             context.fill(rect)
         case .linearGradient(let from, let to, let angleDegrees):
+            // The locations array is valid for the call and has one entry per color.
             guard let space = RenderRaster.colorSpace,
-                let gradient = CGGradient(
+                let gradient = unsafe CGGradient(
                     colorsSpace: space,
                     colors: [from.cgColor, to.cgColor] as CFArray,
                     locations: [0, 1])
@@ -451,6 +559,18 @@ enum RenderEngine {
                 gradient, start: CGPoint(x: center.x - dx * half, y: center.y - dy * half),
                 end: CGPoint(x: center.x + dx * half, y: center.y + dy * half),
                 options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+        case .radialGradient(let center, let edge):
+            // The locations array is valid for the call and has one entry per color.
+            guard let space = RenderRaster.colorSpace,
+                let gradient = unsafe CGGradient(
+                    colorsSpace: space,
+                    colors: [center.cgColor, edge.cgColor] as CFArray,
+                    locations: [0, 1])
+            else { return }
+            let middle = CGPoint(x: rect.midX, y: rect.midY)
+            context.drawRadialGradient(
+                gradient, startCenter: middle, startRadius: 0, endCenter: middle,
+                endRadius: hypot(rect.width, rect.height) / 2, options: [.drawsAfterEndLocation])
         }
     }
 }

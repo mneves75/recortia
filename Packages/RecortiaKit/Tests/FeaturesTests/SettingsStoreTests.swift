@@ -70,6 +70,7 @@ struct SettingsStoreTests {
             "captureIncludesWindowShadow", "autoCopy", "autoSave", "launchAtLogin", "updateChecksEnabled",
             "automaticScrollingEnabled", "defaultExportFormat", "jpegQuality", "defaultExportScale", "ocrTextMode",
             "pinDefaultOpacity", "preferredSaveFolderBookmark", "editorContentSize", "keepsRunningInMenuBarChoice",
+            "autoRedactsSensitiveTextChoice",
         ]
         #expect(Set(object.keys).isSubset(of: allowed))
     }
@@ -93,6 +94,73 @@ struct SettingsStoreTests {
         #expect(loaded.preferences.editorContentSize == nil)
     }
 
+    // Failure mode: a required zoom key would make every older blob fail to decode and reset all
+    // settings; a choice that does not persist turns wheel zoom off at every launch.
+    @Test("Wheel zoom defaults off, persists, and older blobs still load")
+    func editorZoomPreferences() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        store.update {
+            $0.zoomsWithScrollWheel = true
+            $0.reversesScrollWheelZoom = true
+        }
+        let reloaded = SettingsStore(storage: storage).preferences
+        #expect(reloaded.zoomsWithScrollWheel && reloaded.reversesScrollWheelZoom)
+
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        var old = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("zoom") }
+        old["captureDelaySeconds"] = 2
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 2)
+        #expect(!loaded.preferences.zoomsWithScrollWheel && !loaded.preferences.reversesScrollWheelZoom)
+    }
+
+    // Failure modes: a translucent background colour (a hand-edited blob) would leave alpha in an
+    // export that promises none; a required key would reset every older blob.
+    @Test("The window background defaults to transparent, is always opaque, persists, and older blobs load")
+    func windowCaptureBackground() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(store.preferences.windowCaptureBackground == .transparent)
+        store.update { $0.windowCaptureBackground = .solid(RGBA(r: 1, g: 2, b: 3, a: 40)) }
+        #expect(store.preferences.windowCaptureBackground == .solid(RGBA(r: 1, g: 2, b: 3)))
+        #expect(SettingsStore(storage: storage).preferences.windowCaptureBackground == .solid(RGBA(r: 1, g: 2, b: 3)))
+
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        var old = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("background") }
+        old["captureDelaySeconds"] = 6
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 6)
+        #expect(loaded.preferences.windowCaptureBackground == .transparent)
+    }
+
+    // Failure mode (PREF-01): a blob written while the legacy launchAtLogin key was dropped loaded as
+    // defaults, and a blob without the key cannot be read by 0.14.0 after a rollback.
+    @Test("A blob without launchAtLogin loads, and the next write restores the key for 0.14")
+    func keylessLaunchAtLoginBlob() throws {
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old.removeValue(forKey: "launchAtLogin")
+        old["captureDelaySeconds"] = 4
+        let storage = MemoryPreferenceStorage()
+        storage.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let store = SettingsStore(storage: storage)
+        #expect(store.loadIssue == nil)
+        #expect(store.preferences.captureDelaySeconds == 4)
+        store.update { $0.autoCopy = true }
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        #expect(object["launchAtLogin"] as? Bool == false, "0.14.0 requires the key")
+    }
+
     // Failure mode: a required Bool added to the synthesized Codable makes every older blob fail
     // to decode, which resets all settings and drops the sealed export consent.
     @Test("Keeping Recortia in the menu bar defaults on, persists off, and older blobs still load")
@@ -114,6 +182,100 @@ struct SettingsStoreTests {
         #expect(loaded.loadIssue == nil)
         #expect(loaded.preferences.captureDelaySeconds == 5)
         #expect(loaded.preferences.keepsRunningInMenuBar)
+    }
+
+    // Failure mode: the masking choice as a required key would make every 0.14 blob fail to
+    // decode, resetting all settings and the sealed export consent.
+    @Test("Automatic masking defaults off, persists on, and blobs written before it existed still load")
+    func autoRedactsSensitiveText() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(!store.preferences.autoRedactsSensitiveText)
+        store.update { $0.autoRedactsSensitiveText = true }
+        #expect(SettingsStore(storage: storage).preferences.autoRedactsSensitiveText)
+
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old = old.filter { !$0.key.localizedCaseInsensitiveContains("autoRedacts") }
+        old["captureDelaySeconds"] = 2
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.captureDelaySeconds == 2)
+        #expect(!loaded.preferences.autoRedactsSensitiveText)
+    }
+
+    // Failure mode: "automatic" written into defaultExportFormat makes a 0.14 blob reader fail to
+    // decode after a rollback, resetting every setting and the sealed export consent.
+    @Test("Automatic format persists beside the fixed format that older Recortia reads")
+    func automaticExportFormat() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        #expect(store.preferences.exportFormat == .png)
+        store.update {
+            $0.exportFormat = .jpeg
+            $0.exportFormat = .automatic
+        }
+        #expect(SettingsStore(storage: storage).preferences.exportFormat == .automatic)
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        #expect(object["defaultExportFormat"] as? String == "jpeg", "0.14 reads only png or jpeg")
+        #expect(store.exportOptions.formatChoice == .automatic)
+
+        // A hand-edited or future blob naming automatic in the old key still loads as Automatic.
+        var odd = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        odd["defaultExportFormat"] = "automatic"
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: odd), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.exportFormat == .automatic)
+        #expect(loaded.preferences.defaultExportFormat == .png)
+
+        store.update { $0.exportFormat = .png }
+        #expect(store.exportOptions == ExportOptions())
+    }
+
+    // Failure mode: "heic" written into defaultExportFormat makes a 0.14 blob reader fail to decode
+    // after a rollback, resetting every setting and the sealed export consent.
+    @Test("HEIC persists beside the fixed format older Recortia reads, and older blobs load unchanged")
+    func heicExportFormat() throws {
+        let storage = MemoryPreferenceStorage()
+        let store = SettingsStore(storage: storage)
+        store.update {
+            $0.exportFormat = .jpeg
+            $0.exportFormat = .heic
+        }
+        #expect(SettingsStore(storage: storage).preferences.exportFormat == .heic)
+        let written = try #require(storage.values[SettingsStore.storageKey])
+        let object = try #require(try JSONSerialization.jsonObject(with: written) as? [String: Any])
+        #expect(object["defaultExportFormat"] as? String == "jpeg", "0.14 reads only png or jpeg")
+        store.update { $0.exportFormat = .automatic }
+        #expect(store.preferences.exportFormat == .automatic && store.exportOptions.formatChoice == .automatic)
+
+        // A blob written before HEIC existed has neither key and loads as it was.
+        var old = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(Preferences())) as? [String: Any])
+        old.removeValue(forKey: "heicExportFormatChoice")
+        old.removeValue(forKey: "automaticExportFormatChoice")
+        old["defaultExportFormat"] = "jpeg"
+        old["jpegQuality"] = 0.8
+        let legacy = MemoryPreferenceStorage()
+        legacy.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let loaded = SettingsStore(storage: legacy)
+        #expect(loaded.loadIssue == nil)
+        #expect(loaded.preferences.exportFormat == .jpeg)
+        #expect(loaded.exportOptions == ExportOptions(format: .jpeg(quality: 0.8)))
+
+        // A hand-edited or future blob naming heic in the old key still loads as HEIC.
+        old["defaultExportFormat"] = "heic"
+        let odd = MemoryPreferenceStorage()
+        odd.setPreferenceData(try JSONSerialization.data(withJSONObject: old), forKey: SettingsStore.storageKey)
+        let oddStore = SettingsStore(storage: odd)
+        #expect(oddStore.loadIssue == nil)
+        #expect(oddStore.preferences.exportFormat == .heic && oddStore.preferences.defaultExportFormat == .png)
     }
 
     @Test("Works against a real, isolated UserDefaults suite")

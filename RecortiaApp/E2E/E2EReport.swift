@@ -29,7 +29,6 @@
         }
     }
 
-    /// Collects assertions and screenshots for the scenario that is running.
     @MainActor
     final class ScenarioContext {
         let id: String
@@ -133,7 +132,6 @@
         }
     }
 
-    /// The run's output directory and deterministic screenshot numbering.
     @MainActor
     final class E2EOutput {
         let directory: URL

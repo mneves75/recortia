@@ -6,6 +6,22 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Recortia</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>PNG or JPEG image</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.png</string>
+				<string>public.jpeg</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -33,5 +49,11 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Recortia contributors</string>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://mneves75.github.io/recortia/appcast.xml</string>
 </dict>
 </plist>

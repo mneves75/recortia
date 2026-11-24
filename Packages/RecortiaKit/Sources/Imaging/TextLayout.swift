@@ -7,10 +7,14 @@ import class AppKit.NSFontDescriptor
 
 public enum TextLayoutError: Error, Equatable, Sendable {
     case invalidGeometry
+    /// CTFontCreateUIFontForLanguage returned nil for the system font.
+    case unavailableSystemFont(TextAppearance)
     /// NSFontDescriptor.withDesign returned nil.
     case unavailableFontDesign(TextAppearance)
-    /// NSFont(descriptor:size:) returned nil.
+    /// CTFontDescriptorCreateMatchingFontDescriptor returned nil.
     case unavailableFont(TextAppearance)
+    /// Core Text created a font other than the one it matched.
+    case mismatchedFont(TextAppearance)
     case unmeasurableText
 }
 
@@ -28,39 +32,49 @@ public struct TextLayoutMetrics: Hashable, Sendable {
 
 /// Stateless public-system-font resolution shared by native editing, selection and export.
 public enum TextLayout {
-    /// Bounded mitigation for transient nil font results: CI runs 38652457209 and 38795897584,
-    /// and sandbox E0 run 5/30 (monospaced, size 28). Reruns pass; the cause is not established.
-    /// Each stage repeats the same call at most twice after a nil. Under load, 100 sandboxed
-    /// runs saw three nils, each recovered by the first repeat (docs/specs/full-source-review).
+    /// Designed fonts are built from Core Text objects only; `withDesign` just edits the
+    /// descriptor's attributes. NSFont's shared cache (`NSFont(descriptor:size:)` and the
+    /// descriptor of `NSFont.systemFont(ofSize:)`) returns nil or an incomplete descriptor while
+    /// another thread releases fonts (F-1, docs/specs/full-source-review/f1-investigation.md).
+    /// Each nullable stage repeats the same call at most twice after a nil, then reports a failure
+    /// at that stage.
     public static func nativeFont(for appearance: TextAppearance, size: Double) throws(TextLayoutError) -> NSFont {
         try nativeFont(
             for: appearance, size: size,
+            systemFont: { CTFontCreateUIFontForLanguage(.system, $0, nil) },
             withDesign: { $0.withDesign($1) },
-            fontFromDescriptor: { NSFont(descriptor: $0, size: $1) })
+            matchingDescriptor: { CTFontDescriptorCreateMatchingFontDescriptor($0 as CTFontDescriptor, nil) })
     }
 
     static func nativeFont(
         for appearance: TextAppearance, size: Double,
+        systemFont: (Double) -> CTFont?,
         withDesign: (NSFontDescriptor, NSFontDescriptor.SystemDesign) -> NSFontDescriptor?,
-        fontFromDescriptor: (NSFontDescriptor, Double) -> NSFont?
+        matchingDescriptor: (NSFontDescriptor) -> CTFontDescriptor?
     ) throws(TextLayoutError) -> NSFont {
         // Two-sided ink/decorations must have a representable extent before resolving a font.
         guard size.isFinite, size > 0, (size * 2).isFinite else { throw .invalidGeometry }
-        let base = NSFont.systemFont(ofSize: size)
         let design: NSFontDescriptor.SystemDesign
         switch appearance {
-        case .standard, .outlined, .boxed: return base
+        case .standard, .outlined, .boxed: return NSFont.systemFont(ofSize: size)
         case .rounded, .roundedBoxed: design = .rounded
         case .monospaced, .monospacedBoxed: design = .monospaced
         }
-        let baseDescriptor = base.fontDescriptor
+        guard let base = resolveFontValue({ systemFont(size) }) else { throw .unavailableSystemFont(appearance) }
+        let baseDescriptor = CTFontCopyFontDescriptor(base) as NSFontDescriptor
         guard let descriptor = resolveFontValue({ withDesign(baseDescriptor, design) }) else {
             throw .unavailableFontDesign(appearance)
         }
-        guard let font = resolveFontValue({ fontFromDescriptor(descriptor, size) }) else {
+        guard let matched = resolveFontValue({ matchingDescriptor(descriptor) }) else {
             throw .unavailableFont(appearance)
         }
-        return font
+        // CTFontCreateWithFontDescriptor never returns nil and falls back to another font, so
+        // the result must be the font that was matched.
+        let font = CTFontCreateWithFontDescriptor(matched, size, nil)
+        guard let name = CTFontDescriptorCopyAttribute(matched, kCTFontNameAttribute) as? String,
+            CTFontCopyPostScriptName(font) as String == name
+        else { throw .mismatchedFont(appearance) }
+        return font as NSFont
     }
 
     private static func resolveFontValue<Value>(_ resolve: () -> Value?) -> Value? {
@@ -128,13 +142,15 @@ public enum TextLayout {
         guard width.isFinite, height.isFinite, width > 0, height > 0 else { throw .unmeasurableText }
         let content = Rect<DocumentSpace>(origin: text.origin, size: Size(width: width, height: height))
         guard content.maxX.isFinite, content.maxY.isFinite else { throw .unmeasurableText }
-        let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: height), transform: nil)
+        let path = CGMutablePath()
+        path.addRect(CGRect(x: 0, y: 0, width: width, height: height))
         let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: 0), path, nil)
         let visible = CTFrameGetVisibleStringRange(frame)
         guard visible.length == text.string.utf16.count else { throw .unmeasurableText }
         guard let lines = CTFrameGetLines(frame) as? [CTLine] else { throw .unmeasurableText }
         var origins = Array(repeating: CGPoint.zero, count: lines.count)
-        CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+        // Length 0 asks for every line, and `origins` has exactly one slot per line.
+        unsafe CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
         var bounds = content
         for (line, origin) in zip(lines, origins) {
             let ink = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])

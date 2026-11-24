@@ -10,8 +10,6 @@ public final class OnboardingModel {
         case localProcessing
         case capture
         case editing
-        case recognition
-        case composition
         case sharing
         case shortcuts
         case done
@@ -34,9 +32,7 @@ public final class OnboardingModel {
         switch step {
         case .localProcessing: step = .capture
         case .capture: step = .editing
-        case .editing: step = .recognition
-        case .recognition: step = .composition
-        case .composition: step = .sharing
+        case .editing: step = .sharing
         case .sharing: step = .shortcuts
         case .shortcuts: finish()
         case .done: break
@@ -52,7 +48,7 @@ public final class OnboardingModel {
         step = .localProcessing
     }
 
-    /// Completes onboarding (also used by Skip). Shortcuts stay unassigned unless the user set them.
+    /// Completes onboarding, from Skip or the final tour page. App launch seeds the shortcuts.
     public func finish() {
         step = .done
         settings.update { $0.hasCompletedOnboarding = true }

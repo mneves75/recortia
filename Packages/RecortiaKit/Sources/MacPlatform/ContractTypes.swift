@@ -2,8 +2,8 @@ import CoreGraphics
 import Domain
 import Foundation
 
-// Integrator-owned value types shared by MacPlatform, Features, and the app (module-contracts.md).
-// Workers extend these in their own files; they do not edit this one.
+// Value types shared by MacPlatform, Features, and the app. Boundary and signature-change rules:
+// docs/architecture/module-contracts.md.
 
 public struct DisplayInfo: Sendable, Hashable, Identifiable {
     public let id: CGDirectDisplayID
@@ -60,9 +60,16 @@ public enum CaptureError: Error, Equatable, Sendable {
 
 public enum SinkError: Error, Equatable, Sendable {
     case clipboardWriteFailed
+    /// The snapshot could not be handed to the print panel.
+    case printFailed
     case destinationExists
+    /// The name is longer than the destination's volume accepts.
+    case nameTooLong
     case accessDenied
     case diskFull
     case volumeUnavailable
     case writeFailed(code: Int)
+    /// The save failed and left this entry, relative to the folder, rather than remove something
+    /// Recortia might not have created.
+    case leftover(name: String)
 }

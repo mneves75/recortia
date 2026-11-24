@@ -18,14 +18,7 @@ extension EditorModel {
     /// A drop's bytes are requested only after the shared importer admits its lazy reader.
     @discardableResult
     public func addImageLayer(readSource: () throws(ImportFailure) -> ImportSource) async -> Bool {
-        guard !isClosed else { return false }
-        let admission: ImportAdmission
-        do throws(ImportFailure) {
-            admission = try environment.imageImporter.admit(readSource: readSource)
-        } catch {
-            post(.importFailed(error))
-            return false
-        }
+        guard let admission = admitDroppedImage(readSource: readSource) else { return false }
         return await addImageLayer(admitted: admission)
     }
 
@@ -33,7 +26,7 @@ extension EditorModel {
     /// after the shared importer has a free slot (IO-01). Posts the failure and returns nil when
     /// the drop is refused; otherwise pass the admission to `addImageLayer(admitted:)`.
     public func admitDroppedImage(readSource: () throws(ImportFailure) -> ImportSource) -> ImportAdmission? {
-        guard !isClosed else { return nil }
+        guard !isClosed, admitsAction(explaining: true) else { return nil }
         do throws(ImportFailure) {
             return try environment.imageImporter.admit(readSource: readSource)
         } catch {
@@ -45,7 +38,7 @@ extension EditorModel {
     /// Decodes an admitted image and adds it as a layer. Always frees the importer's slot.
     @discardableResult
     public func addImageLayer(admitted admission: ImportAdmission) async -> Bool {
-        guard !isClosed else {
+        guard !isClosed, admitsAction() else {
             environment.imageImporter.release(admission)
             return false
         }
@@ -87,8 +80,7 @@ extension EditorModel {
     }
 
     public func setLayerOpacity(_ opacity: Double, for id: LayerID) {
-        guard opacity.isFinite else { return }
-        let value = min(max(opacity, 0), 1)
+        guard let value = (0.0...1).admit(opacity) else { return }
         edit("Layer Opacity") { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
             document.layers[index].opacity = value
@@ -105,7 +97,6 @@ extension EditorModel {
         }
     }
 
-    /// Whether the top image is shown half transparent over the one below it.
     public var isComparingTransparency: Bool {
         let layers = document.layers
         return layers.count >= 2 && layers.last?.opacity == Self.comparisonOpacity
@@ -167,6 +158,8 @@ extension EditorModel {
                     union = union.union(frame)
                 }
             }
+            for mask in document.masks { union = union.union(mask.outputRect) }
+            for effect in document.obfuscations { union = union.union(effect.rect) }
             let dx = max(0, -union.minX).rounded(.up), dy = max(0, -union.minY).rounded(.up)
             try Self.shiftContent(&document, dx: dx, dy: dy)
             document.canvasSize = Size(
@@ -198,7 +191,7 @@ extension EditorModel {
         }
         document.annotations = try document.annotations.map {
             let translated = $0.translated(dx: dx, dy: dy)
-            try validateArrowCurve(translated)
+            try validateArrow(translated)
             return translated
         }
         for index in document.masks.indices {
@@ -215,26 +208,26 @@ extension EditorModel {
 
     /// Aligns the selection to the canvas (one item) or to the selection's bounds (several).
     public func align(_ alignment: EditorAlignment) {
+        guard textEditing == nil else { return }
         let items = orderedSelection
         let frames = items.compactMap { item in frame(of: item).map { (item, $0) } }
         guard let first = frames.first else { return }
         let reference =
             frames.count == 1 ? document.canvasRect : frames.dropFirst().reduce(first.1) { $0.union($1.1) }
         endContinuousChange()
-        edit("Align") { document in
-            for (item, frame) in frames {
-                let dx: Double, dy: Double
-                switch alignment {
-                case .left: (dx, dy) = (reference.minX - frame.minX, 0)
-                case .horizontalCenter: (dx, dy) = (reference.midX - frame.midX, 0)
-                case .right: (dx, dy) = (reference.maxX - frame.maxX, 0)
-                case .top: (dx, dy) = (0, reference.minY - frame.minY)
-                case .verticalCenter: (dx, dy) = (0, reference.midY - frame.midY)
-                case .bottom: (dx, dy) = (0, reference.maxY - frame.maxY)
-                }
-                try Self.translate(&document, items: [item], dx: dx, dy: dy)
+        var deltas: [EditorItemID: (dx: Double, dy: Double)] = [:]
+        for (item, frame) in frames {
+            switch alignment {
+            case .left: deltas[item] = (reference.minX - frame.minX, 0)
+            case .horizontalCenter: deltas[item] = (reference.midX - frame.midX, 0)
+            case .right: deltas[item] = (reference.maxX - frame.maxX, 0)
+            case .top: deltas[item] = (0, reference.minY - frame.minY)
+            case .verticalCenter: deltas[item] = (0, reference.midY - frame.midY)
+            case .bottom: deltas[item] = (0, reference.maxY - frame.maxY)
             }
         }
+        // Every delta comes from the same starting frames and lands in one pass (R4-01).
+        edit("Align") { document in try Self.move(&document, by: deltas) }
     }
 
     // MARK: Presentation
@@ -242,19 +235,20 @@ extension EditorModel {
     static let presentationRange: ClosedRange<Double> = 0...512
 
     public func setBackground(_ background: Presentation.Background) {
-        edit("Background") { $0.presentation.background = background }
+        if case .linearGradient(_, _, let angle) = background {
+            guard angle.isFinite else { return }
+        }
+        edit("Background", inPreview: true) { $0.presentation.background = background }
     }
 
     public func setPadding(_ padding: Double) {
-        guard padding.isFinite else { return }
-        let value = min(max(padding, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
-        edit("Padding") { $0.presentation.padding = value }
+        guard let value = Self.presentationRange.admit(padding) else { return }
+        edit("Padding", inPreview: true) { $0.presentation.padding = value }
     }
 
     public func setCornerRadius(_ radius: Double) {
-        guard radius.isFinite else { return }
-        let value = min(max(radius, Self.presentationRange.lowerBound), Self.presentationRange.upperBound)
-        edit("Corner Radius") { $0.presentation.cornerRadius = value }
+        guard let value = Self.presentationRange.admit(radius) else { return }
+        edit("Corner Radius", inPreview: true) { $0.presentation.cornerRadius = value }
     }
 
     public func setShadow(_ shadow: Presentation.Shadow?) {
@@ -263,12 +257,84 @@ extension EditorModel {
                 return
             }
         }
-        edit("Shadow") { $0.presentation.shadow = shadow }
+        edit("Shadow", inPreview: true) { $0.presentation.shadow = shadow }
+    }
+
+    /// The output ratio the background grows to (FR-13); the padding stays a minimum.
+    public func setAspect(_ aspect: FramingAspect) {
+        edit("Aspect Ratio", inPreview: true) { $0.presentation.aspect = aspect }
+    }
+
+    public func setBalancesContent(_ balances: Bool) {
+        edit("Balance", inPreview: true) { $0.presentation.balancesContent = balances }
+    }
+
+    public func setFramingBorder(_ border: Presentation.Border?) {
+        guard border?.isValid != false else { return }
+        edit("Border", inPreview: true) { $0.presentation.border = border }
+    }
+
+    @discardableResult
+    public func setFramingWatermark(_ watermark: Presentation.Watermark?) -> Bool {
+        var admitted = watermark
+        if var value = admitted {
+            guard let text = Presentation.Watermark.normalizedText(value.text) else { return false }
+            value.text = text
+            guard value.isValid else { return false }
+            admitted = value
+        }
+        return edit("Watermark", inPreview: true) { $0.presentation.watermark = admitted }
+    }
+
+    /// The framing new captures open with; nil until one is saved. Open documents never change.
+    public var defaultFraming: Presentation? { environment.settings.preferences.defaultFraming }
+
+    /// Saves this document's framing as the default for new captures. Not a document edit.
+    public func saveDefaultFraming() {
+        guard !isClosed else { return }
+        let framing = document.presentation
+        environment.settings.update { $0.defaultFraming = framing }
+    }
+
+    public func resetDefaultFraming() {
+        guard !isClosed else { return }
+        environment.settings.update { $0.defaultFraming = nil }
+    }
+
+    public var framingRecipes: [FramingRecipe] { environment.settings.preferences.framingRecipes?.entries ?? [] }
+
+    public func applyFramingRecipe(_ id: UUID) throws(FramingRecipes.Failure) {
+        guard let recipe = framingRecipes.first(where: { $0.id == id }),
+            edit("Framing Recipe", inPreview: true, { $0.presentation = recipe.presentation })
+        else { throw .unavailable }
+    }
+
+    public func saveFramingRecipe(named name: String) throws(FramingRecipes.Failure) -> UUID {
+        try changeFramingRecipes { recipes throws(FramingRecipes.Failure) in
+            try recipes.save(named: name, presentation: document.presentation)
+        }
+    }
+
+    public func renameFramingRecipe(_ id: UUID, to name: String) throws(FramingRecipes.Failure) {
+        try changeFramingRecipes { recipes throws(FramingRecipes.Failure) in try recipes.rename(id, to: name) }
+    }
+
+    public func removeFramingRecipe(_ id: UUID) throws(FramingRecipes.Failure) {
+        try changeFramingRecipes { recipes throws(FramingRecipes.Failure) in try recipes.remove(id) }
+    }
+
+    private func changeFramingRecipes<Result>(
+        _ change: (inout FramingRecipes) throws(FramingRecipes.Failure) -> Result
+    ) throws(FramingRecipes.Failure) -> Result {
+        guard !isClosed else { throw .unavailable }
+        var recipes = environment.settings.preferences.framingRecipes ?? FramingRecipes()
+        let result = try change(&recipes)
+        environment.settings.update { $0.framingRecipes = recipes }
+        return result
     }
 
     public func setSpotlightDim(_ dim: Double, for id: CalloutID) {
-        guard dim.isFinite else { return }
-        let value = min(max(dim, 0), 1)
+        guard let value = (0.0...1).admit(dim) else { return }
         edit("Spotlight") { document in
             guard let index = document.callouts.firstIndex(where: { $0.id == id }),
                 case .spotlight(let rect, _) = document.callouts[index].kind
@@ -279,8 +345,7 @@ extension EditorModel {
 
     /// Blur radius or pixel block size of a cosmetic effect.
     public func setObfuscationAmount(_ amount: Double, for id: MaskID) {
-        guard amount.isFinite else { return }
-        let value = min(max(amount, 1), 128)
+        guard let value = (1.0...128).admit(amount) else { return }
         edit("Effect Strength") { document in
             guard let index = document.obfuscations.firstIndex(where: { $0.id == id }) else { return }
             switch document.obfuscations[index].style {

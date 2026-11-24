@@ -115,7 +115,7 @@
                 "mixed selected arrows become curved",
                 await E2EWait.until {
                     model.document.annotations.allSatisfy {
-                        if case .arrow(_, _, .some) = $0.kind { true } else { false }
+                        if case .arrow(_, _, .some, _) = $0.kind { true } else { false }
                     }
                 })
             context.check("mixed style changes are one undo action", model.session.undoCount == count + 1)

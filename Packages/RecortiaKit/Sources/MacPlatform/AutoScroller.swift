@@ -78,12 +78,13 @@ protocol AutoScrollEnvironment {
 
 @MainActor
 protocol ScrollEventPosting {
-    /// Posts one pixel-unit scroll-wheel event to `pid` only. Negative values scroll content down.
-    func postScroll(pixels: Int32, at location: CGPoint, toProcess pid: pid_t) -> Bool
+    /// Posts one pixel-unit scroll-wheel event to `pid` only. Negative `vertical` reveals content
+    /// below, negative `horizontal` content to the right.
+    func postScroll(vertical: Int32, horizontal: Int32, at location: CGPoint, toProcess pid: pid_t) -> Bool
 }
 
-/// Minimal targeted scrolling for automatic scrolling capture (FR-10). It posts only vertical
-/// scroll-wheel events, only to the chosen target process, only while Accessibility is granted and
+/// Minimal targeted scrolling for automatic scrolling capture (FR-10). It posts only scroll-wheel
+/// events, on the one axis of the session's direction, only to the chosen target process, only while Accessibility is granted and
 /// nothing relevant changed. No typing, clicking, AppleScript, clipboard reads, or event taps.
 /// Once stopped, it stays stopped.
 @MainActor
@@ -94,7 +95,7 @@ public final class AutoScroller {
         case stopped(AutoScrollStopReason)
     }
 
-    /// Upper bound for one step, in points; larger requests are clamped.
+    /// Upper bound for one pixel-unit wheel event; larger requests are clamped before posting.
     static let maxStepPixels = 1_000
 
     public let target: WindowInfo
@@ -148,8 +149,9 @@ public final class AutoScroller {
         if observesActivations { observeActivations() }
     }
 
-    /// Checks the stop policy, then posts one scroll step revealing content below.
-    public func scrollDown(byPixels pixels: Int) -> AutoScrollStepResult {
+    /// Checks the stop policy, then posts one scroll step revealing content below, or to the right
+    /// for a horizontal session.
+    public func scroll(byPixels pixels: Int, direction: ScrollCaptureDirection) -> AutoScrollStepResult {
         switch state {
         case .idle: return .notRunning
         case .stopped(let reason): return .stopped(reason)
@@ -160,8 +162,13 @@ public final class AutoScroller {
             stop(reason: reason)
             return .stopped(reason)
         }
-        let step = Int32(min(max(pixels, 1), Self.maxStepPixels))
-        guard poster.postScroll(pixels: -step, at: scrollLocation, toProcess: target.ownerPID) else {
+        let step = -Int32(min(max(pixels, 1), Self.maxStepPixels))
+        let horizontal = direction == .horizontal
+        guard
+            poster.postScroll(
+                vertical: horizontal ? 0 : step, horizontal: horizontal ? step : 0, at: scrollLocation,
+                toProcess: target.ownerPID)
+        else {
             stop(reason: .eventPostFailed)
             return .stopped(.eventPostFailed)
         }
@@ -238,10 +245,13 @@ struct LiveAutoScrollEnvironment: AutoScrollEnvironment {
 
 @MainActor
 struct TargetedScrollEventPoster: ScrollEventPosting {
-    func postScroll(pixels: Int32, at location: CGPoint, toProcess pid: pid_t) -> Bool {
+    func postScroll(vertical: Int32, horizontal: Int32, at location: CGPoint, toProcess pid: pid_t) -> Bool {
+        // wheel1 is the vertical axis and wheel2 the horizontal one; a vertical step keeps today's
+        // one-wheel event.
         guard
             let event = CGEvent(
-                scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: pixels, wheel2: 0, wheel3: 0)
+                scrollWheelEvent2Source: nil, units: .pixel, wheelCount: horizontal == 0 ? 1 : 2, wheel1: vertical,
+                wheel2: horizontal, wheel3: 0)
         else { return false }
         event.location = location
         event.postToPid(pid)

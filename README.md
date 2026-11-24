@@ -8,13 +8,17 @@ The current version is **0.14.0** (build 28), signed with Developer ID and notar
 available as a DMG from the [0.14.0 release](https://github.com/mneves75/recortia/releases/tag/v0.14.0).
 The physical checks listed under [Known limitations](#known-limitations) have not run. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md).
+The 0.16.0 source candidate adds Save Optimized Copy and Copy Text to the capture thumbnail,
+an opt-in automatic Pin, and reusable framing with a border and text watermark. It includes
+frozen region selection and the larger capture preview from the 0.15.0 candidate. Qualification
+and local installation records are in [BACKLOG.json](BACKLOG.json).
 
 Recortia is an independent open-source project and is not affiliated with any other screenshot
 app.
 
 ## Install
 
-Requires macOS 15 or later on Apple Silicon.
+Recortia 0.14 requires macOS 15 or later on Apple Silicon; from 0.15 it requires macOS 26 or later.
 
 Download `Recortia-0.14.0.dmg` from the
 [0.14.0 release](https://github.com/mneves75/recortia/releases/tag/v0.14.0), open it and drag
@@ -87,6 +91,11 @@ The Homebrew cask (`brew install --cask mneves75/tap/recortia`) still installs t
   the Accessibility APIs that automatic scrolling needs
   ([ADR-002](docs/adr/0002-permission-and-sandbox-profile.md)).
 
+Optional automatic masking (Settings › Privacy, off by default) covers e-mail addresses and phone
+numbers that on-device text recognition finds in a new capture, a scrolling capture or an opened or
+pasted image before the editor shows it or any automatic export sends it. It can miss text, so check
+the image before sharing it.
+
 Redaction protects the image you export. It cannot recall copies you exported earlier, including
 automatic exports made before you redacted, or other apps' clipboard histories. Turn off
 automatic copy, save and upload before capturing something sensitive.
@@ -129,7 +138,7 @@ touches the real screen, general pasteboard, user defaults or Keychain. Releases
 maintainer with `scripts/release.sh` from a `v<version>[-betaN]` tag.
 
 `project.yml` owns the version and build number. After adding or moving source files, or
-editing `project.yml`, run `xcodegen generate` and commit the regenerated project.
+editing `project.yml`, run `scripts/xcodegen.sh generate` and commit the regenerated project.
 
 The code is split into `RecortiaApp/` (AppKit and SwiftUI app) and `Packages/RecortiaKit`:
 `Domain` (document model, geometry, state machines), `Imaging` (decode, privacy renderer,
@@ -139,12 +148,12 @@ in [docs/architecture/module-contracts.md](docs/architecture/module-contracts.md
 
 ## Known limitations
 
-- Not yet validated on hardware: live capture on 1× and mixed-DPI multi-display setups, macOS 15
-  and 26 hosts, the scrolling compatibility matrix, VoiceOver and input-method passes, and the
+- Not yet validated on hardware: live capture on 1× and mixed-DPI multi-display setups, macOS 26
+  hosts, the scrolling compatibility matrix, VoiceOver and input-method passes, and the
   performance budgets. On the build Mac, the first opening of the editor and of Settings took
   longer than the 50 ms target (PERF-02).
 - Physical keyboard, Spaces and permission checks were not run on 0.14.0.
-- The editor's window toolbar has been checked only on macOS 27; on macOS 15 and 26 it may draw
+- The editor's window toolbar has been checked only on macOS 27; on macOS 26 it may draw
   differently.
 - VoiceOver and Full Keyboard Access have not been checked on the editor toolbar, its menu buttons,
   or the inspector's style tiles and color swatches.
@@ -166,5 +175,13 @@ is kept in [docs/handoff/](docs/handoff/).
 
 ## License
 
-[MIT](LICENSE). The app bundle includes this license and the MIT notice of the pinned
-KeyboardShortcuts package.
+[MIT](LICENSE). The app bundle includes this license and the notices of the pinned
+KeyboardShortcuts and Sparkle packages; [THIRD_PARTY.txt](THIRD_PARTY.txt) lists every
+third-party component and its license.
+
+## Acknowledgements
+
+The e-mail and phone-number patterns, tiled sweep and fragment joining behind automatic masking
+are adapted from [Fosco](https://github.com/gabrielbuzziv/fosco) by Gabriel Buzzi, MIT, at commit
+`cf6ca8d4f176a5c6628a6ccfdb2c2db0abaa5ba8`. Its notice ships in the app bundle
+(`Fosco-LICENSE.txt`) and heads `Packages/RecortiaKit/Sources/Imaging/SensitiveText.swift`.

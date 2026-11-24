@@ -22,12 +22,6 @@ extension EditorModel {
         EditorMeasurement(start: start, end: end, pointPixelScale: measurementPointScale)
     }
 
-    /// Places ruler anchors directly (keyboard alternative to dragging), snapped to pixel edges.
-    func setRuler(from start: Point<DocumentSpace>, to end: Point<DocumentSpace>) {
-        guard start.isFinite, end.isFinite else { return }
-        ruler = measurement(from: Self.snapped(start), to: Self.snapped(end))
-    }
-
     public func clearRuler() { ruler = nil }
 
     /// The document pixel containing `p`, when it lies on the canvas.
@@ -61,9 +55,8 @@ extension EditorModel {
         return (px, py)
     }
 
-    /// Loupe hover: records the pixel and color under `p`.
     public func inspect(at p: Point<DocumentSpace>) {
-        guard let pixel = pixel(at: p) else {
+        guard admitsAction(), let pixel = pixel(at: p) else {
             inspection = nil
             return
         }
@@ -74,8 +67,8 @@ extension EditorModel {
     func pickColor(at p: Point<DocumentSpace>) {
         guard !isClosed, let pixel = pixel(at: p) else { return }
         invalidateColorPick()
-        let size = colorSampleSize
-        if size == .singlePixel {
+        let size = colorSampleSize, darkest = samplesDarkestPixel
+        if size == .singlePixel, !darkest {
             pickedColor = sample(x: pixel.x, y: pixel.y)
             return
         }
@@ -84,25 +77,48 @@ extension EditorModel {
             return
         }
         guard let source = basePixel(x: pixel.x, y: pixel.y, in: base) else { return }
+        let side = darkestSide(in: base)
         let identity = session.requestIdentity(), key = currentBaseKey, request = UUID()
         colorPickRequest = request
         colorPickTask = Task { [weak self] in
-            let color = await PixelSampler.averageColor(atX: source.x, y: source.y, in: base, radius: size.radius)
+            let color =
+                darkest
+                ? await PixelSampler.darkestColor(centerX: source.x, y: source.y, in: base, side: side)
+                : await PixelSampler.averageColor(atX: source.x, y: source.y, in: base, radius: size.radius)
             guard let self, self.colorPickRequest == request else { return }
             self.colorPickTask = nil
             self.colorPickRequest = nil
             guard !Task.isCancelled, !self.isClosed, self.session.accepts(identity), self.isBaseCurrent,
-                self.currentBaseKey == key, self.baseImage === base, self.colorSampleSize == size, let color
+                self.currentBaseKey == key, self.baseImage === base, self.colorSampleSize == size,
+                self.samplesDarkestPixel == darkest, let color
             else { return }
             self.pickedColor = EditorColorSample(x: pixel.x, y: pixel.y, color: color)
         }
     }
 
+    /// The darkest-pixel box side in base pixels: 20 points through the capture's point scale, or
+    /// 20 pixels when the document has none (an imported image has pixels, not points).
+    func darkestSide(in base: CGImage) -> Int {
+        let canvas = session.document.canvasSize
+        let basePerDocument = canvas.width > 0 ? Double(base.width) / canvas.width : 1
+        let side = (20 * (measurementPointScale ?? 1) * basePerDocument).rounded()
+        guard side.isFinite else { return 20 }
+        return Int(
+            min(max(side, Double(PixelSampler.darkestSides.lowerBound)), Double(PixelSampler.darkestSides.upperBound)))
+    }
+
     /// A different neighborhood requires a new deliberate pick.
     public func setColorSampleSize(_ size: PixelSampleSize) {
-        guard !isClosed, size != colorSampleSize else { return }
+        guard !isClosed, admitsAction(), size != colorSampleSize else { return }
         invalidateColorPick()
         storedColorSampleSize = size
+    }
+
+    /// Switching between darkest-pixel and area sampling also requires a new pick.
+    public func setSamplesDarkestPixel(_ darkest: Bool) {
+        guard !isClosed, admitsAction(), darkest != samplesDarkestPixel else { return }
+        invalidateColorPick()
+        storedSamplesDarkestPixel = darkest
     }
 
     func invalidateColorPick() {
@@ -112,15 +128,54 @@ extension EditorModel {
         pickedColor = nil
     }
 
-    /// Copies the picked color as "#RRGGBB" or "R G B" plain text (explicit action only).
-    @discardableResult
-    public func copyPickedColor(asHex: Bool = true) -> Bool {
-        guard !isClosed, isBaseCurrent, let picked = pickedColor else { return false }
-        return copyText(asHex ? picked.hex : picked.rgbText, success: .colorCopied)
+    /// The format Copy uses, a preference shared by every editor (HEX by default).
+    public var colorFormat: ColorFormat {
+        get { environment.settings.preferences.colorFormat }
+        set {
+            guard !isClosed, newValue != colorFormat else { return }
+            environment.settings.update { $0.colorFormat = newValue }
+        }
     }
 
-    /// An exact (2·radius+1)² crop of the current sanitized base around the inspected pixel, for
-    /// drawing without interpolation. Nil when no pixel is inspected or the base is not current.
+    /// The picked color as `colorFormat` text, while the sanitized base it came from is current.
+    public var pickedColorText: String? {
+        guard isBaseCurrent, let picked = pickedColor else { return nil }
+        return picked.color.formatted(colorFormat)
+    }
+
+    /// Copies the picked color as `colorFormat` plain text (explicit action only).
+    @discardableResult
+    public func copyPickedColor() -> Bool {
+        guard !isClosed, let text = pickedColorText else { return false }
+        return copyText(text, success: .colorCopied)
+    }
+
+    /// Makes the picked color one side of the contrast pair. Refused for a translucent pick:
+    /// WCAG 2 contrast is defined between opaque colors.
+    @discardableResult
+    public func usePickedColor(as role: ContrastRole) -> Bool {
+        guard !isClosed, isBaseCurrent, let color = pickedColor?.color, color.isOpaque else { return false }
+        switch role {
+        case .text: contrastText = color
+        case .background: contrastBackground = color
+        }
+        return true
+    }
+
+    /// WCAG 2 contrast of the chosen text and background colors, once both are set.
+    public var contrast: ContrastRatio? {
+        guard let contrastText, let contrastBackground else { return nil }
+        return ContrastRatio(foreground: contrastText, background: contrastBackground)
+    }
+
+    func clearContrastColors() {
+        contrastText = nil
+        contrastBackground = nil
+    }
+
+    /// A crop of up to (2·radius+1) pixels per axis around the inspected pixel, clipped to the
+    /// current sanitized base, for drawing without interpolation. Nil when no pixel is inspected
+    /// or the base is not current.
     public func loupe(radius: Int = 7) -> EditorLoupe? {
         guard let inspection, isBaseCurrent, let base = baseImage, radius >= 0 else { return nil }
         let canvas = session.document.canvasSize

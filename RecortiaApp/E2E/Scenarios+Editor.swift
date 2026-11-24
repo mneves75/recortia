@@ -59,12 +59,8 @@
                 "the native Save button is disabled for a full palette",
                 try !E2EAccessibilityControl.isEnabled("palette.save", in: root, context))
             context.check(
-                "the native Remove button is disabled for an unsaved color",
-                try !E2EAccessibilityControl.isEnabled("palette.remove", in: root, context))
-            context.check(
-                "the Remove button's tooltip is its label, as for every inspector action",
-                try E2EAccessibilityControl.text(.help, for: "palette.remove", in: root, context)
-                    == String(localized: "Remove Current Color", table: "Editor"))
+                "removing is a swatch's context-menu item, not a separate button",
+                !E2EAccessibilityControl.isPresent("palette.remove", in: root))
             model.setStrokeColor(.white)
             context.check("saving leaves the document and undo unchanged", model.document == document && !model.canUndo)
             context.check(
@@ -92,11 +88,26 @@
             let beforeRemoval = model.document
             let remainingColors = model.savedAnnotationColors.filter { $0 != .red }
             await E2ESnapshot.settle(root)
-            try E2EAccessibilityControl.press("palette.remove", in: root, context)
+            // VoiceOver reaches removal as the swatch's named action; pointers use its context menu.
+            try E2EAccessibilityControl.performCustomAction(
+                String(localized: "Remove Saved Color", table: "Editor"), on: "palette.apply.E53935", in: root, context)
             try context.require(
-                "the native Remove Current Color button removes the saved color",
+                "the swatch's Remove Saved Color removes the saved color",
                 await E2EWait.until { model.savedAnnotationColors == remainingColors })
             context.check("removing a saved color leaves annotations unchanged", model.document == beforeRemoval)
+            let second = try context.unwrap("a second saved color", remainingColors.first)
+            await E2ESnapshot.settle(root)
+            _ = try await E2EAccessibilityControl.chooseFromMenu(
+                String(localized: "Remove Saved Color", table: "Editor"),
+                opening: "palette.apply.\(second.hex.dropFirst())", in: root, context, byRightClick: true)
+            try context.require(
+                "the swatch's context menu removes a second saved color",
+                await E2EWait.until { model.savedAnnotationColors == Array(remainingColors.dropFirst()) })
+            context.check(
+                "the context menu leaves annotations unchanged", model.document == beforeRemoval,
+                "before \(beforeRemoval.annotations.map { "\($0.style.stroke.hex) \($0.kind)" }), "
+                    + "after \(model.document.annotations.map { "\($0.style.stroke.hex) \($0.kind)" }), "
+                    + "selection \(model.selection)")
             await E2EActions.snapshotEditor(controller, context, shot: "palette")
             if let window = controller.window {
                 window.setContentSize(NSSize(width: 980, height: 560))
@@ -212,6 +223,22 @@
             let layer = try context.unwrap("image layer", model.document.layers.first)
             model.select(.layer(layer.id))
             let root = try context.unwrap("editor content", controller.contentRoot)
+            // Pointer input needs a key window in the foreground: the owned host takes it and yields.
+            let foreground = try await E2EForegroundFixture.start(context)
+            defer { foreground.requestStop() }
+            if !E2EForegroundFixture.runnerIsForeground {
+                try await foreground.restore()
+                try await foreground.yieldToRunner()
+            }
+            await E2ESnapshot.settle(root)
+            // Position and Size starts collapsed; open it as a person does, and close it at the end.
+            await E2EActions.scrollInspector(controller, to: 1)
+            await E2ESnapshot.settle(root)
+            try await E2EAccessibilityControl.setDisclosure(
+                "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                expanded: true, in: root, context)
+            await E2ESnapshot.settle(root)
+            await E2EActions.scrollInspector(controller, to: 0)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "before")
             let fields = EditorWindowController.all(NSTextField.self, in: root)
@@ -240,6 +267,22 @@
                 model.frame(of: .layer(layer.id)) == Rect(x: 0, y: 0, width: 800, height: 600))
             context.check("height field agrees with the document", field.doubleValue == 600)
             await E2EActions.snapshotEditor(controller, context)
+            await E2EActions.scrollInspector(controller, to: 1)
+            await E2ESnapshot.settle(root)
+            try await E2EAccessibilityControl.setDisclosure(
+                "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                expanded: false, in: root, context)
+            await E2ESnapshot.settle(root)
+            context.check(
+                "closing Position and Size reports it collapsed",
+                (try? E2EAccessibilityControl.disclosureIsExpanded(
+                    "inspector.positionAndSize", titled: String(localized: "Position and Size", table: "Editor"),
+                    in: root, context))
+                    == false)
+            context.check(
+                "closing Position and Size removes the height field",
+                !E2EAccessibilityControl.isPresent("frame.height", in: root)
+                    && !EditorWindowController.all(NSTextField.self, in: root).contains { $0 === field })
         }
 
         static func annotations(_ harness: E2EHarness, _ context: ScenarioContext) async throws {
@@ -321,7 +364,6 @@
             context.check(
                 "each gesture is one undo step", model.session.undoCount == 9, "undo steps: \(model.session.undoCount)")
 
-            // Select the rectangle by clicking its stroke with the select tool.
             E2EActions.click(model, .select, at: p(480, 200))
             let rectangle = model.document.annotations[2]
             context.check(
@@ -435,7 +477,8 @@
             await E2EActions.snapshotEditor(controller, context, shot: "editor")
 
             let url = harness.output.workDirectory.appending(path: "redaction-export.png")
-            let outcome = await E2EActions.export(controller, .save(url, overwriteConfirmed: false))
+            let outcome = await E2EActions.export(
+                controller, .save(url, format: .fixed(.png), replacing: nil))
             try context.require("export saved the PNG", outcome == .saved(url), "\(outcome)")
             let data = try Data(contentsOf: url)
             let decoded = try E2EActions.decode(data, "export", context)
@@ -499,7 +542,7 @@
                 model.setCrop(Rect(x: 8, y: 8, width: 464, height: 224))
                 model.setResizeScale(0.5)
                 let url = harness.output.workDirectory.appending(path: "\(name)-export.png")
-                let outcome = await model.export(.save(url, overwriteConfirmed: false))
+                let outcome = await model.export(.save(url, format: .fixed(.png), replacing: nil))
                 guard outcome == .saved(url) else { throw E2EAbort("\(name) export: \(outcome)") }
                 let data = try Data(contentsOf: url)
                 controller.window?.close()
@@ -543,7 +586,8 @@
             await E2EActions.snapshotEditor(controller, context, shot: "crop")
 
             let url = harness.output.workDirectory.appending(path: "crop-resize.png")
-            let outcome = await E2EActions.export(controller, .save(url, overwriteConfirmed: false))
+            let outcome = await E2EActions.export(
+                controller, .save(url, format: .fixed(.png), replacing: nil))
             try context.require("export saved", outcome == .saved(url), "\(outcome)")
             let decoded = try E2EActions.decode(try Data(contentsOf: url), "crop export", context)
             context.check(
@@ -603,7 +647,7 @@
             let picked = try context.unwrap("the color picker samples", model.pickedColor)
             context.check("picker reads cell 4 as #1A2B3C", picked.hex == "#1A2B3C", picked.hex)
             context.check("RGB text is decimal sRGB", picked.rgbText == "26 43 60", picked.rgbText)
-            context.check("Copy HEX succeeds", model.copyPickedColor(asHex: true))
+            context.check("Copy in the default HEX format succeeds", model.copyPickedColor())
             context.check(
                 "the private text pasteboard holds the HEX",
                 harness.textPasteboard.string(forType: .string) == "#1A2B3C",
@@ -695,7 +739,8 @@
                 model.document.outputPixelSize(exportScale: 1) == expected,
                 "\(model.document.outputPixelSize(exportScale: 1))")
             let url = harness.output.workDirectory.appending(path: "composition.png")
-            let outcome = await E2EActions.export(controller, .save(url, overwriteConfirmed: false))
+            let outcome = await E2EActions.export(
+                controller, .save(url, format: .fixed(.png), replacing: nil))
             try context.require("composition exported", outcome == .saved(url), "\(outcome)")
             let decoded = try E2EActions.decode(try Data(contentsOf: url), "composition", context)
             context.check(

@@ -148,17 +148,27 @@ public enum ExportFailure: Hashable, Sendable {
     case encodeFailed
     case budgetExceeded
     case clipboardFailed
+    case printFailed
     case accessDenied
-    case destinationExists
+    /// A file exists where the save would write: the file the save resolved to, which a Replace
+    /// question names and its consent must name back; nil when no single file was meant.
+    case destinationExists(URL?)
+    /// The file name is longer than the destination's volume accepts.
+    case nameTooLong
     case diskFull
     case volumeUnavailable
     case staleDocument
     case system(code: Int)
+    /// A save failed and left this entry, relative to its folder.
+    case leftover(name: String)
+    /// Automatic masking of the capture did not finish, so its automatic batch was skipped, or an
+    /// export was asked for while the masks were still on their way (FR-06).
+    case maskingUnfinished
 }
 
 /// Export: requested → snapshotting → sanitizing → rendering → encoding → committing → succeeded.
-/// Failure or cancellation before commit never reports success; cancellation during or after the
-/// commit reports that the action already completed.
+/// Before commit, cancellation enters `.canceled`; during commit it enters
+/// `.succeeded(canceledAfterCommit: true)`. Terminal states accept no further cancel event.
 public enum ExportState: Hashable, Sendable {
     case requested
     case snapshotting
@@ -184,6 +194,7 @@ public enum ExportState: Hashable, Sendable {
         case (.sanitizing, .render): return .rendering
         case (.rendering, .encode): return .encoding
         case (.encoding, .commit): return .committing
+        case (.committing, .destinationCollision): return .encoding
         case (.committing, .committed): return .succeeded(canceledAfterCommit: false)
         case (.committing, .cancel): return .succeeded(canceledAfterCommit: true)
         case (.committing, .fail(let failure)): return .failed(failure)
@@ -200,6 +211,8 @@ public enum ExportEvent: Hashable, Sendable {
     case render
     case encode
     case commit
+    /// The exclusive file attempt found an existing name and wrote nothing.
+    case destinationCollision
     case committed
     case cancel
     case fail(ExportFailure)

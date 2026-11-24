@@ -79,13 +79,18 @@ public struct Rect<Space>: Hashable, Sendable, Codable {
         [Point(x: minX, y: minY), Point(x: maxX, y: minY), Point(x: maxX, y: maxY), Point(x: minX, y: maxY)]
     }
 
-    /// Throws for NaN/infinite coordinates and negative spans; zero-sized rects are valid.
+    /// Throws for NaN/infinite coordinates or far edges and negative spans; zero-sized rects are valid.
     @discardableResult
     public func validated() throws -> Rect {
-        guard origin.isFinite, size.width.isFinite, size.height.isFinite else { throw GeometryError.nonFinite }
+        guard origin.isFinite, size.width.isFinite, size.height.isFinite, maxX.isFinite, maxY.isFinite else {
+            throw GeometryError.nonFinite
+        }
         guard size.width >= 0, size.height >= 0 else { throw GeometryError.negativeSize }
         return self
     }
+
+    /// Geometry an edit may store: what `validated()` accepts.
+    public var isValid: Bool { (try? validated()) != nil }
 
     public func contains(_ point: Point<Space>) -> Bool {
         point.x >= minX && point.x < maxX && point.y >= minY && point.y < maxY
@@ -168,7 +173,7 @@ public struct PixelRect: Hashable, Sendable, Codable {
     public var isEmpty: Bool { width <= 0 || height <= 0 }
     public var area: Int { width * height }
 
-    var asRect: Rect<SourcePixelSpace> {
+    public var asRect: Rect<SourcePixelSpace> {
         Rect(x: Double(x), y: Double(y), width: Double(width), height: Double(height))
     }
 
@@ -190,5 +195,12 @@ public struct PixelRect: Hashable, Sendable, Codable {
         let cx1 = min(bounds.width, Int(x1)), cy1 = min(bounds.height, Int(y1))
         guard cx1 > cx0, cy1 > cy0 else { return nil }
         return PixelRect(x: cx0, y: cy0, width: cx1 - cx0, height: cy1 - cy0)
+    }
+}
+
+extension ClosedRange where Bound == Double {
+    /// Admits a value entering an edit: nil when it is not finite, else clamped into the range.
+    public func admit(_ value: Double) -> Double? {
+        value.isFinite ? Swift.min(Swift.max(value, lowerBound), upperBound) : nil
     }
 }

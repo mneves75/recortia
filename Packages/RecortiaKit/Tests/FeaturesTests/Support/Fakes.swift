@@ -110,7 +110,7 @@ enum TestFixtures {
 final class ManualClock: FeatureClock {
     private struct Sleeper {
         let id: UUID
-        let deadline: Date
+        let deadline: Duration
         let continuation: CheckedContinuation<Void, any Error>
     }
 
@@ -125,8 +125,7 @@ final class ManualClock: FeatureClock {
     func sleep(for duration: Duration) async throws {
         sleepRequests.append(duration)
         let id = UUID()
-        let seconds = Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
-        let deadline = current.addingTimeInterval(seconds)
+        let deadline = elapsed + duration
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
                 if Task.isCancelled {
@@ -140,11 +139,27 @@ final class ManualClock: FeatureClock {
         }
     }
 
+    /// A wall-clock correction: the date moves, elapsed time and pending sleeps do not.
+    func jumpWallClock(bySeconds seconds: Double) {
+        current = current.addingTimeInterval(seconds)
+    }
+
+    private var elapsed: Duration = .zero
+    func uptime() -> Duration { elapsed }
+
     func advance(bySeconds seconds: Double) {
         current = current.addingTimeInterval(seconds)
-        let due = sleepers.filter { $0.deadline <= current }
-        sleepers.removeAll { $0.deadline <= current }
+        elapsed += .seconds(seconds)
+        let due = sleepers.filter { $0.deadline <= elapsed }
+        sleepers.removeAll { $0.deadline <= elapsed }
         for sleeper in due { sleeper.continuation.resume() }
+    }
+
+    /// Time passes but no sleeper wakes: a timer that started late or whose continuation is still
+    /// queued. A later `advance` wakes whatever is due by then.
+    func stall(bySeconds seconds: Double) {
+        current = current.addingTimeInterval(seconds)
+        elapsed += .seconds(seconds)
     }
 
     private func cancelSleeper(_ id: UUID) {
@@ -191,6 +206,27 @@ final class FakeCaptureService: CaptureService {
         guard let image = makeImage() else { throw .system(code: -99) }
         return (image, TestFixtures.geometry(for: target))
     }
+}
+
+/// Element frames for region snapping (B-7). It has no prompt path to count: the service protocol
+/// offers none. `pending` holds each read until the test resolves it, oldest first.
+@MainActor
+final class FakeInterfaceElements: InterfaceElementFrameService {
+    var result: ElementSnapping.Walk?
+    var pending: Pending<ElementSnapping.Walk?>?
+    private(set) var calls: [[WindowInfo]] = []
+
+    func frames(under windows: [WindowInfo]) async -> ElementSnapping.Walk? {
+        calls.append(windows)
+        if let pending { return await pending.wait() }
+        return result
+    }
+}
+
+@MainActor
+final class FakeCaptureSound: CaptureSoundService {
+    private(set) var playCount = 0
+    func playCaptureSound() { playCount += 1 }
 }
 
 @MainActor
@@ -240,32 +276,62 @@ final class FakeAssetService: ImageAssetService {
     private(set) var registeredCaptures: [ImageAssetInfo] = []
     private(set) var registeredStitched: [ImageAssetInfo] = []
     private(set) var released: [AssetID] = []
+    var pendingCanonicalRegistration: Pending<Void>?
+    /// When set, imports decode for real into this store, so exports can render them.
+    var store: ImageStore?
+    /// Without a store, report the size the file declares instead of 16 × 9, without decoding.
+    var reportsDeclaredSize = false
 
     func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo {
         if let pendingImport { await pendingImport.wait() }
         if let importError { throw importError }
         imported.append((data.count, origin))
-        return ImageAssetInfo(id: AssetID(), pixelSize: PixelSize(width: 16, height: 9), origin: origin)
+        if let store { return await store.insert(try ImageDecoder.decode(data), origin: origin) }
+        let size = reportsDeclaredSize ? try ImageHeader.pixelSize(data) : PixelSize(width: 16, height: 9)
+        return ImageAssetInfo(id: AssetID(), pixelSize: size, origin: origin)
     }
 
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
-        let info = ImageAssetInfo(
-            id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height), origin: .captured(geometry))
+        if store != nil {
+            return await registerCapture(try ImageDecoder.canonicalize(image), geometry: geometry)
+        }
+        return recordCapture(
+            ImageAssetInfo(
+                id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height),
+                origin: .captured(geometry)))
+    }
+
+    func registerCapture(_ image: DecodedImage, geometry: CaptureGeometry) async -> ImageAssetInfo {
+        if let pendingCanonicalRegistration { await pendingCanonicalRegistration.wait() }
+        let origin = AssetOrigin.captured(geometry)
+        if let store { return recordCapture(await store.insert(image, origin: origin)) }
+        return recordCapture(ImageAssetInfo(id: AssetID(), pixelSize: image.pixelSize, origin: origin))
+    }
+
+    private func recordCapture(_ info: ImageAssetInfo) -> ImageAssetInfo {
         registeredCaptures.append(info)
         return info
     }
 
-    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-        -> ImageAssetInfo
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+        async throws(ImportError) -> ImageAssetInfo
     {
-        let info = ImageAssetInfo(
-            id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height),
-            origin: .scrollCapture(partialReason: partialReason))
+        let origin = AssetOrigin.scrollCapture(partialReason: partialReason, pointPixelScale: pointPixelScale)
+        let info: ImageAssetInfo
+        if let store {
+            info = await store.insert(try ImageDecoder.canonicalize(image), origin: origin)
+        } else {
+            info = ImageAssetInfo(
+                id: AssetID(), pixelSize: PixelSize(width: image.width, height: image.height), origin: origin)
+        }
         registeredStitched.append(info)
         return info
     }
 
-    func release(_ id: AssetID) { released.append(id) }
+    func release(_ id: AssetID) {
+        released.append(id)
+        if let store { Task { await store.remove(id) } }
+    }
 }
 
 @MainActor
@@ -314,6 +380,8 @@ final class FakeRenderService: RenderService {
 final class FakeExportService: ExportService {
     var pending: Pending<Result<Void, ExportServiceError>>?
     var failure: ExportFailure?
+    /// When set, document snapshots come from this real pipeline, so their bytes are the export's.
+    var pipeline: ExportPipeline?
     private(set) var snapshotCount = 0
     private(set) var snapshotCancellationCount = 0
 
@@ -324,10 +392,15 @@ final class FakeExportService: ExportService {
         if let pending { try await pending.wait().get() }
         if Task.isCancelled { snapshotCancellationCount += 1 }
         if let failure { throw ExportServiceError(failure) }
+        if let pipeline {
+            do { return try await pipeline.snapshot(of: session, options: options, date: date) } catch {
+                throw ExportServiceError(.renderFailed)
+            }
+        }
         return ShareSnapshot(
             documentID: session.document.id, revision: session.revision, privacyEpoch: session.privacyEpoch,
             format: options.format, pixelSize: PixelSize(width: 8, height: 8), bytes: Data([0x89, 0x50]),
-            suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
+            filename: options.filenameTemplate.name(for: date, format: options.format, timeZone: .gmt))
     }
 
     private(set) var pinnedRequests: [(image: CGImage, exportID: DocumentID, options: ExportOptions)] = []
@@ -342,7 +415,7 @@ final class FakeExportService: ExportService {
         return ShareSnapshot(
             documentID: exportID, revision: 0, privacyEpoch: privacyEpoch, format: options.format,
             pixelSize: PixelSize(width: image.width, height: image.height), bytes: Data([0x89, 0x50]),
-            suggestedFilename: ExportFilename.make(for: date, format: options.format, timeZone: .gmt))
+            filename: options.filenameTemplate.name(for: date, format: options.format, timeZone: .gmt))
     }
 }
 
@@ -357,9 +430,23 @@ final class FakeClipboard: ClipboardSinkService {
     }
 }
 
+/// Records what reaches the print panel; never shows one.
+@MainActor
+final class FakePrinter: PrintSinkService {
+    var error: SinkError?
+    private(set) var presented: [ShareSnapshot] = []
+
+    func present(_ snapshot: ShareSnapshot) throws(SinkError) {
+        if let error { throw error }
+        presented.append(snapshot)
+    }
+}
+
 @MainActor
 final class FakeFileSink: FileSinkService {
     var error: SinkError?
+    /// Files that exist: exclusive creation of one of them fails as the real sink does.
+    var existing: Set<URL> = []
     var pending: Pending<Void>?
     private(set) var saves: [(snapshot: ShareSnapshot, url: URL, overwrite: Bool)] = []
     private(set) var uniqueSaves: [(snapshot: ShareSnapshot, folder: URL)] = []
@@ -367,6 +454,8 @@ final class FakeFileSink: FileSinkService {
     func save(_ snapshot: ShareSnapshot, to url: URL, overwrite: Bool) async throws(SinkError) -> URL {
         if let pending { await pending.wait() }
         if let error { throw error }
+        if !overwrite, existing.contains(url) { throw .destinationExists }
+        existing.insert(url)
         saves.append((snapshot, url, overwrite))
         return url
     }
@@ -481,16 +570,20 @@ final class FakeStitcher: ScrollStitchService {
     private(set) var appendCount = 0
     private(set) var lastElapsed: Duration?
     private(set) var resetCount = 0
+    /// The direction of the latest `reset`; a horizontal stitch grows in width.
+    private(set) var direction = ScrollCaptureDirection.vertical
     private(set) var acceptedFrameCount = 0
     private(set) var outputSize = PixelSize(width: 0, height: 0)
-    /// Mirrors `ScrollStitcher`: the page ends after this many consecutive stationary frames.
+    /// Mirrors `ScrollStitcher`'s stationarity threshold; the model still needs the target's
+    /// confirmation to call an automatic capture complete.
     var stationaryFramesForEnd = ScrollStitcher.endOfPageStationaryFrames
     private(set) var consecutiveStationary = 0
 
     var endOfPageDetected: Bool { acceptedFrameCount > 0 && consecutiveStationary >= stationaryFramesForEnd }
 
-    func reset() {
+    func reset(direction: ScrollCaptureDirection) {
         resetCount += 1
+        self.direction = direction
         acceptedFrameCount = 0
         consecutiveStationary = 0
         outputSize = PixelSize(width: 0, height: 0)
@@ -509,8 +602,13 @@ final class FakeStitcher: ScrollStitchService {
         case .accepted(let offset):
             acceptedFrameCount += 1
             consecutiveStationary = 0
-            let added = outputSize.height == 0 ? frameHeight : offset
-            outputSize = PixelSize(width: frame.width, height: outputSize.height + added)
+            if direction == .horizontal {
+                let added = outputSize.width == 0 ? frame.width : offset
+                outputSize = PixelSize(width: outputSize.width + added, height: frame.height)
+            } else {
+                let added = outputSize.height == 0 ? frameHeight : offset
+                outputSize = PixelSize(width: frame.width, height: outputSize.height + added)
+            }
         case .stationary:
             consecutiveStationary += 1
         case .ambiguous:
@@ -521,12 +619,29 @@ final class FakeStitcher: ScrollStitchService {
         return result
     }
 
-    func preview(maxHeight: Int) async -> CGImage? {
-        acceptedFrameCount > 0 ? makeImage(width: 4, height: 8) : nil
+    var previewFails = false
+    /// When set, `preview` suspends until `previews.resolve(())`, like a slow downscale.
+    var holdPreview = false
+    let previews = Pending<Void>()
+    func preview(maxLength: Int) async -> CGImage? {
+        if holdPreview { await previews.wait() }
+        return acceptedFrameCount > 0 && !previewFails ? makeImage(width: 4, height: 8) : nil
     }
 
+    /// When set, the first `assemble` suspends until `assembles.resolve(())`, like a large stitch.
+    /// Later calls never wait, so an assembly a missing guard admits shows in `assembleCount`
+    /// instead of hanging the test.
+    var holdFirstAssemble = false
+    let assembles = Pending<Void>()
+    private(set) var assembleCount = 0
+    /// When set, `assemble` returns this image instead of a blank one of the stitched size.
+    var assembled: CGImage?
+
     func assemble() async throws -> CGImage {
+        assembleCount += 1
+        if holdFirstAssemble, assembleCount == 1 { await assembles.wait() }
         if assembleFails { throw ExportServiceError(.budgetExceeded) }
+        if let assembled { return assembled }
         guard let image = makeImage(width: max(1, outputSize.width), height: max(1, outputSize.height)) else {
             throw ExportServiceError(.renderFailed)
         }
@@ -541,9 +656,13 @@ final class FakeAutoScroller: AutoScrollService {
     let pendingSteps = Pending<Void>()
     private(set) var stepCount = 0
     private(set) var stopCount = 0
+    /// The direction of every step and end-of-page question, in order.
+    private(set) var stepDirections: [ScrollCaptureDirection] = []
+    private(set) var endQueryDirections: [ScrollCaptureDirection] = []
 
-    func step(_ target: CaptureTarget) async -> AutoScrollStep {
+    func step(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> AutoScrollStep {
         stepCount += 1
+        stepDirections.append(direction)
         if holdSteps { await pendingSteps.wait() }
         return steps.isEmpty ? .scrolled : steps.removeFirst()
     }
@@ -552,7 +671,13 @@ final class FakeAutoScroller: AutoScrollService {
 
     /// What the target reports about its scroll position; nil when it cannot tell.
     var atEnd: Bool?
-    func isAtEnd(_ target: CaptureTarget) async -> Bool? { atEnd }
+    var holdEndQueries = false
+    let pendingEndQueries = Pending<Void>()
+    func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool? {
+        endQueryDirections.append(direction)
+        if holdEndQueries { await pendingEndQueries.wait() }
+        return atEnd
+    }
 }
 
 // MARK: - System
@@ -590,8 +715,8 @@ final class FixedKeyPreferenceIntegrity: PreferenceIntegrityService {
 }
 
 extension SettingsStore {
-    convenience init(storage: any PreferenceStorage) {
-        self.init(storage: storage, integrity: FixedKeyPreferenceIntegrity())
+    convenience init(storage: any PreferenceStorage, encodesHEIC: Bool = true) {
+        self.init(storage: storage, integrity: FixedKeyPreferenceIntegrity(), encodesHEIC: encodesHEIC)
     }
 }
 

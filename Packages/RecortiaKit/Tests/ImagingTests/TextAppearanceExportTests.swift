@@ -9,11 +9,10 @@ import Testing
 @Suite("Text appearance exports (FR-05, EXP-01)")
 struct TextAppearanceExportTests {
 
-    @Test(
-        "Text pixel rendering stays off MainActor and rejects layout failures",
-        arguments: [TextAppearance.rounded])
+    @Test("Text pixel rendering stays off MainActor and rejects layout failures")
     @MainActor
-    func backgroundAndFailure(appearance: TextAppearance) async throws {
+    func backgroundAndFailure() async throws {
+        let appearance = TextAppearance.rounded
         let h = ImagingHarness()
         let asset = try await h.add(try ChartFixture.solid(width: 100, height: 80, color: color(255, 255, 255)))
         var document = Document(asset: asset)

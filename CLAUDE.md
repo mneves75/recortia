@@ -15,9 +15,12 @@ baseline and falls back to the recorded release candidate, announcing that it is
 evidence only. On 2026-11-01 the installed Xcode 27.2 (27B52) is the stable baseline; no release
 candidate is recorded.
 
-- Full gate: `./init.sh check --unsigned` (doctor, E2E-isolation and parsed Release-entitlement regression controls, gate inventory, strict `swift format lint`, generated-project freshness,
+- Full gate: `./init.sh check --unsigned` (doctor, E2E-isolation and parsed Release-entitlement regression controls, deployment-target agreement (ADR-008) among the script regressions, gate inventory, strict `swift format lint`, generated-project freshness,
   all package tests, Debug build, pt-BR coverage of every extracted string, E2E target build); drop `--unsigned` when the signing identity is available.
+- Release check (hosted CI): `scripts/check-release-build.sh` (doctor `--release`, unsigned Release builds of Recortia and RecortiaE2E, scans for test-only code and the E2E runner).
 - One package test: `swift test --package-path Packages/RecortiaKit --filter <TestNameOrSuite>`.
+- Focused capture and framing acceptance: `./init.sh e2e --lang all --unsigned --only quick-actions,auto-redaction,framing-presets,inspector-context,pins,pin-on-top`
+  with the shared native-test lock and an idle, unlocked console. Keep the provenance for each run.
 - End-to-end: `./init.sh e2e --lang all` runs the doctor, then the DEBUG scenario runner
   (`-RecortiaE2E <dir>`) through the real app, and writes screenshots, `report.json` and
   `provenance.json` under `.scratch/e2e/<time>-<pid>/`; `--no-build` requires matching
@@ -35,8 +38,10 @@ candidate is recorded.
   unique `<version>-dev-<time>-<pid>` directory;
   `scripts/check-release-binary.sh` fails if the DEBUG-only E2E hook reached a binary.
 - Local signed installation and version updates: follow `AGENTS.md`'s artifact checks and
-  version-ownership rules. Current candidate and installation evidence live in BACKLOG; README shows only published versions.
-- After adding or moving source files, or editing `project.yml`: `xcodegen generate` and commit
+  version-ownership rules. Current candidate and installation evidence live in BACKLOG; README's
+  download links point to published versions.
+  Record the installed bundle and running process separately when preserving an open session.
+- After adding or moving source files, or editing `project.yml`: `scripts/xcodegen.sh generate` and commit
   the regenerated `Recortia.xcodeproj` (never hand-edit the pbxproj).
 - Format: `xcrun swift format --in-place --recursive <paths>` (config in `.swift-format`).
 
@@ -73,8 +78,8 @@ candidate is recorded.
   failures and current acceptance separately in `docs/specs/native-window-qualification/`.
 - Window presence (ADR-007): `RecortiaApp/App/AppPresence.swift` makes the app regular while a
   switchable window (normal/modal level, shown or minimized; pins included) exists and accessory
-  otherwise. Present ordinary windows through `AppPresence.activate()`; pins are normal-level
-  windows so AltTab lists them. Opening the app shows onboarding or Settings (`LaunchKind`,
+  otherwise. Present ordinary windows through `AppPresence.present(_:)`; pins are normal-level
+  windows by default so AltTab lists them (Keep on Top is opt-in; keep `pin-on-top` in bilingual E2E). Opening the app shows onboarding or Settings (`LaunchKind`,
   `LaunchWindow`); "Open at login" stays silent once onboarding is complete. Keep `window-presence` and
   `launch-presentation` in bilingual E2E. With "Keep running in the menu bar" off, the last real
   close requests termination after pending exports (AGENTS.md); keep `last-window` and

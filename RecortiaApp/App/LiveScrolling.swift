@@ -12,7 +12,7 @@ struct ScrollWindowBinding: Equatable {
 @MainActor
 protocol AutoScrollDriving: AnyObject {
     func start() throws(AutoScrollError)
-    func scrollDown(byPixels pixels: Int) -> AutoScrollStepResult
+    func scroll(byPixels pixels: Int, direction: ScrollCaptureDirection) -> AutoScrollStepResult
     func stop(reason: AutoScrollStopReason)
 }
 
@@ -119,7 +119,7 @@ final class LiveAutoScroll: AutoScrollService {
     }
 
     /// ScrollSessionModel's autoStepOwner serializes steps, including the first driver creation.
-    func step(_ target: CaptureTarget) async -> AutoScrollStep {
+    func step(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> AutoScrollStep {
         guard let expected = binding(), !Task.isCancelled else {
             stop()
             return .targetLost
@@ -153,7 +153,7 @@ final class LiveAutoScroll: AutoScrollService {
             stop()
             return .targetLost
         }
-        switch scroller.scrollDown(byPixels: Self.stepPoints) {
+        switch scroller.scroll(byPixels: Self.stepPoints, direction: direction) {
         case .scrolled: return .scrolled
         case .notRunning, .stopped: return .targetLost
         }
@@ -166,9 +166,10 @@ final class LiveAutoScroll: AutoScrollService {
         scrollerBinding = nil
     }
 
-    /// Reads the vertical scroll bar of the scroll area under the capture region's center through
-    /// Accessibility (granted for automatic mode). nil when there is none or it cannot be read.
-    func isAtEnd(_ target: CaptureTarget) async -> Bool? {
+    /// Reads the scroll bar for `direction` (vertical, or horizontal) of the scroll area under the
+    /// capture region's center through Accessibility (granted for automatic mode). nil when there
+    /// is none or it cannot be read.
+    func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool? {
         guard let (region, _) = LiveScrollFrames.region(for: target) else { return nil }
         var hit: AXUIElement?
         guard
@@ -178,7 +179,9 @@ final class LiveAutoScroll: AutoScrollService {
         else { return nil }
         for _ in 0..<24 {
             if Self.attribute(kAXRoleAttribute, of: element) as? String == kAXScrollAreaRole as String {
-                guard let bar = Self.element(kAXVerticalScrollBarAttribute, of: element),
+                let bar =
+                    direction == .horizontal ? kAXHorizontalScrollBarAttribute : kAXVerticalScrollBarAttribute
+                guard let bar = Self.element(bar, of: element),
                     let value = Self.attribute(kAXValueAttribute, of: bar) as? NSNumber
                 else { return nil }
                 return value.doubleValue >= 0.995

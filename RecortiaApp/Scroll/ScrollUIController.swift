@@ -14,8 +14,6 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     private var review: NSWindow?
     private var lastState: ScrollState = .idle
     private var loop: ObservationLoop?
-    /// Injected so the E2E runner can prove the discard gate without presenting a modal alert.
-    var confirmDiscard: @MainActor () -> Bool = MessagePresenter.confirmDiscardScrollingCapture
 
     init(model: ScrollSessionModel, displays: @escaping () -> [DisplayInfo]) {
         self.model = model
@@ -36,7 +34,7 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
                 overlay.present(
                     displays: displays(),
                     notice: String(localized: "Select the area that scrolls. Leave out fixed headers if you can."),
-                    allowsWindowSwitch: false)
+                    allowsWindowSwitch: false, aspect: nil, snapFrames: [])
             }
             closeHUD()
             closeReview()
@@ -92,26 +90,32 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
             case nil: nil
             }
         window.center(on: ScreenChoice.screen(displayID: displayID))
-        AppPresence.shared.activate()
-        window.makeKeyAndOrderFront(nil)
+        AppPresence.shared.present(window)
     }
 
-    /// The one destructive path out of the review: close, Escape, and Discard all ask here first.
+    /// The one destructive path out of the review: close, Escape, and Discard all ask here first,
+    /// in a sheet on the review window, without a modal loop. Refused while an Accept assembles
+    /// or a question is already open; checked again at the answer, since main-actor work runs
+    /// while the sheet is up. Quit asks about the review itself (`AppModel.shouldTerminate`).
     func requestDiscard() {
-        guard confirmDiscard() else { return }
-        model.discard()
-        // A discard is the person closing the review, as the close button does: `close()` (not the
-        // order-out that Accept's replacement uses) lets `AppPresence` see a real close.
-        // `close()` does not ask `windowShouldClose` again.
-        review?.close()
-        review = nil
+        guard let window = review, model.canDiscard, window.attachedSheet == nil else { return }
+        MessagePresenter.makeDiscardScrollingCapture().beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn, let self, self.review === window, self.model.canDiscard
+            else { return }
+            self.model.discard()
+            // A discard is the person closing the review, as the close button does: `close()` (not
+            // the order-out that Accept's replacement uses) lets `AppPresence` see a real close.
+            // `close()` does not ask `windowShouldClose` again.
+            window.close()
+            self.review = nil
+        }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard sender === review else { return true }
-        let discarded = confirmDiscard()
-        if discarded { model.discard() }
-        return discarded
+        // Nothing left to discard (accepted or ended): close without asking.
+        guard sender === review, model.state == .reviewing else { return true }
+        requestDiscard()
+        return false
     }
 
     /// Builds the review window, takes its delegate, and becomes the one place a discard can be
@@ -121,7 +125,7 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
         let window = NSWindow(
             contentViewController: NSHostingController(
                 rootView: LiveScrollReview(model: model, onDiscard: { [weak self] in self?.requestDiscard() })))
-        window.title = String(localized: "Review Scrolling Capture")
+        window.title = String(localized: "Scrolling Capture")
         // Titled windows keep a close button; `windowShouldClose` asks before a close discards.
         window.styleMask = [.titled, .closable, .resizable]
         window.isReleasedWhenClosed = false
@@ -132,6 +136,10 @@ final class ScrollUIController: NSObject, NSWindowDelegate {
     }
 
     private func closeReview() {
+        // The review ended another way (Accept, cancel): an open discard question has no answer.
+        if let review {
+            for sheet in review.sheets { review.endSheet(sheet, returnCode: .abort) }
+        }
         review?.orderOut(nil)
         AppPresence.shared.setNeedsRefresh()
         review = nil
@@ -144,10 +152,11 @@ private struct LiveScrollHUD: View {
     var body: some View {
         ScrollHUDView(
             hud: ScrollHUDState(
-                source: sourceDescription, state: model.state, mode: model.mode, notice: model.notice,
-                pageEndLikely: model.pageEndLikely, acceptedFrames: model.acceptedFrames,
-                outputHeight: model.outputSize.height),
-            onStart: { model.start() }, onPause: { model.pause() }, onResume: { model.resume() },
+                source: sourceDescription, state: model.state, mode: model.mode, direction: model.direction,
+                notice: model.notice, pageEndLikely: model.pageEndLikely, acceptedFrames: model.acceptedFrames,
+                outputLength: model.direction == .horizontal ? model.outputSize.width : model.outputSize.height),
+            onChooseDirection: { model.chooseDirection($0) }, onStart: { model.start() }, onPause: { model.pause() },
+            onResume: { model.resume() },
             onStop: { model.stop() }, onCancel: { model.cancel() })
     }
 
@@ -171,8 +180,9 @@ private struct LiveScrollReview: View {
 
     var body: some View {
         ScrollReviewView(
-            preview: model.preview, outputSize: model.outputSize, seams: model.seams,
+            preview: model.preview, outputSize: model.outputSize, direction: model.direction, seams: model.seams,
             partialReason: model.partialReason, assemblyFailed: model.notice == .assemblyFailed,
+            isPreparingPreview: model.isPreparingPreview, canAccept: model.canAccept, canDiscard: model.canDiscard,
             onAccept: { Task { await model.accept() } }, onDiscard: onDiscard)
     }
 }

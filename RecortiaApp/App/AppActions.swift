@@ -14,11 +14,17 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
     case captureMenu
     case openImage
     case pasteImage
+    /// The last closed editor's document, kept in memory for a while (B-6, `ClosedCaptureSlot`).
+    case reopenClosedCapture
     case bringPinsForward
     case closeAllPins
+    /// Turns click-through off on every pin; a click-through pin cannot be clicked (ADR-007).
+    case unlockAllPins
     case settings
     case featureTour
     case about
+    /// Shown only in a build that can verify updates (FP-024).
+    case checkForUpdates
     case quit
 
     var id: String { rawValue }
@@ -41,11 +47,14 @@ enum AppCommand: String, CaseIterable, Identifiable, Sendable {
         case .captureMenu: String(localized: "Show Capture Menu")
         case .openImage: String(localized: "Open Image…")
         case .pasteImage: String(localized: "Paste Image")
+        case .reopenClosedCapture: String(localized: "Reopen Closed Capture")
         case .bringPinsForward: String(localized: "Bring Pins Forward")
         case .closeAllPins: String(localized: "Close All Pins")
+        case .unlockAllPins: String(localized: "Unlock All Pins")
         case .settings: String(localized: "Settings…")
         case .featureTour: String(localized: "Feature Tour")
         case .about: String(localized: "About Recortia")
+        case .checkForUpdates: String(localized: "Check for Updates…")
         case .quit: String(localized: "Quit Recortia")
         }
     }

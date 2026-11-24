@@ -12,11 +12,27 @@ struct GeometryTests {
             Rect(x: 0, y: .infinity, width: 10, height: 10),
             Rect(x: 0, y: 0, width: -1, height: 10),
             Rect(x: 0, y: 0, width: 10, height: .nan),
+            // Finite fields whose far edge overflows to infinity.
+            Rect(x: 1e308, y: 0, width: 1e308, height: 10),
+            Rect(x: 0, y: 1e308, width: 10, height: 1e308),
         ]
         for rect in bad {
             #expect(throws: GeometryError.self) { try rect.validated() }
+            #expect(!rect.isValid)
         }
         #expect(throws: Never.self) { try Rect<DocumentSpace>(x: -5, y: -5, width: 0, height: 0).validated() }
+    }
+
+    @Test("A value entering an edit is refused when not finite and clamped otherwise")
+    func admitsEditValues() {
+        let range: ClosedRange<Double> = 1...128
+        for value in [Double.nan, .infinity, -.infinity, .signalingNaN] {
+            #expect(range.admit(value) == nil)
+        }
+        #expect(range.admit(-5) == 1)
+        #expect(range.admit(0.5) == 1)
+        #expect(range.admit(64) == 64)
+        #expect(range.admit(1e308) == 128)
     }
 
     @Test("Standardizing flips negative spans from any drag direction")

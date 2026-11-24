@@ -15,6 +15,119 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+Source candidate 0.16.0 (build 31), including the Program 2026-11 follow-on trains. It requires macOS 26
+or later. [BACKLOG.json](BACKLOG.json) tracks local installation, qualification and open checks.
+
+### Added
+
+- Quick actions after a capture (Settings › Capture › After a capture): a thumbnail with Copy,
+  Save, drag, Pin, Open in Editor, Dismiss and, when this capture was uploaded, Copy Link. The
+  capture's automatic exports run first; dismissing the thumbnail or leaving it for 8 seconds
+  discards the capture. With automatic masking on, captures still open in the editor.
+- Preview opens a larger view of the current capture from the thumbnail. Closing the preview
+  keeps the thumbnail available until it expires.
+- Save Optimized Copy shows the exact format and size before saving the current capture as
+  PNG or JPEG. Copy Text recognizes text from the current capture on this Mac.
+- Settings › Capture › After a capture can pin still captures without taking keyboard focus.
+- The Image inspector can save reusable framing recipes and apply an inset border or text watermark.
+- Press F during region selection to freeze the display for precise selection and pixel
+  inspection. Press F again to resume live selection.
+- Automatic masking of e-mail addresses and phone numbers now also covers scrolling captures and
+  images opened as new documents (Open, Open With, a drop on the app, Paste Image). Images added
+  as a layer to an open editor are not scanned.
+- An Automatic export format that saves a JPEG when it is much smaller than the PNG, and a PNG
+  otherwise. Copy Image stays PNG.
+- HEIC as a save format where this Mac can encode it, and File › Print… for the sanitized image.
+- Horizontal scrolling capture, chosen in the scrolling HUD.
+- A primary language for text recognition.
+- A solid background colour for window captures, editable afterwards in the Image inspector.
+- Zoom with a mouse scroll wheel, with a reverse-direction option. Trackpad scrolling always
+  scrolls.
+- An option to hide the menu-bar icon; opening Recortia again shows Settings.
+- Editor commands in the menu bar, including single-letter tool shortcuts in the Tools menu.
+- Region selection snaps to windows and interface elements, nudges with the arrow keys, and can
+  keep an aspect ratio.
+- Pins can stay on top or let clicks pass through, and Unlock All Pins restores them.
+- Text Only redaction covers just the recognized lines inside a rectangle.
+- Colour tools: copy a sampled colour in several formats, sample the darkest pixel, and read the
+  WCAG contrast of two colours.
+- Framing aspect presets, balance, swatches and a default framing for new captures.
+- Rotate, flip and crop presets in the Image menu.
+- Arrowhead styles and freehand smoothing.
+- File › Reopen Closed Capture (⇧⌘T) brings back the last closed editor's capture for 10 minutes,
+  in memory only. A capture whose automatic masking is pending or failed is never kept.
+- An optional local diagnostics file (Settings › Privacy, off by default) that records typed
+  events without text, paths or error messages; Recortia never sends it anywhere.
+- Check for Updates…, available only in builds signed with the update key; automatic checks are
+  opt-in and Recortia never installs an update without the person choosing it. Built with Sparkle
+  2.10.1 (MIT).
+
+### Changed
+
+- Refreshed onboarding (five pages), Settings, the scrolling review, pins, the window chooser,
+  the countdown and the drag chip, each with one primary action.
+- Failures about an open editor appear as a sheet on that editor; asking to discard a scrolling
+  capture is a sheet on its review window.
+- The Replace question names the file it would replace, and only that file is replaced.
+
+### Fixed
+
+- The editor keeps the automatic masking count visible even if an earlier notice expires.
+
+- Rounded and monospaced text could fail to render under heavy load because a shared system font
+  cache returned nothing while another thread released fonts. Those fonts now come from Core Text.
+- The Replace Existing File question is translated into Portuguese.
+- Automatic scrolling capture no longer aborts when a canceled settle check returns after a new
+  frame, keeps reading frames across Pause/Resume during end-of-page checks, and enforces its
+  duration limit against monotonic uptime.
+- Open and Save file panels consistently follow the active Space and restore Dock presence
+  through `FilePanelPresenter`, and non-activating pins update observed window presence right
+  away.
+- Saving over files on non-owner mounts (such as exFAT/FAT32 or shared folders) no longer fails
+  on staged-file permissions, and long export filenames truncate safely within UTF-8 byte limits.
+- Deleting the optional diagnostics file now removes both active and rotated log files even when
+  removing one fails.
+- Scheduled update checks now re-check Recortia's preference live on each trigger instead of
+  relying on a cached startup state.
+- Automatic export filename resolution preserves non-image dot suffixes (such as `report.v2`)
+  instead of stripping them as file extensions.
+
+## [0.15.0] - 2026-11-20
+
+Source candidate, build 29: not tagged or published. It requires macOS 26 or later. Not verified on
+this build: macOS 26.0 itself (the test Mac runs 27.3), VoiceOver (including opening Position and Size) and Full Keyboard Access on the
+regrouped toolbar, physical keyboard, Spaces and permission checks, and recognition recall on real
+screens.
+
+### Added
+
+- Optional masking of e-mail addresses and phone numbers in new captures (Settings › Privacy ›
+  Redaction, off by default). Recognition runs on this Mac; the masks are ordinary secure masks you
+  can review and delete. It cannot find every address or number. If recognition fails, is
+  cancelled or runs out of time, the capture opens unmasked with a notice and its automatic copy,
+  save and upload are skipped. The patterns follow Fosco by Gabriel Buzzi (MIT).
+- Open PNG and JPEG files in Recortia from Finder, the Dock icon or `open -a`.
+- A filename template for saved files, with `{date}`, `{time}` and `{counter}` placeholders.
+- An optional sound when a capture completes.
+- Move a selected object up or down one place in its stack, in one undo step.
+
+### Changed
+
+- Recortia now requires macOS 26. macOS 15 is no longer supported.
+- The editor uses the system sidebar and inspector containers, and every toolbar item stays
+  visible at the smallest window width.
+- Output Preview is read-only: background, padding, corners and shadow stay editable there, but
+  objects cannot be moved or resized.
+- Moving or resizing an object never moves a secure mask or uncovers what it hides.
+
+### Fixed
+
+- Saving checks the chosen folder by identity rather than by name, writes to a staging file and
+  publishes only that file, reads it back, and keeps a replaced file owner-only when it belonged to
+  someone else.
+- GitHub upload checks consent immediately before the request leaves, builds the link it shows
+  from the upload itself, and limits the size of a pasted token.
+
 ## [0.14.0] - 2026-11-11
 
 Build 28. Notarized and published as

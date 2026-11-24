@@ -7,7 +7,12 @@ enum ScrollStitchError: Error, Equatable, Sendable {
     case imageCreationFailed
 }
 
-/// Stitches already-captured viewport frames of a vertically scrolling page (FR-10).
+/// Stitches already-captured viewport frames of a page that scrolls down or to the right (FR-10).
+///
+/// A horizontal stitcher transposes every frame as it is converted, so the one matcher and the
+/// rules below run unchanged on columns: "rows" are then the page's columns, the header and
+/// footer are fixed columns at the left and right, and the limits that bound the height bound the
+/// width. Assembly and the preview transpose back; no pixel is resampled on the way.
 ///
 /// The first frame is kept whole. Once the page first moves, rows identical at the same position
 /// in both frames at the top and bottom become the fixed header and footer bands; only the region
@@ -24,16 +29,19 @@ enum ScrollStitchError: Error, Equatable, Sendable {
 /// The value is synchronous: run it off the main actor.
 public struct ScrollStitcher: Sendable {
     public let limits: ScrollLimits
+    public let direction: ScrollCaptureDirection
     /// Consecutive stationary frames after which the page is taken to have ended.
     public static let endOfPageStationaryFrames = 3
 
     public private(set) var acceptedFrameCount = 0
     private(set) var consecutiveStationaryFrames = 0
-    public private(set) var outputSize = PixelSize(width: 0, height: 0)
+    /// Size of the stitch in matching space: across × along the scroll direction.
+    private var stitchedSize = PixelSize(width: 0, height: 0)
 
+    /// Frame size in matching space (transposed for a horizontal stitch).
     private var frameWidth = 0
     private var frameHeight = 0
-    /// Header plus scrolled content, RGBA8, top-down.
+    /// Header plus scrolled content, RGBA8, top-down, in matching space.
     private var rows: [UInt8] = []
     private var footer: [UInt8] = []
     private var bands: (top: Int, bottom: Int)?
@@ -41,8 +49,18 @@ public struct ScrollStitcher: Sendable {
     private var reachedLimit: ScrollLimit?
     private let thresholds = ScrollMatcher.Thresholds.calibrated
 
-    public init(limits: ScrollLimits = .default) {
+    public init(limits: ScrollLimits = .default, direction: ScrollCaptureDirection = .vertical) {
         self.limits = limits
+        self.direction = direction
+    }
+
+    /// The stitched image's size, as assembled.
+    public var outputSize: PixelSize { oriented(stitchedSize) }
+
+    private var transposes: Bool { direction == .horizontal }
+
+    private func oriented(_ size: PixelSize) -> PixelSize {
+        transposes ? PixelSize(width: size.height, height: size.width) : size
     }
 
     public var endOfPageDetected: Bool {
@@ -51,22 +69,24 @@ public struct ScrollStitcher: Sendable {
 
     public mutating func append(_ frame: CGImage, elapsed: Duration) -> ScrollAppendResult {
         if let reachedLimit { return .limitReached(reachedLimit) }
-        let size = PixelSize(width: frame.width, height: frame.height)
+        let size = oriented(PixelSize(width: frame.width, height: frame.height))
 
         guard let previous else {
             // Checked before decoding so an oversized viewport is never materialized.
             if let limit = limits.firstExceeded(elapsed: elapsed, frames: 1, outputSize: size) { return stop(limit) }
             if exceedsWorkingBudget(frameSize: size, appending: false) { return stop(.memory) }
-            guard let first = ScrollFrame(image: frame) else { return .ambiguous(.lowConfidence) }
+            guard let first = ScrollFrame(image: frame, transposed: transposes) else {
+                return .ambiguous(.lowConfidence)
+            }
             frameWidth = size.width
             frameHeight = size.height
             rows = first.pixels
-            outputSize = size
+            stitchedSize = size
             acceptedFrameCount = 1
             self.previous = first.demoted()
             return .accepted(offset: 0)
         }
-        if let limit = limits.firstExceeded(elapsed: elapsed, frames: acceptedFrameCount, outputSize: outputSize) {
+        if let limit = limits.firstExceeded(elapsed: elapsed, frames: acceptedFrameCount, outputSize: stitchedSize) {
             return stop(limit)
         }
         guard size.width == frameWidth, size.height == frameHeight else {
@@ -75,7 +95,7 @@ public struct ScrollStitcher: Sendable {
         }
         // Checked before the frame's pixel and luma planes are allocated; the accepted output stays.
         if exceedsWorkingBudget(frameSize: size, appending: true) { return stop(.memory) }
-        guard let current = ScrollFrame(image: frame) else {
+        guard let current = ScrollFrame(image: frame, transposed: transposes) else {
             consecutiveStationaryFrames = 0
             return .ambiguous(.lowConfidence)
         }
@@ -114,21 +134,20 @@ public struct ScrollStitcher: Sendable {
             consecutiveStationaryFrames = 0
             return .ambiguous(reason)
         case .displacement(let offset):
-            let contentRows = bands == nil ? frameHeight - frameBands.bottom : outputSize.height - frameBands.bottom
+            let contentRows = bands == nil ? frameHeight - frameBands.bottom : stitchedSize.height - frameBands.bottom
             let projected = PixelSize(width: frameWidth, height: contentRows + offset + frameBands.bottom)
             if let limit = limits.firstExceeded(elapsed: elapsed, frames: acceptedFrameCount + 1, outputSize: projected)
             {
                 return stop(limit)
             }
             if bands == nil {
-                // The first frame's bottom band becomes the (replaceable) footer.
                 rows.removeLast(frameBands.bottom * frameWidth * 4)
                 bands = frameBands
             }
             let contentBottom = frameHeight - frameBands.bottom
             rows += current.pixelRows((contentBottom - offset)..<contentBottom)
             footer = Array(current.pixelRows(contentBottom..<frameHeight))
-            outputSize = projected
+            stitchedSize = projected
             acceptedFrameCount += 1
             consecutiveStationaryFrames = 0
             self.previous = current.demoted()
@@ -136,32 +155,46 @@ public struct ScrollStitcher: Sendable {
         }
     }
 
-    public func preview(maxHeight: Int) -> CGImage? {
-        guard maxHeight > 0, acceptedFrameCount > 0, !outputSize.isEmpty else { return nil }
-        guard outputSize.height > maxHeight else { return try? assemble() }
-        let scale = Double(maxHeight) / Double(outputSize.height)
-        let width = max(1, Int((Double(outputSize.width) * scale).rounded()))
-        let height = max(1, min(maxHeight, Int((Double(outputSize.height) * scale).rounded())))
+    /// The stitch scaled so its length along the scroll direction (height, or width for a
+    /// horizontal stitch) is at most `maxLength`; the full image when it already fits.
+    public func preview(maxLength: Int) -> CGImage? {
+        guard maxLength > 0, acceptedFrameCount > 0, !stitchedSize.isEmpty else { return nil }
+        guard stitchedSize.height > maxLength else { return try? assemble() }
+        let scale = Double(maxLength) / Double(stitchedSize.height)
+        let across = max(1, Int((Double(stitchedSize.width) * scale).rounded()))
+        let along = max(1, min(maxLength, Int((Double(stitchedSize.height) * scale).rounded())))
+        let size = oriented(PixelSize(width: across, height: along))
+        // `data: nil`: Core Graphics allocates and owns the bitmap.
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-            let context = CGContext(
-                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+            let context = unsafe CGContext(
+                data: nil, width: size.width, height: size.height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return nil }
         context.interpolationQuality = .medium
-        let yScale = Double(height) / Double(outputSize.height)
+        let alongScale = Double(along) / Double(stitchedSize.height)
         // Bounded working memory: draw the output in chunks instead of materializing it.
         let chunkRows = 512
-        let totalRows = outputSize.height
+        let totalRows = stitchedSize.height
         var top = 0
         while top < totalRows {
             let count = min(chunkRows, totalRows - top)
-            guard let chunk = Self.image(width: frameWidth, rows: count, pixels: outputRows(top..<(top + count))) else {
-                return nil
+            let pixels = outputRows(top..<(top + count))
+            if transposes {
+                // A chunk of columns, left to right; Core Graphics' origin is the bottom-left.
+                var columns = [UInt8](repeating: 0, count: pixels.count)
+                ScrollFrame.transpose(
+                    pixels, width: frameWidth, height: count, into: &columns, destinationWidth: count)
+                guard let chunk = Self.image(width: count, rows: frameWidth, pixels: columns[...]) else { return nil }
+                let destination = CGRect(
+                    x: Double(top) * alongScale, y: 0, width: Double(count) * alongScale, height: Double(size.height))
+                context.draw(chunk, in: destination)
+            } else {
+                guard let chunk = Self.image(width: frameWidth, rows: count, pixels: pixels) else { return nil }
+                let destination = CGRect(
+                    x: 0, y: Double(size.height) - Double(top + count) * alongScale, width: Double(size.width),
+                    height: Double(count) * alongScale)
+                context.draw(chunk, in: destination)
             }
-            let destination = CGRect(
-                x: 0, y: Double(height) - Double(top + count) * yScale, width: Double(width),
-                height: Double(count) * yScale)
-            context.draw(chunk, in: destination)
             top += count
         }
         return context.makeImage()
@@ -169,11 +202,22 @@ public struct ScrollStitcher: Sendable {
 
     /// The full stitched image. Its size never exceeds `limits`, which were checked before every append.
     public func assemble() throws -> CGImage {
-        guard acceptedFrameCount > 0, !outputSize.isEmpty else { throw ScrollStitchError.noFrames }
-        guard let image = Self.image(width: frameWidth, rows: outputSize.height, pixels: ArraySlice(rows + footer))
-        else {
-            throw ScrollStitchError.imageCreationFailed
+        guard acceptedFrameCount > 0, !stitchedSize.isEmpty else { throw ScrollStitchError.noFrames }
+        let image: CGImage?
+        if transposes {
+            // Written straight from the body and footer, so it holds no more than `rows + footer`.
+            var pixels = [UInt8](repeating: 0, count: rows.count + footer.count)
+            let bodyRows = rows.count / (frameWidth * 4)
+            ScrollFrame.transpose(
+                rows[...], width: frameWidth, height: bodyRows, into: &pixels, destinationWidth: stitchedSize.height)
+            ScrollFrame.transpose(
+                footer[...], width: frameWidth, height: stitchedSize.height - bodyRows, into: &pixels,
+                destinationWidth: stitchedSize.height, columnOffset: bodyRows)
+            image = Self.image(width: stitchedSize.height, rows: frameWidth, pixels: pixels[...])
+        } else {
+            image = Self.image(width: frameWidth, rows: stitchedSize.height, pixels: ArraySlice(rows + footer))
         }
+        guard let image else { throw ScrollStitchError.imageCreationFailed }
         return image
     }
 
@@ -274,9 +318,11 @@ public struct ScrollStitcher: Sendable {
         return peak > limits.maxWorkingBytes
     }
 
+    /// `limit` is measured in matching space; a horizontal stitch's length is its width.
     private mutating func stop(_ limit: ScrollLimit) -> ScrollAppendResult {
-        reachedLimit = limit
-        return .limitReached(limit)
+        let reported = transposes && limit == .height ? ScrollLimit.width : limit
+        reachedLimit = reported
+        return .limitReached(reported)
     }
 
     private func outputRows(_ range: Range<Int>) -> ArraySlice<UInt8> {
@@ -336,7 +382,8 @@ public struct ScrollStitcher: Sendable {
             let space = CGColorSpace(name: CGColorSpace.sRGB),
             let provider = CGDataProvider(data: Data(pixels) as CFData)
         else { return nil }
-        return CGImage(
+        // `decode: nil` passes no pointer.
+        return unsafe CGImage(
             width: width, height: rows, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4, space: space,
             bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider,
             decode: nil, shouldInterpolate: false, intent: .defaultIntent)

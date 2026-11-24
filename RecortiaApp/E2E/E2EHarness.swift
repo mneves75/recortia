@@ -17,16 +17,24 @@
         let capture: SyntheticCaptureService
         let permission: SyntheticScreenPermission
         let accessibility = SyntheticAccessibilityPermission()
+        /// A synthetic interface tree for element snapping; never reads another app through Accessibility.
+        let interfaceElements: SyntheticInterfaceElements
         let scrollFrames: SyntheticScrollFrames
         /// Records automatic-scroll steps; never posts a system event to this Mac.
         let autoScroll = SyntheticAutoScroll()
         let clipboard: PrivatePasteboardClipboard
         let textPasteboard: NSPasteboard
         let drag: SyntheticDragReceiver
+        /// Records print operations; never shows a print panel.
+        let printer = RecordingPrinter()
         let github = SyntheticGitHubUpload()
+        let updates = SyntheticUpdateService()
         let exportGate: SyntheticExportGate
+        let recognitionGate: SyntheticRecognitionGate
         let importInput: SyntheticImportInput
         let links = RecordingLinkOpener()
+        /// Scripted detection for automatic masking; never reads the screen or runs Vision.
+        let sensitiveText: SyntheticSensitiveText
         let messages = RecordingMessagePresenter()
         let quit = RecordingQuitConfirmation()
         /// Termination requests from quit-after-last-window; the runner process itself never quits.
@@ -38,6 +46,8 @@
         let features: FeatureModels
         let editors: E2EEditorHost
         let environment: EditorEnvironment
+        /// The product's thumbnail controller; its panel is parked offscreen and Save never shows a panel.
+        let quickActionsUI: QuickActionsUIController
         /// The macOS shortcuts the runner treats as enabled, so shortcut states never depend on the
         /// host's System Settings. It starts like a fresh Mac: ⇧⌘3, ⇧⌘4, and ⇧⌘5 belong to macOS.
         let systemShortcuts = E2ESystemShortcuts()
@@ -58,43 +68,65 @@
             desktop = try SyntheticDesktop.image()
             capture = SyntheticCaptureService(desktop: desktop)
             permission = SyntheticScreenPermission()
+            interfaceElements = SyntheticInterfaceElements(accessibility: accessibility)
             scrollFrames = SyntheticScrollFrames()
             let run = UUID().uuidString
             clipboard = PrivatePasteboardClipboard(
                 pasteboard: NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.image.\(run)")))
             textPasteboard = NSPasteboard(name: NSPasteboard.Name("dev.mvneves.Recortia.E2E.text.\(run)"))
             drag = SyntheticDragReceiver(dropFolder: dropFolder)
+            sensitiveText = SyntheticSensitiveText(clock: E2EClock())
 
             let live = AppServices.live(settings: settings)
             exportGate = SyntheticExportGate(exporter: live.exporter)
+            recognitionGate = SyntheticRecognitionGate(recognition: live.textRecognition)
             importInput = SyntheticImportInput(input: live.input)
             services = AppServices(
                 githubUpload: github, githubCredentials: github,
                 capture: capture, screenPermission: permission, accessibility: accessibility,
                 assets: live.assets, input: importInput, renderer: live.renderer, exporter: exportGate,
-                clipboard: clipboard, files: live.files, drag: drag, folders: live.folders,
-                textRecognition: live.textRecognition, qrDecoder: live.qrDecoder, scrollFrames: scrollFrames,
-                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem, clock: live.clock)
+                clipboard: clipboard, files: live.files, drag: drag, printer: printer, folders: live.folders,
+                textRecognition: recognitionGate, qrDecoder: live.qrDecoder, sensitiveText: sensitiveText,
+                scrollFrames: scrollFrames,
+                stitcher: live.stitcher, autoScroller: autoScroll, loginItem: live.loginItem,
+                clock: sensitiveText.clock,
+                interfaceElements: interfaceElements,
+                diagnosticsLog: DiagnosticsLog(
+                    directory: work.appending(path: "diagnostics", directoryHint: .isDirectory)),
+                updates: updates)
             let system = systemShortcuts
             let messages = self.messages
             app = AppModel(
                 settings: settings, services: services,
                 shortcutRegistry: KeyboardShortcutsRegistry(
                     takenBySystem: { system.enabled.contains($0) }, probe: { _ in true }),
-                showMessage: { messages.values.append($0) },
+                showMessage: { messages.present($0, on: $1) },
                 confirmQuit: { [quit] in quit.answer($0) },
+                confirmUpdate: { messages.confirm($0) },
                 requestTermination: { [terminations] in terminations.request() },
-                chooseSaveFolder: { [folderChooser] in folderChooser.next() })
-            guard let features = app.features else { throw E2EAbort("AppModel built no feature models") }
+                chooseSaveFolder: { [folderChooser] in folderChooser.next() },
+                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard))
+            let features = app.features
             self.features = features
             environment = EditorEnvironment(
                 renderer: services.renderer, export: features.export, folders: services.folders,
-                textRecognition: services.textRecognition, qrDecoder: services.qrDecoder, assets: services.assets,
-                input: services.input, pins: features.pins,
-                textClipboard: PasteboardTextClipboard(pasteboard: textPasteboard), links: links, settings: settings,
-                imageImporter: features.importer.imageImporter)
-            editors = E2EEditorHost(environment: environment)
+                textRecognition: services.textRecognition, qrDecoder: services.qrDecoder,
+                sensitiveText: services.sensitiveText, assets: services.assets, input: services.input,
+                pins: features.pins, textClipboard: features.textClipboard, links: links,
+                settings: settings, clock: services.clock, imageImporter: features.importer.imageImporter,
+                diagnostics: features.diagnostics)
+            editors = E2EEditorHost(environment: environment, closedCapture: features.closedCapture)
+            quickActionsUI = app.makeQuickActionsUI()
+            quickActionsUI.present = { panel in
+                panel.sizeToContentIfUnsized()
+                E2ESnapshot.park(panel)
+                panel.orderFrontRegardless()
+            }
+            quickActionsUI.chooseSaveDestination = { nil }
+            quickActionsUI.confirmReplacement = { _ in false }
             wire()
+            // What a normal launch does for the updater, with the synthetic one: no request.
+            features.updater.start()
             // What a normal launch does (ADR-005), without registering any handler.
             ShortcutDefaults.seedIfNeeded(isNewInstall: !settings.preferences.hasCompletedOnboarding)
             app.shortcutStatus.refreshAll()
@@ -106,11 +138,15 @@
             features.capture.onCaptured = { [weak app] completion in
                 app?.handleCapture(completion)
             }
-            features.importer.onImported = { editors.open($0) }
-            features.scroll.onAccepted = { editors.open($0) }
-            app.openDocument = { editors.open($0).model }
+            features.importer.onImported = {
+                editors.open($0, importedFileName: $1, initialAction: $2 ? .maskSensitiveText : .none)
+            }
+            features.scroll.onAccepted = { editors.open($0, initialAction: $1 ? .maskSensitiveText : .none) }
+            app.openDocument = { editors.open($0, importedFileName: $2, initialAction: $1).model }
             app.recognizeText = { editors.open($0, initialAction: .recognizeText) }
+            features.quickActions.onOpenInEditor = { editors.open($0) }
             app.unexportedEditCount = { editors.unexportedEditCount }
+            app.editorWindow = { model in editors.controllers.first { $0.model === model }?.window }
         }
 
         /// Imports `image` as PNG through the real input, decode, and asset path; opens an editor.
@@ -127,13 +163,16 @@
             return controller
         }
 
-        /// Closes editors and pins and resets per-scenario state.
         func reset() {
             exportGate.release()
+            recognitionGate.reset()
+            sensitiveText.reset()
             settings.update {
                 $0.autoCopy = false; $0.autoSave = false; $0.githubUpload = nil
-                $0.keepsRunningInMenuBar = true
+                $0.keepsRunningInMenuBar = true; $0.autoRedactsSensitiveText = false
+                $0.afterCapture = .openEditor; $0.regionAspect = .free; $0.defaultFraming = nil
             }
+            features.quickActions.dismiss()
             folderChooser.answers = []
             editors.closeAll()
             features.pins.closeAll()
@@ -148,9 +187,41 @@
         }
     }
 
+    /// Stands in for `MessagePresenter.present(_:on:)`. An app alert is only recorded, never shown,
+    /// so no modal loop runs. A sheet is recorded with its parent and attached for real, without a
+    /// modal loop, so a scenario sees it on that window and answers it with `endSheet`; a sheet the
+    /// window's close ends is recorded again as the app alert it becomes. Never opens System Settings.
     @MainActor
     final class RecordingMessagePresenter {
-        var values: [UserMessage] = []
+        struct Request {
+            let message: UserMessage
+            let isSheet: Bool
+            /// The editor window the sheet was attached to.
+            weak var sheetParent: NSWindow?
+        }
+
+        private(set) var requests: [Request] = []
+        /// Questions asked through `confirm`, answered from `answers` (declining when it is empty).
+        private(set) var confirmations: [UserMessage] = []
+        var answers: [Bool] = []
+        /// Every message, alert or sheet, in the order it was asked for.
+        var values: [UserMessage] { requests.map(\.message) }
+        var alerts: [UserMessage] { requests.filter { !$0.isSheet }.map(\.message) }
+
+        func confirm(_ message: UserMessage) -> Bool {
+            confirmations.append(message)
+            return answers.isEmpty ? false : answers.removeFirst()
+        }
+
+        func present(_ message: UserMessage, on target: MessageTarget) {
+            switch target {
+            case .app:
+                requests.append(Request(message: message, isSheet: false))
+            case .sheet(let window):
+                requests.append(Request(message: message, isSheet: true, sheetParent: window))
+                MessagePresenter.beginSheet(message, on: window) { [weak self] in self?.present($0, on: .app) }
+            }
+        }
     }
 
     /// Stands in for the Quit confirmation alert: records each question and answers from a script
@@ -158,10 +229,10 @@
     @MainActor
     final class RecordingQuitConfirmation {
         var answers: [Bool] = []
-        var questions: [Int] = []
+        var questions: [QuitDiscards] = []
 
-        func answer(_ count: Int) -> Bool {
-            questions.append(count)
+        func answer(_ discards: QuitDiscards) -> Bool {
+            questions.append(discards)
             return answers.isEmpty ? false : answers.removeFirst()
         }
     }
@@ -192,22 +263,30 @@
     }
 
     /// `EditorWindowManager.open` without `present()`: real editor windows and models, parked
-    /// offscreen at one fixed content size.
+    /// offscreen at one fixed content size. Closing a window leaves its document in the app's
+    /// Reopen Closed Capture slot, as in the app; `closeAll` empties the slot again.
     @MainActor
     final class E2EEditorHost {
         private let environment: EditorEnvironment
+        private let closedCapture: ClosedCaptureSlot
         private(set) var controllers: [EditorWindowController] = []
         /// Applied to editors opened from now on; scenarios record announcements through it.
         var noticePresentation = EditorNoticePresentation()
 
-        init(environment: EditorEnvironment) {
+        init(environment: EditorEnvironment, closedCapture: ClosedCaptureSlot) {
             self.environment = environment
+            self.closedCapture = closedCapture
         }
 
         @discardableResult
-        func open(_ session: DocumentSession, initialAction: EditorInitialAction = .none) -> EditorWindowController {
-            let model = EditorModel(session: session, environment: environment)
-            let controller = EditorWindowController(model: model, noticePresentation: noticePresentation)
+        func open(
+            _ session: DocumentSession, importedFileName: String? = nil, initialAction: EditorInitialAction = .none
+        ) -> EditorWindowController {
+            let model = EditorModel(
+                session: session, environment: environment, autoRedacts: initialAction == .maskSensitiveText)
+            let controller = EditorWindowController(
+                model: model, importedFileName: importedFileName, noticePresentation: noticePresentation,
+                closedCapture: closedCapture)
             if let window = controller.window {
                 window.setContentSize(E2ESnapshot.editorSize)
                 E2ESnapshot.park(window)
@@ -220,12 +299,14 @@
             return controller
         }
 
-        /// Editors whose edits were never exported, as `EditorWindowManager` counts them.
         var unexportedEditCount: Int { controllers.filter { $0.hasUnexportedEdits() }.count }
 
+        /// Closes every editor and releases what they left for Reopen Closed Capture, so a
+        /// scenario's closes release pixels as before unless it closes a window itself.
         func closeAll() {
             for controller in controllers { controller.window?.close() }
             controllers.removeAll()
+            closedCapture.clear()
         }
 
         /// Waits until the sanitized base render matches the current document.
@@ -237,7 +318,6 @@
     }
 
     enum E2EWait {
-        /// Polls `condition` on the main actor until it holds or `timeout` passes.
         @MainActor
         static func until(
             timeout: Duration = .seconds(10), poll: Duration = .milliseconds(20), _ condition: () -> Bool
@@ -252,10 +332,10 @@
     }
 
     extension EditorWindowController {
-        /// The window's content view (sidebar, canvas, inspector, status bar); the tools are in its toolbar.
+        /// The window's content view: the split view holding the object list, the canvas column
+        /// (canvas and status bar) and the inspector; the tools are in its toolbar.
         var contentRoot: NSView? { window?.contentView }
 
-        /// The AppKit canvas, found in the hosted view hierarchy.
         var canvasView: EditorCanvasView? { contentRoot.flatMap { Self.first(EditorCanvasView.self, in: $0) } }
 
         static func first<T: NSView>(_ type: T.Type, in view: NSView) -> T? {

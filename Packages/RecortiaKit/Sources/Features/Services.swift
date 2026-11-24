@@ -35,8 +35,20 @@ public protocol ScreenPermissionService: AnyObject {
 public protocol AccessibilityPermissionService: AnyObject {
     /// Whether the process is trusted for Accessibility (automatic scrolling only).
     var isTrusted: Bool { get }
-    /// Shows the OS prompt. Called only after the user opts into automatic scrolling.
+    /// Shows the OS prompt. Called only after the user opts into automatic scrolling or element
+    /// snapping in Settings.
     func requestWithPrompt()
+}
+
+/// Interface element frames for region snapping (FR-02, B-7, ADR-010). It only checks
+/// Accessibility and never requests it, and it reads no text: `InterfaceElementReading` has no
+/// field for any.
+@MainActor
+public protocol InterfaceElementFrameService: AnyObject {
+    /// The element frames of the app that owns the frontmost of `windows` under the pointer, read
+    /// off the main actor within `ElementSnapping.Limits.standard`. Nil when Accessibility is not
+    /// granted, no listed window is under the pointer, or the app cannot be read.
+    func frames(under windows: [WindowInfo]) async -> ElementSnapping.Walk?
 }
 
 // MARK: - Assets and import
@@ -47,11 +59,20 @@ public protocol ImageAssetService: AnyObject {
     func importImage(_ data: Data, origin: AssetOrigin) async throws(ImportError) -> ImageAssetInfo
     /// Canonicalizes a captured image and registers it with its capture geometry.
     func registerCapture(_ image: CGImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo
-    /// Registers a stitched scrolling capture; `partialReason` is non-nil for an accepted partial result.
-    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?) async throws(ImportError)
-        -> ImageAssetInfo
+    /// Registers a capture already canonicalized into an independently backed raster.
+    func registerCapture(_ image: DecodedImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo
+    /// Registers a stitched scrolling capture; `partialReason` is non-nil for an accepted partial
+    /// result, `pointPixelScale` is its pixels per point.
+    func registerStitched(_ image: CGImage, partialReason: ScrollPartialReason?, pointPixelScale: Double)
+        async throws(ImportError) -> ImageAssetInfo
     /// Releases an asset's pixels when no document references it any more.
     func release(_ id: AssetID)
+}
+
+public extension ImageAssetService {
+    func registerCapture(_ image: DecodedImage, geometry: CaptureGeometry) async throws(ImportError) -> ImageAssetInfo {
+        try await registerCapture(image.image, geometry: geometry)
+    }
 }
 
 @MainActor
@@ -66,15 +87,19 @@ public protocol ImageInputService: AnyObject {
 
 @MainActor
 public protocol GitHubUploadService: AnyObject {
+    /// `isLive` is true while the consent and document that authorized this upload still hold;
+    /// it is checked before every authenticated request, lookups included. `isCurrent` repeats
+    /// that check immediately before the image is sent and marks the export committed.
     func upload(
         _ snapshot: ShareSnapshot, to destination: GitHubDestination, intent: UUID,
+        isLive: @escaping @MainActor @Sendable () -> Bool,
         isCurrent: @escaping @MainActor @Sendable () -> Bool
     ) async throws(GitHubUploadFailure) -> URL
 }
 
 @MainActor
 public protocol GitHubCredentialService: AnyObject {
-    func store(_ token: String, for destination: GitHubDestination) throws(GitHubUploadFailure)
+    func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure)
     func remove(for destination: GitHubDestination) throws(GitHubUploadFailure)
 }
 
@@ -110,6 +135,13 @@ public protocol ExportService: AnyObject {
 public protocol ClipboardSinkService: AnyObject {
     /// Replaces the clipboard with the snapshot's sanitized PNG only after encoding succeeded.
     func write(_ snapshot: ShareSnapshot) throws(SinkError)
+}
+
+@MainActor
+public protocol PrintSinkService: AnyObject {
+    /// Shows the system print panel for the snapshot's sanitized PNG, attached to the editor of
+    /// `snapshot.documentID`, and returns once it is shown (B-9a).
+    func present(_ snapshot: ShareSnapshot) throws(SinkError)
 }
 
 @MainActor
@@ -157,6 +189,24 @@ public protocol QRDecodingService: AnyObject {
     func decode(_ image: CGImage) async throws -> [QRPayload]
 }
 
+/// Finds e-mail addresses and phone numbers in a new capture for automatic masking (FR-06), and
+/// text lines for text-only redaction (A-6). The live service reads the asset's pixels inside
+/// Imaging; Features receives only rectangles.
+@MainActor
+public protocol SensitiveTextService: AnyObject {
+    /// Whole-pixel rectangles of `asset`'s source pixels that show an e-mail address or a phone
+    /// number. Throws when any part of the image could not be read, and on cancellation, so a
+    /// partial result is never returned as complete.
+    func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect]
+
+    /// Whole-pixel rectangles of `asset`'s source pixels, one per text line recognized inside
+    /// `area`, padded like `sensitiveRegions` and inside `area`. The source pixels in `hidden`, those
+    /// under existing secure masks, are filled before recognition reads anything, so the answer
+    /// cannot reveal what they hide. Throws as `sensitiveRegions` does.
+    func textLineRegions(in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]) async throws
+        -> [PixelRect]
+}
+
 // MARK: - Scrolling capture
 
 @MainActor
@@ -172,16 +222,18 @@ public protocol ScrollFrameSourceService: AnyObject {
 
 @MainActor
 public protocol ScrollStitchService: AnyObject {
-    /// Discards all accepted frames and starts a new stitch.
-    func reset()
+    /// Discards all accepted frames and starts a new stitch along `direction`.
+    func reset(direction: ScrollCaptureDirection)
     /// Offers a frame to the stitcher; matching runs off the main actor in the adapter.
     func append(_ frame: CGImage, elapsed: Duration) async -> ScrollAppendResult
     var acceptedFrameCount: Int { get }
+    /// The stitched image's size, as assembled (wide for a horizontal stitch).
     var outputSize: PixelSize { get }
     /// True once content was accepted and the latest frames kept arriving unchanged: the page
     /// stopped moving, which in automatic mode means it ended.
     var endOfPageDetected: Bool { get }
-    func preview(maxHeight: Int) async -> CGImage?
+    /// The stitch scaled to at most `maxLength` pixels along its scroll direction.
+    func preview(maxLength: Int) async -> CGImage?
     func assemble() async throws -> CGImage
 }
 
@@ -194,11 +246,13 @@ public enum AutoScrollStep: Hashable, Sendable {
 
 @MainActor
 public protocol AutoScrollService: AnyObject {
-    /// Sends one minimal scroll action to the chosen target (Accessibility, automatic mode only).
-    func step(_ target: CaptureTarget) async -> AutoScrollStep
+    /// Sends one minimal scroll action to the chosen target that reveals more of the page in
+    /// `direction`: below, or to the right (Accessibility, automatic mode only).
+    func step(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> AutoScrollStep
     func stop()
-    /// Whether the target's scroll area reports that it is at its end; nil when it cannot tell.
-    func isAtEnd(_ target: CaptureTarget) async -> Bool?
+    /// Whether the target's scroll area reports that it is at its end in `direction`; nil when it
+    /// cannot tell.
+    func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool?
 }
 
 // MARK: - System
@@ -209,11 +263,28 @@ public protocol LoginItemService: AnyObject {
     func setEnabled(_ enabled: Bool) throws
 }
 
+/// One short sound for a completed capture (FR-01, A-12): a system sound, silent when the system's
+/// interface sound effects are off. Never records anything.
+@MainActor
+public protocol CaptureSoundService: AnyObject {
+    func playCaptureSound()
+}
+
 @MainActor
 public protocol FeatureClock: AnyObject {
     func now() -> Date
+    /// Monotonic time since an arbitrary origin, for measuring durations: unlike `now()`, a
+    /// wall-clock correction does not move it.
+    func uptime() -> Duration
     /// Suspends for `duration`; throws `CancellationError` when the calling task is canceled.
     func sleep(for duration: Duration) async throws
+}
+
+private let uptimeOrigin = ContinuousClock.now
+
+extension FeatureClock {
+    /// The continuous clock `Task.sleep(for:)` uses, so measured time and sleeps agree.
+    public func uptime() -> Duration { ContinuousClock.now - uptimeOrigin }
 }
 
 /// Key–value storage for the single preferences blob. `UserDefaults` conforms in production.

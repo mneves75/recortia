@@ -3,6 +3,27 @@ import Domain
 import Foundation
 
 /// Container formats accepted in v1 (FR-03).
+/// The leading bytes that identify a PNG or JPEG file (FR-03): an import reads these first and
+/// refuses anything else before reading the rest.
+public enum ImageSignature {
+    public static let length = 8
+
+    public static func isSupported(_ head: Data) -> Bool { DecodeFormat.sniff(head) != nil }
+}
+
+/// The dimensions a PNG or JPEG declares, read from its container headers with the per-image
+/// limits applied and before any pixel decode; the decoder later requires the decoded image to
+/// have exactly this size.
+public enum ImageHeader {
+    public static func pixelSize(_ data: Data) throws(ImportError) -> PixelSize {
+        switch DecodeFormat.sniff(data) {
+        case .png: try DecodePNGStructure.layout(data).header.pixelSize
+        case .jpeg: try DecodeJPEGStructure.header(data).pixelSize
+        case nil: throw .unsupportedFormat
+        }
+    }
+}
+
 enum DecodeFormat: Equatable {
     case png
     case jpeg
@@ -251,7 +272,8 @@ enum DecodePNGStructure {
 }
 
 /// JPEG header parsing: dimensions come from the single SOFn segment, before any decode. The walk
-/// continues to SOS so a second frame header (which decoders resolve differently) is rejected.
+/// continues through every scan so a second frame header (which decoders resolve differently)
+/// is rejected.
 enum DecodeJPEGStructure {
     /// Progressive encoders write about 10 scans; the cap bounds decode work for crafted files.
     static let maxScans = 128
@@ -302,17 +324,15 @@ enum DecodeJPEGStructure {
     /// The offset of the first marker after entropy-coded data starting at `start`: an 0xFF not
     /// followed by a stuffed 0x00 or a restart marker. `reader.count` when the data ends first.
     private static func nextMarker(_ reader: DecodeByteReader, after start: Int) -> Int {
-        reader.data.withUnsafeBytes { raw -> Int in
-            let bytes = raw.bindMemory(to: UInt8.self)
-            var index = start
-            while index + 1 < bytes.count {
-                if bytes[index] == 0xFF {
-                    let next = bytes[index + 1]
-                    if next != 0x00, next != 0xFF, !(0xD0...0xD7).contains(next) { return index }
-                }
-                index += 1
+        let bytes = reader.data.span
+        var index = start
+        while index + 1 < bytes.count {
+            if bytes[index] == 0xFF {
+                let next = bytes[index + 1]
+                if next != 0x00, next != 0xFF, !(0xD0...0xD7).contains(next) { return index }
             }
-            return bytes.count
+            index += 1
         }
+        return bytes.count
     }
 }

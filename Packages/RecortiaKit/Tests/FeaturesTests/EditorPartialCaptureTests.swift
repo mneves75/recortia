@@ -15,10 +15,11 @@ struct EditorPartialCaptureTests {
 
     @Test("A partial scroll capture exposes its reason; a complete one and other origins do not")
     func partialReasonIsExposed() {
-        let partial = EditorHarness(session: session(origin: .scrollCapture(partialReason: .limit(.height))))
+        let partial = EditorHarness(
+            session: session(origin: .scrollCapture(partialReason: .limit(.height), pointPixelScale: 2)))
         #expect(partial.model.partialScrollCaptureReason == .limit(.height))
 
-        let complete = EditorHarness(session: session(origin: .scrollCapture(partialReason: nil)))
+        let complete = EditorHarness(session: session(origin: .scrollCapture(partialReason: nil, pointPixelScale: 2)))
         #expect(complete.model.partialScrollCaptureReason == nil)
 
         let imported = EditorHarness(session: session(origin: .imported))

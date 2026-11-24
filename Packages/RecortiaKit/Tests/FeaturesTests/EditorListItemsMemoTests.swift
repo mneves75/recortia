@@ -41,7 +41,6 @@ struct EditorListItemsMemoTests {
         model.pointerUp(at: Point(x: 980, y: 950))
         #expect(model.listItems != first, "the committed rectangle belongs in the list")
 
-        // A document change invalidates the memo, and only once.
         try model.session.addSecureMask(covering: Rect(x: 0, y: 0, width: 2, height: 2))
         let afterMask = model.listItems
         let afterResolution = model.listItemGeometryResolutions

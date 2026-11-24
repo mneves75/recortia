@@ -134,6 +134,7 @@
             try await checkUnsavedEdits(harness, context, requests)
             try await checkScrollReview(harness, context, requests)
             try await checkExportWait(harness, context, requests, shown)
+            try await checkOpenWait(harness, context, requests)
 
             harness.settings.update { $0.keepsRunningInMenuBar = true }
             for kind in LastWindowProbe.Kind.allCases {
@@ -230,11 +231,28 @@
             E2EActions.drag(controller.model, .arrow, from: E2EActions.point(100, 700), to: E2EActions.point(500, 420))
             try context.require("the edit makes the document dirty", controller.model.isDirty)
             for discard in [false, true] {
+                let alerts = harness.messages.alerts.count
                 window.performClose(nil)
                 let sheet = try context.unwrap(
                     "closing an edited editor asks first",
                     await E2EWait.until(timeout: .seconds(5)) { window.attachedSheet != nil }
                         ? window.attachedSheet : nil)
+                context.check(
+                    "the close question is a sheet on that editor, not an alert",
+                    sheet.sheetParent === window && harness.messages.alerts.count == alerts)
+                if !discard {
+                    // R3-D17: a pin keeps no edits, so the warning names only copy and save. The
+                    // image can still be reopened after the close (B-6), and the warning says so.
+                    let expected =
+                        context.output.language.hasPrefix("pt")
+                        ? "Esta imagem tem alterações que não foram copiadas nem salvas; depois de fechá-la, você pode reabri-la por 10 minutos, até encerrar o Recortia."
+                        : "This image has changes that were not copied or saved; after closing, you can reopen it for 10 minutes, until you quit."
+                    let texts = sheet.contentView.map { EditorWindowController.all(NSTextField.self, in: $0) } ?? []
+                    context.check(
+                        "the close warning says the edits were not copied or saved and can be reopened",
+                        texts.contains { $0.stringValue == expected }, texts.map(\.stringValue).joined(separator: " | ")
+                    )
+                }
                 window.endSheet(sheet, returnCode: discard ? .alertFirstButtonReturn : .alertSecondButtonReturn)
                 if discard {
                     context.check(
@@ -287,14 +305,18 @@
                 !harness.settings.preferences.keepsRunningInMenuBar && !AppPresence.shared.hasUserWindow)
 
             try await review("discard")
+            // Quit never asks the review window, so it asks about the pending capture itself.
+            harness.quit.questions = []
+            harness.quit.answers = [false]
+            context.check(
+                "declining Quit keeps a scrolling capture that waits in review",
+                !harness.app.shouldTerminate() && model.state == .reviewing
+                    && harness.quit.questions == [QuitDiscards(editedImages: 0, scrollingReview: true)],
+                "\(harness.quit.questions), state \(model.state)")
+            // The recorder is shared across scenarios: leave it as quit-confirmation expects it.
+            harness.quit.questions = []
             let before = requests()
             let controller = ScrollUIController(model: model, displays: { [] })
-            var answers: [Bool] = []
-            var asked = 0
-            controller.confirmDiscard = {
-                asked += 1
-                return answers.isEmpty ? false : answers.removeFirst()
-            }
             let window = try context.unwrap(
                 "the review window is shown",
                 await E2EWait.until { NSApp.windows.contains { $0.delegate === controller && $0.isVisible } }
@@ -306,24 +328,37 @@
             // click for these elements, and that click acts only while this window is key, which
             // another app taking the foreground undoes. The checks below verify the effect.
 
-            answers = [false]
             try E2EAccessibilityControl.pressCheckingEffect("scroll.review.discard", in: root, context)
+            try await ScrollScenarios.answerDiscardSheet(on: window, discard: false, harness, context)
             try? await Task.sleep(for: .milliseconds(400))
             context.check(
                 "declining Discard keeps the review and Recortia",
-                asked == 1 && window.isVisible && model.state == .reviewing && requests() == before,
-                "asked=\(asked), visible=\(window.isVisible), state=\(model.state), \(requests() - before) requests")
+                window.isVisible && model.state == .reviewing && requests() == before,
+                "visible=\(window.isVisible), state=\(model.state), \(requests() - before) requests")
+            context.check(
+                "closing the review asks in a sheet and keeps the window",
+                !controller.windowShouldClose(window) && model.state == .reviewing)
+            // Quit while the question is open still asks about the capture in review.
+            harness.quit.answers = [false]
+            context.check(
+                "Quit during the discard question still asks and keeps the review",
+                !harness.app.shouldTerminate() && model.state == .reviewing
+                    && harness.quit.questions == [QuitDiscards(editedImages: 0, scrollingReview: true)],
+                "\(harness.quit.questions)")
+            harness.quit.questions = []
+            try await ScrollScenarios.answerDiscardSheet(on: window, discard: false, harness, context, shot: "discard")
+            context.check("declining the close keeps the review", window.isVisible && model.state == .reviewing)
 
-            answers = [true]
             try E2EAccessibilityControl.pressCheckingEffect("scroll.review.discard", in: root, context)
+            try await ScrollScenarios.answerDiscardSheet(on: window, discard: true, harness, context)
             context.check(
                 "a confirmed Discard of the last window requests termination",
                 await E2EWait.until(timeout: .seconds(3)) { requests() == before + 1 },
                 "\(requests() - before) requests")
             try? await Task.sleep(for: .milliseconds(400))
             try context.require(
-                "a confirmed Discard requests termination exactly once, asked once",
-                requests() == before + 1 && asked == 2, "\(requests() - before) requests, asked=\(asked)")
+                "a confirmed Discard requests termination exactly once",
+                requests() == before + 1, "\(requests() - before) requests")
             context.check(
                 "the discarded review is gone", !window.isVisible && model.state == .canceled,
                 "visible=\(window.isVisible), state=\(model.state)")
@@ -358,6 +393,57 @@
         /// Quitting waits for an automatic export that belongs to no window, reports its result,
         /// and gives up when the person turns the preference back on, opens a window or starts a
         /// capture meanwhile.
+        /// Closing the first editor of an Open With request while the next file is still being read
+        /// waits for the request: its other files still open and its refusal is reported before
+        /// termination is requested (T1 security 4A).
+        private static func checkOpenWait(
+            _ harness: E2EHarness, _ context: ScenarioContext, _ requests: () -> Int
+        ) async throws {
+            let work = harness.output.workDirectory
+            let image = work.appending(path: "last-window-open.png")
+            let notes = work.appending(path: "last-window-open-notes.png")
+            try E2EDrawing.png(harness.desktop).write(to: image, options: .atomic)
+            try Data("not an image".utf8).write(to: notes, options: .atomic)
+            let input = harness.importInput
+            var messagesAtRequest: Int?
+            harness.terminations.onRequest = { messagesAtRequest = harness.messages.values.count }
+            defer {
+                input.holdRead = nil
+                input.release()
+                harness.terminations.onRequest = nil
+            }
+            harness.settings.update { $0.keepsRunningInMenuBar = false }
+            let before = requests()
+            let editors = harness.editors.controllers.count
+            let messages = harness.messages.values.count
+            input.holdRead = input.fileReads + 2
+            harness.app.openFiles([image, notes])
+            try context.require(
+                "open request: the first file opens its editor",
+                await E2EWait.until(timeout: .seconds(10)) { harness.editors.controllers.count == editors + 1 })
+            try context.require(
+                "open request: the second file waits at its read", await E2EWait.until { input.isWaiting })
+            let first = try context.unwrap(
+                "the first opened editor has a window", harness.editors.controllers.last?.window)
+            first.ignoresMouseEvents = true
+            PresenceScenarios.show(first, AppPresence.shared)
+            first.close()
+            try? await Task.sleep(for: .milliseconds(400))
+            context.check(
+                "closing the first opened editor while the next file is read does not quit", requests() == before,
+                "\(requests() - before) requests")
+            input.release()
+            context.check(
+                "quitting is requested once the open request finished",
+                await E2EWait.until(timeout: .seconds(10)) { requests() == before + 1 }, "\(requests() - before)")
+            context.check(
+                "the request's refusal was reported before termination was requested",
+                harness.messages.values.count == messages + 1 && messagesAtRequest == messages + 1,
+                "messages: \(harness.messages.values.count - messages), at request: \(String(describing: messagesAtRequest))"
+            )
+            harness.settings.update { $0.keepsRunningInMenuBar = true }
+        }
+
         private static func checkExportWait(
             _ harness: E2EHarness, _ context: ScenarioContext, _ requests: () -> Int, _ shown: () -> NSWindow
         ) async throws {
@@ -367,7 +453,7 @@
             func saved() -> Int { (try? FileManager.default.contentsOfDirectory(atPath: folder.path).count) ?? -1 }
             let openDocument = harness.app.openDocument
             // No editor: the automatic save then belongs to no window and closing one cannot cancel it.
-            harness.app.openDocument = { _ in nil }
+            harness.app.openDocument = { _, _, _ in nil }
             defer {
                 harness.app.openDocument = openDocument
                 harness.terminations.onRequest = nil
@@ -534,13 +620,8 @@
                     : "child timed out")
         }
 
-        /// Child side: returns false when this process is not a last-window probe.
-        static func runIfRequested(arguments: [String]) -> Bool {
-            guard let index = arguments.firstIndex(of: argument) else { return false }
-            guard index + 1 < arguments.count, let kind = Kind(rawValue: arguments[index + 1]) else {
-                E2ERunner.log("unknown last-window probe; known: \(Kind.allCases.map(\.rawValue))")
-                exit(2)
-            }
+        /// Child side: runs `kind`, then exits with the result.
+        static func start(_ kind: Kind) {
             Task {
                 do {
                     try await run(kind)
@@ -551,15 +632,16 @@
                 E2ERunner.log("last-window probe \(kind.rawValue) is still running")
                 exit(stillRunning)
             }
-            return true
         }
 
         private static func run(_ kind: Kind) async throws {
             NSApp.appearance = NSAppearance(named: .aqua)
             let settings = SettingsStore.e2eInMemory()
             settings.update { $0.keepsRunningInMenuBar = kind == .keepsRunning }
-            // Production defaults: termination is `NSApp.terminate(nil)`.
-            let model = AppModel(settings: settings, services: nil, shortcutRegistry: KeyboardShortcutsRegistry())
+            // Production defaults: termination is `NSApp.terminate(nil)`. Inert services keep the probe
+            // away from the screen, pasteboard and keychain.
+            let model = AppModel(
+                settings: settings, services: PreviewSupport.services(), shortcutRegistry: KeyboardShortcutsRegistry())
             defer { withExtendedLifetime(model) {} }
             let presence = AppPresence.shared
             switch kind {

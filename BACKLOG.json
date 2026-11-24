@@ -33,7 +33,7 @@
     },
     "status": "released",
     "verification": "scripts/release.sh on the tag exits 0 (manifest: gate passed, notarized 1, toolchain Xcode 27.2 27B52): production gate 540 package tests and 620 translations, both notarization submissions Accepted, stapler and Gatekeeper pass for the app and the DMG. The public asset downloaded anonymously is byte-identical (SHA-256 above) to the qualified DMG. Independent acceptance by fresh GPT-6 (Codex) verifiers on the released tree e8822e3: criteria 1-9 and 11 PASS with no findings (.scratch/verify/), and the full native E2E 54/54 per language on an unlocked console with no input during the run (idle 71 s to 832 s over 760 s; .scratch/verify-c10/attempt-2/). Staging and GitHub CI were skipped as for 0.13.0; there is no staging infrastructure.",
-    "installation": "PASS: the published notarized bundle is installed at /Applications/Recortia.app and running; see current_local_installation.",
+    "installation": "PASS on 2026-11-11. Superseded on disk by build 29 on 2026-11-22. See previous_local_installation_0_14_0.",
     "note": "Sources and tag are frozen at cdffc96; this record is a later documentation-only bookkeeping commit. Evidence summary: docs/specs/editor-redesign/release-0.14.0.md.",
     "limitations": [
       "Physical keyboard, Spaces, TCC, IME, VoiceOver, Full Keyboard Access on the new toolbar, and macOS 15/26 rendering of the window toolbar were not run; native E2E uses the DEBUG harness with synthetic frames and sinks.",
@@ -49,7 +49,7 @@
     "release": {"tag": "v0.13.0", "commit": "2858cf13c5798e711be4690c364da535d4b21355", "url": "https://github.com/mneves75/recortia/releases/tag/v0.13.0", "published_at": "2026-11-01T21:54:22Z", "draft": false, "prerelease": false, "latest": true, "dmg": "Recortia-0.13.0.dmg", "dmg_sha256": "20f452cc946628859f2f43df896918c4bc759417d01b88c7c5104a8f8789efad", "dsym_uuid": "13D75ECB-AFAC-3C3F-8B42-5FFAF990386B", "notarization_submissions": {"app": "2c80f1b9-54f4-4a4c-ac17-048e8d45ab29", "dmg": "ebdae866-8a4b-4dfe-8bfe-c1fa24c50430"}, "notarization_status": "Accepted", "security_gate": "WAIVED (SEC-17, SEC-18); record .scratch/security-gate/2858cf13c5798e711be4690c364da535d4b21355/production.json", "artifact_directory": ".build/release/0.13.0", "homebrew": "not changed: the separate mneves75/homebrew-tap cask still installs 0.12.4; the direct DMG is the 0.13.0 install path"},
     "status": "released",
     "verification": "scripts/release.sh on the tag exits 0 (manifest: gate passed, notarized 1, toolchain Xcode 27.2 27B52): production gate 519 package tests and 629 translations, both notarization submissions Accepted, stapler and Gatekeeper pass for the app and the DMG, eight artifact-contract tests pass. The public asset downloaded anonymously is byte-identical (SHA-256 above) to the qualified DMG. Full native E2E 52/52 per language (.scratch/e2e/20261101-152335-97907/) ran at 2fee018, whose entire tree (3a76fd0640cb8cf1d87ec56b77c6f28840d983d6) is identical to the tagged 2858cf1. Staging and GitHub CI were explicitly skipped by the owner; there is no staging infrastructure.",
-    "installation": "PASS: the published notarized export is installed at /Applications/Recortia.app and running; see current_local_installation.",
+    "installation": "PASS on 2026-11-01. See previous_local_installation_0_13_0.",
     "note": "Sources and tag are frozen at 2858cf1; this record is a later documentation-only bookkeeping commit. Evidence summary: docs/specs/autosave-menu-bar/release-0.13.0.md.",
     "limitations": [
       "Physical keyboard, Spaces, TCC, IME, VoiceOver and minimum-macOS runtime behaviour of this build were not run; native E2E uses the DEBUG harness with synthetic frames and sinks.",
@@ -201,7 +201,79 @@
       ".scratch/local-install-build12-20261002/installation.json"
     ]
   },
+  "source_candidate_0_16_0": {
+    "version": "0.16.0",
+    "build": 31,
+    "date": "2026-11-22",
+    "requirements": ["FR-01", "FR-06", "FR-07", "FR-08", "FR-09", "FR-13"],
+    "scope": "The capture and framing features from build 30, with a fix for a stale editor notice timer dismissing the automatic masking count.",
+    "pull_request": "https://github.com/mneves75/recortia/pull/50",
+    "status": "locally_installed_awaiting_manual_validation",
+    "verification": "The stable local unsigned gate passed with Vision enabled at 1493d58. Hosted CI and unsigned Release scanning passed on the identical tree at 09be9d5. Full synthetic native E2E on 09be9d5 passed 73/73 scenarios and 6,048 assertions in each language without console interruptions. Four cooperative dynamic Spaces controls passed with zero Space switches. See progress.md for receipts.",
+    "installation": "Verified Developer ID 0.16.0 (31) is installed in /Applications. Independent first-launch verification passed on macOS 27.3 after the previous session exited. The build 30 rollback was preserved.",
+    "release": "Private disk-image integrity and signing passed. Exact-tree release security, notarization, live Sparkle update, physical desktop checks, minimum macOS, merge and tag remain open."
+  },
+  "previous_source_candidate_0_16_0_build_30": {
+    "version": "0.16.0",
+    "build": 30,
+    "date": "2026-11-22",
+    "requirements": ["FR-01", "FR-06", "FR-07", "FR-08", "FR-09", "FR-13"],
+    "scope": "Save Optimized Copy, Copy Text, passive opt-in automatic Pin, named framing recipes, inset border and text watermark. See docs/specs/capture-workflow-expansion/plan.md.",
+    "pull_request": "https://github.com/mneves75/recortia/pull/50",
+    "status": "locally_installed_awaiting_full_qualification",
+    "verification": "The signed artifact is from f6f579f3e836023029643cf49d205b166ab57cce. Hosted CI passed on its exact tree. Independent verification passed 120 focused package tests and the sanitized PNG pipeline at 1× and 2×. Focused bilingual capture, Pin and framing flows passed on the same implementation. The exact build reported 73/73 in each language during a full run invalidated by console activity. The separate Portuguese retry stopped at 58/73 with SecurityAgent in the foreground. Fourteen scenarios failed the required foreground-fixture control, and a masking notice assertion passed on the subsequent focused replay. Four cooperative dynamic Spaces checks passed. See progress.md for receipts.",
+    "installation": "Signed Developer ID 0.16.0 (30) installed on macOS 27.3. The running 0.15.0 session and rollback bundle were preserved. Build 30 launch is pending.",
+    "release": "A private dry run verified signing and the disk image. Exact-commit release security, notarization, live update, physical desktop checks, minimum macOS, merge and tag remain open."
+  },
   "current_local_installation": {
+    "candidate": "0.16.0 Developer ID local candidate",
+    "app_version": "0.16.0",
+    "build": 31,
+    "date": "2026-11-22",
+    "source_commit": "d768455f1cb34dcf5ee3331c6979221b8f23e68e",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Verified export from scripts/release.sh --dry-run, 0.16.0-dev-20261122T223117Z-81147.",
+    "backup_path": "Primary main checkout: .scratch/install-0.16.0-build31-20261122/Recortia.app (previous signed 0.16.0 build 30).",
+    "executable_sha256": "9edae65996f318d20adfac08cb232d86ae1d02abf42d335825bc8be8d28818a7",
+    "installed_equals_developer_id_export": true,
+    "launched": true,
+    "notarized": false,
+    "verification": "Independent verification matched all 177 installed bundle entries to the export. Strict Developer ID signature, Hardened Runtime, entitlements and local Gatekeeper assessment passed. The running build 29 process preserved its PID, start time and mapped executable inode. Receipt in the primary main checkout: .scratch/install-0.16.0-build31-20261122/installation.json.",
+    "qualification": "Signed installation and first launch on macOS 27.3 passed. AppKit reported launch complete, and the running executable matched the signed installation by device and inode. Launch receipt in the primary checkout: .scratch/install-0.16.0-build31-20261122/launch.json. The synthetic runner passed full bilingual E2E. Installed-app fullscreen, minimum macOS, physical VoiceOver and TCC remain open."
+  },
+  "previous_local_installation_0_16_0_build_30": {
+    "candidate": "0.16.0 Developer ID local candidate",
+    "app_version": "0.16.0",
+    "build": 30,
+    "date": "2026-11-22",
+    "source_commit": "f6f579f3e836023029643cf49d205b166ab57cce",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Verified export from scripts/release.sh --dry-run, 0.16.0-dev-20261122T213252Z-40700.",
+    "backup_path": "Primary main checkout: .scratch/install-0.16.0-20261122/Recortia.app (previous signed 0.15.0 build 29).",
+    "executable_sha256": "25a18c72cf4fe30065037896e5da6b9d838bf9ba7351e0bb62ee35e02f1f5011",
+    "installed_equals_developer_id_export": true,
+    "launched": false,
+    "notarized": false,
+    "verification": "Independent verification passed bundle content, mode and link-target comparison, strict Developer ID signature, Hardened Runtime and local execution assessment. The running build 29 process preserved its PID, start time and mapped executable inode across the exchange. Receipt in the primary main checkout: .scratch/install-0.16.0-20261122/installation.json.",
+    "qualification": "Signed installation on macOS 27.3 passed. Build 30 launch, installed-app fullscreen, minimum macOS, physical VoiceOver and TCC remain open."
+  },
+  "previous_local_installation_0_15_0": {
+    "candidate": "0.15.0 Developer ID local candidate",
+    "app_version": "0.15.0",
+    "build": 29,
+    "date": "2026-11-22",
+    "source_commit": "6ac344bc48716085eb428d8799bad0fa0c374120",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Verified export from scripts/release.sh --dry-run, 0.15.0-dev-20261122T052546Z-42903.",
+    "backup_path": "Primary main checkout: .scratch/install-0.15.0-20261122/Recortia.app (previous signed 0.14.0 build 28).",
+    "executable_sha256": "623b37eed86d21c4be2abb4e25624ccf3973aa9505cb7cc1d5c787efe697b599",
+    "installed_equals_developer_id_export": true,
+    "launched": true,
+    "notarized": false,
+    "verification": "Independent PASS: all 177 entries match the export, strict Developer ID signature and local execution assessment passed. The previous process retained its PID, start time and mapped executable inode across the atomic exchange. Receipt in the primary main checkout: .scratch/install-0.15.0-20261122/installation.json.",
+    "qualification": "On-disk signed installation and background launch on macOS 27.3 passed. The build 28 session survived the install and had exited before build 29 launched. AppKit reported launch complete, and the running executable matched the installed bundle by device and inode. Launch receipt in the primary checkout: .scratch/install-0.15.0-20261122/launch.json. Installed-app fullscreen, minimum-macOS, physical VoiceOver and TCC remain open."
+  },
+  "previous_local_installation_0_14_0": {
     "candidate": "0.14.0 notarized release, installed from the published DMG",
     "app_version": "0.14.0",
     "build": 28,
@@ -216,7 +288,7 @@
     "notarized": true,
     "verification": "The entire installed bundle is identical (diff -rq) to the app in the notarized DMG; codesign strict signature, stapler and Gatekeeper pass; version 0.14.0 (28); no get-task-allow entitlement. The previous 0.13.0 instance ended through a normal quit, with no forced quit; the old bundle went to the Trash after the backup. The relaunched app runs from /Applications/Recortia.app.",
     "qualification": "Release artifact installed and launched; physical Spaces, keyboard, TCC, IME, VoiceOver and minimum-macOS behaviour of this build not run.",
-    "note": "The 0.13.0 install record is kept below as previous_local_installation_0_13_0."
+    "note": "Historical record for 2026-11-11. The original bundle was preserved at .scratch/install-0.15.0-20261122/Recortia.app on 2026-11-22. The 0.13.0 install record is below."
   },
   "previous_local_installation_0_13_0": {
     "candidate": "0.13.0 notarized release, installed from the published export",
@@ -551,7 +623,7 @@
     "build": 28,
     "date": "2026-11-11",
     "scope": "FP-045: contextual inspector with Format and Image tabs; tools and actions in the native window toolbar with Effects and Measure menu buttons; cosmetic-effect warning pinned above both tabs; feature tour with one line per item in a fixed 580x615 window; Settings in seven content-tall panes (Pins in General, Scrolling Capture in Capture); every surface rendered and checked dark (ChromeAppearance), the transparency checkerboard following the appearance on screen only; window chooser sized to its list, scrolling HUD without the empty title band, capture panels centred from their content size. FP-046: a confirmed Discard of the scrolling review quits like its close button when it closes the last window; automatic-export alerts no longer deny earlier writes; an automatic batch is decided when the capture completes (automaticExportPlan) and each step still runs only while allowed; overwriting a file keeps its explicit ACL and a refused overwrite strands no temporary file; one import-failure wording; dead code removed and module interfaces narrowed; docs/handoff/COMPLETE_HANDOFF.md removed. See CHANGELOG.md.",
-    "distribution_status": "Released: tagged v0.14.0 at cdffc96 (squash of PR #40, same tree e8822e3 as the verified 5186294), notarized and published 2026-11-11; see current_candidate and docs/specs/editor-redesign/release-0.14.0.md. The published bundle is installed locally (current_local_installation).",
+    "distribution_status": "Released: tagged v0.14.0 at cdffc96 (squash of PR #40, same tree e8822e3 as the verified 5186294), notarized and published 2026-11-11. See current_candidate, previous_local_installation_0_14_0 and docs/specs/editor-redesign/release-0.14.0.md.",
     "evidence": [
       ".scratch/logs/second-review-check.log: './init.sh check --unsigned' on the working tree that was committed minutes later as f98a6c1 (the log itself records no commit) ends 'check: all gates passed'; 530 package tests (105 + 126 + 261 + 38) and 620 extracted strings with pt-BR translations.",
       ".scratch/logs/second-review-e2e-final.log, .scratch/e2e/20261111-054004-61977: automatic-export and window-chooser pass in en and pt-BR on the finished second-review tree.",
@@ -564,6 +636,27 @@
       "window-latency: the editor's first frame and a first Settings open exceed the 50 ms budget (FP-028); the toolbar's effect was measured only on a locked console and is unqualified."
     ],
     "authorization": "Release preparation for 0.14.0 build 28 as recorded in docs/handoffs/2026-11-11-0503-redesign-fixes-release-pending.md (review fixes and redesign ship in one release). Tagging, notarization and publication are separate owner actions."
+  },
+  "source_candidate_0_15_0": {
+    "candidate": "0.15.0 source candidate",
+    "app_version": "0.15.0",
+    "build": 29,
+    "date": "2026-11-20",
+    "scope": "FP-048 (program 2026-11 T1): macOS 26 deployment floor (ADR-008); optional masking of e-mail addresses and phone numbers in new captures, failing closed; Open With for PNG and JPEG; filename templates; optional capture sound; latency signposts; editor on system split containers with every toolbar item visible at 980 pt; Output Preview read-only; secure masks never moved by layer edits; file-save and GitHub-consent hardening; one window presentation order; edit values admitted once in Domain. See CHANGELOG.md.",
+    "distribution_status": "This T1 source checkpoint is untagged and unpublished. See cumulative_qualification below for the separate local installation of the later stack.",
+    "evidence": ["./init.sh check --unsigned passed on 3d07bfd (Xcode 27.2 27B52, clean tree; .scratch/logs/fill-click-check.log in the train worktree)", "Bilingual native E2E on 3d07bfd: en 55/55, pt-BR 55/55, 200 screenshots each; console unlocked, idle 922 s, no lock during the run (.scratch/e2e/20261120-231353-17161)", "Masking latency on 76c4000: 2560x1440 2x cold 2138 ms, warm p99 2183 ms; 1440x900 warm p99 under 1 s; 8 s deadline kept (SPEC section 10, decisions.md)", "Reviewer agent PASS on the train (no P0/P1) and a cross-model security pass; findings fixed or declined in decisions.md"],
+    "not_verified": "At the T1 checkpoint: macOS 26.0 launch; VoiceOver and Full Keyboard Access on the regrouped toolbar and on Position and Size; dynamic Spaces probe and installed-app fullscreen; TCC and live capture; recognition recall on real screens; masking deadline on a strictly idle Mac.",
+    "cumulative_qualification": {
+      "source_commit": "6ac344bc48716085eb428d8799bad0fa0c374120",
+      "source_tree": "ed68094b814a9265f91b692a84baf343335a26a2",
+      "date": "2026-11-22",
+      "environment": "macOS 27.3 (26C5047e), stable Xcode 27.2 (27B52), en and pt-BR.",
+      "focus": "20261122-125852-63870: 11/11 scenarios, 576 assertions and 25 screenshots per language.",
+      "full": "20261122-130236-98961: 73/73 scenarios, 5661 assertions and 250 screenshots per language. Same Debug app as focus; unlocked idle console throughout.",
+      "spaces": "Four cooperative fixture cases passed with zero switches using the order and reused-pin path of the app. The forced comparison lost console isolation and contributes no qualification. The fixture logs are in the feat/quick-capture-preview qualification worktree. Installed-app fullscreen remains open.",
+      "hosted_ci": "https://github.com/mneves75/recortia/actions/runs/44989058389",
+      "status": "Installed locally as signed 0.15.0 build 29. Background launch completed on macOS 27.3. Notarization, release security controls and physical qualification remain open."
+    }
   },
   "tasks": [
     {
@@ -1256,7 +1349,7 @@
         "docs/specs/signed-updater/tickets.md"
       ],
       "authorization": "owner_approved_2026-10-19_fp024_signed_updater",
-      "status_note": "Spec and five tickets written on 2026-10-19. Sparkle 2.10.0 (2026-09-13, macOS 12+) verified as the latest stable, MIT with bundled external licenses. Implementation is blocked on the EdDSA key-custody decision (owner deferred on 2026-10-19: \"1. later\"); T1 and T2 do not need the key, T3 to T5 do. Updates still ship through Homebrew until this lands."
+      "status_note": "Spec and five tickets written on 2026-10-19. Sparkle 2.10.0 (2026-09-13, macOS 12+) verified as the latest stable, MIT with bundled external licenses. Implementation is blocked on the EdDSA key-custody decision (owner deferred on 2026-10-19: \"1. later\"); T1 and T2 do not need the key, T3 to T5 do. Updates still ship through Homebrew until this lands. 2026-11-21: T1-T2 implemented on train/t6 (847d778); the updater stays unavailable without the key. T3 key custody is the owner's."
     },
     {
       "id": "FP-041",
@@ -1807,6 +1900,111 @@
       ],
       "authorization": "owner request 2026-11-10",
       "status_note": "Code complete; unit tests, per-item E2E runs from before the interference and './init.sh check --unsigned' pass on macOS 27.3 with Xcode 27.2. Not 'implemented' until the full E2E passes in a clean session. Not qualified: live alerts, TCC, physical Spaces; the ACL-copy failure path has no dedicated test."
+    },
+    {
+      "id": "FP-047",
+      "milestone": "M7",
+      "title": "Program 2026-11 T0: evidence and experiments",
+      "status": "completed",
+      "depends_on": ["FP-046"],
+      "requirement_ids": ["FR-01", "FR-02", "FR-04", "FR-06", "FR-08", "FR-14"],
+      "acceptance_test_ids": [],
+      "scope": "Record the 2026-11-19 decisions; baseline gate and bilingual screenshot set; capability inventory of the installed reference app (licence first, nothing copied); architecture second opinion; whole-project defect review per module; modernisation audit for the macOS 26 floor; comment audit; experiments: one small slice timed through the full loop, an editor spike on macOS 26 containers with before/after screenshots, and an automatic-redaction recall and latency spike.",
+      "deliverables": ["docs/specs/program-2026-11/plan.md", "docs/specs/program-2026-11/review-list.md", "docs/specs/feature-discovery/reference-matrix.md"],
+      "completion_contract": "Every T0 output is recorded in docs/specs/program-2026-11/ with its source; the owner has answered the before/after and spike-numbers stop.",
+      "evidence": ["docs/specs/program-2026-11/plan.md", "docs/specs/program-2026-11/decisions.md", "docs/specs/program-2026-11/review-list.md", "docs/specs/program-2026-11/design-direction.md"],
+      "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
+      "status_note": "T0 outputs are in docs/specs/program-2026-11/ (plan, decisions, review-list, design-direction). The before/after and spike-numbers stop was taken by the coordinator under the owner's 2026-11-20 run-to-completion instruction and logged in decisions.md (auto-redaction timing, detector and tile size; editor material)."
+    },
+    {
+      "id": "FP-048",
+      "milestone": "M7",
+      "title": "Program 2026-11 T1 (0.15): macOS 26 foundation",
+      "status": "awaiting_manual_validation",
+      "depends_on": ["FP-047"],
+      "requirement_ids": ["FR-01", "FR-03", "FR-04", "FR-06", "FR-07", "FR-08", "FR-14"],
+      "acceptance_test_ids": [],
+      "scope": "CI toolchain and XcodeGen pin fixes; ADR-008 macOS 26 floor; certain review fixes and comment pruning; opt-in automatic redaction of e-mail addresses and phone numbers at capture; editor refresh on standard macOS 26 containers; A-1 window titles, A-2 Open With, A-9 filename templates, A-12 capture sound, A-13 step 1 latency signposts.",
+      "deliverables": [],
+      "completion_contract": "Each slice has a failing test first; './init.sh check --unsigned' and the bilingual E2E for every touched flow pass; cross-model review recorded.",
+      "evidence": ["PR #42 (train/t1)", "docs/specs/program-2026-11/decisions.md"],
+      "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
+      "status_note": "All slices (T1a toolchain and review fixes, ADR-008 floor, T1b module deepening, T1c editor chrome, T1d automatic redaction, T1e Open With, filename templates, capture sound, signposts) and the whole-train review fixes are merged on branch train/t1, PR #42. Gate and bilingual native E2E (55/55 per language) passed on 3d07bfd; masking deadline measured. Outstanding, owner-run: space probe dynamic mode, installed-app fullscreen check, VoiceOver pass. See source_candidate_0_15_0."
+    },
+    {
+      "id": "FP-049",
+      "milestone": "M7",
+      "title": "Program 2026-11 T2 (0.16): surfaces and flow",
+      "status": "implemented",
+      "depends_on": ["FP-048"],
+      "requirement_ids": ["FR-01", "FR-02", "FR-07", "FR-08", "FR-09", "FR-14"],
+      "acceptance_test_ids": [],
+      "scope": "Settings, onboarding, HUD, chooser, pin, drag-chip and alert refresh; A-3 menu-bar commands; A-13 step 2 pre-built windows; small capability gaps from the inventory; B-1 quick-action thumbnail after its ADR is signed off; automatic redaction for scrolling capture and import.",
+      "deliverables": [],
+      "completion_contract": "As FP-048; B-1 builds only after the owner signs off its ADR.",
+      "evidence": ["PR #43 (train/t2)", "gate passed on c7a186e", "docs/specs/program-2026-11/decisions.md"],
+      "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
+      "status_note": "Merged on train/t2, PR #43 (draft, stacked on #42): R-4 admission point, surface refresh, A-3 menu commands, B-1 quick-action thumbnail with Copy Link (ADR-009), Automatic PNG/JPEG export, primary recognition language, window-capture background, wheel zoom, hide-menu-bar-icon, editor sheets, automatic masking of scrolling captures and imports, F-1 Core Text fonts, A-13 step 2 pre-built overlay. Gate passed on c7a186e. Independent acceptance review: PASS, no P0/P1; its tests are merged. Cumulative T6 native E2E on c5bd784: quick-actions, editor-zoom, auto-redaction-sources and latency-prebuilt passed in both languages. Editor-menu failed foreground readiness. Complete cumulative suite: 68/73 per language. Physical Spaces, TCC and VoiceOver remain owner-run."
+    },
+    {
+      "id": "FP-050",
+      "milestone": "M7",
+      "title": "Program 2026-11 T3 (0.17): precise capture",
+      "status": "implemented",
+      "depends_on": ["FP-049"],
+      "requirement_ids": ["FR-02", "FR-09"],
+      "acceptance_test_ids": [],
+      "scope": "A-4 selection nudging, aspect lock and edge snapping; A-5 frozen-frame selection with magnifier; B-7 element snapping; B-3 per-pin keep-on-top and click-through.",
+      "deliverables": [],
+      "completion_contract": "As FP-048; B-7 and B-3 build only after the owner signs off their ADRs.",
+      "evidence": ["PR #44 (train/t3)", "gate passed on fca70ee", "PR #48 (A-5 frozen-frame selection)", "bilingual E2E 73/73 passed on 09be9d5"],
+      "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
+      "status_note": "Implemented across PR #44 (train/t3: B-7 interface-element snapping ADR-010, nudge, aspect lock and edge snapping, pin Keep on Top, click-through and Unlock All Pins) and PR #48 (A-5 frozen-frame selection with magnifier). Gate passed on fca70ee and independent acceptance review passed with no P0/P1. Full bilingual native E2E on 09be9d5 passed 73/73 per language including capture-precision, element-snapping, and pin-on-top. The prebuilt-overlay benchmark covers A-13. Physical Spaces, TCC and VoiceOver remain owner-run."
+    },
+    {
+      "id": "FP-051",
+      "milestone": "M7",
+      "title": "Program 2026-11 T4 (0.18): redact and present",
+      "status": "implemented",
+      "depends_on": ["FP-050"],
+      "requirement_ids": ["FR-04", "FR-05", "FR-06", "FR-11", "FR-13"],
+      "acceptance_test_ids": [],
+      "scope": "A-6 click-a-line secure redaction, A-7 colour formats and contrast, A-8 framing presets and balance, A-10 duplicate, crop presets, rotate and flip, A-11 arrowheads and smoothing.",
+      "deliverables": [],
+      "completion_contract": "As FP-048.",
+      "evidence": ["PR #45 (train/t4)", "gate passed on 0659afc"],
+      "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
+      "status_note": "Merged on train/t4, PR #45: A-6 Text Only redaction, A-7 colour tools, A-8 framing presets, A-10 rotate, flip and crop presets, A-11 arrowhead styles and smoothing; two cross-model P1s fixed in c638bb8. Gate passed on 0659afc; hosted CI passed on an unchanged-head retry after the FIFO read timed out. Independent acceptance review: PASS, no P0/P1; one P2 (a preset lost a padding pixel with fractional content) fixed test-first in c7a984e. Cumulative T6 native E2E on c5bd784: text-redaction, layer-transforms and arrow-styles passed in both languages; colour-tools and framing-presets failed in both. Physical Spaces, TCC and VoiceOver remain owner-run."
+    },
+    {
+      "id": "FP-052",
+      "milestone": "M7",
+      "title": "Program 2026-11 T5 (0.19): integrations",
+      "status": "blocked",
+      "depends_on": ["FP-051"],
+      "requirement_ids": ["FR-14", "FR-16"],
+      "acceptance_test_ids": [],
+      "scope": "B-2 App Intents then URL scheme under a no-silent-capture-or-export rule; B-4 share extension; B-6 restore the last closed capture in memory only; B-10 opt-in local diagnostics file.",
+      "deliverables": [],
+      "completion_contract": "As FP-048; B-2 builds only after the owner signs off its ADR.",
+      "evidence": ["PR #46 (train/t5)", "gate passed on c57fed6", "docs/adr/0011-local-automation.md", "docs/adr/0012-share-extension.md", "docs/adr/0013-project-files.md"],
+      "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
+      "status_note": "Partly built, the rest blocked on owner decisions. Merged on train/t5, PR #46: B-6 Reopen Closed Capture and B-10 local diagnostics file; the cross-model P1 (a failed-masking capture kept after its notice was dismissed) fixed test-first in 9f33680. Parked Blocked after their review loops, nothing built: ADR-011 automation (B-2), ADR-012 Share extension (B-4), ADR-013 project files (B-8); each lists the owner's unblock options. Gate passed on c57fed6. Independent acceptance review: PASS, no P0/P1 (with T6); one P2 (a late expiry timer extended the Reopen slot) fixed test-first in 0eb8e7f, and a late-starting expiry task in c57fed6. Reopen-closed and diagnostics passed in both languages on the cumulative T6 native E2E head c5bd784. Physical Spaces, TCC and VoiceOver remain owner-run."
+    },
+    {
+      "id": "FP-053",
+      "milestone": "M7",
+      "title": "Program 2026-11 T6 (0.20): files, formats, providers, updates",
+      "status": "blocked",
+      "depends_on": ["FP-052"],
+      "requirement_ids": ["FR-03", "FR-07", "FR-10", "FR-14", "FR-15"],
+      "acceptance_test_ids": [],
+      "scope": "B-8 project files with Quick Look; B-9 HEIC, horizontal scrolling capture, printing and an S3 provider; B-5 signed updater (FP-024 spec; key custody is the owner's).",
+      "deliverables": [],
+      "completion_contract": "As FP-048; B-8 and S3 build only after the owner signs off their threat models.",
+      "evidence": ["PR #47 (train/t6)", "gate passed on 7bd7a2d", "docs/adr/0014-s3-upload.md"],
+      "authorization": "owner request and decisions 2026-11-19 (docs/specs/program-2026-11/plan.md)",
+      "status_note": "Partly built, the rest blocked on owner decisions. Merged on train/t6, PR #47: B-9a HEIC export and printing, B-9b horizontal scrolling capture, B-5 signed updater T1-T2 (FP-024; Sparkle 2.10.1, two cross-model rounds, three P1s fixed in b6be3be). B-8 is parked (ADR-013) and the S3 provider awaits the owner's signature on ADR-014; nothing is built for either. Gate passed on 7bd7a2d. Independent acceptance review: PASS, no P0/P1; one P2 (the HEIC allowlist admitted a thumbnail or a second picture) fixed test-first in 3c30c9d, and repeated meta boxes, a second dimg and a truncated iinf in 968b850. Cumulative native E2E on c5bd784 reported 68/73 per language. Scroll-horizontal, appearance-contrast and updater passed in both languages. HEIC-and-print reached the synthetic foreground control and failed that control in both languages. Physical Spaces, TCC, VoiceOver, print, horizontal scrolling and real Sparkle remain to qualify."
     }
   ],
   "deferred_scope": [

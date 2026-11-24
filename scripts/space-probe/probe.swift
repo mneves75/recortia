@@ -6,7 +6,7 @@
 //   mode "fresh": wait for the fullscreen host (pid in HOST_PID_FILE), then create + present.
 //   mode "stale": create + present now on the current desktop Space, write READY_FILE, wait for
 //                 the host to become frontmost, then present the SAME window again.
-// FORCE=1 uses activate(ignoringOtherApps:) to stand in for user-granted activation.
+// FORCE=1 separately diagnoses forced activation. Recortia uses cooperative activation.
 import AppKit
 
 let variant = CommandLine.arguments[1]
@@ -14,6 +14,7 @@ let mode = CommandLine.arguments[2]
 let force = ProcessInfo.processInfo.environment["FORCE"] == "1"
 let readyFile = ProcessInfo.processInfo.environment["READY_FILE"] ?? ""
 let hostPIDFile = ProcessInfo.processInfo.environment["HOST_PID_FILE"] ?? ""
+let fullscreenFile = ProcessInfo.processInfo.environment["FULLSCREEN_FILE"] ?? ""
 
 func activateApp() { if force { NSApp.activate(ignoringOtherApps: true) } else { NSApp.activate() } }
 
@@ -45,6 +46,10 @@ func readHostPID() -> pid_t? {
     return pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines))
 }
 
+final class ProbePinPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 final class Probe: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     var spaceChanges = 0
@@ -67,12 +72,26 @@ final class Probe: NSObject, NSApplicationDelegate {
         }
     }
 
+    var hostWaitDeadline: Date?
+
+    func hostEnteredFullScreen() -> Bool {
+        !fullscreenFile.isEmpty && FileManager.default.fileExists(atPath: fullscreenFile)
+    }
+
+    // Measure only after the host's windowDidEnterFullScreen signal; without it within 10 s the
+    // control failed, so the probe reports no measurement (run.sh fails the variant).
     func waitForHost() {
+        let deadline = hostWaitDeadline ?? Date().addingTimeInterval(10)
+        hostWaitDeadline = deadline
         if let pid = readHostPID(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
-            windows(of: pid).count >= 1
+            windows(of: pid).count >= 1, hostEnteredFullScreen()
         {
             hostPID = pid
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { self.go() }  // let fullscreen settle
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.go() }  // let the Space settle
+        } else if Date() >= deadline {
+            print("{\"error\":\"the host did not enter fullscreen\",\"variant\":\"\(variant)\",\"mode\":\"\(mode)\"}")
+            fflush(stdout)
+            exit(3)
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.waitForHost() }
         }
@@ -119,7 +138,8 @@ final class Probe: NSObject, NSApplicationDelegate {
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .canJoinAllApplications]
         case "dynamic-pin":
             // `PinPanel` (ADR-007): a normal-level, non-floating borderless panel on every Space.
-            let p = NSPanel(contentRect: rect, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
+            let p = ProbePinPanel(
+                contentRect: rect, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
             p.isFloatingPanel = false
             p.level = .normal
             p.hidesOnDeactivate = false
@@ -151,9 +171,17 @@ final class Probe: NSObject, NSApplicationDelegate {
         case "default", "follow-activate-first", "panel-activating":
             activateApp()
             window.makeKeyAndOrderFront(nil)
-        case "dynamic-follow", "dynamic-pin":
-            // `AppPresence.activate()`: an accessory app becomes regular, then activates and shows.
-            NSApp.setActivationPolicy(.regular)
+        case "dynamic-follow":
+            if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
+            window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+            window.makeKeyAndOrderFront(nil)
+            activateApp()
+        case "dynamic-pin":
+            if presented {
+                window.orderFrontRegardless()
+                return
+            }
+            if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
             activateApp()
             window.makeKeyAndOrderFront(nil)
         case "follow-order-first":
@@ -172,9 +200,11 @@ final class Probe: NSObject, NSApplicationDelegate {
         let facts: [String: Any] = [
             "variant": variant, "mode": mode, "force": force,
             "hostFrontBefore": hostFrontBefore,
+            "hostEnteredFullScreen": hostEnteredFullScreen(),
             "windowOnActiveSpaceBefore": onActiveBefore.map { $0 ? "yes" : "no" } ?? "new",
             "spaceChanges": spaceChanges,
             "windowVisible": window.isVisible,
+            "windowIsKey": window.isKeyWindow,
             "windowOnActiveSpace": window.isOnActiveSpace,
             "probeOnScreen": windows(of: getpid()).count,
             "hostOnScreenAfter": windows(of: hostPID).count,

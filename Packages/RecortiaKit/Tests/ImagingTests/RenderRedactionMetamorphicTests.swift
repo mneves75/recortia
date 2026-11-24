@@ -19,7 +19,8 @@ struct RedactionRecipe: Sendable, CustomTestStringConvertible {
 enum RedactionFixtures {
     static let width = 96
     static let height = 72
-    /// Odd coordinates, so every non-integer scale maps mask edges to fractional output pixels.
+    /// Odd x and y origins, so the tested fractional scales map the leading mask edges to
+    /// fractional output pixels.
     static let secret = FixtureRect(x: 31, y: 21, width: 26, height: 15)
     static let seeds: [UInt64] = [1, 2, 3, 7, 42, 1337]
 
@@ -101,23 +102,15 @@ enum RedactionFixtures {
                 // The mask touches only the first layer; source binding must protect the second.
                 return try session(document, maskRect: masked ? secret.documentRect : nil)
             }),
+        presentationRecipe(decorated: false),
+        presentationRecipe(decorated: true),
         RedactionRecipe(
-            name: "presentation, spotlight, annotation", options: ExportOptions(),
+            name: "9:16 preset, balance, radial gradient", options: ExportOptions(scale: 1.5),
             build: single { document in
-                let s = secret
                 document.presentation = Presentation(
-                    background: .linearGradient(from: RGBA(r: 10, g: 20, b: 200), to: .white, angleDegrees: 30),
-                    padding: 12, cornerRadius: 10, shadow: Presentation.Shadow(radius: 6, offsetY: 3, opacity: 0.4))
-                document.callouts = [
-                    Callout(
-                        kind: .spotlight(
-                            Rect(x: Double(s.x - 8), y: Double(s.y - 8), width: 40, height: 30), dimOpacity: 0.5))
-                ]
-                document.annotations = [
-                    Annotation(
-                        kind: .arrow(start: Point(x: 5, y: 5), end: Point(x: Double(s.midX), y: Double(s.midY))),
-                        style: .default)
-                ]
+                    background: .radialGradient(center: .white, edge: RGBA(r: 10, g: 20, b: 200)), padding: 9,
+                    cornerRadius: 6, shadow: Presentation.Shadow(radius: 4, offsetY: 2, opacity: 0.5),
+                    aspect: .portrait9x16)
             }),
         RedactionRecipe(name: "JPEG 1x", options: ExportOptions(format: .jpeg(quality: 0.9)), build: single { _ in }),
         RedactionRecipe(
@@ -131,6 +124,33 @@ enum RedactionFixtures {
                 ]
             }),
     ]
+
+    private static func presentationRecipe(decorated: Bool) -> RedactionRecipe {
+        RedactionRecipe(
+            name: decorated ? "decorated presentation, spotlight, annotation" : "presentation, spotlight, annotation",
+            options: ExportOptions(),
+            build: single { document in
+                let s = secret
+                document.presentation = Presentation(
+                    background: .linearGradient(from: RGBA(r: 10, g: 20, b: 200), to: .white, angleDegrees: 30),
+                    padding: 12, cornerRadius: 10, shadow: Presentation.Shadow(radius: 6, offsetY: 3, opacity: 0.4))
+                if decorated {
+                    document.presentation.border = Presentation.Border(width: 3, color: .black)
+                    document.presentation.watermark = Presentation.Watermark(
+                        text: "Revisão", position: .center, rotationDegrees: -20)
+                }
+                document.callouts = [
+                    Callout(
+                        kind: .spotlight(
+                            Rect(x: Double(s.x - 8), y: Double(s.y - 8), width: 40, height: 30), dimOpacity: 0.5))
+                ]
+                document.annotations = [
+                    Annotation(
+                        kind: .arrow(start: Point(x: 5, y: 5), end: Point(x: Double(s.midX), y: Double(s.midY))),
+                        style: .default)
+                ]
+            })
+    }
 }
 
 extension FixtureRect {
@@ -246,7 +266,6 @@ struct RenderRedactionControlTests {
         return try ContainerInspector.decodePixels(data)
     }
 
-    /// Runs `pipeline` on both images of several pairs and reports whether any pair differs.
     private func anyPairDiffers(_ pipeline: (CGImage) throws -> CGImage) throws -> Bool {
         var differs = false
         for seed in RedactionFixtures.seeds {
@@ -311,7 +330,7 @@ struct RenderRedactionControlTests {
         #expect(differs, "C3 control compared equal: the RED-01 comparison is vacuous")
     }
 
-    // The renderer now also masks, in source pixels, any layer under a mask's output rectangle, so
+    // The renderer also masks, in source pixels, any layer under a mask's output rectangle, so
     // a second reference to the same asset is protected too; the leak planted here is a second
     // asset that carries the same secret outside the mask, which no mask covers.
     @Test("C4: a mask over one layer does not hide the same secret in another asset's layer")

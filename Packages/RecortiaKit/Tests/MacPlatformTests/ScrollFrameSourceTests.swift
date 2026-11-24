@@ -65,7 +65,8 @@ private final class FakeScrollTargetChecker: ScrollTargetChecking {
 }
 
 private actor SuspendedFrameProducer: ScrollFrameProducer {
-    enum Suspension: Sendable { case preparation, startCallback }
+    /// `lateCompletion` holds like `startCallback`, then returns normally even after a stop.
+    enum Suspension: Sendable { case preparation, startCallback, lateCompletion }
     struct Observation: Sendable {
         var stops = 0
         var starts = 0
@@ -97,9 +98,12 @@ private actor SuspendedFrameProducer: ScrollFrameProducer {
         observation.starts += 1
         if controlStopped { observation.startsAfterControlStop += 1 }
         observation.running = true
-        if suspension == .startCallback { await hold() }
-        guard request == generation else { throw .canceled }
+        if suspension != .preparation { await hold() }
+        guard suspension == .lateCompletion || request == generation else { throw .canceled }
     }
+
+    /// The stream reports a failure through the handler the source installed.
+    func reportFailure(_ error: CaptureError) { ended?(error) }
 
     func stop() async {
         generation = UUID()
@@ -186,6 +190,31 @@ struct ScrollFrameSourceTests {
         #expect(finished.starts == (suspension == .preparation ? 0 : 1))
         #expect(!finished.hasHandlers)
         #expect(!finished.running)
+        #expect(await drain(source).isEmpty)
+    }
+
+    // Failure mode (review R2-D17): a permission failure delivered while the start was still
+    // awaited was rethrown as .canceled, so the session ended silently instead of explaining.
+    @Test(
+        "A stream failure reported during startup is thrown as that failure, not as a cancel",
+        arguments: [SuspendedFrameProducer.Suspension.preparation, .startCallback, .lateCompletion])
+    fileprivate func failureDuringStartup(_ suspension: SuspendedFrameProducer.Suspension) async {
+        let producer = SuspendedFrameProducer(suspension)
+        let source = ScrollFrameSource(producer: producer)
+        let start = Task { () -> CaptureError? in
+            do throws(CaptureError) {
+                try await source.start()
+                return nil
+            } catch {
+                return error
+            }
+        }
+        await producer.waitUntilSuspended()
+        await producer.reportFailure(.permissionDenied)
+        for _ in 0..<200 where source.state == .starting { await Task.yield() }
+        #expect(source.state == .stopped(.failed(.permissionDenied)))
+        await producer.resume()
+        #expect(await start.value == .permissionDenied)
         #expect(await drain(source).isEmpty)
     }
 

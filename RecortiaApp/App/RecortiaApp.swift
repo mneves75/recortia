@@ -5,13 +5,17 @@ import SwiftUI
 import os
 
 /// Menu-bar app (LSUIElement) that joins ⌘Tab and the Dock while a window is open (ADR-007).
-/// Relaunching reuses this process; Settings stays reachable from the menu when no window is open.
+/// Relaunching reuses this process; Settings stays reachable from the menu when no window is open,
+/// and from opening Recortia again when the person hides the menu-bar icon.
 @main
 struct RecortiaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra {
+        let model = appDelegate.model
+        // Read here, not only in the binding, so the scene observes the preference.
+        let showsIcon = model.settings.preferences.showsMenuBarIcon
+        MenuBarExtra(isInserted: Binding(get: { showsIcon }, set: { model.setShowsMenuBarIcon($0) })) {
             MenuContent(model: appDelegate.model)
         } label: {
             Label(String(localized: "Recortia"), systemImage: "viewfinder")
@@ -23,6 +27,11 @@ struct RecortiaApp: App {
                 Button(AppCommand.settings.title) { appDelegate.model.showSettings() }
                     .keyboardShortcut(",")
             }
+            // The editor's commands act on the key editor window only; Open Image… and Paste Image
+            // open a new one.
+            EditorMenuCommands(commands: .shared, app: appDelegate.model)
+            ReopenMenuCommands(state: appDelegate.model.reopenMenu, app: appDelegate.model)
+            PinMenuCommands(state: appDelegate.model.pinMenu, app: appDelegate.model)
             CommandGroup(replacing: .help) {}
         }
         // Settings is an AppKit window (SettingsWindowController) so it follows the active Space.
@@ -30,42 +39,65 @@ struct RecortiaApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Integration: pass the live `AppServices` built from Imaging and MacPlatform here. With nil,
-    // commands needing a backend are disabled and nothing is faked.
     private let integrity = KeychainPreferenceIntegrity()
     let model: AppModel
+    #if RECORTIA_E2E
+        private let e2eRequest: E2ELaunchRequest
+        private let e2eHarness: E2EHarness?
+    #endif
 
     override init() {
         #if RECORTIA_E2E
             // The E2E binary exists only for the scenario runner and its probe processes: it never
-            // reads or writes the user's preferences or keychain, whatever it was launched with.
+            // reads or writes the user's preferences or keychain, whatever it was launched with,
+            // and it refuses to launch at all without a valid runner or probe request.
+            e2eRequest = E2ERunner.admit()
+            e2eHarness = E2ERunner.prepare(e2eRequest)
+            let scenarioModel = e2eHarness?.app
             let settings = SettingsStore.e2eInMemory()
         #else
+            let scenarioModel: AppModel? = nil
             let settings = SettingsStore(storage: UserDefaults.standard, integrity: integrity)
         #endif
-        model = AppModel(
-            settings: settings, services: .live(settings: settings), shortcutRegistry: KeyboardShortcutsRegistry())
+        model =
+            scenarioModel
+            ?? AppModel(
+                settings: settings, services: .live(settings: settings), shortcutRegistry: KeyboardShortcutsRegistry())
         super.init()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         #if RECORTIA_E2E
-            // Only in the RecortiaE2E target: `-RecortiaE2E <dir>` runs the scenario runner
-            // (RecortiaApp/E2E) instead of the normal launch; the process exits with its result.
-            if E2ERunner.startIfRequested() { return }
+            // Only in the RecortiaE2E target: the admitted request (the scenario runner in
+            // RecortiaApp/E2E, or one of its probes) replaces the normal launch.
+            E2ERunner.start(e2eRequest, harness: e2eHarness)
         #else
             integrity.prepare()
             ShortcutDefaults.seedIfNeeded(isNewInstall: !model.settings.preferences.hasCompletedOnboarding)
+            let kind = LaunchKind(openEvent: NSAppleEventManager.shared().currentAppleEvent)
+            // Content-free: lets a real login confirm whether macOS marks Open at login (ADR-007).
+            Logger(subsystem: "dev.mvneves.Recortia", category: "launch").notice(
+                "launch kind: \(String(describing: kind), privacy: .public)")
+            model.launch(kind: kind)
         #endif
-        let kind = LaunchKind(openEvent: NSAppleEventManager.shared().currentAppleEvent)
-        // Content-free: lets a real login confirm whether macOS marks Open at login (ADR-007).
-        Logger(subsystem: "dev.mvneves.Recortia", category: "launch").notice(
-            "launch kind: \(String(describing: kind), privacy: .public)")
-        model.launch(kind: kind)
+    }
+
+    /// Open With, a drop on the Dock icon and `open -a` (FR-03). A cold launch delivers this before
+    /// `applicationDidFinishLaunching`; the model keeps the files until launch wires the editors.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        #if RECORTIA_E2E
+            E2ERunner.openFiles?(urls)
+        #else
+            model.openFiles(urls)
+        #endif
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         model.shouldTerminate() ? .terminateNow : .terminateCancel
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.willTerminate()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

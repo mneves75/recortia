@@ -5,12 +5,17 @@
   "release_architectures": [
     "arm64"
   ],
-  "minimum_deployment_target": "15.0",
+  "minimum_deployment_target": "26.0",
   "required_stable_xcode_major": 27,
   "expected_bundled_swift_compiler_major_minor": "6.4",
   "swift_language_mode": "6",
   "documented_build_host_minimum": "macOS 26.6",
   "allow_beta_toolchains_for_release": false,
+  "xcodegen": {
+    "version": "2.46.0",
+    "sha256": "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806",
+    "url": "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip"
+  },
   "stable_xcode_baseline": {
     "version": "27.2",
     "build": "27B52",

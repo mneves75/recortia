@@ -7,6 +7,23 @@ import Testing
 @MainActor
 struct EditorCurvedArrowTests {
 
+    @Test("A straight arrow whose layout overflows is refused at admission like a curved one")
+    func overflowingStraightArrowRefused() throws {
+        let h = EditorHarness()
+        let m = h.model
+        m.selectTool(.arrow)
+        h.drag((10, 10), (60, 60))
+        let id = try #require(m.document.annotations.first).id
+        guard case .arrow(_, _, nil, _) = try #require(m.document.annotations.first).kind else {
+            Issue.record("expected a straight arrow")
+            return
+        }
+        let before = m.document
+        m.setFrame(Rect(x: 0, y: 0, width: 1.4e308, height: 1.4e308), for: .annotation(id))
+        #expect(m.document == before)
+        #expect(m.notice == .arrowGeometryRefused)
+    }
+
     @Test("Refused curve creation keeps the preceding adjustment open")
     func refusedCreationPreservesAdjustment() {
         let h = EditorHarness()

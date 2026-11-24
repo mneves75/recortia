@@ -36,7 +36,6 @@ struct ScrollScriptFrame {
     }
 }
 
-/// Outcome of feeding a script to a stitcher, judged against ground truth.
 struct ScrollRunLog {
     var results: [ScrollAppendResult] = []
     /// `.accepted` whose offset differs from the true displacement: the failure SCR-02 forbids.
@@ -61,7 +60,12 @@ enum ScrollHarness {
     ) -> ScrollRunLog {
         var log = ScrollRunLog()
         for (index, frame) in frames.enumerated() {
-            guard let image = fixture.frame(offset: frame.offset, index: index, page: frame.page) else {
+            // A horizontal stitcher is fed the same viewports scrolling to the right.
+            let rendered =
+                stitcher.direction == .horizontal
+                ? fixture.horizontalFrame(offset: frame.offset, index: index, page: frame.page)
+                : fixture.frame(offset: frame.offset, index: index, page: frame.page)
+            guard let image = rendered else {
                 log.falseAccepts.append("frame \(index) could not be rendered")
                 continue
             }
@@ -110,6 +114,14 @@ enum ScrollHarness {
 
     /// Rows of `output` that differ from `expected` by more than the ±1 frame noise, ignoring
     /// pixels the fixture animates. Any missing or duplicated row misaligns everything after it.
+    /// `mismatchedRows` for a horizontal stitch: compares in the vertical fixture's orientation, so
+    /// the indexes are output columns.
+    static func mismatchedColumns(
+        output: ScrollPageBuffer, expected: ScrollPageBuffer, fixture: ScrollPageFixture, noise: Int = 1
+    ) -> [Int] {
+        mismatchedRows(output: output.transposed(), expected: expected.transposed(), fixture: fixture, noise: noise)
+    }
+
     static func mismatchedRows(
         output: ScrollPageBuffer, expected: ScrollPageBuffer, fixture: ScrollPageFixture, noise: Int = 1
     ) -> [Int] {

@@ -27,12 +27,13 @@ release except by re-downloading from the releases page.
 
 ## Solution
 
-Integrate Sparkle 2.10.0 as a SwiftPM binary target and drive it from one adapter in
+Integrate Sparkle 2.10.1 as a SwiftPM binary target and drive it from one adapter in
 `MacPlatform`, with a single explicit entry point and a signed static feed.
 
-- **Dependency.** `sparkle-project/Sparkle`, version 2.10.0 (2026-09-13), macOS 12+ upstream,
-  binary target with the upstream-pinned checksum, resolved in `Package.resolved`. The app's own
-  minimum stays macOS 15.0.
+- **Dependency.** `sparkle-project/Sparkle`, version 2.10.1 (2026-10-25, the newest stable release
+  at implementation; 2.10.0 was planned), macOS 12+ upstream, binary target with the
+  upstream-pinned checksum, resolved in `Package.resolved`. The app's own minimum is its
+  deployment target.
 - **Entry point.** One "Check for Updates…" menu item in the menu-bar menu. It is the only code
   path that starts a check unless the user turns on automatic checks.
 - **Default.** Automatic checks are off. `SUEnableAutomaticChecks` is absent and
@@ -44,7 +45,8 @@ Integrate Sparkle 2.10.0 as a SwiftPM binary target and drive it from one adapte
 - **Channel.** Stable releases only. Pre-release tags (`v<version>-betaN`) are never written to
   the appcast, so a beta can never be offered to a stable install.
 - **Compatibility.** The appcast declares a minimum system version of 15.0 and arm64-only
-  hardware, matching the app. Sparkle filters incompatible items before offering them.
+  hardware, matching the app. Sparkle filters incompatible items before offering them. The 15.0
+  figures in this spec predate ADR-008: the minimum is the deployment target, macOS 26.0 since 0.15.
 - **Signing.** Each DMG is signed with an EdDSA key at release time and the signature is written
   into the appcast item. The app verifies the downloaded archive against `SUPublicEDKey` and
   refuses anything that does not match. Notarization and stapling remain required, so a valid
@@ -78,6 +80,21 @@ implementation, exactly like the other boundaries.
 Sparkle is started once, at launch, from the composition root. `SPUUpdater` is created with
 `startingUpdater: false` and started explicitly so a failure is observable; a failure disables
 the menu item and never blocks the app.
+
+As built (T2): the protocol is `start(checksAutomatically:)`, `setChecksAutomatically(_:)`,
+`checkForUpdates() async` and `installUpdate()`, with `UpdaterModel` in `Features` owning the
+shown/enabled state. A build without `SUPublicEDKey` never creates Sparkle and hides both entry
+points. The opt-in lives in Recortia's sealed preferences (`checksForUpdatesAutomaticallyChoice`,
+a side-effect consent an unsealed blob cannot grant), not in Sparkle's own default: Sparkle's
+second-launch permission prompt is suppressed and its `mayPerformUpdateCheck` delegate refuses
+every scheduled check while the preference is off. Check for Updates… runs Sparkle's probing check
+(`checkForUpdateInformation`) and reports "no update" and "check failed" in Recortia's alert; an
+update found asks first, then opens Sparkle's own window, which downloads, verifies and installs.
+Values an earlier run left in the app's user defaults outrank the Info.plist in Sparkle, so before
+starting it the adapter clears a stored feed and answers the validated plist feed from
+`feedURLString(for:)`, turns the system profile and automatic downloads off, allows no profile
+keys and no feed parameters, and ships `SUAllowsAutomaticUpdates` false. It then reads the four
+values back; if any is not as written, `start` reports `.failed` and Sparkle never starts.
 
 ### Info.plist
 

@@ -35,6 +35,9 @@
             context.check("the failed canvas remains opaque", pixel.a == 255)
             context.check(
                 "layout failure exposes the existing preview error", controller.model.notice == .previewFailed)
+            context.check(
+                "a canvas that could not draw refuses exports until it draws (NEW-01)",
+                !controller.model.isPreviewReady)
             if let root = controller.contentRoot { context.snapshot(root, shot: "layout-failure") }
         }
 
@@ -59,7 +62,7 @@
             await E2EActions.scrollInspector(controller, to: 0.35)
             await E2ESnapshot.settle(root)
             context.snapshot(root, shot: "text-style-before-action")
-            try E2EAccessibilityControl.press("textAppearance.rounded", in: root, context)
+            try await E2EAccessibilityControl.chooseTextAppearance(.rounded, in: root, context)
             try context.require(
                 "native Rounded control applies the selected text font",
                 await E2EWait.until {
@@ -93,10 +96,11 @@
             await E2ESnapshot.settle(root)
             context.check(
                 "native text-style control is disabled while text input is active",
-                try !E2EAccessibilityControl.isEnabled("textAppearance.monospaced", in: root, context))
+                try !E2EAccessibilityControl.isEnabled("text.font", in: root, context)
+                    && !E2EAccessibilityControl.isEnabled("text.style", in: root, context))
             context.check(
                 "disabled text-style control explains how to finish input",
-                try E2EAccessibilityControl.text(.help, for: "textAppearance.monospaced", in: root, context)
+                try E2EAccessibilityControl.text(.help, for: "text.font", in: root, context)
                     == String(localized: "Finish editing text before changing its style.", table: "Editor"))
             model.cancelTextEditing()
             try context.require(
@@ -154,16 +158,15 @@
             for appearance in [TextAppearance.standard, .rounded, .monospaced] {
                 await E2EActions.scrollInspector(wrappedController, to: 0.35)
                 await E2ESnapshot.settle(wrappedRoot)
-                let identifier = "textAppearance.\(appearance.rawValue)"
-                try E2EAccessibilityControl.press(identifier, in: wrappedRoot, context)
+                try await E2EAccessibilityControl.chooseTextAppearance(appearance, in: wrappedRoot, context)
                 try context.require(
                     "native \(appearance.rawValue) control changes text appearance",
                     await E2EWait.until { wrappedController.model.style.textAppearance == appearance })
                 await E2ESnapshot.settle(wrappedRoot)
+                let shown = try await E2EAccessibilityControl.shownTextAppearance(in: wrappedRoot, context)
                 context.check(
-                    "native \(appearance.rawValue) control exposes selected state",
-                    try E2EAccessibilityControl.text(.value, for: identifier, in: wrappedRoot, context)
-                        == String(localized: "Selected", table: "Editor"))
+                    "native \(appearance.rawValue) controls show the chosen font and style", shown == appearance,
+                    "\(String(describing: shown))")
             }
             wrappedController.model.clearSelection()
             E2EActions.click(wrappedController.model, .text, at: E2EActions.point(220, 60))
@@ -228,10 +231,10 @@
                 model.document == before && model.session.undoCount == undoCount)
             await E2EActions.scrollInspector(controller, to: 0.35)
             await E2ESnapshot.settle(root)
+            let shown = try await E2EAccessibilityControl.shownTextAppearance(in: root, context)
             context.check(
-                "Select All exposes the actual selected style in native controls",
-                try E2EAccessibilityControl.text(.value, for: "textAppearance.rounded", in: root, context)
-                    == String(localized: "Selected", table: "Editor"))
+                "Select All exposes the actual selected style in native controls", shown == .rounded,
+                "\(String(describing: shown))")
         }
     }
 #endif

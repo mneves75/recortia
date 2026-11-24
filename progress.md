@@ -222,3 +222,392 @@ Branch `feat/editor-redesign`. Documentation and version only; no Swift changed.
 - PR #40 squash-merged as `cdffc96` (tree equal to the verified head), tagged `v0.14.0`,
   `scripts/release.sh` exit 0, notarized, published, public download byte-identical, installed in
   `/Applications`. Details: `docs/specs/editor-redesign/release-0.14.0.md`.
+
+## 2026-11-21 — T6 native qualification and A-5
+
+- The cumulative T6 native suite on `c5bd784` reported 68/73 in each language. The same five
+  scenarios failed. The original native reports and provenance are in E2E run
+  `20261121-113721-19677`. PRs #43–#47 record the scope and outcomes of that cumulative evidence.
+- Draft #47 contains `c2dc828`, which passed the clean local unsigned gate (1,082 package tests)
+  and the hosted Debug and Release checks. Its focused native rerun was void when the console
+  resumed input. No outcomes from that rerun qualify the candidate.
+- The current T6 head `8d1ed31` follows AppKit's cooperative activation contract. It passed
+  the unsigned E2E target build with stable Xcode 27.2 (27B52), a fresh read-only review and the
+  exact-head [hosted Debug and Release checks](https://github.com/mneves75/recortia/actions/runs/44922689305).
+  An uninterrupted native rerun is pending. Opus cross-model review hit its usage limit.
+- A-5 proceeds in an isolated worktree with live region selection as the default and an explicit
+  freeze action for one display during selection. Its crop and magnifier use the same frame.
+- A-5 commit `74b64b7` passed all six `RegionPrecisionCaptureTests` cases, including the
+  negative-origin crop and late acquisition after cancel or unfreeze. It is superseded by the
+  pending review fixes. Independent review found that the crop could retain the full frame
+  during registration, a freeze command could be dropped while a canceled read drained, and
+  the native magnifier assertion needed a source-pixel comparison. The older plan's pixel
+  coordinates and sleep/timeout cleanup also remain required.
+- A-5 checkpoint `d119e78` resolves the review findings, adds pixel coordinates and clears
+  capture state on system/display sleep. Both unsigned Debug targets compiled. The focused
+  package test covered seven cases, all 115 targeted redaction/privacy tests passed, and all
+  781 extracted strings had pt-BR translations. The planted aliased-image control failed at
+  the source-frame release assertion while registration was suspended. The restored suite
+  passed again. A separate model re-reviewed the changes and cleared the three findings.
+- A-5 expires a freeze after 60 seconds of monotonic time, measured from the request. The
+  deadline is checked when a display read returns and before a frozen region can be committed.
+  Permission loss or a changed display still ends selection when it coincides with expiry.
+  The focused suite passed eight tests, including timer-first and callback-first permission loss.
+  Bilingual native execution needs an unlocked console with a five-minute idle start and no
+  input until the run finishes. The affected macOS 26 physical checks remain open.
+- The repository generates `tests.json` as its test inventory and
+  `.scratch/tests-report.json` as the run-status record via `scripts/tests-report.py`.
+  New test code is limited to behavior over the requested `cccc` complexity threshold or
+  regular-expression behavior. Pruning and independent verification follow implementation.
+- The uninterrupted bilingual focused run `20261121-165623-55160` on `bf1c4a5` passed
+  `capture-precision` and `pin-on-top` in both languages. `editor-menu`, `colour-tools`,
+  `framing-presets` and `heic-and-print` failed in both languages. The console monitor
+  recorded no interruption. The native run log is `.scratch/logs/e2e-bf1c4a5-qualified-focused.log`.
+- The four scenarios now wait for the native menu state, read selectable text through its
+  accessibility value, or bring the newly captured editor forward before clicking Reset.
+  The Inspector submenu still has both tab commands disabled while another window is key.
+  The preview test checks both transitions and both native checkmarks.
+- The uninterrupted focused replay `20261121-170244-80788` on `cb634be` passed five of six in
+  each language. The menu, framing reset and print corrections passed. Both formatted text
+  readouts also passed, exposing the next assertion in `colour-tools`: the four Pass/Fail marks
+  are static text and the scenario had been querying their accessible names. The next replay
+  reads their values and still checks each localized verdict exactly.
+- On `812a68c`, `colour-tools` passed in both languages in `20261121-170801-10350`.
+  The following full run `20261121-170832-15352` was void after console input and was stopped.
+  The focused report completed before the console interruption.
+- With owner approval, removed the duplicate `RegionPrecisionCaptureTests.remembersAspect` case.
+  `capture-precision` exercised the same 16:9 control, read the saved preference, and verified
+  the next selection inherited it in both languages in `20261121-170244-80788`.
+  `RegionPrecisionTests.aspectPreference` still checks fresh and legacy defaults and persisted
+  round-trip equality. The pre-pruning unsigned baseline ran 1,086 package tests.
+- The unsigned gate passed all 1,085 package tests and both Debug targets on clean `a68231a`
+  in `.scratch/logs/check-a68231a-retry.log`. An earlier run on the same commit failed only on
+  the Imaging cancellation test's 10-second elapsed limit during heavy host load. The isolated
+  test passed in 0.25 seconds, and the unchanged gate passed on the retry.
+- Independent review strengthened two existing assertions. `capture-precision` now checks the
+  settings store independently of the coordinator, so a ratio cached only in the coordinator
+  cannot satisfy it. `editor-menu` still checks the Inspector submenu is reachable when an editor
+  is key, in addition to checking both tab commands are disabled without a key editor.
+- Clean `5cc56ce` passed 1,085 package tests and both Debug targets on Xcode 27.2 (27B52).
+  Its qualified onboarding replay reproduced the same preference change in both languages.
+  Diagnostic commit `a338d64` isolated the change to `showsMenuBarIconChoice`, while the separate
+  upload consent identity and side-effect checks passed. The menu-bar visibility setter now
+  ignores requests that match the effective visibility, preserving the default choice on replay.
+- `fc540b1` passed all nine focused native scenarios in both languages. Its uninterrupted full
+  run `20261121-194710-31503` passed 72 of 73 per language, with only the diagnostics directory
+  assertion failing. Foundation resolved the existing test parent from `/private/tmp` to `/tmp`
+  while preserving the spelling of its missing child. The assertion now verifies the exact
+  child of the resolved parent and rejects a symlink. Temporary controls accepted the intended
+  missing child and rejected a similarly prefixed sibling and two kinds of symlink.
+- Clean `2d1b6df` passed the local unsigned gate (1,085 tests and both Debug builds), hosted
+  CI and the focused bilingual diagnostics replay. The full English replay
+  `20261121-210130-89670` then passed 68 of 73. In the cold-launch import control, the 20-second
+  wait ended as the 11th read was still admitted. The four later import-dependent scenarios
+  reported busy. The preceding qualified bilingual run passed these five scenarios. The
+  Portuguese part of this full attempt is void after console input.
+- Cold-launch replay now returns the handle of the admitted batch. The existing scenario
+  awaits its completion before checking all 12 native editor titles in order, once-only reads
+  and no refusals. The runner's existing watchdog bounds a hung batch. A fresh independent
+  source review confirmed the startup counter and asynchronous dispatch remain in their
+  original positions. Bilingual replay is pending.
+
+## 2026-11-21 — Expand the current quick capture preview
+
+- Created `feat/quick-capture-preview` from `5cc56ce`. The approved roadmap, preview spec and
+  first three tickets are committed separately as `08b23a1`. The release draft remains on
+  `5cc56ce`, whose local unsigned gate ran 1,085 package tests and whose hosted checks passed.
+- Preview uses the existing masked renderer, with a bounded output and one in-memory render slot.
+  The native scenario is extended instead of adding small isolated unit tests. It exercises
+  nonactivating presentation, Escape, suspension, replacement and light/dark rendering.
+- The initial unsigned Debug E2E app compiled with Xcode 27.2 (27B52). An independent source
+  review found presentation ordering races around capture suspension and a masked-pixel control
+  that could pass on a blank image. Both findings require correction before final verification.
+- Corrected those races. A thumbnail that finishes during selection waits for cancellation or
+  replacement, and an expanded render without a visible panel is cleared on suspension.
+  RED-01 now verifies that the same native path displays different unmasked pixels. A second
+  source review approved the fixes. The rebuilt unsigned E2E app and the warm focused command
+  `xcrun swift test --jobs 2 --package-path Packages/RecortiaKit --filter 'QuickActionsModelTests|PinnedExportTests'`
+  passed 17 tests. Swift formatting, diff validation and the 13 extracted panel string
+  translations passed.
+- The first release preflight expired. The next native run of `5cc56ce` started after five idle
+  minutes. The independently scoped preview still needs full, native and physical qualification.
+- The full local unsigned gate on `4662cc6` passed all 1,085 package tests and built both Debug
+  targets. GitHub Actions run 44956086618 passed the unsigned and Release isolation checks.
+- The uninterrupted native Quick Actions replay `20261121-201311-48883` reproduced an image
+  cropped to the preview frame and both panels remaining visible at selection start in EN and
+  pt-BR. The screenshot chrome check sampled no pixels. Focus assertions after Escape also
+  failed without identifying whether the frontmost app or the key panel changed.
+- The native image view now reports its display size explicitly. Capture suspension looks up
+  Recortia's visible windows on the active Space in window-server order, including panels.
+  The existing Quick Actions scenario requires both panels to hide before testing restoration
+  and reports separate foreground and key-window flags right after closing. The corrected
+  unsigned E2E app compiled with Xcode 27.2 (27B52). Its native replay is pending.
+- The local unsigned gate on clean `ca5593b` passed 1,085 package tests, both Debug builds,
+  localization, and the app launch guard. Independent review found that the broader enumeration
+  could also include modal alerts. Capture suspension now adds only the owned Quick Actions
+  windows, using the window server's order for those two panels.
+- The full A-5 attempt on `2d1b6df` stopped after the login screen took the foreground.
+  That attempt is void. GitHub's exact-head checks passed for A-5. The qualification launcher
+  now checks the kernel lock field directly and rejects the login screen in its foreground check.
+- On clean `269ee56`, both unsigned Debug targets compiled and hosted CI passed the unsigned
+  and Release isolation checks. The uninterrupted bilingual run `20261121-205717-66634`
+  passed window presence, other Spaces, capture focus and recapture. Quick Actions proved
+  the full preview image, light and dark chrome, both panels hidden for capture, restoration on
+  cancel, and the first Escape's closure. The owned app stayed frontmost after deliberate
+  keyboard focus. The test had also expected the runner's activation flag to stay false and
+  tried to make the owned app's window key while the thumbnail held key focus. Independent
+  review approved separating those checks. Both Escape routes now require the expected key
+  panel and the owned foreground process immediately before Escape, without reassigning key
+  focus in the dispatch helper. The second Escape and subsequent RED assertions need replay.
+- The independent source verification of the comparison plan passed. Native acceptance
+  combines the ten preview, capture and import scenarios on the branch with `309a550` included.
+- Clean `7b84230` passed 1,085 package tests, both Debug builds, and the bilingual native runs
+  `20261122-005232-79090` (10/10 each) and `20261122-005502-91505` (73/73 each). The Developer ID
+  dry run also completed. Independent review found that a 320×100 capture on a 2× display could
+  shrink from a 240×75 pt thumbnail to a 160×50 pt preview. Preview now magnifies small rasters
+  for inspection within the same display bounds. The renderer's raster keeps its existing size
+  limits. Requalification of the sizing correction is pending.
+
+## 2026-11-22 — Qualified native replay and local 0.15.0 installation
+
+- On clean `6ac344b`, GitHub Actions run 44989058389 passed the unsigned gate and Release
+  isolation check on matching source tree `ed68094`. Local Xcode 27.2 (27B52), macOS 27.3
+  (26C5047e), passed `RegionPrecisionCaptureTests` (7 tests, including resumed and stalled
+  expiry at 60 seconds and permission loss). The cold-launch fixture delivered both six-file
+  requests once, in order, with no refusals.
+- Interrupted and timed-out attempts contributed no qualification. The uninterrupted retry passed
+  11/11 focused and 73/73 full scenarios in each language, with 576 and 5,661 assertions per
+  language respectively. Evidence in the `feat/quick-capture-preview` qualification worktree:
+  `.scratch/logs/e2e-6ac344b-qualified-full.log`, native runs
+  `20261122-125852-63870` and `20261122-130236-98961`. Independent visual review measured the
+  larger preview fixture at 1280×840 pixels versus 480×315 in the thumbnail. The small-capture
+  enlargement has source verification and still needs physical observation.
+- A source comparison found the old dynamic probe activated before ordering and used the
+  new-pin path for an existing pin. The corrected cooperative probe passed all four
+  fresh/reused window and pin cases with zero Space switches, preserving the fullscreen host.
+  The host retained foreground ownership. The forced comparison recorded one switch for a
+  reused ordinary window and one for the policy-free control. Console input invalidated that
+  comparison. Both logs are in the same qualification worktree:
+  `.scratch/logs/space-order-cooperative-6ac344b-20261122-133257.log` and
+  `.scratch/logs/space-order-compare-6ac344b-20261122-132914.log`. The installed app's
+  physical fullscreen behavior remains open.
+- Installed the exact Developer ID export, 0.15.0 (29), at `/Applications/Recortia.app`.
+  Independent verification matched 177 bundle entries, strict signing, Hardened Runtime,
+  provisioning profile, Keychain entitlement and macOS execution policy. The existing 0.14.0
+  process continued with the original PID and mapped executable inode. Its bundle remains intact
+  in the primary main checkout at `.scratch/install-0.15.0-20261122/Recortia.app`; the same
+  directory has `installation.json`.
+  The public distribution assessment requires a notarization ticket.
+- The build 28 process had exited before build 29 was started with
+  `/usr/bin/open -gj -a /Applications/Recortia.app` at 19:34:08 UTC. After 62 seconds, AppKit
+  reported finish-launching, and the running executable's device and inode matched the
+  installed executable. Strict signature and the Developer ID execution assessment passed.
+  The primary checkout holds `.scratch/install-0.15.0-20261122/launch.json`. The launch
+  exercised this account on macOS 27.3. TCC, minimum-macOS and fullscreen behavior remain open.
+- Preliminary release review leaves SEC-11, SEC-17 and SEC-18 open for this candidate.
+  The bundle omits the updater key. Keep Sparkle inactive and reassess the current
+  [package-update advisory](https://github.com/sparkle-project/Sparkle/security/advisories/GHSA-gcjm-h3jh-p2vc)
+  before enabling updates. Main, public download and release tag remain at their prior version.
+
+## 2026-11-22 — Capture actions and framing
+
+- Save Optimized Copy, Copy Text, opt-in automatic Pin, named framing recipes, and output border
+  and watermark are integrated on `feat/capture-export-actions`. The installed app is still
+  0.15.0 (29). [Scope and acceptance](docs/specs/capture-workflow-expansion/plan.md)
+- Save Optimized Copy passed 49 focused methods. The Copy Text review recorded 70 methods and
+  both Debug builds. A final focused Copy Text run passed three methods with eight case
+  invocations, including resuming from a canceled render. The automatic Pin focus fix passed
+  42 focused methods and both Debug builds. Receipts are in `.scratch/logs/` and
+  `.scratch/ticket03-*.log` in the integration worktree.
+- The renderer rejected the planted decomposed watermark input after the byte-exact fix.
+  Framing's integration gate passed both Debug builds and 815 translated strings. The first
+  native framing run failed in both languages because the disclosure header did not report its
+  state. The next candidate reuses the existing inspector disclosure control. The failing
+  report and earlier build logs are preserved under `.scratch/framing-preintegration/`.
+- Test pruning reviewed each changed assertion. Kept rejection, output-byte, focus,
+  persistence and cancellation checks with distinct inputs. Restored the undecorated RED
+  fixture alongside the decorated case and moved the recipe pixel comparison directly after
+  Apply. A whole-repository test deletion was unnecessary. `cccc` 1.8.0 measured
+  `copyText` at 10, `SettingsStore.load` at 6 and the renderer at 8. The Swift parser
+  reported three errors in RenderEngine, so that file's complexity report may be incomplete.
+- Combined native qualification, version bump, signed installation and release closeout are
+  still open.
+- The first combined run on `65ed7a4` reached the accessible decoration control in each
+  language, then could not focus the input through its numeric-field helper. The quick-actions
+  scenario crashed during the automatic Pin handoff in both languages. The crash report shows
+  recursive AppKit window sizing. Pin now fits explicitly on creation and zoom, and the
+  native watermark scenario uses the real text-field click. Evidence is in
+  `.scratch/e2e/20261122-174424-21236/`.
+- Review found three integration gaps. A real build 29 preference reader originally rejected
+  the new Pin raw value. It now accepts the same current blob and preserves the previous
+  capture choice, automatic save and the folder bookmark. The fallback thumbnail uses the
+  framed output geometry and remains at or below 640 px. Copy Text reports unavailable
+  recognition languages without acting on stale results. The combined focused package run
+  passed 54 methods, including the new assertions on capture state and actual fallback
+  raster dimensions. Native qualification is tracked separately.
+- The bilingual run on `a5daba2` passed quick actions, both Pin scenarios, the inspector
+  and automatic redaction. The real automatic Pin stayed passive and zoomed without a
+  crash in both languages. Framing passed the decoration steps and then stalled at
+  the recipe name sheet after a rejected blank name. Its next run waits for the
+  validation message to clear and invokes the accessible Save action. Evidence is in
+  `.scratch/e2e/20261122-175455-86096/`.
+- Both languages accepted the valid recipe after a refusal and reproduced the earlier
+  export pixels after Apply. The fixture attempted Undo while still in Output Preview,
+  where Recortia disables Undo and Redo, and used an offscreen coordinate for Save
+  as Default. It now leaves Preview before checking the history and uses accessible
+  actions for the recipe and default buttons. Evidence is in
+  `.scratch/e2e/20261122-180352-38997/`.
+- Framing passed in both languages at `a533ec9`, with eight screenshots per language.
+  It validates the border and watermark, recipe persistence and naming limits, exact exported
+  pixels after Apply, one-step Undo and Redo, and stale recipe refusal. Evidence is in
+  `.scratch/e2e/20261122-180719-74058/`. The capture and framing branch is draft PR #50.
+- Source candidate 0.16.0 (30) is `f6f579f3e836023029643cf49d205b166ab57cce`.
+  [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45070687927) passed the gate
+  and unsigned Release scan. Its synthetic merge tree matches the candidate tree
+  `9d39808b29c5f31dc387d1ae742d0523dab39ebc`. A fresh verifier passed 120 focused package
+  tests and compared 20 sanitized PNG exports at 1× and 2×, including mask-equivalent and
+  unmasked controls. Four cooperative dynamic Spaces checks passed with zero Space switches.
+  Evidence is in `.scratch/logs/ci-f6f579f.json` and `.scratch/logs/space-dynamic-f6f579f.log`.
+- The exact candidate reported 73/73 scenarios and 252 screenshots in each language on
+  macOS 27.3 (26C5047e), Xcode 27.2 (27B52), Swift 6.4.2 and SDK 27.2 (26B118).
+  The console monitor invalidated the combined run after detecting input during Portuguese.
+  The separate Portuguese run passed 58/73. macOS SecurityAgent held the foreground, and
+  14 scenarios refused a non-key, inactive fixture. The remaining assertion was a missing
+  post-masking notice. An unchanged-build Portuguese replay passed both `auto-redaction`
+  and `editor-notices` with 10 screenshots. The full bilingual run still needs a dedicated
+  foreground session. Evidence is in `.scratch/e2e/20261122-185040-13661/`,
+  `.scratch/e2e/20261122-191139-7891/` and `.scratch/e2e/20261122-192451-21603/`.
+- The on-disk installation at `/Applications/Recortia.app` is 0.16.0 (30) from the exact
+  Developer ID dry run. An independent check verified the signed app, its nested Sparkle
+  components, Hardened Runtime, the embedded profile and Keychain group, the absence of
+  debug entitlements, the disk image checksum and local Gatekeeper acceptance. The
+  installed contents, modes and symlink targets match the export. The disk image SHA-256
+  is `a975c6161b803e62fde701b313bd1edcb2f9f3cc2616f6f9b845abee31c61285`.
+- The existing build 29 session preserved PID 93036, start time and its mapped executable
+  inode. The rollback bundle and installation receipt are in the primary checkout under
+  `.scratch/install-0.16.0-20261122/`. Build 30 launch waits for the existing session to
+  close. Installed-app fullscreen, VoiceOver, TCC, real Save and Print panels, physical
+  horizontal scrolling capture, and macOS 26.0 execution still need dedicated validation.
+  The release security controls SEC-11, SEC-17 and SEC-18, notarization and live Sparkle
+  update also remain open. Merge and tagging wait for qualification.
+
+## 2026-11-22 — Keep the automatic masking count visible
+
+- The standalone Portuguese run revealed a separate masking notice failure. The opaque mask
+  was present and the sanitized automatic copy passed. The model had lost its persistent
+  masking count. An older transient status task could dismiss a newer notice before SwiftUI
+  delivered cancellation.
+- The existing automatic-redaction scenario now expires a held masking-in-progress timer
+  after detection completes. The old status task cleared the count and failed the
+  assertion in `.scratch/e2e/20261122-192751-28003/pt-BR/`.
+- Status tasks capture the notice serial at render time and check it before announcement and
+  before dismissal. The same test passed in both languages. Automatic redaction sources,
+  editor notices, automatic export and export feedback also passed, for 5/5 scenarios and
+  15 screenshots per language in `.scratch/e2e/20261122-192831-53509/`. The unique held-timer
+  control stays in the existing native scenario. No unit test was added.
+- The exact 0.16.0 (31) candidate is `d768455f1cb34dcf5ee3331c6979221b8f23e68e`.
+  A fresh independent replay passed 5/5 scenarios and produced 15 screenshots per language
+  in `.scratch/e2e/20261122-193848-62361/`. The persistent count was present after expiry and
+  the export contained zero secret pixels. Its unmasked control contained 84,397.
+- On macOS 27.3 and stable Xcode 27.2 (27B52), `./init.sh check --unsigned` passed with
+  Vision enabled, including the package suite, both Debug builds and malformed-launch
+  rejection. The first parallel run exceeded the 10-second Vision cancellation bound.
+  The isolated assertion passed, and it passed again in the full rerun. Logs are in
+  `.scratch/logs/check-d768455-unsigned.log`, `.scratch/logs/vision-cancel-d768455-isolated.log`
+  and `.scratch/logs/check-d768455-unsigned-rerun.log`. [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45078123627)
+  passed the gate and unsigned Release scan on the identical tree
+  `3ad6f00827ce0b6710bb7af51b6bc51f21b15053`. Hosted CI declares Vision unavailable.
+- `scripts/release.sh --dry-run` produced the signed build 31 export and disk image.
+  Independent checks passed the strict signatures for the app and Sparkle components, the
+  entitlement allowlist, the absence of test markers, and the disk-image integrity check.
+  The disk image SHA-256 is `38f0007eac7b1787dbc8c3cbb8fd54f2397ef156dfc7cebf5759ea2f3110803f`.
+  The app passed local Gatekeeper assessment. The disk image remains unnotarized.
+- The on-disk installation at `/Applications/Recortia.app` is 0.16.0 (31). A fresh verifier
+  matched all 177 installed entries to the signed export. The signed build 30 rollback and
+  installation receipt are in the primary checkout at `.scratch/install-0.16.0-build31-20261122/`.
+  The running build 29 session still mapped the same executable at PID 93036 across the
+  installation.
+- macOS SecurityAgent still held the foreground after the checks. Full bilingual replay and
+  installed-app fullscreen verification need a dedicated desktop. Physical VoiceOver, TCC,
+  native Save and Print panels, horizontal capture and macOS 26.0 remain unverified.
+  SEC-11, SEC-17, SEC-18, notarization and live Sparkle update remain open. The branch is in
+  draft PR #50 and release closeout has not started.
+
+## 2026-11-23 — First launch of installed build 31
+
+- The build 29 process had exited before `/usr/bin/open -gj -a /Applications/Recortia.app`
+  started build 31 at 03:30:34 UTC. AppKit reported launch complete on macOS 27.3 (26C5047e).
+  An independent verifier matched PID 54328's mapped executable device and inode to the
+  installed app, matched the executable SHA-256 to the Developer ID export, and confirmed the
+  deep strict signature. The primary checkout holds
+  `.scratch/install-0.16.0-build31-20261122/launch.json`.
+- The preceding documentation commit `1493d58` passed `./init.sh check --unsigned` on the
+  Mac with Vision enabled. [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45079837604)
+  passed the gate and Release binary scan on the identical tree.
+- The full native runner waited for the desktop to go idle. Its preflight ended before
+  building or running either language after internal free space fell below 20 GB. The
+  shared native-test lock was free afterward.
+
+## 2026-11-23 — Full bilingual native run and Spaces probe
+
+- With 65 GB free and the unlocked console idle, `./init.sh e2e --lang all --unsigned`
+  rebuilt and ran the exact clean candidate `09be9d583462f7ea59d4626e1095885c69b790c2`
+  under the shared lock. The console monitor recorded no interruptions. Both English and
+  Brazilian Portuguese passed 73/73 scenarios with 6,048 passing assertions and 252
+  screenshots per language. A fresh independent check matched the reports, screenshot files,
+  commit, tree fingerprint, and app and foreground-host hashes. Evidence is in
+  `.scratch/e2e/20261123-005051-69310/` and `.scratch/logs/e2e-09be9d5-full.log`.
+  Host macOS was 27.3 (26C5047e). The stable toolchain was Xcode 27.2 (27B52),
+  Swift 6.4.2, and SDK 27.2 (26B118).
+- `FORCE=0 zsh scripts/space-probe/run.sh fresh dynamic-follow dynamic-pin` and the
+  corresponding `stale` run passed all four cooperative cases. Each probe appeared above
+  its owned fullscreen host with zero Space switches, and the host kept the foreground.
+  The console stayed unlocked and idle. Evidence is in `.scratch/logs/space-dynamic-09be9d5.log`.
+- [Hosted CI](https://github.com/mneves75/recortia/actions/runs/45107716922) passed the
+  gate and the Release binary scan on the identical tree
+  `3963ec9e09cba228d66e0c4651b3cd5205434abe`.
+- Installed-app fullscreen, VoiceOver, TCC, physical Save and Print panels, live horizontal
+  capture, and execution on macOS 26.0 still require manual qualification.
+
+## 2026-11-24 — Repository hardening pass
+
+- On branch `harden/defect-prevention-20261124` (based on `447dba4`), completed repository-wide
+  defect-prevention hardening (H1–H12) plus independent adversarial review fixes:
+  - Concurrency, lifecycle, and type-level invariants: fixed post-await cancellation and
+    pause/resume epoch races in `ScrollSessionModel` (`settleElapsed`, `collect`, monotonic
+    `deadlineTask`) and `CaptureCoordinator.freezePermissionCheck`; enforced single-use
+    `ImportAdmission` identity (`id: UUID`) through `ImageImporter`'s 3-state `SlotState`
+    (`IO-01`); replaced non-cancellable continuation
+    waiters with `CancellableWaiters` and completed `EditorModel.isolated deinit`; gated
+    `EditorModel` mutations during pending masking and rejected non-finite gradient angles;
+    added `ProtocolModelVerificationTests` bounded exhaustive BFS verification (H4, 3 protocol
+    models + 1 BFS negative control, with planted regression controls).
+  - AppKit, updater, sink, and redaction boundaries: made `AppPresence` `@Observable` with
+    `windowDidAppear()` sync for non-activating pins; centralized `NSOpenPanel`/`NSSavePanel`
+    Space policy and presence handling in `FilePanelPresenter`; made `SparkleUpdateService`
+    check background-update consent live with `probePreflight`; hardened `FileSink` staging
+    (`fchmod` on non-owner mounts, UTF-8 byte-budget `SafeFilename.truncated`) and
+    `DiagnosticsLog.delete()` cleanup; removed unreachable `SensitiveText` document-matcher
+    code, reducing true file complexity from 208 to 167 cognitive (`-41`, max `26 -> 19`) and
+    239 to 196 cyclomatic (`-43`, functions `96 -> 83`, parse errors `17 -> 3`).
+  - Gate hardening and test pruning (`mneves-prune-tests`): added `ArchitectureBoundaryScanTests`
+    (5/5 static boundary checks with planted controls), `check-localization.py` format-specifier
+    and per-case plural parity, `check-updater-plist.py` Release plist verification, and
+    `tests-report.py --check` enforcement of `check.sh` core steps; pruned dead `RecortiaUITests`,
+    duplicated/flaky stress and naming tests (`FontResolutionStressTests`,
+    `SensitiveTextBenchmarkTests`, duplicate `ColorFormatTests`/`ExportCoordinator.named` cases).
+- Gates (`scripts/check.sh --unsigned` and `scripts/check-release-build.sh`) passed on exact
+  commit `1e2820a` (macOS 27.3, Xcode 27.2 `27B52`, Swift 6.4.2): 12/12 Python gate suites,
+  `tests-report.py --check` (`14 gates, 3 suites, 12 tests`), `swift format lint --strict`,
+  `check-project-fresh.sh`, 1,118 `RecortiaKit` Swift tests in 190 suites with Vision enabled
+  (including 5/5 `ArchitectureBoundaryScanTests` and 4/4 `ProtocolModelVerificationTests`), Debug
+  + Release `Recortia`/`RecortiaE2E` builds, `check-localization.py` (820 extracted strings),
+  E2E launch guard (1/1), `check-release-binary.sh` (6 Mach-O scanned per product), and
+  `check-updater-plist.py`.
+- `mneves-security` pre-deploy audit on integrated commit `ef76d43` (receipts in primary checkout
+  `.scratch/security-gate/ef76d4321dd68d5cb1d13632843cf3258ea2c63b/`): **0 code-fixable security
+  findings** (`GHSA-gcjm-h3jh-p2vc` disproved/unreachable — Sparkle dormant and DMG-only);
+  production release remains owner-gated on `SEC-11` (two-UID shared-mount test/waiver),
+  `SEC-17` (release token scope/waiver), `SEC-18` (opt-in diagnostics waiver), distinct-model
+  acceptance, unlocked foreground bilingual E2E replay, physical macOS 26.0 / Spaces / TCC /
+  VoiceOver checks, and Developer ID notarization.

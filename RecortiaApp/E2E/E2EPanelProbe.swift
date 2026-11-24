@@ -15,6 +15,16 @@
             case countdown = "countdown-panel"
             /// `PinsUIController.render`: `PinPanel` hosting a pinned capture.
             case pin = "pin-panel"
+            /// The same pin with Keep on Top and click-through on, ordered in: AppPresence must still
+            /// count it, so Recortia stays regular (ADR-007 amendment).
+            case pinOnTop = "pin-on-top-panel"
+
+            var assertion: String {
+                switch self {
+                case .countdown, .pin: "the real panel hosts its content without an AppKit exception or layout loop"
+                case .pinOnTop: "a shown floating, click-through pin is a switchable window and keeps Recortia regular"
+                }
+            }
         }
 
         static let argument = "-RecortiaE2EProbe"
@@ -41,20 +51,14 @@
             let survived = finished && process.terminationReason == .exit && process.terminationStatus == 0
             let how = process.terminationReason == .exit ? "exited" : "killed by signal"
             context.check(
-                "\(kind.rawValue): the real panel hosts its content without an AppKit exception or layout loop",
-                survived,
+                "\(kind.rawValue): \(kind.assertion)", survived,
                 finished
                     ? "child \(how) \(process.terminationStatus); log work/\(logURL.lastPathComponent)"
                     : "child timed out")
         }
 
-        /// Child side: returns false when this process is not a probe.
-        static func runIfRequested(arguments: [String]) -> Bool {
-            guard let index = arguments.firstIndex(of: argument) else { return false }
-            guard index + 1 < arguments.count, let kind = Kind(rawValue: arguments[index + 1]) else {
-                E2ERunner.log("unknown probe; known: \(Kind.allCases.map(\.rawValue))")
-                exit(2)
-            }
+        /// Child side: hosts `kind`, then exits with the result.
+        static func start(_ kind: Kind) {
             Task {
                 do {
                     let size = try await host(kind)
@@ -65,7 +69,6 @@
                     exit(3)
                 }
             }
-            return true
         }
 
         private static func host(_ kind: Kind) async throws -> NSSize {
@@ -79,6 +82,17 @@
                 panel = hosting
             case .pin:
                 let (pin, pins) = try makePinPanel()
+                panel = pin
+                retained = pins
+            case .pinOnTop:
+                let (pin, pins) = try makePinPanel()
+                guard let id = pins.pins.first?.id else { throw E2EAbort("the probe pin is missing") }
+                pins.setKeepsOnTop(true, for: id)
+                pins.setClickThrough(true, for: id)
+                try? await Task.sleep(for: .milliseconds(200))
+                guard pin.level == .floating, pin.ignoresMouseEvents else {
+                    throw E2EAbort("the pin did not follow its state: level \(pin.level.rawValue)")
+                }
                 panel = pin
                 retained = pins
             }
@@ -95,6 +109,7 @@
                     throw E2EAbort("the ordered panel left its offscreen position: \(panel.frame)")
                 }
             }
+            if kind == .pinOnTop { try await checkPresence(of: panel) }
             try? await Task.sleep(for: settleTime)
             panel.contentView?.layoutSubtreeIfNeeded()
             try? await Task.sleep(for: .milliseconds(200))
@@ -105,13 +120,30 @@
             return size
         }
 
+        /// Ordered in as `PinPanel.presentNearPointer` does (regular first), the floating pin is the
+        /// only window: a coalesced refresh that did not count it would demote Recortia.
+        private static func checkPresence(of pin: NSPanel) async throws {
+            let presence = AppPresence.shared
+            presence.windowWillAppear()
+            guard pin.isVisible, AppPresence.isSwitchable(pin) else {
+                throw E2EAbort("the shown floating pin is not a switchable window")
+            }
+            presence.setNeedsRefresh()
+            try? await Task.sleep(for: .milliseconds(500))
+            guard NSApp.activationPolicy() == .regular else {
+                throw E2EAbort("Recortia left regular while only a floating pin was shown")
+            }
+            E2ERunner.log("probe pin-on-top-panel: switchable and regular at level \(pin.level.rawValue)")
+        }
+
         /// The real pin panel over a synthetic capture, with the model the caller must retain.
         static func makePinPanel() throws -> (PinPanel, PinsModel) {
             let settings = SettingsStore.e2eInMemory()
             let services = AppServices.live(settings: settings)
             let export = ExportCoordinator(
                 exporter: services.exporter, clipboard: services.clipboard, files: services.files,
-                drag: services.drag, folders: services.folders, clock: services.clock, settings: settings)
+                drag: services.drag, printer: services.printer, folders: services.folders, clock: services.clock,
+                settings: settings)
             let pins = PinsModel(renderer: services.renderer, settings: settings, export: export)
             let notes = SyntheticDesktop.notesWindow
             guard

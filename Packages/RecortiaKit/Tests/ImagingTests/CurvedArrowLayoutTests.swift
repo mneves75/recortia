@@ -73,8 +73,9 @@ struct CurvedArrowLayoutTests {
         }
     }
 
-    @Test("A one-pixel collinear curve retains connected subpixel coverage", arguments: [0.75])
-    func subpixelHead(scale: Double) throws {
+    @Test("A one-pixel collinear curve retains connected subpixel coverage")
+    func subpixelHead() throws {
+        let scale = 0.75
         let width = Int(100 * scale), height = Int(100 * scale)
         let context = try #require(ChartFixture.context(width: width, height: height))
         context.translateBy(x: 0, y: CGFloat(height))

@@ -21,7 +21,7 @@
             for change in ["other application", "same process", "missing binding", "superseded session", "stop"] {
                 let fixture = Fixture()
                 let adapter = fixture.adapter()
-                let step = Task { await adapter.step(fixture.target) }
+                let step = Task { await adapter.step(fixture.target, direction: .vertical) }
                 await fixture.waitForDiscovery()
                 switch change {
                 case "other application": fixture.frontmostID = fixture.otherApp.id
@@ -43,27 +43,41 @@
             missing.binding = nil
             let missingAdapter = missing.adapter(suspend: false)
             check(
-                "missing initial binding returns targetLost", await missingAdapter.step(missing.target) == .targetLost)
+                "missing initial binding returns targetLost",
+                await missingAdapter.step(missing.target, direction: .vertical) == .targetLost)
             check("missing initial binding creates no scroller", missing.created.isEmpty)
             check("missing initial binding posts zero events", missing.events.isEmpty)
             missingAdapter.stop()
 
             let accepted = Fixture()
             let adapter = accepted.adapter(suspend: false)
-            check("bound window accepts a scroll step", await adapter.step(accepted.target) == .scrolled)
+            check(
+                "bound window accepts a scroll step",
+                await adapter.step(accepted.target, direction: .vertical) == .scrolled)
             check("only the bound window receives the event", accepted.events == [accepted.bound.id])
             check("only the bound window gets a scroller", accepted.created == [accepted.bound.id])
             accepted.frontmostID = accepted.samePID.id
             check(
-                "same-PID window change refuses a cached scroller", await adapter.step(accepted.target) == .targetLost)
+                "same-PID window change refuses a cached scroller",
+                await adapter.step(accepted.target, direction: .vertical) == .targetLost)
             check("cached scroller posts no event after window change", accepted.events == [accepted.bound.id])
             adapter.stop()
+
+            let wide = Fixture()
+            let wideAdapter = wide.adapter(suspend: false)
+            check(
+                "a horizontal session's step reaches the bound window",
+                await wideAdapter.step(wide.target, direction: .horizontal) == .scrolled)
+            check(
+                "the bound window's scroller is asked to scroll sideways",
+                wide.events == [wide.bound.id] && wide.directions == [.horizontal])
+            wideAdapter.stop()
 
             let chosen = Fixture()
             let chosenAdapter = chosen.adapter(suspend: false)
             check(
                 "a chosen window different from the binding is refused",
-                await chosenAdapter.step(.window(chosen.samePID)) == .targetLost)
+                await chosenAdapter.step(.window(chosen.samePID), direction: .vertical) == .targetLost)
             check("a different chosen window posts zero events", chosen.events.isEmpty)
             chosenAdapter.stop()
             return checks
@@ -85,6 +99,7 @@
             var binding: ScrollWindowBinding? = ScrollWindowBinding(sessionID: UUID(), windowID: 11)
             var frontmostID: UInt32? = 11
             var events: [UInt32] = []
+            var directions: [ScrollCaptureDirection] = []
             var created: [UInt32] = []
             private var discovery: CheckedContinuation<Void, Never>?
             private var arrival: CheckedContinuation<Void, Never>?
@@ -108,7 +123,12 @@
                     }, frontmost: { _ in self.frontmostID },
                     makeDriver: { window, _, _ in
                         self.created.append(window.id)
-                        return RecordingDriver(windowID: window.id, post: { self.events.append($0) })
+                        return RecordingDriver(
+                            windowID: window.id,
+                            post: {
+                                self.events.append($0)
+                                self.directions.append($1)
+                            })
                     })
             }
 
@@ -125,19 +145,19 @@
 
         private final class RecordingDriver: AutoScrollDriving {
             let windowID: UInt32
-            let post: (UInt32) -> Void
+            let post: (UInt32, ScrollCaptureDirection) -> Void
             private var running = false
 
-            init(windowID: UInt32, post: @escaping (UInt32) -> Void) {
+            init(windowID: UInt32, post: @escaping (UInt32, ScrollCaptureDirection) -> Void) {
                 self.windowID = windowID
                 self.post = post
             }
 
             func start() throws(AutoScrollError) { running = true }
             func stop(reason: AutoScrollStopReason) { running = false }
-            func scrollDown(byPixels pixels: Int) -> AutoScrollStepResult {
+            func scroll(byPixels pixels: Int, direction: ScrollCaptureDirection) -> AutoScrollStepResult {
                 guard running else { return .notRunning }
-                post(windowID)
+                post(windowID, direction)
                 return .scrolled
             }
         }

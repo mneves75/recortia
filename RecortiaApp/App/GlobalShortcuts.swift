@@ -19,7 +19,6 @@ extension KeyboardShortcuts.Name {
     static let scrollingToggle = Self("scrollingToggle")
 }
 
-/// One recordable global shortcut, the action it triggers, and its macOS-style default.
 struct ShortcutBinding: Identifiable {
     let name: KeyboardShortcuts.Name
     let title: String
@@ -83,7 +82,6 @@ enum ShortcutDefaults {
         defaults.set(offered.union(table.map(\.name)).sorted(), forKey: offeredKey)
     }
 
-    /// Restore Defaults: every command back to the table, the rest cleared.
     static func restore() {
         let restored = ShortcutDefaultsPlan.restored(names: ShortcutBinding.names, defaults: table)
         // Clear first, so a default never lands on keys another command still holds.

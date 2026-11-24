@@ -39,7 +39,7 @@
             let scrollUIController = ScrollUIController(model: harness.features.scroll, displays: { [] })
             checkFollows("the scrolling review window", scrollUIController.makeReviewWindow())
             // Settings is Recortia's own window: SwiftUI's Settings scene orders its window inside
-            // openSettings, before a policy can exist, and a fresh one switched Spaces (0.10.1).
+            // openSettings, before a policy can exist, and such a window switched Spaces.
             let settings = SettingsWindowController.makeWindow(model: harness.app)
             defer { settings.close() }
             checkFollows("the Settings window", settings)
@@ -63,8 +63,9 @@
             defer { harness.features.pins.close(pinID) }
             checkJoinsAll("a pin", PinPanel(pinID: pinID, model: harness.features.pins))
 
-            // Windows AppKit and SwiftUI make for Recortia (Settings, About, alerts): adopted before
-            // the application activates, so activation cannot switch Spaces.
+            // A stand-in for windows AppKit makes for Recortia (About, alerts): adopted before the
+            // application activates, so activation cannot switch Spaces. A panel's own policy and a
+            // borderless window are left alone.
             let framework = parkedWindow(style: [.titled, .closable])
             framework.collectionBehavior = [.fullScreenPrimary]
             let panel = parkedWindow(style: [.titled])

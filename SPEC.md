@@ -22,7 +22,7 @@ Only public behavior and documentation were inspected. No binary was executed, d
 | Area | Decision | Reason / boundary |
 |---|---|---|
 | Platform | Native macOS, Apple Silicon only for v1 | Focus effort on Mac integration and measurable responsiveness. Intel and other operating systems are not promised. |
-| Deployment target | macOS 15.0+ | Deliberate compatibility baseline, independent of the build SDK. Test on 15, 26, and 27 before declaring support. |
+| Deployment target | macOS 15.0+ through 0.14; macOS 26.0+ from 0.15 (owner, 2026-11-19; ADR-008) | Deliberate compatibility baseline, independent of the build SDK. Test on every supported major version before declaring support. |
 | Toolchain | Stable Xcode 27, its Swift 6.4 compiler, Swift 6 language mode | Apple's current support table lists this combination. Freeze the exact locally verified build in M0; exclude beta toolchains from releases. [S05] |
 | Build host | A Mac satisfying Xcode's host requirements | Apple currently lists macOS 26.6 or later for Xcode 27. A deployment target of 15 does not mean Xcode 27 can run on 15. [S05] |
 | UI | SwiftUI for settings and chrome; AppKit for capture overlays, editor canvas, panels, focus, and window lifecycle | Choose the simplest appropriate native API for each surface. |
@@ -51,16 +51,16 @@ A release may only advertise features with passing acceptance evidence. A 0.1 re
 | FR-04 | Crop, zoom, pan, resize; select, move, delete, duplicate; undo/redo | 0.1 | EDIT / GEO |
 | FR-05 | Text, straight/curved arrows, straight line, rectangle, ellipse, freehand, highlighter, numbered steps | 0.1 | EDIT |
 | FR-06 | Solid secure redaction; cosmetic blur/pixelation clearly distinguished | 0.1 | RED |
-| FR-07 | Flattened PNG/JPEG save, PNG clipboard copy, safe drag-out | 0.1 | EXP / RED |
+| FR-07 | Flattened PNG/JPEG/HEIC save, PNG clipboard copy and print, safe drag-out | 0.1 | EXP / RED |
 | FR-08 | On-device OCR and QR decoding, EN and PT-BR workflows | 0.1 | OCR |
 | FR-09 | Reference pins with opacity, zoom, copy, drag-out, and explicit close | 0.1 | PIN / PRIV |
-| FR-10 | Manual and automatic vertical scrolling capture with confidence checks | 1.0 | SCR / PERM |
+| FR-10 | Manual and automatic vertical or horizontal scrolling capture with confidence checks | 1.0 | SCR / PERM |
 | FR-11 | Pixel loupe, ruler, dimensions, sRGB color inspection | 1.0 | PIX / GEO |
 | FR-12 | Multiple-image canvas, transparency overlays, side-by-side comparison | 1.0 | COMP / RED |
 | FR-13 | Background, padding, corner radius, shadow, spotlight, magnifier callout | 1.0 | COMP / RED |
 | FR-14 | Native settings, accessibility, EN/PT-BR localization, release/update flow | Foundation in 0.1; complete in 1.0 | UX / REL |
-| FR-15 | Optional upload to user-controlled GitHub repository; S3 deferred | GitHub approved 2026-10-01, ADR-006 | NET |
-| FR-16 | Approved local automation and optional on-device writing assistance | Post-1.0, separate approval | AUTO / AI |
+| FR-15 | Optional upload to user-controlled GitHub repository; S3 deferred | GitHub approved 2026-10-01, ADR-006; further providers approved 2026-11-19, each after an owner-signed threat model (§13) | NET |
+| FR-16 | Approved local automation and optional on-device writing assistance | Automation approved 2026-11-19 behind an owner-signed ADR; writing assistance not approved | AUTO / AI |
 
 Deferred rather than silently omitted: horizontal scrolling; cross-display selections; arbitrary nested-scroll reliability; text-only object removal/inpainting; intelligent object snapping; hand-drawn styling; contrast analyzers; before/after animation; editable project files; persistent history/search; CLI/App Intents/URL integrations; HDR-preserving export; Intel/Windows/Linux support; cloud hosting.
 
@@ -99,6 +99,22 @@ window opens, a capture starts, or the preference is turned back on meanwhile. L
 a window, minimizing, hiding, capture suspension and closing a capture panel never quit. Quit
 stays available in both modes.
 
+Settings › Capture offers "After a capture": open the editor (default), show quick actions,
+or pin the capture. Quick actions show a nonactivating thumbnail of the sanitized capture after
+its automatic exports. Preview and Copy Text leave the thumbnail available. Dismissal, expiry,
+a completed image delivery or a newer capture releases its pixels (ADR-009). Automatic Pin
+runs the same planned exports, orders the sanitized pin without taking keyboard focus, and
+releases the source. A render or pin-budget refusal offers the same capture in quick actions
+with the reason visible. With automatic masking on, the capture opens in the editor.
+Capture Text, scrolling capture and import keep their own flows.
+
+Settings › General also offers "Show the icon in the menu bar", on by default (older preferences
+load as on). Off, Recortia removes its status item; opening Recortia again from Finder, the Dock,
+Spotlight or `open -a` shows Settings, and the global shortcuts keep working. The first time it is
+turned off, one message says how to get back. It changes neither when Recortia is regular or
+accessory nor when it quits: with "Keep running in the menu bar" on, the process keeps running
+without an icon (ADR-007 amendment).
+
 ### FR-02 — Capture
 
 Region selection invoked by a global shortcut must remain on the user's current desktop,
@@ -111,6 +127,14 @@ Return and Space; native menu invocation remains available.
 Provide region, individual display, user-selected window, a configurable 0–10 second delay, and repeat-last-region. Repeat geometry is session-only and bound to the source display identity/configuration, not an unchecked global rectangle. If the display disappears, rotates, or materially changes configuration, invalidate it and ask for a new selection.
 
 Region selection MUST work on every connected display, including negative desktop origins. A single region cannot cross displays in v1; clamp visibly to the starting display and explain the limitation. Do not silently resample a multi-display region. A window shortcut must use a reliable source identifier; when the foreground app has multiple ambiguous windows, present a chooser instead of guessing.
+
+Settings › Capture › "Window background" is Transparent by default: a window capture keeps
+its transparent corners and, per "Include window shadow", its shadow. Solid color opens each new
+window capture over an opaque colour the person picks, as the document's presentation background
+with no padding (FR-13), so every export of it is opaque. The colour is composited when the
+document is rendered, after secure masks have filled source pixels, never into the stored
+capture; the person can change or remove it in the editor's Image inspector. Region and display
+captures and imported images never get it. The desktop picture is not read.
 
 Use public ScreenCaptureKit APIs, exclude the app's overlay/editor/pin windows by default, and hide the cursor unless explicitly requested. Verify exclusions with a visible checkerboard test overlay. Do not use private capture frameworks, shell `screencapture`, or `CGWindowListCreateImage` as the primary implementation. One-shot capture and stream capture are separate code paths. [S06]
 
@@ -134,6 +158,14 @@ An editor document stores immutable raster assets plus editable annotation comma
 Tools MUST support consistent selection handles, hit testing, move, resize, duplicate, delete, stroke/fill/opacity, z-order, and keyboard nudging. Text editing MUST handle multiline input, Unicode, accents, emoji, bidirectional text, and input-method composition without dispatching editor shortcuts into text input. Numbered steps remain editable and have an explicit renumber command.
 
 Provide fit, actual-pixel, zoom-in/out, selection zoom, and Space-drag pan. Basic arrows precede curved arrows; decoration is not a dependency of correct capture or export. No drawn object may change position merely because the editor zoom changed.
+
+Fit, the zoom every new editor opens at, never enlarges past 100 %, so a small image opens at
+actual size. Settings › General › Editor › "Zoom with the scroll wheel" is off by default: the
+wheel scrolls and ⌘-wheel zooms, as before. On, a mouse wheel zooms around the pointer and
+⌥-wheel scrolls; "Reverse zoom direction", shown only then, turns both wheel zooms the other way.
+Only classic mouse-wheel events (no scroll phase and no momentum phase) wheel-zoom: trackpad and
+other gesture scrolling, and its momentum, keep scrolling. Wheel zoom stays inside the editor's
+zoom range. Pinch and the zoom commands do not change.
 
 The straight-line tool draws a segment without arrowheads, with the same document-space
 endpoint editing and creation-drag Shift 45-degree constraint as arrows. Shortcut D selects it only outside
@@ -174,19 +206,28 @@ clipped to the viewport at high zoom. Qualification is tracked in the text-appea
 
 The default privacy tool MUST replace selected source pixels with a fully opaque solid color. Masks MUST cover pixel boundaries conservatively, be applied before resampling or neighborhood effects, and invalidate dependent render/OCR/magnifier caches. When the same image asset is used in multiple places, source-bound masks must apply to all render references to that asset. Independently reimported copies and secrets elsewhere are not automatically discovered; make this limitation clear.
 
-Adding a mask to a composite maps intersected raster-layer regions into each asset's coordinate system and also maintains an output-space mask for vector/text coverage. If a transform cannot be safely mapped, reject the operation or require an explicit flatten-and-redact workflow; never fall back to a translucent overlay.
+Adding a mask to a composite maps intersected raster-layer regions into each asset's coordinate system and also maintains an output-space mask for vector/text coverage. If a transform cannot be safely mapped, reject the operation or require an explicit flatten-and-redact workflow; never fall back to a translucent overlay. The output-space mask hides annotations, text and callouts only where the box is: moving or growing one the person drew out from under a box reveals it, by design.
+Source-pixel protection fails closed: a box moved off a scaled or rotated image can leave a filled patch
+where it was, because the rounded source footprint does not fit inside its old box.
 
 Secure export MUST create a fresh, flattened raster with no original layer, undo record, alternate unredacted representation, textual OCR metadata, hidden thumbnail, or transparent RGB leak. Ordinary project/document models must never go directly to an export sink. OCR and magnifiers operate on the privacy-sanitized view of the document. A project-file format is deliberately outside v1.
 
 Do not promise that OCR-based “find sensitive data” is exhaustive. Do not promise secure erasure of memory, SSD blocks, backups, other apps' clipboard histories, or files the user exported earlier.
 
+**Automatic redaction at capture (owner amendment, 2026-11-19; timing revised 2026-11-20; sources extended 2026-11-21).** An opt-in setting, off by default, adds opaque secure masks over e-mail addresses and phone numbers in a new capture, in a scrolling capture accepted from review, and in an image opened as a new document by Open, Open With, a drop on the app or Paste Image. Detection runs on this Mac: fixed patterns over the system's text recognition, with no AI and no network. It is a review aid that can miss text, such as small or stylised text and formats the patterns do not know: the UI states how many items it masked and never claims that nothing sensitive remains. The editor window opens at once. Until the masks land (as one undo step; the person can undo it or delete any mask), the canvas shows a neutral placeholder instead of the capture, and the editor accepts no edit, selection, export, pin, Output Preview or recognition; the capture's automatic exports wait and then run on the masked document. It fails closed: when recognition fails, is cancelled or exceeds its deadline, nothing is masked, the editor shows the capture with a notice, manual export is allowed again, and that capture's automatic exports do not run. Closing the editor while masking cancels the masking and the automatic exports. The masking choice and the automatic export plan are both fixed when the capture completes, so a Settings change during recognition applies to the next capture. A scrolling capture or an opened image reads the choice once, when its document is created (on Accept, or once the file is decoded), and has no automatic exports. An opened or pasted image is always swept at 1 pixel per point: the density its file declares is untrusted and never reduces how far small text is scaled up. An image added as a layer to an open editor (Add Image, paste or drop onto the editor) is not scanned. A very tall scrolling capture or a large opened image can exceed the deadline and then fails closed like any other. Capture Text skips it. The §10 region-commit target covers the window, not the masked pixels. The pattern design is adapted from Fosco by Gabriel Buzzi (MIT), whose notice ships in the app bundle.
+
 ### FR-07 — Export and explicit side effects
 
 All save, clipboard, drag-out, and later upload operations MUST receive the same immutable ShareSnapshot produced by the approved export pipeline. The snapshot identifies document revision, privacy epoch, output format/scale/color space, and sanitized bytes. It contains no raw source references.
 
-PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
+PNG is the default. JPEG requires flattening transparency against an explicit background and a declared quality setting. Saved files may instead use Automatic: an image without transparency is also encoded as JPEG at quality 0.92, and the JPEG is kept only when the PNG is over 0.5 MB and more than four times its size, or over 2 MB and more than twice its size; the file extension follows the bytes kept. HEIC is offered where the Mac's ImageIO encodes it, flattened like JPEG at the same quality setting and holding image items only; elsewhere a stored HEIC choice saves PNG, and Automatic never picks HEIC. Print hands the same sanitized PNG as Copy Image to the system print panel and is refused whenever Copy is. Copy Image publishes only the sanitized PNG representation in v1; no simultaneous raw TIFF, original file URL, or app-private document payload. Encode successfully before replacing clipboard content, and report success only after the clipboard write succeeds.
 
 Save uses a user-selected destination or a previously authorized preferred folder, sanitized collision-resistant filenames, a same-directory temporary file, and atomic replacement/rename where supported. Overwrite requires confirmation. Encode failure leaves the destination intact. Quota, revocation, full disk, and disconnected volumes are explicit errors. File promises for drag-out must keep sanitized bytes alive until the receiving app completes or the transfer is canceled; do not delete a promised file prematurely.
+
+**Save Optimized Copy…** in quick actions prepares one sanitized snapshot using Automatic,
+shows its format, dimensions and encoded size, and always asks for a destination. It confirms
+replacement at the exact output path and writes the bytes already prepared. A stale capture
+cannot present the picker or act on a delayed replacement response.
 
 Auto-copy and auto-save are off by default. If later enabled, show that copying/saving happens before subsequent edits and cannot be retracted from other applications. Auto-save writes only to the folder chosen in Settings: turning it on without a reachable folder asks for one, and a cancel leaves it off; removing the folder turns it off in the same change; a remembered folder that becomes unreachable stays chosen, Settings says so, and each save fails visibly without writing anywhere else. An ordinary screenshot filename MUST NOT include a window title, recognized text, account identifier, or URL.
 
@@ -194,15 +235,20 @@ Auto-copy and auto-save are off by default. If later enabled, show that copying/
 
 Run Vision locally and off the UI actor. Support a crop-to-text command and OCR on imported images. Prefer the modern Swift API where verified; Apple documents its concurrency-oriented redesign. [S07]
 
-Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
+Query available recognition languages at runtime. Offer English and Portuguese where supported; report unavailable language support instead of asserting that a particular locale is always present. A primary language chosen in Settings from those the recognizer reports is tried first, ahead of the others in their usual order; one the recognizer no longer reports returns to Automatic. Provide exact/raw text, optional whitespace normalization, and preserve-line-breaks modes. Never silently autocorrect source text or use an LLM to “repair” OCR in the default workflow.
 
 Recognized ranges MUST have normalized bounding boxes converted through the shared geometry layer. OCR is tied to document revision and privacy epoch; outdated results cannot overwrite the clipboard after a new capture or redaction. Text mode with no detected text leaves existing clipboard content unchanged and displays a nonblocking message.
+
+**Copy Text** from quick actions recognizes the normal-resolution sanitized image with the
+editor's language and formatting preferences. Only the still-current explicit request may
+write a nonempty result. A new capture selection cancels recognition even if the thumbnail is
+later restored. The thumbnail remains available and its inactivity timer resumes afterward.
 
 Decode QR payloads as untrusted data. Display the payload; copy or open only after an explicit user action. Never automatically follow URLs, Wi-Fi configuration, payment payloads, or executable/deep-link schemes. QR fixture equality is byte-level, not visual approximation.
 
 ### FR-09 — Pins
 
-Pin a rendered document snapshot, not an invisible live recording. Provide move, scale, opacity, copy, drag-out, close, and “bring pins forward” controls. Pins are ordinary normal-level windows shown on every Space, so window switchers list them; other windows can cover them (ADR-007). Copy and drag-out export the pinned sanitized raster through the single export pipeline; a closed or invalidated pin cannot be exported, and its pending drag offer is revoked. Maximum five pins initially, subject to the common memory budget. Do not create a click-through pin unless an explicit mode also provides an always-reachable recovery action; default pins are normal interactive panels.
+Pin a rendered document snapshot, not an invisible live recording. Provide move, scale, opacity, copy, drag-out, close, and “bring pins forward” controls. Pins are ordinary normal-level windows shown on every Space, so window switchers list them; other windows can cover them (ADR-007). Per pin, an opt-in Keep on Top floats it, and only a pin on top can be made click-through, which shows a lock and is undone for every pin by Unlock All Pins in both menus (ADR-007 amendment). Copy and drag-out export the pinned sanitized raster through the single export pipeline; a closed or invalidated pin cannot be exported, and its pending drag offer is revoked. Maximum five pins initially, subject to the common memory budget. Do not create a click-through pin unless an explicit mode also provides an always-reachable recovery action; default pins are normal interactive panels.
 
 Pins referencing a live document MUST be refreshed or invalidated on privacy-epoch changes. Closing the source editor and keeping a pin requires retaining only the data necessary for that rendered reference. Pins disappear on app quit and are not restored from disk. Pins do not float above other windows.
 
@@ -216,7 +262,7 @@ Pipeline: capture stable viewport frames; normalize orientation/scale; mask know
 
 Handle stationary frames, smooth scrolling, repeated text, lazy-loaded assets, fixed headers/footers, animated cursors, and a page ending. Low texture or repetitive patterns may be inherently ambiguous: pause, offer manual overlap adjustment, retain a clearly labeled partial result, or stop. Do not stretch missing content or fabricate pixels with generative AI.
 
-Choose an initial vertical direction. Unexpected reversal pauses rather than duplicating content. Limit duration to 120 seconds, input to 200 accepted frames, output to 40 megapixels, any side to 32,768 pixels, and default output height to 20,000 pixels; the first reached limit wins. Output limits include final encoding buffers, not just matching thumbnails.
+Before Start the person chooses Vertical (the default, remembered once changed) or Horizontal for a page that scrolls to the right; a horizontal session runs the same pipeline on transposed frames, scrolls sideways in automatic mode, and draws its seams as vertical bands. Unexpected reversal pauses rather than duplicating content. Limit duration to 120 seconds, input to 200 accepted frames, output to 40 megapixels, any side to 32,768 pixels, and default output length along the scroll direction (height, or width) to 20,000 pixels; the first reached limit wins. Output limits include final encoding buffers, not just matching thumbnails.
 
 Keep at most two full-resolution viewport buffers plus bounded working tiles and previews. Do not assume ImageIO can encode an arbitrarily large output without materializing it. Refuse operations that exceed the declared allocation plan. A user-confirmed partial result may be exported, but must never be labeled complete. Stop immediately on target/focus/display change, lock, permission revocation, or canceled control. Focus may move between the bound target and Recortia's own UI; another app taking focus ends the session.
 
@@ -224,13 +270,24 @@ Keep at most two full-resolution viewport buffers plus bounded working tiles and
 
 Provide a nearest-neighbor loupe and distinguish document pixels from logical display points and editor zoom. An imported image without screen geometry has pixels but no inferred screen-point scale. Report width, height, positions, and manually anchored horizontal/vertical distances. Any automatic edge detection is an estimate that can be adjusted.
 
-Canonical v1 editing/export is SDR sRGB. The picker reports sampled values in that space as HEX and RGB; it is not a measurement of physical display light. Label the space explicitly and keep rulers independent of zoom. HDR preservation, wide-gamut numeric formats, and contrast standards are deferred until separately specified and tested.
+Canonical v1 editing/export is SDR sRGB. The picker reports sampled values in that space as HEX and RGB; it is not a measurement of physical display light. Label the space explicitly and keep rulers independent of zoom. HDR preservation and wide-gamut numeric formats are deferred until separately specified and tested.
+
+The picker copies, on an explicit action only, in the remembered format: HEX, CSS `rgb()`, normalized RGB, SwiftUI, UIKit, Android `0xAARRGGBB` or CSS `oklch()` (Ottosson's Oklab). A darkest-pixel mode picks the lowest relative luminance in a 20 × 20 pt box for text colours. Two opaque picks, text and background, show their WCAG 2.x contrast ratio with AA and AAA marks for normal and large text; APCA is not offered. Every sample reads the sanitized base, so a secure mask yields its fill.
 
 ### FR-12 / FR-13 — Composition and presentation
 
 Add imported images as independently movable/scalable layers on an expandable canvas, with alignment, opacity, duplication, and remove. Never silently stretch aspect ratio. Include a simple side-by-side layout preset and a transparency comparison view.
 
-Add background fill/gradient, padding, corner radius, and shadow as parameters. The canvas itself stays color-neutral and unaffected by translucent window materials. Provide spotlight and magnifier callouts only after source-redaction propagation and cache invalidation tests pass. Magnifier sources cannot point to the final composited output and create a render cycle. All tools use the same export geometry as the preview.
+Add background fill/gradient, padding, corner radius, and shadow as parameters. Backgrounds are none, a solid colour, a linear gradient or a centred radial gradient, with six solid and four gradient built-in swatches. An output aspect preset (Free, 1:1, 4:5, 16:9, 9:16, 3:2, named by ratio only) grows the background to the smallest exact multiple of the ratio that holds the padded content, so padding is a minimum; with a preset, Balance (on by default) centres the content's fully opaque pixels instead of its box, by a whole-pixel move that keeps the box inside the output. "Save as Default Framing" stores the whole framing as one preference that new screen and scrolling captures open with (a saved background of None keeps a window capture's background from Settings); Reset clears it; open documents and opened images never change with it. The canvas itself stays color-neutral and unaffected by translucent window materials. Provide spotlight and magnifier callouts only after source-redaction propagation and cache invalidation tests pass. Magnifier sources cannot point to the final composited output and create a render cycle. All tools use the same export geometry as the preview.
+
+Output Decoration adds an optional inset border and one text watermark with a fixed anchor,
+opacity and rotation. Draw both after secure replacement and composition. Output Preview and all
+export sinks use the same decorated raster. Decorations preserve output dimensions and never
+sample any source pixels.
+
+Named framing recipes store up to 12 typed framing styles in preferences. A recipe applies
+to the open document in one undoable change. Renaming or deleting a recipe preserves applied
+styles and the explicit framing default. Refuse blank, duplicate, invalid or stale entries.
 
 ### FR-14 — Settings, accessibility, and release behavior
 
@@ -339,7 +396,7 @@ External sinks cannot request an original asset from the image store. A static d
 
 The app deliberately writes no screenshot/OCR content before an explicit save or drag-export action. Session data is volatile, with bounded caches and no restoration archive. Operating-system swap, diagnostic collection, or third-party clipboard managers are outside that guarantee. User-facing privacy language must preserve this distinction.
 
-Log durations, dimensions, error categories, cancellation, and bounded counters; never pixels, OCR text, QR payloads, document/window titles, clipboard content, paths, access tokens, or user identifiers. Do not include real captures in crash reports or issue templates. Diagnostic export is explicit, previewable, content-free by default, and reviewed before public submission.
+Log durations, dimensions, error categories, cancellation, and bounded counters; never pixels, OCR text, QR payloads, document/window titles, clipboard content, paths, access tokens, or user identifiers. Do not include real captures in crash reports or issue templates. Diagnostic export is explicit, previewable, content-free by default, and reviewed before public submission. The optional diagnostics file (Settings › Privacy, off by default) holds only typed event lines (event names, counts, durations, permission statuses and error case names) in an owner-only `~/Library/Logs/Recortia/diagnostics.log` bounded to about 1 MiB; Recortia never sends it, and the person opens it in Finder and attaches it to a report themselves.
 
 Use just-in-time permissions. No TCC database modifications, blanket permission-reset scripts, admin helpers, private entitlements, disabling SIP/Gatekeeper, or instructions to grant Full Disk Access. Screen permission denial must not disable import/edit/local export. Automatic scrolling has a separate denial/fallback path.
 
@@ -354,7 +411,7 @@ Benchmark on a physical Apple Silicon Mac with at least 16 GB RAM, a 4K 60 Hz di
 | Measure | Proposed gate | Measurement |
 |---|---|---|
 | Warm capture overlay presentation | p95 <= 100 ms | Shortcut handler entry to first overlay frame, 100 runs |
-| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs |
+| Region commit to editor image | p95 <= 300 ms for a 4K-or-smaller still | Selection commit to first full-resolution editor frame, 100 runs. With automatic redaction on, the editor window meets this target and the capture's pixels follow once its masks land (FR-06): measured warm p95 2.2 s and cold 2.1 s at 2560×1440 2×, 0.7 s at 1440×900, with an 8 s fail-closed deadline |
 | Cold launch to ready menu bar | p95 <= 1.5 s | 30 process launches; report caching conditions |
 | Common drawing gestures | 60 Hz target without sustained main-thread stalls | Frame pacing plus Instruments traces, not FPS claims alone |
 | Local OCR | p95 <= 1.5 s on the defined 1080p text fixture subset | 100 runs; report languages, revision, and corpus |
@@ -388,7 +445,9 @@ Document reproducible build **inputs**; do not claim byte-for-byte reproducible 
 ## 13. Optional extensions
 
 GitHub auto-upload (FR-15) was authorized on 2026-10-01. ADR-006 owns its provider, consent,
-token, retry and privacy contract. Other providers and FR-16 remain deferred.
+token, retry and privacy contract. On 2026-11-19 the owner approved further providers and FR-16
+automation, each built only after its threat model or ADR is signed off
+(`docs/specs/program-2026-11/plan.md`). On-device writing assistance remains unapproved.
 
 ### Optional S3-compatible sharing
 
@@ -402,7 +461,7 @@ An integration may open the app or initiate a user-visible workflow; an untruste
 
 Optional writing assistance may suggest alt text, summarize user-selected OCR text, or draft a bug report locally. Availability, supported languages, and model access are runtime capabilities. It must remain off the capture critical path, work without any cloud fallback, and show editable output before a side effect. Recheck the then-current SDK/model documentation before selecting an implementation. Do not assume an earlier year's model/API capability set is still current.
 
-Screenshot content is data, not instructions. AI has no authority to capture additional screens, access files, invoke tools, apply “secure redaction,” or transmit data. Automatic sensitive-data suggestions remain review aids, not a guarantee that no secrets remain.
+Screenshot content is data, not instructions. AI has no authority to capture additional screens, access files, invoke tools, apply “secure redaction,” or transmit data. Automatic masking and sensitive-data suggestions remain review aids, not a guarantee that no secrets remain.
 
 ## 14. Completion and first handoff
 

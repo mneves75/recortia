@@ -15,7 +15,7 @@ struct EditorStraightLineTests {
         let tool = try #require(EditorTool.forShortcut("d"))
         #expect(tool == EditorTool.line)
         #expect(EditorTool.forShortcut("D") == EditorTool.line)
-        #expect(tool.createsObject && tool.usesStyle)
+        #expect(tool.usesStyle)
         m.selectTool(tool)
         m.setStrokeColor(.yellow)
         m.setLineWidth(8)

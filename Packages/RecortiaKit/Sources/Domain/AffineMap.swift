@@ -32,7 +32,13 @@ public struct AffineMap<From, To>: Hashable, Sendable, Codable {
     }
 
     /// Rotation by `radians`; positive angles turn +x toward +y (clockwise on a y-down canvas).
+    /// Quarter turns (`k · π/2`, `k` in -3…3) are exact, so a turned image stays on whole pixels.
     public static func rotation(_ radians: Double) -> AffineMap {
+        for k in -3...3 where radians == Double(k) * (.pi / 2) {
+            let quarter = (k + 4) % 4
+            let cosine = [1.0, 0, -1, 0][quarter], sine = [0.0, 1, 0, -1][quarter]
+            return AffineMap(a: cosine, b: sine, c: -sine, d: cosine, tx: 0, ty: 0)
+        }
         let cosine = cos(radians), sine = sin(radians)
         return AffineMap(a: cosine, b: sine, c: -sine, d: cosine, tx: 0, ty: 0)
     }

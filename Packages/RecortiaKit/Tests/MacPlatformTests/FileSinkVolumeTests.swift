@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 
 @testable import MacPlatform
@@ -9,6 +10,8 @@ import Testing
 // this environment cannot attach an image at all, the suite is skipped, never passed.
 @Suite(
     "File sink on exFAT and FAT32 volumes (FR-07, EXP-02)",
+    // Images attached in parallel make hdiutil fail to attach some of them.
+    .serialized,
     .enabled(if: ScratchVolume.isAvailable, "hdiutil cannot create and attach a disk image here"))
 struct FileSinkVolumeTests {
     let snapshot = TestSupport.snapshot()
@@ -21,12 +24,16 @@ struct FileSinkVolumeTests {
         try ScratchVolume.withMounted(format) { folder in
             let sink = FileSink()
             let url = folder.appendingPathComponent("shot.png")
-            #expect(try sink.save(snapshot, to: url, overwrite: false) == url)
+            #expect(
+                try sink.save(snapshot, to: url, overwrite: false).resolvingSymlinksInPath().path
+                    == url.resolvingSymlinksInPath().path)
             #expect(try Data(contentsOf: url) == snapshot.bytes)
             #expect(throws: SinkError.destinationExists) { try sink.save(snapshot, to: url, overwrite: false) }
             #expect(try Data(contentsOf: url) == snapshot.bytes)
             try priorBytes.write(to: url)
-            #expect(try sink.save(snapshot, to: url, overwrite: true) == url)
+            #expect(
+                try sink.save(snapshot, to: url, overwrite: true).resolvingSymlinksInPath().path
+                    == url.resolvingSymlinksInPath().path)
             #expect(try Data(contentsOf: url) == snapshot.bytes)
             let first = try sink.saveUnique(snapshot, in: folder)
             let second = try sink.saveUnique(snapshot, in: folder)
@@ -36,29 +43,263 @@ struct FileSinkVolumeTests {
         }
     }
 
+    // Shape note (second review of T1a): the save wrote and flushed a full stage before it found
+    // the volume had no exclusive rename, then wrote the same bytes again into the claim. There
+    // the stage's folder has no owners, so that first copy was readable by anyone for no purpose.
     @Test(
-        "Without exclusive rename, a taken name is kept and a failed move releases the name it claimed",
-        arguments: ScratchVolume.Format.allCases)
-    func claimedMoveKeepsAndReleasesNames(format: ScratchVolume.Format) throws {
+        "A new save writes the snapshot straight into the claimed name and never creates a stage",
+        arguments: ScratchVolume.Format.allCases, [false, true])
+    func newSaveWritesNoStage(format: ScratchVolume.Format, unique: Bool) throws {
         try ScratchVolume.withMounted(format) { folder in
-            let taken = folder.appendingPathComponent("taken.png")
-            try priorBytes.write(to: taken)
-            let source = folder.appendingPathComponent(".recortia-source.tmp")
-            try snapshot.bytes.write(to: source)
-            #expect(throws: FileSystemFailure(code: EEXIST)) {
-                try POSIXFileSystem.claimThenRename(from: source, to: taken)
+            var claimed = 0
+            var staged: [String] = []
+            let fileSystem = POSIXFileSystem(afterClaim: { _ in
+                claimed += 1
+                staged += TestSupport.directoryEntries(folder).filter { $0.hasPrefix(".recortia-") }
+            })
+            let sink = FileSink(fileSystem: fileSystem)
+            let url =
+                unique
+                ? try sink.saveUnique(snapshot, in: folder)
+                : try sink.save(snapshot, to: folder.appendingPathComponent("shot.png"), overwrite: false)
+            try #require(claimed == 1, "control: the save did not claim its name")
+            #expect(staged.isEmpty, "a stage existed while the claim was written: \(staged)")
+            #expect(try Data(contentsOf: url) == snapshot.bytes)
+            #expect(TestSupport.directoryEntries(folder) == [url.lastPathComponent])
+        }
+    }
+
+    // R09 (adversarial review of T1a): a writer with access to the claimed file could change its
+    // bytes after Recortia wrote them without changing its size, and the save reported success.
+    @Test(
+        "A claimed file changed after the snapshot was written into it is reported, not saved, and kept",
+        arguments: ScratchVolume.Format.allCases)
+    func claimChangedAfterWriteIsNotSaved(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            let tampered = Data(repeating: 0x41, count: snapshot.bytes.count)
+            var changed = false
+            let fileSystem = POSIXFileSystem(afterClaimWrite: { claimed in
+                guard let handle = try? FileHandle(forUpdating: claimed) else { return }
+                changed = (try? handle.seek(toOffset: 0)) != nil && (try? handle.write(contentsOf: tampered)) != nil
+                try? handle.synchronize()
+                try? handle.close()
+            })
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
             }
-            #expect(try Data(contentsOf: taken) == priorBytes)
-            // The rename fails after the claim when its source is gone.
-            let missing = folder.appendingPathComponent(".recortia-missing.tmp")
-            let free = folder.appendingPathComponent("free.png")
-            #expect(throws: FileSystemFailure(code: ENOENT)) {
-                try POSIXFileSystem.claimThenRename(from: missing, to: free)
+            try #require(changed, "control: the claimed file was never changed")
+            #expect(try Data(contentsOf: url) == tampered, "a file Recortia did not finish was removed or changed")
+            #expect(TestSupport.directoryEntries(folder) == ["shot.png"], "a stage was left behind")
+        }
+    }
+
+    // R09 (second review of T1a): the size was checked only before the read-back, so bytes another
+    // writer appended while it ran left the compared prefix equal and the save reported success.
+    @Test(
+        "A claimed file that grows while it is read back is reported, not saved",
+        arguments: ScratchVolume.Format.allCases)
+    func claimGrownDuringReadBackFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            var grew = false
+            let fileSystem = POSIXFileSystem(afterReadBack: { claimed in
+                guard let handle = try? FileHandle(forUpdating: claimed) else { return }
+                grew = (try? handle.seekToEnd()) != nil && (try? handle.write(contentsOf: Data([0x41]))) != nil
+                try? handle.close()
+            })
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
             }
-            #expect(!FileManager.default.fileExists(atPath: free.path), "an empty claimed file was left behind")
-            try POSIXFileSystem.claimThenRename(from: source, to: free)
-            #expect(try Data(contentsOf: free) == snapshot.bytes)
-            #expect(TestSupport.directoryEntries(folder) == ["free.png", "taken.png"])
+            try #require(grew, "control: the claimed file never grew")
+            #expect(FileManager.default.fileExists(atPath: url.path), "a file Recortia did not finish was removed")
+        }
+    }
+
+    // N05 (second review of T1a): the read-back is compared in fixed chunks; a change past the
+    // first chunk must still be seen.
+    @Test(
+        "A large claimed file changed past its first read-back chunk is reported, not saved",
+        arguments: ScratchVolume.Format.allCases)
+    func claimChangedPastFirstChunkFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let large = TestSupport.snapshot(bytes: Data((0..<200_000).map { UInt8(truncatingIfNeeded: $0 * 7) }))
+            let url = folder.appendingPathComponent("shot.png")
+            var changed = false
+            let fileSystem = POSIXFileSystem(afterClaimWrite: { claimed in
+                guard let handle = try? FileHandle(forUpdating: claimed) else { return }
+                let offset: UInt64 = 150_000
+                let original = large.bytes[Int(offset)]
+                changed =
+                    (try? handle.seek(toOffset: offset)) != nil
+                    && (try? handle.write(contentsOf: Data([original ^ 0xFF]))) != nil
+                try? handle.synchronize()
+                try? handle.close()
+            })
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
+                try FileSink(fileSystem: fileSystem).save(large, to: url, overwrite: false)
+            }
+            try #require(changed, "control: the claimed file was never changed")
+        }
+    }
+
+    @Test("A write that makes no progress is an I/O failure, not a hang", arguments: ScratchVolume.Format.allCases)
+    func zeroProgressClaimWriteFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let fileSystem = POSIXFileSystem(writeBytes: { _, _, _ in 0 })
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
+                try FileSink(fileSystem: fileSystem).save(
+                    snapshot, to: folder.appendingPathComponent("shot.png"), overwrite: false)
+            }
+        }
+    }
+
+    // R05/R11 (second review of T1a): a claim that failed after its first bytes was removed by name
+    // after an identity check, so a file that took the name in between could be deleted. These
+    // volumes have no exclusive rename to move it aside first, so it stays and is named.
+    @Test(
+        "A claim whose write fails part way is kept and named, never removed",
+        arguments: ScratchVolume.Format.allCases)
+    func failedClaimIsNamed(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let calls = Mutex(0)
+            let fileSystem = POSIXFileSystem(writeBytes: { descriptor, bytes, count in
+                let call = calls.withLock { value in
+                    value += 1
+                    return value
+                }
+                guard call == 1 else {
+                    errno = ENOSPC
+                    return -1
+                }
+                return Darwin.write(descriptor, bytes, min(count, 10))
+            })
+            let url = folder.appendingPathComponent("shot.png")
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+            }
+            let kept = try Data(contentsOf: url)
+            #expect(kept == Data(snapshot.bytes.prefix(10)))
+        }
+    }
+
+    // Security review of 855447f: an overwrite there falls back to a plain rename, and the
+    // stage's private folder has no owners or modes on these volumes, so another user could
+    // change the staged bytes before the rename and the save reported success.
+    @Test(
+        "An overwrite whose staged bytes changed before the rename is reported as failed",
+        arguments: ScratchVolume.Format.allCases)
+    func overwriteWithChangedStageFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            try priorBytes.write(to: url)
+            let tampered = Data(repeating: 0x41, count: snapshot.bytes.count)
+            var changed = false
+            let fileSystem = POSIXFileSystem.interposing { stage in
+                guard let handle = try? FileHandle(forUpdating: stage) else { return }
+                changed = (try? handle.seek(toOffset: 0)) != nil && (try? handle.write(contentsOf: tampered)) != nil
+                try? handle.synchronize()
+                try? handle.close()
+            }
+            #expect(throws: SinkError.leftover(name: "shot.png")) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+            }
+            try #require(changed, "control: the staged bytes were never changed")
+            // The published file may be someone else's bytes now: it is reported, not deleted.
+            #expect(FileManager.default.fileExists(atPath: url.path))
+            #expect(try Data(contentsOf: url) != snapshot.bytes)
+        }
+    }
+
+    // Automated review of 1a395cb: after the overwrite's plain rename, the read-back went through
+    // the stage's descriptor only, so a file another writer renamed over the published name was
+    // never noticed and the save reported success for a name holding someone else's bytes.
+    @Test(
+        "An overwrite whose published name is replaced right after the rename fails and keeps the other file",
+        arguments: ScratchVolume.Format.allCases)
+    func overwriteReplacedAfterRenameFails(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            try priorBytes.write(to: url)
+            let theirs = Data("another writer's bytes".utf8)
+            let decoy = folder.appendingPathComponent("theirs.tmp")
+            try theirs.write(to: decoy)
+            var replaced = false
+            let fileSystem = POSIXFileSystem(afterPublish: { published in
+                replaced = rename(decoy.path(percentEncoded: false), published.path(percentEncoded: false)) == 0
+            })
+            #expect(throws: SinkError.destinationExists) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+            }
+            try #require(replaced, "control: the published name was never replaced")
+            #expect(try Data(contentsOf: url) == theirs, "the other writer's file was removed or changed")
+        }
+    }
+
+    // R3-04 (third review of T1a): a failed read-back named the destination as a leftover without
+    // checking the name again, so a file truncated and moved away was reported at a name that held
+    // nothing of Recortia's.
+    @Test(
+        "A published file truncated and moved away during the read-back is not named as a leftover",
+        arguments: ScratchVolume.Format.allCases)
+    func movedAwayDuringReadBackIsNotNamed(format: ScratchVolume.Format) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            let moved = folder.appendingPathComponent("moved.png")
+            try priorBytes.write(to: url)
+            var changed = false
+            let fileSystem = POSIXFileSystem(afterPublish: { published in
+                guard let handle = try? FileHandle(forUpdating: published) else { return }
+                changed =
+                    (try? handle.truncate(atOffset: 0)) != nil
+                    && rename(published.path(percentEncoded: false), moved.path(percentEncoded: false)) == 0
+                try? handle.close()
+            })
+            #expect(throws: SinkError.destinationExists) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: true)
+            }
+            try #require(changed, "control: the published file was never truncated and moved")
+            #expect(FileManager.default.fileExists(atPath: moved.path), "a file Recortia did not keep was removed")
+        }
+    }
+
+    enum ConcurrentWrite: String, CaseIterable, Sendable {
+        /// Another writer renames its own file over the claimed name.
+        case replacesClaim
+        /// Another writer opens the claimed, still empty file and writes into it.
+        case writesIntoClaim
+    }
+
+    // R2-D04 (program 2026-11): without exclusive rename, the claimed name was renamed over, so
+    // bytes another writer put there between the claim and the commit were destroyed by a save
+    // that must never overwrite.
+    @Test(
+        "A file written to the claimed name between the claim and the commit is never destroyed",
+        arguments: ScratchVolume.Format.allCases, ConcurrentWrite.allCases)
+    func concurrentWriteAfterClaimSurvives(format: ScratchVolume.Format, write: ConcurrentWrite) throws {
+        try ScratchVolume.withMounted(format) { folder in
+            let url = folder.appendingPathComponent("shot.png")
+            let theirs = Data("another writer's bytes".utf8)
+            let decoy = folder.appendingPathComponent("theirs.tmp")
+            try theirs.write(to: decoy)
+            var wrote = false
+            let fileSystem = POSIXFileSystem(afterClaim: { claimed in
+                switch write {
+                case .replacesClaim:
+                    wrote = rename(decoy.path(percentEncoded: false), claimed.path(percentEncoded: false)) == 0
+                case .writesIntoClaim:
+                    guard let handle = try? FileHandle(forWritingTo: claimed) else { return }
+                    wrote = (try? handle.write(contentsOf: theirs)) != nil
+                    try? handle.close()
+                }
+            })
+            #expect(throws: SinkError.destinationExists) {
+                try FileSink(fileSystem: fileSystem).save(snapshot, to: url, overwrite: false)
+            }
+            try #require(wrote, "control: the other writer never reached the claimed name")
+            #expect(try Data(contentsOf: url) == theirs, "the other writer's bytes were destroyed")
+            let left = TestSupport.directoryEntries(folder).filter { $0.hasPrefix(".recortia-") }
+            #expect(left.isEmpty, "a temporary export was left behind: \(left)")
         }
     }
 
@@ -72,7 +313,7 @@ struct FileSinkVolumeTests {
             let decoy = folder.appendingPathComponent("decoy.txt")
             try Data("another file".utf8).write(to: decoy)
             var substituted = false
-            let fileSystem = InterposingFileSystem { temporary in
+            let fileSystem = POSIXFileSystem.interposing { temporary in
                 // Another account renames its own file over the temporary name.
                 substituted =
                     rename(decoy.path(percentEncoded: false), temporary.path(percentEncoded: false)) == 0

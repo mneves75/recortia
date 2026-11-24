@@ -35,6 +35,7 @@ moved to 27B52 through the same doctor policy; the decision below is otherwise u
 3. **Deployment target:** macOS 15.0, arm64 only. The installed SDK supports every capture and OCR
    primitive the 0.1 scope needs at that target (table below). Newer APIs are availability-gated,
    never a reason to raise the target.
+   Superseded from 0.15 by [ADR-008](0008-macos-26-floor.md): macOS 26.0.
 4. **Toolchain:** stable Xcode 27.0 (27A266a), recorded separately as `stable_xcode_baseline` in
    `TOOLCHAIN.json` and selected per command with `DEVELOPER_DIR`. The global `xcode-select`
    setting is left unchanged because other projects on this Mac use it. FP-004's
@@ -73,7 +74,18 @@ macOS 15.2 or newer", which shows the typecheck enforces availability.
 | Package | Release | Tag → commit | License | Minimum OS | Status |
 |---|---|---|---|---|---|
 | sindresorhus/KeyboardShortcuts | 3.1.0 (2026-09-11) | `772133d9dbe800fdac0473226822994c5c162c58` | MIT | macOS 10.15 | Candidate for FP-006; code review pending |
-| sparkle-project/Sparkle | 2.10.0 (2026-09-13) | `eef1a539a373c1f1a320624b1130fc5de7b2e100` | GitHub reports `NOASSERTION` | macOS 12 | Deferred to FP-024; license and notices review required |
+| sparkle-project/Sparkle | 2.10.1 (2026-10-25) | `ab7d71291238df6e0492143b120c9b696a35f603` | MIT, plus bundled bsdiff 4.3 (BSD 2-clause), sais-lite (MIT), orlp/ed25519 (zlib) and SUSignatureVerifier.m (BSD 2-clause) | macOS 12 | Pinned exactly for FP-024 on 2026-11-21 |
+
+Sparkle review (2026-11-21, FP-024 T1). 2.10.1 replaced 2.10.0 as the newest stable release
+(the [releases list](https://github.com/sparkle-project/Sparkle/releases) also shows
+2.11.0-beta.1, a pre-release). The lightweight tag 2.10.1 points at the commit above. Its
+`Package.swift` declares one binary target, `Sparkle-for-Swift-Package-Manager.zip`, with checksum
+`4c2e48a3e50ebcc2c88a58a4c7264a1a99c3c31857ce754357afb9cdb323022a`; the GitHub release asset digest
+and `swift package compute-checksum` of the downloaded zip give the same value. `Package.resolved`
+pins the version and revision; SwiftPM verifies the binary against the checksum in the manifest at
+that revision. GitHub's `NOASSERTION` comes from the `EXTERNAL LICENSES` section that follows
+Sparkle's MIT text in one `LICENSE` file; every component in it is permissive and listed in
+`THIRD_PARTY.txt`, and the file ships verbatim as `Sparkle-LICENSE.txt` in the app bundle.
 
 ## Consequences
 

@@ -105,6 +105,45 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.partialReason == nil)
     }
 
+    // Failure mode (review R2-D06): Stop during an append that the matcher then rejected froze the
+    // review as complete, although the rejected viewport is missing from it.
+    @Test(
+        "Stop while the last frame is rejected keeps the rejection as the partial reason",
+        .timeLimit(.minutes(1)),
+        arguments: [
+            (ScrollAppendResult.ambiguous(.lowConfidence), ScrollPartialReason.ambiguous(.lowConfidence)),
+            (.limitReached(.side), .limit(.side)),
+        ])
+    func stopDuringRejectedAppendIsPartial(result: ScrollAppendResult, expected: ScrollPartialReason) async {
+        let h = ScrollHarness()
+        h.stitcher.script = [.accepted(offset: 0), result]
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        h.stitcher.holdAppends = true
+        h.frames.deliver()
+        await waitFor("append in progress") { h.stitcher.appends.waiterCount == 1 }
+        h.model.stop()
+        h.stitcher.appends.resolve(())
+        await waitFor("review settled") { h.model.state == .reviewing }
+        #expect(h.model.partialReason == expected)
+        #expect(h.model.acceptedFrames == 1)
+    }
+
+    // Failure mode (review R2-D16): the duration handed to the matcher was wall-clock time, so a
+    // clock correction two minutes forward reached the duration limit at the next frame.
+    @Test("A wall-clock correction does not count toward the capture's duration")
+    func wallClockJumpIsNotElapsedTime() async {
+        let h = ScrollHarness()
+        await h.startCollecting()
+        h.clock.jumpWallClock(bySeconds: Self.maxSeconds + 1)
+        await Self.deliverFrames(h, 1)
+        #expect(h.stitcher.lastElapsed == .zero)
+        h.clock.advance(bySeconds: 2)
+        await Self.deliverFrames(h, 1)
+        #expect(h.stitcher.lastElapsed == .seconds(2))
+        #expect(h.model.state == .collecting)
+    }
+
     @Test("Cancel while a stopped session is settling its last frame leaves no review", .timeLimit(.minutes(1)))
     func cancelWhileSettlingStop() async {
         let h = ScrollHarness()
@@ -139,12 +178,12 @@ struct ScrollSessionModelEndingTests {
         #expect(h.scroller.stopCount >= 1)
         #expect(h.frames.stopCount >= 1)
 
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .accepted)
-        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil))
+        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: nil, pointPixelScale: 1))
     }
 
-    /// Runs automatic scrolling until the page stops answering scroll steps.
     static func runUntilStepsGoUnanswered(_ h: ScrollHarness) async {
         await h.startCollecting()
         h.frames.deliver()
@@ -206,7 +245,6 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.pageEndLikely)
         #expect(h.model.state == .collecting)
 
-        // A reader pausing mid-page: no frames, time passes, nothing stops.
         h.clock.advance(bySeconds: 30)
         await drain()
         #expect(h.model.state == .collecting)
@@ -243,7 +281,9 @@ struct ScrollSessionModelEndingTests {
         #expect(h.stitcher.appendCount == 1)
 
         await h.model.accept()
-        #expect(h.assets.registeredStitched.first?.origin == .scrollCapture(partialReason: .limit(.duration)))
+        #expect(
+            h.assets.registeredStitched.first?.origin
+                == .scrollCapture(partialReason: .limit(.duration), pointPixelScale: 1))
     }
 
     @Test("Reaching the 2-minute limit with nothing captured fails clearly")
@@ -398,6 +438,7 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.state == .reviewing)
         h.model.interrupt(because: .screenLocked)
         #expect(h.model.state == .reviewing)
+        await waitFor("preview ready") { h.model.preview != nil }
         await h.model.accept()
         #expect(h.model.state == .accepted)
         #expect(h.accepted.count == 1)
@@ -468,6 +509,112 @@ struct ScrollSessionModelEndingTests {
         #expect(h.frames.startCount == 1)
         #expect(!h.frames.deliver())
         #expect(h.accepted.isEmpty && h.assets.registeredStitched.isEmpty)
+    }
+
+    // Failure mode (H1): settleElapsed suspended inside `autoScroller.isAtEnd`, a new frame arrived
+    // and canceled `settleTask`, and the returning `isAtEnd` checked only `sessionID` and `state`
+    // without `!Task.isCancelled`, aborting an active scroll.
+    @Test("A canceled settle check returning after a new frame never aborts active collection")
+    func canceledSettleEndQueryDoesNotAbortActiveScroll() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        h.scroller.atEnd = true
+        await h.startCollecting()
+        h.frames.deliver()
+        await waitFor("first step armed") { Self.settleArmed(h, steps: 1) }
+        for retry in 1..<Self.endThreshold {
+            h.clock.advance(bySeconds: Self.settleSeconds)
+            await waitFor("retry step \(retry)") { Self.settleArmed(h, steps: 1 + retry) }
+        }
+        h.scroller.holdEndQueries = true
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await waitFor("isAtEnd suspended") { h.scroller.pendingEndQueries.waiterCount == 1 }
+
+        // A real frame arrives before isAtEnd answers, proving the page moved and cancelling settleTask.
+        #expect(h.frames.deliver())
+        await waitFor("frame 2 accepted") { h.model.acceptedFrames == 2 }
+        #expect(h.scroller.pendingEndQueries.resolve(()))
+        await drain()
+
+        #expect(h.model.state == .collecting)
+        #expect(h.model.acceptedFrames == 2)
+        #expect(h.model.partialReason == nil)
+        #expect(h.frames.stopCount == 0)
+    }
+
+    @Test("Monotonic deadline fires immediately when clock stalled past maxDuration before deadlineTask ran")
+    func deadlineEnforcesMonotonicUptime() async {
+        let h = ScrollHarness()
+        _ = await h.model.begin()
+        h.model.chooseTarget(h.target)
+        h.model.start()
+        // Stall monotonic uptime past maxDuration before yielding to deadlineTask.
+        h.clock.stall(bySeconds: Self.maxSeconds)
+        await waitFor("deadline ended empty session") { h.model.state == .failed(.noFrames) }
+        #expect(h.clock.sleepRequests.isEmpty, "deadlineTask must not sleep another full maxDuration")
+    }
+
+    // Failure mode (review P1): pausing while collect() awaits autoScroller.isAtEnd exited the
+    // collection loop permanently, so resuming left the stream open without reading frames.
+    @Test("Pausing while collect checks isAtEnd keeps the collection loop alive after Resume")
+    func pauseDuringCollectEndQueryKeepsCollectionLoopAlive() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        h.stitcher.script =
+            [.accepted(offset: 0), .accepted(offset: 40)]
+            + Array(repeating: .stationary, count: Self.endThreshold)
+            + [.accepted(offset: 80)]
+        h.scroller.atEnd = true
+        await h.startCollecting()
+        await Self.deliverFrames(h, 2 + Self.endThreshold - 1)
+
+        h.scroller.holdEndQueries = true
+        #expect(h.frames.deliver())
+        await waitFor("collect isAtEnd suspended") { h.scroller.pendingEndQueries.waiterCount == 1 }
+
+        h.model.pause()
+        #expect(h.model.state == .paused(.userPaused))
+        #expect(h.scroller.pendingEndQueries.resolve(()))
+        await drain()
+        #expect(h.model.state == .paused(.userPaused))
+
+        h.model.resume()
+        await waitFor("collection loop still awaits next frame") { h.frames.frames.waiterCount == 1 }
+        #expect(h.frames.deliver())
+        await waitFor("frame 3 accepted after resume") { h.model.acceptedFrames == 3 }
+        #expect(h.model.state == .collecting)
+        #expect(h.frames.stopCount == 0)
+    }
+
+    // Failure mode (review P1): pausing and resuming while collect() awaits autoScroller.isAtEnd
+    // left state == .collecting when the stale atEnd == true returned, prematurely ending capture.
+    @Test("Pausing and resuming while collect checks isAtEnd discards the stale end result")
+    func pauseAndResumeDuringCollectEndQueryDiscardsStaleAtEnd() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        h.stitcher.script =
+            [.accepted(offset: 0), .accepted(offset: 40)]
+            + Array(repeating: .stationary, count: Self.endThreshold)
+            + [.accepted(offset: 80)]
+        h.scroller.atEnd = true
+        await h.startCollecting()
+        await Self.deliverFrames(h, 2 + Self.endThreshold - 1)
+
+        h.scroller.holdEndQueries = true
+        #expect(h.frames.deliver())
+        await waitFor("collect isAtEnd suspended") { h.scroller.pendingEndQueries.waiterCount == 1 }
+
+        h.model.pause()
+        h.model.resume()
+        #expect(h.model.state == .collecting)
+        #expect(h.scroller.pendingEndQueries.resolve(()))
+        await drain()
+
+        #expect(h.model.state == .collecting)
+        #expect(h.frames.stopCount == 0)
+        await waitFor("collection loop still awaits next frame") { h.frames.frames.waiterCount == 1 }
+        #expect(h.frames.deliver())
+        await waitFor("frame 3 accepted") { h.model.acceptedFrames == 3 }
     }
 
 }

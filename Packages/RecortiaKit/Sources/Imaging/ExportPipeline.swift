@@ -57,11 +57,11 @@ public struct ExportPipeline: Sendable {
         _ image: CGImage, documentID: DocumentID, revision: UInt64, privacyEpoch: UInt64, options: ExportOptions,
         date: Date
     ) throws(ExportError) -> ShareSnapshot {
-        let bytes = try ExportEncoder.encode(image, options: options)
+        let (bytes, format) = try ExportEncoder.encodeResolvingFormat(image, options: options)
         return ShareSnapshot(
-            documentID: documentID, revision: revision, privacyEpoch: privacyEpoch, format: options.format,
+            documentID: documentID, revision: revision, privacyEpoch: privacyEpoch, format: format,
             pixelSize: PixelSize(width: image.width, height: image.height), bytes: bytes,
-            suggestedFilename: ExportFilename.make(for: date, format: options.format))
+            filename: options.filenameTemplate.name(for: date, format: format))
     }
 }
 

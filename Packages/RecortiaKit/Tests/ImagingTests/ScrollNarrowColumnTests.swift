@@ -126,9 +126,9 @@ struct NarrowColumnPage {
 
 @Suite("SCR-01: a narrow scrolling column between static margins")
 struct ScrollNarrowColumnTests {
-    @Test("A narrow textured column in a wide viewport stitches exactly", arguments: [true])
-    func narrowColumnStitches(badge: Bool) throws {
-        let page = NarrowColumnPage(seed: 71, badge: badge)
+    @Test("A narrow textured column in a wide viewport stitches exactly")
+    func narrowColumnStitches() throws {
+        let page = NarrowColumnPage(seed: 71, badge: true)
         var rng = ScrollPageRandom(seed: 71)
         var offsets = [0]
         while offsets.last! < page.maxOffset {

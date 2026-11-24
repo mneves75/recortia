@@ -118,19 +118,26 @@ public final class ScrollFrameSource {
                     Task { @MainActor in await self?.stop(reason: .failed(error)) }
                 })
         } catch {
-            guard startupID == request else { throw .canceled }
+            guard startupID == request else { throw startupInterruption }
             if state == .starting { finish(.failed(error)) }
             throw error
         }
         guard startupID == request, state == .starting else {
             // stop() ran while the stream was starting; make sure nothing keeps running.
             await producer.stop()
-            throw .canceled
+            throw startupInterruption
         }
         startupID = nil
         state = .running
         observeTargetChanges()
         guard await ensureTargetCurrent() else { throw .targetUnavailable }
+    }
+
+    /// Why startup ended early: the failure the stream reported meanwhile, or `.canceled` when
+    /// the stop was requested.
+    private var startupInterruption: CaptureError {
+        if case .stopped(.failed(let error)) = state { return error }
+        return .canceled
     }
 
     /// Check again before accepting a buffered frame, including one queued before a focus change.

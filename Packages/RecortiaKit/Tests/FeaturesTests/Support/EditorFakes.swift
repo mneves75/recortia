@@ -17,6 +17,8 @@ final class EditorFakeRenderer: RenderService {
     /// Base image to return; nil makes renders a solid canvas-sized image.
     var baseImage: CGImage?
     var pending: Pending<Result<CGImage, TestError>>?
+    /// When set, only base renders wait here, so a test can order base and output results.
+    var basePending: Pending<Result<CGImage, TestError>>?
     var fails = false
     private(set) var baseRenders: [Document] = []
     private(set) var fullRenders: [Document] = []
@@ -28,6 +30,7 @@ final class EditorFakeRenderer: RenderService {
 
     func renderBase(_ document: Document, scale: Double) async throws -> CGImage {
         baseRenders.append(document)
+        if let basePending { return try await basePending.wait().get() }
         return try await produce(document)
     }
 
@@ -50,11 +53,15 @@ final class EditorFakeTextRecognition: TextRecognitionService {
     ]
     var lines: [OCRResult.Line] = []
     var pending: Pending<Void>?
+    var languagesPending: Pending<Void>?
     var fails = false
     private(set) var recognizedSizes: [PixelSize] = []
     private(set) var requestedLanguages: [[Locale.Language]] = []
 
-    func supportedLanguages() async -> [Locale.Language] { languages }
+    func supportedLanguages() async -> [Locale.Language] {
+        if let languagesPending { await languagesPending.wait() }
+        return languages
+    }
 
     func recognize(_ image: CGImage, languages: [Locale.Language]) async throws -> OCRResult {
         recognizedSizes.append(PixelSize(width: image.width, height: image.height))
@@ -73,6 +80,44 @@ final class EditorFakeQRDecoder: QRDecodingService {
     func decode(_ image: CGImage) async throws -> [QRPayload] {
         decodeCount += 1
         return payloads
+    }
+}
+
+/// Returns scripted regions and text lines; optionally suspends until the test resolves
+/// `pending`. Records whether the caller had cancelled it by the time it would have returned.
+@MainActor
+final class FakeSensitiveText: SensitiveTextService {
+    var regions: [PixelRect] = []
+    var lines: [PixelRect] = []
+    var pending: Pending<Void>?
+    var error: (any Error)?
+    private(set) var requests: [ImageAssetInfo] = []
+    private(set) var lineRequests: [PixelRect] = []
+    /// The hidden source pixels passed with each line request.
+    private(set) var hiddenRequests: [[PixelRect]] = []
+    private(set) var observedCancellation = false
+
+    func sensitiveRegions(in asset: ImageAssetInfo) async throws -> [PixelRect] {
+        requests.append(asset)
+        return try await answer(regions)
+    }
+
+    func textLineRegions(
+        in asset: ImageAssetInfo, within area: PixelRect, hiding hidden: [PixelRect]
+    ) async throws -> [PixelRect] {
+        lineRequests.append(area)
+        hiddenRequests.append(hidden)
+        return try await answer(lines)
+    }
+
+    private func answer(_ result: [PixelRect]) async throws -> [PixelRect] {
+        if let pending { await pending.wait() }
+        if Task.isCancelled {
+            observedCancellation = true
+            throw CancellationError()
+        }
+        if let error { throw error }
+        return result
     }
 }
 
@@ -123,11 +168,13 @@ final class EditorHarness {
     let clipboard = FakeClipboard()
     let files = FakeFileSink()
     let drag = FakeDragSink()
+    let printer = FakePrinter()
     let folders = FakeSaveFolders()
     let clock = ManualClock()
     let settings: SettingsStore
     let recognizer = EditorFakeTextRecognition()
     let qr = EditorFakeQRDecoder()
+    let sensitiveText = FakeSensitiveText()
     let assets = FakeAssetService()
     let input = FakeImageInput()
     let textClipboard = FakeTextClipboard()
@@ -143,19 +190,21 @@ final class EditorHarness {
     ) {
         self.settings = settings ?? SettingsStore(storage: MemoryPreferenceStorage())
         export = ExportCoordinator(
-            exporter: exporter, clipboard: clipboard, files: files, drag: drag, folders: folders, clock: clock,
-            settings: self.settings, upload: upload)
+            exporter: exporter, clipboard: clipboard, files: files, drag: drag, printer: printer, folders: folders,
+            clock: clock, settings: self.settings, upload: upload)
         pins = PinsModel(renderer: renderer, settings: self.settings, export: export)
         let environment = EditorEnvironment(
             renderer: renderer, export: export, folders: folders, textRecognition: recognizer, qrDecoder: qr,
-            assets: assets, input: input, pins: pins, textClipboard: textClipboard, links: links,
-            settings: self.settings)
-        // Configure before the model's first render request.
+            sensitiveText: sensitiveText, assets: assets, input: input, pins: pins, textClipboard: textClipboard,
+            links: links, settings: self.settings, clock: clock)
+        // Initialization queues the first render on the main actor; configure synchronously
+        // before that task can call the fakes.
         model = EditorModel(session: session, environment: environment)
         configure(self)
     }
 
-    /// A pointer gesture from `a` to `b` in document space with `steps` intermediate moves.
+    /// A pointer gesture from `a` to `b` in document space: `max(1, steps)` drag updates, the last
+    /// at `b`.
     func drag(
         _ a: (Double, Double), _ b: (Double, Double), steps: Int = 8, modifiers: EditorModifiers = []
     ) {

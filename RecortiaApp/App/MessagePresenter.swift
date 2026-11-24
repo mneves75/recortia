@@ -6,19 +6,40 @@ import Features
 struct UserMessage: Equatable {
     var title: String
     var detail: String
-    /// Offers a button that opens the Screen Recording pane of System Settings.
     var offersScreenRecordingSettings = false
 }
 
-/// Shows messages as standard alerts. Content-free: never includes image data, OCR text,
-/// window titles, or paths (PRIV-01).
+/// Where a message is shown: an app-modal alert on the current Space, or a sheet on one editor's
+/// window (`MessagePlacement`).
+enum MessageTarget {
+    case app
+    case sheet(NSWindow)
+}
+
+/// Shows messages as standard alerts, or as sheets on the editor they concern. Content-free: never
+/// includes image data, OCR text, window titles, or paths (PRIV-01).
 enum MessagePresenter {
+    static func present(_ message: UserMessage, on target: MessageTarget) {
+        switch target {
+        case .app: present(message)
+        // Out of the close that ended the sheet, so no modal loop runs inside `windowWillClose`.
+        case .sheet(let window): beginSheet(message, on: window) { message in Task { present(message) } }
+        }
+    }
+
+    /// Shows `message` as a sheet on `window` without a modal loop. A sheet the window's close
+    /// ends unanswered (`.abort`) goes to `unanswered`, so closing the editor never drops it. Only
+    /// export failures are sheets; a message offering System Settings is always an app alert.
+    static func beginSheet(
+        _ message: UserMessage, on window: NSWindow, unanswered: @escaping @MainActor (UserMessage) -> Void
+    ) {
+        makeSheet(message).beginSheetModal(for: window) { response in
+            if response == .abort { unanswered(message) }
+        }
+    }
+
     static func present(_ message: UserMessage) {
-        AppPresence.shared.activate()
-        let alert = makeAlert(message)
-        let response = alert.runModal()
-        // A finished alert is ordered out, not closed: re-evaluate the Dock presence.
-        AppPresence.shared.setNeedsRefresh()
+        let response = runModal(makeAlert(message))
         if message.offersScreenRecordingSettings, response == .alertFirstButtonReturn,
             let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
         {
@@ -26,52 +47,113 @@ enum MessagePresenter {
         }
     }
 
-    /// Asks before a scrolling capture is thrown away. Close, Escape, and Discard all route here,
-    /// so the review window can be closed without silently destroying an assembled result.
-    static func confirmDiscardScrollingCapture() -> Bool {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(localized: "Discard this scrolling capture?")
-        // No count here: a counted sentence needs plural variants in two languages, which this
-        // release deliberately defers until the localization gate covers the plural branch.
-        alert.informativeText = String(
-            localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image.")
-        let discard = alert.addButton(withTitle: String(localized: "Discard"))
-        discard.hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        SpacePolicy.follow(alert.window)
-        AppPresence.shared.activate()
-        defer { AppPresence.shared.setNeedsRefresh() }
-        return alert.runModal() == .alertFirstButtonReturn
+    /// The question before a scrolling capture is thrown away. Close, Escape, and Discard all ask
+    /// it, as a sheet on the review window, so closing the review never silently destroys an
+    /// assembled result.
+    static func makeDiscardScrollingCapture() -> NSAlert {
+        // No count here: a counted sentence needs plural variants in two languages, which waits
+        // until the localization gate covers the plural branch.
+        makeConfirmation(
+            title: String(localized: "Discard this scrolling capture?"),
+            detail: String(
+                localized: "The accepted frames will be thrown away. Accept the result instead to keep it as an image."),
+            action: String(localized: "Discard"))
     }
 
-    /// Asks before Quit discards edits in `count` open editors. True means quit.
-    static func confirmDiscardOnQuit(count: Int) -> Bool {
+    /// What Quit discards. Only a copy or save keeps edits: a pin is closed by quitting too.
+    static func discardOnQuitDetail(_ discards: QuitDiscards) -> String {
+        let count = discards.editedImages
+        var lines: [String] = []
+        if count == 1 {
+            lines.append(
+                String(localized: "An open image has changes that were not copied or saved. Quitting discards them."))
+        } else if count > 1 {
+            lines.append(
+                String(
+                    localized:
+                        "\(count) open images have changes that were not copied or saved. Quitting discards them."))
+        }
+        if discards.scrollingReview {
+            lines.append(
+                count == 0
+                    ? String(localized: "A scrolling capture is waiting for review. Quitting discards it.")
+                    : String(localized: "The scrolling capture waiting for review is discarded too."))
+        }
+        return lines.joined(separator: " ")
+    }
+
+    /// Asks before Quit discards what `discards` describes. True means quit.
+    static func confirmDiscardOnQuit(_ discards: QuitDiscards) -> Bool {
+        let alert = makeConfirmation(
+            title: discards.editedImages == 0
+                ? String(localized: "Quit and discard the scrolling capture?")
+                : String(localized: "Quit and discard your edits?"),
+            detail: discardOnQuitDetail(discards), action: String(localized: "Quit"))
+        return runModal(alert) == .alertFirstButtonReturn
+    }
+
+    /// Offers the updater's window for an update a check found. True opens it.
+    static func confirmUpdate(_ message: UserMessage) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = message.title
+        alert.informativeText = message.detail
+        alert.addButton(withTitle: String(localized: "Show Update"))
+        alert.addButton(withTitle: String(localized: "Later"))
+        return runModal(alert) == .alertFirstButtonReturn
+    }
+
+    /// Asks before Save replaces an existing file from a window without a sheet parent (the
+    /// quick-action thumbnail); the editor asks the same in a sheet.
+    static func confirmReplacement(of existing: URL) -> Bool {
+        runModal(makeReplacement(of: existing)) == .alertFirstButtonReturn
+    }
+
+    /// Asks before replacing `existing`, named as the collision reported it, so the person knows
+    /// which file goes (report.jpg, not the report.png the panel showed). The file name only,
+    /// never its folder (PRIV-01).
+    static func makeReplacement(of existing: URL) -> NSAlert {
+        makeConfirmation(
+            title: String(
+                localized: "“\(existing.lastPathComponent)” already exists. Do you want to replace it?", table: "Editor"
+            ),
+            detail: "", action: String(localized: "Replace", table: "Editor"),
+            cancel: String(localized: "Cancel", table: "Editor"))
+    }
+
+    /// A warning that asks before something is thrown away: the destructive action first, then
+    /// Cancel. App-modal confirmations run it through `runModal`; editor sheets attach it.
+    static func makeConfirmation(
+        title: String, detail: String, action: String, cancel: String = String(localized: "Cancel")
+    ) -> NSAlert {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = String(localized: "Quit and discard your edits?")
-        alert.informativeText =
-            count == 1
-            ? String(
-                localized: """
-                    An open image has changes that were not copied, saved, dragged, or pinned. \
-                    Quitting discards them.
-                    """)
-            : String(
-                localized: """
-                    \(count) open images have changes that were not copied, saved, dragged, or pinned. \
-                    Quitting discards them.
-                    """)
-        let quit = alert.addButton(withTitle: String(localized: "Quit"))
-        quit.hasDestructiveAction = true
-        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.messageText = title
+        alert.informativeText = detail
+        alert.addButton(withTitle: action).hasDestructiveAction = true
+        alert.addButton(withTitle: cancel)
+        return alert
+    }
+
+    /// Runs `alert` app-modally on the current Space: its Space policy comes before activation, so
+    /// activating cannot switch the person to another Space (FR-01).
+    private static func runModal(_ alert: NSAlert) -> NSApplication.ModalResponse {
         SpacePolicy.follow(alert.window)
         AppPresence.shared.activate()
+        // A finished alert is ordered out, not closed: re-evaluate the Dock presence.
         defer { AppPresence.shared.setNeedsRefresh() }
-        return alert.runModal() == .alertFirstButtonReturn
+        return alert.runModal()
     }
 
     static func makeAlert(_ message: UserMessage) -> NSAlert {
+        let alert = makeSheet(message)
+        // A message raised over another app's fullscreen Space must appear there (FR-01).
+        SpacePolicy.follow(alert.window)
+        return alert
+    }
+
+    /// The message's alert without a Space policy: a sheet stays on its parent window's Space.
+    static func makeSheet(_ message: UserMessage) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = message.title
         alert.informativeText = message.detail
@@ -82,13 +164,39 @@ enum MessagePresenter {
         } else {
             alert.addButton(withTitle: String(localized: "OK"))
         }
-        // A message raised over another app's fullscreen Space must appear there (FR-01).
-        SpacePolicy.follow(alert.window)
         return alert
     }
 }
 
 extension UserMessage {
+    static func updateNotFound(version: String) -> UserMessage {
+        UserMessage(
+            title: String(localized: "Recortia is up to date"),
+            detail: String(localized: "Recortia \(version) is the newest version."))
+    }
+
+    static var updateCheckFailed: UserMessage {
+        UserMessage(
+            title: String(localized: "Could not check for updates"),
+            detail: String(localized: "Recortia could not read the update feed. Try again later."))
+    }
+
+    static func updateAvailable(version: String) -> UserMessage {
+        UserMessage(
+            title: String(localized: "Recortia \(version) is available"),
+            detail: String(localized: "Recortia checks the update’s signature before installing it."))
+    }
+
+    /// Said once, the first time the menu-bar icon is hidden (FR-01).
+    static var menuBarIconHidden: UserMessage {
+        UserMessage(
+            title: String(localized: "The menu bar icon is hidden"),
+            detail: String(
+                localized:
+                    "To get back to Recortia, open it again from the Applications folder or Spotlight. Its keyboard shortcuts keep working."
+            ))
+    }
+
     static func capture(_ failure: CaptureFailure) -> UserMessage {
         switch failure {
         case .permissionDenied:
@@ -138,8 +246,27 @@ extension UserMessage {
             case .multipleFrames: String(localized: "Animated or multi-page images are not supported.")
             case .corrupt: String(localized: "The image data is damaged.")
             case .unreadable: String(localized: "The file could not be read.")
+            case .tooManyFiles:
+                String(
+                    localized:
+                        "Recortia opens at most \(ImportCoordinator.maximumOpenedFiles) images, and \(ImportLimits.maxOpenedPixelArea / 1_000_000) megapixels in all, at a time."
+                )
             }
         return UserMessage(title: title, detail: detail)
+    }
+
+    /// One report for the files of one open request that were refused, each reason once;
+    /// content-free: no file names (PRIV-01).
+    static func openFailures(_ failures: [ImportFailure]) -> UserMessage? {
+        guard let first = failures.first else { return nil }
+        guard failures.count > 1 else { return importFailure(first) }
+        var reasons: [String] = []
+        for failure in failures {
+            let reason = importFailure(failure).detail
+            if !reasons.contains(reason) { reasons.append(reason) }
+        }
+        return UserMessage(
+            title: String(localized: "Some images could not be opened"), detail: reasons.joined(separator: "\n"))
     }
 
     static func export(_ failure: ExportFailure) -> UserMessage {
@@ -151,13 +278,27 @@ extension UserMessage {
             case .budgetExceeded: String(localized: "The image is too large to export.")
             case .clipboardFailed:
                 String(localized: "The clipboard could not be updated.")
+            case .printFailed: String(localized: "The print panel could not be opened.")
             case .accessDenied:
                 String(localized: "Recortia cannot write to that folder. Choose a folder in Settings › Export.")
             case .destinationExists: String(localized: "A file with that name already exists.")
+            case .nameTooLong:
+                String(
+                    localized: "The file name is too long for that folder. Choose a shorter name in Settings › Export.")
             case .diskFull: String(localized: "The disk is full.")
             case .volumeUnavailable: String(localized: "The destination volume is not available.")
             case .staleDocument: String(localized: "The image changed while exporting. Try again.")
             case .system(let code): String(localized: "The system reported an error (\(code)).")
+            case .leftover(let name):
+                String(
+                    localized:
+                        "The save did not finish and left “\(name)” in the folder. Check it, and delete it if you do not need it."
+                )
+            case .maskingUnfinished:
+                String(
+                    localized:
+                        "Automatic masking did not finish, so nothing was masked and this capture was not copied, saved or uploaded automatically."
+                )
             }
         // One step of an automatic batch failed; another may already have copied or saved, so the
         // title never says that nothing was exported.

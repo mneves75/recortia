@@ -9,7 +9,8 @@ import Testing
 
 @Suite("Image input: bounded file reads (FR-03, IO-01)")
 struct ImageInputFileTests {
-    /// A sparse file of exactly `size` bytes: fast to create, no real disk usage.
+    /// A file of exactly `size` bytes: the PNG signature, then a sparse extension, so it is fast
+    /// to create and uses no real disk space.
     private func sparseFile(size: UInt64, in folder: URL) throws -> URL {
         let url = folder.appendingPathComponent("input-\(size).png")
         #expect(FileManager.default.createFile(atPath: url.path, contents: TestSupport.pngSignature))
@@ -27,6 +28,25 @@ struct ImageInputFileTests {
         let data = try ImageInput.readFile(at: url)
         #expect(data.count == ImportLimits.maxCompressedBytes)
         #expect(data.prefix(8) == TestSupport.pngSignature)
+    }
+
+    @Test("A large non-image named .png is refused after its first bytes, without reading the rest")
+    func nonImageRefusedFromItsSignature() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let url = folder.appendingPathComponent("notes.png")
+        #expect(FileManager.default.createFile(atPath: url.path, contents: Data("plain text notes".utf8)))
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: 32 << 20)
+        try handle.close()
+        var requested = 0
+        #expect(throws: ImportError.unsupportedFormat) {
+            try ImageInput.readFile(at: url) { handle, count in
+                requested += count
+                return try handle.read(upToCount: count)
+            }
+        }
+        #expect(requested <= 8, "requested \(requested) bytes")
     }
 
     @Test("A file one byte over 64 MiB is rejected")

@@ -43,7 +43,9 @@ statements above, not on a spike.
    - Screen Recording: requested on the first user-initiated capture, never at launch or during
      onboarding.
    - Accessibility: requested only when the user turns on automatic scrolling and starts an
-     automatic session; manual scrolling never needs it.
+     automatic session, or turns on snapping to interface elements in Settings › Capture, which
+     reads only element frames (ADR-010); manual scrolling, basic capture and region selection
+     without that setting never need it.
    - Never: Input Monitoring, Full Disk Access, Apple Events automation.
 4. In-app mitigations for running unsandboxed: no network code in the v1 core, no plugins or
    script execution, no privileged helper, a single minimal third-party dependency
