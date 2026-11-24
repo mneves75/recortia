@@ -19,10 +19,12 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # Printf / Foundation format specifiers and xcstrings `%#@name@` substitutions (`%%` first).
 FORMAT_SPECIFIER = re.compile(
-    r"%%|%#@(?P<sub>[A-Za-z0-9_]+)@|%(?:(?P<pos>\d+)\$)?(?P<flags>[-+ #0']*)(?P<width>\*|\d+)?"
-    r"(?:\.(?P<prec>\*|\d+))?(?P<length>hh|h|ll|l|q|L|z|t|j)?(?P<conv>[@dDiIuUxXoOfFeEgGaAcCsSp])"
+    r"%%|%#@(?P<sub>[A-Za-z0-9_]+)@|%(?:(?P<pos>\d+)\$)?(?P<flags>[-+ #0']*)"
+    r"(?P<width>\*(?:\d+\$)?|\d+)?(?:\.(?P<prec>\*(?:\d+\$)?|\d+))?"
+    r"(?P<length>hh|h|ll|l|q|L|z|t|j)?(?P<conv>[@dDiIuUxXoOfFeEgGaAcCsSp])"
 )
 VALID_SUB_SPEC = re.compile(r"^(?:hh|h|ll|l|q|L|z|t|j)?[@dDiIuUxXoOfFeEgGaAcCsSp]$")
+INTEGER_CONVERSIONS = set("dDiIuUxXoO")
 
 
 def translated(node: dict) -> bool:
@@ -38,19 +40,29 @@ def translated(node: dict) -> bool:
     return bool(cases) and all(translated(case) for case in cases)
 
 
-def leaf_values(node: dict) -> list[str]:
-    """Every translated stringUnit value inside a plain or variation localization node."""
+def variation_leaves(
+    node: dict, prefix: tuple[tuple[str, str], ...] = ()
+) -> dict[tuple[tuple[str, str], ...], str]:
+    """Map variation path tuples (e.g. `(('plural', 'other'),)`) to stringUnit values."""
     if "stringUnit" in node:
         value = node["stringUnit"].get("value")
-        return [value] if isinstance(value, str) else []
+        return {prefix: value} if isinstance(value, str) else {}
     variations = node.get("variations")
     if not variations:
-        return []
-    values: list[str] = []
-    for kind in variations.values():
-        for case in kind.values():
-            values.extend(leaf_values(case))
-    return values
+        return {}
+    result: dict[tuple[tuple[str, str], ...], str] = {}
+    for kind_name, cases in variations.items():
+        for case_name, case_node in cases.items():
+            result.update(variation_leaves(case_node, prefix + ((kind_name, case_name),)))
+    return result
+
+
+def is_singular_plural_path(path: tuple[tuple[str, str], ...]) -> bool:
+    return any(kind == "plural" and case in ("one", "zero") for kind, case in path)
+
+
+def is_single_integer_signature(sig: tuple[tuple[int, str], ...]) -> bool:
+    return len(sig) == 1 and sig[0][1][-1] in INTEGER_CONVERSIONS
 
 
 def format_signature(text: str, substitutions: dict | None = None) -> tuple[tuple[int, str], ...] | None:
@@ -60,6 +72,28 @@ def format_signature(text: str, substitutions: dict | None = None) -> tuple[tupl
     sequential = 1
     saw_positional = False
     saw_sequential = False
+
+    def record(pos: int, conv: str) -> bool:
+        if pos < 1:
+            return False
+        if pos in mapping and mapping[pos] != conv:
+            return False
+        mapping[pos] = conv
+        return True
+
+    def record_star(token: str | None) -> bool:
+        nonlocal sequential, saw_positional, saw_sequential
+        if not token or not token.startswith("*"):
+            return True
+        if token == "*":
+            pos = sequential
+            sequential += 1
+            saw_sequential = True
+        else:
+            pos = int(token[1:-1])
+            saw_positional = True
+        return record(pos, "d")
+
     for match in FORMAT_SPECIFIER.finditer(text):
         if match.group(0) == "%%":
             continue
@@ -75,27 +109,33 @@ def format_signature(text: str, substitutions: dict | None = None) -> tuple[tupl
             if not isinstance(conv, str) or not VALID_SUB_SPEC.match(conv):
                 return None
             # Each leaf inside a substitution may use `%arg` (for its own specifier) and no stray specs.
-            for sub_leaf in leaf_values(sub):
+            for sub_path, sub_leaf in variation_leaves(sub).items():
                 expanded = sub_leaf.replace("%arg", f"%{conv}")
                 sub_sig = format_signature(expanded)
-                if sub_sig is None or (sub_sig and sub_sig != ((1, conv),)):
+                if sub_sig is None:
+                    return None
+                if is_singular_plural_path(sub_path) and conv[-1] in INTEGER_CONVERSIONS:
+                    if sub_sig not in ((), ((1, conv),)):
+                        return None
+                elif sub_sig != ((1, conv),):
                     return None
             saw_positional = True
+            if not record(pos, conv):
+                return None
         else:
+            if not record_star(match.group("width")) or not record_star(match.group("prec")):
+                return None
             pos_raw = match.group("pos")
             if pos_raw is not None:
                 pos = int(pos_raw)
-                if pos < 1:
-                    return None
                 saw_positional = True
             else:
                 pos = sequential
                 sequential += 1
                 saw_sequential = True
             conv = (match.group("length") or "") + match.group("conv")
-        if pos in mapping and mapping[pos] != conv:
-            return None
-        mapping[pos] = conv
+            if not record(pos, conv):
+                return None
     if saw_positional and saw_sequential:
         return None
     if mapping and set(mapping) != set(range(1, max(mapping) + 1)):
@@ -104,33 +144,57 @@ def format_signature(text: str, substitutions: dict | None = None) -> tuple[tupl
 
 
 def format_parity_problems(table: str, key: str, item: dict) -> list[str]:
-    """Fail closed when any pt-BR leaf disagrees with en (or the source key) on format specifiers."""
+    """Fail closed when pt-BR disagrees with en (or the source key) on format specifiers.
+
+    Plural variations are compared by variation case: `"other"` requires exact parity with `en`
+    (or the source key), while `"one"` / `"zero"` may omit a single integer count specifier when
+    natural (e.g. `"Um item"`), still rejecting any type mismatch.
+    """
     locs = item.get("localizations", {})
     pt_node = locs.get("pt-BR")
     if not pt_node:
         return []
-    pt_leaves = leaf_values(pt_node)
+    pt_leaves = variation_leaves(pt_node)
     if not pt_leaves:
         return []
     en_node = locs.get("en")
-    en_leaves = leaf_values(en_node) if en_node is not None else [key]
+    en_leaves = variation_leaves(en_node) if en_node is not None else {(): key}
     en_subs = en_node.get("substitutions") if isinstance(en_node, dict) else None
     pt_subs = pt_node.get("substitutions") if isinstance(pt_node, dict) else None
-    en_sigs: set[tuple[tuple[int, str], ...]] = set()
-    for text in en_leaves:
+    en_sigs: dict[tuple[tuple[str, str], ...], tuple[tuple[int, str], ...]] = {}
+    for path, text in en_leaves.items():
         sig = format_signature(text, en_subs)
         if sig is None:
             return [f"[{table}] {key!r}: malformed en format specifiers in {text!r}"]
-        en_sigs.add(sig)
+        en_sigs[path] = sig
     problems: list[str] = []
-    for text in pt_leaves:
+    for path, text in pt_leaves.items():
         sig = format_signature(text, pt_subs)
         if sig is None:
             problems.append(f"[{table}] {key!r}: malformed pt-BR format specifiers in {text!r}")
-        elif sig not in en_sigs:
-            expected = sorted(en_sigs)
+            continue
+        other_path = tuple((kind, "other") if kind == "plural" else (kind, case) for kind, case in path)
+        expected_other = en_sigs.get(other_path, en_sigs.get(()))
+        expected_case = en_sigs.get(path, expected_other)
+        if expected_case is None:
+            expected_case = next(iter(en_sigs.values()), ())
+        if is_singular_plural_path(path):
+            allowed = {expected_case}
+            if expected_other is not None:
+                allowed.add(expected_other)
+                if is_single_integer_signature(expected_other):
+                    allowed.add(())
+            elif is_single_integer_signature(expected_case):
+                allowed.add(())
+            if sig not in allowed:
+                problems.append(
+                    f"[{table}] {key!r}: format specifier mismatch in {path} "
+                    f"(expected {sorted(allowed)}, pt-BR has {sig} in {text!r})"
+                )
+        elif sig != expected_case:
             problems.append(
-                f"[{table}] {key!r}: format specifier mismatch (expected {expected}, pt-BR has {sig} in {text!r})"
+                f"[{table}] {key!r}: format specifier mismatch in {path} "
+                f"(expected {expected_case}, pt-BR has {sig} in {text!r})"
             )
     return problems
 

@@ -89,6 +89,9 @@ public final class ScrollSessionModel {
     @ObservationIgnored private var autoStepOwner: UUID?
     /// True while the collection loop awaits `stitcher.append`; the stitcher may still mutate.
     @ObservationIgnored private var appendInFlight = false
+    /// Monotonic counter incremented on pause and resume so an in-flight `collect()` end-of-page
+    /// query never finishes after pause+resume.
+    @ObservationIgnored private var collectPauseEpoch: UInt64 = 0
     /// A Stop (or other ending) that arrived while an append was in flight. The stream is already
     /// stopped; the review is frozen once that append settles, so its rows, seam, and counters
     /// land in one snapshot.
@@ -209,6 +212,7 @@ public final class ScrollSessionModel {
     /// Pauses appending. The stream keeps running; frames that arrive while paused are dropped.
     public func pause() {
         guard state == .collecting, pendingFinish == nil else { return }
+        collectPauseEpoch &+= 1
         settleTask?.cancel()
         apply(.pause(.userPaused))
     }
@@ -217,6 +221,7 @@ public final class ScrollSessionModel {
     /// page to change by itself.
     public func resume() {
         guard isPausedState, pendingFinish == nil else { return }
+        collectPauseEpoch &+= 1
         apply(.resume)
         guard mode == .automatic, let target, let id = sessionID else { return }
         unansweredSteps = 0
@@ -419,8 +424,10 @@ public final class ScrollSessionModel {
                 if mode == .automatic {
                     // Stationary frames are also what a stalled, lazy-loading page produces:
                     // complete only when the target confirms its scroll area is at its end.
+                    let epoch = collectPauseEpoch
                     let atEnd = await autoScroller?.isAtEnd(target, direction: direction)
-                    guard isCurrent(id), state == .collecting, pendingFinish == nil, mode == .automatic else { return }
+                    guard isCurrent(id), pendingFinish == nil else { return }
+                    guard state == .collecting, mode == .automatic, collectPauseEpoch == epoch else { continue }
                     finishCollecting(partial: atEnd == true ? nil : .stoppedMoving)
                     return
                 }

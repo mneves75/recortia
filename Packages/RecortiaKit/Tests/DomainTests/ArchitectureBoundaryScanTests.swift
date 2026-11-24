@@ -102,6 +102,8 @@ struct ArchitectureBoundaryScanTests {
             "import AppKit", "@preconcurrency import SwiftUI", "@_implementationOnly import CoreGraphics",
             "import class AppKit.NSFont", "import ScreenCaptureKit", "import Network",
             "import Vision", "import ImageIO", "import Sparkle",
+            "private import AppKit", "internal import SwiftUI", "package import CoreGraphics",
+            "fileprivate import Vision", "public import AppKit",
         ]
         for snippet in forbiddenImports {
             let found = ArchitectureBoundaryScanner.forbiddenDomainImports(
@@ -129,6 +131,9 @@ struct ArchitectureBoundaryScanTests {
             "let s = NSScreen.main",
             #"let url = "https://example.com"; fatalError("after url")"#,
             "/* outer /* inner */ still comment */ let y = try! parse()",
+            #"let msg = "a \(b ?? "/*")"; fatalError("after nested interpolation")"#,
+            #"let msg = "prefix \(url ?? "https://x")"; try! risky()"#,
+            ##"let raw = #"a \#(b ?? "/*")"#; fatalError("after raw interpolation")"##,
         ]
         for snippet in forbiddenTokens {
             #expect(
@@ -149,8 +154,13 @@ struct ArchitectureBoundaryScanTests {
 
         #expect(ArchitectureBoundaryScanner.containsBareNSAppActivate("NSApp.activate()"))
         #expect(ArchitectureBoundaryScanner.containsBareNSAppActivate("NSApp.activate(ignoringOtherApps: true)"))
+        #expect(ArchitectureBoundaryScanner.containsBareNSAppActivate("NSApplication.shared.activate()"))
+        #expect(
+            ArchitectureBoundaryScanner.containsBareNSAppActivate(
+                "NSApplication.shared.activate(ignoringOtherApps: true)"))
         #expect(!ArchitectureBoundaryScanner.containsBareNSAppActivate("// NSApp.activate()"))
         #expect(!ArchitectureBoundaryScanner.containsBareNSAppActivate("/* NSApp.activate() */"))
+        #expect(!ArchitectureBoundaryScanner.containsBareNSAppActivate("// NSApplication.shared.activate()"))
         #expect(!ArchitectureBoundaryScanner.containsBareNSAppActivate("AppPresence.shared.activate()"))
 
         let plantedModal = """
@@ -161,11 +171,25 @@ struct ArchitectureBoundaryScanTests {
             let panel = NSOpenPanel()
             _ = panel.runModal()
             """
+        let plantedMixedAlertAndPanelModal = """
+            let alert = NSAlert()
+            _ = alert.runModal()
+            let panel = NSSavePanel()
+            _ = panel.runModal()
+            """
         #expect(ArchitectureBoundaryScanner.containsBareFilePanelRunModal(plantedModal))
         #expect(ArchitectureBoundaryScanner.containsBareFilePanelRunModal(plantedOpenModal))
+        #expect(ArchitectureBoundaryScanner.containsBareFilePanelRunModal(plantedMixedAlertAndPanelModal))
         let cleanAlertModal = """
             let alert = NSAlert()
             _ = alert.runModal()
+            """
+        let cleanSheetAndAlertModal = """
+            let panel = NSSavePanel()
+            panel.beginSheetModal(for: window) { _ in }
+            let alert = NSAlert()
+            _ = alert.runModal()
+            _ = NSAlert().runModal()
             """
         let cleanPrintModal = """
             let panel = NSSavePanel()
@@ -175,15 +199,17 @@ struct ArchitectureBoundaryScanTests {
             panel.begin { _ in }
             """
         #expect(!ArchitectureBoundaryScanner.containsBareFilePanelRunModal(cleanAlertModal))
+        #expect(!ArchitectureBoundaryScanner.containsBareFilePanelRunModal(cleanSheetAndAlertModal))
         #expect(!ArchitectureBoundaryScanner.containsBareFilePanelRunModal(cleanPrintModal))
     }
 }
 
 /// Lexer-aware Swift comment stripper and boundary matchers. Strips `//` and nested `/* ... */`
-/// comments while preserving string literals so `//` inside URLs does not mask trailing code.
+/// comments while preserving string literals (including nested `\(... )` interpolations) so `//`
+/// or `/*` inside strings does not mask trailing code.
 enum ArchitectureBoundaryScanner {
     static let importPattern =
-        #"(?m)^\s*(?:@\w+\s+)*import\s+"#
+        #"(?m)^\s*(?:@\w+\s+)*(?:(?:public|package|internal|fileprivate|private)\s+)?(?:@\w+\s+)*import\s+"#
         + #"(?:(?:typealias|struct|class|enum|protocol|let|var|func)\s+)?([A-Za-z_][A-Za-z0-9_]*)"#
     static let forbiddenTokenRules: [(label: String, pattern: String)] = [
         ("fatalError(", #"\bfatalError\s*\("#),
@@ -269,6 +295,11 @@ enum ArchitectureBoundaryScanner {
                 if escapeEnd < count,
                     (hashes == 0 || chars[(i + 1)..<escapeEnd].allSatisfy { $0 == "#" })
                 {
+                    if chars[escapeEnd] == "(" {
+                        output.append(contentsOf: chars[i...escapeEnd])
+                        i = copyInterpolation(chars, from: escapeEnd + 1, into: &output)
+                        continue
+                    }
                     output.append(contentsOf: chars[i...escapeEnd])
                     i = escapeEnd + 1
                     continue
@@ -281,6 +312,65 @@ enum ArchitectureBoundaryScanner {
                 let closeEnd = i + quoteLength + hashes
                 output.append(contentsOf: chars[i..<closeEnd])
                 return closeEnd
+            }
+            output.append(chars[i])
+            i += 1
+        }
+        return i
+    }
+
+    private static func copyInterpolation(
+        _ chars: [Character], from start: Int, into output: inout [Character]
+    ) -> Int {
+        let count = chars.count
+        var i = start
+        var parenDepth = 1
+        var blockDepth = 0
+        var inLineComment = false
+
+        while i < count, parenDepth > 0 {
+            if inLineComment {
+                if chars[i] == "\n" {
+                    inLineComment = false
+                    output.append("\n")
+                }
+                i += 1
+                continue
+            }
+            if blockDepth > 0 {
+                if i + 1 < count, chars[i] == "/", chars[i + 1] == "*" {
+                    blockDepth += 1
+                    i += 2
+                } else if i + 1 < count, chars[i] == "*", chars[i + 1] == "/" {
+                    blockDepth -= 1
+                    output.append(" ")
+                    i += 2
+                } else {
+                    if chars[i] == "\n" { output.append("\n") }
+                    i += 1
+                }
+                continue
+            }
+            if i + 1 < count, chars[i] == "/", chars[i + 1] == "/" {
+                inLineComment = true
+                i += 2
+                continue
+            }
+            if i + 1 < count, chars[i] == "/", chars[i + 1] == "*" {
+                blockDepth = 1
+                i += 2
+                continue
+            }
+            if chars[i] == "#" || chars[i] == "\"" {
+                if let next = copyStringLiteral(chars, from: i, into: &output) {
+                    i = next
+                    continue
+                }
+            }
+            if chars[i] == "(" {
+                parenDepth += 1
+            } else if chars[i] == ")" {
+                parenDepth -= 1
             }
             output.append(chars[i])
             i += 1
@@ -312,7 +402,9 @@ enum ArchitectureBoundaryScanner {
 
     static func containsBareNSAppActivate(_ source: String) -> Bool {
         let code = stripComments(source)
-        return code.range(of: #"\bNSApp\s*\.\s*activate\s*\("#, options: .regularExpression) != nil
+        return code.range(
+            of: #"\b(?:NSApp|NSApplication\s*\.\s*shared)\s*\.\s*activate\s*\("#,
+            options: .regularExpression) != nil
     }
 
     static func containsBareFilePanelRunModal(_ source: String) -> Bool {
@@ -320,6 +412,48 @@ enum ArchitectureBoundaryScanner {
         let usesFilePanel =
             code.range(of: #"\b(?:NSOpenPanel|NSSavePanel)\b"#, options: .regularExpression) != nil
         guard usesFilePanel else { return false }
-        return code.range(of: #"\.\s*runModal\s*\(\s*\)"#, options: .regularExpression) != nil
+        guard let runModalRegex = try? NSRegularExpression(pattern: #"\.\s*runModal\s*\(\s*\)"#) else {
+            return false
+        }
+        let fullRange = NSRange(code.startIndex..<code.endIndex, in: code)
+        let matches = runModalRegex.matches(in: code, range: fullRange)
+        guard !matches.isEmpty else { return false }
+        let pureAlertNames = declaredIdentifiers(ofType: "NSAlert", in: code)
+            .subtracting(declaredIdentifiers(ofType: "(?:NSOpenPanel|NSSavePanel)", in: code))
+        for match in matches {
+            guard let range = Range(match.range, in: code) else { continue }
+            let prefix = String(code[..<range.lowerBound])
+            if prefix.range(of: #"\bNSAlert\s*\([^)]*\)\s*[?!]?\s*$"#, options: .regularExpression) != nil {
+                continue
+            }
+            if let identMatch = prefix.range(
+                of: #"([A-Za-z_][A-Za-z0-9_]*)\s*[?!]?\s*$"#, options: .regularExpression)
+            {
+                let ident = String(prefix[identMatch]).trimmingCharacters(in: CharacterSet(charactersIn: "?! \t\n\r"))
+                if pureAlertNames.contains(ident) {
+                    continue
+                }
+            }
+            return true
+        }
+        return false
+    }
+
+    private static func declaredIdentifiers(ofType typePattern: String, in code: String) -> Set<String> {
+        let pattern =
+            #"(?:\b(?:let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*"# + typePattern
+            + #"\b|[^=\n]*=\s*"# + typePattern
+            + #"\b)|\b([A-Za-z_][A-Za-z0-9_]*)\s*:\s*"# + typePattern + #"\b)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let range = NSRange(code.startIndex..<code.endIndex, in: code)
+        var names: Set<String> = []
+        for match in regex.matches(in: code, range: range) {
+            for group in [1, 2] {
+                if let r = Range(match.range(at: group), in: code) {
+                    names.insert(String(code[r]))
+                }
+            }
+        }
+        return names
     }
 }

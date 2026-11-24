@@ -340,7 +340,6 @@ struct ProtocolModelVerificationTests {
         var opCommits: Int
         var illegalCommit: Bool
         var stateMachineError: String?
-        var leaseViolation: String?
     }
 
     private enum ExportModelAction {
@@ -403,7 +402,7 @@ struct ProtocolModelVerificationTests {
 
     private static func exportTransitions(from state: ExportProtocolState) -> [(ExportModelAction, ExportProtocolState)]
     {
-        guard state.stateMachineError == nil, !state.illegalCommit, state.leaseViolation == nil else { return [] }
+        guard state.stateMachineError == nil, !state.illegalCommit else { return [] }
         var next: [(ExportModelAction, ExportProtocolState)] = []
 
         func append(_ action: ExportModelAction, _ mutate: (inout ExportProtocolState) -> Void) {
@@ -610,7 +609,7 @@ struct ProtocolModelVerificationTests {
             batchActive: false, batchCanceled: false, step: .none, phase: .idle, exportState: nil, opCanceled: false,
             lease: .none, docEpoch: 0, snapshotEpoch: 0, editorClosed: false, consentEpoch: 0,
             planConsentEpoch: 0, waiterCount: 0, opCommits: 0, illegalCommit: false,
-            stateMachineError: nil, leaseViolation: nil)
+            stateMachineError: nil)
 
         let report = BoundedModelChecker<ExportProtocolState, ExportModelAction>.explore(
             initial: [initial],
@@ -656,21 +655,32 @@ struct ProtocolModelVerificationTests {
         case awaitingIsAtEnd(canceled: Bool)
     }
 
+    private enum CollectLoopPhase: Hashable {
+        case idle
+        case appending
+        case awaitingEndOfPageIsAtEnd(stale: Bool)
+        case exited
+    }
+
     private struct ScrollProtocolState: Hashable {
         var scrollState: ScrollState
         var acceptedFrames: Int
-        var appendInFlight: Bool
+        var collectPhase: CollectLoopPhase
         var pendingFinish: Bool
         var settle: SettleModelState
         var unansweredSteps: Int
         var stateMachineError: String?
-        var abortedByCanceledSettle: Bool
+        var staleEndOfPageFinished: Bool
+
+        var appendInFlight: Bool { collectPhase == .appending }
     }
 
     private enum ScrollModelAction {
         case frameArrives
         case appendAccepted
+        case appendAcceptedEndOfPage
         case appendAmbiguous
+        case collectIsAtEndReturns(Bool)
         case settleTimerFires
         case isAtEndReturns(Bool)
         case pause
@@ -697,6 +707,12 @@ struct ProtocolModelVerificationTests {
         state.unansweredSteps = 0
     }
 
+    private static func markCollectEndQueryStale(_ state: inout ScrollProtocolState) {
+        if case .awaitingEndOfPageIsAtEnd = state.collectPhase {
+            state.collectPhase = .awaitingEndOfPageIsAtEnd(stale: true)
+        }
+    }
+
     private static func finishScroll(_ state: inout ScrollProtocolState, event: ScrollEvent) {
         guard !state.pendingFinish else { return }
         cancelSettle(&state)
@@ -709,16 +725,17 @@ struct ProtocolModelVerificationTests {
 
     private static func completeScrollFinish(_ state: inout ScrollProtocolState, event: ScrollEvent) {
         state.pendingFinish = false
+        state.collectPhase = .exited
         applyScroll(&state, event)
         if state.acceptedFrames == 0 {
             applyScroll(&state, .fail(.noFrames))
         }
     }
 
-    private static func scrollTransitions(from state: ScrollProtocolState)
-        -> [(ScrollModelAction, ScrollProtocolState)]
-    {
-        guard state.stateMachineError == nil, !state.abortedByCanceledSettle else { return [] }
+    private static func scrollTransitions(
+        from state: ScrollProtocolState, enforceCollectPauseEpoch: Bool = true
+    ) -> [(ScrollModelAction, ScrollProtocolState)] {
+        guard state.stateMachineError == nil, !state.staleEndOfPageFinished else { return [] }
         var next: [(ScrollModelAction, ScrollProtocolState)] = []
         let endThreshold = 2
 
@@ -728,16 +745,16 @@ struct ProtocolModelVerificationTests {
             next.append((action, copy))
         }
 
-        if state.scrollState == .collecting && !state.appendInFlight && !state.pendingFinish {
+        if state.scrollState == .collecting && state.collectPhase == .idle && !state.pendingFinish {
             append(.frameArrives) {
                 cancelSettle(&$0)
-                $0.appendInFlight = true
+                $0.collectPhase = .appending
             }
         }
 
-        if state.appendInFlight {
+        if state.collectPhase == .appending {
             append(.appendAccepted) {
-                $0.appendInFlight = false
+                $0.collectPhase = .idle
                 $0.acceptedFrames = min(2, $0.acceptedFrames + 1)
                 if $0.pendingFinish {
                     completeScrollFinish(&$0, event: .stop)
@@ -748,12 +765,52 @@ struct ProtocolModelVerificationTests {
                     }
                 }
             }
+            if state.acceptedFrames > 0 {
+                append(.appendAcceptedEndOfPage) {
+                    if $0.pendingFinish {
+                        completeScrollFinish(&$0, event: .stop)
+                    } else if $0.scrollState == .collecting {
+                        $0.collectPhase = .awaitingEndOfPageIsAtEnd(stale: false)
+                    } else {
+                        $0.collectPhase = .idle
+                    }
+                }
+            }
             append(.appendAmbiguous) {
-                $0.appendInFlight = false
+                $0.collectPhase = .idle
                 if $0.pendingFinish {
                     completeScrollFinish(&$0, event: .stop)
                 } else if $0.scrollState == .collecting {
                     applyScroll(&$0, .pause(.ambiguousMatch))
+                }
+            }
+        }
+
+        if case .awaitingEndOfPageIsAtEnd(let stale) = state.collectPhase {
+            for atEnd in [false, true] {
+                append(.collectIsAtEndReturns(atEnd)) {
+                    let active =
+                        $0.scrollState == .collecting || $0.scrollState == .paused(.userPaused)
+                        || $0.scrollState == .paused(.ambiguousMatch)
+                    guard active, !$0.pendingFinish else {
+                        $0.collectPhase = .exited
+                        return
+                    }
+                    if enforceCollectPauseEpoch {
+                        guard $0.scrollState == .collecting, !stale else {
+                            $0.collectPhase = .idle
+                            return
+                        }
+                        finishScroll(&$0, event: .stop)
+                    } else {
+                        // Planted P1 regression: exit on pause and ignore pause/resume epoch.
+                        guard $0.scrollState == .collecting else {
+                            $0.collectPhase = .exited
+                            return
+                        }
+                        if stale { $0.staleEndOfPageFinished = true }
+                        finishScroll(&$0, event: .stop)
+                    }
                 }
             }
         }
@@ -776,7 +833,6 @@ struct ProtocolModelVerificationTests {
                     $0.settle = .none
                     // H1 post-await guard: must require !canceled, collecting, and !pendingFinish.
                     guard !canceled, $0.scrollState == .collecting, !$0.pendingFinish else { return }
-                    if canceled { $0.abortedByCanceledSettle = true }
                     finishScroll(&$0, event: .stop)
                 }
             }
@@ -785,12 +841,14 @@ struct ProtocolModelVerificationTests {
         if state.scrollState == .collecting && !state.pendingFinish {
             append(.pause) {
                 cancelSettle(&$0)
+                markCollectEndQueryStale(&$0)
                 applyScroll(&$0, .pause(.userPaused))
             }
         }
 
         if case .paused = state.scrollState, !state.pendingFinish {
             append(.resume) {
+                markCollectEndQueryStale(&$0)
                 applyScroll(&$0, .resume)
                 $0.unansweredSteps = 0
                 if $0.settle == .none { $0.settle = .sleeping }
@@ -810,7 +868,7 @@ struct ProtocolModelVerificationTests {
         if state.scrollState.isActive {
             append(.discard) {
                 $0.pendingFinish = false
-                $0.appendInFlight = false
+                $0.collectPhase = .exited
                 cancelSettle(&$0)
                 $0.acceptedFrames = 0
                 applyScroll(&$0, .cancel)
@@ -820,41 +878,56 @@ struct ProtocolModelVerificationTests {
         return next
     }
 
+    private static func scrollInvariant(_ state: ScrollProtocolState) -> String? {
+        if let error = state.stateMachineError { return "Illegal ScrollState transition: \(error)" }
+        if state.staleEndOfPageFinished { return "Stale collect isAtEnd finished session after pause/resume" }
+        let activeCapture =
+            state.scrollState == .collecting || state.scrollState == .paused(.userPaused)
+            || state.scrollState == .paused(.ambiguousMatch)
+        if activeCapture && state.collectPhase == .exited {
+            return "Collection loop exited while session stayed active: \(state)"
+        }
+        if state.pendingFinish && !state.appendInFlight {
+            return "pendingFinish remained set without an append in flight"
+        }
+        if state.scrollState == .reviewing {
+            if state.appendInFlight || state.pendingFinish || state.acceptedFrames == 0 {
+                return "Review opened inconsistently: \(state)"
+            }
+            if state.settle == .sleeping {
+                return "Settle timer still sleeping while reviewing"
+            }
+        }
+        if state.scrollState == .canceled || state.scrollState == .failed(.noFrames) {
+            if state.appendInFlight || state.pendingFinish || state.acceptedFrames != 0 {
+                return "Terminal scroll state retained live work: \(state)"
+            }
+        }
+        return nil
+    }
+
     @Test(
-        "ScrollSessionModel interleavings: zero illegal transitions, H1 cancel-safety, review & pendingFinish invariants"
+        "ScrollSessionModel interleavings: zero illegal transitions, H1/P1 pause-epoch & pendingFinish invariants"
     )
     func scrollSessionInterleavingModel() {
         let initial = ScrollProtocolState(
-            scrollState: .collecting, acceptedFrames: 0, appendInFlight: false, pendingFinish: false,
-            settle: .none, unansweredSteps: 0, stateMachineError: nil, abortedByCanceledSettle: false)
+            scrollState: .collecting, acceptedFrames: 0, collectPhase: .idle, pendingFinish: false,
+            settle: .none, unansweredSteps: 0, stateMachineError: nil, staleEndOfPageFinished: false)
 
         let report = BoundedModelChecker<ScrollProtocolState, ScrollModelAction>.explore(
             initial: [initial],
-            transitions: Self.scrollTransitions(from:),
-            invariant: { state in
-                if let error = state.stateMachineError { return "Illegal ScrollState transition: \(error)" }
-                if state.abortedByCanceledSettle { return "Canceled settleTask aborted active scroll collection" }
-                if state.pendingFinish && !state.appendInFlight {
-                    return "pendingFinish remained set without an append in flight"
-                }
-                if state.scrollState == .reviewing {
-                    if state.appendInFlight || state.pendingFinish || state.acceptedFrames == 0 {
-                        return "Review opened inconsistently: \(state)"
-                    }
-                    if state.settle == .sleeping {
-                        return "Settle timer still sleeping while reviewing"
-                    }
-                }
-                if state.scrollState == .canceled || state.scrollState == .failed(.noFrames) {
-                    if state.appendInFlight || state.pendingFinish || state.acceptedFrames != 0 {
-                        return "Terminal scroll state retained live work: \(state)"
-                    }
-                }
-                return nil
-            })
+            transitions: { Self.scrollTransitions(from: $0, enforceCollectPauseEpoch: true) },
+            invariant: Self.scrollInvariant)
 
         #expect(report.violation == nil, "Violation: \(String(describing: report.violation))")
-        #expect(report.exploredStates > 30, "Expected non-trivial state space, got \(report.exploredStates)")
+        #expect(report.exploredStates > 60, "Expected non-trivial state space, got \(report.exploredStates)")
+
+        // Negative control: dropping the collect pause-epoch guard must be caught by the BFS model.
+        let regression = BoundedModelChecker<ScrollProtocolState, ScrollModelAction>.explore(
+            initial: [initial],
+            transitions: { Self.scrollTransitions(from: $0, enforceCollectPauseEpoch: false) },
+            invariant: Self.scrollInvariant)
+        #expect(regression.violation != nil, "Planted P1 pause-epoch regression was not caught by Protocol C")
     }
 
     // MARK: - Negative control for the BFS checker itself

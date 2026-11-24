@@ -103,6 +103,7 @@ final class PinPanel: NSPanel, SwitchableAtAnyLevel {
         } else {
             AppPresence.shared.windowWillAppear()
             orderFrontRegardless()
+            AppPresence.shared.windowDidAppear()
         }
     }
 

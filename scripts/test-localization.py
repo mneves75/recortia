@@ -87,6 +87,32 @@ class LocalizationTests(unittest.TestCase):
                     "pt-BR": self.unit("Página %2$lld de %1$lld"),
                 }
             },
+            "%lld items (natural singular)": {
+                "localizations": {
+                    "en": {
+                        "variations": {
+                            "plural": {
+                                "one": self.unit("%lld item"),
+                                "other": self.unit("%lld items"),
+                            }
+                        }
+                    },
+                    "pt-BR": {
+                        "variations": {
+                            "plural": {
+                                "one": self.unit("Um item"),
+                                "other": self.unit("%lld itens"),
+                            }
+                        }
+                    },
+                }
+            },
+            "Dynamic width %*d and precision %.*f": {
+                "localizations": {
+                    "en": self.unit("Dynamic width %*d and precision %.*f"),
+                    "pt-BR": self.unit("Precisão %4$.*3$f e largura %2$*1$d"),
+                }
+            },
         })
         self.assertEqual(0, result.returncode, result.stderr)
 
@@ -109,6 +135,52 @@ class LocalizationTests(unittest.TestCase):
             },
             "zero positional index": {
                 "Item %@": {"localizations": {"en": self.unit("Item %@"), "pt-BR": self.unit("Item %0$@")}}
+            },
+            "plural other drops %lld even when en one omits it": {
+                "%lld items": {
+                    "localizations": {
+                        "en": {
+                            "variations": {
+                                "plural": {
+                                    "one": self.unit("One item"),
+                                    "other": self.unit("%lld items"),
+                                }
+                            }
+                        },
+                        "pt-BR": {
+                            "variations": {
+                                "plural": {
+                                    "one": self.unit("Um item"),
+                                    "other": self.unit("Vários itens"),
+                                }
+                            }
+                        },
+                    }
+                }
+            },
+            "dynamic width * dropped": {
+                "Width %*d": {
+                    "localizations": {
+                        "en": self.unit("Width %*d"),
+                        "pt-BR": self.unit("Largura %d"),
+                    }
+                }
+            },
+            "dynamic precision * dropped": {
+                "Prec %.*f": {
+                    "localizations": {
+                        "en": self.unit("Prec %.*f"),
+                        "pt-BR": self.unit("Prec %f"),
+                    }
+                }
+            },
+            "dynamic width mixed positional and sequential": {
+                "Width %*d": {
+                    "localizations": {
+                        "en": self.unit("Width %*d"),
+                        "pt-BR": self.unit("Largura %2$*d"),
+                    }
+                }
             },
             "plural variation mismatch": {
                 "%lld items": {

@@ -1,11 +1,12 @@
 import AppKit
 
-/// Presents app-modal `NSOpenPanel` and `NSSavePanel` dialogs with Recortia's Space policy and
-/// Dock presence rules (FR-01, ADR-007).
+/// Presents `NSOpenPanel` and `NSSavePanel` dialogs with Recortia's Space policy and Dock presence
+/// rules (FR-01, ADR-007).
 ///
-/// Every app-modal file panel applies `SpacePolicy.follow(panel)` before activating the app, so
-/// activation cannot switch Spaces, and refreshes `AppPresence` on dismissal because AppKit orders
-/// finished file panels out rather than closing them.
+/// Every file panel applies `SpacePolicy.follow(panel)` before activating the app, so activation
+/// cannot switch Spaces, and refreshes `AppPresence` on dismissal because AppKit orders finished
+/// file panels out rather than closing them. `present(_:)` runs modelessly through
+/// `panel.begin(completionHandler:)`; only `runModal(_:)` runs app-modal.
 @MainActor
 enum FilePanelPresenter {
     /// Runs `panel` asynchronously without blocking the main run loop; cancelling the calling task

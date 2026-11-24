@@ -96,6 +96,12 @@ final class AppPresence {
         syncObservedPresence()
     }
 
+    /// Synchronizes observed presence right after a switchable window is ordered in without
+    /// becoming key (for example, a non-activating pin).
+    func windowDidAppear() {
+        syncObservedPresence()
+    }
+
     /// Re-evaluates on a later main-actor turn, after the window change in progress completes.
     func setNeedsRefresh() {
         guard !refreshScheduled else { return }

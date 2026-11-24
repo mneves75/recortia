@@ -554,4 +554,67 @@ struct ScrollSessionModelEndingTests {
         #expect(h.clock.sleepRequests.isEmpty, "deadlineTask must not sleep another full maxDuration")
     }
 
+    // Failure mode (review P1): pausing while collect() awaits autoScroller.isAtEnd exited the
+    // collection loop permanently, so resuming left the stream open without reading frames.
+    @Test("Pausing while collect checks isAtEnd keeps the collection loop alive after Resume")
+    func pauseDuringCollectEndQueryKeepsCollectionLoopAlive() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        h.stitcher.script =
+            [.accepted(offset: 0), .accepted(offset: 40)]
+            + Array(repeating: .stationary, count: Self.endThreshold)
+            + [.accepted(offset: 80)]
+        h.scroller.atEnd = true
+        await h.startCollecting()
+        await Self.deliverFrames(h, 2 + Self.endThreshold - 1)
+
+        h.scroller.holdEndQueries = true
+        #expect(h.frames.deliver())
+        await waitFor("collect isAtEnd suspended") { h.scroller.pendingEndQueries.waiterCount == 1 }
+
+        h.model.pause()
+        #expect(h.model.state == .paused(.userPaused))
+        #expect(h.scroller.pendingEndQueries.resolve(()))
+        await drain()
+        #expect(h.model.state == .paused(.userPaused))
+
+        h.model.resume()
+        await waitFor("collection loop still awaits next frame") { h.frames.frames.waiterCount == 1 }
+        #expect(h.frames.deliver())
+        await waitFor("frame 3 accepted after resume") { h.model.acceptedFrames == 3 }
+        #expect(h.model.state == .collecting)
+        #expect(h.frames.stopCount == 0)
+    }
+
+    // Failure mode (review P1): pausing and resuming while collect() awaits autoScroller.isAtEnd
+    // left state == .collecting when the stale atEnd == true returned, prematurely ending capture.
+    @Test("Pausing and resuming while collect checks isAtEnd discards the stale end result")
+    func pauseAndResumeDuringCollectEndQueryDiscardsStaleAtEnd() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        h.stitcher.script =
+            [.accepted(offset: 0), .accepted(offset: 40)]
+            + Array(repeating: .stationary, count: Self.endThreshold)
+            + [.accepted(offset: 80)]
+        h.scroller.atEnd = true
+        await h.startCollecting()
+        await Self.deliverFrames(h, 2 + Self.endThreshold - 1)
+
+        h.scroller.holdEndQueries = true
+        #expect(h.frames.deliver())
+        await waitFor("collect isAtEnd suspended") { h.scroller.pendingEndQueries.waiterCount == 1 }
+
+        h.model.pause()
+        h.model.resume()
+        #expect(h.model.state == .collecting)
+        #expect(h.scroller.pendingEndQueries.resolve(()))
+        await drain()
+
+        #expect(h.model.state == .collecting)
+        #expect(h.frames.stopCount == 0)
+        await waitFor("collection loop still awaits next frame") { h.frames.frames.waiterCount == 1 }
+        #expect(h.frames.deliver())
+        await waitFor("frame 3 accepted") { h.model.acceptedFrames == 3 }
+    }
+
 }

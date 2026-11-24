@@ -702,6 +702,7 @@ struct ExportCoordinatorTests {
             ("/tmp/notes.txt", .heic(quality: 0.8), "/tmp/notes.txt.heic"),
             ("/tmp/archive.v2.PNG", .jpeg(quality: 0.9), "/tmp/archive.v2.jpg"),
             ("/tmp/photo.JPEG", .heic(quality: 0.8), "/tmp/photo.heic"),
+            ("/tmp/photo.JPEG", .jpeg(quality: 0.9), "/tmp/photo.JPEG"),
             ("/tmp/photo.HEIC", .png, "/tmp/photo.png"),
             ("/tmp/photo.jpg", .jpeg(quality: 0.9), "/tmp/photo.jpg"),
             ("/tmp/plain", .png, "/tmp/plain.png"),
