@@ -25,7 +25,7 @@ extension EditorModel {
     /// Nil restores automatic white; explicit transparent colors remain explicit.
     @discardableResult
     public func setTextBackgroundColor(_ color: RGBA?) -> Bool {
-        guard canSetTextAppearance else { return false }
+        guard canSetTextAppearance, admitsAction() else { return false }
         var changes: [AnnotationID: Annotation.Style] = [:]
         do {
             for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {

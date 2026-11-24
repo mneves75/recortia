@@ -43,7 +43,7 @@ extension EditorModel {
     /// instead of failing busy (T1 review R-2).
     public func runAutomaticExports(_ plan: AutomaticExportPlan) async -> [ExportOutcome] {
         let baseline = await autoRedactionSettled()
-        guard !isClosed else { return [.canceled] }
+        guard !isClosed, !Task.isCancelled else { return [.canceled] }
         guard let baseline else { return [.failed(.maskingUnfinished)] }
         if environment.export.isBusy {
             guard await waitForExportSlot() else { return [.canceled] }
@@ -104,14 +104,13 @@ extension EditorModel {
         return outcome
     }
 
-    /// Suspends until no export runs; false when the editor closed first. The coordinator sets and
-    /// clears its operation without suspending between a batch's steps, so a free slot observed on
-    /// the main actor is still free when the batch starts.
+    /// Suspends until no export runs; false when the editor closed or the task was cancelled first.
+    /// The coordinator sets and clears its operation without suspending between a batch's steps,
+    /// so a free slot observed on the main actor is still free when the batch starts.
     private func waitForExportSlot() async -> Bool {
         let export = environment.export
-        while export.isBusy, !isClosed {
-            await withCheckedContinuation { (waiter: CheckedContinuation<Void, Never>) in
-                exportSlotWaiters.append(waiter)
+        while export.isBusy, !isClosed, !Task.isCancelled {
+            await exportSlotWaiters.wait(cancelledValue: ()) {
                 withObservationTracking {
                     _ = export.isBusy
                 } onChange: { [weak self] in
@@ -119,13 +118,11 @@ extension EditorModel {
                 }
             }
         }
-        return !isClosed
+        return !isClosed && !Task.isCancelled
     }
 
     func resumeExportSlotWaiters() {
-        let waiters = exportSlotWaiters
-        exportSlotWaiters = []
-        for waiter in waiters { waiter.resume() }
+        exportSlotWaiters.resumeAll(returning: ())
     }
 
     /// This editor's own export: drives its progress and Cancel Export.

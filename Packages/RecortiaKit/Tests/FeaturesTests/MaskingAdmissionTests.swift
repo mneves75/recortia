@@ -38,6 +38,10 @@ struct MaskingAdmissionTests {
         var isGrouping: Bool
         var privacyEpoch: UInt64
         var selection: Set<EditorItemID>
+        var style: EditorStyle
+        var redactionFill: RGBA
+        var colorSampleSize: PixelSampleSize
+        var samplesDarkestPixel: Bool
         var textEditing: EditorTextEditing?
         var showsOutputPreview: Bool
         var heldPixels: [Bool]
@@ -54,6 +58,10 @@ struct MaskingAdmissionTests {
             isGrouping = model.session.isGrouping
             privacyEpoch = model.session.privacyEpoch
             selection = model.selection
+            style = model.style
+            redactionFill = model.redactionFill
+            colorSampleSize = model.colorSampleSize
+            samplesDarkestPixel = model.samplesDarkestPixel
             textEditing = model.textEditing
             showsOutputPreview = model.showsOutputPreview
             heldPixels = [
@@ -79,6 +87,10 @@ struct MaskingAdmissionTests {
             }
             if privacyEpoch != other.privacyEpoch { changed.append("privacy epoch") }
             if selection != other.selection { changed.append("selection") }
+            if style != other.style { changed.append("style") }
+            if redactionFill != other.redactionFill { changed.append("redactionFill") }
+            if colorSampleSize != other.colorSampleSize { changed.append("colorSampleSize") }
+            if samplesDarkestPixel != other.samplesDarkestPixel { changed.append("samplesDarkestPixel") }
             if textEditing != other.textEditing { changed.append("text input") }
             if showsOutputPreview != other.showsOutputPreview { changed.append("Output Preview") }
             if heldPixels != other.heldPixels { changed.append("held pixels \(other.heldPixels) -> \(heldPixels)") }
@@ -300,9 +312,9 @@ struct MaskingAdmissionTests {
             // Tools, future-object defaults, preferences and the viewport.
             Step(name: "selectTool", expectation: .inert) { model.selectTool(.rectangle) },
             Step(name: "setRedactsTextOnly", expectation: .inert) { model.setRedactsTextOnly(true) },
-            Step(name: "setColorSampleSize", expectation: .inert) { model.setColorSampleSize(.fiveByFive) },
-            Step(name: "setStrokeSmoothing", expectation: .inert) { model.setStrokeSmoothing(false) },
-            Step(name: "setSamplesDarkestPixel", expectation: .inert) { model.setSamplesDarkestPixel(true) },
+            Step(name: "setColorSampleSize", expectation: .refused) { model.setColorSampleSize(.fiveByFive) },
+            Step(name: "setStrokeSmoothing", expectation: .refused) { model.setStrokeSmoothing(false) },
+            Step(name: "setSamplesDarkestPixel", expectation: .refused) { model.setSamplesDarkestPixel(true) },
             Step(name: "setCropAspect", expectation: .inert) { model.setCropAspect(.sixteenByNine) },
             Step(name: "saveCurrentStrokeColor", expectation: .inert) { model.saveCurrentStrokeColor() },
             Step(name: "saveDefaultFraming", expectation: .inert) { model.saveDefaultFraming() },
@@ -347,7 +359,16 @@ struct MaskingAdmissionTests {
             Step(name: "cancelExport", expectation: .inert) { model.cancelExport() },
         ]
 
-        for step in steps {
+        let setterSteps: [Step] = [
+            Step(name: "colorSampleSize", expectation: .refused) { model.colorSampleSize = .fiveByFive },
+            Step(name: "samplesDarkestPixel", expectation: .refused) { model.samplesDarkestPixel = true },
+            Step(name: "colorFormat", expectation: .inert) { model.colorFormat = .cssRGB },
+            Step(name: "handlesDrawnWithIncreasedContrast", expectation: .inert) {
+                model.handlesDrawnWithIncreasedContrast = true
+            },
+        ]
+
+        for step in steps + setterSteps {
             model.dismissNotice()
             let before = Observed(model, h)
             try await step.run()
@@ -374,12 +395,28 @@ struct MaskingAdmissionTests {
         let declared = try Self.publicFunctions()
         #expect(declared.subtracting(driven).isEmpty, "not driven while pending: \(declared.subtracting(driven))")
         #expect(driven.subtracting(declared).isEmpty, "no longer public: \(driven.subtracting(declared))")
+
+        let drivenSetters = Set(setterSteps.map(\.name))
+        let declaredSetters = try Self.publicSetters()
+        #expect(
+            declaredSetters.subtracting(drivenSetters).isEmpty,
+            "public setters not driven while pending: \(declaredSetters.subtracting(drivenSetters))")
+        #expect(
+            drivenSetters.subtracting(declaredSetters).isEmpty,
+            "public setters no longer writable: \(drivenSetters.subtracting(declaredSetters))")
     }
 
     // MARK: - Inventory
 
     static let publicFunction = try? NSRegularExpression(
         pattern: #"(?m)^[ \t]*(?:@\w+[ \t]+)*public[ \t]+(?:(?:nonisolated|final|override)[ \t]+)*func[ \t]+(\w+)"#)
+
+    static let publicStoredProperty = try? NSRegularExpression(
+        pattern:
+            #"(?m)^[ \t]*(?:@\w+[ \t]+)*public[ \t]+var[ \t]+(\w+)[ \t]*(?::[ \t]*[^\n={]+)?=[ \t]*[^\n]+"#)
+
+    static let publicComputedHeader = try? NSRegularExpression(
+        pattern: #"(?m)^[ \t]*(?:@\w+[ \t]+)*public[ \t]+var[ \t]+(\w+)[ \t]*:[ \t]*[^\n={]+\{"#)
 
     private static var featuresSources: URL {
         // .../Packages/RecortiaKit/Tests/FeaturesTests/<this file>
@@ -399,10 +436,48 @@ struct MaskingAdmissionTests {
         return Set(matches.compactMap { Range($0.range(at: 1), in: source).map { String(source[$0]) } })
     }
 
+    static func setterNames(in source: String) -> Set<String> {
+        var names: Set<String> = []
+        let full = NSRange(source.startIndex..., in: source)
+        if let publicStoredProperty {
+            for match in publicStoredProperty.matches(in: source, range: full) {
+                if let range = Range(match.range(at: 1), in: source) {
+                    names.insert(String(source[range]))
+                }
+            }
+        }
+        if let publicComputedHeader {
+            for match in publicComputedHeader.matches(in: source, range: full) {
+                guard let nameRange = Range(match.range(at: 1), in: source),
+                    let fullRange = Range(match.range, in: source)
+                else { continue }
+                // Scan balanced braces from the opening `{` of the computed property body.
+                var depth = 1
+                var index = fullRange.upperBound
+                while index < source.endIndex && depth > 0 {
+                    let ch = source[index]
+                    if ch == "{" { depth += 1 } else if ch == "}" { depth -= 1 }
+                    index = source.index(after: index)
+                }
+                let body = source[fullRange.upperBound..<index]
+                if body.range(of: #"\bset\b"#, options: .regularExpression) != nil {
+                    names.insert(String(source[nameRange]))
+                }
+            }
+        }
+        return names
+    }
+
     private static func publicFunctions() throws -> Set<String> {
         let sources = try editorModelSources()
         #expect(sources.count >= 10, "found too few EditorModel files under \(featuresSources.path)")
         return sources.reduce(into: Set<String>()) { $0.formUnion(functionNames(in: $1.source)) }
+    }
+
+    private static func publicSetters() throws -> Set<String> {
+        let sources = try editorModelSources()
+        #expect(sources.count >= 10, "found too few EditorModel files under \(featuresSources.path)")
+        return sources.reduce(into: Set<String>()) { $0.formUnion(setterNames(in: $1.source)) }
     }
 
     @Test("The inventory sees public functions and skips static ones (planted control)")
@@ -415,6 +490,24 @@ struct MaskingAdmissionTests {
                 func internalOne() {}
             """
         #expect(Self.functionNames(in: planted) == ["plain", "attributed"])
+    }
+
+    @Test("The setter inventory sees writable public properties and skips read-only ones (planted control)")
+    func setterInventoryControl() {
+        #expect(Self.publicStoredProperty != nil && Self.publicComputedHeader != nil)
+        let planted = """
+                public var writableStored = false
+                @ObservationIgnored public var observedWritable: Int = 1
+                public var computedWritable: Int {
+                    get { 0 }
+                    set { _ = newValue }
+                }
+                public private(set) var readOnlyStored = false
+                public internal(set) var internalSetStored = false
+                public var readOnlyComputed: Int { 0 }
+                public static var staticWritable = false
+            """
+        #expect(Self.setterNames(in: planted) == ["writableStored", "observedWritable", "computedWritable"])
     }
 
     @Test("Only the admission point and the masking lifecycle read the pending flag")

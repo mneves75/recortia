@@ -161,7 +161,7 @@ struct RegionPrecisionCaptureTests {
         h.capture.pendingCapture = read
         h.coordinator.start(.region)
         h.coordinator.toggleRegionFreeze(on: display)
-        await waitFor("display read") { read.waiterCount == 1 && h.clock.pendingSleepCount == 1 }
+        await waitFor("display read") { read.waiterCount == 1 && h.clock.pendingSleepCount == 2 }
 
         if reportedByCapture {
             h.clock.stall(bySeconds: 60)
@@ -217,6 +217,29 @@ struct RegionPrecisionCaptureTests {
         #expect(h.coordinator.regionFreeze == nil)
         #expect(h.assets.registeredCaptures.count == 1)
         #expect(await store.count == 1)
+    }
+
+    @Test("Permission revocation during a frozen region interrupts selection on the injected clock")
+    func frozenPermissionRevocationUsesInjectedClock() async throws {
+        let h = CaptureHarness()
+        let (display, frame, geometry) = try frozenFixture()
+        h.capture.displayList = [display]
+        let read = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
+        h.capture.pendingCapture = read
+        h.coordinator.start(.region)
+        h.coordinator.toggleRegionFreeze(on: display)
+        await waitFor("display read and timers") { read.waiterCount == 1 && h.clock.pendingSleepCount == 2 }
+        #expect(read.resolve(.success((frame, geometry))))
+        await waitFor("frozen preview") {
+            if case .frozen = h.coordinator.regionFreeze { return true }
+            return false
+        }
+
+        h.permission.isGranted = false
+        h.clock.advance(bySeconds: 0.5)
+        await waitFor("permission loss interrupted freeze") { h.coordinator.state == .failed(.permissionDenied) }
+        #expect(h.coordinator.regionFreeze == nil)
+        await waitFor("freeze timers released") { h.clock.pendingSleepCount == 0 }
     }
 
     private func frozenFixture() throws -> (DisplayInfo, CGImage, CaptureGeometry) {

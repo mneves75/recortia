@@ -235,6 +235,9 @@ extension EditorModel {
     static let presentationRange: ClosedRange<Double> = 0...512
 
     public func setBackground(_ background: Presentation.Background) {
+        if case .linearGradient(_, _, let angle) = background {
+            guard angle.isFinite else { return }
+        }
         edit("Background", inPreview: true) { $0.presentation.background = background }
     }
 

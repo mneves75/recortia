@@ -109,11 +109,12 @@ public final class ImportCoordinator {
     }
 }
 
-/// An import admitted into the shared slot, with the source it read. It holds the slot until it is
-/// imported or released.
+/// An import admitted into the shared slot, with the source it read. It holds the slot until its
+/// matching `id` is imported or released.
 public struct ImportAdmission: Sendable {
     public let source: ImportSource
     let fileName: String?
+    let id: UUID
 }
 
 /// One read/decode admission slot, shared by the app's new-document and editor-layer paths.
@@ -121,7 +122,14 @@ public struct ImportAdmission: Sendable {
 @MainActor
 @Observable
 public final class ImageImporter {
-    public private(set) var isImporting = false
+    private enum SlotState: Equatable {
+        case idle
+        case admitted(UUID)
+        case importing(UUID)
+    }
+
+    private var slot: SlotState = .idle
+    public var isImporting: Bool { slot != .idle }
     @ObservationIgnored private let input: any ImageInputService
     @ObservationIgnored private let assets: any ImageAssetService
 
@@ -135,8 +143,9 @@ public final class ImageImporter {
     /// The admission holds the slot until `importImage(_:)` or `release(_:)`.
     func admit(readSource: () throws(ImportFailure) -> ImportSource) throws(ImportFailure) -> ImportAdmission {
         guard !Task.isCancelled else { throw .cancelled }
-        guard !isImporting else { throw .busy }
-        isImporting = true
+        guard slot == .idle else { throw .busy }
+        let id = UUID()
+        slot = .admitted(id)
         do throws(ImportFailure) {
             let source = try readSource()
             let fileName: String? =
@@ -144,16 +153,18 @@ public final class ImageImporter {
                 case .file(let url), .droppedFile(let url): url.lastPathComponent
                 case .pasteboard, .droppedData: nil
                 }
-            return ImportAdmission(source: source, fileName: fileName)
+            return ImportAdmission(source: source, fileName: fileName, id: id)
         } catch {
-            isImporting = false
+            if slot == .admitted(id) { slot = .idle }
             throw error
         }
     }
 
-    /// Releases an admission that will not be imported (its editor closed first).
+    /// Releases an unused admission that will not be imported (its editor closed first).
+    /// Only the active unused admission's identity can release the slot.
     public func release(_ admission: ImportAdmission) {
-        isImporting = false
+        guard slot == .admitted(admission.id) else { return }
+        slot = .idle
     }
 
     public func importImage(from source: ImportSource) async throws(ImportFailure) -> ImageAssetInfo {
@@ -172,8 +183,14 @@ public final class ImageImporter {
     public func importImage(_ admission: ImportAdmission, pixelBudget: Int? = nil) async throws(ImportFailure)
         -> ImageAssetInfo
     {
+        guard slot == .admitted(admission.id) else {
+            throw slot == .idle ? .cancelled : .busy
+        }
+        slot = .importing(admission.id)
         // Cancellation does not free the slot while a reader or decoder still owns its buffers.
-        defer { isImporting = false }
+        defer {
+            if slot == .importing(admission.id) { slot = .idle }
+        }
         guard !Task.isCancelled else { throw .cancelled }
         let data: Data
         let origin: AssetOrigin

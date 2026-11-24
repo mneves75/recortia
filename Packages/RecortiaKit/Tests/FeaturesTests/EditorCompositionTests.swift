@@ -261,4 +261,17 @@ struct EditorCompositionTests {
         #expect(m.session.undoCount == 0)
         #expect(!m.canUndo)
     }
+
+    @Test("A linear gradient with a non-finite angle is refused without an undo step")
+    func nonFiniteGradientAngleRefused() {
+        let h = EditorHarness()
+        let m = h.model
+        let before = m.document
+        for badAngle in [Double.nan, .infinity, -.infinity] {
+            m.setBackground(.linearGradient(from: .red, to: .yellow, angleDegrees: badAngle))
+        }
+        #expect(m.document == before)
+        #expect(m.session.undoCount == 0)
+        #expect(!m.canUndo)
+    }
 }

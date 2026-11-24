@@ -191,10 +191,17 @@ public final class ScrollSessionModel {
         guard state == .armed, let target, let id = sessionID else { return }
         autoScroller?.stop()  // every session scrolls with a scroller made for its own target
         apply(.start)
-        startedAt = clock.uptime()
+        let started = clock.uptime()
+        startedAt = started
+        let deadline = started + Self.maxDuration
         task = Task { [weak self] in await self?.collect(target, id: id) }
         deadlineTask = Task { [weak self, clock] in
-            do { try await clock.sleep(for: Self.maxDuration) } catch { return }
+            while !Task.isCancelled {
+                let remaining = deadline - clock.uptime()
+                if remaining <= .zero { break }
+                do { try await clock.sleep(for: remaining) } catch { return }
+            }
+            guard !Task.isCancelled, clock.uptime() >= deadline else { return }
             self?.deadlineReached(id: id)
         }
     }
@@ -413,7 +420,7 @@ public final class ScrollSessionModel {
                     // Stationary frames are also what a stalled, lazy-loading page produces:
                     // complete only when the target confirms its scroll area is at its end.
                     let atEnd = await autoScroller?.isAtEnd(target, direction: direction)
-                    guard isCurrent(id), state == .collecting else { return }
+                    guard isCurrent(id), state == .collecting, pendingFinish == nil, mode == .automatic else { return }
                     finishCollecting(partial: atEnd == true ? nil : .stoppedMoving)
                     return
                 }
@@ -428,7 +435,7 @@ public final class ScrollSessionModel {
     /// Sends one scroll step and, once it was sent, waits `automaticSettleInterval` for a frame.
     /// Runs from the collection loop, the settle timer, or Resume; one step at a time.
     private func autoStep(_ target: CaptureTarget, id: UUID) async {
-        guard sessionID == id, state == .collecting, pendingFinish == nil, mode == .automatic, autoStepOwner != id
+        guard isCurrent(id), state == .collecting, pendingFinish == nil, mode == .automatic, autoStepOwner != id
         else { return }
         guard accessibility.isTrusted, let autoScroller else {
             mode = .manual
@@ -438,7 +445,7 @@ public final class ScrollSessionModel {
         autoStepOwner = id
         let step = await autoScroller.step(target, direction: direction)
         if autoStepOwner == id { autoStepOwner = nil }
-        guard sessionID == id, state == .collecting, pendingFinish == nil else { return }
+        guard isCurrent(id), state == .collecting, pendingFinish == nil, mode == .automatic else { return }
         switch step {
         case .scrolled:
             settleTask?.cancel()
@@ -455,13 +462,13 @@ public final class ScrollSessionModel {
 
     /// No frame answered the last scroll step: the page did not move.
     private func settleElapsed(_ target: CaptureTarget, id: UUID) async {
-        guard sessionID == id, state == .collecting, mode == .automatic, !Task.isCancelled else { return }
+        guard isCurrent(id), state == .collecting, pendingFinish == nil, mode == .automatic else { return }
         unansweredSteps += 1
         if unansweredSteps >= ScrollStitcher.endOfPageStationaryFrames, stitcher.acceptedFrameCount > 0 {
             // No frame is also what a stalled, lazy-loading page looks like: complete only when
             // the target confirms its scroll area is at its end.
             let atEnd = await autoScroller?.isAtEnd(target, direction: direction)
-            guard sessionID == id, state == .collecting else { return }
+            guard isCurrent(id), state == .collecting, pendingFinish == nil, mode == .automatic else { return }
             finishCollecting(partial: atEnd == true ? nil : .stoppedMoving)
             return
         }

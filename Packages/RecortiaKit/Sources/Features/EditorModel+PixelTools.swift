@@ -109,14 +109,14 @@ extension EditorModel {
 
     /// A different neighborhood requires a new deliberate pick.
     public func setColorSampleSize(_ size: PixelSampleSize) {
-        guard !isClosed, size != colorSampleSize else { return }
+        guard !isClosed, admitsAction(), size != colorSampleSize else { return }
         invalidateColorPick()
         storedColorSampleSize = size
     }
 
     /// Switching between darkest-pixel and area sampling also requires a new pick.
     public func setSamplesDarkestPixel(_ darkest: Bool) {
-        guard !isClosed, darkest != samplesDarkestPixel else { return }
+        guard !isClosed, admitsAction(), darkest != samplesDarkestPixel else { return }
         invalidateColorPick()
         storedSamplesDarkestPixel = darkest
     }

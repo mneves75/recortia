@@ -179,4 +179,67 @@ struct EditorExportTests {
         #expect(Set(h.assets.released) == ids)
         #expect(h.model.isClosed)
     }
+
+    @Test("Canceling a task waiting for the export slot or auto-redaction unblocks promptly", .timeLimit(.minutes(1)))
+    func taskCancellationUnblocksEditorWaiters() async {
+        // 1. Waiting in waitForExportSlot while another export occupies the shared coordinator.
+        let h = EditorHarness()
+        defer { h.model.close() }
+        h.settings.update { $0.autoCopy = true }
+        let gate = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = gate
+        let holder = Task { await h.model.export(.copy) }
+        await waitFor("first export holds slot") { gate.waiterCount == 1 && h.export.isBusy }
+
+        let plan = h.export.automaticExportPlan()
+        let waiting = Task { await h.model.runAutomaticExports(plan) }
+        await waitFor("batch queued on export slot") { h.model.exportSlotWaiters.count == 1 }
+        waiting.cancel()
+        #expect(await waiting.value == [.canceled])
+        #expect(h.model.exportSlotWaiters.count == 0)
+
+        h.exporter.pending = nil
+        gate.resolve(.success(()))
+        _ = await holder.value
+
+        // 2. Waiting in autoRedactionSettled while masking is pending.
+        h.sensitiveText.pending = Pending<Void>()
+        let masked = EditorModel(
+            session: EditorFixtures.session(), environment: h.model.environment, autoRedacts: true)
+        defer { masked.close() }
+        await waitFor("detection started") { h.sensitiveText.pending?.waiterCount == 1 }
+        let maskedBatch = Task { await masked.runAutomaticExports(plan) }
+        await waitFor("batch waiting for masking") { masked.autoRedactionWaiters.count == 1 }
+        maskedBatch.cancel()
+        #expect(await maskedBatch.value == [.canceled])
+        #expect(masked.autoRedactionWaiters.count == 0)
+    }
+
+    @Test(
+        "Releasing an editor without close() cancels tasks and unblocks waiting continuations",
+        .timeLimit(.minutes(1)))
+    func deinitUnblocksWaiters() async {
+        let h = EditorHarness()
+        defer { h.model.close() }
+        h.sensitiveText.pending = Pending<Void>()
+        weak var released: EditorModel?
+        let redactionWaiter: Task<DocumentSession?, Never>
+        let slotWaiter: Task<Void, Never>
+        do {
+            let model = EditorModel(
+                session: EditorFixtures.session(), environment: h.model.environment, autoRedacts: true)
+            released = model
+            let autoWaiters = model.autoRedactionWaiters
+            let exportWaiters = model.exportSlotWaiters
+            redactionWaiter = Task { await autoWaiters.wait(cancelledValue: nil) }
+            slotWaiter = Task { await exportWaiters.wait(cancelledValue: ()) }
+            await waitFor("waiters registered") { autoWaiters.count == 1 && exportWaiters.count == 1 }
+        }
+        await waitFor("editor deallocated") { released == nil }
+        #expect(await redactionWaiter.value == nil)
+        await slotWaiter.value
+        h.sensitiveText.pending?.resolve(())
+        await drain()
+        #expect(h.sensitiveText.observedCancellation)
+    }
 }

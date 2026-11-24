@@ -469,4 +469,33 @@ struct QuickActionsModelTests {
         h.model.dismiss()
         #expect(!h.model.copyLink())
     }
+
+    @Test(
+        "Canceling present while waiting for the shared export slot unblocks promptly and releases pixels",
+        .timeLimit(.minutes(1)))
+    func cancelWhileWaitingForExportSlotUnblocks() async {
+        let h = QuickActionsHarness()
+        h.settings.update { $0.autoCopy = true }
+        let gate = Pending<Result<Void, ExportServiceError>>()
+        h.exporter.pending = gate
+        let otherSession = TestFixtures.session()
+        let blocker = Task {
+            await h.export.export(.copy, session: otherSession, currentSession: { otherSession })
+        }
+        await waitFor("export slot busy") { gate.waiterCount == 1 && h.export.isBusy }
+
+        let plan = h.export.automaticExportPlan()
+        let presenting = Task { await h.model.present(h.session, after: plan) }
+        await drain(20)
+        #expect(h.model.capture?.session.document.id == h.session.document.id)
+
+        presenting.cancel()
+        #expect(await presenting.value == [.canceled])
+        #expect(h.model.capture == nil)
+        #expect(h.assets.released == h.assetIDs)
+
+        h.exporter.pending = nil
+        gate.resolve(.success(()))
+        _ = await blocker.value
+    }
 }

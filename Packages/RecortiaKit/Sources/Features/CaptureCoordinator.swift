@@ -226,10 +226,10 @@ public final class CaptureCoordinator {
             defer { self.freezeRead = nil }
             await self.acquireFrozenFrame(on: display, id: active.id)
         }
-        freezePermissionCheck = Task { [weak self] in
+        freezePermissionCheck = Task { [weak self, clock] in
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
-                guard let self else { return }
+                do { try await clock.sleep(for: .milliseconds(500)) } catch { return }
+                guard !Task.isCancelled, let self else { return }
                 if !self.permission.isGranted {
                     self.interrupt(because: .permissionDenied)
                     return
@@ -639,10 +639,12 @@ public final class CaptureCoordinator {
         overlayInterval = nil
     }
 
-    /// The latency intervals still open, for tests.
-    var openLatencyIntervals: [LatencySignposts.Interval] {
-        captureIntervals.values.filter(\.isOpen).map(\.kind) + (overlayInterval.map { [$0.kind] } ?? [])
-    }
+    #if DEBUG
+        /// The latency intervals still open, for tests.
+        var openLatencyIntervals: [LatencySignposts.Interval] {
+            captureIntervals.values.filter(\.isOpen).map(\.kind) + (overlayInterval.map { [$0.kind] } ?? [])
+        }
+    #endif
 
     private func abortActive() {
         abandonOverlayInterval()

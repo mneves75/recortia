@@ -511,4 +511,47 @@ struct ScrollSessionModelEndingTests {
         #expect(h.accepted.isEmpty && h.assets.registeredStitched.isEmpty)
     }
 
+    // Failure mode (H1): settleElapsed suspended inside `autoScroller.isAtEnd`, a new frame arrived
+    // and canceled `settleTask`, and the returning `isAtEnd` checked only `sessionID` and `state`
+    // without `!Task.isCancelled`, aborting an active scroll.
+    @Test("A canceled settle check returning after a new frame never aborts active collection")
+    func canceledSettleEndQueryDoesNotAbortActiveScroll() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        h.scroller.atEnd = true
+        await h.startCollecting()
+        h.frames.deliver()
+        await waitFor("first step armed") { Self.settleArmed(h, steps: 1) }
+        for retry in 1..<Self.endThreshold {
+            h.clock.advance(bySeconds: Self.settleSeconds)
+            await waitFor("retry step \(retry)") { Self.settleArmed(h, steps: 1 + retry) }
+        }
+        h.scroller.holdEndQueries = true
+        h.clock.advance(bySeconds: Self.settleSeconds)
+        await waitFor("isAtEnd suspended") { h.scroller.pendingEndQueries.waiterCount == 1 }
+
+        // A real frame arrives before isAtEnd answers, proving the page moved and cancelling settleTask.
+        #expect(h.frames.deliver())
+        await waitFor("frame 2 accepted") { h.model.acceptedFrames == 2 }
+        #expect(h.scroller.pendingEndQueries.resolve(()))
+        await drain()
+
+        #expect(h.model.state == .collecting)
+        #expect(h.model.acceptedFrames == 2)
+        #expect(h.model.partialReason == nil)
+        #expect(h.frames.stopCount == 0)
+    }
+
+    @Test("Monotonic deadline fires immediately when clock stalled past maxDuration before deadlineTask ran")
+    func deadlineEnforcesMonotonicUptime() async {
+        let h = ScrollHarness()
+        _ = await h.model.begin()
+        h.model.chooseTarget(h.target)
+        h.model.start()
+        // Stall monotonic uptime past maxDuration before yielding to deadlineTask.
+        h.clock.stall(bySeconds: Self.maxSeconds)
+        await waitFor("deadline ended empty session") { h.model.state == .failed(.noFrames) }
+        #expect(h.clock.sleepRequests.isEmpty, "deadlineTask must not sleep another full maxDuration")
+    }
+
 }

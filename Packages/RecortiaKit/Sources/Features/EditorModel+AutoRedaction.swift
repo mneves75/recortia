@@ -63,10 +63,10 @@ extension EditorModel {
     }
 
     /// What the capture's automatic batch may export once masking is no longer pending (at once when
-    /// it is not): the frozen baseline, or nil when masking failed.
+    /// it is not): the frozen baseline, or nil when masking failed or the calling task was cancelled.
     func autoRedactionSettled() async -> DocumentSession? {
         guard autoRedaction == .pending else { return automaticExportBaseline }
-        return await withCheckedContinuation { autoRedactionWaiters.append($0) }
+        return await autoRedactionWaiters.wait(cancelledValue: nil)
     }
 
     /// Closing while pending: detection is cancelled and nothing waits for it any more.
@@ -111,9 +111,7 @@ extension EditorModel {
         autoRedactionRequest = nil
         autoRedaction = outcome
         automaticExportBaseline = outcome == .done ? session : nil
-        let waiters = autoRedactionWaiters
-        autoRedactionWaiters = []
-        for waiter in waiters { waiter.resume(returning: automaticExportBaseline) }
+        autoRedactionWaiters.resumeAll(returning: automaticExportBaseline)
         scheduleBaseRender()
     }
 

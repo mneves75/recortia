@@ -635,7 +635,8 @@ public final class ExportCoordinator {
     }
 
     /// `url` with an extension for `format`: kept when it already names it (.jpg or .jpeg for
-    /// JPEG), replaced otherwise.
+    /// JPEG), replaced when it names another known image extension, and appended otherwise so
+    /// non-image dot suffixes (such as `report.v2`) are preserved.
     static func named(_ url: URL, for format: ExportFormat) -> URL {
         let current = url.pathExtension.lowercased()
         let matches =
@@ -644,7 +645,10 @@ public final class ExportCoordinator {
             case .jpeg: current == "jpg" || current == "jpeg"
             case .heic: current == "heic"
             }
-        return matches ? url : url.deletingPathExtension().appendingPathExtension(format.fileExtension)
+        if matches { return url }
+        let knownImageExtensions: Set<String> = ["png", "jpg", "jpeg", "heic"]
+        let base = knownImageExtensions.contains(current) ? url.deletingPathExtension() : url
+        return base.appendingPathExtension(format.fileExtension)
     }
 
     // MARK: Helpers

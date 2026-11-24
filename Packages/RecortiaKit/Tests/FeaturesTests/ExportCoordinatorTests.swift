@@ -694,4 +694,22 @@ struct ExportCoordinatorTests {
         #expect(h.files.uniqueSaves.isEmpty && h.files.saves.isEmpty)
     }
 
+    @Test("Automatic file naming strips only known image extensions and preserves non-image dot suffixes")
+    func namedPreservesNonImageDotSuffixes() {
+        let cases: [(String, ExportFormat, String)] = [
+            ("/tmp/report.v2", .png, "/tmp/report.v2.png"),
+            ("/tmp/release.0.16.0", .jpeg(quality: 0.9), "/tmp/release.0.16.0.jpg"),
+            ("/tmp/notes.txt", .heic(quality: 0.8), "/tmp/notes.txt.heic"),
+            ("/tmp/archive.v2.PNG", .jpeg(quality: 0.9), "/tmp/archive.v2.jpg"),
+            ("/tmp/photo.JPEG", .heic(quality: 0.8), "/tmp/photo.heic"),
+            ("/tmp/photo.HEIC", .png, "/tmp/photo.png"),
+            ("/tmp/photo.jpg", .jpeg(quality: 0.9), "/tmp/photo.jpg"),
+            ("/tmp/plain", .png, "/tmp/plain.png"),
+        ]
+        for (input, format, expected) in cases {
+            let actual = ExportCoordinator.named(URL(fileURLWithPath: input), for: format).path
+            #expect(actual == expected, "\(input) for \(format) -> \(actual)")
+        }
+    }
+
 }

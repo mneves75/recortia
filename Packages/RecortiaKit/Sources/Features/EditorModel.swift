@@ -79,10 +79,12 @@ public final class EditorModel {
     @ObservationIgnored private var reportedEvictedUndoCount = 0
     @ObservationIgnored var continuousChangeID: UUID?
     @ObservationIgnored private var listItemsMemo: (revision: UInt64, items: [EditorListItem])?
-    /// Geometry resolutions performed while building `listItems`. Resolving a text frame is a full
-    /// Core Text layout, so the memo is a performance invariant and tests assert this count instead
-    /// of wall-clock time, which no gate on this host could qualify.
-    @ObservationIgnored internal private(set) var listItemGeometryResolutions = 0
+    #if DEBUG
+        /// Geometry resolutions performed while building `listItems`. Resolving a text frame is a full
+        /// Core Text layout, so the memo is a performance invariant and tests assert this count instead
+        /// of wall-clock time, which no gate on this host could qualify.
+        @ObservationIgnored internal private(set) var listItemGeometryResolutions = 0
+    #endif
 
     @ObservationIgnored var baseTask: Task<Void, Never>?
     @ObservationIgnored var installedBaseKey: BaseKey?
@@ -104,11 +106,11 @@ public final class EditorModel {
     /// What the capture's automatic batch exports, frozen when masking settles: the capture itself
     /// without masking, the masked capture after it, nil when masking failed (`autoRedactionSettled`).
     @ObservationIgnored var automaticExportBaseline: DocumentSession?
-    @ObservationIgnored var autoRedactionWaiters: [CheckedContinuation<DocumentSession?, Never>] = []
+    @ObservationIgnored let autoRedactionWaiters = CancellableWaiters<DocumentSession?>()
     /// An automatic upload's notice that waits until the masking count is dismissed (3C).
     @ObservationIgnored var waitingNotice: EditorNotice?
     /// The deferred automatic batch waiting for the shared export slot (`waitForExportSlot`).
-    @ObservationIgnored var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
+    @ObservationIgnored let exportSlotWaiters = CancellableWaiters<Void>()
 
     enum Gesture {
         case idle
@@ -142,9 +144,14 @@ public final class EditorModel {
         scheduleBaseRender()
     }
 
-    // An editor released without `close()` still stops its detection and deadline.
+    // An editor released without `close()` still cancels its tasks and unblocks any waiters.
     isolated deinit {
         for task in autoRedactionTasks + (textRedaction?.tasks ?? []) { task.cancel() }
+        baseTask?.cancel()
+        outputTask?.cancel()
+        colorPickTask?.cancel()
+        autoRedactionWaiters.resumeAll(returning: nil)
+        exportSlotWaiters.resumeAll(returning: ())
     }
 
     public var document: Document { session.document }
@@ -180,17 +187,19 @@ public final class EditorModel {
     }
 
     public func setStrokeColor(_ color: RGBA) {
+        guard !isClosed, admitsAction() else { return }
         style.stroke = color.withAlpha(255)
         restyleSelection("Color") { $0.stroke = color.withAlpha(255) }
     }
 
     public func setFillColor(_ color: RGBA?) {
+        guard !isClosed, admitsAction() else { return }
         style.fill = color
         restyleSelection("Fill") { $0.fill = color }
     }
 
     public func setLineWidth(_ width: Double) {
-        guard let value = EditorStyle.lineWidthRange.admit(width) else { return }
+        guard !isClosed, admitsAction(), let value = EditorStyle.lineWidthRange.admit(width) else { return }
         do {
             for annotation in document.annotations where selection.contains(.annotation(annotation.id)) {
                 var proposed = annotation
@@ -206,13 +215,13 @@ public final class EditorModel {
     }
 
     public func setOpacity(_ opacity: Double) {
-        guard let value = EditorStyle.opacityRange.admit(opacity) else { return }
+        guard !isClosed, admitsAction(), let value = EditorStyle.opacityRange.admit(opacity) else { return }
         style.opacity = value
         restyleSelection("Opacity") { $0.opacity = value }
     }
 
     public func setFontSize(_ size: Double) {
-        guard let value = EditorStyle.fontSizeRange.admit(size) else { return }
+        guard !isClosed, admitsAction(), let value = EditorStyle.fontSizeRange.admit(size) else { return }
         style.fontSize = value
         let ids = selectedAnnotationIDs
         guard !ids.isEmpty else { return }
@@ -227,6 +236,7 @@ public final class EditorModel {
     }
 
     public func setRedactionFill(_ color: RGBA) {
+        guard !isClosed, admitsAction() else { return }
         let opaque = color.withAlpha(255)
         redactionFill = opaque
         let ids = Set(selection.compactMap { if case .mask(let id) = $0 { id } else { nil } })
@@ -427,7 +437,9 @@ public final class EditorModel {
         // An item whose geometry cannot be resolved (missing asset, failed text layout) is left out.
         func append(_ id: EditorItemID, _ kind: EditorItemKind, _ frame: Rect<DocumentSpace>?, step: Int? = nil) {
             guard let frame else { return }
-            listItemGeometryResolutions += 1
+            #if DEBUG
+                listItemGeometryResolutions += 1
+            #endif
             counters[kind, default: 0] += 1
             bottomUp.append(
                 EditorListItem(id: id, kind: kind, ordinal: counters[kind] ?? 1, frame: frame, stepNumber: step))

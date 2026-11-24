@@ -101,7 +101,7 @@ public final class QuickActionsModel {
     @ObservationIgnored private let textClipboard: any TextClipboardService
     @ObservationIgnored private var textCopyRequest: UUID?
     @ObservationIgnored private var timer: Task<Void, Never>?
-    @ObservationIgnored private var exportSlotWaiters: [CheckedContinuation<Void, Never>] = []
+    @ObservationIgnored private let exportSlotWaiters = CancellableWaiters<Void>()
 
     public init(
         export: ExportCoordinator, pins: PinsModel, renderer: any RenderService, assets: any ImageAssetService,
@@ -117,6 +117,13 @@ public final class QuickActionsModel {
         self.clock = clock
         self.textRecognition = textRecognition
         self.textClipboard = textClipboard
+    }
+
+    isolated deinit {
+        timer?.cancel()
+        previewTask?.cancel()
+        textCopyTask?.cancel()
+        exportSlotWaiters.resumeAll(returning: ())
     }
 
     /// Holds `session`, discarding any earlier capture, runs `plan` (decided when the capture
@@ -164,7 +171,10 @@ public final class QuickActionsModel {
         var outcomes: [ExportOutcome] = []
         if let ended = endedPresentation(id, exports: outcomes) { return ended }
         if !plan.isEmpty {
-            guard await waitForExportSlot(id) else { return ([.canceled], false) }
+            guard await waitForExportSlot(id) else {
+                if Task.isCancelled { discardIfCurrent(id) }
+                return ([.canceled], false)
+            }
             if let ended = endedPresentation(id, exports: outcomes) { return ended }
             outcomes = await export.runAutomaticExports(plan, for: pending.session, currentSession: sessionIfCurrent)
         }
@@ -508,12 +518,12 @@ public final class QuickActionsModel {
         }
     }
 
-    /// Suspends until no export runs; false once this capture is no longer held. As in the editor,
-    /// the coordinator sets and clears its operation without suspending between a batch's steps.
+    /// Suspends until no export runs; false once this capture is no longer held or the task is
+    /// cancelled. As in the editor, the coordinator sets and clears its operation without
+    /// suspending between a batch's steps.
     private func waitForExportSlot(_ id: UUID) async -> Bool {
-        while export.isBusy, capture?.id == id {
-            await withCheckedContinuation { (waiter: CheckedContinuation<Void, Never>) in
-                exportSlotWaiters.append(waiter)
+        while export.isBusy, capture?.id == id, !Task.isCancelled {
+            await exportSlotWaiters.wait(cancelledValue: ()) {
                 withObservationTracking {
                     _ = export.isBusy
                 } onChange: { [weak self] in
@@ -521,12 +531,10 @@ public final class QuickActionsModel {
                 }
             }
         }
-        return capture?.id == id
+        return capture?.id == id && !Task.isCancelled
     }
 
     private func resumeExportSlotWaiters() {
-        let waiters = exportSlotWaiters
-        exportSlotWaiters = []
-        for waiter in waiters { waiter.resume() }
+        exportSlotWaiters.resumeAll(returning: ())
     }
 }

@@ -136,7 +136,7 @@ extension EditorModel {
     /// Whether new freehand and highlighter strokes in this editor are smoothed when they end.
     /// Strokes already drawn keep their points.
     public func setStrokeSmoothing(_ smooths: Bool) {
-        guard !isClosed else { return }
+        guard !isClosed, admitsAction() else { return }
         style.smoothsStrokes = smooths
     }
 }

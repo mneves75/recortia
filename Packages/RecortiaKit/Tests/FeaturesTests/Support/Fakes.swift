@@ -671,8 +671,11 @@ final class FakeAutoScroller: AutoScrollService {
 
     /// What the target reports about its scroll position; nil when it cannot tell.
     var atEnd: Bool?
+    var holdEndQueries = false
+    let pendingEndQueries = Pending<Void>()
     func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool? {
         endQueryDirections.append(direction)
+        if holdEndQueries { await pendingEndQueries.wait() }
         return atEnd
     }
 }
