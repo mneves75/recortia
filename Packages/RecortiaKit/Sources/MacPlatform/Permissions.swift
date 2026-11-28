@@ -12,8 +12,8 @@ public enum ScreenPermission {
     public static func request() -> Bool { CGRequestScreenCaptureAccess() }
 }
 
-/// Accessibility permission, used only by optional automatic scrolling (FR-10). Basic capture,
-/// editing, import, export, and manual scrolling never consult it.
+/// Accessibility permission, used only by optional automatic scrolling (FR-10) and element
+/// snapping (ADR-010). Basic capture, editing, import, export, and manual scrolling never consult it.
 public enum AccessibilityPermission {
     /// Whether the process is trusted. Never shows a prompt.
     public static var isTrusted: Bool { AXIsProcessTrusted() }

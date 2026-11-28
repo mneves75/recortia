@@ -134,7 +134,12 @@ final class DataProtectionSealStore: SealSecretStore {
     }
 
     public func remove() {
-        SecItemDelete(base as CFDictionary)
+        let status = SecItemDelete(base as CFDictionary)
+        // Content-free. If this fails after a failed save, the previous seal still verifies:
+        // an older blob another process restores can then carry revoked consent into a relaunch.
+        if status != errSecSuccess, status != errSecItemNotFound {
+            Self.log.error("preferences seal: remove failed, status \(status, privacy: .public)")
+        }
     }
 
     private static let log = Logger(subsystem: "dev.mvneves.Recortia", category: "preferences")
