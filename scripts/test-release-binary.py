@@ -97,7 +97,7 @@ class ReleaseBinaryGateTests(unittest.TestCase):
 
     def test_release_script_passes_the_bundle_not_only_the_executable(self) -> None:
         script = (ROOT / "scripts/release.sh").read_text()
-        self.assertIn('scripts/check-release-binary.sh "$app"\n', script)
+        self.assertIn('"$src/scripts/check-release-binary.sh" "$app"\n', script)
 
 
 RUNNER_MARKERS = ("-RecortiaE2E", "-RecortiaE2EOnly", "E2ERunner")

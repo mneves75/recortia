@@ -25,7 +25,8 @@ final class SystemEventMonitor {
         // scrolling HUD keep Recortia inactive: the lock must still arrive while it happens.
         let lock = LockObserver { [weak self] in self?.handler(.screenLocked) }
         DistributedNotificationCenter.default().addObserver(
-            lock, selector: #selector(LockObserver.screenLocked(_:)), name: Notification.Name("com.apple.screenIsLocked"),
+            lock, selector: #selector(LockObserver.screenLocked(_:)),
+            name: Notification.Name("com.apple.screenIsLocked"),
             object: nil, suspensionBehavior: .deliverImmediately)
         lockObserver = lock
         observe(
