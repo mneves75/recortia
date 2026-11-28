@@ -57,6 +57,8 @@ final class EditorFakeTextRecognition: TextRecognitionService {
     var fails = false
     private(set) var recognizedSizes: [PixelSize] = []
     private(set) var requestedLanguages: [[Locale.Language]] = []
+    /// Whether the caller had canceled the work by the time `pending` released it.
+    private(set) var observedCancellation = false
 
     func supportedLanguages() async -> [Locale.Language] {
         if let languagesPending { await languagesPending.wait() }
@@ -66,7 +68,10 @@ final class EditorFakeTextRecognition: TextRecognitionService {
     func recognize(_ image: CGImage, languages: [Locale.Language]) async throws -> OCRResult {
         recognizedSizes.append(PixelSize(width: image.width, height: image.height))
         requestedLanguages.append(languages)
-        if let pending { await pending.wait() }
+        if let pending {
+            await pending.wait()
+            if Task.isCancelled { observedCancellation = true }
+        }
         if fails { throw TestError() }
         return OCRResult(lines: lines, revision: 3, languages: languages.map(\.minimalIdentifier))
     }
@@ -75,10 +80,17 @@ final class EditorFakeTextRecognition: TextRecognitionService {
 @MainActor
 final class EditorFakeQRDecoder: QRDecodingService {
     var payloads: [QRPayload] = []
+    var pending: Pending<Void>?
     private(set) var decodeCount = 0
+    /// Whether the caller had canceled the work by the time `pending` released it.
+    private(set) var observedCancellation = false
 
     func decode(_ image: CGImage) async throws -> [QRPayload] {
         decodeCount += 1
+        if let pending {
+            await pending.wait()
+            if Task.isCancelled { observedCancellation = true }
+        }
         return payloads
     }
 }
