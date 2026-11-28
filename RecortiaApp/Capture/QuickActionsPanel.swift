@@ -455,6 +455,8 @@ private struct QuickActionsExpandedImage: NSViewRepresentable {
     func makeNSView(context: Context) -> NSImageView {
         let view = NSImageView()
         view.imageScaling = .scaleProportionallyDown
+        // Copy goes through ShareSnapshot, never the view's own image (FR-07).
+        view.allowsCutCopyPaste = false
         view.setAccessibilityLabel(String(localized: "Capture Preview"))
         updateNSView(view, context: context)
         return view
@@ -494,6 +496,7 @@ final class QuickActionsThumbnailView: NSImageView {
     init() {
         super.init(frame: .zero)
         imageScaling = .scaleProportionallyUpOrDown
+        allowsCutCopyPaste = false
         setAccessibilityRole(.image)
         setAccessibilityLabel(String(localized: "Captured image. Drag it to export."))
         setAccessibilityIdentifier("quickActions.thumbnail")

@@ -130,6 +130,8 @@ final class DragChipView: NSImageView, NSDraggingSource {
         super.init(frame: NSRect(origin: .zero, size: Self.size))
         self.image = image
         imageScaling = .scaleProportionallyDown
+        // The snapshot leaves only through the drag; the view's own Copy would bypass its lease.
+        allowsCutCopyPaste = false
         translatesAutoresizingMaskIntoConstraints = false
         widthAnchor.constraint(equalToConstant: Self.size.width).isActive = true
         heightAnchor.constraint(equalToConstant: Self.size.height).isActive = true

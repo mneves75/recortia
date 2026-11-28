@@ -120,6 +120,8 @@
             let thumbnail = try context.unwrap(
                 "the preview view", EditorWindowController.first(QuickActionsThumbnailView.self, in: root))
             context.check("the preview shows the sanitized render", model.capture?.preview != nil)
+            context.check(
+                "the thumbnail view's own Copy is off (copy goes through ShareSnapshot)", !thumbnail.allowsCutCopyPaste)
             context.snapshot(root, shot: "thumbnail")
             await context.darkCompanion(
                 root, in: panel, shot: "thumbnail", surface: "quick-action thumbnail", excluding: [thumbnail])
@@ -410,6 +412,7 @@
                 "expanded preview image view", EditorWindowController.first(NSImageView.self, in: root))
             let raster = try context.unwrap(
                 "the expanded preview raster", image.image?.cgImage(forProposedRect: nil, context: nil, hints: nil))
+            context.check("the expanded preview's own Copy is off", !image.allowsCutCopyPaste)
             return (image, raster)
         }
 
