@@ -435,10 +435,12 @@ final class AppModel: AppActions {
                 features.scroll.interrupt(because: .displayChanged)
                 self?.prepareCaptureWindows()
             case .screenLocked:
+                features.quickActions.cancelTextCopy()
                 features.capture.interrupt(because: .screenLocked)
                 features.scroll.interrupt(because: .screenLocked)
             case .sleeping:
                 features.capture.cancel()
+                features.scroll.cancelForSleep()
             }
         }
         monitor.start()

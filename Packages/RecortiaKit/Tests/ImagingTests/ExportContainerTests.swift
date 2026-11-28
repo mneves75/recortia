@@ -56,6 +56,27 @@ struct ExportContainerTests {
         #expect(ContainerInspector.propertyKeys(snapshot.bytes).isDisjoint(with: Self.forbiddenPropertyKeys))
     }
 
+    @Test("The JPEG filter keeps a JFIF header without its thumbnail")
+    func jfifThumbnailIsDropped() throws {
+        let jpeg = [UInt8](try ContainerCrafting.jpegData(try ChartFixture.geometryChart(width: 16, height: 16)))
+        var offset = 2
+        while jpeg[offset + 1] != 0xE0 {
+            try #require(jpeg[offset + 1] != 0xDA, "no APP0 segment")
+            offset += 2 + (Int(jpeg[offset + 2]) << 8 | Int(jpeg[offset + 3]))
+        }
+        let end = offset + 2 + (Int(jpeg[offset + 2]) << 8 | Int(jpeg[offset + 3]))
+        let header = Array(jpeg[(offset + 4)..<(offset + 16)])
+        try #require(header.starts(with: Array("JFIF\0".utf8)))
+        // A 1x1 RGB thumbnail: its dimensions, then three pixel bytes.
+        let thumbnailed: [UInt8] = [0xFF, 0xE0, 0x00, 0x13] + header + [1, 1, 200, 10, 10]
+        let crafted = Data(jpeg[..<offset] + thumbnailed + jpeg[end...])
+        let filtered = [UInt8](try ExportContainerFilter.jpeg(crafted))
+        let app0 = try ContainerInspector.jpegSegments(Data(filtered)).segments.filter { $0.marker == 0xE0 }
+        #expect(app0.map(\.length) == [16])
+        #expect(Array(filtered[6..<20]) == header + [0, 0])
+        #expect(try ContainerInspector.decodePixels(Data(filtered)).width == 16)
+    }
+
     @Test("Control: ImageIO's own encoder output would fail the allowlists")
     func rawImageIOOutputIsCaught() throws {
         let image = try ChartFixture.geometryChart(width: 16, height: 16)
@@ -95,6 +116,51 @@ struct ExportContainerTests {
         #expect(exported.pixel(x: 1, y: 0) == color(30, 140, 90, 255))
     }
 
+    @Test("An opaque PNG export drops only the alpha channel; one translucent pixel keeps it")
+    func opaqueExportsCarryNoAlphaChannel() async throws {
+        var pixels: [UInt8] = []
+        for i in 0..<64 { pixels += [UInt8(i * 3), UInt8(255 - i), UInt8(i % 7 * 30), 255] }
+        var translucent = pixels
+        translucent[27 * 4 + 3] = 254
+        // IHDR color type (byte 25): 2 is RGB, 6 is RGBA.
+        for (input, colorType) in [(pixels, UInt8(2)), (translucent, UInt8(6))] {
+            let harness = ImagingHarness()
+            let image = try ChartFixture.image(width: 8, height: 8, straightRGBA: input)
+            let asset = try await harness.add(image)
+            let snapshot = try await harness.export(DocumentSession(document: Document(asset: asset)))
+            #expect(snapshot.bytes[snapshot.bytes.startIndex + 25] == colorType)
+            let exported = try ContainerInspector.decodePixels(snapshot.bytes)
+            if colorType == 2 {
+                #expect(exported == (try ContainerInspector.pixels(of: image)))
+            } else {
+                #expect(exported.pixel(x: 3, y: 3).a == 254)
+            }
+        }
+        #expect(!PNGRowFilter.prefersUnfiltered(Data(count: 63), width: 4, height: 4, bytesPerRow: 16), "short buffer")
+        // Odd width: each row's last pixel lies outside the two-pixel loads; row padding is ignored.
+        var odd = [UInt8](repeating: 255, count: 2 * 16)
+        for row in 0..<2 { for pad in 12..<16 { odd[row * 16 + pad] = 0 } }
+        #expect(AlphaScan.isOpaque(Data(odd), width: 3, height: 2, bytesPerRow: 16))
+        odd[16 + 2 * 4 + 3] = 254
+        #expect(!AlphaScan.isOpaque(Data(odd), width: 3, height: 2, bytesPerRow: 16))
+        #expect(!AlphaScan.isOpaque(Data(count: 27), width: 3, height: 2, bytesPerRow: 16), "short buffer")
+    }
+
+    @Test("An opaque raster's JPEG and HEIC skip compositing without changing a byte")
+    func opaqueLossyExportsMatchComposited() throws {
+        let canonical = try #require(
+            try RenderRaster(image: ChartFixture.photographic(width: 64, height: 48)).makeImage())
+        let view = try ExportEncoder.opaqueView(canonical)
+        try #require(canonical.alphaInfo == .premultipliedLast && view?.pixels != nil)
+        for format in [ExportFormat.jpeg(quality: 0.9), .heic(quality: 0.9)] {
+            let options = ExportOptions(format: format)
+            let composited = try ExportEncoder.flatten(canonical, on: options.jpegBackground)
+            #expect(
+                try ExportEncoder.encode(canonical, options: options)
+                    == ExportEncoder.encode(composited, options: options), "\(format)")
+        }
+    }
+
     @Test(
         "Imported EXIF, GPS, TIFF, IPTC, and comment metadata never survive export",
         arguments: [
@@ -122,7 +188,7 @@ struct ExportContainerTests {
 
     @Test("An Automatic JPEG keeps secure masks and carries none of the imported metadata")
     func automaticJPEGIsSanitized() async throws {
-        let jpeg = try ContainerCrafting.metadataRichJPEG(try ChartFixture.photographic(width: 1200, height: 900))
+        let jpeg = try ContainerCrafting.metadataRichJPEG(try ChartFixture.photographic(width: 1600, height: 1200))
         for canary in ContainerCrafting.metadataCanaries {
             #expect(ContainerInspector.contains(canary, in: jpeg), "fixture lacks \(canary)")
         }
@@ -134,7 +200,8 @@ struct ExportContainerTests {
         try session.addSecureMask(covering: masked)
 
         let snapshot = try await harness.export(session, ExportOptions(automaticFormat: true))
-        // Control: the size rule chose JPEG, so this exercises the lossy path.
+        // Control: the size rule chose JPEG, so this exercises the lossy path. At 1600 × 1200 the PNG
+        // stays over 2 MB and twice the JPEG; at 1200 × 900 a hosted runner's encoder kept PNG.
         try #require(snapshot.format == .jpeg(quality: 0.92))
         let (segments, endsWithEOI) = try ContainerInspector.jpegSegments(snapshot.bytes)
         #expect(Set(segments.map(\.marker)).isSubset(of: Self.allowedJPEGMarkers), "unexpected markers: \(segments)")

@@ -22,20 +22,32 @@ extension EditorModel {
         let identity = session.requestIdentity()
         let document = session.document
         let area = region ?? (document.crop != nil ? document.contentRect : nil)
-        let outcome: Result<(OCRResult, AffineMap<SourcePixelSpace, DocumentSpace>), any Error>
-        var unavailable: [String]?
-        do {
-            let base = try await environment.renderer.renderBase(document, scale: 1)
-            let (image, toDocument) = try Self.crop(base, to: area, canvas: document.canvasSize)
-            let (languages, missing) = await preferredLanguages()
-            unavailable = missing
-            let result = try await environment.textRecognition.recognize(image, languages: languages)
-            outcome = .success((result, toDocument))
-        } catch {
-            outcome = .failure(error)
+        // The model owns the work so closing the editor, clearing the results or a newer request
+        // cancels the render and Vision request instead of letting them finish unseen.
+        recognitionWork?.cancel()
+        let work = Task {
+            () -> (Result<(OCRResult, AffineMap<SourcePixelSpace, DocumentSpace>), any Error>, [String]?) in
+            var unavailable: [String]?
+            do {
+                let base = try await environment.renderer.renderBase(document, scale: 1)
+                let (image, toDocument) = try Self.crop(base, to: area, canvas: document.canvasSize)
+                let (languages, missing) = await preferredLanguages()
+                unavailable = missing
+                let result = try await environment.textRecognition.recognize(image, languages: languages)
+                return (.success((result, toDocument)), unavailable)
+            } catch {
+                return (.failure(error), unavailable)
+            }
+        }
+        recognitionWork = work
+        let (outcome, unavailable) = await withTaskCancellationHandler {
+            await work.value
+        } onCancel: {
+            work.cancel()
         }
         guard !isClosed, recognitionRequest == request else { return }
         recognitionRequest = nil
+        recognitionWork = nil
         guard session.accepts(identity) else {
             droppedResultCount += 1
             recognition = .idle
@@ -84,6 +96,8 @@ extension EditorModel {
     }
 
     public func clearRecognition() {
+        recognitionWork?.cancel()
+        recognitionWork = nil
         recognitionRequest = nil
         recognition = .idle
         recognizedResult = nil
@@ -110,15 +124,24 @@ extension EditorModel {
         qr = .running
         let identity = session.requestIdentity()
         let document = session.document
-        let outcome: Result<[QRPayload], any Error>
-        do {
-            let base = try await environment.renderer.renderBase(document, scale: 1)
-            outcome = .success(try await environment.qrDecoder.decode(base))
-        } catch {
-            outcome = .failure(error)
+        qrWork?.cancel()
+        let work = Task { () -> Result<[QRPayload], any Error> in
+            do {
+                let base = try await environment.renderer.renderBase(document, scale: 1)
+                return .success(try await environment.qrDecoder.decode(base))
+            } catch {
+                return .failure(error)
+            }
+        }
+        qrWork = work
+        let outcome = await withTaskCancellationHandler {
+            await work.value
+        } onCancel: {
+            work.cancel()
         }
         guard !isClosed, qrRequest == request else { return }
         qrRequest = nil
+        qrWork = nil
         guard session.accepts(identity) else {
             droppedResultCount += 1
             qr = .idle
@@ -178,6 +201,8 @@ extension EditorModel {
     }
 
     public func clearQR() {
+        qrWork?.cancel()
+        qrWork = nil
         qrRequest = nil
         qr = .idle
     }

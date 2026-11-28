@@ -96,8 +96,11 @@ public final class EditorModel {
     /// The document state the native canvas last failed to draw; nil once it draws (NEW-01).
     var failedCanvasDraw: OutputKey?
     @ObservationIgnored var recognitionRequest: UUID?
+    @ObservationIgnored var recognitionWork:
+        Task<(Result<(OCRResult, AffineMap<SourcePixelSpace, DocumentSpace>), any Error>, [String]?), Never>?
     @ObservationIgnored var recognizedResult: OCRResult?
     @ObservationIgnored var qrRequest: UUID?
+    @ObservationIgnored var qrWork: Task<Result<[QRPayload], any Error>, Never>?
     @ObservationIgnored var colorPickTask: Task<Void, Never>?
     @ObservationIgnored var colorPickRequest: UUID?
     @ObservationIgnored var autoRedactionTasks: [Task<Void, Never>] = []

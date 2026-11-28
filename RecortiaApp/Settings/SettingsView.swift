@@ -253,7 +253,7 @@ struct ExportSettingsTab: View {
             Section {
                 if settings.loadIssue == .unverifiedConsent {
                     Label(
-                        "Automatic copy, save, and scrolling were turned off because their saved settings could not be verified. Turn them on again if you want them.",
+                        "Automatic copy, save, upload, scrolling, and update checks were turned off, and the save folder was cleared, because their saved settings could not be verified. Turn them on again if you want them.",
                         systemImage: "exclamationmark.shield"
                     )
                     .font(.callout)

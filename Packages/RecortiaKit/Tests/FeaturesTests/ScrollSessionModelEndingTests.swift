@@ -443,6 +443,44 @@ struct ScrollSessionModelEndingTests {
         #expect(h.model.state == .accepted)
         #expect(h.accepted.count == 1)
     }
+    @Test("Sleep cancels a selecting or capturing session silently and keeps a finished review")
+    func sleepCancelsCapture() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        h.model.cancelForSleep()
+        #expect(h.model.state == .canceled)
+        #expect(h.frames.stopCount >= 1)
+        #expect(h.scroller.stopCount >= 1)
+        #expect(h.model.acceptedFrames == 0)
+        #expect(h.model.preview == nil)
+        await waitFor("timers released") { h.clock.pendingSleepCount == 0 }
+
+        let armed = ScrollHarness()
+        _ = await armed.model.begin()
+        armed.model.chooseTarget(armed.target)
+        armed.model.cancelForSleep()
+        #expect(armed.model.state == .canceled)
+
+        let review = ScrollHarness()
+        await review.startCollecting()
+        await Self.deliverFrames(review, 1)
+        review.model.stop()
+        review.model.cancelForSleep()
+        #expect(review.model.state == .reviewing)
+    }
+
+    @Test("Pause stops the auto scroller, so a step in flight cannot scroll after it")
+    func pauseStopsScroller() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        defer { h.model.cancel() }
+        await h.startCollecting()
+        await Self.deliverFrames(h, 1)
+        let stops = h.scroller.stopCount
+        h.model.pause()
+        #expect(h.scroller.stopCount > stops)
+    }
+
     @Test("Resume cannot restart automatic scrolling while Stop settles an append")
     func resumeDuringPendingFinishDoesNotScroll() async {
         let h = ScrollHarness(trusted: true, automaticPreference: true)

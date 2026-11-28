@@ -98,6 +98,8 @@ public final class CaptureCoordinator {
     /// Delay used by Capture with Delay when the preference is 0 seconds.
     public static let fallbackDelaySeconds = 5
     private static let freezeLifetime: Duration = .seconds(60)
+    /// How long a capture waits for a canceled display read to return before failing.
+    static let freezeReadDrainLimit: Duration = .seconds(10)
 
     public private(set) var state: CaptureState = .idle
     public private(set) var mode: CaptureMode?
@@ -214,9 +216,9 @@ public final class CaptureCoordinator {
         freezeDeadline = deadline
         regionFreeze = .preparing(display)
         freezeExpiry = Task { [weak self, clock] in
-            let remaining = deadline - clock.uptime()
-            if remaining > .zero {
-                do { try await clock.sleep(for: remaining) } catch { return }
+            // A timer can return early; only the monotonic deadline ends the preview.
+            while clock.uptime() < deadline {
+                do { try await clock.sleep(for: deadline - clock.uptime()) } catch { return }
             }
             guard !Task.isCancelled else { return }
             self?.expireFrozenRegion()
@@ -311,10 +313,16 @@ public final class CaptureCoordinator {
         forgetSnapFrames()
         apply(.selectionCommitted(delaySeconds: active.delaySeconds))
         let id = active.id
-        task = Task { [weak self] in
+        task = Task { [weak self, clock] in
             // ScreenCaptureKit can complete a canceled read later. The next capture waits for it
-            // to return before starting a new one.
-            await drainingRead?.value
+            // to return, never runs beside it, and fails if the read is still out at the limit.
+            if let drainingRead,
+                await !DrainRace().wait(for: drainingRead, within: Self.freezeReadDrainLimit, clock: clock)
+            {
+                guard let self, self.isCurrent(id) else { return }
+                self.handle(.targetUnavailable)
+                return
+            }
             await self?.run(target, id: id)
         }
         return true
@@ -727,5 +735,40 @@ public final class CaptureCoordinator {
         case .permissionGranted, .selectionCommitted, .countdownTick, .countdownFinished, .captureSucceeded, .reset:
             break
         }
+    }
+}
+
+/// Waits for a task to finish or a clock deadline, whichever comes first. Awaiting `Task.value`
+/// ignores the waiter's cancellation, so the read is raced from a separate task.
+@MainActor
+private final class DrainRace {
+    private var continuation: CheckedContinuation<Bool, Never>?
+    private var racers: [Task<Void, Never>] = []
+
+    /// True when `task` finished within `limit`; false at the limit or when the waiter is canceled.
+    func wait(for task: Task<Void, Never>, within limit: Duration, clock: FeatureClock) async -> Bool {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+                racers = [
+                    Task {
+                        await task.value; self.finish(true)
+                    },
+                    Task {
+                        do { try await clock.sleep(for: limit) } catch { return }
+                        self.finish(false)
+                    },
+                ]
+            }
+        } onCancel: {
+            Task { @MainActor in self.finish(false) }
+        }
+    }
+
+    private func finish(_ drained: Bool) {
+        guard let continuation else { return }
+        self.continuation = nil
+        for racer in racers { racer.cancel() }
+        continuation.resume(returning: drained)
     }
 }

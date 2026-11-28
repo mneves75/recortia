@@ -241,4 +241,34 @@ struct EditorRecognitionTests {
         #expect(h.model.notice == .noQRCodeFound)
         #expect(!h.model.canUndo)
     }
+
+    @Test(
+        "Closing the editor or clearing its results cancels running text and QR recognition", arguments: [true, false])
+    func closeOrClearCancelsRecognition(closes: Bool) async {
+        let h = EditorHarness()
+        h.recognizer.lines = [OCRResult.Line(text: "x", confidence: 1, box: Rect(x: 0, y: 0, width: 1, height: 1))]
+        h.qr.payloads = Self.payloads
+        let text = Pending<Void>()
+        let codes = Pending<Void>()
+        h.recognizer.pending = text
+        h.qr.pending = codes
+        let recognizing = Task { await h.model.recognizeText() }
+        let decoding = Task { await h.model.decodeQR() }
+        await waitFor("both are running") { text.waiterCount == 1 && codes.waiterCount == 1 }
+
+        if closes {
+            h.model.close()
+        } else {
+            h.model.clearRecognition()
+            h.model.clearQR()
+        }
+        text.resolve(())
+        codes.resolve(())
+        await recognizing.value
+        await decoding.value
+        #expect(h.recognizer.observedCancellation)
+        #expect(h.qr.observedCancellation)
+        #expect(h.model.recognition == .idle)
+        #expect(h.model.qr == .idle)
+    }
 }

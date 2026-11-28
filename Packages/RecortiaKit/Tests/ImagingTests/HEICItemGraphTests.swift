@@ -144,8 +144,8 @@ struct HEICItemGraphTests {
         return [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: size >> $0) } + Array(type.utf8) + body
     }
 
-    /// `data` with `child` appended as the last child of the box at `path` (full boxes with 32-bit
-    /// sizes, as `meta` and `iref` are), every enclosing box grown to match.
+    /// `data` with `child` appended as the last child of the box at `path` (boxes with 32-bit sizes;
+    /// `meta` and `iref` are full boxes), every enclosing box grown to match.
     static func appending(_ child: [UInt8], into path: [String], of data: Data) throws -> Data {
         var bytes = [UInt8](data)
         func uint(_ offset: Int) -> Int { (0..<4).reduce(0) { $0 << 8 | Int(bytes[offset + $1]) } }
@@ -165,7 +165,7 @@ struct HEICItemGraphTests {
             }
             let at = try #require(found, "no \(name) box")
             enclosing.append(at)
-            start = at + 12
+            start = at + (["meta", "iref"].contains(name) ? 12 : 8)
             end = at + uint(at)
         }
         bytes.insert(contentsOf: child, at: end)
@@ -209,6 +209,21 @@ struct HEICItemGraphTests {
         let (data, primary, tile) = try Self.tiled()
         let second = Self.box("dimg", Self.id16(primary) + [0, 1] + Self.id16(tile))
         let crafted = try Self.appending(second, into: ["meta", "iref"], of: data)
+        #expect(throws: ExportError.encodingFailed) { try ExportContainerFilter.heic(crafted) }
+    }
+
+    // `auxC` describes an alpha or depth item, which the item graph already refuses; the property
+    // allowlist refuses it on its own as well.
+    @Test("The HEIC allowlist refuses an auxC property")
+    func refusesAuxiliaryProperty() throws {
+        let data = try ContainerCrafting.encode(
+            [try ChartFixture.geometryChart(width: 32, height: 24)], type: "public.heic")
+        let path = ["meta", "iprp", "ipco"]
+        // Control: an allowlisted property appended the same way still passes.
+        let size = Self.box("ispe", [0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 24])
+        _ = try ExportContainerFilter.heic(try Self.appending(size, into: path, of: data))
+        let auxiliary = Self.box("auxC", [0, 0, 0, 0] + Array("urn:mpeg:hevc:2015:auxid:1".utf8) + [0])
+        let crafted = try Self.appending(auxiliary, into: path, of: data)
         #expect(throws: ExportError.encodingFailed) { try ExportContainerFilter.heic(crafted) }
     }
 

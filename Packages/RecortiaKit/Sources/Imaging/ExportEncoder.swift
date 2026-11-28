@@ -27,36 +27,102 @@ enum ExportEncoder {
     static func encodeResolvingFormat(_ image: CGImage, options: ExportOptions) throws(ExportError)
         -> (bytes: Data, format: ExportFormat)
     {
-        guard options.automaticFormat else { return (try encode(image, options: options), options.format) }
-        var fixed = options
-        fixed.automaticFormat = false
-        fixed.format = .png
-        let png = try encode(image, options: fixed)
-        // Under the floor no JPEG can win, so none is encoded.
-        guard png.count > AutomaticFormatRule.minimumPNGByteCount, try !hasTransparency(image) else {
-            return (png, .png)
+        let opaque = try opaqueView(image)
+        guard options.automaticFormat else {
+            return (
+                try encode(image, opaque: opaque, options.format, background: options.jpegBackground), options.format
+            )
         }
-        fixed.format = .jpeg(quality: AutomaticFormatRule.jpegQuality)
-        let jpeg = try encode(image, options: fixed)
+        let png = try encode(image, opaque: opaque, .png, background: options.jpegBackground)
+        // Under the floor no JPEG can win, and a translucent image keeps PNG, so no JPEG is encoded.
+        guard png.count > AutomaticFormatRule.minimumPNGByteCount, opaque != nil else { return (png, .png) }
+        let format = ExportFormat.jpeg(quality: AutomaticFormatRule.jpegQuality)
+        let jpeg = try encode(image, opaque: opaque, format, background: options.jpegBackground)
         return AutomaticFormatRule.keepsJPEG(pngByteCount: png.count, jpegByteCount: jpeg.count)
-            ? (jpeg, fixed.format) : (png, .png)
+            ? (jpeg, format) : (png, .png)
     }
 
     static func encode(_ image: CGImage, options: ExportOptions) throws(ExportError) -> Data {
-        switch options.format {
+        try encode(image, opaque: try opaqueView(image), options.format, background: options.jpegBackground)
+    }
+
+    private static func encode(
+        _ image: CGImage, opaque: OpaqueView?, _ format: ExportFormat, background: RGBA
+    ) throws(ExportError) -> Data {
+        switch format {
         case .png:
-            return try ExportContainerFilter.png(try imageIO(image, type: "public.png", properties: [:]))
+            let source = opaque?.image ?? image
+            return try ExportContainerFilter.png(
+                try imageIO(source, type: "public.png", properties: pngProperties(source, pixels: opaque?.pixels)))
         case .jpeg(let quality):
-            let flattened = try flatten(image, on: options.jpegBackground)
-            let encoded = try imageIO(
-                flattened, type: "public.jpeg", properties: [kCGImageDestinationLossyCompressionQuality: quality])
-            return try ExportContainerFilter.jpeg(encoded)
+            let source = try lossySource(image, opaque: opaque, background: background)
+            return try ExportContainerFilter.jpeg(
+                try imageIO(
+                    source, type: "public.jpeg", properties: [kCGImageDestinationLossyCompressionQuality: quality]))
         case .heic(let quality):
-            let flattened = try flatten(image, on: options.jpegBackground)
-            let encoded = try imageIO(
-                flattened, type: "public.heic", properties: [kCGImageDestinationLossyCompressionQuality: quality])
-            return try ExportContainerFilter.heic(encoded)
+            let source = try lossySource(image, opaque: opaque, background: background)
+            return try ExportContainerFilter.heic(
+                try imageIO(
+                    source, type: "public.heic", properties: [kCGImageDestinationLossyCompressionQuality: quality]))
         }
+    }
+
+    /// JPEG and HEIC have no alpha (FR-07). Compositing a canonical opaque raster over the
+    /// background would redraw the same bytes into `RenderRaster.makeImage(opaque: true)`'s layout,
+    /// which is exactly its opaque view, so that view is encoded instead.
+    private static func lossySource(_ image: CGImage, opaque: OpaqueView?, background: RGBA) throws(ExportError)
+        -> CGImage
+    {
+        guard background.isOpaque else { throw ExportError.invalidOptions(.translucentJPEGBackground) }
+        if let opaque, opaque.pixels != nil { return opaque.image }
+        return try flatten(image, on: background)
+    }
+
+    /// An opaque image seen without alpha. `pixels` are the bytes the opacity scan read, present
+    /// only for the zero-copy view of a canonical `RenderRaster` image.
+    struct OpaqueView {
+        let image: CGImage
+        let pixels: Data?
+    }
+
+    /// The same pixels without an alpha channel when every pixel is opaque, nil when one is not.
+    /// At alpha 255 premultiplied color is straight color, so a canonical raster's view shares its
+    /// bytes; any other layout with alpha is returned unchanged once found opaque.
+    static func opaqueView(_ image: CGImage) throws(ExportError) -> OpaqueView? {
+        switch image.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast: return OpaqueView(image: image, pixels: nil)
+        default: break
+        }
+        guard image.alphaInfo == .premultipliedLast, image.bitsPerComponent == 8, image.bitsPerPixel == 32,
+            image.byteOrderInfo == .order32Big, let space = RenderRaster.colorSpace, image.colorSpace == space,
+            let provider = image.dataProvider, let pixels = provider.data as Data?
+        else { return try hasTransparency(image) ? nil : OpaqueView(image: image, pixels: nil) }
+        guard
+            AlphaScan.isOpaque(pixels, width: image.width, height: image.height, bytesPerRow: image.bytesPerRow)
+        else { return nil }
+        let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue)
+        // `decode: nil` passes no pointer.
+        guard
+            let view = unsafe CGImage(
+                width: image.width, height: image.height, bitsPerComponent: 8, bitsPerPixel: 32,
+                bytesPerRow: image.bytesPerRow, space: space, bitmapInfo: info, provider: provider, decode: nil,
+                shouldInterpolate: false, intent: .defaultIntent)
+        else { throw ExportError.encodingFailed }
+        return OpaqueView(image: view, pixels: pixels)
+    }
+
+    /// ImageIO applies the PNG row-filter property only to images without alpha (an RGBA image
+    /// encodes the same bytes whatever it says). Interface pixels compress smallest and fastest
+    /// unfiltered; anything else gets Up, which measured no larger than the RGBA encoding on every
+    /// probed photo, gradient and mixed screen. `pixels` are the image's bytes when already read.
+    static func pngProperties(_ image: CGImage, pixels known: Data? = nil) -> [CFString: Any] {
+        guard image.alphaInfo == .noneSkipLast, image.bitsPerComponent == 8, image.bitsPerPixel == 32,
+            let pixels = known ?? image.dataProvider?.data as Data?
+        else { return [:] }
+        let unfiltered = PNGRowFilter.prefersUnfiltered(
+            pixels, width: image.width, height: image.height, bytesPerRow: image.bytesPerRow)
+        let filter = unfiltered ? IMAGEIO_PNG_FILTER_NONE : IMAGEIO_PNG_FILTER_UP
+        return [kCGImagePropertyPNGDictionary: [kCGImagePropertyPNGCompressionFilter: filter]]
     }
 
     /// Whether any pixel is not fully opaque; an image without an alpha channel never is.
@@ -156,7 +222,8 @@ enum ExportContainerFilter {
         return output
     }
 
-    /// Keeps SOI, JFIF APP0, ICC APP2, DQT, SOFn, DHT, DRI, and a single baseline scan through EOI.
+    /// Keeps SOI, the JFIF APP0 header without any thumbnail, ICC APP2, DQT, SOFn, DHT, DRI, and a
+    /// single baseline scan through EOI.
     static func jpeg(_ data: Data) throws(ExportError) -> Data {
         let reader = DecodeByteReader(data: data)
         guard reader.count >= 4, reader.byte(0) == 0xFF, reader.byte(1) == 0xD8 else {
@@ -176,7 +243,17 @@ enum ExportContainerFilter {
                 output.append(reader.slice(offset..<reader.count))
                 return output
             }
-            if keeps(marker: marker, payload: payload) { output.append(reader.slice(offset..<end)) }
+            if marker == 0xE0 {
+                // JFIF's fixed 14 bytes may be followed by an uncompressed thumbnail: keep the
+                // identifier, version, units and density, with a 0x0 thumbnail.
+                if payload.starts(with: Array("JFIF\0".utf8)), payload.count >= 14 {
+                    output.append(contentsOf: [0xFF, 0xE0, 0x00, 0x10])
+                    output.append(payload.prefix(12))
+                    output.append(contentsOf: [0, 0])
+                }
+            } else if keeps(marker: marker, payload: payload) {
+                output.append(reader.slice(offset..<end))
+            }
             offset = end
         }
     }
@@ -185,7 +262,7 @@ enum ExportContainerFilter {
     static let heicFileBoxes: Set<String> = ["ftyp", "meta", "mdat"]
     static let heicMetaBoxes: Set<String> = ["hdlr", "dinf", "pitm", "iinf", "iref", "iprp", "iloc", "idat"]
     static let heicPropertyBoxes: Set<String> = [
-        "hvcC", "ispe", "colr", "pixi", "irot", "imir", "clap", "clli", "mdcv", "auxC",
+        "hvcC", "ispe", "colr", "pixi", "irot", "imir", "clap", "clli", "mdcv",
     ]
     /// Image items only: no `Exif`, `mime` (XMP) or `uri ` item can carry metadata.
     static let heicItemTypes: Set<String> = ["hvc1", "grid"]
@@ -328,7 +405,6 @@ enum ExportContainerFilter {
 
     private static func keeps(marker: UInt8, payload: Data) -> Bool {
         switch marker {
-        case 0xE0: payload.starts(with: Array("JFIF\0".utf8))
         case 0xE2: payload.starts(with: Array("ICC_PROFILE\0".utf8))
         case 0xDB, 0xC4, 0xDD: true
         case 0xC0...0xCF: marker != 0xC8 && marker != 0xCC
@@ -354,5 +430,68 @@ enum ExportContainerFilter {
                 i += 1
             }
         }
+    }
+}
+
+enum AlphaScan {
+    /// Whether every alpha byte (the fourth of each 32-bit pixel) is 255. False for a buffer smaller
+    /// than the rows it describes.
+    static func isOpaque(_ bytes: Data, width: Int, height: Int, bytesPerRow: Int) -> Bool {
+        let (rowBytes, rowOverflow) = width.multipliedReportingOverflow(by: 4)
+        guard width > 0, height > 0, !rowOverflow, bytesPerRow >= rowBytes,
+            case let (start, o1) = (height - 1).multipliedReportingOverflow(by: bytesPerRow), !o1,
+            case let (needed, o2) = start.addingReportingOverflow(rowBytes), !o2, bytes.count >= needed
+        else { return false }
+        // Eight bytes (two pixels) per load; the alpha bytes are bits 24-31 and 56-63 of a
+        // little-endian word. Invariant: every load ends at or before `base + rowBytes`, which the
+        // guard keeps inside the buffer.
+        let alphas: UInt64 = 0xFF00_0000_FF00_0000
+        return unsafe bytes.withUnsafeBytes { buffer in
+            for row in 0..<height {
+                let base = row * bytesPerRow
+                var i = base
+                var word: UInt64 = alphas
+                while i + 8 <= base + rowBytes {
+                    word &= unsafe buffer.loadUnaligned(fromByteOffset: i, as: UInt64.self).littleEndian
+                    i += 8
+                }
+                if i < base + rowBytes, unsafe buffer[i + 3] != 255 { return false }
+                if word & alphas != alphas { return false }
+            }
+            return true
+        }
+    }
+}
+
+enum PNGRowFilter {
+    /// Whether a 32-bit RGBX buffer looks like interface content, sampled every eighth row: at
+    /// least 90% of pixels repeat their left neighbor and at most a quarter of the rest are smooth
+    /// steps (two levels or less, as in gradients and photos). False for a buffer smaller than the
+    /// rows it describes.
+    static func prefersUnfiltered(_ bytes: Data, width: Int, height: Int, bytesPerRow: Int) -> Bool {
+        let span = bytes.span
+        let (rowBytes, rowOverflow) = width.multipliedReportingOverflow(by: 4)
+        guard width > 1, height > 0, !rowOverflow, bytesPerRow >= rowBytes,
+            case let (start, o1) = (height - 1).multipliedReportingOverflow(by: bytesPerRow), !o1,
+            case let (needed, o2) = start.addingReportingOverflow(rowBytes), !o2, span.count >= needed
+        else { return false }
+        func step(_ a: UInt8, _ b: UInt8) -> UInt8 { a > b ? a - b : b - a }
+        var same = 0
+        var smooth = 0
+        var total = 0
+        var row = 0
+        while row < height {
+            let base = row * bytesPerRow
+            var i = base + 4
+            while i < base + rowBytes {
+                let largest = max(
+                    step(span[i], span[i - 4]), step(span[i + 1], span[i - 3]), step(span[i + 2], span[i - 2]))
+                if largest == 0 { same += 1 } else if largest <= 2 { smooth += 1 }
+                i += 4
+            }
+            total += width - 1
+            row += 8
+        }
+        return same * 10 >= total * 9 && smooth * 4 <= total - same
     }
 }

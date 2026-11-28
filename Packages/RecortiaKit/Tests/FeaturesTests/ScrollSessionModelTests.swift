@@ -168,6 +168,17 @@ struct ScrollSessionModelTests {
         #expect(h.model.state == .collecting)
     }
 
+    @Test("Turning automatic scrolling off mid-session falls back to manual mode")
+    func automaticPreferenceOffFallsBackToManual() async {
+        let h = ScrollHarness(trusted: true, automaticPreference: true)
+        await h.startCollecting()
+        h.settings.update { $0.automaticScrollingEnabled = false }
+        h.frames.deliver()
+        await waitFor("manual") { h.model.mode == .manual }
+        #expect(h.scroller.stepCount == 0)
+        #expect(h.model.state == .collecting)
+    }
+
     @Test("An ambiguous match pauses and never appends; Stop then labels the result partial")
     func ambiguousPauses() async {
         let h = ScrollHarness()

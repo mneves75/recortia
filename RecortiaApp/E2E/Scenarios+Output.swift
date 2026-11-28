@@ -251,6 +251,9 @@
                     // The thumbnail is the exported image: user content, masked out.
                     let thumbnail = EditorWindowController.all(DragChipView.self, in: chip).map { $0 as NSView }
                     context.check("the drag chip's thumbnail is found to mask it", !thumbnail.isEmpty)
+                    context.check(
+                        "the drag chip's own Copy is off (only the drag carries the snapshot)",
+                        EditorWindowController.all(DragChipView.self, in: chip).allSatisfy { !$0.allowsCutCopyPaste })
                     await context.darkCompanion(
                         chip, in: panel, shot: "drag-chip", surface: "drag chip", excluding: thumbnail)
                 }

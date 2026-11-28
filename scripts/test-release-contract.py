@@ -60,6 +60,16 @@ elif args[0] == 'show':
     print('MARKETING_VERSION: 0.12.2\\nCURRENT_PROJECT_VERSION: 21')
 elif args[0] == 'describe':
     print('v0.12.2')
+elif args[0] == 'cat-file':
+    print((root / 'tag-type').read_text().strip() if (root / 'tag-type').exists() else 'tag')
+elif args[0] == 'fetch':
+    # Only an explicit refspec refreshes the fully qualified tracking ref the gate reads.
+    if args[-1] == '+refs/heads/main:refs/remotes/origin/main':
+        (root / 'fetched-main').touch()
+elif args[0] == 'merge-base':
+    # A shorthand such as origin/main can resolve to a local tag or branch, or a stale tracking ref.
+    exact = args[-1] == 'refs/remotes/origin/main' and (root / 'fetched-main').exists()
+    sys.exit(1 if (root / 'off-main').exists() or not exact else 0)
 elif args[:2] == ['worktree', 'add']:
     target = pathlib.Path(args[-2])
     shutil.copytree(root / 'gate', target)
@@ -119,6 +129,23 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertEqual(content, path.read_bytes())
             self.assertFalse((out / "src").exists(), "reservation must fail before the gate")
             self.assertFalse((fixture.root / "archive-reached").exists())
+
+    def test_release_needs_an_annotated_tag_on_origin_main(self) -> None:
+        for marker, content, message in (
+            ("tag-type", "commit", "lightweight tag"),
+            ("off-main", "", "not on origin/main"),
+        ):
+            with self.subTest(marker):
+                fixture = self.fixture()
+                (fixture.root / marker).write_text(content)
+                result = fixture.run()
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(message, result.stderr)
+                self.assertFalse((fixture.root / ".build/release/0.12.2").exists(), "refused before reserving")
+                self.assertFalse((fixture.root / "gate-reached").exists())
+        control = self.fixture()
+        control.run()
+        self.assertTrue(any(control.root.rglob("gate-reached")), "control: an annotated tag on main reaches the gate")
 
     def test_concurrent_invocations_reserve_the_tag_exactly_once(self) -> None:
         fixture = self.fixture()

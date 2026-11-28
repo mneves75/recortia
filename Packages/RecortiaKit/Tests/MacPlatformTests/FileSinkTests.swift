@@ -290,6 +290,35 @@ struct FileSinkTests {
         }
     }
 
+    // H-fs1 (security audit 2026-11): another writer to the chosen folder could swap the private
+    // folder just made for one of the saver's own folders before it was opened; the owner and
+    // name checks passed, so the save stripped that folder's ACL and made it owner-only.
+    @Test("A private folder swapped for one of the saver's own folders is refused and left unchanged")
+    func swappedPrivateFolderIsLeftUnchanged() throws {
+        let folder = try TestSupport.makeTemporaryDirectory()
+        defer { TestSupport.removeDirectory(folder) }
+        let decoy = folder.appendingPathComponent("shared-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: decoy, withIntermediateDirectories: false)
+        try Data("kept".utf8).write(to: decoy.appendingPathComponent("notes.txt"))
+        try #require(chmod(decoy.path(percentEncoded: false), 0o755) == 0)
+        var swapped: URL?
+        let sink = FileSink(
+            fileSystem: POSIXFileSystem(afterMakeStage: { stage in
+                let away = folder.appendingPathComponent("moved-away", isDirectory: true)
+                if rename(stage.path(percentEncoded: false), away.path(percentEncoded: false)) == 0,
+                    rename(decoy.path(percentEncoded: false), stage.path(percentEncoded: false)) == 0
+                {
+                    swapped = stage
+                }
+            }))
+        #expect(throws: SinkError.accessDenied) { _ = try sink.saveUnique(snapshot, in: folder) }
+        let stage = try #require(swapped, "control: the private folder was never swapped")
+        var status = stat()
+        try #require(stat(stage.path(percentEncoded: false), &status) == 0)
+        #expect(status.st_mode & 0o7777 == 0o755, "the saver's own folder lost its access")
+        #expect(TestSupport.directoryEntries(stage) == ["notes.txt"])
+    }
+
     enum Redirect: String, CaseIterable, Sendable {
         /// The chosen folder's own name became a link.
         case folder

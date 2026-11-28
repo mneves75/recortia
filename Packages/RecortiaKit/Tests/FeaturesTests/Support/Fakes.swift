@@ -162,6 +162,13 @@ final class ManualClock: FeatureClock {
         elapsed += .seconds(seconds)
     }
 
+    /// Every pending sleeper returns before its deadline, as a timer may after a clock change.
+    func wakeEarly() {
+        let woken = sleepers
+        sleepers.removeAll()
+        for sleeper in woken { sleeper.continuation.resume() }
+    }
+
     private func cancelSleeper(_ id: UUID) {
         guard let index = sleepers.firstIndex(where: { $0.id == id }) else { return }
         sleepers.remove(at: index).continuation.resume(throwing: CancellationError())

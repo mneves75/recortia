@@ -15,6 +15,43 @@ On 2026-10-16 the repository history was squashed into one commit and the releas
 
 ## [Unreleased]
 
+## [0.16.1] - source candidate
+
+Source candidate, build 32: recorded before it ships and never published from here. Faster PNG
+import and smaller exports, and the fixes from the 2026-11 security audit.
+[BACKLOG.json](BACKLOG.json) records gate, review and installation evidence.
+
+### Changed
+
+- PNG import verifies its checksums with the system zlib instead of byte-by-byte Swift loops:
+  decoding a 5K PNG takes about 72% less CPU.
+- Opaque exports are encoded without an alpha channel, with a PNG row filter chosen for the
+  image: screen PNGs are about 17% smaller and encode with about 10% less CPU (Automatic format
+  about 14%), photo PNGs about 16% smaller. JPEG and HEIC skip a redraw that produced the same
+  bytes.
+- Automatic format keeps the lossless PNG for some photos it used to save as JPEG: the size
+  rule is unchanged, but the PNG it compares is now smaller.
+
+### Fixed
+
+- Automatic GitHub upload refuses internal repositories and responses that do not state the
+  repository's visibility.
+- Magnifier callouts no longer show pixels from outside a crop.
+- JPEG exports drop any JFIF thumbnail, and HEIC exports refuse auxiliary-image properties.
+- A QR link whose host is percent-encoded is treated as other text, and the inspector shows a
+  link's host exactly as encoded.
+- The quick-action thumbnail, its expanded preview and the drag chip no longer offer their own
+  Copy, which bypassed export sanitizing.
+- Copy Text stops when the screen locks. Automatic scrolling stops on Pause, when its preference
+  is turned off, and on sleep, and the lock notification reaches Recortia while it is inactive.
+- Reads of another app's accessibility elements are time-bounded, so a hung app cannot hold
+  Stop.
+- A frozen selection expires on time even when its timer wakes late, and text and QR recognition
+  stop when the editor closes.
+- Saving into a shared folder refuses a private folder that another writer swapped.
+- A non-finite display density no longer stops automatic masking.
+- The notice about unverified settings names every setting it turned off.
+
 ## [0.16.0] - 2026-11-24
 
 Build 31, including the Program 2026-11 follow-on trains. Published as a Developer ID signed and

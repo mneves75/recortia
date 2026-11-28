@@ -484,7 +484,9 @@ public final class QuickActionsModel {
         resumeExportSlotWaiters()
     }
 
-    private func cancelTextCopy() {
+    /// Retires a running Copy Text so it never writes the clipboard; the app calls it when the
+    /// screen locks (PERM-02).
+    public func cancelTextCopy() {
         guard textCopyRequest != nil else { return }
         textCopyRequest = nil
         // Keep the OCR slot until the canceled render or recognition has unwound.

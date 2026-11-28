@@ -205,6 +205,13 @@ struct SensitiveTextNegativeTests {
 
 @Suite("SensitiveText: tiles and boxes")
 struct SensitiveTextGeometryTests {
+    @Test("A non-finite display density falls back to one pixel per point", arguments: [Double.nan, .infinity])
+    func nonFiniteDensityKeepsFiniteScales(pixelsPerPoint: Double) {
+        #expect(
+            TileLayout.standard(pixelsPerPoint: pixelsPerPoint).map(\.scale)
+                == TileLayout.standard(pixelsPerPoint: 1).map(\.scale))
+    }
+
     @Test(
         "Fine and coarse tiles cover every pixel and stay within the tile budget",
         arguments: [(1200, 800, 1.0), (2400, 1600, 2.0), (3024, 1964, 2.0), (2560, 1440, 1.0), (5120, 2880, 2.0)])

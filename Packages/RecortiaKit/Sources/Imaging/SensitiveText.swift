@@ -865,7 +865,8 @@ struct TileLayout: Equatable, Sendable {
     ///
     /// A match found by several sweeps or tiles is merged into one region (`mergeRegions`).
     static func standard(pixelsPerPoint: Double, fineTileSide: CGFloat = 1024) -> [TileLayout] {
-        let density = max(CGFloat(pixelsPerPoint), 1)
+        // A NaN passes through max(_:_:) and an infinite density gives a zero scale; either traps later.
+        let density = pixelsPerPoint.isFinite ? max(CGFloat(pixelsPerPoint), 1) : 1
         return [
             TileLayout(
                 scale: 2 / density, tileSide: fineTileSide, horizontalOverlap: fineTileSide / 2, verticalOverlap: 192),

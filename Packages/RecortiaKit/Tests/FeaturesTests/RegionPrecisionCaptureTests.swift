@@ -138,6 +138,10 @@ struct RegionPrecisionCaptureTests {
         h.clock.advance(bySeconds: 59)
         await drain()
         #expect(h.coordinator.regionFreeze != nil)
+        // A timer that returns before the deadline sleeps again instead of ending the expiry.
+        h.clock.wakeEarly()
+        await drain()
+        #expect(h.coordinator.regionFreeze != nil)
         if timerResumes {
             h.clock.advance(bySeconds: 1)
             await waitFor("preview expired") { h.coordinator.regionFreeze == nil }
@@ -217,6 +221,38 @@ struct RegionPrecisionCaptureTests {
         #expect(h.coordinator.regionFreeze == nil)
         #expect(h.assets.registeredCaptures.count == 1)
         #expect(await store.count == 1)
+    }
+
+    @Test("A canceled display read that never returns holds the next capture only until the drain limit, then fails it")
+    func stuckFrozenReadFailsTheNextCaptureClosed() async throws {
+        let h = CaptureHarness()
+        let (display, frame, geometry) = try frozenFixture()
+        h.capture.displayList = [display]
+        let read = Pending<Result<(CGImage, CaptureGeometry), CaptureError>>()
+        h.capture.pendingCapture = read
+        h.coordinator.start(.region)
+        h.coordinator.toggleRegionFreeze(on: display)
+        await waitFor("display read is suspended") { read.waiterCount == 1 }
+        h.coordinator.toggleRegionFreeze(on: display)
+        h.capture.pendingCapture = nil
+        let region = Rect<DesktopSpace>(x: -29, y: -15, width: 2, height: 2)
+        #expect(h.coordinator.commitRegion(region, on: display))
+        await waitFor("drain timer") { h.clock.pendingSleepCount == 1 }
+
+        let limit = Double(CaptureCoordinator.freezeReadDrainLimit.components.seconds)
+        h.clock.advance(bySeconds: limit - 0.001)
+        await drain()
+        #expect(h.coordinator.state == .capturing)
+        h.clock.advance(bySeconds: 0.001)
+        await waitFor("the waiting capture fails") { h.coordinator.state == .failed(.targetUnavailable) }
+        #expect(h.capture.captureCalls == [.display(display)])
+        #expect(h.capture.maxConcurrentCaptures == 1)
+
+        // The late read still publishes nothing.
+        #expect(read.resolve(.success((frame, geometry))))
+        await drain()
+        #expect(h.completions.isEmpty && h.assets.registeredCaptures.isEmpty)
+        #expect(h.coordinator.regionFreeze == nil)
     }
 
     @Test("Permission revocation during a frozen region interrupts selection on the injected clock")

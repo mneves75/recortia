@@ -65,6 +65,9 @@ struct QRDecodingTests {
         let invalidUTF8 = QRPayloadClassifier.classify(Data([0xC3, 0x28]))
         #expect(invalidUTF8.kind == .binary)
         #expect(invalidUTF8.string == nil)
+        // A percent-encoded host would display as look-alike Unicode; its IDNA form stays a web URL.
+        #expect(kind("https://ex%C3%A4mple.com/") == .otherScheme("https"))
+        #expect(kind("https://xn--exmple-cua.com/") == .webURL(URL(string: "https://xn--exmple-cua.com/")!))
     }
 
     static func hex(_ string: String) -> Data {
