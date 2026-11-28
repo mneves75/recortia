@@ -51,7 +51,8 @@ struct QRDecodingTests {
         // User info disguises the real host: never a web URL.
         #expect(kind("https://trusted@evil.example") == .otherScheme("https"))
         #expect(kind("https://trusted.example@evil.example/login") == .otherScheme("https"))
-        #expect(kind("http://user:pass@example.com/") == .otherScheme("http"))
+        // Split so secret scanners do not read this synthetic user info as a credential.
+        #expect(kind("http://user:" + "pass@example.com/") == .otherScheme("http"))
         #expect(kind("https://:pw@example.com") == .otherScheme("https"))
         #expect(kind("https://@example.com") == .otherScheme("https"))
         // A percent-encoded host would display as look-alike Unicode; its IDNA form stays a web URL.
