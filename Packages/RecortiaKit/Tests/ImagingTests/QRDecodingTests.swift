@@ -54,6 +54,9 @@ struct QRDecodingTests {
         #expect(kind("http://user:pass@example.com/") == .otherScheme("http"))
         #expect(kind("https://:pw@example.com") == .otherScheme("https"))
         #expect(kind("https://@example.com") == .otherScheme("https"))
+        // A percent-encoded host would display as look-alike Unicode; its IDNA form stays a web URL.
+        #expect(kind("https://ex%C3%A4mple.com/") == .otherScheme("https"))
+        #expect(kind("https://xn--exmple-cua.com/") == .webURL(URL(string: "https://xn--exmple-cua.com/")!))
         #expect(kind("WIFI:S:net;T:WPA;P:pw;;") == .wifi)
         #expect(kind("wifi:S:net;;") == .wifi)
         #expect(kind("bitcoin:bc1qxyz?amount=1") == .payment)
