@@ -56,7 +56,9 @@ struct GitHubUploadTests {
     }
 
     var privateRepo: GitHubResponse {
-        reply(200, #"{"private":true,"archived":false,"full_name":"fixture-owner/private-captures"}"#)
+        reply(
+            200,
+            #"{"private":true,"visibility":"private","archived":false,"full_name":"fixture-owner/private-captures"}"#)
     }
 
     func file(_ snapshot: ShareSnapshot, wrapped: Bool) -> GitHubResponse {
@@ -93,11 +95,16 @@ struct GitHubUploadTests {
         #expect(requests.allSatisfy { $0.url?.host == "api.github.com" && $0.url?.user == nil })
     }
 
-    @Test("A public repository is rejected before any content request")
-    func publicRepositoryDenied() async {
-        let transport = UploadTransportFixture([
-            reply(200, #"{"private":false,"archived":false,"full_name":"fixture-owner/private-captures"}"#)
+    // An internal repository reports `private: true` but is visible to every member of its
+    // enterprise, so only `visibility` set to private admits an upload.
+    @Test(
+        "A public or internal repository is rejected before any content request",
+        arguments: [
+            #"{"private":false,"visibility":"public","archived":false,"full_name":"fixture-owner/private-captures"}"#,
+            #"{"private":true,"visibility":"internal","archived":false,"full_name":"fixture-owner/private-captures"}"#,
         ])
+    func publicRepositoryDenied(metadata: String) async {
+        let transport = UploadTransportFixture([reply(200, metadata)])
         do {
             _ = try await GitHubUploader(transport: transport).upload(
                 TestSupport.snapshot(), to: destination, token: try Self.token(), intent: intent, isLive: { true },
@@ -243,8 +250,9 @@ struct GitHubUploadTests {
     @Test(
         "Malformed, archived or renamed repository metadata is refused",
         arguments: [
-            "{}", #"{"private":true,"archived":true,"full_name":"fixture-owner/private-captures"}"#,
-            #"{"private":true,"archived":false,"full_name":"other/private-captures"}"#,
+            "{}",
+            #"{"private":true,"visibility":"private","archived":true,"full_name":"fixture-owner/private-captures"}"#,
+            #"{"private":true,"visibility":"private","archived":false,"full_name":"other/private-captures"}"#,
         ])
     func invalidRepository(metadata: String) async {
         let transport = UploadTransportFixture([reply(200, metadata)])

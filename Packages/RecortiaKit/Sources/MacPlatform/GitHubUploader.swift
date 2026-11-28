@@ -239,7 +239,8 @@ public struct GitHubUploader: Sendable {
         guard repository.full_name.lowercased() == "\(destination.owner)/\(destination.repository)".lowercased(),
             !repository.archived
         else { throw .invalidResponse }
-        guard repository.private else { throw .publicRepository }
+        // An internal repository also reports `private`, yet its whole enterprise can read it.
+        guard repository.private, repository.visibility == "private" else { throw .publicRepository }
         let path = "screenshots/\(intent.uuidString.lowercased()).\(snapshot.format.fileExtension)"
         let contentsURL = "\(base)/contents/\(path)"
         var lookup = try request(contentsURL, token: token)
@@ -346,7 +347,12 @@ public struct GitHubUploader: Sendable {
         return url
     }
 
-    private struct Repository: Decodable { let `private`: Bool; let archived: Bool; let full_name: String }
+    private struct Repository: Decodable {
+        let `private`: Bool
+        let visibility: String
+        let archived: Bool
+        let full_name: String
+    }
     /// The response's own links are not decoded; see `link(to:path:)`.
     private struct File: Decodable { let sha: String; let type: String? }
     private struct Created: Decodable { let content: File }
