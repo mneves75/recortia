@@ -186,6 +186,8 @@ struct VolumeTraits {
     var volumeTraits: (Int32) -> VolumeTraits = { VolumeTraits($0) }
     /// Runs once the folder's identity is read and its spelling resolved, before it is opened.
     var afterResolve: (URL) -> Void = { _ in }
+    /// Runs once the stage's private folder is made, before it is opened.
+    var afterMakeStage: (URL) -> Void = { _ in }
     /// Runs once the stage's bytes are on disk, while it is still owner-only and without an ACL.
     var afterSync: (URL) -> Void = { _ in }
     /// Runs before the destination is examined and the stage is published.
@@ -698,12 +700,16 @@ final class Stage {
         self.privateNamespace = privateNamespace
         folderName = ".recortia-\(UUID().uuidString)"
         guard unsafe mkdirat(directory, folderName, 0o700) == 0 else { throw FileSystemFailure(code: errno) }
+        fileSystem.afterMakeStage(destination.appendingPathComponent(folderName, isDirectory: true))
         let folder = unsafe openat(directory, folderName, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-        // Not opened, or not the folder just made: leave whatever the name leads to.
+        // Not opened, or not the folder just made: leave whatever the name leads to. Another writer
+        // to the destination can swap the name for any folder of this user's before it is opened;
+        // only an empty one can be the folder just made, so a folder with content stays untouched.
         guard folder >= 0 else { throw FileSystemFailure(code: errno) }
         var status = stat()
         guard unsafe fstat(folder, &status) == 0, status.st_uid == geteuid(),
-            POSIXFileSystem.entry(folderName, in: directory, is: FileIdentity(status), type: S_IFDIR)
+            POSIXFileSystem.entry(folderName, in: directory, is: FileIdentity(status), type: S_IFDIR),
+            Self.isEmpty(folder)
         else {
             close(folder)
             throw POSIXFileSystem.substitutedFailure
@@ -749,6 +755,26 @@ final class Stage {
             throw FileSystemFailure(code: failure, leftover: remove())
         }
         fileSystem.afterSync(url)
+    }
+
+    /// Whether the open folder lists nothing but `.` and `..`. Reads through a duplicate, so the
+    /// stream's closing leaves `folder` open.
+    private static func isEmpty(_ folder: Int32) -> Bool {
+        let copy = dup(folder)
+        guard copy >= 0 else { return false }
+        guard let stream = unsafe fdopendir(copy) else {
+            close(copy)
+            return false
+        }
+        defer { unsafe closedir(stream) }
+        while let entry = unsafe readdir(stream) {
+            let (length, first, second) = unsafe (
+                entry.pointee.d_namlen, entry.pointee.d_name.0, entry.pointee.d_name.1
+            )
+            let dot = CChar(UInt8(ascii: "."))
+            guard (length == 1 && first == dot) || (length == 2 && first == dot && second == dot) else { return false }
+        }
+        return true
     }
 
     /// Fails unless the stage's name still leads to the written file and nothing else does.
