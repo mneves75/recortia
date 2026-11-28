@@ -95,6 +95,51 @@ struct ExportContainerTests {
         #expect(exported.pixel(x: 1, y: 0) == color(30, 140, 90, 255))
     }
 
+    @Test("An opaque PNG export drops only the alpha channel; one translucent pixel keeps it")
+    func opaqueExportsCarryNoAlphaChannel() async throws {
+        var pixels: [UInt8] = []
+        for i in 0..<64 { pixels += [UInt8(i * 3), UInt8(255 - i), UInt8(i % 7 * 30), 255] }
+        var translucent = pixels
+        translucent[27 * 4 + 3] = 254
+        // IHDR color type (byte 25): 2 is RGB, 6 is RGBA.
+        for (input, colorType) in [(pixels, UInt8(2)), (translucent, UInt8(6))] {
+            let harness = ImagingHarness()
+            let image = try ChartFixture.image(width: 8, height: 8, straightRGBA: input)
+            let asset = try await harness.add(image)
+            let snapshot = try await harness.export(DocumentSession(document: Document(asset: asset)))
+            #expect(snapshot.bytes[snapshot.bytes.startIndex + 25] == colorType)
+            let exported = try ContainerInspector.decodePixels(snapshot.bytes)
+            if colorType == 2 {
+                #expect(exported == (try ContainerInspector.pixels(of: image)))
+            } else {
+                #expect(exported.pixel(x: 3, y: 3).a == 254)
+            }
+        }
+        #expect(!PNGRowFilter.prefersUnfiltered(Data(count: 63), width: 4, height: 4, bytesPerRow: 16), "short buffer")
+        // Odd width: each row's last pixel lies outside the two-pixel loads; row padding is ignored.
+        var odd = [UInt8](repeating: 255, count: 2 * 16)
+        for row in 0..<2 { for pad in 12..<16 { odd[row * 16 + pad] = 0 } }
+        #expect(AlphaScan.isOpaque(Data(odd), width: 3, height: 2, bytesPerRow: 16))
+        odd[16 + 2 * 4 + 3] = 254
+        #expect(!AlphaScan.isOpaque(Data(odd), width: 3, height: 2, bytesPerRow: 16))
+        #expect(!AlphaScan.isOpaque(Data(count: 27), width: 3, height: 2, bytesPerRow: 16), "short buffer")
+    }
+
+    @Test("An opaque raster's JPEG and HEIC skip compositing without changing a byte")
+    func opaqueLossyExportsMatchComposited() throws {
+        let canonical = try #require(
+            try RenderRaster(image: ChartFixture.photographic(width: 64, height: 48)).makeImage())
+        let view = try ExportEncoder.opaqueView(canonical)
+        try #require(canonical.alphaInfo == .premultipliedLast && view?.pixels != nil)
+        for format in [ExportFormat.jpeg(quality: 0.9), .heic(quality: 0.9)] {
+            let options = ExportOptions(format: format)
+            let composited = try ExportEncoder.flatten(canonical, on: options.jpegBackground)
+            #expect(
+                try ExportEncoder.encode(canonical, options: options)
+                    == ExportEncoder.encode(composited, options: options), "\(format)")
+        }
+    }
+
     @Test(
         "Imported EXIF, GPS, TIFF, IPTC, and comment metadata never survive export",
         arguments: [
