@@ -62,7 +62,8 @@ nonisolated private struct AXElementNode: InterfaceElementNode {
             AXUIElementCopyAttributeValues(element, "AXChildren" as CFString, 0, limit, &values) == .success,
             let list = values as? [AnyObject]
         else { return [] }
-        return list.compactMap { child in
+        // The other app answers; it may return more than the limit asked for.
+        return list.prefix(limit).compactMap { child in
             guard CFGetTypeID(child) == AXUIElementGetTypeID() else { return nil }
             return AXElementNode(unsafeDowncast(child, to: AXUIElement.self))
         }

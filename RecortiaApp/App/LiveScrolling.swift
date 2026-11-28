@@ -171,13 +171,16 @@ final class LiveAutoScroll: AutoScrollService {
     /// is none or it cannot be read.
     func isAtEnd(_ target: CaptureTarget, direction: ScrollCaptureDirection) async -> Bool? {
         guard let (region, _) = LiveScrollFrames.region(for: target) else { return nil }
+        // These calls block the main thread: a slow or hung app must not hold Stop or the lock handler.
+        let deadline = ContinuousClock.now + Self.readBudget
         var hit: AXUIElement?
         guard
             AXUIElementCopyElementAtPosition(
-                AXUIElementCreateSystemWide(), Float(region.midX), Float(region.midY), &hit) == .success,
-            var element = hit
+                Self.bounded(AXUIElementCreateSystemWide()), Float(region.midX), Float(region.midY), &hit) == .success,
+            var element = hit.map(Self.bounded)
         else { return nil }
         for _ in 0..<24 {
+            guard ContinuousClock.now < deadline else { return nil }
             if Self.attribute(kAXRoleAttribute, of: element) as? String == kAXScrollAreaRole as String {
                 let bar =
                     direction == .horizontal ? kAXHorizontalScrollBarAttribute : kAXVerticalScrollBarAttribute
@@ -192,6 +195,16 @@ final class LiveAutoScroll: AutoScrollService {
         return nil
     }
 
+    /// The longest one message to the other app may block, and the whole end-of-page read.
+    private static let messagingTimeout: Float = 0.05
+    private static let readBudget: Duration = .milliseconds(250)
+
+    /// The timeout belongs to each element reference, not to the application it came from.
+    private static func bounded(_ element: AXUIElement) -> AXUIElement {
+        AXUIElementSetMessagingTimeout(element, messagingTimeout)
+        return element
+    }
+
     private static func attribute(_ name: String, of element: AXUIElement) -> CFTypeRef? {
         var value: CFTypeRef?
         return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success ? value : nil
@@ -199,7 +212,7 @@ final class LiveAutoScroll: AutoScrollService {
 
     private static func element(_ name: String, of element: AXUIElement) -> AXUIElement? {
         guard let value = attribute(name, of: element), CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return unsafeDowncast(value as AnyObject, to: AXUIElement.self)
+        return bounded(unsafeDowncast(value as AnyObject, to: AXUIElement.self))
     }
 
     private func makeScroller(
