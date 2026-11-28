@@ -1,6 +1,9 @@
 import Compression
 import Domain
 import Foundation
+// Only the two pure checksum functions; the rest of zlib (gzopen and friends) stays out of Imaging.
+import func zlib.adler32_z
+import func zlib.crc32_z
 
 /// Container formats accepted in v1 (FR-03).
 /// The leading bytes that identify a PNG or JPEG file (FR-03): an import reads these first and
@@ -70,17 +73,14 @@ struct DecodeByteReader {
     }
 }
 
+/// CRC-32 as PNG uses it, from the system zlib's vectorized implementation.
 enum DecodeCRC32 {
-    private static let table: [UInt32] = (0..<256).map { n -> UInt32 in
-        var c = UInt32(n)
-        for _ in 0..<8 { c = (c & 1) != 0 ? 0xEDB8_8320 ^ (c >> 1) : c >> 1 }
-        return c
-    }
-
-    static func checksum<Bytes: Sequence>(_ bytes: Bytes) -> UInt32 where Bytes.Element == UInt8 {
-        var c: UInt32 = 0xFFFF_FFFF
-        for byte in bytes { c = table[Int((c ^ UInt32(byte)) & 0xFF)] ^ (c >> 8) }
-        return c ^ 0xFFFF_FFFF
+    static func checksum(_ bytes: Data) -> UInt32 {
+        unsafe bytes.withUnsafeBytes { raw in
+            // zlib reads exactly `raw.count` bytes of the buffer Data lends for this call; for an
+            // empty buffer it reads nothing and returns the initial value, 0.
+            UInt32(truncatingIfNeeded: unsafe crc32_z(0, raw.baseAddress?.assumingMemoryBound(to: UInt8.self), raw.count))
+        }
     }
 }
 
@@ -238,25 +238,16 @@ enum DecodePNGStructure {
         let storedAdler = (0..<4).reduce(UInt32(0)) { $0 << 8 | UInt32(logicalByte(total - 4 + $1)) }
 
         var produced = 0
-        var adlerA: UInt32 = 1, adlerB: UInt32 = 0
+        var adler: UInt = 1
         do {
             let filter = try OutputFilter(.decompress, using: .zlib, bufferCapacity: 64 * 1024) { chunk in
-                guard let chunk else { return }
+                guard let chunk, !chunk.isEmpty else { return }
                 produced += chunk.count
                 if produced > expected { throw InflationLimit() }
-                // zlib's NMAX: 5552 bytes is the longest run whose sums cannot overflow UInt32
-                // when both start below 65521, so the modulo runs once per run, not per byte.
-                let bytes = chunk.span
-                var index = 0
-                while index < bytes.count {
-                    let runEnd = min(bytes.count, index + 5552)
-                    while index < runEnd {
-                        adlerA &+= UInt32(bytes[index])
-                        adlerB &+= adlerA
-                        index += 1
-                    }
-                    adlerA %= 65521
-                    adlerB %= 65521
+                adler = unsafe chunk.withUnsafeBytes { raw in
+                    // Non-empty, so the base address exists; zlib reads exactly `raw.count` bytes
+                    // of the buffer Data lends for this call. (A nil buffer would reset the sum.)
+                    unsafe adler32_z(adler, raw.baseAddress?.assumingMemoryBound(to: UInt8.self), raw.count)
                 }
             }
             // Feed the raw DEFLATE body: skip the 2-byte zlib header, hold back the Adler-32 trailer.
@@ -277,7 +268,7 @@ enum DecodePNGStructure {
         } catch {
             throw ImportError.corrupt
         }
-        guard produced == expected, (adlerB << 16 | adlerA) == storedAdler else { throw ImportError.corrupt }
+        guard produced == expected, UInt32(truncatingIfNeeded: adler) == storedAdler else { throw ImportError.corrupt }
     }
 }
 
