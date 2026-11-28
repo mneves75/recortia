@@ -72,19 +72,15 @@ public final class GitHubTokenStore {
         ]
     }
 
-    /// What a save writes, on update as on add: an item an older build stored keeps no other
-    /// accessibility once the token is replaced.
-    nonisolated static func storedValue(_ data: Data) -> [CFString: Any] {
-        [kSecValueData: data, kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
-    }
-
     public func store(_ token: GitHubToken, for destination: GitHubDestination) throws(GitHubUploadFailure) {
         guard destination.isValid else { throw .invalidDestination }
-        let value = Self.storedValue(Data(token.value.utf8))
-        let update = SecItemUpdate(query(destination) as CFDictionary, value as CFDictionary)
+        let data = Data(token.value.utf8)
+        let update = SecItemUpdate(query(destination) as CFDictionary, [kSecValueData: data] as CFDictionary)
         if update == errSecSuccess { return }
         guard update == errSecItemNotFound else { throw .credentialsUnavailable }
-        let add = query(destination).merging(value) { _, new in new }
+        var add = query(destination)
+        add[kSecValueData] = data
+        add[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         guard SecItemAdd(add as CFDictionary, nil) == errSecSuccess else { throw .credentialsUnavailable }
     }
 
