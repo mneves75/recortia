@@ -79,7 +79,8 @@ enum DecodeCRC32 {
         unsafe bytes.withUnsafeBytes { raw in
             // zlib reads exactly `raw.count` bytes of the buffer Data lends for this call; for an
             // empty buffer it reads nothing and returns the initial value, 0.
-            UInt32(truncatingIfNeeded: unsafe crc32_z(0, raw.baseAddress?.assumingMemoryBound(to: UInt8.self), raw.count))
+            let start = unsafe raw.baseAddress?.assumingMemoryBound(to: UInt8.self)
+            return UInt32(truncatingIfNeeded: unsafe crc32_z(0, start, raw.count))
         }
     }
 }
