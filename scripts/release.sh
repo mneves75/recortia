@@ -74,12 +74,15 @@ if (( ! dry_run )); then
     echo "release: HEAD must carry a reviewed tag v$version or v$version-betaN (found '${tag:-none}')" >&2
     exit 1
   fi
-  # A release is cut only from reviewed main: an annotated tag on a commit that origin/main contains.
+  # A release is cut only from reviewed main: an annotated tag on a commit that the remote's main
+  # contains. The explicit refspec refreshes the fully qualified tracking ref, so neither a stale
+  # tracking branch nor a local tag or branch named origin/main can answer for it.
   if [[ "$(git cat-file -t "refs/tags/$tag")" != tag ]]; then
     echo "release: $tag is a lightweight tag; tag the release with git tag -a" >&2
     exit 1
   fi
-  if ! git fetch --quiet origin main || ! git merge-base --is-ancestor "$source_commit" origin/main; then
+  if ! git fetch --quiet origin "+refs/heads/main:refs/remotes/origin/main" ||
+    ! git merge-base --is-ancestor "$source_commit" refs/remotes/origin/main; then
     echo "release: $tag is not on origin/main; merge the reviewed change before releasing it" >&2
     exit 1
   fi

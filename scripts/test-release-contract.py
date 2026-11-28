@@ -62,8 +62,14 @@ elif args[0] == 'describe':
     print('v0.12.2')
 elif args[0] == 'cat-file':
     print((root / 'tag-type').read_text().strip() if (root / 'tag-type').exists() else 'tag')
+elif args[0] == 'fetch':
+    # Only an explicit refspec refreshes the fully qualified tracking ref the gate reads.
+    if args[-1] == '+refs/heads/main:refs/remotes/origin/main':
+        (root / 'fetched-main').touch()
 elif args[0] == 'merge-base':
-    sys.exit(1 if (root / 'off-main').exists() else 0)
+    # A shorthand such as origin/main can resolve to a local tag or branch, or a stale tracking ref.
+    exact = args[-1] == 'refs/remotes/origin/main' and (root / 'fetched-main').exists()
+    sys.exit(1 if (root / 'off-main').exists() or not exact else 0)
 elif args[:2] == ['worktree', 'add']:
     target = pathlib.Path(args[-2])
     shutil.copytree(root / 'gate', target)
