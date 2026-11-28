@@ -24,10 +24,11 @@ import and smaller exports, and the fixes from the 2026-11 security audit.
 ### Changed
 
 - PNG import verifies its checksums with the system zlib instead of byte-by-byte Swift loops:
-  decoding a 5K PNG takes about 69% less CPU.
+  decoding a 5K PNG takes about 72% less CPU.
 - Opaque exports are encoded without an alpha channel, with a PNG row filter chosen for the
-  image: screen PNGs are about 17% smaller and encode with about 12% less CPU, photo PNGs about
-  16% smaller. JPEG and HEIC skip a redraw that produced the same bytes.
+  image: screen PNGs are about 17% smaller and encode with about 10% less CPU (Automatic format
+  about 14%), photo PNGs about 16% smaller. JPEG and HEIC skip a redraw that produced the same
+  bytes.
 
 ### Fixed
 

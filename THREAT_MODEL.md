@@ -59,6 +59,14 @@ the destination's ACL, group and mode through one checked descriptor. Final acce
 the staging file before it is published. Replace authorizes the entry at the destination name at
 save time. A concurrent substitution can still cause failure and rollback.
 
+macOS cannot create and open a folder in one step. So in a folder without the sticky bit,
+another writer can swap the new staging folder's name between `mkdirat` and `openat`. The swap
+can only bring in an empty folder owned by the saving user. Recortia then refuses any folder
+that is not empty or not owned by that user (security audit 2026-11). If the swap does bring in
+an empty folder, that folder loses its ACL and becomes owner-only, receives the staged bytes,
+and is removed once it is empty again. A writer who can make that swap can already delete the
+same empty folder, so no further fix is planned.
+
 On volumes without enforced ownership, such as FAT and exFAT, the guarantee is integrity. Other
 accounts with access to that volume can read or change its contents. A new save claims its name
 exclusively and verifies the bytes by reading them back. Cleanup removes only entries verified as
