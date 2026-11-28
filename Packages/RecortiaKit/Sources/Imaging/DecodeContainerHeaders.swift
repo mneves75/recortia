@@ -244,9 +244,19 @@ enum DecodePNGStructure {
                 guard let chunk else { return }
                 produced += chunk.count
                 if produced > expected { throw InflationLimit() }
-                for byte in chunk {
-                    adlerA = (adlerA + UInt32(byte)) % 65521
-                    adlerB = (adlerB + adlerA) % 65521
+                // zlib's NMAX: 5552 bytes is the longest run whose sums cannot overflow UInt32
+                // when both start below 65521, so the modulo runs once per run, not per byte.
+                let bytes = chunk.span
+                var index = 0
+                while index < bytes.count {
+                    let runEnd = min(bytes.count, index + 5552)
+                    while index < runEnd {
+                        adlerA &+= UInt32(bytes[index])
+                        adlerB &+= adlerA
+                        index += 1
+                    }
+                    adlerA %= 65521
+                    adlerB %= 65521
                 }
             }
             // Feed the raw DEFLATE body: skip the 2-byte zlib header, hold back the Adler-32 trailer.
