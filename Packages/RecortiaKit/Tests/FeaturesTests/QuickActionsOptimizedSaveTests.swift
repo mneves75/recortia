@@ -73,14 +73,15 @@ struct QuickActionsOptimizedSaveTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
         defer { try? FileManager.default.removeItem(at: directory) }
 
+        // 1600 × 1200 keeps Automatic's JPEG well inside the size rule with any system encoder.
         let source = try ContainerCrafting.metadataRichJPEG(
-            ChartFixture.photographic(width: 1200, height: 900))
+            ChartFixture.photographic(width: 1600, height: 1200))
         try #require(ContainerCrafting.metadataCanaries.allSatisfy { ContainerInspector.contains($0, in: source) })
         let store = ImageStore()
         let asset = await store.insert(try ImageDecoder.decode(source), origin: .imported)
         var session = DocumentSession(
             document: Document(
-                assets: [asset.id: asset], canvasSize: Size(width: transparent ? 1201 : 1200, height: 900),
+                assets: [asset.id: asset], canvasSize: Size(width: transparent ? 1601 : 1600, height: 1200),
                 layers: [ImageLayer(assetID: asset.id)]))
         try session.addSecureMask(covering: Rect(x: 400, y: 300, width: 200, height: 200))
         let sink = RecordingFileSink()
@@ -117,11 +118,11 @@ struct QuickActionsOptimizedSaveTests {
         if transparent {
             #expect(details.format == .png)
             #expect(try ContainerInspector.pngChunkTypes(written).contains("IEND"))
-            #expect(decoded.pixel(x: 1200, y: 450).a == 0)
+            #expect(decoded.pixel(x: 1600, y: 450).a == 0)
         } else {
             #expect(details.format == .jpeg(quality: AutomaticFormatRule.jpegQuality))
             #expect(try ContainerInspector.jpegSegments(written).endsWithEOI)
-            #expect(decoded.pixel(x: 1199, y: 450).a == 255)
+            #expect(decoded.pixel(x: 1599, y: 450).a == 255)
         }
     }
 

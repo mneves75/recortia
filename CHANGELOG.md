@@ -29,6 +29,8 @@ import and smaller exports, and the fixes from the 2026-11 security audit.
   image: screen PNGs are about 17% smaller and encode with about 10% less CPU (Automatic format
   about 14%), photo PNGs about 16% smaller. JPEG and HEIC skip a redraw that produced the same
   bytes.
+- Automatic format keeps the lossless PNG for some photos it used to save as JPEG: the size
+  rule is unchanged, but the PNG it compares is now smaller.
 
 ### Fixed
 

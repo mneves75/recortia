@@ -53,6 +53,11 @@ byte equality with the composited path by `opaqueLossyExportsMatchComposited`. A
 raster never takes the opaque view: one non-opaque alpha byte anywhere sends it down the existing
 path.
 
+Automatic compares the PNG it would write with the JPEG, so a smaller PNG moves its boundary: some
+photos near the 4× and 2× limits now stay lossless PNG instead of becoming JPEG. The rule in
+SPEC FR-07 is unchanged. Two tests whose 1200 × 900 photo sat at that boundary on the hosted
+runner's encoder now use 1600 × 1200.
+
 ## Final A/B (interleaved, 3 processes per side, 2 for the scan)
 
 | Scenario | CPU base (ms) | CPU head (ms) | Δ CPU | Bytes base | Bytes head | Δ bytes | Peak base → head (MB) |

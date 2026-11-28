@@ -188,7 +188,7 @@ struct ExportContainerTests {
 
     @Test("An Automatic JPEG keeps secure masks and carries none of the imported metadata")
     func automaticJPEGIsSanitized() async throws {
-        let jpeg = try ContainerCrafting.metadataRichJPEG(try ChartFixture.photographic(width: 1200, height: 900))
+        let jpeg = try ContainerCrafting.metadataRichJPEG(try ChartFixture.photographic(width: 1600, height: 1200))
         for canary in ContainerCrafting.metadataCanaries {
             #expect(ContainerInspector.contains(canary, in: jpeg), "fixture lacks \(canary)")
         }
@@ -200,7 +200,8 @@ struct ExportContainerTests {
         try session.addSecureMask(covering: masked)
 
         let snapshot = try await harness.export(session, ExportOptions(automaticFormat: true))
-        // Control: the size rule chose JPEG, so this exercises the lossy path.
+        // Control: the size rule chose JPEG, so this exercises the lossy path. At 1600 × 1200 the PNG
+        // stays over 2 MB and twice the JPEG; at 1200 × 900 a hosted runner's encoder kept PNG.
         try #require(snapshot.format == .jpeg(quality: 0.92))
         let (segments, endsWithEOI) = try ContainerInspector.jpegSegments(snapshot.bytes)
         #expect(Set(segments.map(\.marker)).isSubset(of: Self.allowedJPEGMarkers), "unexpected markers: \(segments)")
