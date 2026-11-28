@@ -240,7 +240,10 @@ public struct GitHubUploader: Sendable {
             !repository.archived
         else { throw .invalidResponse }
         // An internal repository also reports `private`, yet its whole enterprise can read it.
-        guard repository.private, repository.visibility == "private" else { throw .publicRepository }
+        // GitHub's schema requires only `private`; a stated visibility must also be private.
+        guard repository.private, repository.visibility.map({ $0 == "private" }) ?? true else {
+            throw .publicRepository
+        }
         let path = "screenshots/\(intent.uuidString.lowercased()).\(snapshot.format.fileExtension)"
         let contentsURL = "\(base)/contents/\(path)"
         var lookup = try request(contentsURL, token: token)
@@ -349,7 +352,7 @@ public struct GitHubUploader: Sendable {
 
     private struct Repository: Decodable {
         let `private`: Bool
-        let visibility: String
+        let visibility: String?
         let archived: Bool
         let full_name: String
     }

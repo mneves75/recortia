@@ -95,6 +95,17 @@ struct GitHubUploadTests {
         #expect(requests.allSatisfy { $0.url?.host == "api.github.com" && $0.url?.user == nil })
     }
 
+    // GitHub's repository schema requires `private` but not `visibility`.
+    @Test("A private repository response without visibility still uploads")
+    func visibilityIsOptional() async throws {
+        let snapshot = TestSupport.snapshot()
+        let repo = reply(200, #"{"private":true,"archived":false,"full_name":"fixture-owner/private-captures"}"#)
+        let transport = UploadTransportFixture([repo, reply(404, "{}"), file(snapshot, wrapped: true)])
+        _ = try await GitHubUploader(transport: transport).upload(
+            snapshot, to: destination, token: try Self.token(), intent: intent, isLive: { true }, isCurrent: { true })
+        #expect(await transport.requests.map(\.httpMethod) == ["GET", "GET", "PUT"])
+    }
+
     // An internal repository reports `private: true` but is visible to every member of its
     // enterprise, so only `visibility` set to private admits an upload.
     @Test(
