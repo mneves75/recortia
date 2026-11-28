@@ -222,7 +222,8 @@ enum ExportContainerFilter {
         return output
     }
 
-    /// Keeps SOI, JFIF APP0, ICC APP2, DQT, SOFn, DHT, DRI, and a single baseline scan through EOI.
+    /// Keeps SOI, the JFIF APP0 header without any thumbnail, ICC APP2, DQT, SOFn, DHT, DRI, and a
+    /// single baseline scan through EOI.
     static func jpeg(_ data: Data) throws(ExportError) -> Data {
         let reader = DecodeByteReader(data: data)
         guard reader.count >= 4, reader.byte(0) == 0xFF, reader.byte(1) == 0xD8 else {
@@ -242,7 +243,17 @@ enum ExportContainerFilter {
                 output.append(reader.slice(offset..<reader.count))
                 return output
             }
-            if keeps(marker: marker, payload: payload) { output.append(reader.slice(offset..<end)) }
+            if marker == 0xE0 {
+                // JFIF's fixed 14 bytes may be followed by an uncompressed thumbnail: keep the
+                // identifier, version, units and density, with a 0x0 thumbnail.
+                if payload.starts(with: Array("JFIF\0".utf8)), payload.count >= 14 {
+                    output.append(contentsOf: [0xFF, 0xE0, 0x00, 0x10])
+                    output.append(payload.prefix(12))
+                    output.append(contentsOf: [0, 0])
+                }
+            } else if keeps(marker: marker, payload: payload) {
+                output.append(reader.slice(offset..<end))
+            }
             offset = end
         }
     }
@@ -251,7 +262,7 @@ enum ExportContainerFilter {
     static let heicFileBoxes: Set<String> = ["ftyp", "meta", "mdat"]
     static let heicMetaBoxes: Set<String> = ["hdlr", "dinf", "pitm", "iinf", "iref", "iprp", "iloc", "idat"]
     static let heicPropertyBoxes: Set<String> = [
-        "hvcC", "ispe", "colr", "pixi", "irot", "imir", "clap", "clli", "mdcv", "auxC",
+        "hvcC", "ispe", "colr", "pixi", "irot", "imir", "clap", "clli", "mdcv",
     ]
     /// Image items only: no `Exif`, `mime` (XMP) or `uri ` item can carry metadata.
     static let heicItemTypes: Set<String> = ["hvc1", "grid"]
@@ -394,7 +405,6 @@ enum ExportContainerFilter {
 
     private static func keeps(marker: UInt8, payload: Data) -> Bool {
         switch marker {
-        case 0xE0: payload.starts(with: Array("JFIF\0".utf8))
         case 0xE2: payload.starts(with: Array("ICC_PROFILE\0".utf8))
         case 0xDB, 0xC4, 0xDD: true
         case 0xC0...0xCF: marker != 0xC8 && marker != 0xCC

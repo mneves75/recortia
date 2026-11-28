@@ -56,6 +56,27 @@ struct ExportContainerTests {
         #expect(ContainerInspector.propertyKeys(snapshot.bytes).isDisjoint(with: Self.forbiddenPropertyKeys))
     }
 
+    @Test("The JPEG filter keeps a JFIF header without its thumbnail")
+    func jfifThumbnailIsDropped() throws {
+        let jpeg = [UInt8](try ContainerCrafting.jpegData(try ChartFixture.geometryChart(width: 16, height: 16)))
+        var offset = 2
+        while jpeg[offset + 1] != 0xE0 {
+            try #require(jpeg[offset + 1] != 0xDA, "no APP0 segment")
+            offset += 2 + (Int(jpeg[offset + 2]) << 8 | Int(jpeg[offset + 3]))
+        }
+        let end = offset + 2 + (Int(jpeg[offset + 2]) << 8 | Int(jpeg[offset + 3]))
+        let header = Array(jpeg[(offset + 4)..<(offset + 16)])
+        try #require(header.starts(with: Array("JFIF\0".utf8)))
+        // A 1x1 RGB thumbnail: its dimensions, then three pixel bytes.
+        let thumbnailed: [UInt8] = [0xFF, 0xE0, 0x00, 0x13] + header + [1, 1, 200, 10, 10]
+        let crafted = Data(jpeg[..<offset] + thumbnailed + jpeg[end...])
+        let filtered = [UInt8](try ExportContainerFilter.jpeg(crafted))
+        let app0 = try ContainerInspector.jpegSegments(Data(filtered)).segments.filter { $0.marker == 0xE0 }
+        #expect(app0.map(\.length) == [16])
+        #expect(Array(filtered[6..<20]) == header + [0, 0])
+        #expect(try ContainerInspector.decodePixels(Data(filtered)).width == 16)
+    }
+
     @Test("Control: ImageIO's own encoder output would fail the allowlists")
     func rawImageIOOutputIsCaught() throws {
         let image = try ChartFixture.geometryChart(width: 16, height: 16)
