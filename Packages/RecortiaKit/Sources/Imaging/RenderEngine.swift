@@ -364,7 +364,9 @@ enum RenderEngine {
 
     /// A magnifier re-renders the sanitized base (layers, effects, masks) through a magnifying
     /// transform. It never reads the output raster, so it cannot show annotations, other
-    /// callouts, or itself, and cannot form a render cycle.
+    /// callouts, or itself, and cannot form a render cycle. Its source is clipped to the content
+    /// rect, so a crop also excludes what the magnifier shows; outside it the destination is
+    /// transparent, as for a source beyond the canvas.
     private static func drawMagnifier(
         _ raster: inout RenderRaster, _ document: Document, images: [CGImage], map: CGAffineTransform,
         source: Rect<DocumentSpace>, destination: Rect<DocumentSpace>, content: Rect<DocumentSpace>,
@@ -381,8 +383,7 @@ enum RenderEngine {
         let magnifiedMap = magnify.concatenating(map)
             .concatenating(CGAffineTransform(translationX: -Double(area.x), y: -Double(area.y)))
         try composeBase(
-            into: &magnified, document, images: images, map: magnifiedMap, clip: document.canvasRect,
-            pixelClip: magnified.bounds)
+            into: &magnified, document, images: images, map: magnifiedMap, clip: content, pixelClip: magnified.bounds)
         applyOutputMasks(&magnified, document, map: magnifiedMap, pixelClip: magnified.bounds)
         guard let image = magnified.makeImage() else { throw RenderError.allocationFailed }
 

@@ -202,6 +202,34 @@ struct RenderCompositionTests {
         #expect(p.pixel(x: 290, y: 50).distance(to: Self.gray) <= 2)
     }
 
+    @Test("RED: a magnifier never shows pixels the crop excludes")
+    func magnifierStaysInsideCrop() async throws {
+        let harness = ImagingHarness()
+        var document = try await composite(harness)
+        // Source: C's yellow quadrant, outside a crop that keeps only A; destination inside A.
+        document.callouts = [
+            Callout(
+                kind: .magnifier(
+                    source: Rect(x: 150, y: 67, width: 10, height: 10),
+                    destination: Rect(x: 5, y: 5, width: 40, height: 40)))
+        ]
+        // Control: uncropped, the destination shows the enlarged yellow quadrant.
+        let uncropped = try pixels(try await harness.renderer.render(document, scale: 1))
+        #expect(uncropped.pixel(x: 25, y: 25).distance(to: Self.q[3]) <= 2)
+
+        document.crop = Rect(x: 0, y: 0, width: 100, height: 80)
+        let p = try pixels(try await harness.renderer.render(document, scale: 1))
+        #expect(p.width == 100 && p.height == 80)
+        for y in stride(from: 6, to: 45, by: 2) {
+            for x in stride(from: 6, to: 45, by: 2) {
+                #expect(p.pixel(x: x, y: y).distance(to: Self.q[3]) > 40, "(\(x), \(y))")
+            }
+        }
+        // The source is not in the crop, so the destination holds nothing, as off-canvas sources do.
+        #expect(p.pixel(x: 25, y: 25).a == 0)
+        #expect(p.pixel(x: 30, y: 70).distance(to: Self.gray) <= 2)
+    }
+
     @Test(
         "An explicit crop that is empty or wholly off the canvas is invalid geometry, never the whole canvas",
         arguments: [
