@@ -12,6 +12,7 @@ final class SystemEventMonitor {
 
     private let handler: (Event) -> Void
     private var tokens: [(NotificationCenter, any NSObjectProtocol)] = []
+    private var lockObserver: LockObserver?
 
     init(handler: @escaping (Event) -> Void) {
         self.handler = handler
@@ -20,7 +21,13 @@ final class SystemEventMonitor {
     func start() {
         guard tokens.isEmpty else { return }
         observe(NotificationCenter.default, NSApplication.didChangeScreenParametersNotification, .displaysChanged)
-        observe(DistributedNotificationCenter.default(), Notification.Name("com.apple.screenIsLocked"), .screenLocked)
+        // AppKit suspends distributed delivery while the app is inactive, and capture panels and the
+        // scrolling HUD keep Recortia inactive: the lock must still arrive while it happens.
+        let lock = LockObserver { [weak self] in self?.handler(.screenLocked) }
+        DistributedNotificationCenter.default().addObserver(
+            lock, selector: #selector(LockObserver.screenLocked(_:)), name: Notification.Name("com.apple.screenIsLocked"),
+            object: nil, suspensionBehavior: .deliverImmediately)
+        lockObserver = lock
         observe(
             NSWorkspace.shared.notificationCenter, NSWorkspace.sessionDidResignActiveNotification, .screenLocked)
         observe(NSWorkspace.shared.notificationCenter, NSWorkspace.willSleepNotification, .sleeping)
@@ -32,5 +39,18 @@ final class SystemEventMonitor {
             MainActor.assumeIsolated { self?.handler(event) }
         }
         tokens.append((center, token))
+    }
+}
+
+private final class LockObserver: NSObject {
+    private let action: () -> Void
+
+    init(action: @escaping () -> Void) {
+        self.action = action
+    }
+
+    // The distributed center delivers on the main thread.
+    @objc func screenLocked(_ notification: Notification) {
+        action()
     }
 }
