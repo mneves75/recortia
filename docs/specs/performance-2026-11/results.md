@@ -3,7 +3,7 @@
 Owner request (2026-11): lower latency, bytes produced and lag, one measured hypothesis at a time,
 without trading any privacy invariant (ShareSnapshot, masks before resample, staleness checks).
 Baseline: `main` at ad980f5 (0.16.0). Head: branch `perf/hillclimb-security-2026-11`; the final
-A/B ran against 0af8c80, and later commits change only tests.
+A/B ran against 0af8c80; later commits change only tests, scripts and docs, no product source.
 
 ## Method
 

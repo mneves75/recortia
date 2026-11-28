@@ -216,6 +216,18 @@
       ".scratch/local-install-build12-20261002/installation.json"
     ]
   },
+  "source_candidate_0_16_1": {
+    "version": "0.16.1",
+    "build": 32,
+    "date": "2026-11-28",
+    "requirements": ["FR-03", "FR-04", "FR-06", "FR-07", "FR-08", "FR-09", "FR-15"],
+    "scope": "Performance hillclimb (PNG import checksums through the system zlib; opaque exports without alpha and with a chosen PNG row filter) and the fixes from the 2026-11 security audit. See docs/specs/performance-2026-11/results.md and CHANGELOG.md.",
+    "branch": "perf/hillclimb-security-2026-11",
+    "status": "locally_installed_awaiting_full_qualification",
+    "verification": "The signed artifact is from 190aa6af3506e456708600700360427017722f7d. ./init.sh check --unsigned passed on that commit (1130 package tests, Debug and E2E builds, format lint, project freshness, pt-BR coverage). scripts/test-release-contract.py passed 15 tests with one optional skip. Gitleaks over the 33 branch commits and the tree, and Trivy, reported nothing. The dev security gate passed on the exact commit with no open Critical or High finding; its record stays untracked in the primary checkout under .scratch/security-gate/. Codex reviewed the branch and its final delta, and an Opus reviewer passed 81589bf. The A/B method and figures are in docs/specs/performance-2026-11/results.md.",
+    "installation": "Signed Developer ID 0.16.1 (32) installed on macOS 27.3 from the verified dry-run export. The running notarized 0.16.0 session and a rollback bundle were preserved. Build 32 launch is pending.",
+    "release": "Not tagged, merged, notarized or published. Native bilingual E2E, minimum macOS, physical Spaces, VoiceOver and TCC remain open. A production security gate needs acceptance by a model other than the builder on the final tree."
+  },
   "source_candidate_0_16_0": {
     "version": "0.16.0",
     "build": 31,
@@ -241,6 +253,21 @@
     "release": "A private dry run verified signing and the disk image. Exact-commit release security, notarization, live update, physical desktop checks, minimum macOS, merge and tag remain open."
   },
   "current_local_installation": {
+    "candidate": "0.16.1 Developer ID local candidate",
+    "app_version": "0.16.1",
+    "build": 32,
+    "date": "2026-11-28",
+    "source_commit": "190aa6af3506e456708600700360427017722f7d",
+    "installed_path": "/Applications/Recortia.app",
+    "installed_from": "Verified export from scripts/release.sh --dry-run, 0.16.1-dev-20261128T084044Z-13527.",
+    "backup_path": "Primary main checkout: .scratch/install-0.16.1-20261128/Recortia-prev.app (previous notarized 0.16.0 build 31).",
+    "executable_sha256": "284e26779dbbc83a2dbaae8b77f9970d30d0f900712ccdb7342325f90e173996",
+    "installed_equals_developer_id_export": true,
+    "launched": false,
+    "notarized": false,
+    "verification": "The installed bundle is identical to the export (diff -rq). Strict codesign and local spctl (source=Developer ID) passed, with Hardened Runtime, the embedded provisioning profile, the Keychain access group Q96FUTC5G8.dev.mvneves.Recortia and no get-task-allow. The previous bundle went to the Trash; the running process (PID 4075, started 2026-11-27 10:28) still maps its binary from there, so the Trash must not be emptied before Recortia restarts. Receipt: .scratch/install-0.16.1-20261128/installation.json."
+  },
+  "previous_local_installation_0_16_0_notarized": {
     "candidate": "0.16.0 notarized release",
     "app_version": "0.16.0",
     "build": 31,
