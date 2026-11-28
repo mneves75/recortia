@@ -1,5 +1,6 @@
 import Domain
 import Foundation
+import Security
 import Testing
 
 @testable import MacPlatform
@@ -8,6 +9,17 @@ import Testing
 // Nothing to admit is a missing credential; text that fails admission is an invalid one.
 @Suite("GitHub token entry: pasted whitespace and Keychain account")
 struct GitHubTokenStoreTests {
+    // An update writes the same accessibility as an add, so replacing a token stored by an older
+    // build never leaves it readable while the Mac is locked or restorable to another device.
+    @Test("a save writes the token only with this-device, when-unlocked accessibility")
+    func savedAccessibility() throws {
+        let value = GitHubTokenStore.storedValue(Data("ghp_abc123".utf8))
+        #expect(value[kSecValueData] as? Data == Data("ghp_abc123".utf8))
+        let accessible = try #require(value[kSecAttrAccessible] as? String)
+        #expect(accessible == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        #expect(value.count == 2)
+    }
+
     @Test(
         "surrounding whitespace and newlines from a paste are trimmed before validation",
         arguments: [" ghp_abc123", "ghp_abc123\n", "\t ghp_abc123 \r\n", "\u{00A0}ghp_abc123\u{2003}"])
