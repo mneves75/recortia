@@ -53,7 +53,7 @@ struct QuickActionsCopyTextTests {
     }
 
     enum Interruption: CaseIterable {
-        case selection, selectionDuringRender, dismiss, replacement, openEditor, copyLink
+        case selection, selectionDuringRender, dismiss, replacement, openEditor, copyLink, screenLock
     }
 
     @Test("A retired Copy Text does not write or overlap a new OCR request", arguments: Interruption.allCases)
@@ -98,6 +98,8 @@ struct QuickActionsCopyTextTests {
             h.model.openInEditor()
         case .copyLink:
             #expect(h.model.copyLink())
+        case .screenLock:
+            h.model.cancelTextCopy()
         }
         if !h.model.isShown { await h.shown() }
         #expect(!h.model.isActing)
