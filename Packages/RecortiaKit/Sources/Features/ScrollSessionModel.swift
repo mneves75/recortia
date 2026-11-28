@@ -214,6 +214,9 @@ public final class ScrollSessionModel {
         guard state == .collecting, pendingFinish == nil else { return }
         collectPauseEpoch &+= 1
         settleTask?.cancel()
+        // A first step may still be creating its scroller; stopping invalidates that generation,
+        // so nothing scrolls after Pause. Resume creates a new one.
+        autoScroller?.stop()
         apply(.pause(.userPaused))
     }
 
@@ -266,6 +269,18 @@ public final class ScrollSessionModel {
         switch state {
         case .selecting, .armed, .collecting, .paused:
             fail(failure)
+        default:
+            break
+        }
+    }
+
+    /// Cancels a session that is selecting or capturing when the Mac sleeps, without a failure
+    /// notice: the stream and the auto scroller stop and nothing captured is kept. A review has
+    /// nothing running and keeps its result.
+    public func cancelForSleep() {
+        switch state {
+        case .selecting, .armed, .collecting, .paused:
+            cancel()
         default:
             break
         }
@@ -444,6 +459,11 @@ public final class ScrollSessionModel {
     private func autoStep(_ target: CaptureTarget, id: UUID) async {
         guard isCurrent(id), state == .collecting, pendingFinish == nil, mode == .automatic, autoStepOwner != id
         else { return }
+        // Turning "Scroll automatically" off takes effect on the next step, as revoking trust does.
+        guard settings.preferences.automaticScrollingEnabled else {
+            mode = .manual
+            return
+        }
         guard accessibility.isTrusted, let autoScroller else {
             mode = .manual
             notice = .accessibilityRevoked
