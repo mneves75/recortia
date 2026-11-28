@@ -25,7 +25,7 @@ preferences contain destination and sealed consent, never tokens or image bytes.
   changing destinations or resetting preferences invalidates pending intents permanently.
   Re-enabling the same destination authorizes new captures, never the revoked pending one.
 - Canceling an automatic batch prevents later sinks; an occupied batch reports an error.
-- One screenshots/<UUID>.png or .jpg path per intent. GET before PUT; matching Git blob SHA
+- One screenshots/<UUID>.png, .jpg or .heic path per intent. GET before PUT; matching Git blob SHA
   recognizes completion. Conflicting bytes are refused; existing files are never overwritten.
 - No automatic retry after PUT. Timeout/cancellation/malformed success can mean the upload
   completed; report that uncertainty. A provider-level retry uses the same intent UUID.
@@ -34,7 +34,8 @@ preferences contain destination and sealed consent, never tokens or image bytes.
 Git history retains binary files. Private links require authenticated GitHub access and have
 no promised expiry. Repository visibility/collaborators can change after verification; the owner
 must keep the destination private. Turning upload off does not remove remote copies or history.
-Changing destinations leaves unused old Keychain entries; removal targets the selected entry.
+Saving a new destination stores its token first, then removes the previous destination's token
+(a failed removal is reported); removal targets the selected entry.
 
 The strongest alternative is release assets, which avoids commit growth but requires selecting
 a release and does not improve private link lifecycle for this use case.

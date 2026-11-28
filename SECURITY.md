@@ -45,8 +45,13 @@ after locking. Never include credentials, personal captures or local paths in an
 4. Review the exact recovery source tree, rerun local tests and the security gate, then build,
    sign and notarize a new version through `scripts/release.sh`. Verify the downloaded artifact's
    checksum, signature and notarization before resuming distribution.
-5. Notify affected users through the approved security advisory/release channels. Recortia has no
-   automatic updater: users must install the corrected release. Revocation cannot erase screenshots
+5. Notify affected users through the approved security advisory/release channels. The built-in updater
+   (Sparkle) stays inactive until a release ships an EdDSA public key (`SUPublicEDKey`); until then
+   users must install the corrected release themselves. Once it is active, a lost or exposed EdDSA
+   private key is replaced only through Sparkle's key rotation: a Developer ID signed release that
+   changes the EdDSA key but not the signing certificate
+   (https://sparkle-project.org/documentation/#rotating-signing-keys). Do not publish an appcast
+   entry signed with an exposed key. Revocation cannot erase screenshots
    or files already exported to another app, disk, backup or GitHub repository.
 
 Credential revocation, publication, certificate changes and user notifications are maintainer
