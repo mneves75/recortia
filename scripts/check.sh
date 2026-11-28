@@ -34,7 +34,8 @@ echo "== generated project is current (compared with git)"
 scripts/check-project-fresh.sh
 
 echo "== package tests"
-xcrun swift test --package-path Packages/RecortiaKit --parallel
+# Like the app build: a Package.resolved that disagrees with Package.swift fails instead of re-resolving.
+xcrun swift test --package-path Packages/RecortiaKit --force-resolved-versions --parallel
 
 echo "== app build"
 xcodebuild -project Recortia.xcodeproj -scheme Recortia -configuration Debug \

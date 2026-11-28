@@ -74,6 +74,15 @@ if (( ! dry_run )); then
     echo "release: HEAD must carry a reviewed tag v$version or v$version-betaN (found '${tag:-none}')" >&2
     exit 1
   fi
+  # A release is cut only from reviewed main: an annotated tag on a commit that origin/main contains.
+  if [[ "$(git cat-file -t "refs/tags/$tag")" != tag ]]; then
+    echo "release: $tag is a lightweight tag; tag the release with git tag -a" >&2
+    exit 1
+  fi
+  if ! git fetch --quiet origin main || ! git merge-base --is-ancestor "$source_commit" origin/main; then
+    echo "release: $tag is not on origin/main; merge the reviewed change before releasing it" >&2
+    exit 1
+  fi
   label=${tag#v}
 else
   label="$version-dev-$(date -u +%Y%m%dT%H%M%SZ)-$$"
@@ -146,7 +155,7 @@ if [[ "$signature" != *"flags=0x10000(runtime)"* ]]; then
   echo "release: Hardened Runtime is not enabled" >&2
   exit 1
 fi
-scripts/check-release-binary.sh "$app"
+"$src/scripts/check-release-binary.sh" "$app"
 python3 "$src/scripts/check-updater-plist.py" --app-plist "$app/Contents/Info.plist"
 notice="$src/RecortiaApp/Resources/KeyboardShortcuts-LICENSE.txt"
 upstream_notice="$out/spm/checkouts/KeyboardShortcuts/license"
